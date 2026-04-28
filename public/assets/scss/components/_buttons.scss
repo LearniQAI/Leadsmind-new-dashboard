@@ -1,0 +1,509 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  BUTTON CSS START
+/*----------------------------------------*/
+
+.btn {
+  @apply text-[16px] font-normal transition-all duration-[0.3s] ease-linear inline-flex items-center justify-center leading-normal px-6 py-1.5 rounded-md shadow-none;
+
+  &.btn-xxl {
+    @apply px-12 py-8;
+  }
+
+  &.btn-xl {
+    @apply px-10 py-5;
+  }
+
+  &.btn-lg {
+    @apply px-8 py-4;
+  }
+
+  &.btn-md {
+    @apply px-[18px] py-2.5;
+  }
+
+  &.btn-sm {
+    @apply px-3 py-1;
+  }
+
+  i {
+    @apply me-2;
+  }
+
+  &.radius-pill {
+    @apply rounded-[50px];
+  }
+}
+
+/* primary button css start */
+.btn-primary {
+  @apply bg-primary dark:bg-primary-dark;
+  @apply text-white dark:text-white;
+  @apply border-none;
+
+  &:hover {
+    @apply bg-primary/80 text-white dark:text-white;
+  }
+}
+
+.btn-secondary {
+  @apply bg-secondary dark:bg-secondary-dark;
+  @apply text-white dark:text-white;
+  @apply border-none;
+
+  &:hover {
+    @apply bg-secondary/80 text-white dark:text-white;
+  }
+}
+
+.btn-success {
+  @apply bg-success dark:bg-success-dark;
+  @apply text-white dark:text-white;
+  @apply border-none;
+
+  &:hover {
+    @apply bg-success/80 text-white dark:text-white;
+  }
+}
+
+.btn-danger {
+  @apply bg-danger dark:bg-danger-dark;
+  @apply text-white dark:text-white;
+  @apply border-none;
+
+  &:hover {
+    @apply bg-danger/80 text-white dark:text-white;
+  }
+}
+
+.btn-warning {
+  @apply bg-warning dark:bg-warning-dark;
+  @apply text-white dark:text-white;
+  @apply border-none;
+
+  &:hover {
+    @apply bg-warning/80 text-white dark:text-white;
+  }
+}
+
+.btn-info {
+  @apply bg-info dark:bg-info-dark;
+  @apply text-white dark:text-white;
+  @apply border-none;
+
+  &:hover {
+    @apply bg-info/80 text-white dark:text-white;
+  }
+}
+
+.btn-light {
+  @apply bg-light dark:bg-light-dark;
+  @apply text-black dark:text-black-dark;
+  @apply border-none;
+
+  &:hover {
+    @apply bg-light/80;
+  }
+}
+
+.btn-dark {
+  @apply bg-dark dark:bg-dark-dark;
+  @apply text-white dark:text-dark;
+  @apply border-none;
+
+  &:hover {
+    @apply bg-dark/80 dark:text-white;
+  }
+}
+
+.btn-white {
+  @apply bg-card;
+  @apply text-black;
+  @apply border-none;
+}
+
+.btn-white-primary {
+  @apply bg-white;
+  @apply text-primary;
+  @apply border-none;
+
+  &:hover {
+    @apply bg-primary text-white !important;
+  }
+}
+
+// outline button css start 
+button.btn-outline-primary,
+a.btn-outline-primary {
+  @apply bg-transparent rounded-[6px] text-primary border border-primary;
+
+  &:hover {
+    @apply bg-primary text-white;
+  }
+
+  &.active {
+    @apply bg-primary text-white;
+  }
+}
+
+a.btn-outline-primary {
+  @apply bg-transparent rounded-[6px] text-chartLight dark:text-chartLight-dark border border-borderLightest dark:border-borderLightest-dark;
+
+  &:hover {
+    @apply bg-primary text-white;
+  }
+
+  &.active {
+    @apply bg-primary text-white;
+  }
+}
+
+.btn-outline-secondary {
+  @apply bg-transparent text-secondary border border-secondary;
+
+  &:hover {
+    @apply bg-secondary text-white;
+  }
+}
+
+.btn-outline-success {
+  @apply bg-transparent;
+  @apply text-success border border-solid border-success;
+
+  &:hover {
+    @apply bg-success dark:bg-success-dark;
+    @apply text-white;
+  }
+}
+
+.btn-outline-danger {
+  @apply bg-transparent text-danger border border-danger;
+
+  &:hover {
+    @apply bg-danger dark:bg-danger-dark;
+    @apply text-white dark:text-white;
+  }
+}
+
+.btn-outline-warning {
+  @apply bg-transparent border border-solid border-warning;
+  @apply text-warning;
+
+  &:hover {
+    @apply bg-warning dark:bg-warning-dark;
+    @apply text-white dark:text-white;
+  }
+}
+
+.btn-outline-info {
+  @apply bg-transparent border border-solid border-info;
+  @apply text-info dark:text-info-dark;
+
+  &:hover {
+    @apply bg-info dark:bg-info-dark;
+    @apply text-white dark:text-white;
+  }
+}
+
+.btn-outline-light {
+  @apply bg-transparent;
+  @apply text-black dark:text-black-dark border border-solid border-light;
+
+  &:hover {
+    @apply bg-light dark:bg-light-dark;
+  }
+}
+
+.btn-outline-dark {
+  @apply bg-transparent border border-solid border-dark text-dark dark:text-white;
+
+  &:hover {
+    @apply bg-dark dark:bg-dark-dark;
+    @apply text-white dark:text-white-dark;
+  }
+}
+
+.btn-outline-theme-border {
+  @apply bg-transparent;
+  @apply text-body dark:text-body-dark;
+  @apply border border-solid border-borderLightest dark:border-borderLightest-dark;
+
+  &:hover {
+    @apply bg-primary dark:bg-primary-dark;
+    @apply border-primary;
+    @apply text-white dark:text-white;
+  }
+}
+
+
+
+// outline button css end
+.btn-primary-light {
+  @apply bg-primary/10 dark:bg-primary-dark/10;
+  @apply text-primary dark:text-primary-dark;
+  @apply border-none;
+
+  &:hover {
+    @apply text-white dark:text-white;
+    @apply bg-primary dark:bg-primary-dark;
+  }
+}
+
+.btn-secondary-light {
+  @apply bg-secondary/10 text-secondary border-none;
+
+  &:hover {
+    @apply text-white dark:text-white;
+    @apply bg-secondary dark:bg-secondary-dark;
+  }
+}
+
+.btn-success-light {
+  @apply bg-success/10 text-success border-none;
+
+  &:hover {
+    @apply text-white dark:text-white;
+    @apply bg-success dark:bg-success-dark;
+  }
+}
+
+.btn-danger-light {
+  @apply bg-danger/10 text-danger border-none;
+
+  &:hover {
+    @apply text-white dark:text-white;
+    @apply bg-danger dark:bg-danger-dark;
+  }
+}
+
+.btn-warning-light {
+  @apply bg-warning/10 text-warning border-none;
+
+  &:hover {
+    @apply text-white dark:text-white;
+    @apply bg-warning dark:bg-warning-dark;
+  }
+}
+
+.btn-info-light {
+  @apply bg-info/10 text-info border-none;
+
+  &:hover {
+    @apply text-white dark:text-white;
+    @apply bg-info dark:bg-info-dark;
+    @apply text-white dark:text-white;
+  }
+}
+
+.btn-light-light {
+  @apply bg-light/10 text-light border-none;
+
+  &:hover {
+    @apply text-black dark:text-black-dark;
+    @apply bg-light dark:bg-light-dark;
+  }
+}
+
+.btn-dark-light {
+  @apply bg-dark/10 text-dark border-none;
+
+  &:hover {
+    @apply text-white dark:text-white;
+    @apply bg-dark dark:bg-dark-dark;
+  }
+}
+
+.icon-button-wrap {
+  @apply flex items-center gap-[7px];
+}
+
+.btn-icon {
+  @apply w-9 h-9 text-[14px] shrink-0 p-1.5;
+
+  i {
+    @apply mr-0;
+    
+    @include rtl {
+      @apply ms-2;
+    }
+  }
+
+  &.btn-outline-primary {
+    &:hover {
+      @apply border-primary;
+    }
+  }
+
+  &.btn-outline-secondary {
+    &:hover {
+      @apply border-secondary;
+    }
+  }
+
+  &.btn-outline-success {
+    &:hover {
+      @apply border-success;
+    }
+  }
+
+  &.btn-outline-danger {
+    &:hover {
+      @apply border-danger;
+    }
+  }
+
+  &.btn-outline-warning {
+    &:hover {
+      @apply border-warning;
+    }
+  }
+
+  &.btn-outline-info {
+    &:hover {
+      @apply border-info;
+    }
+  }
+
+  &.btn-outline-light {
+    &:hover {
+      @apply border-light;
+    }
+  }
+
+  &.btn-outline-dark {
+    &:hover {
+      @apply border-dark;
+    }
+  }
+
+  &.btn-xxl {
+    @apply w-[72px] h-[72px] text-[28px] p-3;
+  }
+
+  &.btn-xl {
+    @apply w-[60px] h-[60px] text-[24px] p-2.5;
+  }
+
+  &.btn-lg {
+    @apply w-12 h-12 text-[20px] p-2;
+  }
+
+  &.btn-sm {
+    @apply w-[30px] h-[30px] text-[12px] p-1;
+  }
+
+  &.btn-xs {
+    @apply w-6 h-6 text-[10px] p-0.5;
+  }
+}
+
+.label-btn {
+  @apply relative ps-[50px];
+}
+
+.label-btn-icon {
+  @apply absolute w-9 flex items-center justify-center mr-[15px] rounded-[6px_0_0_6px];
+  @apply bg-lightest/30 dark:bg-lightest-dark/30 start-0;
+  inset-block-start: 0;
+  inset-block-end: 0;
+
+  &.label-radius-pill {
+    @apply rounded-[50px];
+  }
+}
+
+// Loader Button animation
+@keyframes loader {
+  from {
+    @apply rotate-0;
+  }
+
+  to {
+    @apply rotate-[360deg];
+  }
+}
+
+.round-btn {
+  @apply h-[50px] font-medium text-[16px] capitalize px-10 py-0 inline-flex justify-center items-center transition-all duration-[0.3s] ease-[ease-in-out] rounded-[50px];
+  @apply text-black dark:text-black-dark;
+
+  &:hover {
+    @apply text-white dark:text-white;
+    @apply bg-secondary dark:bg-secondary-dark;
+  }
+}
+
+.btn-text {
+  @apply text-black dark:text-black-dark text-[14px] font-medium transition-all duration-300 ease-in-out;
+
+  i {
+    @apply text-black dark:text-black-dark;
+
+    @include rtl {
+      @apply -rotate-180;
+    }
+  }
+
+  &:hover {
+    @apply text-primary dark:text-primary-dark;
+
+    i {
+      @apply text-primary dark:text-primary-dark;
+    }
+  }
+
+  span {
+    @apply ms-[5px];
+  }
+}
+
+.chatbox__submit-btn {
+  @apply absolute flex items-center justify-center w-[45px] bg-gradientPrimary h-[45px] -translate-y-2/4 rounded-[50%] top-2/4 end-0 maxXs:top-auto maxXs:bottom-0 maxXs:transform-none;
+  @include rtl {
+    svg {
+      @apply -rotate-180;
+    }
+  }
+}
+
+// read more btn
+#more {
+  @apply hidden;
+}
+
+.read__more-btn {
+  @apply text-[16px] transition-all duration-[0.3s] ease-[ease-in-out];
+  @apply text-primary dark:text-primary-dark;
+
+
+  &:hover {
+    @apply text-secondary;
+  }
+}
+
+.elements-button-gap {
+  button {
+    &:not(:first-child) {
+      @apply ms-[15px];
+    }
+  }
+}
+
+.btn-loader {
+  @apply pointer-events-none flex items-center;
+
+  &.btn {
+    @apply relative;
+  }
+
+  i {
+    @apply absolute top-3 -translate-y-[50%];
+    animation: loader 1000ms infinite linear;
+  }
+}
+
+//popover btn
+div.MuiPopover-paper{
+  @apply shadow-lg;
+}

@@ -1,0 +1,299 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  ANIMATION CSS START
+/*----------------------------------------*/
+
+
+.blink {
+    animation: blinker 2s linear infinite;
+}
+
+@keyframes blinker {
+    0% {
+		@apply opacity-[1.0];
+    }
+
+    50% {
+        @apply opacity-[0.0];
+    }
+
+    100% {
+        @apply opacity-[1.0];
+    }
+}
+
+
+@-webkit-keyframes pulse {
+	0% {
+	  -webkit-box-shadow: 0 0 0 0 rgba(255,255,255, 0.4);
+	}
+	70% {
+		-webkit-box-shadow: 0 0 0 45px rgba(255,255,255, 0);
+	}
+	100% {
+		-webkit-box-shadow: 0 0 0 0 rgba(255,255,255, 0);
+	}
+}
+@keyframes pulse {
+0% {
+	-moz-box-shadow: 0 0 0 0 rgba(255,255,255, 0.4);
+	box-shadow: 0 0 0 0 rgba(255,255,255, 0.4);
+}
+70% {
+	-moz-box-shadow: 0 0 0 45px rgba(255,255,255, 0);
+	box-shadow: 0 0 0 45px rgba(255,255,255, 0);
+}
+100% {
+	-moz-box-shadow: 0 0 0 0 rgba(255,255,255, 0);
+	box-shadow: 0 0 0 0 rgba(255,255,255, 0);
+	}
+}
+
+@-webkit-keyframes btn_pulse {
+	0% {
+		-webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+	}
+	70% {
+		-webkit-box-shadow: 0 0 0 25px rgba(255, 255, 255, 0);
+	}
+	100% {
+		-webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+	}
+}
+
+@keyframes pulse {
+	0% {
+		-moz-box-shadow: 0 0 0 0 rgba(85, 174, 251, 1);
+		box-shadow: 0 0 0 0 rgba(85, 174, 251, 1);
+	}
+	70% {
+		-moz-box-shadow: 0 0 0 25px rgba(255, 255, 255, 0);
+		box-shadow: 0 0 0 25px rgba(255, 255, 255, 0);
+	}
+	100% {
+		-moz-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+		box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+	}
+}
+// scaleUpUser 
+	@keyframes scaleUpUser {
+		0% {
+			@apply scale-100;
+		}
+		50% {
+			@apply scale-50;
+		}
+		100% {
+			@apply scale-100;
+		}
+	}
+
+.scaleup__animation {
+	animation-name: scaleUpUser;
+	animation-duration: 3.5s;
+	animation-iteration-count: infinite;
+	animation-timing-function: linear;
+}
+/*======================================
+	Footer Line 
+========================================*/
+
+@-webkit-keyframes footerLine {
+    0% {
+		@apply start-[17px];
+    }
+    50% {
+		@apply start-0;
+    }
+    100% {
+		@apply start-[17px];
+    }
+   }
+   @keyframes footerLine {
+    0% {
+		@apply start-[20px];
+    }
+    50% {
+		@apply start-0;
+    }
+    100% {
+		@apply start-[17px];
+    }
+}
+
+/*======================================
+	Line animation 
+========================================*/
+
+@keyframes scroll1 {
+	0% {
+		@apply opacity-100 top-0;
+	}
+  
+	50% {
+		@apply top-2/4;
+	}
+  
+	100% {
+		@apply opacity-100 top-full;
+	}
+}
+  
+@keyframes scroll2 {
+	0% {
+		@apply opacity-100 bottom-0;
+	}
+  
+	50% {
+		@apply bottom-2/4;
+	}
+  
+	100% {
+		@apply opacity-100 bottom-full;
+	}
+}
+
+/*======================================
+	Diot pluse animation 
+========================================*/
+@keyframes pulse-me {
+	0% {
+		@apply opacity-0 scale-50;
+	}
+	50% {
+		@apply opacity-10;
+	}
+	70% {
+		@apply opacity-[0.09];
+	}
+	100% {
+		@apply opacity-0 scale-[5];
+	}
+}
+
+
+// Rotate animation
+@include keyframes(bdrotate){
+	0%{
+		@include transform(rotate(0deg));
+	}
+	100%{
+		@include transform(rotate(360deg));
+	}
+}
+
+// bd translate vertical animation
+@include keyframes(bdtranslateY){
+	0%{
+		@include transform(translateY(-50px));
+	}
+	100%{
+		@include transform(translateY(100px));
+	}
+}
+
+// Bd translate horizontal animation
+@include keyframes(bdtranslateX2){
+	0%{
+		@include transform(translateX(-40px));
+	}
+	100%{
+		@include transform(translateX(0px));
+	}
+}
+
+// Bd translate horizontal animation
+@include keyframes(bdtranslateX){
+	0%{
+		@include transform(translateX(-80px));
+	}
+	100%{
+		@include transform(translateX(30px));
+	}
+}
+// shine 
+@-webkit-keyframes shine {
+	100% {
+		@apply left-[125%];
+	}
+}
+@keyframes shine {
+	100% {
+		@apply left-[125%];
+	}
+}
+.panel {
+	@apply bg-white absolute w-[0%] h-full z-10 transition-transform duration-[0.5s] ease-[ease-in-out] animate-[panel_1s] left-0 top-0;
+	animation-timing-function: cubic-bezier(0.785, 0.135, 0.15, 0.86);
+}
+
+// panel  
+@keyframes panel {
+
+	0% {
+		@apply w-full;
+
+	}
+	100% {
+		@apply w-0;
+
+	}
+}
+
+@keyframes panelTop {
+
+	0% {
+		@apply h-full;
+
+	}
+	100% {
+		@apply h-0;
+
+	}
+}
+
+@keyframes panelBottom {
+
+	0% {
+		@apply h-full;
+
+	}
+	100% {
+		@apply h-0;
+
+	}
+}
+
+
+
+@-webkit-keyframes up {
+	0% {
+	  opacity: 0;
+	  -webkit-transform: translateY(15px);
+	}
+  
+	50% {
+	  opacity: 0;
+	  -webkit-transform: translateY(15px);
+	}
+  
+	99% {
+	  -webkit-animation-play-state: paused;
+	}
+  
+	100% {
+		@apply opacity-100;
+	}
+  }
+
+  // Loader Button animation
+@keyframes loader {
+	from {
+	  transform: rotate(0deg);
+	}
+  
+	to {
+	  transform: rotate(360deg);
+	}
+  }

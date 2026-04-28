@@ -1,0 +1,52 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  SIGN CSS START
+/*----------------------------------------*/
+
+.toast__container {
+    @apply z-[9999] bg-white dark:bg-bgLightest-dark border rounded w-max mt-2.5 border-solid border-[rgba(0,0,0,0.175)] left-2/4;
+  }
+
+.toast__content {
+    @apply flex flex-row items-center justify-between p-2.5;
+
+    &__avatar-wrapper {
+        @apply  flex items-center;
+        .avatar {
+            @apply mr-2.5 rounded-md;
+          }
+        .title {
+          @apply font-bold text-headingPrimary dark:text-headingPrimary-dark;
+        }
+    }
+
+    .toast__meta {
+        @apply text-sm flex items-center text-[rgba(33,37,41,0.75)] dark:text-headingPrimary-dark mr-1.5;
+      }
+
+    .closeIcon:hover {
+      @apply text-black dark:text-dark-dark opacity-100;
+    }
+    .closeIcon {
+      @apply dark:text-dark-dark;
+    }
+}
+
+.close_area {
+   @apply flex;
+}
+
+.toast__footer {
+    @apply mt-2 px-2 py-[5px] border-t-[rgba(0,0,0,0.175)] border-t border-solid;
+  }
+//toast five and six style
+.toast_style{
+    .close_area{
+        @apply items-center;
+        .title {
+            @apply font-normal;
+          }
+    }
+}
+

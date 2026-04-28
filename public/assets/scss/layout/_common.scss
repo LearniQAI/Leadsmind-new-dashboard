@@ -1,0 +1,330 @@
+@use '../utils' as *;
+
+.timeline {
+    &__item {
+        @apply relative;
+
+        &:not(:last-child) {
+            @apply mb-[31px];
+
+            &::before {
+                @apply absolute content-[""] h-full w-0.5 -translate-x-2/4 top-[45px] start-[19px] border-e-[2px] border-dashed border-borderLightest dark:border-borderLightest-dark;
+                @include rtl {
+                  @apply start-[14px];
+                }
+            }
+        }
+    }
+
+    &__icon {
+        span {
+            @apply w-[38px] h-[38px] text-base inline-flex text-white justify-center text-center items-center rounded-[50%] bg-primary dark:bg-primary-dark;
+          }
+    }
+
+    &__thumb {
+       @apply relative;
+
+        img {
+            @apply max-w-[48px] h-12 object-cover;
+        }
+    }
+
+    &__content {
+        p {
+            &:last-child {
+                @apply mb-0;
+            }
+        }
+    }
+}
+
+.avatar {
+    @apply relative;
+
+    ul {
+        li {
+            @apply inline-block;
+
+            img {
+                @apply border-[2px] border-solid border-borderLightest  transition-all duration-500 ease-in-out;
+
+                &:hover {
+                    @apply translate-y-[-5px] transition-all duration-[0.5s] ease-[ease-in-out] scale-[1.02];
+                    -webkit-transform: translateY(-5px) scale(1.02);
+                    -webkit-transition: all 0.5s ease-in-out;
+                }
+            }
+
+            +li {
+                @apply -ms-[12px];
+            }
+
+            .avatar-bg {
+                @apply border-[2px] border-solid border-borderLightest  text-white bg-primary dark:bg-primary-dark w-9 h-9 flex text-center items-center justify-center text-xs rounded-[50%];
+
+                &.avatar-bg-xxl {
+                    @apply w-[100px] h-[100px] text-xl;
+                }
+
+                &.avatar-bg-xl {
+                    @apply w-20 h-20 text-lg;
+                }
+
+                &.avatar-bg-lg {
+                    @apply w-[60px] h-[60px] text-[16px];
+                }
+
+                &.avatar-bg-md {
+                    @apply w-[50px] h-[50px]  text-[16px];
+                }
+
+                &.avatar-bg-sm {
+                    @apply w-10 h-10 text-[16px];
+                }
+
+                &.avatar-bg-xs {
+                    @apply w-9 h-9 text-[16px];
+                }
+            }
+        }
+    }
+}
+
+.avatar-status {
+    @apply absolute h-[12%] w-[12%] rounded-[100%] bottom-[12%] bg-success dark:bg-success-dark end-[4%];
+}
+
+.chat {
+    &-dot {
+        @apply grid grid-cols-[auto_auto_auto] gap-1;
+
+        span {
+            @apply block w-1.5 h-1.5 rounded-[50%] bg-primary/10 dark:bg-primary-dark/10;
+        }
+    }
+}
+
+.price-up {
+    @apply rounded-[30px] bg-success/10 text-success py-0 px-2 text-[12px] font-semibold;
+
+    &.style_two {
+        @apply bg-success/10;
+    }
+}
+
+.price-increase {
+    @apply text-success font-semibold text-xs leading-none mb-[3px];
+}
+
+.price-down {
+    @apply text-xs font-semibold px-2 py-0 rounded-[30px] text-danger bg-danger/10;
+}
+
+.price-decrease {
+    @apply font-semibold text-xs leading-none text-danger;
+}
+
+.dot {
+    @apply relative ms-2.5;
+
+    &::before {
+        @apply absolute content-[""] w-[7px] h-[7px] rounded-[50%] top-[50%] -start-2.5 -translate-y-[50%] bg-primary dark:bg-primary-dark;
+    }
+
+    &.down {
+        @apply relative ms-2.5;
+
+        &::before {
+            @apply bg-secondary dark:bg-secondary-dark absolute content-[""];
+        }
+    }
+}
+.text-muted {
+    @apply text-body;
+}
+
+
+// hover 
+.text-link-hover {
+    a {
+        @apply transition-all duration-300 ease-linear;
+
+        &:hover {
+            @apply text-primary dark:text-primary-dark;
+        }
+    }
+}
+
+
+// text editor 
+.tox:not(.tox-tinymce-inline) .tox-editor-header {
+    @apply bg-card dark:bg-card-dark p-0 !important;
+}
+
+.tox .tox-menubar {
+    @apply bg-card dark:bg-white !important;
+}
+
+.tox .tox-editor-container {
+    @apply z-[1] !important;
+}
+.tox.tox-edit-focus .tox-edit-area::before {
+    opacity: 0 !important;
+}
+
+.tox .tox-statusbar {
+    @apply hidden;
+}
+
+.tox-tinymce {
+    @apply shadow-none box-border flex flex-col overflow-hidden relative border-[2px] border-solid border-borderLightest dark:border-borderLightest-dark font-body;
+    visibility: inherit !important;
+}
+
+.tox .tox-mbtn {
+    @apply h-[25px] ml-0 mr-px mt-[5px] mb-1.5 px-2 py-0 text-primary;
+}
+div.tox .tox-sidebar-wrap {
+    @apply maxSm:min-h-[500px];
+}
+
+// modal css 
+.modal-content {
+    @apply bg-bgBody dark:bg-bgBody-dark p-[25px] rounded-[10px] border-none;
+
+    &.common-modal {
+        @apply max-w-[800px] w-full;
+    }
+}
+
+.modal-header {
+    @apply p-0 pb-0 border-none justify-between items-center;
+}
+
+.modal-body {
+    @apply p-0  pt-[15px];
+}
+
+.bd-btn-close {
+    i {
+        @apply text-black dark:text-black-dark text-[16px];
+    }
+}
+
+.modal-btn-showcase {
+    button {
+        @apply mb-2.5;
+
+        &:not(:last-child) {
+            @apply me-2.5;
+        }
+    }
+}
+
+.popover {
+    -webkit-box-shadow: 0 6px 30px rgba(182, 186, 203, 0.3);
+    @apply shadow-[0_6px_30px_rgba(182,186,203,0.3)] max-w-[276px] border-[none];
+}
+
+.popover-header {
+    @apply text-base font-normal text-black dark:text-dark-dark px-4 py-2 border-b-[rgba(0,0,0,0.175)] border-b border-solid bg-primary/30 dark:bg-card-dark leading-4;
+  }
+
+.popover-body {
+    @apply p-4 dark:bg-bgLightest-dark dark:text-white;
+}
+
+.modal {
+    @apply z-[99999];
+}
+
+.clearfix {
+    fieldset {
+        @apply hidden;
+    }
+
+    .hidden-true {
+        @apply hidden;
+    }
+
+    .glyph {
+        @apply  bg-[#efefef] dark:bg-[rgba(108,95,252,0.1)] inline-flex me-[30px] p-[5px] text-[26px] mb-5 text-black dark:text-white;
+
+        & .mls {
+            @apply text-label dark:text-label-dark;
+        }
+    }
+}
+
+img {
+    @apply max-w-full object-cover;
+}
+
+// label 
+
+.label {
+    &__subtitle {
+        @apply mb-[5px] capitalize text-[16px] block text-medium dark:text-medium-dark;
+    }
+
+    &__title {
+        @apply text-black dark:text-black-dark text-[16px] font-medium leading-[1.5];
+    }
+
+    &__content-wrapper {
+        p {
+            @apply border border-solid border-borderLightest dark:border-borderLightest-dark p-[15px];
+        }
+    }
+}
+
+//video elements style
+.ratio-21x9 {
+    @apply pt-[42.8571428571%];
+}
+
+.ratio-16x9 {
+    @apply pt-[56.25%];
+}
+
+.ratio-4x3 {
+    @apply pt-[75%];
+}
+
+.ratio-1x1 {
+    @apply pt-[100%];
+}
+
+.aspect-ratio {
+    @apply pt-[50%];
+}
+
+.ratio {
+    @apply relative w-full before:block before:content-[""];
+}
+
+.ratio>* {
+    @apply absolute w-full h-full left-0 top-0;
+}
+
+//basic dropdown elements style
+.btn-group>.btn-group:not(:last-child)>.btn,
+.btn-group>.btn.dropdown-toggle-split:first-child,
+.btn-group>.btn:not(:last-child):not(.dropdown-toggle) {
+    @apply rounded-tr-none rounded-br-none;
+}
+
+.separated-btn-transform {
+    @apply translate-x-0 translate-y-[3px];
+}
+
+//global dropdown
+div {
+    .MuiList-root {
+        @apply dark:bg-card-dark dark:border-borderLightest-dark rounded;
+    }
+    .MuiMenuItem-root {
+        @apply dark:text-white hover:dark:bg-bgLightest-dark;
+    }
+}

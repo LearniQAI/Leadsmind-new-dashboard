@@ -1,0 +1,109 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  BREAADCRUMB CSS START
+/*----------------------------------------*/
+
+/* Breadcrumb style */
+.breadcrumb {
+	&__main {
+		@apply flex items-center justify-between flex-wrap gap-[25px];
+	}
+
+	&__wrapper {
+		@apply border-b border-solid border-borderLight dark:border-borderLightest-dark;
+		@apply pb-[15px] flex items-center justify-between flex-wrap gap-[20px_0];
+	}
+
+	&__menu {
+		ul {
+			@apply flex gap-[30px] justify-center;
+
+			li {
+				@apply relative leading-none;
+				list-style: none;
+
+				&.active {
+					span {
+						@apply text-primary dark:text-primary-dark;
+					}
+				}
+
+				span {
+					@apply text-secondary text-[16px] capitalize font-medium;
+
+					a {
+						@apply font-normal;
+
+						&:hover {
+							@apply text-primary dark:text-primary-dark;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	&__inner {
+		@apply flex items-center gap-[10px];
+	}
+
+	&__icon {
+		i {
+			@apply text-label;
+		}
+	}
+}
+
+/* Breadcrumb tab */
+.breadcrumb-item {
+	@apply text-[16px];
+	&.active {
+		@apply text-black dark:text-black-dark;
+		@apply font-medium;
+	}
+	a {
+		@apply text-primary dark:text-primary-dark;
+	}
+	&::before {
+		@apply text-placeholder;
+	}
+}
+
+.breadcrumb-item+.breadcrumb-item {
+	@apply ps-2;
+}
+.breadcrumb-item+.breadcrumb-item::before {
+	content: var(--bs-breadcrumb-divider, "\e95f");
+	font-family: 'icomoon' !important;
+	@apply text-black dark:text-black-dark;
+	@apply pr-2 inline-block translate-y-[1px];
+
+	@include rtl {
+		@apply float-right -rotate-180;
+	}
+	
+}
+.breadcrumb-colored {
+	@apply rounded px-4 py-3 text-white;
+	li{
+		&.active {
+			@apply text-white;
+			@apply opacity-70 font-light;
+		}
+	}
+	.breadcrumb-item {
+		a {
+			@apply text-white;
+		}
+		&::before {
+			@apply text-white/85;
+		}
+	}
+}
+//update
+.breadcrumb{
+	&.breadcrumb-spacing{
+		@apply mb-[16px];
+	}
+}

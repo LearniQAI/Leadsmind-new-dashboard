@@ -1,0 +1,17 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  social CSS START
+/*----------------------------------------*/
+
+.common-social {
+    @apply flex gap-2.5 justify-center;
+    a {
+        @apply text-black dark:text-black-dark;
+        @apply bg-primary/10 flex items-center justify-center w-[38px] h-[38px] text-[16px] rounded-[50%];
+        &:hover {
+            @apply text-white;
+            @apply bg-primary dark:bg-primary-dark;
+        }
+    }
+}

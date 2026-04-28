@@ -1,0 +1,191 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  Project CSS
+/*----------------------------------------*/
+
+.project__top-content {
+    span {
+        @apply text-black dark:text-black-dark;
+    }
+
+    i {
+        @apply text-[10px];
+    }
+}
+
+.project__meta-title {
+    @apply block font-medium text-black dark:text-black-dark;
+}
+
+.project-table-file {
+    @apply flex items-center justify-start gap-2.5;
+
+    &-icon {
+        @apply text-[22px] w-12 h-12 flex items-center justify-center rounded-[50%];
+        @apply text-primary dark:text-primary-dark bg-bgLightest dark:bg-bgLightest-dark;
+
+        &.mp4 {
+            @apply text-secondary;
+        }
+
+        &.foleder {
+            @apply text-warning;
+        }
+
+        &.doc {
+            @apply text-info;
+        }
+
+        &.excel {
+            @apply text-success;
+        }
+
+        &.image {
+            @apply text-danger;
+        }
+
+        &.figma {
+            @apply text-link;
+        }
+    }
+}
+
+.project-grid {
+    @apply grid gap-[30px_50px] grid-cols-[50%_50%] justify-between;
+}
+
+/* Project Milestones */
+.milestones {
+    &__list {
+        @apply p-0 m-0;
+        list-style: none;
+    }
+
+    &__item {
+        @apply flex items-center justify-between px-0 py-2.5;
+        @apply border-b border-solid border-borderLightest dark:border-borderLightest-dark;
+
+        &:last-child {
+            @apply border-b-0;
+        }
+
+        p {
+            @apply grow m-0;
+        }
+    }
+
+    &__icon {
+        @apply text-[20px] me-2.5 text-primary dark:text-primary-dark;
+
+    }
+
+    &__date {
+        @apply text-[14px] text-taxonomy;
+    }
+}
+
+/* Team Discussions */
+.discussions {
+    &__list {
+        @apply m-0 p-0;
+        list-style: none;
+    }
+
+    &__item {
+        @apply px-0 py-2.5 border-b border-solid border-borderLightest dark:border-borderLightest-dark;
+
+        &:last-child {
+            @apply border-b-0;
+        }
+
+        h6 {
+            @apply text-[16px] text-label dark:text-label-dark mt-0 mb-[5px] mx-0;
+            font-weight: bold;
+        }
+
+        p {
+            @apply text-[14px] text-taxonomy m-0;
+
+            a {
+                @apply text-primary dark:text-primary-dark;
+                text-decoration: none;
+
+                &:hover {
+                    text-decoration: underline;
+                }
+            }
+        }
+    }
+}
+
+/* Project Milestones */
+.milestone {
+    &__list {
+        @apply m-0 p-0;
+        list-style: none;
+    }
+
+    &__item {
+        @apply flex items-center justify-between px-0 py-2.5;
+        @apply border-b border-solid border-borderLightest dark:border-borderLightest-dark;
+
+        &:last-child {
+            @apply border-b-0;
+        }
+
+        p {
+            @apply grow m-0;
+        }
+    }
+
+    &__icon {
+        @apply text-[20px] me-2.5 text-primary dark:text-primary-dark;
+
+    }
+
+    &__date {
+        @apply text-[14px] text-label dark:text-label-dark;
+    }
+}
+
+/* Team Discussions */
+.discussion {
+    &__list {
+        @apply m-0 p-0;
+        list-style: none;
+    }
+
+    &__item {
+        @apply px-0 py-[15px] border-b border-solid border-borderLightest dark:border-borderLightest-dark;
+
+        &:last-child {
+            @apply border-b-0;
+        }
+
+        h6 {
+            @apply text-[16px] text-label dark:text-label-dark mt-0 mb-2.5 mx-0;
+            font-weight: bold;
+        }
+
+        p {
+            @apply text-[14px] text-taxonomy m-0;
+        }
+
+        a {
+            @apply text-primary dark:text-primary-dark;
+            text-decoration: none;
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+    }
+}
+
+//update
+.project__progress {
+    .MuiBox-root {
+        @apply mb-0;
+    }
+}

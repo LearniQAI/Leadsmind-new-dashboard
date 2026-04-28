@@ -1,0 +1,105 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  SIGN CSS START
+/*----------------------------------------*/
+
+.authentication-wrapper {
+    @apply flex basis-full min-h-screen w-full;
+   
+    &.basic-authentication {
+        @apply items-center justify-center;
+    }
+
+    &.cover-authentication {
+        @apply items-start;
+
+        .authentication-inner {
+            @apply w-full h-full mx-0 my-auto;
+            .authentication-image {
+                @apply w-full h-screen relative ml-8 mr-0 my-8;
+                height: calc(100vh - 4rem);
+            }
+        }
+    }
+
+    .from__input-box small {
+        @apply text-[12px];
+    }
+}
+
+.authentication-inner {
+    .card__wrapper {
+        @apply w-full md:w-[400px];
+    }
+}
+
+.authentication-logo {
+    @apply text-center inline-block mb-[8px];
+
+    img {
+        @apply max-w-[160px];
+    }
+
+    &.logo-white {
+        img {
+            @apply hidden;
+        }
+    }
+}
+html.dark {
+    .authentication-logo {
+        &.logo-white {
+            img {
+                @apply block;
+            }
+        }
+
+        &.logo-black {
+            img {
+                @apply hidden;
+            }
+        }
+    }
+}
+
+.coming-soon-form {
+    @apply text-center flex-wrap sm:flex-nowrap flex content-center justify-center gap-[0_10px];
+    button {
+        @apply w-full sm:mt-0 sm:w-auto;
+    }
+  
+    .form-control {
+        @apply w-[360px];
+    }
+}
+
+.countdown {
+    @apply mb-[30px];
+
+    &-title {
+        @apply text-[20px] sm:text-[26px] mb-[15px] sm:mb-[30px] font-medium text-black;
+
+    }
+
+    span {
+        @apply text-[30px] md:text-[50px] font-medium text-primary;
+    }
+}
+
+.coming-soon {
+    .card__wrapper {
+        @apply w-full;
+    }
+}
+
+.container-xxl {
+    @apply max-w-[1320px] pr-3 pl-3 ml-auto mx-auto;
+}
+
+//updated error message
+.from__input-box {
+    .error-message {
+        @apply text-xs text-danger mt-1;
+    }
+}

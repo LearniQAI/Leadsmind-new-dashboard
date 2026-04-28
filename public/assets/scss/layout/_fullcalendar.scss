@@ -1,0 +1,84 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  FULL CALENDER CSS START
+/*----------------------------------------*/
+
+.fc .fc-toolbar-title {
+	@apply text-[18px] m-0;
+}
+.fc .fc-button {
+	@apply rounded-none text-[16px] capitalize;
+}
+.fc .fc-button-group {
+	@apply gap-[10px] flex-wrap;
+}
+.fc-toolbar-chunk {
+	@apply inline-flex minMax2Xl:flex-wrap gap-[10px];
+}
+.fc .fc-button-primary {
+	@apply text-[16px] shadow-none font-normal transition-all duration-[0.3s] ease-linear inline-flex items-center justify-center bg-transparent text-primary border border-primary px-6 maxXs:px-4 py-1.5 rounded-md border-solid capitalize;
+	&.fc-prev-button {
+		@apply p-1.5;
+	}
+	&.fc-next-button {
+		@apply p-1.5;
+		margin-inline-start: 20x;
+	}
+	&:disabled {
+		@apply bg-primary text-white dark:text-white-dark border border-primary opacity-100 border-solid;
+	}
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active {
+	@apply bg-primary text-white dark:text-white border border-primary border-solid;
+}
+.fc .fc-button-primary:hover {
+	@apply bg-primary text-white dark:text-white border border-primary border-solid;
+}
+
+.fc .fc-button-primary:focus {
+	box-shadow: none;
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active:focus,
+.fc .fc-button-primary:not(:disabled):active:focus {
+    box-shadow: none;
+}
+.fc-license-message {
+    display: none;
+}
+.fc-direction-ltr .fc-button-group > .fc-button:not(:first-child) {
+	@apply rounded-tl-md rounded-bl-md;
+}
+.fc-direction-ltr .fc-button-group > .fc-button:not(:last-child) {
+	@apply rounded-tr-md rounded-br-md;
+}
+.mini__calendar {
+	&.fc .fc-daygrid-day-number {
+		@apply text-black dark:text-black-dark text-[20px] p-2.5;
+	}
+	&.fc .fc-daygrid-body-unbalanced .fc-daygrid-day-events {
+		@apply relative min-h-0;
+	}
+	&.fc .fc-button {
+		@apply leading-[1.6] px-1.5 py-0.5 dark:border-transparent;
+	}
+	&.fc-direction-ltr .fc-toolbar > * > :not(:first-child) {
+		margin-left: 0px !important;
+	}
+	&.fc .fc-button .fc-icon {
+		@apply h-[25px] flex items-center justify-center;
+	}
+}
+
+.fc-theme-standard .fc-scrollgrid {
+	@apply border border-borderLightest dark:border-borderLightest-dark border-solid;
+}
+.fc-direction-ltr .fc-toolbar > * > :not(:first-child) {
+	@apply ml-0;
+}
+.fc-today-button {
+	@apply ml-2.5 minMax2Xl:ml-0 !important; 
+}
+.fc .fc-non-business {
+	@apply bg-bgLightest dark:bg-bgLightest-dark;
+}

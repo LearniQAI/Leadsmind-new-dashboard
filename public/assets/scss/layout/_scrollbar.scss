@@ -1,0 +1,55 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  SCROLLBAR CSS START
+/*----------------------------------------*/
+
+.card__scroll {
+    @apply my-5 me-1.5 ms-5 pe-5;
+}
+
+/* Default styling for WebKit browsers (Chrome, Edge, Safari, etc.) */
+.common-scrollbar::-webkit-scrollbar {
+    @apply w-[7px] bg-[#f0EFFF] dark:bg-[#121212];
+}
+
+.common-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-[#f0EFFF] dark:bg-[#3f3f3f] rounded-[100px];
+}
+
+.common-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, #f8f8fb, #f8f8fb);
+}
+
+.common-scrollbar::-webkit-scrollbar-track {
+    @apply bg-[#e4e4e4] dark:bg-[rgba(222,222,222,0.75)] rounded-[100px];
+}
+
+/* Firefox-specific styling */
+.common-scrollbar {
+    scrollbar-width: auto; 
+}
+
+@-moz-document url-prefix() {
+    .common-scrollbar {
+        scrollbar-width: thin; 
+        scrollbar-color: #f0EFFF #e0e0e0; 
+    }
+}
+html.dark {
+    @-moz-document url-prefix() {
+        .common-scrollbar {
+            scrollbar-color: #374151 #272F4B;
+        }
+    }
+    .common-scrollbar::-webkit-scrollbar-thumb {
+        @apply bg-[#374151] dark:bg-[#272F4B];
+    }
+    .common-scrollbar::-webkit-scrollbar-track {
+        @apply dark:bg-[#374151];
+    }
+    .common-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(45deg, #272F4B, #272F4B);
+    }
+}
+

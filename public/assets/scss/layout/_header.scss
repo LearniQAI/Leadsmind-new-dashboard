@@ -1,0 +1,151 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  HEADER CSS START
+/*----------------------------------------*/
+.header__title {
+    @apply text-[16px] lg:text-[18px] xl:text-[20px] xxl:text-[28px]  ms-[5px] lg:ms-[2px] xl:ms-0;
+    span {
+        @apply hidden xl:inline-block;
+    }
+}
+
+// App header
+.app__header__area {
+    @apply bg-card dark:bg-card-dark;
+    @apply fixed transition-all duration-[0.5s] ease-[ease-in-out] z-10 w-full xl:w-[calc(100%_-_255px)] top-0 start-0 xl:start-[255px];
+}
+.app__header-toggle {
+	i {
+        @apply text-[30px];
+	}
+}
+.app__header-left {
+    @apply flex items-center gap-[5px] xl:gap-10 minMaxXl:ms-0;
+}
+.app__herader-input {
+    @apply maxMd:hidden;
+
+	input {
+        @apply border-[1.5px] border-solid border-borderLightest dark:border-borderLightest-dark;
+        @apply rounded-[54px] text-headingLight w-[255px] minMaxXl:w-[200px] h-10 text-[14px] bg-transparent ps-[22px] pe-[52px];
+	}
+	button {
+        @apply absolute text-[18px] text-[#A1A1A1] -translate-y-2/4 top-2/4 end-[25px];
+	}
+}
+.app__header-inner {
+    @apply flex justify-between transition-[0.3s] h-[70px] items-center gap-x-5 maxXXs:gap-x-3;
+    @apply px-2.5 py-[13px] md:px-[26px] maxSm:px-4 md:py-[13px];
+}
+.app__header-right {
+    @apply flex items-center gap-x-2.5 xl:gap-x-[30px];
+}
+
+.app__header-action {
+   & > ul {
+        @apply flex items-center xxs:gap-2.5 xs:gap-[25px]; 
+        li {
+            @apply list-none;
+            & > li {
+                @apply list-none rounded-lg ;
+            }
+        }
+       
+    }
+}
+
+.app__header-action > ul > li:nth-child(2) {
+    @apply hidden md:inline-block;
+}
+.user__portfolio {
+    @apply flex items-center gap-0 sm:gap-2.5;
+}
+.user__portfolio {
+    @apply relative;
+    direction: ltr;
+    &:after {
+        @apply absolute content-[""] w-[0.5em] h-[0.5em] border-solid border-[initial] border-headingLight dark:border-taxonomy-dark end-0;
+        @apply rotate-[-135deg] translate-x-0 -translate-y-2/4 origin-top transition-all duration-[0.3s] ease-[ease-out] top-2/4;
+        @apply maxMd:hidden;
+        border-width: 1px 0 0 1px;
+    }
+}
+.user__content {
+    h5 {
+        @apply text-[16px] font-medium relative pe-[23px];
+        @apply maxMd:hidden;
+    }
+    span {
+        @apply maxMd:hidden relative ps-2.5;
+        &::before {
+            @apply bg-success absolute content-[""] w-[7px] h-[7px] rounded-[50%] top-[5px] start-0;
+        }
+    }
+}
+.header__action-inner {
+    @apply flex items-center gap-[70px];
+}
+.user__portfolio-thumb {
+    img {
+        @apply w-10 rounded-[50%];
+    }
+}
+// Header baricon
+.bar {
+    &-icon {
+        @apply w-9 h-6 flex flex-col justify-between overflow-hidden;
+        span {
+            @apply w-full h-0.5 inline-block;
+            @apply bg-card dark:bg-card-dark;
+
+            &:nth-child(2) {
+                @apply ms-5 transition-all duration-[0.3s] ease-[ease-out] delay-[0s];
+              
+            }
+            &:nth-child(3) {
+                @apply ms-2.5 transition-all duration-[0.3s] ease-[ease-out] delay-[0s];
+            }
+        }
+        &:hover {
+            span {
+                &:nth-child(2) {
+                    @apply ms-2.5;
+                }
+                &:nth-child(3) {
+                    @apply ms-0;
+                }
+            }
+        }
+        &-2 {
+            @apply w-5 h-[18px] flex flex-col justify-between overflow-hidden cursor-pointer;
+            span {
+                @apply w-full h-0.5 bg-headingLightest inline-block;
+                &:nth-child(2) {
+                    @apply -ms-2.5 transition-all duration-[0.3s] ease-[ease-out] delay-[0s];
+                }
+            }
+            &:hover {
+                span {
+                    &:nth-child(2) {
+                        @apply ms-0;
+                    }
+                }
+            }
+        }
+    }
+}
+.humbager__icon {
+    @apply bg-black flex w-[60px] h-[60px] shadow-[0px_25px_40px_rgba(50,73,179,0.08)] items-center justify-center rounded-[10px];
+}
+.header__toggle-text {
+    @apply font-medium text-[14px] text-headingPrimary;
+}
+
+
+.bar-icon-3 {
+    @apply hidden;
+}
+.Manez__sidebar.collapsed .bar-icon-3 {
+    @apply block;
+}

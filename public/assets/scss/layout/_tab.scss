@@ -1,0 +1,426 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  Tab CSS START
+/*----------------------------------------*/
+.draggable__item {
+	@apply flex justify-between items-center mb-2.5 h-[50px] px-5 py-0 cursor-pointer rounded-md transition-all duration-[0.3s] ease-linear;
+	@apply bg-bgBody dark:bg-bgBody-dark;
+
+	&:hover {
+		@apply bg-primary/20;
+	}
+}
+
+.draggable__item-title {
+	@apply flex items-center;
+
+	span {
+		@apply me-[10px] text-[20px] leading-[30px];
+	}
+}
+
+// tab-tailwind css start
+.MuiBox-root {
+	padding: 0px;
+}
+
+div.MuiTabs-root {
+	@apply min-h-0;
+	.MuiButtonBase-root {
+		@apply text-black dark:text-white capitalize text-[16px] relative min-h-0 min-w-[76px] font-normal px-4 maxXs:px-2 py-2.5 rounded-t-md;
+		border-top: 1px solid transparent;
+		border-right: 1px solid transparent;
+		border-left: 1px solid transparent;
+
+		&::before {
+			@apply absolute bottom-[-1px] h-[1px] w-full bg-transparent left-0;
+			content: '';
+		}
+
+		&.Mui-selected {
+			@apply text-primary dark:text-white border-[#dee2e6] dark:border-border dark:bg-transparent;
+			overflow: inherit;
+
+			&::before {
+				@apply bg-white dark:bg-border;
+			}
+		}
+	}
+}
+
+.MuiTabs-scroller .MuiTabs-indicator {
+	@apply hidden;
+}
+
+.MuiTabs-scroller div.MuiTabs-flexContainer {
+	@apply border-b-[#dee2e6] dark:border-border border-b border-solid;
+}
+
+.MuiTabs-scroller div.MuiTabs-flexContainer div>button:hover {
+	@apply border border-solid border-[#dee2e6] dark:border-border;
+}
+
+//Basic Tabs with Icon Right
+.tabs-icon-right {
+	.MuiTabs-flexContainer {
+		@apply justify-end;
+	}
+}
+
+// Vertical Tabs
+.tabs__style {
+	button.MuiButtonBase-root {
+		@apply text-primary dark:text-primary rounded-br-md rounded-bl-md border-[none];
+
+		&.Mui-selected {
+			@apply bg-primary dark:bg-primary text-white dark:text-white dark:border-primary overflow-hidden;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+}
+
+//Pill Tabs
+.pill-tabs-wrapper {
+	button.MuiButtonBase-root {
+		@apply text-primary dark:text-primary rounded-br-md rounded-bl-md border-[none];
+
+		&.Mui-selected {
+			@apply bg-primary dark:bg-primary text-white dark:text-white dark:border-primary;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+}
+
+//Primary Color Tabs
+.primary-tabs-wrapper {
+	button.MuiButtonBase-root {
+		@apply text-primary dark:text-headingPrimary-dark rounded-br-md rounded-bl-md border-[none];
+
+		&.Mui-selected {
+			@apply bg-primary dark:bg-primary text-white dark:text-white dark:border-primary;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+}
+
+//Secondary Color Tabs
+.secondary-tabs-wrapper {
+	button.MuiButtonBase-root {
+		@apply text-secondary dark:text-secondary rounded-br-md rounded-bl-md border-[none];
+
+		&.Mui-selected {
+			@apply bg-secondary dark:bg-secondary text-white dark:text-white dark:border-secondary;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+}
+
+//Success Color Tabs
+.success-tabs-wrapper {
+	button.MuiButtonBase-root {
+		@apply text-success dark:text-success rounded-br-md rounded-bl-md border-[none];
+
+		&.Mui-selected {
+			@apply bg-success dark:bg-success text-white dark:text-white dark:border-success;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+}
+
+//Info Color Tabs
+.info-tabs-wrapper {
+	button.MuiButtonBase-root {
+		@apply text-info dark:text-info rounded-br-md rounded-bl-md border-[none];
+
+		&.Mui-selected {
+			@apply bg-info dark:bg-info text-white dark:text-white dark:border-info;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+}
+
+//Warning Color Tabs
+.warning-tabs-wrapper {
+	button.MuiButtonBase-root {
+		@apply text-warning dark:text-warning rounded-br-md rounded-bl-md border-[none];
+
+		&.Mui-selected {
+			@apply bg-warning dark:bg-warning text-white dark:text-white dark:border-warning;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+}
+
+//Danger  Color Tabs
+.danger-tabs-wrapper {
+	button.MuiButtonBase-root {
+		@apply text-danger dark:text-danger rounded-br-md rounded-bl-md border-[none];
+
+		&.Mui-selected {
+			@apply bg-danger dark:bg-danger text-white dark:text-white dark:border-danger;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+}
+
+//light  Color Tabs
+.light-tabs-wrapper {
+	button.MuiButtonBase-root {
+		@apply text-black dark:text-white rounded-br-md rounded-bl-md border-[none];
+
+		&.Mui-selected {
+			@apply bg-light dark:bg-light text-white dark:text-white dark:border-light;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+}
+
+//Dark  Color Tabs
+.dark-tabs-wrapper {
+	button.MuiButtonBase-root {
+		@apply text-headingPrimary dark:text-headingPrimary-dark rounded-br-md rounded-bl-md border-[none];
+
+		&.Mui-selected {
+			@apply bg-headingPrimary dark:bg-headingPrimary text-white dark:text-white dark:border-headingPrimary;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+}
+
+// search page
+.search__result-wrapper {
+	.search-primary-tabs-wrapper {
+
+		button.MuiButtonBase-root {
+			@apply bg-card dark:bg-card-dark text-black dark:text-white block h-[36px] px-6 py-0 rounded-none border-[none];
+			&:first-child{
+				@apply rounded-bl-md rounded-tl-md;
+			}
+			&:last-child{
+				@apply rounded-br-md rounded-tr-md;
+			}
+
+			&.Mui-selected {
+				@apply text-white bg-primary rounded-md;
+			}
+		}
+		.MuiTabs-root{
+			@apply mb-[30px] min-h-0;
+		}
+		
+		div.MuiTabs-flexContainer {
+			@apply justify-center flex-wrap;
+			@apply border-b-0;
+
+			div>button:hover {
+				@apply border-none;
+			}
+		}
+		div.MuiTabs-root .MuiButtonBase-root.Mui-selected,
+		div.MuiTabs-root .MuiButtonBase-root {
+			@apply border-0 focus:border-0 ring-0 outline-0 !important;
+		}
+	}
+}
+
+.card-tab-wrapper {
+	.card__tab {
+		@apply bg-transparent border border-borderLightest dark:border-borderLightest-dark px-1 py-0 rounded-[50px] border-solid;
+		direction: ltr;
+	}
+
+	div.MuiTabs-root {
+		@apply min-h-0;
+	}
+
+	.MuiTabs-scroller div.MuiTabs-flexContainer {
+		@apply px-0 py-[4px] border-b-[none] border-0;
+	}
+
+	div.MuiTabs-root .MuiButtonBase-root {
+		@apply min-w-[30px] text-[12px] font-medium px-2 py-[3px] rounded-[10px] border-0 dark:text-white;
+		&::before {
+			@apply hidden;
+		}
+	}
+
+	div.MuiTabs-root .MuiButtonBase-root.Mui-selected {
+		@apply text-white dark:text-white-dark bg-black dark:bg-black-dark;
+	}
+}
+
+// crm vertical Tabs
+.crm_vertical_tabs {
+	button.MuiButtonBase-root {
+		@apply text-white bg-secondary max-w-full min-h-[50px] rounded-[10px] border-0;
+
+		&:not(:last-child) {
+			@apply mb-[10px];
+		}
+
+		&.Mui-selected {
+			@apply bg-primary dark:bg-primary text-white;
+		}
+
+		&::before{
+			@apply h-0;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply border-b-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+	div.MuiTabs-root .MuiButtonBase-root.Mui-selected,
+	div.MuiTabs-root .MuiButtonBase-root {
+		@apply border-0 focus:border-0 ring-0 outline-0 !important;
+	}
+}
+
+//Pill Tabs
+.company-tabs-wrapper {
+	button.MuiButtonBase-root {
+		@apply text-black rounded-br-md font-medium px-5 rounded-bl-md py-2 border-[none];
+
+		&.Mui-selected {
+			@apply bg-primary text-white;
+		}
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply gap-[10px] border-b-0 overflow-y-scroll;
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+		&::-webkit-scrollbar {
+		  @apply hidden;
+		}
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+	div.MuiTabs-root .MuiButtonBase-root.Mui-selected,
+	div.MuiTabs-root .MuiButtonBase-root {
+		@apply border-0 focus:border-0 ring-0 outline-0 !important;
+	}
+}
+
+//invoice tabs 
+div.invoice-tabs-wrapper {
+	button.MuiTab-root {
+		@apply rounded-br-md rounded-bl-md py-[7px] min-w-0;
+
+		&.Mui-selected {
+			@apply bg-[rgba(108,95,252,0.1)] dark:bg-[rgba(108,95,252,0.1)] dark:text-white overflow-hidden;
+			&::before {
+				@apply hidden;
+			}
+		}
+	}
+	span.MuiButtonBase-root {
+		@apply text-black text-[18px] rounded-br-md font-medium p-0 rounded-bl-md min-w-0;
+	}
+	span.MuiTypography-root {
+		@apply text-[18px] font-medium;
+	}
+
+	div.MuiTabs-flexContainer {
+		@apply flex justify-between flex-wrap gap-[10px] mb-[15px] border-0;
+
+		div>button:hover {
+			@apply border-none;
+		}
+	}
+	.MuiTouchRipple-root {
+		@apply hidden;
+	}
+	div.MuiTabs-root .MuiButtonBase-root.Mui-selected,
+	div.MuiTabs-root .MuiButtonBase-root {
+		@apply border-0 focus:border-0 ring-0 outline-0 !important;
+	}
+}
+
+i.MuiTab-iconWrapper.MuiTab-icon {
+    @include rtl {
+		@apply mr-auto ml-2;
+	}
+}
+.company__tab {
+	div.MuiTabs-root .MuiButtonBase-root.Mui-selected {
+		@apply bg-bgLightest-dark;
+	}
+}

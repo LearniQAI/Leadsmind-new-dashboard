@@ -1,0 +1,212 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  DROPDOWN CSS START
+/*----------------------------------------*/
+
+.dropdown {
+	button {
+		@apply w-[30px] h-[30px] flex text-center justify-center content-center items-center rounded-[50%] text-primary bg-primary/10 dark:bg-[rgba(108,95,252,0.1)];
+
+		i {
+			@apply text-body dark:text-body-dark;
+			@apply text-[18px] me-[0px];
+		}
+	}
+
+	&.style_two {
+		@apply inline-block;
+
+		button {
+			&::after {
+				@apply hidden;
+			}
+		}
+	}
+
+	&__item {
+		@apply text-[16px] block px-4 py-2 transition-all duration-[0.3s] ease-[ease-in-out] text-start;
+		@apply text-headingLight dark:text-body-dark outline-none outline-0;
+
+		&:hover {
+			@apply text-primary dark:text-primary-dark bg-primary/15;
+		}
+	}
+
+	&-list {
+		@apply bg-bgBody dark:bg-bgLightest-dark;
+		@apply border border-solid border-borderLightest dark:border-borderLightest-dark;
+		@apply z-[100] absolute min-w-[12rem] hidden px-0 py-[0.4rem] rounded-md end-0;
+		-webkit-box-shadow: 5px 5px 5px 0px rgba(0, 0, 0, 0.07);
+		-moz-box-shadow: 5px 5px 5px 0px rgba(0, 0, 0, 0.07);
+		box-shadow: 5px 5px 5px 0px rgba(0, 0, 0, 0.07);
+	}
+}
+
+.dropdown-menu {
+	@apply rounded-none;
+}
+
+.dropdown-toggle {
+	&::after {
+		@apply border-s-0 border-solid border-transparent mt-[-0.28em] w-[0.45em] h-[0.45em] me-2.5 rotate-45 start-0;
+		@apply text-primary dark:text-primary-dark;
+		border-top: 0;
+	}
+
+	&:hover {
+		&::after {
+			@apply text-white dark:text-white-dark;
+		}
+	}
+}
+
+.dropdown-basic {
+	@apply -mb-2.5;
+
+	.btn-group {
+		@apply me-[18px];
+
+		.btn-round {
+			@apply rounded-[50px];
+		}
+	}
+
+	.separated-btn {
+		.btn {
+			@apply p-2.5 rounded-tl-none rounded-bl-none;
+			
+			@include rtl {
+				@apply rounded-tl-md rounded-tr-none rounded-br-none rounded-bl-md;
+			}
+
+			.dropdown-content {
+				@apply bg-card dark:bg-card-dark;
+				@apply hidden absolute end-0 min-w-[130px] shadow-[0px_8px_16px_0px_rgba(0,0,0,0.2)] z-[11] top-[39px] -start-[45px];
+			}
+		}
+	}
+
+	button {
+		@apply max-h-9 h-9 rounded-md text-white;
+
+		@include rtl {
+			@apply rounded-tl-none rounded-bl-none;
+			border-top-right-radius: 6px !important;
+			border-bottom-right-radius: 6px !important;
+		}
+
+		&.rounded-pill {
+			border-radius: 50rem !important;
+		}
+	}
+
+	.dropdown {
+		@apply relative inline-block mb-2.5;
+		&.split-btn{
+			position: unset !important;
+		}
+
+		.dropbtn {
+			@apply text-black dark:text-black-dark;
+			@apply border-none px-[35px] py-3 cursor-pointer w-full h-9 font-medium rounded-md;
+			@apply flex gap-x-2.5;
+
+			&:hover {
+				@apply text-white;
+
+				span {
+					i {
+						@apply text-white;
+					}
+				}
+			}
+
+			span {
+				@apply flex items-center start-[10px];
+
+				i {
+					@apply text-black dark:text-black-dark;
+				}
+			}
+		}
+
+		&.separated-btn {
+			.dropdown-content {
+				@apply end-0;
+				inset-inline-start: unset;
+			}
+		}
+
+		.dropdown-content {
+			@apply hidden absolute end-0 min-w-[175px] shadow-[0px_8px_16px_0px_rgba(0,0,0,0.2)] z-[11] top-[39px] start-0;
+			@apply bg-card dark:bg-card-dark;
+
+			a {
+				@apply  block px-4 py-3 text-black dark:text-black-dark;
+				text-decoration: none;
+			}
+
+			.dropdown-header {
+				@apply px-4 py-3;
+			}
+		}
+		&.dropdown-spit-btn {
+			@apply mb-0;
+			.btn {
+				@apply p-0;
+				transform: translateY(3px);
+				@-moz-document url-prefix() {
+					transform: translateY(2px);
+				}
+				&:hover i {
+					@apply text-white;
+				}
+			}
+		}
+	}
+
+	.dropdown-content a:hover {
+		@apply bg-card dark:bg-card-dark;
+	}
+
+	.dropdown:hover .dropdown-content {
+		@apply block;
+	}
+}
+
+.dropup-basic {
+	.dropup {
+		@apply relative inline-block;
+
+		.dropbtn {
+			@apply text-white dark:text-white;
+			@apply border-none p-[12px];
+		}
+
+		.dropup-content {
+			
+			@apply bg-card dark:bg-card-dark;
+			@apply hidden absolute min-w-[170px] z-[999] bottom-[45px] start-0;
+
+			a {
+				@apply text-[black] block px-4 py-3;
+				text-decoration: none;
+			}
+		}
+	}
+
+	.dropup .dropup-content a:hover {
+		@apply bg-card dark:bg-white;
+	}
+
+	.dropup:hover .dropup-content {
+		@apply block;
+
+		a {
+			&.active {
+				@apply bg-card dark:bg-card-dark;
+			}
+		}
+	}
+}

@@ -1,0 +1,31 @@
+
+@use '../utils' as *;
+
+.app__herader-input {
+@apply relative;
+
+    .clear-search {
+        @apply border-none absolute -translate-y-2/4 text-[16px] cursor-pointer text-[#999] right-10 top-2/4 bg-transparent;
+    }
+
+    .search-results-box {
+        @apply absolute w-full max-h-[300px] overflow-y-auto left-0 top-full rounded shadow-[0_4px_6px_rgba(0,0,0,0.1)] z-[1000] mt-2;
+        @apply bg-card dark:bg-card-dark;
+        @apply border border-solid border-borderLightest dark:border-borderLightest-dark;
+
+        ul {
+            @apply m-0 p-0 list-none;
+
+            li {
+                @apply cursor-pointer text-[14px] text-[#333] dark:text-headingPrimary-dark px-4 py-2;
+
+                &:hover {
+                    @apply bg-neutral-100 dark:bg-bgLightest-dark;
+                }
+                a {
+                    @apply hover:text-primary;
+                }
+            }
+        }
+    }
+}

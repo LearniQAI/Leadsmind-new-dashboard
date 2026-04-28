@@ -1,0 +1,241 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  CARD CSS START
+/*----------------------------------------*/
+.card-body {
+  @apply relative mb-5 p-[25px] rounded-[10px] shadow-[0_6px_30px_rgba(182,186,203,0.3)];
+
+  .color-name {
+    @apply mt-[15px] text-[18px];
+    @apply text-white;
+  }
+}
+
+
+.card-flex {
+  @apply grid grid-cols-[repeat(1,1fr)]  md:grid-cols-[repeat(2,1fr)] gap-5;
+}
+
+.card {
+  &__sub-title {
+    @apply text-body dark:text-body-dark;
+  }
+
+  &__sub-title-2 {
+    @apply text-body dark:text-body-dark;
+    @apply text-[13px] font-normal;
+  }
+
+  &__title-wrap {
+    span {
+      @apply block;
+    }
+  }
+
+  &__desc {
+    @apply inline-block;
+
+    &.style_two {
+      @apply text-placeholder dark:text-[#7C838F];
+    }
+  }
+
+  &__link {
+    @apply relative;
+
+    span {
+      @apply ms-[20px] sm:ms-[30px] text-[12px] text-headingLight dark:text-headingLight-dark;
+    }
+
+    i {
+      @apply absolute text-[16px] -translate-y-2/4 top-[54%] start-[0px];
+      @apply text-primary dark:text-primary-dark;
+    }
+  }
+
+  &__box {
+    @apply grid grid-cols-[auto] md:grid-cols-[auto_auto] gap-[0_20px];
+  }
+
+  &__icon {
+    span {
+      @apply text-primary dark:text-primary-dark;
+      @apply bg-primary/10 w-[60px] h-[60px] flex text-center justify-center items-center text-[24px] rounded-[50%];
+    }
+
+    img {
+      @apply w-[60px] h-[60px] object-cover rounded-[50%];
+    }
+  }
+
+  &__rating {
+    &-box {
+      @apply text-center px-[30px] py-[31px];
+      @apply bg-primary/10 dark:bg-primary-dark/10;
+    }
+
+    &-icon {
+      @apply text-[20px] text-rating;
+    }
+  }
+
+  &__slide {
+    &-top {
+      @apply absolute z-[2] top-5 ms-5;
+    
+      span {
+        @apply text-black dark:text-black-dark;
+      }
+    }
+
+    &-title {
+      @apply text-white dark:text-white-dark;
+    }
+
+    &-bottom {
+      @apply absolute bottom-[20px] start-[20px];
+
+      h5 {
+        @apply text-white dark:text-white-dark;
+      }
+
+      span {
+        @apply text-white dark:text-white-dark;
+
+        span {
+          @apply text-taxonomy;
+          text-decoration: line-through;
+        }
+      }
+    }
+
+    &-thumb {
+      @apply relative w-full h-[492px] object-cover bg-center bg-cover;
+ 
+      &::before {
+        @apply absolute content-[""] w-full h-full bottom-0 start-0;
+        background: linear-gradient(180deg, rgba(36, 36, 36, 0.00) 0%, rgba(36, 36, 36, 0.50) 100%);
+      }
+    }
+  }
+
+  &__chat {
+    &-user-text {
+      @apply inline-block p-3.5 rounded-[8px_0px_8px_8px] text-[15px] font-medium mb-[3px];
+      @apply bg-primary dark:bg-primary-dark;
+      @apply text-white;
+    }
+
+    &-user-box {
+      &.style_two {
+        @apply w-[calc(100%_-_220px)];
+      }
+    }
+
+    &-text {
+      @apply inline-block relative p-3.5 rounded-[0px_8px_8px_8px];
+      background: rgba(56, 96, 226, 0.10);
+    }
+
+    &-footer {
+      @apply relative pt-2.5;
+
+      &::before {
+        @apply absolute content-[""] h-[1px] w-[calc(100%_+_40px)] top-0 start-[-20px];
+        @apply bg-bgBody dark:bg-bgBody-dark;
+       
+      }
+    }
+  }
+
+  &__thumb {
+    &-content {
+      @apply max-w-[100%] sm:max-w-[450px];
+    }
+
+    &-title {
+      @apply leading-[1.35];
+      @apply text-primary dark:text-primary-dark;
+    }
+
+    &-subtitle {
+      @apply text-[16px];
+      text-decoration: underline;
+      @apply text-white;
+    }
+  }
+
+  &__footer {
+    a {
+      @apply text-primary dark:text-primary-dark;
+    }
+  }
+
+  &__noticeboard-box {
+    @apply p-5 rounded-md;
+    @apply bg-bgLightest dark:bg-bgLightest-dark;
+
+    span {
+      @apply inline-block text-taxonomy mb-[15px];
+
+      &:last-child {
+        @apply mb-0;
+      }
+    }
+  }
+}
+
+.card__review-content {
+  span {
+    @apply inline-block text-taxonomy mb-[15px];
+  }
+}
+
+.body {
+  &__card {
+    &-wrapper {
+      @apply bg-white p-5 xs:p-[30px] rounded-md shadow-[0px_4px_8px_rgba(247,66,111,0.03)];
+    }
+  }
+}
+
+.card {
+  &__inner {
+    @apply pe-[15px];
+  }
+
+  &__wrapper {
+    @apply relative min-h-[calc(100%_-_20px)] mb-5 p-[15px] xs:p-[25px] rounded-[10px] shadow-[0_6px_30px_rgba(182,186,203,0.3)];
+    @apply bg-card dark:bg-card-dark dark:shadow-none;
+
+
+    &.no-height {
+      @apply min-h-0;
+    }
+
+    &.style_two {
+      @apply bg-transparent mb-0 pt-5 pb-0 px-5;
+      @apply border-none;
+      box-shadow: none;
+    }
+
+    &.style_three {
+      @apply border-none;
+      @apply mb-5 pt-5 pb-0 px-5 bg-transparent;
+    }
+
+    &.style_four {
+      @apply border border-borderLightest dark:border-borderLightest-dark relative mb-5 px-0 py-5 border-solid bg-card dark:bg-card-dark;
+    }
+  }
+}
+.dark {
+  .card__wrapper {
+    @apply shadow-none;
+  }
+}
+
+.box-shadow-hidden {
+  @apply shadow-none !important;
+}

@@ -1,0 +1,27 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/* OFFCANVAS CSS START
+/*----------------------------------------*/
+.offcanvas{
+    &__overlay {
+        @apply bg-black fixed h-full w-full z-[900] opacity-0 invisible right-0 top-0;
+        @apply transition-all duration-[0.3s] ease-[ease-in-out];
+   
+        &.overlay-open {
+            @apply opacity-80 visible;
+        }
+    }
+    .signin-area.open {
+        @apply opacity-60 visible transition-all duration-[0.3s] ease-[ease-in-out];
+    }
+}
+.sidebar__toggle {
+	@apply cursor-pointer;
+}
+.app__offcanvas-overlay.overlay-open {
+    @apply  bg-[rgba(0,0,0,0.6)] fixed z-10 inset-0 xl:relative xl:bg-none;
+}
+.offcanvas__contact-icon {
+    @apply me-[15px];
+}

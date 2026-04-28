@@ -1,0 +1,42 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  DARK LIGHT CSS START
+/*----------------------------------------*/
+
+:root {
+	&[bd-theme="bd-theme-dark"] {
+		--clr-common-white: #362a2a;
+		--clr-common-lightest: #6B7280;
+		--clr-common-medium: #E5E7EB;
+		--clr-common-dark: #F9FAFB;
+		--clr-common-black: #FFFFFF;
+		--clr-common-placeholder: #9CA3AF;
+		--clr-heading-primary: #D1D5DB;
+		--clr-text-body: #9CA3AF;
+		--clr-text-label: #C6C8CC;
+		--clr-text-muted: #7C838F;
+		--clr-text-taxonomy: #9CA3AF;
+		--clr-text-secondary: #9CA3AF;
+		--clr-bg-primary: #1F2937;
+		--clr-bg-secondary: #374151;
+		--clr-bg-body: #111827;
+		--clr-bg-card: #1F2937;
+		--clr-bg-label: #374151;
+		--clr-bg-light: #6B7280;
+
+		--clr-border-1: #374151;
+		--clr-border-2: #4B5563;
+		--clr-border-3: #6B7280;
+
+		--clr-chart-1: #9CA3AF;
+		--clr-chart-2: #D1D5DB;
+
+		--clr-footer-1: #6B7280;
+
+		--clr-gradient-1: linear-gradient(90deg, #4C51BF 0%, #2C5282 100%);
+		--clr-gradient-2: linear-gradient(90deg, #D53F8C 0%, #B83280 100%);
+	}
+}
+
+

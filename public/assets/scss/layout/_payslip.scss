@@ -1,0 +1,93 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  PAYSLIP CSS START
+/*----------------------------------------*/
+
+.payslip-line {
+	@apply border-t-borderLightest dark:border-t-borderLightest-dark mt-[25px] pt-[25px] border-t border-solid;
+}
+
+.payslip__office-address {
+	p {
+		&:not(:last-child) {
+			@apply mb-[5px];
+		}
+	}
+}
+.payslip__serial-number {
+	span {
+		@apply text-[14px];
+	}
+}
+.product__removal-btn {
+	span {
+		
+		@apply text-black dark:text-black-dark;
+		@apply inline-flex w-9 h-9 text-center justify-center items-center text-[18px] transition-all duration-[0.3s] ease-[ease-in-out] rounded-md bg-danger/50;
+
+		&:hover {
+			@apply text-white;
+			@apply bg-danger dark:bg-danger-dark;
+		}
+	}
+}
+.payslip__logo {
+	& .dark-logo {
+		@apply hidden;
+	}
+	img {
+		@apply max-w-[200px];
+	}
+}
+.dark {
+	.payslip__logo {
+		& .light-logo {
+			@apply hidden;
+		}
+		& .dark-logo {
+			@apply block;
+		}
+		img {
+			@apply max-w-[200px];
+		}
+	}
+}
+.payslip__employee-address {
+	p {
+		&:not(:last-child) {
+			@apply mb-[5px];
+		}
+	}
+}
+
+.payslip__print {
+	min-width: 960px !important;
+	font-size: 12px !important;
+}
+
+.payslip__payment-details {
+	p {
+		&:not(:last-child) {
+			@apply mb-[5px];
+		}
+	}
+}
+
+.payslip__table {
+	.table__title th {
+		@apply text-[16px] bg-borderLightest dark:bg-borderLightest-dark;
+	}
+	.payslip-amount {
+		@apply font-semibold text-[16px];
+	}
+	.payslip-total {
+		td {
+			@apply font-bold text-[16px] text-black dark:text-black-dark;
+		}
+	}
+
+}
+.b-bottom-transparent {
+	border-bottom: transparent !important;
+}

@@ -1,0 +1,242 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  SIDEBAR CSS START
+/*----------------------------------------*/
+.app__slide-wrapper {
+  @apply min-h-[775px];
+}
+.page__body-wrapper {
+
+  @apply absolute  w-[calc(100%_-_20px)] xl:w-[calc(100%_-_280px)] transition-all duration-[0.5s] ease-[ease-in-out] pl-0 pr-[25px] py-0 top-[100px] end-0;
+
+  @include rtl {
+    @apply pl-[25px] pr-0 py-0;
+  }
+}
+
+.header-logo {
+  img {
+    @apply h-full w-[150px];
+  }
+  .dark-logo {
+    @apply hidden;
+  }
+}
+.dark {
+  .header-logo {
+    .main-logo {
+      @apply hidden;
+    }
+    .dark-logo {
+      @apply block;
+    }
+  }
+}
+.app-sidebar {
+  @apply bg-card dark:bg-card-dark;
+  @apply fixed z-[103] transition-all duration-[0.5s] ease-[ease-in-out] w-64 h-full start-0;
+  inset-block-start: 0;
+
+  .main-sidebar-header {
+    @apply h-[70px] w-64 fixed flex z-[9] items-center justify-start transition-all duration-[0.5s] ease-[ease-in-out] px-5 py-2.5 border-e border-solid border-borderLightest;
+    @apply bg-card dark:bg-card-dark;
+    @apply border-b border-solid border-borderLightest dark:border-borderLightest-dark;
+  }
+  .sidebar-menu.child1 .sidebar__menu-item:hover,
+  .sidebar-menu.child2 .sidebar__menu-item:hover,
+  .sidebar-menu.child3 .sidebar__menu-item:hover {
+    @apply text-primary dark:text-primary-dark;
+  }
+  .sidebar__menu-category {
+    @apply text-body dark:text-body-dark;
+    @apply text-[14px] font-medium tracking-[2px] uppercase whitespace-nowrap relative px-5 py-2.5;
+  }
+
+  .sidebar__menu-item {
+    @apply relative flex items-center text-sm px-5 py-3 font-medium rounded-md;
+    text-decoration: none;
+    @apply text-body dark:text-body-dark;
+    @apply border-0 border-none outline-none outline-0;
+    &.active {
+      @apply text-primary dark:text-primary-dark;
+      .sidebar__menu-label,
+      .side-menu__angle {
+        @apply text-primary dark:text-primary-dark;
+      }
+      .side-menu__icon {
+        @apply text-primary dark:text-primary-dark;
+      }
+    }
+    &:hover {
+      @apply bg-light/5;
+    }
+  }
+  .sidebar-menu {
+
+    &.child1,
+    &.child2,
+    &.child3 {
+      .sidebar__menu-item {
+        background-color: transparent !important;
+        &.active {
+          background-color: transparent !important;
+        }
+      }
+    }
+  }
+  .sidebar-menu {
+    @apply p-0;
+  }
+  .sidebar-menu {
+
+    &.child1,
+    &.child2 {
+      .sidebar__menu-item {
+        @apply p-1.5;
+      }
+    }
+  }
+  .sidebar-menu {
+
+    &.child1,
+    &.child2,
+    &.child3 {
+
+      .sidebar__menu-item {
+        &:before {
+          @apply absolute content-["\e404"] text-[12px] opacity-80 -start-[10px];
+          font-family: "Font Awesome 6 Pro";
+        }
+      }
+
+      li {
+        @apply relative p-0;
+      }
+    }
+
+    &.child1 li {
+      @apply ps-[56px];
+    }
+
+    &.child2 li {
+      @apply ps-[12px];
+    }
+
+    &.child3 li {
+      @apply ps-[16px];
+    }
+  }
+  .sidebar__menu-label {
+    @apply whitespace-nowrap relative text-[14px] leading-none flex items-center capitalize font-bold;
+    @apply text-body dark:text-body-dark;
+  }
+  .side-menu__icon {
+    @apply leading-[0] text-[14px] text-center rounded me-2.5;
+    @apply text-body dark:text-body-dark;
+    
+  }
+  .side-menu__angle {
+    @apply origin-center absolute leading-none text-[14px] transition-all duration-[0.5s] ease-[ease-in-out] opacity-80 end-5;
+    @apply text-body dark:text-body-dark;
+  
+  }
+}
+
+.slide.has-sub .sidebar-menu {
+  transform: translate(0, 0) !important;
+  visibility: visible !important;
+}
+
+.nav ul li {
+  @apply list-none;
+}
+
+.nav>ul {
+  @apply ps-0;
+}
+
+.sidebar-menu {
+  @apply hidden;
+}
+
+.slide.has-sub {
+  @apply grid;
+
+  &.open {
+    >.sidebar__menu-item .side-menu__angle {
+      @apply rotate-180;
+    }
+  }
+}
+
+@media (max-width: 991.98px) {
+  .main-menu {
+    margin: 0 !important;
+  }
+}
+.sidebar-left,
+.sidebar-right {
+  @apply hidden;
+}
+.nav ul li {
+  @apply list-none;
+}
+
+.nav>ul {
+  @apply ps-0;
+}
+
+.sidebar-menu {
+  @apply hidden;
+}
+
+.slide.has-sub {
+  @apply grid;
+
+  &.open {
+    >.sidebar__menu-item .side-menu__angle {
+      @apply rotate-180;
+    }
+  }
+}
+
+
+.app-sidebar.collapsed~.page__body-wrapper .app__header__area {
+  @apply start-0 w-full;
+  .app__header-inner {
+    width: 100% !important;
+  }
+}
+
+.app-sidebar.collapsed~.page__body-wrapper {
+  @apply w-[calc(100%_-_20px)];
+}
+.app-sidebar {
+  @apply -start-[300px] xl:start-0;
+
+  &.collapsed {
+    @apply -start-[300px];
+    .page__body-wrapper {
+      @apply w-[calc(100%_-_80px)];
+    }
+  }
+}
+.close_sidebar {
+  &.app-sidebar {
+   @apply start-0 xl:-start-[300px];
+  }
+}
+
+.sidebar-bg {
+  @apply bg-no-repeat bg-center overflow-hidden bg-cover mt-[50px];
+}
+.sidebar__thumb-content {
+  @apply bg-cover pt-[30px] pb-[25px] px-[25px];
+  .btn {
+    @apply hover:text-primary;
+  }
+}
+p.sidebar__thumb-title {
+	@apply text-center text-[16px] font-bold mb-5 text-white;
+}

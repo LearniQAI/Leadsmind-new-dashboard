@@ -1,0 +1,49 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  Terms and Policy CSS START
+/*----------------------------------------*/
+
+.policy {
+    &-title {
+        @apply mb-2;
+    }
+    &-item {
+        &:not(:last-child) {
+            @apply mb-5;
+        }
+        ul {
+            li {
+                @apply text-[16px] relative ps-[15px];
+                list-style: none;
+                &::after {
+                    @apply absolute content-[""] start-0 top-2 w-[6px] h-[6px] rounded-[50%];
+                    @apply bg-primary dark:bg-primary-dark;
+                }
+                &:not(:last-child) {
+                    @apply mb-[5px];
+                }
+            }
+        }
+    }
+    &-subitem {
+        @apply ms-10;
+        &:not(:last-child) {
+            @apply mb-5;
+        }
+    }
+    &-contact {
+        ul {
+            @apply mb-2.5;
+            li {
+                @apply text-[16px] text-black dark:text-black-dark;
+                list-style: none;
+            }
+        }
+    }
+    &-address {
+        p {
+            @apply text-[16px] leading-normal;
+        }
+    }
+}

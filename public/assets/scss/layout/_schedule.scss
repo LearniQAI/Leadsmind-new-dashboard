@@ -1,0 +1,74 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  SCHEDULE CSS START
+/*----------------------------------------*/
+
+#scheduleTable {
+	>thead {
+		@apply align-middle;
+	}
+}
+
+.date-box {
+	@apply flex items-center gap-[0_20px];
+
+	.date {
+		@apply text-[30px] font-bold;
+		span {
+			@apply text-body dark:text-body-dark;
+			@apply text-[13px] font-medium inline-block absolute top-[5px];
+		}
+	}
+	p {
+		@apply text-[14px] font-medium text-label mb-0;
+		span {
+			@apply me-[5px] text-body dark:text-body-dark;
+		}
+	}
+}
+
+.schedule {
+	&-box {
+		@apply rounded-md p-2.5 bg-primary dark:bg-primary-dark;
+		@apply text-white;
+		h6 {
+			@apply text-white;
+		}
+		&-top {
+			@apply flex items-center gap-[0_30px] mb-[5px];
+			h6 {
+				@apply leading-none;
+			}
+			span {
+				@apply leading-none;
+			}
+			.early-dot {
+				@apply relative ms-[15px];
+				&::before {
+					@apply absolute content-[""] w-2.5 h-2.5 -translate-y-2/4 rounded-[50%] top-[7px] -start-[15px];
+					@apply bg-primary dark:bg-primary-dark;
+					
+				}
+			}
+		}
+		&.theme-sec-bg {
+			@apply bg-secondary dark:bg-secondary-dark;
+		}
+		&.success-bg {
+			@apply bg-success dark:bg-success-dark;
+		}
+		&.warning-bg {
+			@apply bg-warning dark:bg-warning-dark;
+		}
+		&.danger-bg {
+			@apply bg-danger dark:bg-danger-dark;
+		}
+		&.info-bg {
+			@apply bg-info dark:bg-info-dark;
+		}
+		&.link-bg {
+			@apply bg-link dark:bg-link-dark;
+		}
+	}
+}

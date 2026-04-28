@@ -1,0 +1,155 @@
+import React, { useState } from "react";
+import { Dialog, DialogTitle, DialogContent } from "@mui/material";
+import { IPromotion } from "@/interface/table.interface";
+import { useForm } from "react-hook-form";
+import InputField from "@/components/elements/SharedInputs/InputField";
+import { ITrainer } from "@/interface";
+import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage";
+import { trainersData } from "@/data/dropdown-data";
+import FormLabel from "@/components/elements/SharedInputs/FormLabel";
+import DatePicker from "react-datepicker";
+import { statePropsType } from "@/interface/common.interface";
+import { toast } from "sonner";
+
+const AddNewPromotionModal = ({ open, setOpen }: statePropsType) => {
+  const [selectedOwner, setSelectedOwner] = useState<ITrainer | null>(null);
+  const [selectPromotionDate, setSelectPromotionDate] = useState<Date | null>(
+    new Date()
+  );
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<IPromotion>();
+
+  const handleToggle = () => setOpen(!open);
+
+  const onSubmit = async (data: IPromotion) => {
+    try {
+      toast.success("Promotion added successfully!");
+      setTimeout(() => setOpen(false), 2000);
+    } catch (error: any) {
+      toast.error(
+        error?.message ||
+          "An error occurred while updating the Promotion. Please try again!"
+      );
+    }
+  };
+  return (
+    <>
+      <Dialog open={open} onClose={handleToggle} fullWidth maxWidth="sm">
+        <DialogTitle>
+          <div className="flex justify-between">
+            <h5 className="modal-title">Add New Promotion</h5>
+            <button
+              onClick={handleToggle}
+              type="button"
+              className="bd-btn-close"
+            >
+              <i className="fa-solid fa-xmark-large"></i>
+            </button>
+          </div>
+        </DialogTitle>
+        <DialogContent>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="card__wrapper">
+              <div className="grid grid-cols-12 gap-y-5 gap-x-5 maxXs:gap-x-0">
+                <div className="col-span-12 md:col-span-6">
+                  <div className="from__input-box select-wrapper">
+                    <div className="form__input-title">
+                      <label htmlFor="lastname">
+                        Employee Name <span>*</span>
+                      </label>
+                    </div>
+                    <div className="relative">
+                      <div className="mz-default-select">
+                        <SelectWithImage
+                          data={trainersData}
+                          selectedValue={selectedOwner}
+                          valueKey="name"
+                          displayKey="name"
+                          imageKey="userImg"
+                          placeholder="Select Owner"
+                          onChange={setSelectedOwner}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-span-12 md:col-span-6">
+                  <InputField
+                    label="Designation"
+                    id="designation"
+                    type="text"
+                    register={register("designation", {
+                      required: "Designation is required",
+                    })}
+                    error={errors.designation}
+                  />
+                </div>
+                <div className="col-span-12 md:col-span-6">
+                  <InputField
+                    label="Promotion Title"
+                    id="promotionTitle"
+                    type="text"
+                    register={register("promotionTitle", {
+                      required: "Promotion Title is required",
+                    })}
+                    error={errors.promotionTitle}
+                  />
+                </div>
+                <div className="col-span-12 md:col-span-6">
+                  <FormLabel label="Promotion Date" id="selectPromotionDate" />
+                  <div className="datepicker-style">
+                    <DatePicker
+                      id="selectPromotionDate"
+                      selected={selectPromotionDate}
+                      onChange={(date) => setSelectPromotionDate(date)}
+                      showYearDropdown
+                      showMonthDropdown
+                      useShortMonthInDropdown
+                      showPopperArrow={false}
+                      peekNextMonth
+                      dropdownMode="select"
+                      isClearable
+                      dateFormat="dd/MM/yyyy"
+                      placeholderText="Promotion date"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                <div className="col-span-12">
+                  <InputField
+                    label="Description"
+                    id="description"
+                    isTextArea={true}
+                    required={true}
+                    register={register("description", {
+                      required: "Description is required",
+                    })}
+                    error={errors.description}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="submit__btn flex items-center justify-end gap-[10px]">
+              <button
+                className="btn btn-danger"
+                type="button"
+                onClick={handleToggle}
+              >
+                Cancel
+              </button>
+              <button className="btn btn-primary" type="submit">
+                Submit
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+export default AddNewPromotionModal;

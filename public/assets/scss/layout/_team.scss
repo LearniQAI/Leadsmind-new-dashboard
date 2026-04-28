@@ -1,0 +1,206 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  Tab CSS START
+/*----------------------------------------*/
+
+.team {
+  &-thumb {
+    @apply rounded-[10px];
+  }
+
+  &-member-designation {
+    @apply text-base;
+  }
+
+  &-style-one {
+    @apply text-center;
+
+    &:hover {
+      .team-social {
+        @apply opacity-100;
+
+        .icon-one {
+          @apply -translate-y-10 opacity-100;
+        }
+
+        .icon-two {
+          @apply -translate-y-10 opacity-100;
+        }
+
+        .icon-three {
+          @apply -translate-y-10 opacity-100;
+        }
+
+        .icon-four {
+          @apply -translate-y-10 opacity-100;
+        }
+      }
+
+      .team-thumb {
+        a {
+          &::before {
+            @apply opacity-100;
+          }
+        }
+      }
+    }
+
+    .team-thumb-wrap {
+      @apply relative mb-[15px];
+    }
+
+    .team-social {
+      @apply absolute z-[5] opacity-0 -translate-x-2/4 transition-all duration-[0.3s] ease-[ease-in-out] flex gap-2.5 left-2/4 bottom-0;
+    }
+  }
+
+  &-style-two {
+    @apply relative;
+
+    &:hover {
+      .team-thumb {
+        a {
+          &::before {
+            @apply opacity-100;
+          }
+        }
+      }
+
+      .team-social {
+        .icon-one {
+          @apply translate-x-0 sm:-translate-y-10 opacity-100;
+        }
+
+        .icon-two {
+          @apply translate-x-0 sm:-translate-y-10 opacity-100;
+        }
+
+        .icon-three {
+          @apply translate-x-0 sm:-translate-y-10 opacity-100;
+        }
+
+        .icon-four {
+          @apply translate-x-0 sm:-translate-y-10 opacity-100;
+        }
+      }
+    }
+
+    .team-content {
+      @apply absolute z-[1] mx-auto my-0 bottom-10  inset-x-0;
+    }
+
+    .team-member-name {
+      @apply text-white;
+    }
+
+    .team-member-designation {
+      @apply text-white/90;
+    }
+
+    .team-social {
+      @apply bottom-[35%] sm:bottom-[21%] absolute -translate-x-2/4 flex gap-2.5 left-2/4;
+    }
+  }
+
+  &-style-three {
+    @apply relative;
+
+    &:hover {
+      .team-thumb {
+        a {
+          &::before {
+            @apply opacity-100;
+          }
+        }
+      }
+
+      .team-social {
+        .icon-one {
+          @apply translate-x-0 sm:translate-x-[25px] opacity-100;
+        }
+
+        .icon-two {
+          @apply translate-x-0 sm:translate-x-[25px] opacity-100;
+        }
+
+        .icon-three {
+          @apply translate-x-0 sm:translate-x-[25px] opacity-100;
+        }
+
+        .icon-four {
+          @apply translate-x-0 sm:translate-x-[25px] opacity-100;
+        }
+      }
+    }
+
+    .team-member-designation {
+      @apply text-white/90;
+    }
+
+    .team-social {
+      @apply ml-0 sm:ml-[-25px];
+
+      .icon-one {
+        @apply translate-y-0;
+      }
+
+      .icon-two {
+        @apply translate-y-0;
+      }
+
+      .icon-three {
+        @apply translate-y-0;
+      }
+
+      .icon-four {
+        @apply translate-y-0;
+      }
+    }
+  }
+
+  &-social {
+    @apply flex gap-2.5;
+
+    a {
+      @apply bg-secondary text-white flex items-center justify-center w-[38px] h-[38px] text-base rounded-[50%];
+
+      &:hover {
+        @apply bg-primary;
+      }
+    }
+
+    .icon-one {
+      @apply opacity-100 sm:opacity-0 translate-x-0 transition-all duration-[0.3s] ease-[ease-in-out];
+    }
+
+    .icon-two {
+      @apply opacity-100 sm:opacity-0 translate-x-0 transition-all duration-[0.4s] ease-[ease-in-out];
+    }
+
+    .icon-three {
+      @apply opacity-100 sm:opacity-0 translate-x-0 transition-all duration-[0.5s] ease-[ease-in-out];
+    }
+
+    .icon-four {
+      @apply opacity-100 sm:opacity-0 translate-x-0 transition-all duration-[0.6s] ease-[ease-in-out];
+    }
+  }
+}
+
+.image-overly {
+  @apply relative overflow-hidden;
+
+  a {
+    &::before {
+      @apply absolute content-[""] block h-full w-full opacity-80 transition-all duration-[0.3s] ease-[ease-in-out] rounded-[10px] left-0 top-0;
+      background: linear-gradient(180deg, rgba(108, 95, 252, 0) 17.61%, #6C5FFC 100%);
+    }
+
+    &:hover {
+      &::before {
+        @apply opacity-100;
+      }
+    }
+  }
+}

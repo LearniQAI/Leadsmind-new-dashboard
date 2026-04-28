@@ -1,0 +1,429 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  TABLES CSS START
+/*----------------------------------------*/
+
+.table {
+	@apply text-body;
+}
+
+.table.table-bordered {
+	@apply border border-borderLightest dark:border-borderLightest-dark;
+}
+
+.style_two {
+	.table {
+		@apply border border-borderLightest;
+	}
+}
+
+.table {
+	&__wrapper {
+		&.style_three {
+			th {
+				@apply p-2.5;
+			}
+
+			td {
+				@apply py-[15px] px-2.5;
+			}
+		}
+	}
+
+	&__title {
+		th {
+			@apply text-[14px] font-medium text-label dark:text-label-dark py-2 px-2.5;
+
+			span.Mui-active {
+				@apply text-label dark:text-primary;
+
+				svg {
+					@apply text-label dark:text-primary;
+				}
+			}
+
+
+		}
+
+		&.bg-title {
+			@apply bg-bgLightest dark:bg-bgLightest-dark;
+		}
+
+		&__checkbox {
+			@apply text-center;
+		}
+	}
+
+	&__body {
+		tr {
+			@apply align-middle;
+		}
+
+		td {
+			@apply whitespace-nowrap py-[9px] pl-[15px] text-body dark:text-body-dark;
+		}
+	}
+
+	&-thumb {
+		img {
+			@apply w-[36px] rounded-[50%] h-[36px] object-cover min-w-[36px];
+		}
+	}
+
+	&__coin {
+		img {
+			@apply w-6 h-6 rounded-[50%] mr-[5px];
+		}
+
+		span {
+			@apply font-semibold ml-[5px];
+		}
+	}
+
+	&__icon {
+		@apply text-white dark:text-white-dark px-[7px] py-[2px] transition-all ease-linear duration-300 rounded-[6px] text-[14px] w-[30px] h-[30px] flex justify-center items-center;
+
+		&.download {
+			@apply text-primary bg-primary/10;
+
+			&:hover {
+				@apply text-white bg-primary dark:bg-primary-dark;
+			}
+		}
+
+		&.edit {
+			@apply text-secondary bg-secondary/10;
+
+			&:hover {
+				@apply text-white bg-secondary dark:bg-secondary-dark;
+			}
+		}
+
+		&.delete {
+			@apply text-danger bg-danger/10;
+
+			&:hover {
+				@apply text-white bg-danger dark:bg-danger-dark;
+			}
+		}
+
+		&.reply {
+			@apply text-link bg-link/10;
+
+			&:hover {
+				@apply text-white bg-link dark:bg-link-dark;
+			}
+		}
+	}
+}
+
+.meeting-table thead th {
+	@apply border-b border-borderLightest dark:border-borderLightest-dark text-[14px] text-label bg-label capitalize text-start;
+}
+
+.table thead th {
+	@apply bg-bgLightest dark:bg-bgLightest-dark;
+}
+
+.table>thead>tr th {
+	@apply text-label dark:text-label-dark text-[14px] font-medium text-start;
+}
+.table>thead>tr td {
+	@apply text-start;
+}
+
+table.dataTable.hover>tbody>tr:hover>*,
+table.dataTable.display>tbody>tr:hover>* {
+	@apply shadow-none bg-label;
+}
+
+table.dataTable.hover>tbody>tr.selected:hover>*,
+table.dataTable.display>tbody>tr.selected:hover>* {
+	@apply shadow-none bg-label;
+}
+
+.table>thead {
+	@apply align-middle;
+}
+
+.table>tbody {
+	@apply align-middle;
+}
+
+//material table style start
+.manaz-common-mat-list {
+	@apply mt-0;
+
+	.MuiPaper-root {
+		@apply bg-card dark:bg-card-dark;
+	}
+
+	.MuiTablePagination-selectLabel {
+		@apply mb-0;
+	}
+
+	.MuiTablePagination-displayedRows {
+		@apply mb-0;
+	}
+
+	.MuiTableCell-paddingCheckbox {
+		@apply pl-[16px];
+	}
+
+	.MuiTable-root {
+		@apply border border-borderLightest dark:border-borderLightest-dark;
+	}
+
+	.MuiTableCell-head {
+		@apply bg-bgLightest capitalize dark:bg-bgLightest-dark border-b border-borderLightest dark:border-borderLightest-dark text-start px-4 py-[14px];
+	}
+
+	.MuiTableCell-body {
+		@apply border-b border-borderLightest dark:border-borderLightest-dark py-[11px] px-4 text-start;
+	}
+
+	.MuiPaper-elevation {
+		@apply shadow-none mb-0;
+	}
+
+	&.mat-list-without-checkbox {
+		tr.MuiTableRow-root {
+			&.Mui-selected {
+				@apply bg-transparent;
+			}
+		}
+	}
+
+	svg.MuiSelect-iconOutlined{
+		@apply text-body dark:text-body-dark;
+	}
+}
+
+
+
+//responsive
+.table-responsive {
+	@apply overflow-x-auto;
+
+	.table-borderless {
+		@apply w-full;
+	}
+	&.MuiSelect-iconOpen{
+		@apply text-body !important;
+	}
+}
+
+//table data search style
+.manaz-table-search-input {
+	&.MuiTextField-root {
+		@apply max-w-[180px] w-[100%];
+	}
+
+	.MuiInputBase-input {
+		@apply px-[15px] py-[5px] h-[26px];
+	}
+}
+
+.table-search-box {
+	@apply flex justify-between items-center flex-wrap gap-5;
+
+	&.MuiBox-root {
+		@apply p-0;
+	}
+
+	span {
+		@apply text-body capitalize dark:text-body-dark;
+	}
+}
+
+//table row per page style
+.manaz-table-row-per-page {
+	&.MuiInputBase-sizeSmall {
+		@apply max-w-[120px] w-full pl-[15px] pr-[5px] py-[6px] text-body dark:text-body-dark  border-0 dark:border-primary;
+	}
+
+	&.fieldset.MuiOutlinedInput-notchedOutline {
+		@apply border border-borderLightest dark:border-borderLightest-dark text-body dark:text-body-dark;
+	}
+
+	&.Mui-focused {
+		fieldset.MuiOutlinedInput-notchedOutline {
+			@apply border border-primary text-body dark:text-body-dark;
+		}
+	}
+
+	&:hover {
+		fieldset.MuiOutlinedInput-notchedOutline {
+			@apply border border-primary;
+		}
+	}
+}
+
+fieldset.MuiOutlinedInput-notchedOutline {
+	@apply border border-borderLightest dark:border-borderLightest-dark text-body dark:text-body-dark;
+	@apply mb-0 !important;
+}
+
+input#outlined-search {
+	@apply text-body dark:text-body-dark;
+}
+
+.MuiBox-root {
+	@apply text-body dark:text-body-dark;
+}
+
+.css-lohd6h-MuiSvgIcon-root-MuiSelect-icon {
+	@apply text-body dark:text-body-dark;
+}
+
+div.MuiFormControl-root .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+	@apply mb-0;
+}
+
+//table paginaiton button 
+.manaz-pagination-button {
+	.MuiPaginationItem-root {
+		@apply border border-primary text-primary px-[24px] py-[6px];
+	}
+
+	.MuiPaginationItem-root:hover {
+		@apply bg-primary text-white dark:text-white;
+	}
+
+	.MuiPaginationItem-root.Mui-selected {
+		@apply bg-primary text-white dark:text-white;
+	}
+
+	.MuiPaginationItem-root.Mui-selected:hover {
+		@apply bg-primary text-borderLight dark:text-white;
+	}
+
+	.MuiPagination-ul {
+		@apply gap-[5px];
+	}
+}
+
+button.MuiPaginationItem-outlined {
+	@apply h-[36px] rounded-[6px] text-[16px];
+}
+
+.table-avatar {
+	.avatar-img {
+		@apply w-[48px] h-[48px];
+
+		img {
+			@apply w-full h-full;
+		}
+	}
+
+	.avatar-img-small {
+		@apply w-[36px] h-[36px];
+
+		img {
+			@apply w-full h-full;
+		}
+	}
+
+	.avatar-name {
+		@apply flex justify-center items-center;
+	}
+}
+
+//data table style start
+.dt-button {
+	@apply bg-primary dark:bg-primary-dark py-0 px-[24px] text-[16px] rounded-[6px] h-[36px] relative inline-flex text-center items-center justify-center z-[1] capitalize font-normal transition-all duration-300 ease-in-out;
+
+	span {
+		@apply text-white dark:text-white;
+	}
+
+	&:not(:last-child) {
+		@apply me-2.5;
+	}
+
+	&.buttons-print {
+		@apply px-5 py-0 font-normal overflow-hidden;
+
+		&:after {
+			@apply absolute content-[""] w-0 h-full top-0 start-0 -z-[1] bg-secondary dark:bg-secondary-dark transition-all duration-[.4s] ease-in-out;
+		}
+
+		&:hover {
+			@apply text-black dark:text-black-dark;
+
+			&:after {
+				@apply start-0 end-auto w-full;
+			}
+		}
+	}
+
+
+}
+
+.page-link {
+	@apply relative block px-[15px] py-2.5 text-[18px] transition-all duration-300 ease-in-out;
+	@apply text-black bg-primary/10 border border-solid border-primary;
+
+	&:focus {
+		@apply text-primary dark:text-primary-dark;
+		@apply z-[3] outline-0 shadow-none bg-primary/10;
+	}
+
+	&:hover {
+		@apply text-white dark:text-white-dark z-[2];
+		@apply bg-primary dark:bg-primary-dark;
+		@apply border-primary;
+	}
+}
+
+.page-item:first-child .page-link {
+	@apply rounded-tl-none rounded-bl-none;
+}
+
+.page-item:last-child .page-link {
+	@apply rounded-tr-none rounded-br-none;
+}
+
+
+.table {
+	@apply border-bgLightest;
+}
+
+.table> :not(caption)>*>* {
+	@apply py-[.9rem] px-[.75rem] shadow-none border-b border-borderLightest dark:border-borderLightest-dark bg-transparent text-body;
+}
+
+td input,
+td select {
+	@apply p-0 w-auto;
+}
+
+table.dataTable.no-footer {
+	&:last-child {
+		@apply border-b-0;
+	}
+}
+
+.table {
+	@apply border-dark/30;
+}
+
+
+table.dataTable tbody tr {
+	&:last-child {
+		@apply border-b border-borderLightest;
+	}
+}
+.last-row-no-border {
+	tr {
+		&:last-child {
+			td,th {
+				@apply border-b-0;
+			}
+		}
+	}
+}
+
+
+//data table style end

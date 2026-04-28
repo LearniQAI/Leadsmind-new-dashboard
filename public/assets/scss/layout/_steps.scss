@@ -1,0 +1,223 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  STEPS CSS START
+/*----------------------------------------*/
+
+.step-active {
+	color: #6C5FFC !important;
+}
+
+.steps__title {
+	@apply text-[18px] text-black dark:text-white font-semibold;
+
+	&:hover {
+		@apply text-primary;
+	}
+}
+
+.steps__form {
+	@apply w-full relative;
+	display: table;
+}
+
+.steps__row {
+	&::before {
+		@apply absolute content-["_"] w-[99%] h-0.5 bg-light z-[1] -translate-y-2/4 left-0.5 top-2/4 bottom-0;
+	}
+
+	&.style_two {
+		&::before {
+			@apply hidden;
+		}
+	}
+}
+
+.steps__step {
+	@apply text-center relative z-[9];
+
+	&>a {
+		outline: none;
+	}
+
+	&.style_two {
+		@apply block text-start;
+
+		&:not(:last-child) {
+			@apply mb-5;
+		}
+	}
+}
+
+.step-active {
+	span {
+		@apply bg-primary text-white border border-primary;
+	}
+}
+
+.step-grid {
+	@apply grid grid-cols-[350px_auto] items-center gap-[30px];
+}
+
+
+.bg-steps {
+	@apply px-0 py-2.5;
+}
+
+.btn-blue-grey {
+	@apply bg-primary/15 p-2.5;
+	;
+
+	&.step-active-bg {
+		@apply bg-primary;
+		color: #ffffff !important;
+	}
+}
+
+.setup-panel-4 {
+	@apply block md:flex md:justify-between;
+
+
+	&.steps__row {
+		&::before {
+			@apply hidden;
+		}
+	}
+
+	.steps__step {
+		@apply grid items-center mr-0 mb-2.5 last:mr-0;
+	}
+
+	.steps__title {
+		@apply text-black;
+
+		&:hover {
+			@apply text-black;
+		}
+	}
+}
+
+.step__btn-end {
+	@apply text-start sm:text-end;
+}
+
+.step-circle {
+	span {
+		@apply w-[40px] h-[40px] text-[18px] lg:w-[70px] lg:h-[70px] lg:text-[22px] text-primary bg-white flex items-center justify-center rounded-[50%] border border-borderLightest;
+	}
+
+	&.step-active {
+		span {
+			@apply text-white bg-primary border border-primary;
+		}
+	}
+}
+
+.steps {
+	&-grid {
+		&-3 {
+			@apply grid grid-cols-1 lg:grid-cols-3;
+		}
+
+		&-4 {
+			@apply grid grid-cols-1 lg:grid-cols-4 lg:gap-5;
+		}
+	}
+
+	&-item {
+		@apply flex items-center relative text-label align-top bg-primary/10 cursor-pointer transition-all duration-[0.3s] ease-[ease-in-out] m-0 px-5 pt-3 text-inherit xl:flex xl:items-center;
+
+		&.current {
+			@apply bg-primary text-white;
+
+			.steps-number {
+				@apply bg-white text-primary;
+			}
+
+
+			.steps-title {
+				@apply text-white;
+			}
+
+			p {
+				@apply text-white;
+			}
+		}
+
+		&.done {
+			@apply text-white bg-primary;
+
+			.steps-number {
+				@apply text-primary bg-white;
+			}
+
+			.steps-title {
+				@apply text-white;
+			}
+
+			p {
+				@apply text-white;
+			}
+		}
+
+		&.error {
+			@apply text-white bg-warning;
+
+			.steps-number {
+				@apply bg-white text-warning;
+			}
+
+			.steps-title {
+				@apply text-white;
+			}
+
+			p {
+				@apply text-white;
+			}
+		}
+
+		&.active {
+			@apply text-white bg-success;
+
+			.steps-number {
+				@apply bg-white text-success;
+
+			}
+
+			.steps-title {
+				@apply text-white;
+			}
+
+			p {
+				@apply text-white;
+			}
+		}
+
+		&.disabled {
+			@apply text-white pointer-events-none cursor-auto;
+		}
+	}
+
+	&-number {
+		@apply absolute w-10 h-10 text-2xl flex items-center justify-center text-white text-center bg-primary -translate-y-2/4 rounded-[50%] left-5 top-2/4;
+	}
+
+	&-content {
+		@apply min-h-[40px] text-left ml-[50px];
+	}
+
+	&-title {
+		@apply text-xl text-label dark:text-label-dark font-semibold mb-0;
+	}
+}
+.MuiPopper-root{
+	div.MuiTooltip-tooltip{
+		@apply bg-secondary ;
+
+		.MuiTooltip-arrow{
+			&::before{
+				@apply bg-secondary;
+			}
+		}
+	}
+}

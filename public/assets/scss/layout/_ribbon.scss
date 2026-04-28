@@ -1,0 +1,173 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  ribbon CSS START
+/*----------------------------------------*/
+
+.ribbon__wrapper {
+    @apply mb-5;
+}
+
+.ribbon {
+    @apply h-[30px] leading-[30px] clear-left absolute z-[2] px-5 py-0 top-0 text-white start-0;
+}
+
+.ribbon-clip {
+    @apply start-[-14px];
+
+    &:before {
+        @apply absolute w-0 h-0 content-[""] border-t-primary border-r-primary border-[7px] border-solid border-transparent top-[30px] start-0;
+    }
+
+    &.ribbon-primary {
+        &:before {
+            @apply border-t-primary border-r-primary;
+        }
+    }
+
+    &.ribbon-secondary {
+        &:before {
+            @apply border-t-secondary border-r-secondary;
+        }
+    }
+
+    &.ribbon-success {
+        &:before {
+            @apply border-t-success border-r-success;
+        }
+    }
+
+    &.ribbon-info {
+        &:before {
+            @apply border-t-actionInfo border-r-actionInfo;
+        }
+    }
+
+    &.ribbon-warning {
+        &:before {
+            @apply border-t-warning border-r-warning;
+        }
+    }
+
+    &.ribbon-danger {
+        &:before {
+            @apply border-t-danger border-r-danger;
+        }
+    }
+
+    &.ribbon-light {
+        &:before {
+            @apply border-t-light border-r-light dark:border-t-light-dark dark:border-r-light-dark;
+        }
+    }
+
+    &.ribbon-dark {
+        &:before {
+            @apply border-t-dark border-r-dark dark:border-t-dark-dark dark:border-r-dark-dark;
+        }
+    }
+}
+
+.ribbon-bookmark {
+    &:before {
+        @apply absolute block w-0 h-0 content-[""] border-primary border-[15px] border-solid top-0 start-full;
+        border-inline-end: 10px solid transparent; 
+    }
+
+    &.ribbon-primary {
+        &:before {
+            @apply border-primary;
+            border-inline-end: 10px solid transparent;
+        }
+    }
+
+    &.ribbon-secondary {
+        &:before {
+            @apply border-secondary;
+            border-inline-end: 10px solid transparent;
+        }
+    }
+
+    &.ribbon-success {
+        &:before {
+            @apply border-success;
+            border-inline-end: 10px solid transparent;
+        }
+    }
+
+    &.ribbon-info {
+        &:before {
+            @apply border-actionInfo;
+            border-inline-end: 10px solid transparent;
+        }
+    }
+
+    &.ribbon-warning {
+        &:before {
+            @apply border-warning;
+            border-inline-end: 10px solid transparent;
+        }
+    }
+
+    &.ribbon-danger {
+        &:before {
+            @apply border-danger;
+            border-inline-end: 10px solid transparent;
+        }
+    }
+
+    &.ribbon-light {
+        &:before {
+            @apply border-light dark:border-light-dark;
+            border-inline-end: 10px solid transparent;
+        }
+    }
+
+    &.ribbon-dark {
+        &:before {
+            @apply border-dark dark:border-dark-dark;
+            border-inline-end: 10px solid transparent
+        }
+    }
+}
+
+.ribbon-bookmark {
+
+    &.ribbon-vertical-left:before,
+    &.ribbon-vertical-right:before {
+        @apply -mt-3.5 border-b-[10px] border-b-transparent border-solid top-full start-0;
+        border-inline-end: 15px solid red;
+    }
+}
+
+.ribbon-primary {
+    @apply bg-primary;
+}
+
+.ribbon-secondary {
+    @apply bg-secondary;
+}
+
+.ribbon-success {
+    @apply bg-success;
+}
+
+.ribbon-info {
+    @apply bg-actionInfo;
+}
+
+.ribbon-warning {
+    @apply bg-warning;
+}
+
+.ribbon-danger {
+    @apply bg-danger;
+}
+
+.ribbon-light {
+    @apply bg-light dark:bg-light-dark;
+}
+
+.ribbon-dark {
+    @apply bg-dark dark:bg-dark-dark;
+}

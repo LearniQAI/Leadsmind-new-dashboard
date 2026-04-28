@@ -1,0 +1,75 @@
+@use '../utils' as *;
+
+.dac-text-end {
+	@apply text-start sm:text-end;
+}
+
+.resize-textarea {
+	@apply resize-y;
+}
+
+.cursor {
+	cursor: pointer;
+}
+
+.list__dot ul li {
+	@apply pl-[15px] relative;
+
+	&:not(:last-child) {
+		@apply mb-[10px];
+	}
+
+	&::before {
+		@apply absolute content-[""] w-[7px] h-[7px] bg-black dark:bg-black-dark rounded-[50%] left-0 top-[50%] -translate-y-[50%];
+	}
+}
+
+.grid-showcase span {
+	@apply block border border-solid border-borderLightest dark:border-bgLightest-dark p-[10px] text-center bg-white dark:bg-bgLightest-dark;
+}
+
+.position-sticky {
+	@apply sticky top-[100px];
+}
+
+.rounded-circle {
+	@apply rounded-[50%];
+}
+
+.chart-spacing {
+	@apply pr-[15px];
+}
+
+.sells-space {
+	@apply pt-0 px-5 pb-5;
+}
+
+// grid
+.card-grid-style {
+	@apply grid grid-cols-1 sm:grid-cols-4 justify-between gap-[2px];
+
+	.disabled-checkbox {
+		@apply opacity-70;
+	}
+}
+
+.chart-common {
+	@apply bg-card dark:bg-card-dark dark:shadow-none border border-solid border-borderLightest dark:border-bgLightest-dark rounded-[10px];
+	box-shadow: 0 6px 30px rgba(182, 186, 203, 0.3);
+}
+
+.border-circle {
+	@apply rounded-[50%];
+}
+
+.rounded-pill {
+	@apply rounded-[50rem];
+}
+
+.img-36 {
+	@apply w-9;
+}
+
+.img-48 {
+	@apply w-9 sm:w-12;
+}

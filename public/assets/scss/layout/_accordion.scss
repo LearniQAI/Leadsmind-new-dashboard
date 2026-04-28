@@ -1,0 +1,338 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  ACCORDION CSS START
+/*----------------------------------------*/
+
+.form__accordion {
+
+	.accordion-body {
+		@apply text-[16px] ps-5 pe-10 pt-0 pb-5;
+		@apply text-black dark:text-headingLight-dark;
+		.accordion-body p {
+			@apply text-[16px];
+			@apply text-black dark:text-black-dark;
+		}
+
+		.accordion-body ul {
+			@apply mx-0 my-5;
+		}
+
+		.accordion-body ul li {
+			@apply text-base relative ps-[15px] text-chartLight;
+		}
+	}
+}
+
+//updated code common accordion
+.accordion-wrapper {
+	div.MuiAccordion-root {
+		@apply border-borderLightest shadow-none m-0;
+
+		&::before {
+			border: none;
+		}
+
+		&.Mui-expanded {
+			@apply m-0;
+		}
+
+		&:first-of-type {
+			@apply border-t border-borderLightest;
+		}
+
+		&:last-of-type {
+			@apply border-b border-borderLightest;
+		}
+	}
+
+	.accordion-body {
+		@apply border-borderLightest text-[14px];
+	}
+
+	div.MuiAccordion-root:first-of-type {
+		@apply border-t-0;
+	}
+
+	div.MuiAccordion-root:last-of-type {
+		@apply border-b-0;
+	}
+
+	.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation1 {
+		@apply border border-borderLightest dark:border-border rounded-none overflow-hidden border-b-0;
+	}
+
+	.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation1:first-child {
+		@apply rounded-tr-[5px] rounded-tl-[5px]; 
+	}
+
+	.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation1:last-child {
+		@apply rounded-br-[5px] rounded-bl-[5px] border-b border-borderLightest dark:border-border; 
+	}
+	.MuiAccordion-heading {
+		.MuiButtonBase-root {
+			@apply pe-0 outline-none outline-0;
+		}
+		.MuiAccordionSummary-content {
+			.MuiTypography-root {
+				@apply maxXs:inline-flex;
+			}
+		}
+	}
+	.MuiPaper-root {
+		@apply dark:bg-transparent shadow-none;
+	}
+
+	//border style five
+	.accordions-items-separate{
+		div.MuiAccordion-root:first-of-type {
+			@apply border-t;
+		}
+	
+		div.MuiAccordion-root:last-of-type {
+			@apply border-b;
+		}
+		.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation1 {
+			@apply border border-primary dark:border-border rounded-[5px] mb-2.5;
+	
+		}
+	}
+
+	/* first accordion */
+	div.MuiAccordionSummary-root {
+		@apply bg-bgBody dark:bg-bgBody-dark ms-0 mb-0;
+	}
+
+	div.MuiAccordionSummary-expandIconWrapper {
+		@apply me-5;
+
+		svg {
+			@apply text-[15px] text-dark dark:text-white rotate-90 transition-transform duration-[0.3s];
+		}
+
+		.Mui-expanded {
+			&::before {
+				@apply border-none opacity-0;
+			}
+		}
+
+		.Mui-expanded & svg {
+			@apply rotate-[270deg];
+		}
+	}
+
+	div.MuiAccordionSummary-content {
+		.accordion-header {
+			@apply text-black dark:text-black-dark;
+		}
+	}
+
+	div.MuiAccordionDetails-root {
+		@apply p-0;
+
+		.accordion-body {
+			@apply text-[14px] text-black dark:text-black-dark bg-bgBody dark:bg-bgBody-dark ps-3 pe-10 maxXs:pe-5 pt-3 pb-5 rounded-none;
+		}
+	}
+}
+
+// accordion style 03
+.accordion-primary {
+	div.MuiAccordionSummary-expandIconWrapper {
+		@apply relative flex items-center justify-center w-8 h-8 bg-primary rounded-[50%];
+
+		svg {
+			@apply text-[15px] text-white dark:text-white rotate-90 transition-transform duration-[0.3s];
+		}
+
+		&.Mui-expanded {
+			@apply border border-white;
+		}
+	}
+
+	.MuiAccordionSummary-content.Mui-expanded {
+		.accordion-header {
+			@apply text-white;
+		}
+	}
+
+	div.MuiButtonBase-root.Mui-expanded {
+		@apply bg-primary;
+	}
+
+	div.MuiAccordionDetails-root {
+		.accordion-body {
+			@apply pt-5;
+		}
+	}
+}
+
+// Accordion Style 04 
+.accordion-primary-light {
+	div.MuiAccordionSummary-expandIconWrapper {
+		@apply relative flex items-center justify-center w-8 h-8 rounded-[50%] bg-primary;
+
+		svg {
+			@apply text-[15px] text-white dark:text-white rotate-90 transition-transform duration-[0.3s];
+		}
+
+	}
+
+	.MuiAccordionSummary-content.Mui-expanded {
+		.accordion-header {
+			@apply text-primary dark:text-white;
+		}
+	}
+
+	div.MuiButtonBase-root.Mui-expanded {
+		@apply bg-primary/10 dark:bg-card-dark;
+	}
+
+	div.MuiAccordionDetails-root {
+		.accordion-body {
+			@apply pt-5;
+		}
+	}
+}
+
+// Accordion Style 05 
+div.accordion-border-primary {
+	&.accordions-items-separate {
+		div.MuiAccordion-root::before {
+			@apply border border-primary dark:border-border;
+		}
+
+		/* Add a border for each separate accordion */
+		.MuiAccordionSummary-expandIconWrapper {
+			svg {
+				@apply text-primary dark:text-white;
+			}
+		}
+
+		.MuiAccordionSummary-content {
+			.accordion-header {
+				@apply text-primary dark:text-white;
+			}
+		}
+
+		/* Background color change on expansion */
+		div.MuiButtonBase-root {
+			@apply bg-white dark:bg-card-dark;
+		}
+
+		div.MuiAccordionDetails-root {
+			@apply border-t border-primary dark:border-border;
+		}
+
+		div.MuiAccordionDetails-root {
+			.accordion-body {
+				@apply pt-5;
+			}
+		}
+	}
+}
+
+
+//Accordion style 06
+.accordion-circle-style {
+	.MuiAccordionSummary-content p>span {
+		@apply text-primary inline-flex justify-center items-center w-[50px] h-[50px] text-center rounded-[50%] me-2.5;
+		@apply bg-primary/10 dark:bg-primary-dark/10;
+	}
+
+	.Mui-expanded {
+		.MuiAccordionSummary-content p>span {
+			@apply bg-primary text-white;
+		}
+	}
+
+	div.MuiAccordionDetails-root {
+		div.accordion-body {
+			@apply pt-5 ps-5;
+		}
+	}
+}
+
+//Accordion style 07
+.accordion-circle-2-style {
+	.MuiAccordionSummary-content p>span {
+		@apply text-primary inline-flex justify-center items-center w-[50px] h-[50px] text-center rounded-[50%] me-2.5;
+		@apply bg-primary/10 dark:bg-primary-dark/10;
+	}
+
+	.Mui-expanded {
+		.MuiAccordionSummary-content p>span {
+			@apply bg-primary text-white;
+		}
+	}
+
+	.MuiAccordionSummary-content p>span>i {
+		@apply text-3xl;
+	}
+
+	.MuiTypography-root {
+		@apply flex items-center
+	}
+
+	div.MuiAccordionDetails-root {
+		div.accordion-body {
+			@apply pt-5 ps-5;
+		}
+	}
+}
+
+.according__wrapper {
+	.accordion-item {
+		@apply mb-[25px] rounded-[10px];
+
+		div.MuiPaper-root {
+			@apply bg-bgBody dark:bg-bgLightest-dark px-0 py-[4px] rounded-xl;
+		}
+
+		div.MuiAccordionDetails-root {
+			@apply p-0;
+		}
+
+		.MuiAccordionSummary-content {
+			.MuiTypography-root {
+				@apply text-lg text-headingPrimary dark:text-headingPrimary-dark font-medium;
+
+				&>span {
+					@apply text-[20px] font-medium text-primary me-[5px];
+				}
+			}
+		}
+		.MuiSvgIcon-root{
+			@apply fill-headingPrimary-dark;
+		}
+		.MuiAccordionSummary-expandIconWrapper {
+			svg {
+				@apply text-[18px] rotate-90 transition-transform duration-[0.3s];
+			}
+
+			.Mui-expanded & svg {
+				@apply rotate-[270deg];
+			}
+		}
+
+		div.MuiAccordion-root {
+			@apply border-borderLightest shadow-none m-0;
+
+			&::before {
+				@apply border border-borderLightest opacity-100;
+			}
+
+			&.Mui-expanded {
+				@apply m-0;
+			}
+
+			&:first-of-type {
+				@apply border-b-0;
+			}
+
+			&:last-of-type {
+				@apply border-b-0;
+			}
+		}
+	}
+}

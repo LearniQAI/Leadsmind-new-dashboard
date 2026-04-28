@@ -1,0 +1,11 @@
+@use '../utils' as *;
+
+.credit-card__logo {
+    @apply absolute right-[15px] top-5;
+    transform: translateY(-50%);
+
+    i {
+        @apply text-[30px];
+        @apply text-black dark:text-black-dark;
+    }
+}

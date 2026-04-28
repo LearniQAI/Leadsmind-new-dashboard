@@ -1,0 +1,43 @@
+@use '../utils' as *;
+
+
+.MuiDialog-container {
+    .MuiPaper-root {
+        @apply max-w-[800px] px-0 py-[15px] rounded-[10px];
+        @apply bg-bgBody dark:bg-bgBody-dark;
+        @apply border-none;
+    }
+
+    .modal-title {
+        @apply leading-normal mb-0;
+    }
+}
+
+
+/* Hide scrollbar for Webkit browsers */
+.no-scrollbar::-webkit-scrollbar {
+    @apply hidden;
+  }
+  
+  /* Hide scrollbar for other browsers */
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+@media (min-width: 576px) {
+    .modal-dialog {
+        @apply max-w-[800px] max-h-[500px] mx-auto;
+    }
+}
+
+.modal-dialog-centered {
+    @apply flex min-h-[calc(100%_-_1.75rem_*_2)] items-center;
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -ms-flexbox;
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    -ms-flex-align: center;
+    align-items: center;
+}

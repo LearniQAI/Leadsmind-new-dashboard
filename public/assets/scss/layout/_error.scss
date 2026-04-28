@@ -1,0 +1,19 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  EVENT CSS START
+/*----------------------------------------*/
+
+.error-wrapper {
+    @apply flex flex-col justify-center items-center min-h-screen text-center;
+}
+
+.error-content {
+    @apply max-w-[650px];
+    h2 {
+        @apply mb-5 text-[32px] md:text-[48px];
+    }
+    p {
+        @apply text-[20px] font-medium mb-[30px];
+    }
+}

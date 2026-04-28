@@ -1,0 +1,23 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  Clients CSS START
+/*----------------------------------------*/
+
+.client {
+    &__thumb {
+        img {
+            @apply w-[120px] h-[120px] rounded-[50%];
+        }
+    }
+
+    &__meta {
+        span {
+            @apply text-medium dark:text-medium-dark block text-[16px] mb-[5px];
+        }
+
+        p {
+            @apply mb-[15px] text-[14px];
+        }
+    }
+}

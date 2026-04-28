@@ -1,0 +1,437 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  EMAIL CSS START
+/*----------------------------------------*/
+.email__left-sidebar {
+	.MuiTabs-scroller div.MuiTabs-flexContainer {
+        @apply border-b-0 border-b-[none];
+	}
+
+	button.MuiButtonBase-root {
+		@apply text-black max-w-full rounded-[6px] border-[none] pl-2 py-3;
+		@apply border-none;
+
+		&:hover {
+            @apply  dark:bg-bgLightest-dark;
+		}
+
+		.MuiBox-root {
+			@apply text-[14px] font-medium text-black dark:text-white;
+		}
+
+		.email__left-meta {
+			@apply text-black dark:text-white text-[14px] font-bold;
+		}
+
+		/* Ensure the active tab gets the correct styles */
+		&.Mui-selected {
+			@apply bg-primary text-white overflow-hidden;
+
+			.email__left-meta {
+				@apply text-white;
+			}
+            .MuiBox-root {
+                @apply text-white;
+            }
+		}
+	}
+    div.MuiTabs-root .MuiButtonBase-root.Mui-selected,
+	div.MuiTabs-root .MuiButtonBase-root {
+		@apply border-0 focus:border-0 ring-0 outline-0 !important;
+	}
+}
+
+
+.email-right-aside {
+    .email-body {
+        .email__inbox {
+            @apply overflow-auto overflow-x-hidden;
+
+            .media {
+                @apply relative;
+                .media-body {
+                    span {
+                        @apply absolute end-5;
+                    }
+                }
+            }
+            i {
+                @apply text-rating w-[18px] me-[10px] ms-[10px] cursor-pointer;
+            }
+            .media-size-email {
+                @apply flex items-center justify-center;
+            }
+            .media-body {
+                @apply flex;
+            }
+            img {
+                @apply h-5;
+            }
+            .media {
+                @apply transition-all duration-[0.3s] ease-[ease-in-out] px-5 py-3.5;
+                &:hover {
+                    @apply bg-primary/10 dark:bg-primary-dark/10;
+                }
+            }
+        }
+
+        .attachment {
+            @apply mt-[10px];
+            ul {
+                li {
+                    @apply inline-block;
+                    img {
+                        @apply w-[90px] h-[90px];
+                    }
+                    a {
+                        @apply text-dark text-[20px];
+                    }
+                }
+            }
+            a {
+                @apply text-[18px];
+
+                &:hover {
+                    @apply text-primary dark:text-primary-dark;
+                }
+            }
+        }
+    }
+
+    .email__profile {
+        .email__inbox {
+            p {
+                @apply text-body dark:text-body-dark;
+                @apply font-medium inline-block w-[calc(100%_-_200px)] text-ellipsis whitespace-nowrap overflow-hidden ms-[15px] max-w-[400px] xl:max-w-[370px] xxl:max-w-[850px] mb-0;
+            }
+        }
+        >div {
+            .email-reload {
+                @apply me-[10px];
+                &:hover {
+                    span {
+                        @apply bg-primary/10 dark:bg-primary-dark/10;
+                        @apply text-primary dark:text-primary-dark;
+                    }
+                }
+                span {
+                    @apply text-body dark:text-body-dark;
+                    @apply cursor-pointer w-[30px] h-[30px] inline-flex text-center justify-center content-center items-center rounded-[50%];
+                }
+            }
+            &:first-child {
+                .email-top {
+                    .email-chek {
+                        @apply me-5;
+                    }
+
+                    .checkbox_animated {
+                        &:after {
+                            @apply w-[2.1rem] h-[2.1rem] rounded;
+                        }
+
+                        &:before {
+                            @apply w-[1.1rem] h-2 top-[0.55rem] start-[0.4rem];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+.media-body {
+    h6 {
+        @apply font-[14px] inline-block text-[14px] mt-[3px] mb-0.5;
+        span {
+            @apply font-semibold;
+        }
+        small {
+            span {
+                @apply text-body dark:text-body-dark;;
+            }
+        }
+    }
+}
+
+.email-top {
+    h5 {
+        @apply flex items-center mb-0;
+    }
+
+    .email-right {
+        @apply flex justify-end px-0 py-[13px];
+    }
+}
+
+.email-wrapper {
+    h5 {
+        @apply mb-5;
+    }
+    .emailread-group {
+        &:nth-child(n + 2) {
+            @apply border-t-borderLightest dark:border-borderLightest-dark mt-5 pt-5 border-t border-solid;
+        }
+        h5 {
+            @apply mb-2.5 text-[20px];
+        }
+        h6 {
+            @apply text-[14px];
+        }
+        .read-group {
+            &:nth-child(n + 2) {
+                @apply mt-[15px];
+            }
+        }
+        textarea {
+            @apply capitalize p-[15px];
+        }
+    }
+
+    h6 {
+        @apply mb-2.5 float-left;
+    }
+
+    .right-download {
+        @apply float-right;
+    }
+}
+
+.action-wrapper {
+    @apply mt-[15px];
+}
+
+.email-content {
+    .email-top {
+        .user-emailid {
+            &:after {
+                @apply content-[""] relative h-5 w-px z-[2] top-[3px] end-0 float-right p-0 mx-5 my-0;
+                @apply border border-solid border-borderLightest dark:border-borderLightest-dark;
+            }
+        }
+    }
+}
+
+.email-body {
+    .attachment {
+        ul {
+            li {
+                img {
+                    @apply w-[80px] h-[80px];
+                }
+                &:nth-child(n + 2) {
+                    @apply ms-[10px];
+                }
+            }
+        }
+    }
+
+    .email-compose {
+        .email-top {
+            h4 {
+                @apply mb-0 text-[24px];
+            }
+            .btn {
+                @apply z-0;
+            }
+        }
+        .compose-border {
+            .btn-middle {
+                @apply pt-[5px];
+            }
+        }
+        .compose-header {
+            @apply flex items-center justify-between;
+        }
+        .dropzone {
+            @apply bg-bgLightest dark:bg-bgLightest-dark;
+            i {
+                @apply block mb-2.5;
+            }
+            h6 {
+                @apply font-semibold;
+                float: unset;
+            }
+            .needsclick {
+                @apply block m-0;
+            }
+        }
+    }
+}
+
+.actions {
+    @apply text-start sm:text-right;
+    li {
+        @apply inline-block;
+        &:nth-child(n + 2) {
+            @apply ms-[5px] sm:ms-[15px] mb-[15px] md:mb-0;
+        }
+    }
+}
+
+.email__toggle-btn {
+    @apply capitalize hidden;
+}
+
+.email__btn-wrap {
+    @apply mt-5;
+    ul {
+        li {
+            @apply mb-[15px];
+        }
+    }
+}
+
+.divider {
+    @apply border-b border-solid border-borderLightest dark:border-borderLightest-dark;
+    @apply w-full pt-[15px] mb-[15px];
+}
+
+.form-group {
+    @apply mb-[15px];
+}
+
+
+@media (max-width: 991px) {
+    .email-wrapper {
+        h6 {
+            @apply text-[18px];
+        }
+    }
+}
+
+@media (max-width: 575px) {
+    .email__section {
+        .email__left-sidebar {
+            .main-menu {
+                >li {
+                    a {
+                        @apply leading-[30px];
+                    }
+                }
+            }
+        }
+
+        .email-right-aside {
+            .tab-content {
+                .email-wrapper {
+                    .right-download {
+                        @apply text-[12px]
+                    }
+                }
+            }
+        }
+    }
+}
+
+.media {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-align: start;
+    -ms-flex-align: start;
+}
+
+.media .media-body {
+    -webkit-box-flex: 1;
+    -ms-flex: 1;
+    flex: 1;
+}
+
+.email__section .media-body h6 {
+    @apply mb-[2px] font-semibold inline-block text-[14px] mt-[3px];
+    @apply text-primary dark:text-primary-dark;
+}
+
+.card .card-body p:last-child {
+    @apply mb-0;
+}
+
+
+@media only screen and (max-width: 1199px) {
+    // Email app
+    .email__section {
+        .email-right-aside {
+            .email-body {
+                @apply rounded-tr rounded-br;
+                .b-r-light {
+                    border-right: none !important;
+                }
+            }
+            .radius-left {
+                border-top-left-radius: 4px !important;
+                border-bottom-left-radius: 4px !important;
+            }
+        }
+
+        .email__toggle-btn {
+            @apply block;
+        }
+
+        .email__sidebar {
+            @apply relative;
+
+            .email__toggle-btn {
+                @apply w-fit z-0 inline-flex mb-5;
+            }
+
+            .email__left-side {
+
+                @apply absolute opacity-0 invisible z-[2] w-[280px] transition-all duration-[0.5s] ease-[ease-in-out] top-full start-0;
+                
+                &.open {
+                    @apply visible opacity-100;
+                }
+                .card__wrapper {
+                    @apply bg-white dark:bg-label;
+                }
+            }
+        }
+    }
+
+    .product-page-details {
+        @apply mt-[30px];
+    }
+
+    .product-wrapper-grid {
+        &.list-view {
+            .product-box {
+                .product-img {
+                    @apply w-[32%];
+                }
+            }
+        }
+    }
+
+    .md-sidebar.job-sidebar {
+        .md-sidebar-aside.job-left-aside {
+            top: 40% !important;
+        }
+    }
+}
+
+@media only screen and (max-width: 767px) {
+    .email__section .email-right-aside .email__profile {
+        @apply overflow-x-auto;
+    }
+}
+
+@media only screen and (max-width: 767px) {
+    .email__section .email-right-aside .email__profile .email__inbox {
+        @apply w-[850px];
+    }
+}
+
+.email-form {
+    label {
+        @apply font-medium mb-2.5 block;
+        @apply text-black dark:text-black-dark;
+    }
+
+    input {
+        @apply border-borderLightest dark:border-borderLightest-dark text-[14px];
+        @apply text-body dark:text-body-dark;;
+    }
+}
+

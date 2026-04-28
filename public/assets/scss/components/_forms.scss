@@ -1,0 +1,1042 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  FORMS CSS START
+/*----------------------------------------*/
+
+.form__input {
+	.form_control {
+		@apply outline-none bg-transparent h-[60px] w-[100%] text-[16px] border-none py-0 px-[25px] border border-borderLightest dark:text-body-dark text-black;
+
+		&:focus {
+			@apply border-primary;
+		}
+	}
+}
+
+.from-grid {
+	@apply flex justify-between flex-wrap sm:flex-nowrap gap-0 sm:gap-[50px];
+
+	.form__input-title {
+		@apply w-[140px];
+	}
+
+	.form-control-color {
+		@apply max-w-[48px] h-auto p-[6px];
+	}
+}
+
+.from__input-box {
+	&:not(:last-child) {
+		@apply mb-[15px];
+	}
+
+	&.has-icon {
+		.form__input {
+			@apply relative;
+
+			span {
+				@apply absolute inline-block;
+			}
+		}
+
+		&.input-icon-left {
+			& .form__input {
+
+				input,
+				textarea {
+					@apply ps-[45px] !important;
+				}
+			}
+
+		}
+
+		& .input-icon-right {
+			.form__input {
+
+				input,
+				textarea {
+					@apply pe-[45px];
+				}
+			}
+		}
+	}
+}
+
+.from__input-box {
+	&.has-icon {
+		&.input-icon-left {
+			.form__input {
+				span {
+					@apply start-[20px] top-[18px] -translate-y-[50%];
+				}
+			}
+		}
+
+		&.input-icon-right {
+			.form__input {
+				span {
+					@apply end-[20px] top-[10px];
+				}
+			}
+		}
+	}
+}
+
+.from__input-box {
+	&.label-hidden {
+		label {
+			@apply hidden;
+		}
+	}
+}
+
+.form {
+	&__input {
+		@apply relative;
+		&-title {
+			label {
+				@apply mb-[5px] text-[16px] flex text-label dark:text-label-dark font-medium;
+
+				span {
+					@apply text-danger ms-[5px] inline-block text-[18px];
+				}
+			}
+		}
+	}
+
+	&__input {
+		textarea {
+			@apply resize-none w-full rounded-[10px] h-[100px] py-2.5 px-[15px] !important;
+		}
+	}
+}
+
+.from__input-box {
+	&.from-flex {
+		@apply flex flex-col sm:flex-row gap-x-[10px] gap-y-0;
+	}
+}
+
+.form__input {
+	@apply relative flex-grow-[14];
+
+	.pass-icon {
+		@apply absolute end-[15px] text-[16px] top-[20px] opacity-50 cursor-pointer -translate-y-[50%];
+
+		&:hover {
+			@apply opacity-100;
+		}
+	}
+}
+
+// Floating form
+.floating__form-input {
+	@apply relative;
+
+	input:focus~.floating-label {
+		@apply text-base font-normal px-1 py-0 top-0 start-5 bg-primary text-white;
+	}
+
+	input:not(:focus):valid~.floating-label {
+		@apply text-base font-normal bg-transparent px-1 py-0 top-[19px] transition-all duration-300 start-5 text-body;
+	}
+
+	input {
+		@apply bg-transparent;
+	}
+
+
+	.floating-label {
+		@apply absolute pointer-events-none start-5 top-[50%] -translate-y-[50%] transition-all ease-linear duration-200 bg-transparent;
+	}
+
+	textarea {
+		@apply h-[100px] px-[20px] py-[22px] resize-none bg-transparent;
+	}
+
+	textarea:focus~.floating-label-two {
+		@apply text-base font-normal opacity-100 px-1 py-0 -top-[12px] start-5 bg-primary text-white;
+	}
+
+	textarea:not(:focus):valid~.floating-label-two {
+		@apply text-base font-normal opacity-0 px-1 py-0 top-[19px] transition-all duration-300 start-5 bg-primary text-white;
+	}
+
+	textarea {
+		@apply bg-transparent;
+	}
+
+	.floating-label-two {
+		@apply absolute pointer-events-none start-5 top-5 transition-all ease-linear duration-200 bg-transparent;
+	}
+}
+
+// radion button
+span.MuiRadio-sizeSmall {
+	@apply p-0;
+
+	&.Mui-checked {
+		@apply text-primary;
+	}
+}
+
+// Custom checkbox button
+input[type="checkbox"] {
+	@apply start-0 !important;
+
+	~label {
+		@apply relative ps-2.5 cursor-pointer; 
+	}
+}
+
+// Custom radio button 
+input[type="radio"] {
+	@apply cursor-pointer;
+}
+
+input[type="radio"] {
+	@apply cursor-pointer;
+
+	~label {
+		@apply relative ps-2.5 cursor-pointer;
+
+		@include rtl {
+			@apply ps-2.5;
+		}
+	}
+}
+.MuiRating-root {
+	input[type="radio"] {
+		~label {
+			@apply maxXs:ps-0;
+		}
+	}
+	.MuiRating-decimal {
+		@apply text-start;
+	}
+}
+
+//range slider
+span.MuiSlider-colorPrimary {
+	@apply text-primary;
+}
+
+.form-select {
+	@apply  bg-[right_0.75rem_center]  block bg-no-repeat w-full text-base font-normal leading-normal text-body bg-transparent bg-[20px_20px] border border-borderLightest px-3.5 py-[7px] rounded-md border-solid;
+	--bs-form-select-bg-img: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%236f6b7d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='white' stroke-opacity='0.2' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--bs-form-select-bg-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+	transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out,
+	  -webkit-box-shadow 0.15s ease-in-out;
+  }
+
+[dir="rtl"] .form-select {
+	@apply  bg-[left_0.875rem_center] pe-[.875rem] ps-[2.45rem];
+}
+
+.form-floating {
+	.form-control {
+		@apply h-[100%] min-h-[58px] leading-[1.25];
+	}
+}
+
+.form-floating {
+	@apply relative;
+
+	label {
+		@apply absolute top-0 start-0 w-[100%] h-[100%] px-[12px] py-[16px] border border-transparent overflow-hidden text-ellipsis whitespace-nowrap pointer-events-none;
+		-webkit-transform-origin: 0 0;
+		-ms-transform-origin: 0 0;
+		transform-origin: 0 0;
+		-webkit-transition: opacity .1s ease-in-out, -webkit-transform .1s ease-in-out;
+		transition: opacity .1s ease-in-out, transform .1s ease-in-out, -webkit-transform .1s ease-in-out;
+
+	}
+
+	input:focus~label {
+		@apply text-base font-normal px-1 py-0 top-[5px] transition-all duration-300 start-2.5 text-body text-[12px];
+	}
+
+	input:not(:focus):valid~label {
+		@apply text-base font-normal bg-transparent px-1 py-0 top-[15px] transition-all duration-300 start-2.5 text-body;
+	}
+
+}
+
+.form-control {
+	@apply block w-[100%] !py-[5px] !px-[15px] text-[16px] font-normal leading-[1.5] text-body border border-borderLightest dark:border-borderLightest-dark bg-transparent bg-clip-padding rounded-[6px];
+	transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+
+	@include rtl {
+		@apply rounded-none rounded-tl-[6px] rounded-bl-[6px] !important;
+	}
+}
+
+.form-control:focus {
+	@apply text-body bg-transparent border border-primary outline-0;
+	box-shadow: 0 .125rem .25rem rgba(165, 163, 174, .3);
+}
+
+@media(prefers-reduced-motion: reduce) {
+	.form-control {
+		@apply transform-none;
+	}
+}
+
+.form-control[type=file] {
+	@apply overflow-hidden;
+}
+
+.form-control[type=file]:not(:disabled):not([readonly]) {
+	cursor: pointer
+}
+
+.form-control::-webkit-date-and-time-value {
+	@apply min-w-[85px] h-[24px] m-0;
+}
+
+.form-control::-webkit-datetime-edit {
+	@apply block p-0;
+}
+
+.form-control::placeholder {
+	@apply text-placeholder opacity-100;
+}
+
+.form-control::file-selector-button {
+	@apply text-black me-[14px] bg-white pointer-events-none -mx-[.875rem] -my-[.422rem] py-[.422rem] px-[.875rem] border-inherit border-solid border-0 border-e rounded-none;
+	transition: all .2s ease-in-out
+}
+
+@media(prefers-reduced-motion: reduce) {
+	.form-control::file-selector-button {
+		@apply transition-none;
+	}
+}
+
+.form-control:hover:not(:disabled):not([readonly])::file-selector-button {
+	@apply bg-black;
+}
+
+.form-control-plaintext {
+	@apply block w-full mb-0 leading-6 text-body bg-transparent border border-solid border-transparent py-[.422rem] px-0;
+}
+
+.form-control-plaintext:focus {
+	@apply outline-0;
+}
+
+.form-control-plaintext.form-control-sm,
+.form-control-plaintext.form-control-lg {
+	@apply pe-0 ps-0;
+}
+
+.form-control-sm {
+	@apply text-[13px] rounded-none px-[.625rem] py-[.266rem];
+	min-height: calc(1.5em + 0.532rem + 2px);
+}
+
+.form-control-sm::file-selector-button {
+	@apply mt-[-0.266rem] mb-[-0.266rem] ms-[-0.625rem] px-2.5 py-[0.266rem] me-[.625rem];
+}
+
+.form-control-lg {
+	@apply min-h-[48px] text-lg px-4 py-[0.594rem] rounded-none;
+}
+
+.form-control-lg::file-selector-button {
+	@apply mt-[-0.594rem] me-[-1rem] mb-[-0.594rem] ms-[-1rem] px-4 py-[0.594rem];
+}
+
+textarea.form-control {
+	@apply min-h-[42px];
+}
+
+textarea.form-control-sm {
+	@apply min-h-[38px];
+}
+
+textarea.form-control-lg {
+	@apply min-h-[48px];
+}
+
+.form-control-color {
+	@apply w-[48px] p-[.422rem] min-h-[42px];
+}
+
+.form-control-color:not(:disabled):not([readonly]) {
+	cursor: pointer
+}
+
+.form-control-color::-moz-color-swatch {
+	@apply rounded-[6px] border-0;
+}
+
+.form-control-color::-webkit-color-swatch {
+	@apply rounded-[6px] border-0;
+}
+
+.form-control-color.form-control-sm {
+	@apply min-h-[38px];
+}
+
+.form-control-color.form-control-lg {
+	@apply min-h-[48px];
+}
+
+.form-select:focus {
+	@apply border border-primary outline-0;
+	box-shadow: 0 .125rem .25rem rgba(165, 163, 174, .3)
+}
+
+//default forms input
+.input-group {
+	@apply relative items-stretch flex w-[100%];
+
+	.dropdown-toggle-button {
+		@apply relative;
+
+		.dropdown-menu-start {
+			@apply absolute top-[40px] left-[0px] w-[150px] border border-gray-300 bg-white z-[9999] dark:bg-card-dark dark:border-borderLightest-dark;
+		}
+
+		.dropdown-menu-end {
+			@apply absolute top-[40px] right-0 border w-[150px] border-gray-300 bg-white dark:bg-card-dark dark:border-borderLightest-dark z-[9999];
+
+			.dropdown__item {
+				@apply w-[100%] outline-none outline-0;
+			}
+		}
+	}
+}
+
+.from__input-box,
+.input-group {
+	.MuiButton-icon {
+		@apply mx-0;
+	}
+	button i.fa-gear {
+		@apply mx-0;
+	}
+	input::file-selector-button {
+		@apply dark:bg-bgLightest-dark h-[38px] dark:text-white ms-[-15px] inline-block !important;
+	}
+}
+.from__input-box {
+	.form-select {
+		@apply dark:border-border-dark;
+	}
+}
+.input-group:not(.has-validation)>:not(:last-child):not(.dropdown-toggle):not(.dropdown-menu):not(.form-floating) {
+	@apply rounded-r-none;
+}
+
+.input-group>:not(:first-child):not(.dropdown-menu):not(.valid-tooltip):not(.valid-feedback):not(.invalid-tooltip):not(.invalid-feedback) {
+	@apply rounded-s-none ml-[0px];
+}
+
+.input-group-text {
+	@apply flex items-center px-[15px] bg-borderLightest dark:bg-borderLightest-dark border border-solid border-borderLightest dark:border-borderLightest-dark py-[5px] text-black dark:text-black-dark text-[16px] font-normal leading-[1.5] text-center whitespace-nowrap rounded-[6px] maxXXs:px-2.5 maxXXs:text-[12px];
+
+	@include rtl {
+		border-radius: 0 6px 6px 0;
+	}
+	.MuiTouchRipple-root {
+		@apply text-primary;
+	}
+	.MuiRadio-root {
+		@apply text-primary;
+	}
+}
+
+.search-input-fix{
+	.form-control{
+		@apply mb-0;
+	}
+	}
+
+//material dropdown button style start
+.MuiButtonBase-root {
+	&.MuiButton-root {
+		@apply border border-primary text-primary;
+	}
+}
+
+
+.clr_style_two {
+	@apply h-[36px];
+}
+
+.input-group-lg>.btn,
+.input-group-lg>.form-control,
+.input-group-lg>.form-select,
+.input-group-lg>.input-group-text {
+	@apply px-[16px] py-[8px] text-[20px];
+}
+
+.input-group-sm>.btn,
+.input-group-sm>.form-control,
+.input-group-sm>.form-select,
+.input-group-sm>.input-group-text {
+	@apply px-[8px] py-[4px] text-[12px];
+}
+
+.fa-spinner {
+	animation-name: fa-spin;
+	animation-duration: var(--fa-animation-duration, 5s);
+	animation-iteration-count: var(--fa-animation-iteration-count, infinite);
+	animation-timing-function: var(--fa-animation-timing, linear);
+	animation-direction: alternate;
+}
+
+.form-control:hover:not(:disabled):not([readonly])::file-selector-button {
+	@apply bg-transparent;
+}
+
+.form-control[type="file"]:not(:disabled):not([readonly])::file-selector-button {
+	@apply bg-transparent;
+}
+
+//time and date picker start
+.datepicker-style{
+	@apply h-[36px];
+	div.react-datepicker-wrapper {
+		@apply w-full overflow-hidden outline-none; 
+		input{
+			@apply w-full border border-solid border-borderLightest dark:border-borderLightest-dark rounded-[6px] overflow-hidden py-[6px] px-[15px] text-[16px] text-body dark:text-body-dark font-normal bg-transparent dark:bg-transparent;
+			@apply mb-0 !important;
+			&:focus{
+				@apply border-primary;
+			}
+		}
+		
+	}
+	.react-datepicker,
+	.react-datepicker__header {
+		@apply dark:bg-bgBody-dark dark:border-border-dark;
+	}
+	.react-datepicker__day-name, .react-datepicker__day, .react-datepicker__time-name {
+		@apply dark:text-white;
+	}
+	.react-datepicker__day:not([aria-disabled="true"]):hover, .react-datepicker__month-text:not([aria-disabled="true"]):hover, .react-datepicker__quarter-text:not([aria-disabled="true"]):hover, .react-datepicker__year-text:not([aria-disabled="true"]):hover {
+		@apply dark:hover:bg-card-dark;
+	}
+	select.react-datepicker__month-select,
+	select.react-datepicker__year-select {
+		@apply dark:bg-card-dark dark:text-body-dark;
+	}
+	.react-datepicker__current-month, .react-datepicker-time__header, .react-datepicker-year-header {
+		@apply dark:text-white;
+	}
+	.react-datepicker__time-container .react-datepicker__time {
+		@apply dark:bg-card-dark dark:text-body-dark;;
+	}
+	.react-datepicker__month {
+		@apply dark:text-white;
+	}
+	.react-datepicker__close-icon {
+		@apply right-2;
+		@include rtl {
+			@apply right-auto left-[15px];
+		}
+	}
+}
+
+button.react-datepicker__close-icon{
+	&::after{
+		@apply bg-primary dark:bg-primary;
+	}
+}
+
+.react-datepicker__day--selected:not([aria-disabled=true]){
+	@apply bg-primary dark:bg-primary;
+}
+.react-datepicker__day--selected:not([aria-disabled=true]):hover{
+	@apply bg-primary dark:bg-primary !important;
+}
+
+select.react-datepicker__month-select {
+	@apply py-[5px] px-[8px] mt-[5px] rounded-[4px] text-body;
+}
+
+select.react-datepicker__year-select {
+    @apply py-[5px] px-[8px] mt-[5px] rounded-[4px] text-body;
+}
+
+div.react-datepicker__time-container {
+	@apply w-[150px];
+}
+
+div.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box {
+	@apply w-[150px];
+}
+
+
+div.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected {
+    @apply bg-primary dark:bg-primary;
+}
+div.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected:hover {
+    @apply bg-primary dark:bg-primary;
+}
+
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
+    @apply bg-bgBody dark:bg-bgBody-dark;
+}
+
+//range date style start
+div.react-datepicker__day--in-range{
+	@apply bg-primary dark:bg-primary !important;
+}
+div.react-datepicker__day--in-range:not([aria-disabled=true]):hover{
+	@apply bg-primary dark:bg-primary !important;
+}
+div.react-datepicker__day--in-range:not([aria-disabled=true]) {
+	@apply text-white dark:text-white;
+}
+
+div.react-datepicker__day--in-selecting-range:not([aria-disabled=true]){
+	@apply bg-primary dark:bg-primary;
+}
+div.react-datepicker__day--in-selecting-range:not([aria-disabled=true]):hover{
+	@apply bg-primary dark:bg-primary;
+}
+
+div.react-datepicker__day--in-selecting-range:not([aria-disabled=true]) {
+	@apply text-white dark:text-white;
+}
+
+div.react-datepicker__day--keyboard-selected{
+	@apply text-white dark:text-white bg-primary dark:bg-primary;
+}
+
+div.react-datepicker__week-number--selected {
+    @apply bg-secondary;
+}
+//range date style end
+
+.react-datepicker__month .react-datepicker__month-text, .react-datepicker__month .react-datepicker__quarter-text {
+	@apply inline-block w-[4rem] m-[2px] py-[6px] px-[5px];
+    
+}
+
+.react-datepicker__month-text--keyboard-selected:not([aria-disabled=true]){
+	@apply bg-primary text-white;
+}
+.react-datepicker__month-text--keyboard-selected:not([aria-disabled=true]):hover{
+	@apply bg-primary !important;
+}
+//time and date picker end
+
+// Update checkbox Styles start
+label.MuiFormControlLabel-root {
+	@apply ml-0;
+}
+
+span.MuiFormControlLabel-label {
+	@apply text-[14px] leading-[25px] ps-2.5;
+}
+
+//indeterminate check
+span.MuiCheckbox-indeterminate.MuiCheckbox-colorPrimary {
+	@apply text-primary;
+}
+
+
+//inline checkbox start
+div.MuiFormGroup-root {
+	&.checkbox-inline {
+		@apply flex flex-row;
+	}
+}
+//inline checkbox end
+
+.custom-checkbox.MuiCheckbox-colorPrimary {
+	@apply text-transparent border border-solid border-primary rounded;
+	&.Mui-checked {
+		@apply text-primary;
+	}
+}
+
+.custom-checkbox.MuiCheckbox-colorSecondary {
+	@apply text-transparent border border-solid border-secondary rounded;
+	&.Mui-checked {
+		@apply text-secondary;
+	}
+}
+
+//success checkbox style
+.custom-checkbox.MuiCheckbox-colorSuccess {
+	@apply text-transparent border border-solid border-success rounded;
+	&.Mui-checked {
+		@apply text-success;
+	}
+}
+
+//danger checkbox style
+.custom-checkbox.danger-checkbox {
+	@apply text-transparent border border-solid border-danger rounded;
+	&.Mui-checked {
+		@apply text-danger;
+	}
+}
+
+//warning checkbox style
+.custom-checkbox.MuiCheckbox-colorWarning {
+	@apply text-transparent border border-solid border-warning rounded;
+	&.Mui-checked {
+		@apply text-warning;
+	}
+}
+
+//info checkbox style
+.custom-checkbox.MuiCheckbox-colorInfo {
+	@apply text-transparent border border-solid border-info rounded;
+	&.Mui-checked {
+		@apply text-info;
+	}
+}
+
+//black checkbox style
+.custom-checkbox.MuiCheckbox-colorDefault {
+	@apply text-transparent border border-solid border-black rounded;
+	&.Mui-checked {
+		@apply text-black;
+	}
+}
+
+//switch checkbox
+span.MuiCheckbox-root {
+	@apply p-0;
+}
+// Update checkbox Styles end
+
+.custom-checkbox {
+	@apply h-5 w-5 rounded bg-white appearance-none focus:ring-0 focus:outline-none flex items-center justify-center;
+	@apply mb-0 !important;
+	&:checked {
+		@apply relative;
+		&::before {
+			@apply content-['✔'] text-white text-[16px] absolute flex items-center justify-center;
+		}
+	}
+	&.checkbox-small {
+		@apply h-4 w-4;
+	}
+}
+
+//radio button style start
+span.MuiCheckbox-colorPrimary {
+	@apply text-transparent border border-solid border-primary rounded h-5 w-5;
+	&.Mui-checked {
+		@apply text-primary;
+	}
+	&.Mui-disabled {
+		@apply text-transparent border border-solid border-body rounded;
+	}
+}
+
+.checkbox {
+	&.switches {
+		span.MuiCheckbox-colorPrimary {
+			@apply text-primary border-none;
+			&.Mui-checked {
+				@apply text-primary;
+			}
+		}
+		.MuiTypography-root {
+			@apply dark:text-body-dark;
+		}
+	}
+}
+.checkbox-inline,
+.checkbox {
+	span.MuiTypography-root {
+		@apply dark:text-body-dark;
+	}
+}
+
+//radio button style start
+.radio-input-style {
+	span.MuiRadio-root {
+		@apply p-0;
+	}
+	span.MuiTypography-root {
+		@apply dark:text-body-dark;
+	}
+	.radio-primary {
+		.bp-icon {
+			box-shadow: inset 0 0 0 1px #6C5FFC, inset 0 -1px 0 rgba(16, 22, 26, 0.1);
+			&.bp-icon-checked {
+				@apply bg-primary;
+			}
+		}
+	}
+
+	.radio-secondary {
+		.bp-icon {
+			box-shadow: inset 0 0 0 1px #1ABC9C, inset 0 -1px 0 rgba(16, 22, 26, 0.1);
+			&.bp-icon-checked {
+				@apply bg-secondary;
+			}
+		}
+	}
+
+	.radio-success {
+		.bp-icon {
+			box-shadow: inset 0 0 0 1px #34B53A, inset 0 -1px 0 rgba(16, 22, 26, 0.1);
+			&.bp-icon-checked {
+				@apply bg-success;
+			}
+		}
+	}
+
+	.radio-danger {
+		.bp-icon {
+			box-shadow: inset 0 0 0 1px #FF3A29, inset 0 -1px 0 rgba(16, 22, 26, 0.1);
+			&.bp-icon-checked {
+				@apply bg-danger;
+			}
+		}
+	}
+
+	.radio-warning {
+		.bp-icon {
+			box-shadow: inset 0 0 0 1px #ABA3FD, inset 0 -1px 0 rgba(16, 22, 26, 0.1);
+			&.bp-icon-checked {
+				@apply bg-tertiary;
+			}
+		}
+	}
+
+	.radio-info {
+		.bp-icon {
+			box-shadow: inset 0 0 0 1px #0dcaf0, inset 0 -1px 0 rgba(16, 22, 26, 0.1);
+
+			&.bp-icon-checked {
+				@apply bg-info;
+			}
+		}
+	}
+
+	.radio-dark {
+		.bp-icon {
+			box-shadow: inset 0 0 0 1px #2E2E2E, inset 0 -1px 0 rgba(16, 22, 26, 0.1);
+
+			&.bp-icon-checked {
+				@apply bg-black;
+			}
+		}
+	}
+
+	span.MuiFormControlLabel-label {
+		@apply text-[14px] leading-[25px];
+	}
+}
+//radio button style end
+
+.form__input {
+	@apply relative flex-grow-[14];
+}
+
+//editor style
+div.tox .tox-edit-area::before {
+	@apply content-[''] border-2 border-primary inset-0 opacity-0 pointer-events-none absolute transition-opacity duration-150 z-[1];
+}
+
+// radio styles
+
+.bp-icon {
+	@apply rounded-[50%] w-5 h-5 bg-[#f5f8fa];
+	background-image: linear-gradient(180deg, hsla(0, 0%, 100%, .8), hsla(0, 0%, 100%, 0));
+	input:disabled~& {
+		box-shadow: none;
+		background: rgba(206, 217, 224, .5);
+	}
+}
+
+.bp-icon-checked {
+	background-color:  #1976d2;
+	background-image: linear-gradient(180deg, hsla(0, 0%, 100%, .1), hsla(0, 0%, 100%, 0));
+
+	&::before {
+		@apply block w-5 h-5 content-[""];
+		background-image: radial-gradient(#fff, #fff 28%, transparent 32%);
+	}
+}
+
+//password input
+.input-password {
+	div.MuiFormControl-root {
+		.MuiOutlinedInput-root {
+			.MuiOutlinedInput-input {
+				@apply py-[5px] px-[18px] h-[27px] text-body dark:text-body-dark;
+			}
+		}
+	}
+}
+
+div.MuiFormControl-root {
+	@apply w-full m-0;
+	.MuiOutlinedInput-root {
+		@apply rounded-[5px] border-none;
+		.MuiOutlinedInput-notchedOutline {
+			@apply border border-solid border-borderLightest dark:border-borderLightest-dark top-0;
+		}
+		&.Mui-focused {
+			.MuiOutlinedInput-notchedOutline {
+				@apply border border-solid border-primary;
+			}
+		}
+		legend{
+			span{
+				@apply hidden w-0 h-0;
+			}
+		}
+	}
+
+	.MuiSvgIcon-fontSizeMedium {
+		@apply fill-[#888];
+	}
+}
+
+// Style for the Select component wrapper
+.select-wrapper {
+	div.MuiFormControl-root .MuiOutlinedInput-root {
+		@apply rounded-[5px] border-none h-[36px] px-0 pl-[15px] text-[16px] text-placeholder dark:text-placeholder-dark;
+	}
+
+	.MuiSelect-root {
+		@apply text-[16px] px-4 py-2;
+	}
+
+	.MuiList-root {
+		@apply py-0;
+	}
+
+	.MuiSelect-icon {
+		@apply text-headingPrimary;
+	}
+
+	.MuiPaper-root {
+		@apply border border-[red];
+	}
+
+	.mz-large-select {
+		div.MuiFormControl-root .MuiOutlinedInput-root {
+			@apply text-[18px] h-[48px];
+		}
+	}
+
+	.mz-small-select {
+		div.MuiFormControl-root .MuiOutlinedInput-root {
+			@apply text-[12px] h-[30px];
+		}
+	}
+}
+
+div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation8.MuiPopover-paper.MuiMenu-paper.MuiMenu-paper {
+	@apply max-h-[200px] !important;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+      @apply hidden;
+    }
+}
+
+div.MuiSelect-select{
+	&.MuiSelect-outlined{
+		@apply p-0;
+	}
+}
+.manaz-common-mat-list {
+	.MuiTablePagination-root {
+		div.MuiSelect-select,
+		.MuiSvgIcon-root {
+			@apply dark:text-body-dark;
+		}
+	}
+}
+//select Styles for MenuItems 
+
+li.MuiMenuItem-root.Mui-selected {
+	@apply bg-primary dark:bg-primary text-white dark:text-white; 
+}
+li.MuiMenuItem-root.Mui-selected:hover {
+	@apply bg-primary dark:bg-primary;
+}
+li.menu-item {
+	@apply text-[16px] h-[30px] font-normal leading-normal text-headingLightest capitalize bg-transparent px-[15px] py-[5px];
+	&:hover {
+		@apply bg-primary text-white;
+	}
+	&.Mui-selected {
+		@apply bg-primary dark:bg-primary text-white dark:text-white;
+	}
+}
+
+li.menu-item-small {
+	@apply text-[12px] h-[25px] font-normal leading-normal text-headingLightest bg-transparent px-[15px] py-[5px] capitalize;
+	&:hover {
+		@apply bg-bgBody dark:bg-bgBody-dark text-headingLightest;
+	}
+	&.Mui-selected {
+		@apply text-white dark:text-white;
+	}
+}
+
+li.menu-item-lg {
+	@apply text-[18px] h-[30px] font-normal leading-normal text-headingLightest bg-transparent px-[15px] py-[5px] capitalize;
+	&:hover {
+		@apply bg-bgBody dark:bg-bgBody-dark text-headingLightest;
+	}
+	&.Mui-selected {
+		@apply bg-primary dark:bg-primary text-white dark:text-white;
+	}
+}
+
+//auto complete input tags style
+div.autocomplete-tags {
+	div.MuiButtonBase-root {
+		@apply h-5 rounded bg-[#e9ecf5] border-none;
+		.MuiChip-label {
+			@apply pl-[6px] pr-2.5;
+		}
+
+	}
+
+	.MuiOutlinedInput-root {
+		@apply px-4 py-[2px];
+	}
+
+	/* Cross icon styling */
+	div.MuiFormControl-root .MuiSvgIcon-fontSizeMedium {
+		@apply fill-[#FF3A29];
+	}
+
+	.MuiChip-deleteIcon {
+		@apply text-[16px];
+	}
+}
+//form editors
+div.tox .tox-menubar:is(.dark *) {
+	@apply bg-white dark:bg-card-dark;
+}
+div.tox:not(.tox-tinymce-inline) .tox-editor-header:is(.dark *) {
+	@apply bg-white dark:bg-card-dark; 
+}
+.tox .tox-statusbar{
+    display: none !important;
+}
+
+//form group elements
+.form__element-xs {
+	.form__element-xs {
+		@apply maxXXs:flex-col;
+		.input-group-text {
+			@apply maxXXs:mb-0 maxXXs:rounded-none;
+		}
+		input,textarea {
+			@apply maxXXs:rounded-none;
+		}
+	}
+}

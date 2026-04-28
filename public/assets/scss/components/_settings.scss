@@ -1,0 +1,167 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  Theme Settings
+/*----------------------------------------*/
+.bd-theme{
+    $self : &;
+    &-settings{
+        &-area{
+            @apply -translate-y-2/4 translate-x-full z-[991] rounded-br fixed w-60 top-2/4 end-0 bg-card dark:bg-card-dark;
+            @apply border border-solid border-borderLightest dark:border-borderLightest-dark;
+           
+            @include rtl {
+                @apply left-0 right-auto -translate-y-2/4 -translate-x-full;
+            }
+            &.settings-opened{
+                @apply -translate-y-2/4 translate-x-[0%];
+                #{$self}{
+                    &-settings-gear{
+                        @apply opacity-0;
+                    }
+                    &-settings-close{
+                        @apply opacity-100;
+                    }
+                }
+            }
+        }
+        &-open{
+            @apply absolute -top-px end-full;
+            & button{
+                @apply bg-card dark:bg-card-dark text-black dark:text-black-dark;
+                @apply border border-solid border-borderLightest dark:border-borderLightest-dark;
+                @apply w-9 h-9 text-center text-[18px] relative flex items-center justify-center rounded-bl;
+                border-inline-end: 0;
+                border-start-start-radius: 4px;
+            }
+        }
+        &-gear{
+            @apply flex;
+            -webkit-animation: spin 4s linear infinite;
+            -moz-animation: spin 4s linear infinite;
+            animation: spin 4s linear infinite;
+            @at-root{
+              @include keyframes(spin) {
+                100% {
+                  -webkit-transform: rotate(360deg);
+                  transform: rotate(360deg);
+                }
+              }
+            }
+        }
+        &-close{
+            @apply inline-block absolute opacity-0 top-2/4 start-2/4 -translate-x-2/4 -translate-y-2/4;
+            @include rtl {
+                @apply start-[10%];
+            }
+        }
+    }
+    &-header{
+        &-title{
+            @apply text-[16px] font-semibold mb-[30px];
+        }
+    }
+    &-wrapper{
+        @apply pt-5 pb-[30px] px-[30px];
+    }
+    &-toggle{
+        @apply text-center;
+        &-main{
+            @apply inline-block w-40 relative z-[1] m-auto p-1 rounded-[20px];
+            @apply bg-taxonomy dark:bg-bgLightest-dark;
+            
+        }
+        &-light,
+        &-dark{
+            @apply inline-block w-[calc(100%_-_52%)] h-[26px] leading-[26px];
+        }
+        & input{
+            @apply hidden;
+        }
+        
+        &:hover{
+            @apply cursor-pointer;
+        }
+
+        & label{
+            @apply text-[14px] font-medium text-black dark:text-black-dark ;
+
+            &:hover{
+                @apply cursor-pointer;
+            }
+        }
+        & #bd-theme-toggler{
+            @apply hidden;
+
+            &:checked + i{
+                inset-inline-end: calc(50% - 4px);
+            }
+        }
+        &-slide{
+            @apply absolute -translate-y-2/4 end-[4px] top-2/4 h-[26px] w-[calc(100%_-_50%)] rounded-[30px] z-[-1];
+            @apply bg-card dark:bg-card-dark text-black dark:text-black-dark;
+            -webkit-transform: translate3d(0, 0);
+            transform: translate3d(0, 0);
+            @include bd-transition(all, .2s, cubic-bezier(0.25, 1, 0.5, 1));
+        }
+
+    }
+    &-dir{
+        @apply text-center;
+        &-main{
+            @apply inline-block w-40 relative z-[1] m-auto p-1 rounded-[20px];
+            @apply bg-taxonomy dark:bg-bgLightest-dark;
+        }
+        &-ltr,
+        &-rtl{
+            @apply inline-block w-[calc(100%_-_52%)] h-[26px] leading-[26px];
+        }
+        & input{
+            @apply hidden;
+        }
+        
+        &:hover{
+            @apply cursor-pointer;
+        }
+
+        & label{
+            @apply text-[14px] font-medium text-black dark:text-black-dark;
+
+            &:hover{
+                @apply cursor-pointer;
+            }
+        }
+        & #bd-dir-toggler{
+            @apply hidden;
+
+            &:checked + i{
+                inset-inline-end: calc(50% - 4px);
+                
+            }
+        }
+        &-slide{
+            @apply absolute w-[calc(100%_-_50%)] h-[26px] top-2/4 -translate-y-2/4 end-[4px] rounded-[30px] z-[-1];
+            @apply bg-card dark:bg-card-dark text-black dark:text-black-dark;
+            -webkit-transform: translate3d(0, 0);
+            transform: translate3d(0, 0);
+            @include bd-transition(all, .2s, cubic-bezier(0.25, 1, 0.5, 1));
+        }
+
+    }
+}
+.light {
+    .bd-theme-toggle-slide {
+        @apply end-[4px];
+    }
+    .bd-theme-toggle #bd-theme-toggler:checked + i {
+        @apply end-[4px];
+    }
+}
+.dark {
+    .bd-theme-toggle-slide {
+        inset-inline-end: calc(50% - 4px);
+    }
+    .bd-theme-toggle #bd-theme-toggler:checked + i {
+        inset-inline-end: calc(50% - 4px);
+    }
+}

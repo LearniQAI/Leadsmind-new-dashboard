@@ -1,0 +1,36 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  Badge CSS START
+/*----------------------------------------*/
+
+.bd-badge {
+    @apply text-[12px] font-normal px-2.5 py-1 h-[26px] min-w-[75px] inline-flex text-center justify-center items-center rounded-md;
+    @apply text-white;
+
+    &.badge-circle {
+        @apply text-black dark:text-black-dark w-[25px] h-[25px] min-w-[auto] p-0 rounded-[50%] ms-2.5;
+
+        i {
+            @apply text-[14px] me-0;
+        }
+    }
+}
+
+/* alert-badge */
+.alert-badge {
+    @apply text-[12px] font-normal px-2.5 py-1 h-[26px] min-w-[75px] inline-flex text-center justify-center items-center rounded-md;
+    @apply text-white;
+}
+
+/* tag badge */
+.tag-badge {
+    @apply text-[12px] leading-none inline-flex min-w-[86px] text-center justify-center px-2.5 py-1 rounded-md;
+    @apply text-black;
+    @apply bg-alertLight;
+}
+
+//update
+span.badge-circle-color {
+    @apply text-white !important;
+}

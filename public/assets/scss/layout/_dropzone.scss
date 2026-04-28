@@ -1,0 +1,73 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  DROPZONE CSS START
+/*----------------------------------------*/
+
+.dropzone {
+	@apply bg-bgBody dark:bg-bgLightest-dark;
+	@apply border-[2px] min-h-[200px] border-dashed border-border dark:border-border-dark;
+	padding: 7px 20px !important;
+	border-radius: 10px !important;
+    i {
+		@apply text-[50px] mb-[20px];
+        @apply text-primary dark:text-primary-dark;
+    }
+	h6 {
+		@apply mb-[10px];
+	}
+}
+
+.dropzone .dz-preview .dz-image {
+	@apply overflow-hidden w-[175px] h-[175px] relative block z-[5] rounded-lg;
+}
+.dropzone .dz-preview .dz-image img {
+	@apply block w-[175px] h-[175px] object-cover;
+}
+.dropzone .dz-preview.dz-image-preview {
+	@apply bg-transparent !important;
+}
+
+.dz-remove {
+	@apply text-black dark:text-black-dark;
+	@apply transition-all duration-[0.3s] ease-linear mt-[5px];
+	font-size: 18px !important;
+}
+.dz-remove:hover {
+	@apply text-danger;
+}
+
+.dropzone.dz-started .dz-message {
+	@apply hidden;
+}
+
+.dropzone .dz-preview .dz-progress {
+	@apply bg-success;
+}
+.dropzone .dz-preview:not(.dz-processing) .dz-progress {
+	@apply animate-none;
+}
+.dropzone .dz-preview.dz-file-preview .dz-image {
+	@apply rounded-none;
+	background: #ffffff !important;
+}
+//update
+.dropzone-border{
+	.dropzone .dz-preview.dz-file-preview .dz-image {
+		@apply rounded-none;
+	}
+}
+
+//dropzone element style
+.dropzone-wrapper .dropzone {
+    @apply border-neutral-700 border-2 border-dashed;
+  }
+.dropzone-wrapper .dropzone .dz-preview .dz-image {
+    @apply w-[175px] h-[175px];
+  }
+  .dropzone-wrapper .dropzone .dz-preview .dz-progress {
+    @apply bg-success left-2/4 h-[16px] w-20 -ml-10 border-none;
+  };
+  .dropzone .dz-preview.dz-image-preview {
+    @apply bg-none !important;
+}

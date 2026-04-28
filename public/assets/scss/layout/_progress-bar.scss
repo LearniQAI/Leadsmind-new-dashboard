@@ -1,0 +1,56 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  PROGRESS CSS START
+/*----------------------------------------*/
+.mz {
+    &-progress {
+        &-title {
+          @apply text-[16px] font-medium text-label;
+            span {
+                @apply text-[16px] font-medium text-body dark:text-body-dark;
+            }
+        }
+        &-head {
+          @apply flex justify-between mb-2;
+        }
+
+        &-percentage {
+          @apply text-[14px] font-medium text-body dark:text-body-dark;
+        }
+    }
+}
+
+//update
+/* Styles for the progress bar */
+.progress-bar {
+  @apply h-3 rounded-lg;
+  background-color: rgba(108, 95, 252, 0.1) !important;
+  
+  .MuiLinearProgress-bar {
+    @apply rounded-lg;
+  }
+
+  &.progress-default .MuiLinearProgress-bar{
+    @apply bg-[rgba(108,95,252,0.1)];
+  }
+  &.progress-primary .MuiLinearProgress-bar {
+    @apply bg-primary dark:bg-primary-dark; 
+  }
+
+  &.progress-secondary .MuiLinearProgress-bar {
+    @apply bg-secondary dark:bg-secondary-dark;
+  }
+
+  &.progress-success .MuiLinearProgress-bar {
+    @apply bg-success dark:bg-success-dark;
+  }
+
+  &.progress-info .MuiLinearProgress-bar {
+    @apply bg-info dark:bg-info-dark;
+  }
+
+  &.progress-warning .MuiLinearProgress-bar {
+    @apply bg-warning dark:bg-warning-dark;
+  }
+}

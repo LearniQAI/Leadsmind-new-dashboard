@@ -1,0 +1,105 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  CALENDER CSS START
+/*----------------------------------------*/
+
+.calendar-wrapper {
+	#miniCalendar,
+	#miniCalendar2 {
+		&.fc .fc-daygrid-day-number {
+			@apply text-label dark:text-label-dark text-[20px] p-2.5;
+		}
+
+	}
+}
+div.fc-scroller{
+	a.fc-col-header-cell-cushion {
+		@apply  text-label dark:text-label-dark py-[5px] px-1.5 sm:py-[5px] sm:px-2.5 text-[12px] sm:text-[16px];
+	}
+}
+
+
+.fc .fc-daygrid-day-number {
+	@apply text-black dark:text-black-dark text-[20px] py-2.5 px-2.5;
+}
+
+.fc a[data-navlink]:hover {
+	@apply text-primary;
+	text-decoration: none;
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th {
+	@apply border border-borderLightest dark:border-borderLightest-dark border-solid;
+}
+
+.fc .fc-toolbar {
+	@apply maxSm:items-center maxSm:gap-5 maxSm:flex-col;
+}
+
+.calendar-bg {
+	@apply bg-black;
+}
+
+.calendar {
+	ul {
+		@apply flex  flex-wrap text-center;
+		list-style: none;
+
+		&.style_two {
+			@apply ml-[-20px]
+		}
+	}
+
+	li {
+		@apply text-secondary text-[14px] sm:text-[16px] w-[calc(100%_/_7)] font-medium;
+	}
+
+	.weeks {
+		li {
+			@apply font-medium cursor-default;
+		}
+	}
+
+	.days {
+		li {
+			@apply z-[1] cursor-pointer relative mx-0 my-[18px];
+		}
+	}
+
+	&__wrapper {
+		@apply w-full;
+	}
+
+	&__header {
+		@apply mt-[35px] mb-[45px];
+	}
+
+	&__month {
+		@apply flex justify-center;
+
+		p {
+			@apply mb-0 text-[18px] font-medium text-secondary;
+		}
+	}
+
+	&__button {
+		@apply flex rounded-[50%] cursor-pointer w-[30px] h-[30px] items-center justify-center text-secondary bg-medium dark:bg-medium-dark;
+
+		&:hover {
+			@apply bg-headingLightest dark:bg-headingLightest-dark text-white dark:text-white-dark;
+		}
+
+		&.active {
+			@apply bg-headingLightest dark:bg-headingLightest-dark text-white dark:text-white-dark;
+		}
+	}
+}
+
+// Google map
+.map__wrapper {
+	iframe {
+		@apply w-full min-h-[450px];
+	}
+}

@@ -1,0 +1,268 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  steps CSS START
+/*----------------------------------------*/
+
+.working-clock {
+    &__info {
+        @apply border border-solid border-borderLightest dark:border-borderLightest-dark;
+        @apply bg-card dark:bg-card-dark;
+        @apply flex items-center mb-[15px] p-5;
+        -webkit-box-align: center;
+        -ms-flex-align: center;
+        justify-content: space-between;
+        -webkit-justify-content: space-between;
+        -ms-flex-pack: space-between;
+    }
+
+    &__list {
+        ul {
+            li {
+                @apply bg-white dark:bg-white-dark;
+                @apply text-center px-[30px] py-[15px];
+                box-shadow: 0 4px 24px 0 rgba(188, 188, 188, .2509803922);
+            }
+        }
+    }
+}
+
+.employee {
+    &-bg {
+        @apply h-[185px] relative bg-secondary px-[25px] py-0 rounded-[5px];
+        background-repeat: no-repeat !important;
+        background-position: right !important;
+
+        @include rtl {
+            background-position: left !important;
+        }
+    }
+
+    &__single-box {
+        @apply bg-white border border-borderLightest relative p-5 border-solid;
+
+    }
+
+    &__search-box {
+        @apply bg-white border border-borderLightest relative p-5 border-solid;
+    }
+
+    &__thumb {
+        img {
+            @apply max-w-[100px] rounded-[50%];
+        }
+    }
+
+    &__digi {
+        @apply text-headingLightest text-sm font-normal;
+    }
+}
+
+.attendant__info-icon {
+    @apply inline-flex gap-2.5 relative items-center px-2.5 py-0;
+
+    &:not(:last-child) {
+        &::before {
+            @apply absolute content-[""] h-4 w-px -translate-y-2/4 top-2/4 end-0;
+            @apply bg-medium dark:bg-medium-dark;
+
+        }
+    }
+
+}
+
+.attachment__info-arrow {
+    @apply text-[14px];
+
+    @include rtl {
+        i {
+            @apply -rotate-180;
+        }
+    }
+}
+
+.profile {
+    &-view {
+        @apply flex justify-between items-start gap-[30px];
+
+        .profile-img {
+            @apply w-[120px] h-[120px];
+        }
+    }
+
+    &-img-wrap {
+        @apply h-[120px] w-[120px];
+
+        img {
+            @apply h-[120px] w-[120px] rounded-[50%];
+        }
+    }
+
+    &-info {
+        li {
+            @apply flex mb-[5px];
+            display: -webkit-box;
+            display: -ms-flexbox;
+
+            .title {
+                @apply text-medium font-semibold w-[30%];
+            }
+
+            .text {
+                @apply text-headingLightest block overflow-hidden w-[70%];
+            }
+        }
+    }
+}
+
+
+
+.edit-icon {
+    @apply text-primary dark:text-primary-dark bg-primary/10;
+    @apply text-[12px] h-[30px] w-[30px] flex justify-center items-center transition-all duration-[0.3s] ease-[ease-in-out] rounded-[50%];
+
+    &:hover {
+        @apply text-white dark:text-white-dark;
+        @apply bg-primary dark:bg-primary-dark;
+        ;
+    }
+}
+
+.employee {
+    &__profile {
+        &-chnage {
+            @apply relative max-w-[205px] mb-[25px] mx-auto my-0;
+        }
+
+        &-edit {
+            @apply absolute z-[1] right-3 top-2.5;
+
+            input {
+                @apply hidden;
+            }
+
+            input+label {
+                @apply bg-card dark:bg-white-dark;
+                @apply inline-block w-[34px] h-[34px] mb-0 rounded-[100%] border border-solid border-transparent;
+                box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.12);
+                @apply cursor-pointer font-[normal] transition-all duration-[0.3s] ease-[ease-in-out];
+
+                &:hover {
+                    @apply bg-primary dark:bg-primary-dark;
+
+                    &::after {
+                        @apply text-white dark:text-white-dark;
+                    }
+                }
+
+                &:after {
+                    @apply content-["\f040"];
+                    font-family: "Font Awesome 5 Pro";
+                    @apply text-black dark:text-black-dark;
+                    @apply absolute -translate-x-2/4 -translate-y-2/4 transition-all duration-[0.3s] ease-[ease-in-out] top-[45%] start-[50%];
+                }
+            }
+        }
+
+        &-preview {
+            @apply w-48 h-48 relative rounded-[100%];
+            @apply border-[6px] border-solid border-bgBody dark:border-border-dark;
+            box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.1);
+
+            &-box {
+                @apply w-full h-full bg-cover bg-no-repeat bg-center rounded-[100%];
+            }
+        }
+    }
+}
+
+.emergency-contact {
+    .personal-info li {
+        .title {
+            @apply w-6/12;
+        }
+    }
+}
+
+.personal-info li {
+    @apply mb-2;
+
+    .title {
+        @apply text-[16px] font-medium mb-[3px];
+    }
+}
+
+.education {
+    &__box {
+        @apply relative;
+    }
+
+    &__list {
+        @apply relative m-0 p-0;
+        list-style: none;
+
+        li {
+            @apply relative;
+        }
+    }
+
+    &__user {
+        @apply h-2.5 w-2.5 absolute m-0 p-0 top-1 bg-white dark:bg-white-dark;
+    }
+
+    &__content {
+        @apply relative mb-[15px] p-0 ms-[30px];
+
+        .timeline-content {
+            .name {
+                @apply text-label dark:text-label-dark font-bold text-[15px] block mb-[5px];
+            }
+        }
+
+        .degree {
+            @apply text-taxonomy block text-[14px] mb-2;
+
+        }
+
+        .year {
+            @apply text-headingLightest block text-[12px] leading-none;
+        }
+    }
+}
+
+.before__circle {
+    @apply bg-primary dark:bg-primary-dark;
+    @apply h-2.5 w-2.5 mt-1 rounded-[50%];
+}
+
+.bank__account {
+    .personal-info li {
+        @apply flex items-center justify-between;
+
+        .title {
+            @apply w-6/12;
+        }
+    }
+}
+
+.contacts__thumb-wrapper {
+    .employee__profile-chnage {
+        @apply max-w-[130px] m-0;
+    }
+
+    .employee__profile-preview {
+        @apply w-[120px] h-[120px];
+    }
+
+    .employee__profile-edit {
+        @apply right-5 top-0;
+    }
+}
+
+.employee__profile-preview {
+    @apply maxXs:h-[170px] maxXs:w-[170px];
+}
+
+.employee__profile-edit input + label {
+    @apply mb-0;
+}

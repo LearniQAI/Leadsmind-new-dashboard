@@ -1,0 +1,14 @@
+/*----------------------------------------*/
+/*  FOOTER CSS START
+/*----------------------------------------*/
+@use '../utils' as *;
+
+.footer {
+	@apply bg-transparent w-full px-[30px] py-[15px];
+}
+
+.card__footer {
+	p {
+		@apply mb-0 text-center;
+	}
+}

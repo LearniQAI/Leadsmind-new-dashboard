@@ -1,0 +1,85 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  Range Slider CSS
+/*----------------------------------------*/
+
+//Update material range slider
+.material-slider-wrapper {
+	div.MuiBox-root {
+		@apply w-full;
+
+		.MuiSlider-root {
+			@apply h-2.5 px-0 py-[5px];
+
+			.MuiSlider-track {
+				@apply rounded-tl-[inherit] rounded-bl-[inherit] rounded-[initial];
+			}
+
+			.MuiSlider-rail {
+				@apply bg-[#ccd0ff];
+			}
+
+			.MuiSlider-mark {
+				@apply w-px h-2 top-[130%] bg-[#ccd0ff];
+			}
+
+			span.MuiSlider-track {
+				@apply bg-primary dark:bg-primary-dark;
+			}
+
+			.MuiSlider-markLabel {
+				@apply text-[10px] text-light;
+			}
+
+			.MuiSlider-markLabel> :nth-child(3) {
+				left: 1% !important;
+			}
+
+		}
+		.MuiSlider-thumb {
+			@apply w-0.5 h-[18px] shadow-none rounded-[0%];
+
+			.MuiSlider-valueLabelOpen {
+				@apply px-[5px] py-0.5 right-0 bg-primary dark:bg-primary-dark;
+			}
+			.irs-from{
+				@apply visible left-1;
+			}
+			
+		}
+
+		.irs {
+			&>span {
+				@apply bg-primary dark:bg-primary-dark;
+				@apply rounded text-white px-1.5 py-0;
+			}
+		}
+
+	}
+}
+
+//prefix range slider
+.material-slider-wrapper {
+	div.MuiBox-root {
+		.prefix {
+			.MuiSlider-rail {
+				background-color: #e5e5ff !important;
+			}
+		}
+	}
+}
+//disabled range
+.irs-disabled {
+	.Mui-disabled {
+		@apply opacity-40 text-primary dark:text-primary-dark;
+	}
+
+	.irs-min {
+		@apply opacity-40;
+	}
+
+	.irs-max {
+		@apply right-0 opacity-40;
+	}
+}

@@ -1,0 +1,249 @@
+@use '../utils' as *;
+
+/*-----------------------------------------------------------------------------------
+
+    Templete Name: Manez - HRM & CRM React NextJs Dashboard Template
+    Description: Manez - HRM & CRM React NextJs Dashboard Template
+    Version: 1.0
+	
+-----------------------------------------------------------------------------------
+
+
+/************ TABLE OF CONTENTS ***************
+
+	01. THEME DEFAULT CSS START
+  	02. ANIMATION CSS START
+	03. BACKGROUND COLOR CSS START
+	04. BREAADCRUMB CSS START
+	05. BUTTTON CSS START
+	06. CAROUSEL CSS START
+	07. MEAN MENU CSS START
+	08. OFFCANVAS CSS START
+	09. Preloader CSS START
+	10. SECTION TITLE CSS START
+	11. SETTING CSS START
+	12. ABOUT CSS START
+	13. ACCORDIONG CSS START
+	14.	ATTENDANT CSS START
+	15.	BANNER CSS START
+	16.	BLOG CSS START
+	17.	CALENDAR CSS START
+	18.	CARD CSS START
+	19. CHART CSS START
+	20. CHATBOX CSS START
+	21. COUNTER CSS START
+	22.	DARK-LIGHT CSS START
+	23. DROPDOWN CSS START
+	24. EVENT CSS START
+	25. FOOTER CSS START
+	26. GALLERY CSS START
+	27.	HEADER CSS START
+	28. JOIN CSS START
+	29. NOTICE CSS START
+	30.	NOTIFICATION CSS START
+	31.	PARTNER CSS START
+	32. POPUP CSS START
+	33. PRICE CSS START
+	34. PROFILE CSS START
+	35. SCHEDULE CSS START
+	36. SCROLLBAR CSS START
+	37. SIDEBAR CSS START
+	38. SIGN CSS START
+	39. SPEAKER CSS START
+	40. TESTIMONIAL CSS START
+
+**********************************************/
+
+
+/*----------------------------------------*/
+/*  01. THEME DEFAULT CSS START
+/*----------------------------------------*/
+
+* {
+	margin: 0;
+	padding: 0;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+}
+html {
+	overflow-y: scroll !important;
+	scroll-behavior: smooth;
+  }
+/*---------------------------------
+    Typography css start 
+---------------------------------*/
+body {
+	@apply text-[14px] leading-[22px] font-normal text-body dark:text-body-dark font-body;
+}
+.body-area {
+	@apply bg-bgBody dark:bg-bgBody-dark;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	@apply font-body text-headingPrimary dark:text-headingPrimary-dark font-bold my-0 leading-none;
+}
+
+h1 {
+	@apply text-[22px] sm:text-[42px];
+}
+
+h2 {
+	@apply text-[16px] lg:text-[18px] xl:text-[20px] xxl:text-[34px];
+}
+
+h3 {
+	@apply text-[30px];
+}
+
+h4 {
+	@apply text-[24px];
+}
+
+h5 {
+	@apply text-[20px];
+
+	&.small {
+		@apply text-[15px];
+	}
+}
+
+h6 {
+	@apply text-[16px];
+	&.large {
+		@apply text-[16px];
+	}
+	&.small {
+		@apply text-[13px];
+	}
+}
+
+ul {
+	@apply m-0 p-0;
+}
+
+li {
+	list-style: none;
+}
+
+p {
+	@apply text-body dark:text-body-dark;
+	@apply leading-[22px] mb-[15px] text-[14px] font-normal;
+}
+
+a {
+	text-decoration: none;
+}
+
+a,
+.btn,
+button,
+span,
+svg,
+p,
+input,
+select,
+textarea,
+li,
+img,
+svg,
+.transition-3,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	@apply transition-all duration-[0.3s] ease-[ease-out] delay-[0s];
+}
+label {
+	@apply inline-block;
+}
+a {
+	@apply no-underline;
+}
+.button:focus {
+	text-decoration: none;
+	outline: none;
+}
+textarea:focus,
+input:focus{
+    outline: none;
+}
+button {
+	@apply outline-none border-0 bg-transparent;
+}
+
+button:hover {
+	@apply cursor-pointer;
+}
+
+button:focus {
+	outline: 0;
+}
+
+input {
+	outline: none;
+}
+
+input[type="color"] {
+	appearance: none;
+	-moz-appearance: none;
+	-webkit-appearance: none;
+	background: none;
+	@apply border-none cursor-pointer h-full w-full p-0 rounded-md;
+}
+
+
+*::-moz-selection {
+	@apply bg-primary dark:bg-primary-dark;
+	@apply text-white dark:text-white-dark;
+	text-shadow: none;
+}
+
+::-moz-selection {
+	@apply bg-primary dark:bg-primary-dark;
+	@apply text-white dark:text-white-dark;
+	text-shadow: none;
+}
+
+::selection {
+	@apply bg-primary dark:bg-primary-dark;
+	@apply text-white dark:text-white-dark;
+	text-shadow: none;
+}
+
+*::-moz-placeholder {
+	@apply text-placeholder opacity-100 text-[16px];
+}
+
+*::placeholder {
+	@apply text-placeholder opacity-100 text-[14px];
+}
+
+.w-img {
+	& img {
+		@apply w-full h-full object-cover;
+	}
+}
+
+.m-img {
+	& img {
+		@apply max-w-full h-full object-cover;
+	}
+}
+
+/*----------------------------------------
+    Progress Wrap
+-----------------------------------------*/
+
+.progress-wrap {
+	@apply right-[15px] bottom-[15px] sm:right-0 sm:bottom-0;
+}
+
+input[type="file"] {
+	@apply text-body dark:text-body-dark;
+}

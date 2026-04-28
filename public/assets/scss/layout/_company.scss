@@ -1,0 +1,188 @@
+@use '../utils' as *;
+
+/*----------------------------------------*/
+/*  DROPDOWN CSS START
+/*----------------------------------------*/
+
+.company {
+	&__thumb {
+		img {
+			@apply w-6 h-6 max-w-[24px] object-cover;
+		}
+	}
+
+	&__contact a {
+
+		@apply inline-flex items-center justify-center mr-[5px];
+		@apply text-body dark:text-body-dark;
+		transition: all 0.3s linear;
+
+		&:hover {
+			@apply text-primary dark:text-primary-dark;
+		}
+	}
+
+	&__rating {
+		@apply text-rating;
+	}
+
+	&__logo {
+		@apply mb-5;
+
+		img {
+			@apply w-[150px] h-[150px] object-cover;
+		}
+	}
+
+	&__info-list {
+		&:not(:last-child) {
+			@apply mb-5;
+		}
+
+		ul {
+			li {
+				@apply flex items-center justify-start gap-[26px];
+
+				&:not(:last-child) {
+					@apply mb-3.5;
+				}
+
+				span {
+					@apply font-semibold;
+
+					i {
+
+						@apply border border-solid border-borderLightest dark:border-borderLightest-dark;
+						@apply flex items-center justify-center rounded-[50%] text-[14px] w-[30px] h-[30px] bg-transparent transition-all duration-[0.2s] ease-[ease-in-out];
+
+						&:hover {
+							@apply text-white;
+							@apply bg-primary dark:bg-primary-dark;
+							@apply border-primary;
+						}
+					}
+				}
+
+				a {
+					transition: all 0.3s linear;
+
+					&:hover {
+						@apply text-primary dark:text-primary-dark;
+					}
+				}
+
+				&:hover {
+					& i {
+						@apply text-white;
+						@apply bg-primary dark:bg-primary-dark;
+						@apply border-primary;
+					}
+				}
+			}
+		}
+
+		&.style-two {
+			ul {
+				li {
+					&:not(:last-child) {
+						@apply mb-1.5;
+					}
+
+					span {
+						@apply w-[105px];
+					}
+				}
+			}
+		}
+
+		&.style-three {
+			ul {
+				li {
+					&:not(:last-child) {
+						@apply mb-1.5;
+					}
+
+					span {
+						@apply w-[65px];
+					}
+				}
+			}
+		}
+
+		&-title {
+			@apply mb-2.5;
+		}
+	}
+
+	&__social {
+		@apply flex items-center justify-start gap-2.5;
+
+		&-icon {
+			@apply text-black dark:text-black-dark;
+			@apply border border-solid border-borderLightest dark:border-borderLightest-dark;
+			@apply text-[15px] transition-all duration-[0.3s] ease-linear w-[30px] h-[30px] flex text-center items-center justify-center rounded-[50%];
+
+			&:hover {
+				@apply text-white dark:text-white-dark;
+				@apply bg-primary dark:bg-primary-dark;
+				@apply border-primary;
+			}
+		}
+
+		a.table__icon {
+			@apply rounded-[50%];
+		}
+
+		button.removeBtn.table__icon.delete.social_trash {
+			@apply rounded-[50%];
+
+		}
+	}
+
+	&__tab {
+		.nav-pills {
+			@apply gap-2.5;
+
+			.nav-link {
+
+				@apply bg-transparent;
+				@apply text-black dark:text-black-dark;
+				@apply h-9 text-[16px] font-medium px-5 py-0 rounded-md;
+
+				&.active {
+					@apply text-white;
+					@apply bg-primary dark:bg-primary-dark;
+				}
+			}
+		}
+	}
+}
+
+.company__details-single {
+	&-item {
+		@apply border border-solid border-borderLightest dark:border-borderLightest-dark;
+		@apply flex gap-[0_20px] p-[15px] rounded-md;
+		align-items: start;
+
+		&:not(:last-child) {
+			@apply mb-5;
+		}
+
+		&-icon {
+
+			@apply bg-primary dark:bg-primary-dark;
+			@apply text-white;
+			@apply w-[50px] h-[50px] min-w-[50px] flex items-center justify-center text-[20px] rounded-md;
+		}
+
+		&-content {
+			.title {
+				@apply mb-2;
+			}
+
+			p {
+				@apply mb-0.5;
+			}
+		}
+	}
+}
