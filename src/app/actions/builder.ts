@@ -121,3 +121,28 @@ export async function createPage(name: string, websiteId: string) {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Updates SEO and metadata for a specific page.
+ */
+export async function updatePageSettings(pageId: string, settings: any) {
+  try {
+    const supabase = await createServerClient();
+    
+    const { error } = await supabase
+      .from('pages')
+      .update({
+        ...settings,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', pageId);
+
+    if (error) throw error;
+
+    revalidatePath(`/pages/${pageId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[builder] Error updating page settings:', error);
+    return { success: false, error: error.message };
+  }
+}

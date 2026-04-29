@@ -4,7 +4,7 @@ import React from 'react';
 import { useBuilder } from './BuilderContext';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from '../ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Search, Image, Globe, Sparkles } from 'lucide-react';
 import { updatePageSettings } from '@/app/actions/builder';
