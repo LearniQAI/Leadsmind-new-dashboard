@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 
 export function VisitorTracker() {
   useEffect(() => {
@@ -20,8 +19,10 @@ export function VisitorTracker() {
 
     let visitorId = getCookie('lm_visitor_id');
     if (!visitorId) {
-      visitorId = uuidv4();
-      setCookie('lm_visitor_id', visitorId, 365);
+      const newId = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      setCookie('lm_visitor_id', newId, 365);
     }
   }, []);
 
