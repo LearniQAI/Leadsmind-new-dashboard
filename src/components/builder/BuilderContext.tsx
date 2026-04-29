@@ -1,26 +1,46 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface BuilderContextType {
   websiteData: any;
   onUpdateWebsite: (data: any) => void;
   viewMode: 'desktop' | 'tablet' | 'mobile';
   setViewMode: (mode: 'desktop' | 'tablet' | 'mobile') => void;
+  pages: any[];
+  websiteId?: string;
 }
 
 const BuilderContext = createContext<BuilderContextType | undefined>(undefined);
 
-export function BuilderProvider({ children }: { children: React.ReactNode }) {
-  const [websiteData, setWebsiteData] = useState<any>(null);
+interface BuilderProviderProps {
+  children: React.ReactNode;
+  pages: any[];
+  websiteId?: string;
+  websiteData: any;
+  onUpdateWebsite: (updates: any) => void;
+}
+
+export function BuilderProvider({ 
+  children, 
+  pages, 
+  websiteId, 
+  websiteData: initialWebsiteData, 
+  onUpdateWebsite: externalUpdate 
+}: BuilderProviderProps) {
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
 
-  const onUpdateWebsite = (data: any) => {
-    setWebsiteData((prev: any) => ({ ...prev, ...data }));
-  };
-
   return (
-    <BuilderContext.Provider value={{ websiteData, onUpdateWebsite, viewMode, setViewMode }}>
+    <BuilderContext.Provider 
+      value={{ 
+        websiteData: initialWebsiteData, 
+        onUpdateWebsite: externalUpdate, 
+        viewMode, 
+        setViewMode,
+        pages,
+        websiteId
+      }}
+    >
       {children}
     </BuilderContext.Provider>
   );
@@ -35,6 +55,8 @@ export function useBuilder() {
       onUpdateWebsite: () => {},
       viewMode: 'desktop' as const,
       setViewMode: () => {},
+      pages: [],
+      websiteId: undefined,
     };
   }
   return context;
