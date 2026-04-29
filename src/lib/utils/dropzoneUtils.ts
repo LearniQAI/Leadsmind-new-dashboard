@@ -26,8 +26,8 @@ export const initializeDropzone = (elementId: string, maxFiles: number = 1): Dro
     addRemoveLinks: true,
     acceptedFiles: "image/*,application/pdf,.doc,.docx,.xls,.xlsx",
     autoProcessQueue: false, // Don't upload automatically
-    init: function() {
-      this.on("addedfile", function(file) {
+    init: function(this: Dropzone) {
+      this.on("addedfile", (file) => {
         if (this.files.length > maxFiles) {
           this.removeFile(file);
           alert(`You can only upload a maximum of ${maxFiles} files.`);
