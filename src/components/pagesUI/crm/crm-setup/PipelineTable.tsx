@@ -16,7 +16,7 @@ import useMaterialTableHook from "@/hooks/useMaterialTableHook";
 import { pipelineData } from "@/data/crm/pipeline-data";
 import { IPipeline } from "@/interface/table.interface";
 import EditPipeLineModal from "./EditPipeLineModal";
-import { exportToExcel, exportToPDF, printTable } from "@/lib/utils/tableUtilis";
+import { exportToExcel, exportToPDF, printTable } from "@/lib/utils/tableUtils";
 const headCells = [
   {
     id: "pipeline",
