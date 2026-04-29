@@ -70,7 +70,7 @@ export const UserTestimonial = ({
         </div>
 
         <blockquote className="mb-6 italic text-lg leading-relaxed font-medium" style={{ color: textColor }}>
-          "{quote}"
+          &quot;{quote}&quot;
         </blockquote>
 
         <div className="space-y-1">
