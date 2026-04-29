@@ -82,3 +82,42 @@ export async function updateWebsiteSettings(websiteId: string, type: 'website' |
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Creates a new page and links it to a website.
+ */
+export async function createPage(name: string, websiteId: string) {
+  try {
+    const supabase = await createServerClient();
+    
+    // 1. Create the page record
+    const { data: pageData, error: pageError } = await supabase
+      .from('pages')
+      .insert({
+        name,
+        content: '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}',
+        status: 'draft'
+      })
+      .select('id')
+      .single();
+
+    if (pageError) throw pageError;
+
+    // 2. Link it to the website
+    const { error: linkError } = await supabase
+      .from('website_pages')
+      .insert({
+        website_id: websiteId,
+        page_id: pageData.id,
+        name,
+        path_name: `/${name.toLowerCase().replace(/\\s+/g, '-')}`
+      });
+
+    if (linkError) throw linkError;
+
+    return { success: true, pageId: pageData.id };
+  } catch (error: any) {
+    console.error('[builder] Error creating page:', error);
+    return { success: false, error: error.message };
+  }
+}
