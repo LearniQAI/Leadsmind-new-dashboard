@@ -7,13 +7,34 @@ import ChatIcon from '@/svg/header-svg/Profile/ChatIcon';
 import EmailIcon from '@/svg/header-svg/Profile/EmailIcon';
 import AddAccountIcon from '@/svg/header-svg/Profile/AddAccountIcon';
 import LogOut from '@/svg/header-svg/Profile/LogOut';
-//types
+import { useDashboardContext } from '../../DashboardProvider';
+import { handleLogout } from '@/app/actions/auth';
+import LogoutModal from '@/components/auth/LogoutModal';
+import { toast } from 'sonner';
+
 type TUserProps={
     handleShowUserDrowdown:()=>void;
     isOpenUserDropdown:boolean;
 }
 
 const HeaderUserProfile = ({handleShowUserDrowdown, isOpenUserDropdown}:TUserProps) => {
+    const { user } = useDashboardContext();
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = React.useState(false);
+    const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+
+    const onConfirmLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            await handleLogout();
+            toast.success("Logged out successfully");
+            // handleLogout already redirects, but this is a safety fallback
+            window.location.href = '/auth/signin-basic';
+        } catch (error) {
+            toast.error("Failed to log out. Please try again.");
+            setIsLoggingOut(false);
+        }
+    };
+
     return (
         <>
             <div className="nav-item relative">
@@ -21,10 +42,16 @@ const HeaderUserProfile = ({handleShowUserDrowdown, isOpenUserDropdown}:TUserPro
                 <Link id="userportfolio" href="#" onClick={handleShowUserDrowdown}>
                     <div className="user__portfolio">
                         <div className="user__portfolio-thumb">
-                            <Image src={avatarImg} alt="img not found" />
+                            <Image 
+                                src={user?.avatarUrl || avatarImg} 
+                                alt={user?.firstName || "user"} 
+                                width={40} 
+                                height={40} 
+                                className="rounded-full"
+                            />
                         </div>
-                        <div className="user__content">
-                            <h5>Jhon Smith</h5>
+                        <div className="user__content text-left">
+                            <h5 className="truncate max-w-[100px]">{user?.firstName || 'User'}</h5>
                             <span>online</span>
                         </div>
                     </div>
@@ -34,7 +61,7 @@ const HeaderUserProfile = ({handleShowUserDrowdown, isOpenUserDropdown}:TUserPro
                     <div className={`user__dropdown ${isOpenUserDropdown ? "user-enable" : " "}`}>
                     <ul>
                         <li>
-                            <Link href="/hrm/employee-profile">
+                            <Link href="/dashboard/settings/account">
                             <UserIcon/>
                                 Profile</Link>
                         </li>
@@ -56,14 +83,28 @@ const HeaderUserProfile = ({handleShowUserDrowdown, isOpenUserDropdown}:TUserPro
                             </Link>
                         </li>
                         <li>
-                            <Link href="/auth/signin-basic">
-                        <LogOut/>
-                                Log Out</Link>
+                            <button 
+                                onClick={() => {
+                                    setIsLogoutModalOpen(true);
+                                    handleShowUserDrowdown();
+                                }}
+                                className="flex items-center gap-2 w-full text-left"
+                            >
+                                <LogOut/>
+                                Log Out
+                            </button>
                         </li>
                     </ul>
                 </div>
                 )}
             </div>
+
+            <LogoutModal 
+                open={isLogoutModalOpen}
+                onClose={() => setIsLogoutModalOpen(false)}
+                onConfirm={onConfirmLogout}
+                isLoading={isLoggingOut}
+            />
         </>
     );
 };

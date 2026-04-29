@@ -17,10 +17,13 @@
     "@fullcalendar/list": "^6.1.15",
     "@fullcalendar/react": "^6.1.15",
     "@fullcalendar/timegrid": "^6.1.15",
+    "@hookform/resolvers": "^5.2.2",
     "@material-tailwind/react": "^2.1.10",
     "@mui/icons-material": "^6.1.4",
     "@mui/material": "^6.1.5",
     "@popperjs/core": "^2.11.8",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.4",
     "@react-native-async-storage/async-storage": "^1.19.5",
     "@reduxjs/toolkit": "^1.9.5",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
@@ -29,6 +32,7 @@
     "@tinymce/tinymce-react": "^5.1.1",
     "@types/react-redux": "^7.1.25",
     "apexcharts": "^4.0.0",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
     "dropzone": "^6.0.0-beta.2",
@@ -55,7 +59,8 @@
     "sass": "^1.63.4",
     "sonner": "^1.5.0",
     "swiper": "^9.4.1",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/dropzone": "^5.7.8",

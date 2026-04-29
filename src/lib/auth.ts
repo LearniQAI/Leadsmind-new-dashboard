@@ -280,5 +280,5 @@ export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete('active_workspace_id');
 
-  redirect('/login');
+  redirect('/auth/signin-basic');
 }
