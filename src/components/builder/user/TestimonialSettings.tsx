@@ -3,10 +3,10 @@
 import React from 'react';
 import { useNode } from '@craftjs/core';
 import { AlignLeft, AlignCenter, User, Palette, Quote } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Label } from '../../ui/label';
+import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 
 export const TestimonialSettings = () => {
     const { actions: { setProp }, props } = useNode((node) => ({

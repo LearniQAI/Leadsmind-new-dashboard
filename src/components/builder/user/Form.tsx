@@ -92,7 +92,7 @@ export const Form = (allProps: FormProps & any) => {
         throw new Error("Missing workspace or page context");
       }
 
-      const result = await handlePageFormSubmission(payload, pageId as string, workspaceId);
+      const result = await handlePageFormSubmission(pageId as string, workspaceId, payload);
 
       if (result.success) {
         setSubmitted(true);

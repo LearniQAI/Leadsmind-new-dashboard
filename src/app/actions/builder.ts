@@ -146,3 +146,29 @@ export async function updatePageSettings(pageId: string, settings: any) {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Handles submissions from builder forms.
+ */
+export async function handlePageFormSubmission(pageId: string, websiteId: string, data: any) {
+  try {
+    const supabase = await createServerClient();
+    
+    const { error } = await supabase
+      .from('leads')
+      .insert({
+        page_id: pageId,
+        website_id: websiteId,
+        data,
+        source: 'builder_form',
+        created_at: new Date().toISOString()
+      });
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[builder] Form submission error:', error);
+    return { success: false, error: error.message };
+  }
+}

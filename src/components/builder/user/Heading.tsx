@@ -4,8 +4,8 @@ import React from 'react';
 import { useNode, useEditor } from '@craftjs/core';
 import ContentEditable from 'react-contenteditable';
 import { HeadingSettings } from './HeadingSettings';
-import { replaceMergeTags } from '@/lib/builder/utils';
-import { useResponsiveValue } from '@/lib/builder/hooks';
+import { replaceMergeTags } from '../../../lib/builder/utils';
+import { useResponsiveValue } from '../../../lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 
 export interface HeadingProps {

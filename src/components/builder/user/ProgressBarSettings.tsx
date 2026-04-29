@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { useNode } from '@craftjs/core';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Label } from '../../ui/label';
+import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
-import { Switch } from '@/components/ui/switch';
+import { Switch } from '../../ui/switch';
 
 export const ProgressBarSettings = () => {
     const { actions: { setProp }, value, color, height, showLabel, label, borderRadius } = useNode((node) => ({

@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { useNode } from '@craftjs/core';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Label } from '../../ui/label';
+import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
 import { IconPicker } from '../IconPicker';
-import { Switch } from '@/components/ui/switch';
+import { Switch } from '../../ui/switch';
 
 export const IconSettings = () => {
     const { actions: { setProp }, name, size, color, strokeWidth, alignment, fill } = useNode((node) => ({

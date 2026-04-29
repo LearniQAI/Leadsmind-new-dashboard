@@ -3,12 +3,12 @@
 import React from 'react';
 import { useNode } from '@craftjs/core';
 import { Plus, Trash2, List, Palette, Navigation } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Button } from '../../ui/button';
+import { Label } from '../../ui/label';
+import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
+import { Switch } from '../../ui/switch';
 
 import { LinkSelector } from '../LinkSelector';
 

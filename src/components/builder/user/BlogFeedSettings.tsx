@@ -3,11 +3,11 @@
 import React from 'react';
 import { useNode } from '@craftjs/core';
 import { LayoutGrid, Palette } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Label } from '../../ui/label';
+import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
+import { Switch } from '../../ui/switch';
 
 export const BlogFeedSettings = () => {
     const { actions: { setProp }, props } = useNode((node) => ({

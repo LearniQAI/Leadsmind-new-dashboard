@@ -29,7 +29,7 @@ export const VideoSettings = () => {
         try {
             setIsUploading(true);
             const supabase = createClient();
-            
+
             const fileExt = file.name.split('.').pop();
             const fileName = `${Date.now()}-${Math.floor(Math.random() * 10000)}.${fileExt}`;
             const filePath = `builder/videos/${fileName}`;
@@ -60,7 +60,7 @@ export const VideoSettings = () => {
         <div className="space-y-6">
             <div className="space-y-3">
                 <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Video Source</Label>
-                
+
                 <div className="grid grid-cols-3 bg-muted p-1 rounded-md border border-white/5 mb-3">
                     {['youtube', 'vimeo', 'custom'].map((p) => (
                         <button
@@ -75,15 +75,15 @@ export const VideoSettings = () => {
 
                 {provider === 'custom' ? (
                     <div className="space-y-2">
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleUpload} 
-                            accept="video/*" 
-                            className="hidden" 
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleUpload}
+                            accept="video/*"
+                            className="hidden"
                         />
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             className="w-full h-20 border-dashed border-2 bg-white/5 hover:bg-white/10 flex flex-col gap-2"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isUploading}
@@ -97,7 +97,7 @@ export const VideoSettings = () => {
                                 </>
                             )}
                         </Button>
-                        <Input 
+                        <Input
                             value={url || ''}
                             placeholder="Or paste direct video URL (.mp4)"
                             onChange={(e) => setProp((props: any) => props.url = e.target.value)}
@@ -106,7 +106,7 @@ export const VideoSettings = () => {
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        <Input 
+                        <Input
                             value={url || ''}
                             placeholder={`Paste ${provider} URL...`}
                             onChange={(e) => setProp((props: any) => props.url = e.target.value)}
@@ -118,12 +118,12 @@ export const VideoSettings = () => {
 
             <div className="space-y-3 pt-2 border-t border-white/5">
                 <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Playback Controls</Label>
-                
+
                 <div className="grid grid-cols-2 gap-2">
                     <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-white/5 bg-white/5 hover:bg-white/10 transition-colors">
-                        <input 
-                            type="checkbox" 
-                            checked={autoPlay} 
+                        <input
+                            type="checkbox"
+                            checked={autoPlay}
                             onChange={(e) => setProp((props: any) => props.autoPlay = e.target.checked)}
                             className="w-3 h-3 rounded-sm bg-background border-white/20 text-primary accent-primary"
                         />
@@ -131,9 +131,9 @@ export const VideoSettings = () => {
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-white/5 bg-white/5 hover:bg-white/10 transition-colors">
-                        <input 
-                            type="checkbox" 
-                            checked={loop} 
+                        <input
+                            type="checkbox"
+                            checked={loop}
                             onChange={(e) => setProp((props: any) => props.loop = e.target.checked)}
                             className="w-3 h-3 rounded-sm bg-background border-white/20 text-primary accent-primary"
                         />
@@ -141,9 +141,9 @@ export const VideoSettings = () => {
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-white/5 bg-white/5 hover:bg-white/10 transition-colors">
-                        <input 
-                            type="checkbox" 
-                            checked={muted} 
+                        <input
+                            type="checkbox"
+                            checked={muted}
                             onChange={(e) => setProp((props: any) => props.muted = e.target.checked)}
                             className="w-3 h-3 rounded-sm bg-background border-white/20 text-primary accent-primary"
                         />
@@ -151,9 +151,9 @@ export const VideoSettings = () => {
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-white/5 bg-white/5 hover:bg-white/10 transition-colors">
-                        <input 
-                            type="checkbox" 
-                            checked={controls} 
+                        <input
+                            type="checkbox"
+                            checked={controls}
                             onChange={(e) => setProp((props: any) => props.controls = e.target.checked)}
                             className="w-3 h-3 rounded-sm bg-background border-white/20 text-primary accent-primary"
                         />
@@ -164,10 +164,10 @@ export const VideoSettings = () => {
 
             <div className="space-y-2 pt-2 border-t border-white/5">
                 <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Border Radius ({borderRadius}px)</Label>
-                <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
+                <input
+                    type="range"
+                    min="0"
+                    max="100"
                     value={borderRadius || 0}
                     onChange={(e) => setProp((props: any) => props.borderRadius = Number(e.target.value))}
                     className="w-full"

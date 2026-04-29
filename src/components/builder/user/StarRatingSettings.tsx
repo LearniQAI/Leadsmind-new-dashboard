@@ -3,11 +3,11 @@
 import React from 'react';
 import { useNode } from '@craftjs/core';
 import { AlignLeft, AlignCenter, AlignRight, Star } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Label } from '../../ui/label';
+import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import { Button } from '../../ui/button';
+import { Switch } from '../../ui/switch';
 
 export const StarRatingSettings = () => {
     const { actions: { setProp }, props } = useNode((node) => ({

@@ -3,11 +3,11 @@
 import React from 'react';
 import { useNode } from '@craftjs/core';
 import { Plus, Trash2, ChevronDown, ChevronUp, Palette, List } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Button } from '../../ui/button';
+import { Label } from '../../ui/label';
+import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 
 export const FAQSettings = () => {
     const { actions: { setProp }, props } = useNode((node) => ({
