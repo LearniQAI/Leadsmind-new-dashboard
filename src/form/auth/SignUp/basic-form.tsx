@@ -112,11 +112,11 @@ const SignUpBasicForm = () => {
                 </div>
                 <h4 className="mb-2">Check your email</h4>
                 <p className="mb-4">
-                    We've sent a verification link to <strong>{getValues('email')}</strong>. 
+                    We&apos;ve sent a verification link to <strong>{getValues("email")}</strong>. 
                     Click the link in the email to activate your account.
                 </p>
                 <div className="p-4 mb-4 rounded bg-gray-100 text-sm text-left">
-                    <p className="font-bold mb-2 text-gray-500 uppercase">Didn't receive the email?</p>
+                    <p className="font-bold mb-2 text-gray-500 uppercase">Didn&apos;t receive the email?</p>
                     <ul className="list-disc pl-4 space-y-1 text-gray-600">
                         <li>Check your spam folder</li>
                         <li>Wait a few minutes (it can take time)</li>

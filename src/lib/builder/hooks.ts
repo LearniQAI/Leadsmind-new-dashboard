@@ -29,7 +29,7 @@ export function useGlobalSync(isGlobal: boolean, globalId: string, props: any) {
                 }
             });
         }
-    }, [JSON.stringify(props), isGlobal, globalId]);
+    }, [JSON.stringify(props), isGlobal, globalId, onUpdateWebsite, websiteData]);
 }
 
 /**
@@ -51,24 +51,25 @@ export function useResponsiveValue<T>(props: any, propName: string, defaultValue
 
 /**
  * Hook to set props with responsive awareness
+ * Note: Commented out because @craftjs/core is not currently installed
  */
-import { useNode } from '@craftjs/core';
+// import { useNode } from '@craftjs/core';
 
-export function useResponsiveSetProp() {
-    const { viewMode } = useBuilder();
-    const { actions: { setProp } } = useNode();
+// export function useResponsiveSetProp() {
+//     const { viewMode } = useBuilder();
+//     const { actions: { setProp } } = useNode();
 
-    const setResponsiveValue = (propName: string, value: any) => {
-        setProp((props: any) => {
-            if (viewMode === 'mobile') {
-                props[`${propName}_mobile`] = value;
-            } else if (viewMode === 'tablet') {
-                props[`${propName}_tablet`] = value;
-            } else {
-                props[propName] = value;
-            }
-        });
-    };
+//     const setResponsiveValue = (propName: string, value: any) => {
+//         setProp((props: any) => {
+//             if (viewMode === 'mobile') {
+//                 props[`${propName}_mobile`] = value;
+//             } else if (viewMode === 'tablet') {
+//                 props[`${propName}_tablet`] = value;
+//             } else {
+//                 props[propName] = value;
+//             }
+//         });
+//     };
 
-    return { setResponsiveValue };
-}
+//     return { setResponsiveValue };
+// }
