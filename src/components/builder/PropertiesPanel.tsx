@@ -6,7 +6,7 @@ import { Settings, Trash2 } from 'lucide-react';
 
 export const PropertiesPanel = () => {
   const { selected, actions } = useEditor((state) => {
-    const [selectedId] = state.events.selected;
+    const selectedId = Array.from(state.events.selected)[0];
     let selected;
 
     if (selectedId) {

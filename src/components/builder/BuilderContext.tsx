@@ -9,6 +9,7 @@ interface BuilderContextType {
   setViewMode: (mode: 'desktop' | 'tablet' | 'mobile') => void;
   pages: any[];
   websiteId?: string;
+  funnelId?: string;
 }
 
 const BuilderContext = createContext<BuilderContextType | undefined>(undefined);
@@ -17,6 +18,7 @@ interface BuilderProviderProps {
   children: React.ReactNode;
   pages: any[];
   websiteId?: string;
+  funnelId?: string;
   websiteData: any;
   onUpdateWebsite: (updates: any) => void;
 }
@@ -25,6 +27,7 @@ export function BuilderProvider({
   children, 
   pages, 
   websiteId, 
+  funnelId,
   websiteData: initialWebsiteData, 
   onUpdateWebsite: externalUpdate 
 }: BuilderProviderProps) {
@@ -38,7 +41,8 @@ export function BuilderProvider({
         viewMode, 
         setViewMode,
         pages,
-        websiteId
+        websiteId,
+        funnelId
       }}
     >
       {children}
@@ -57,6 +61,7 @@ export function useBuilder() {
       setViewMode: () => {},
       pages: [],
       websiteId: undefined,
+      funnelId: undefined,
     };
   }
   return context;

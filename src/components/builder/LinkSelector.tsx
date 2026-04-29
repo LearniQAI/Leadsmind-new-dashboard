@@ -1,15 +1,15 @@
 "use client";
 
 import React from 'react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Label } from '../ui/label';
+import { Input } from '../ui/input';
 import { 
     Select, 
     SelectContent, 
     SelectItem, 
     SelectTrigger, 
     SelectValue 
-} from '@/components/ui/select';
+} from '../ui/select';
 import { Link2, FileText, Anchor, Zap } from 'lucide-react';
 
 import { useBuilder } from './BuilderContext';

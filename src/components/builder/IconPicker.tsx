@@ -5,7 +5,7 @@ import * as LucideIcons from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface IconPickerProps {
     value: string;
@@ -14,11 +14,11 @@ interface IconPickerProps {
 
 export const IconPicker = ({ value, onChange }: IconPickerProps) => {
     const [search, setSearch] = useState('');
-    
+
     // Get all icon names from Lucide
     const allIconNames = useMemo(() => {
-        return Object.keys(LucideIcons).filter(key => 
-            typeof (LucideIcons as any)[key] === 'function' || 
+        return Object.keys(LucideIcons).filter(key =>
+            typeof (LucideIcons as any)[key] === 'function' ||
             (typeof (LucideIcons as any)[key] === 'object' && (LucideIcons as any)[key].render)
         );
     }, []);
@@ -48,8 +48,8 @@ export const IconPicker = ({ value, onChange }: IconPickerProps) => {
                 <div className="p-3 border-b border-white/10 bg-white/5">
                     <div className="relative">
                         <Search className="absolute left-2 top-2.5 w-4 h-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search icons..." 
+                        <Input
+                            placeholder="Search icons..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="pl-8 h-9 text-xs bg-black/40 border-white/10"
