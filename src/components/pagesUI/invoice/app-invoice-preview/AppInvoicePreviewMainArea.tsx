@@ -18,12 +18,11 @@ const AppInvoicePreviewMainArea = () => {
             <div className="flex justify-between xl:flex-row sm:flex-row flex-col">
                 <div className="mb-[5px]">
                   <div className="invoice__logo mb-5">
-                    <Image className="light-logo" src={logoLight} priority alt="payslip logo" />
-                    <Image className="dark-logo" src={darkLogo} priority alt="payslip logo" />
+                    {/* Logo removed */}
                   </div>
                   <p className="mb-[5px]">100 Terminal, Fort Lauderdale,</p>
                   <p className="mb-[5px]">Miami 33315, United States</p>
-                  <p className="mb-[5px]">name@manez.com</p>
+                  <p className="mb-[5px]">name@leadsmind.com</p>
                   <p className="mb-[5px]">+1(800) 642 7676</p>
                 </div>
                 <div>
@@ -49,7 +48,7 @@ const AppInvoicePreviewMainArea = () => {
                   </div>
                   <div className="invoice__address">
                     <h6 className="mb-[15px] font-semibold">Ethan Mitchell</h6>
-                    <p>Email: <span> name@manez.com</span> </p>
+                    <p>Email: <span> name@leadsmind.com</span> </p>
                     <p>Address: <span> 100 Terminal, Fort Lauderdale, Miami 33315, United
                       States</span></p>
                     <p>Phone: <span> +1(800) 642 7676</span></p>
@@ -62,7 +61,7 @@ const AppInvoicePreviewMainArea = () => {
                   </div>
                   <div className="invoice__address">
                     <h6 className="mb-[15px] font-semibold">Ethan Mitchell</h6>
-                    <p>Email: <span> name@manez.com</span> </p>
+                    <p>Email: <span> name@leadsmind.com</span> </p>
                     <p>Address: <span> 100 Terminal, Fort Lauderdale, Miami 33315, United
                       States</span></p>
                     <p>Phone: <span> +1(800) 642 7676</span></p>

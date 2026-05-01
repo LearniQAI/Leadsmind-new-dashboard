@@ -11,12 +11,11 @@ const PayslipAndBillingAddress = () => {
       <div className="flex flex-col sm:flex-row xl:flex-row justify-between">
         <div className="payslip__office-address">
           <div className="payslip__logo mb-[20px]">
-            <Image className="light-logo" src={logo} alt="payslip logo" />
-            <Image className="dark-logo" src={logoWhite} alt="payslip logo" />
+            {/* Logo removed */}
           </div>
           <p>100 Terminal, Fort Lauderdale,</p>
           <p>Miami 33315, United States</p>
-          <p>name@manez.com</p>
+          <p>name@leadsmind.com</p>
           <p>+1(800) 642 7676</p>
         </div>
         <div className="payslip__serial-number">
@@ -48,7 +47,7 @@ const PayslipAndBillingAddress = () => {
               Department: <span> Information Technology Department</span>
             </p>
             <p className="text-muted">
-              Email: <span>ethanmitchell@manez.com</span>
+              Email: <span>ethanmitchell@leadsmind.com</span>
             </p>
             <p className="text-muted">
               Phone: <span> +1(800) 642 7676</span>

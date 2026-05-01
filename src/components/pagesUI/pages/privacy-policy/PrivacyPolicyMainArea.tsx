@@ -15,7 +15,7 @@ const PrivacyPolicyMainArea = () => {
               <div className="policy-wrapper relative z-[1]">
                 <div className="policy-item">
                   <h4 className="policy-title">Introduction</h4>
-                  <p>Manez is committed to protecting the privacy of our users. This Privacy Policy
+                  <p>LeadsMind is committed to protecting the privacy of our users. This Privacy Policy
                     explains how we collect, use, disclose, and safeguard your information when you
                     use our HRM & CRM Dashboard. Please read this Privacy Policy carefully. If you
                     do not agree with the terms of this Privacy Policy, please do not use the
@@ -90,7 +90,7 @@ const PrivacyPolicyMainArea = () => {
                       accordance with, or required by, any applicable law, regulation, or legal
                       process</li>
                     <li>If we believe your actions are inconsistent with our user agreements or
-                      policies, or to protect the rights, property, and safety of Manez or others
+                      policies, or to protect the rights, property, and safety of LeadsMind or others
                     </li>
                     <li>In connection with, or during negotiations of, any merger, sale of company
                       assets, financing, or acquisition of all or a portion of our business to
@@ -174,7 +174,7 @@ const PrivacyPolicyMainArea = () => {
                   <ul>
                     <li>Call: <span><Link href="tel:+012345678999">+012-3456-7890</Link></span>
                     </li>
-                    <li>Email: <span><Link href="mailto:contact@manez.com">contact@manez.com</Link></span>
+                    <li>Email: <span><Link href="mailto:contact@leadsmind.com">contact@leadsmind.com</Link></span>
                     </li>
                   </ul>
                   <div className="policy-address">

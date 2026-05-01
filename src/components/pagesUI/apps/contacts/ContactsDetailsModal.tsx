@@ -62,7 +62,7 @@ const ContactsDetailsModal = ({ open, setOpen, editData }: statePropsType) => {
             <div className="col-span-12 md:col-span-6">
               <div className="label__content-wrapper">
                 <span className="label__subtitle">Email Address</span>
-                <h6 className="label__title">ayshasiddika@manez.com</h6>
+                <h6 className="label__title">ayshasiddika@leadsmind.com</h6>
               </div>
             </div>
             <div className="col-span-12">

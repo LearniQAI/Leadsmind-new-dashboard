@@ -60,6 +60,7 @@ const sidebarData: SidebarCategory[] = [
           { label: "Email Read", link: "/apps/email-read" },
           { label: "Email Compose", link: "/apps/email-compose" },
           { label: "Contacts", link: "/apps/contacts" },
+          { label: "Pipelines", link: "/apps/pipelines" },
           { label: "Calendar", link: "/apps/calendar" },
         ],
       },

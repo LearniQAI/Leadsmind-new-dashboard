@@ -8,7 +8,7 @@ import Link from "next/link";
 
 const PayrollSlipMainArea = () => {
   const handlePrint = () => {
-    const printWindow = window.open("https://manez-dashboard.vercel.app/payroll-payslip-print", "_blank");
+    const printWindow = window.open("https://leadsmind-dashboard.vercel.app/payroll-payslip-print", "_blank");
     if (printWindow) {
       printWindow.onload = () => {
         // Ensure the DOM is fully loaded
@@ -43,7 +43,7 @@ const PayrollSlipMainArea = () => {
                   Account Number: <span>3456 **** **** **34</span>
                 </p>
                 <p className="text-muted">
-                  Account Name: <span>Manez Bank LTD</span>
+                  Account Name: <span>LeadsMind Bank LTD</span>
                 </p>
               </div>
               <div className="payslip-line"></div>

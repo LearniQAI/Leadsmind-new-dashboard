@@ -2,7 +2,7 @@ import { createServerClient as _createServerClient, type CookieOptions } from '@
 import { cookies } from 'next/headers'
 
 export const createServerClient = async () => {
-  const cookieStore = await cookies()
+  const cookieStore = cookies()
 
   return _createServerClient(
     'https://iejtgefkoiyrnyeedigr.supabase.co',

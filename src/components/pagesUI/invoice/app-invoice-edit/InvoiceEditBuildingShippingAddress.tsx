@@ -37,7 +37,7 @@ const InvoiceEditBuildingShippingAddress = () => {
                             className="form-control"
                             id="billingEmail"
                             placeholder="Email Address"
-                            defaultValue="name@manez.com"
+                            defaultValue="name@leadsmind.com"
                         />
                     </div>
                 </div>
@@ -129,7 +129,7 @@ const InvoiceEditBuildingShippingAddress = () => {
                             className="form-control"
                             id="shippingEmail"
                             placeholder="Email Address"
-                            defaultValue="name@manez.com"
+                            defaultValue="name@leadsmind.com"
                         />
                     </div>
                 </div>

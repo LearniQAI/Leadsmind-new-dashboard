@@ -89,7 +89,7 @@ const CompanySendMailModal = ({ open, setOpen }: statePropsType) => {
                                         <Editor
                                         apiKey="uonxh66a1gnxnn8g0lsc2ow4pa5c9jys8sa0fadd1txn49y7"
                                         onInit={(_evt, editor) => (editorRef.current = editor)}
-                                        initialValue="<p>Hello, World! <br> From Manez...</p>"
+                                        initialValue="<p>Hello, World! <br> From LeadsMind...</p>"
                                         init={{
                                             height: 300,
                                             menubar: true,

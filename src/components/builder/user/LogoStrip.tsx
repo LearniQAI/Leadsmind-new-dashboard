@@ -70,12 +70,7 @@ export const LogoStrip = ({
 LogoStrip.craft = {
   displayName: 'Logo Cloud',
   props: {
-    logos: [
-      { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Amazon_logo.svg/2560px-Amazon_logo.svg.png', alt: 'Amazon' },
-      { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/2560px-Google_2015_logo.svg.png', alt: 'Google' },
-      { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/2048px-Facebook_f_logo_%282019%29.svg.png', alt: 'Facebook' },
-      { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Netflix_2015_logo.svg/2560px-Netflix_2015_logo.svg.png', alt: 'Netflix' },
-    ],
+    logos: [],
     backgroundColor: 'transparent',
     grayscale: true,
     opacity: 50,

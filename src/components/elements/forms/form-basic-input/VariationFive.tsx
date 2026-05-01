@@ -28,7 +28,7 @@ const BasicInputFieldWithLabelTop = () => {
                 name="name"
                 id="text2"
                 type="text"
-                placeholder="Manez Admin"
+                placeholder="LeadsMind Admin"
               />
             </div>
           </div>

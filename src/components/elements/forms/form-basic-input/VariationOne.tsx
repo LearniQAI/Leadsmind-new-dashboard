@@ -25,7 +25,7 @@ const BasicInputFieldWithRightSideLabel = () => {
                             </div>
                             <div className="col-span-12 sm:col-span-9">
                                 <div className="form__input">
-                                    <input className="form-control" name="name" id="name" type="text" placeholder="Manez Admin" />
+                                    <input className="form-control" name="name" id="name" type="text" placeholder="LeadsMind Admin" />
                                 </div>
                             </div>
                         </div>

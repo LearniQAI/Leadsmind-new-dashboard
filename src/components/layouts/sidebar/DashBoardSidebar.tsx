@@ -124,29 +124,24 @@ const DashBoardSidebar = () => {
       <div
         className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}
       >
-        <div className="main-sidebar-header">
-          <Link href="/" className="header-logo">
-            <Image
-              className="main-logo"
-              src={enrichedWorkspace?.branding?.logoUrl || enrichedWorkspace?.logoUrl || sidebarMainLogo}
-              width={150}
-              height={40}
-              priority
-              alt="logo"
-            />
-            <Image
-              className="dark-logo"
-              src={enrichedWorkspace?.branding?.logoUrl || enrichedWorkspace?.logoUrl || sidebarDarkLogo}
-              width={150}
-              height={40}
-              priority
-              alt="logo"
-            />
+        <div className="main-sidebar-header !h-[70px] !py-0 !px-6 border-b border-white/5 bg-[#0b0b14] flex flex-col items-start justify-center shadow-lg shadow-black/20">
+          <Link href="/" className="flex flex-col gap-0.5 group">
+            <span className="text-lg font-black tracking-tighter uppercase text-white group-hover:text-primary transition-all duration-300">
+              LeadsMind
+            </span>
+            {enrichedWorkspace?.name && (
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-primary" />
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 truncate max-w-[140px]">
+                  {enrichedWorkspace.name}
+                </span>
+              </div>
+            )}
           </Link>
         </div>
 
         <div className="common-scrollbar max-h-screen overflow-y-auto">
-          <nav className="main-menu-container nav nav-pills flex-column sub-open mt-[80px]">
+          <nav className="main-menu-container nav nav-pills flex-column sub-open mt-[70px]">
             <ul className="main-menu" style={{ display: "block" }}>
               {sidebarData.map((category) => (
                 <React.Fragment key={category.id}>

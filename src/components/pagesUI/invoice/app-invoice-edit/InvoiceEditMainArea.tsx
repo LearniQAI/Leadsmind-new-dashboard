@@ -23,17 +23,11 @@ const InvoiceEditMainArea = () => {
           <div className="grid grid-cols-12 gap-5 maxXs:gap-x-0">
             <div className="col-span-12 sm:col-span-6">
               <div className="invoice__logo mb-5">
-                <Image
-                  className="light-logo"
-                  src={lightLogo}
-                  priority
-                  alt="payslip logo"
-                />
-                <Image className="dark-logo" src={whiteLogo} priority alt="payslip logo" />
+                {/* Logo removed */}
               </div>
               <p className="mb-[5px]">100 Terminal, Fort Lauderdale,</p>
               <p className="mb-[5px]">Miami 33315, United States</p>
-              <p className="mb-[5px]">name@manez.com</p>
+              <p className="mb-[5px]">name@leadsmind.com</p>
               <p className="mb-[5px]">+1(800) 642 7676</p>
             </div>
             <div className="col-span-12 sm:col-span-6">

@@ -38,7 +38,7 @@ const EmailInboxMainArea = () => {
                         <div className="media-size-email"><Image className="w-[50px] border-circle me-[10px]" src={avatar1} alt="image" /></div>
                         <div className="media-body">
                           <h6 className="f-w-600">Jhon Smith</h6>
-                          <p>jhonsmith@manez.com</p>
+                          <p>jhonsmith@leadsmind.com</p>
                         </div>
                       </div>
                       <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>

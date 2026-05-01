@@ -19,7 +19,7 @@ const PayrollPayslipPrintMain = () => {
                         <p className="text-muted">Payment Method: <span className="font-semibold">Bank Account</span></p>
                         <p className="text-muted">Account Name: <span className="font-semibold">Ethan Mitchell</span></p>
                         <p className="text-muted">Account Number: <span className="font-semibold">3456 **** **** **34</span></p>
-                        <p className="text-muted">Account Name: <span className="font-semibold">Manez Bank LTD</span></p>
+                        <p className="text-muted">Account Name: <span className="font-semibold">LeadsMind Bank LTD</span></p>
                     </div>
                 </div>
             </div>

@@ -115,7 +115,7 @@ export interface Workspace {
 }
 
 export async function getCurrentWorkspaceId(): Promise<string | null> {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   return cookieStore.get('active_workspace_id')?.value ?? null;
 }
 
@@ -138,7 +138,7 @@ export async function getCurrentWorkspace(existingUser?: any): Promise<Workspace
     if (membership) {
       workspaceId = membership.workspace_id;
       // Persist the cookie for future requests
-      const cookieStore = await cookies();
+      const cookieStore = cookies();
       try {
         cookieStore.set('active_workspace_id', workspaceId!, {
           maxAge: 60 * 60 * 24 * 30,
@@ -277,7 +277,7 @@ export async function logout() {
   const supabase = await createServerClient();
   await supabase.auth.signOut();
 
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   cookieStore.delete('active_workspace_id');
 
   redirect('/auth/signin-basic');

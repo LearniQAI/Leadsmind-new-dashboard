@@ -1,7 +1,5 @@
 import React from 'react';
 import signUpImg from "../../../../public/assets/images/sign/sign-up.png";
-import logoImg from "../.././../../public/assets/images/logo/logo.svg";
-import logoWhite from '../../../../public/assets/images/logo/logo-white.svg';
 import Image from 'next/image';
 import Link from 'next/link';
 import SignUpCoverForm from '@/form/auth/SignUp/cover-form';
@@ -24,13 +22,7 @@ const SignUpCoverMain = () => {
                     <div className="flex col-span-12 md:col-span-6 lg:col-span-5 items-center">
                         <div className="card__wrapper no-height">
                             <div className="authentication-top text-center mb-[20px]">
-                                <Link href="#" className="authentication-logo logo-black">
-                                    <Image src={logoImg} style={{ width: "100%", height: "auto" }} alt="logo" />
-                                </Link>
-                                <Link href="#" className="authentication-logo logo-white">
-                                    <Image src={logoWhite} style={{ width: "100%", height: "auto" }} alt="logo" />
-                                </Link>
-                                <h4 className="mb-[15px]">Welcome to Manez</h4>
+                                <h4 className="mb-[15px]">Welcome to LeadsMind</h4>
                                 <p className="mb-[15px]">Please sign-in to your account and start the adventure</p>
                             </div>
                             {/* Sign Up Cover form */}

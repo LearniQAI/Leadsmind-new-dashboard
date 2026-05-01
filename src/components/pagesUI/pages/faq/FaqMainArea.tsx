@@ -29,11 +29,11 @@ const FaqMainArea = () => {
                                             aria-controls="panel1d-content"
                                             id="panel1d-header"
                                         >
-                                            <Typography className='accordion-header'><span>01.</span>What is the Manez HRM & CRM Dashboard?</Typography>
+                                            <Typography className='accordion-header'><span>01.</span>What is the LeadsMind HRM & CRM Dashboard?</Typography>
                                         </MuiAccordionSummary>
                                         <MuiAccordionDetails>
                                             <div className="accordion-body">
-                                                The Manez HRM & CRM Dashboard is an advanced integrated platform
+                                                The LeadsMind HRM & CRM Dashboard is an advanced integrated platform
                                                 designed to streamline the management of human resources and customer
                                                 relationships for businesses. It provides comprehensive tools for
                                                 employee management, recruitment, payroll processing, tracking customer
@@ -45,7 +45,7 @@ const FaqMainArea = () => {
                                                     <li>Recruitment: Simplify the hiring process with features that help post job openings, manage applications, and track candidate progress through various hiring stages.</li>
                                                     <li>Payroll Processing: Automate payroll calculations, manage employee benefits, deductions, and generate accurate payslips to ensure timely and correct salary disbursements.</li>
                                                 </ul>
-                                                The Manez HRM & CRM Dashboard is designed to improve efficiency, enhance
+                                                The LeadsMind HRM & CRM Dashboard is designed to improve efficiency, enhance
                                                 productivity, and provide a holistic view of both employee and customer
                                                 data, enabling businesses to make data-driven decisions and foster
                                                 growth.
@@ -61,7 +61,7 @@ const FaqMainArea = () => {
                                             aria-controls="panel1d-content"
                                             id="panel1d-header"
                                         >
-                                            <Typography className='accordion-header'><span>02.</span>How do I access the Manez HRM & CRM Dashboard?</Typography>
+                                            <Typography className='accordion-header'><span>02.</span>How do I access the LeadsMind HRM & CRM Dashboard?</Typography>
                                         </MuiAccordionSummary>
                                         <MuiAccordionDetails>
                                             <div className="accordion-body">
@@ -80,7 +80,7 @@ const FaqMainArea = () => {
                                             aria-controls="panel1d-content"
                                             id="panel1d-header"
                                         >
-                                            <Typography className='accordion-header'><span>03.</span>Who can use the Manez HRM & CRM Dashboard?</Typography>
+                                            <Typography className='accordion-header'><span>03.</span>Who can use the LeadsMind HRM & CRM Dashboard?</Typography>
                                         </MuiAccordionSummary>
                                         <MuiAccordionDetails>
                                             <div className="accordion-body">
@@ -184,7 +184,7 @@ const FaqMainArea = () => {
                                             aria-controls="panel1d-content"
                                             id="panel1d-header"
                                         >
-                                            <Typography className='accordion-header'><span>08.</span>How secure is the Manez HRM & CRM Dashboard?</Typography>
+                                            <Typography className='accordion-header'><span>08.</span>How secure is the LeadsMind HRM & CRM Dashboard?</Typography>
                                         </MuiAccordionSummary>
                                         <MuiAccordionDetails>
                                             <div className="accordion-body">

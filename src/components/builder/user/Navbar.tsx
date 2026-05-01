@@ -203,8 +203,8 @@ export const Navbar = ({
 Navbar.craft = {
   displayName: 'Global Navbar',
   props: {
-    logo: 'https://vjltxstiwsqisuvvthvt.supabase.co/storage/v1/object/public/leadsmind-assets//leadsmind_logo_white.png',
-    brandName: 'Leadsmind',
+    logo: '',
+    brandName: 'LeadsMind',
     links: [
       { label: 'Features', href: '#features' },
       { label: 'Pricing', href: '#pricing' },

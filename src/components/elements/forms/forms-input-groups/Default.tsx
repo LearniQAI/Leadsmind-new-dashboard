@@ -55,12 +55,12 @@ const Default = () => {
                 <div className="from__input-box">
                     <div className="input-group">
                         <input type="text" className="form-control" placeholder="User Name With Site Name" aria-label="your username" aria-describedby="username-with-link" />
-                        <span className="input-group-text" id="username-with-link">@manez.com</span>
+                        <span className="input-group-text" id="username-with-link">@leadsmind.com</span>
                     </div>
                 </div>
                 <div className="from__input-box">
                     <div className="input-group form__element-xs">
-                        <span className="input-group-text" id="username-with-site-link">https://manez.com/users/</span>
+                        <span className="input-group-text" id="username-with-site-link">https://leadsmind.com/users/</span>
                         <input type="text" className="form-control" placeholder="User Name With Site Address" id="username-with-site-link" aria-describedby="username-with-site-link" />
                     </div>
                 </div>

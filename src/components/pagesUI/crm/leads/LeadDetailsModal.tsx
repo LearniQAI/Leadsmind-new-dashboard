@@ -120,7 +120,7 @@ const LeadDetailsModal = ({ open, setOpen, editData }: statePropsType) => {
                   <div className="label__content-wrapper">
                     <span className="label__subtitle">Lead Description</span>
                     <p>
-                      As a Sales Representative at Manez, you will play a key
+                      As a Sales Representative at LeadsMind, you will play a key
                       role in driving revenue growth and expanding our customer
                       base. You will be responsible for identifying and
                       prospecting new leads, nurturing relationships with

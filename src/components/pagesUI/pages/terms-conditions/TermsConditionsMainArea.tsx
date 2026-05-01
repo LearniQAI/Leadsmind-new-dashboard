@@ -15,7 +15,7 @@ const TermsConditionsMainArea = () => {
               <div className="policy-wrapper relative z-[1]">
                 <div className="policy-item">
                   <h4 className="policy-title">Introduction</h4>
-                  <p>Welcome to Manez - HRM & CRM Dashboard. By accessing or using our Service, you
+                  <p>Welcome to LeadsMind - HRM & CRM Dashboard. By accessing or using our Service, you
                     agree to comply with and be bound by the following terms and conditions
                     {`("Terms")`}. Please review these Terms carefully. If you do not agree to these
                     Terms, you should not use the Service.</p>
@@ -25,7 +25,7 @@ const TermsConditionsMainArea = () => {
                   <ul>
                     <li>We refers to any individual or entity accessing or using the Service.
                     </li>
-                    <li>We refer to Manez, the provider of the Service.</li>
+                    <li>We refer to LeadsMind, the provider of the Service.</li>
                     <li>We refers to all information, data, text, software, graphics, and other
                       materials provided through the Service.</li>
                   </ul>
@@ -62,13 +62,13 @@ const TermsConditionsMainArea = () => {
                   <p>The Service is provided on an {`"as is" and "as available"`} basis. We make no
                     warranties, express or implied, regarding the Service, including but not limited
                     to the accuracy, completeness, or reliability of any Content.</p>
-                  <p>In no event shall Manez be liable for any indirect, incidental, special,
+                  <p>In no event shall LeadsMind be liable for any indirect, incidental, special,
                     consequential, or punitive damages arising out of or related to the use of the
                     Service.</p>
                 </div>
                 <div className="policy-item">
                   <h4 className="policy-title">Indemnification</h4>
-                  <p>Users agree to indemnify, defend, and hold harmless Manez, its affiliates, and
+                  <p>Users agree to indemnify, defend, and hold harmless LeadsMind, its affiliates, and
                     their respective officers, directors, employees, and agents from and against any
                     claims, liabilities, damages, losses, and expenses, including reasonable {" "}
                     {`attorney's`} fees, arising out of or in any way connected with their use of the
@@ -98,7 +98,7 @@ const TermsConditionsMainArea = () => {
                   <ul>
                     <li>Call: <span><Link href="tel:+012345678999">+012-3456-7890</Link></span>
                     </li>
-                    <li>Email: <span><Link href="mailto:contact@manez.com">contact@manez.com</Link></span>
+                    <li>Email: <span><Link href="mailto:contact@leadsmind.com">contact@leadsmind.com</Link></span>
                     </li>
                   </ul>
                   <div className="policy-address">

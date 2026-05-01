@@ -178,7 +178,7 @@ const InvoiceEditCardInfo = () => {
                       id="cardname2"
                       type="text"
                       placeholder="Name, email or mobile number"
-                      defaultValue={"name@manez.com"}
+                      defaultValue={"name@leadsmind.com"}
                     />
                   </div>
                 </div>

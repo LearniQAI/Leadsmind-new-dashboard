@@ -18,11 +18,10 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
   const { theme } = useGlobalContext();
   const { user, workspace, role, branding } = useDashboardContext();
   const pathName = usePathname();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const loadingTimeout = setTimeout(() => setIsLoading(false), 2000);
-    return () => clearTimeout(loadingTimeout);
+    setIsLoading(false);
   }, []);
 
   const renderHeader = () => {
@@ -46,16 +45,10 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       >
         <DashBoardSidebar />
         <div className="page__body-wrapper">
-          {isLoading ? (
-            <Preloader />
-          ) : (
-            <>
-              <BackToTop />
-              {renderHeader()}
-              {children}
-              {renderFooter()}
-            </>
-          )}
+          <BackToTop />
+          {renderHeader()}
+          {children}
+          {renderFooter()}
         </div>
       </div>
     </>

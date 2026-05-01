@@ -40,7 +40,7 @@ const EmailReadMainArea = () => {
                         <div className="media-size-email"><Image className="w-[50px] border-circle me-[10px]" src={avatarImg2} priority alt="image" /></div>
                         <div className="media-body">
                           <h6 className="f-w-600">Jhon Smith</h6>
-                          <p>jhonsmith@manez.com</p>
+                          <p>jhonsmith@leadsmind.com</p>
                         </div>
                       </div>
                       <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
@@ -101,7 +101,7 @@ const EmailReadMainArea = () => {
                                 <div className="media-size-email"><Image className="w-[50px] border-circle me-[10px]" src={avatarImg1} priority alt="avatar image" /></div>
                                 <div className="media-body">
                                   <h6 className="f-w-600">Sophia Miller</h6>
-                                  <p>sophiamiller@manez.com</p>
+                                  <p>sophiamiller@leadsmind.com</p>
                                 </div>
                               </div>
                               <div className="maill__time">

@@ -44,3 +44,19 @@ export async function calculateLeadScore(contactId: string, eventType: string = 
     return { success: false, error: error.message };
   }
 }
+
+export async function getAutomationLogsForContact(contactId: string) {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from('automation_logs')
+    .select('*')
+    .eq('contact_id', contactId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[automation] Error fetching logs:', error);
+    return [];
+  }
+  return data || [];
+}
+

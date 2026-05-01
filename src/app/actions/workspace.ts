@@ -68,3 +68,27 @@ export async function createWorkspace(name: string) {
     return { success: false, error: 'An unexpected error occurred' };
   }
 }
+
+export async function getWorkspaceMembers() {
+  const user = await getUser();
+  if (!user) return [];
+
+  const supabase = await createServerClient();
+  const cookieStore = await cookies();
+  const workspaceId = cookieStore.get('active_workspace_id')?.value;
+
+  if (!workspaceId) return [];
+
+  const { data, error } = await supabase
+    .from('workspace_members')
+    .select('user_id, role, users(id, first_name, last_name)')
+    .eq('workspace_id', workspaceId);
+
+  if (error || !data) return [];
+
+  return data.map((m: any) => ({
+    id: m.users.id,
+    name: `${m.users.first_name} ${m.users.last_name}`.trim(),
+  }));
+}
+

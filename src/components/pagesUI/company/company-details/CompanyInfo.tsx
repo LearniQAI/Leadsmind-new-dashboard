@@ -79,7 +79,7 @@ const CompanyInfo = ({
                   <span>
                     <i className="fa-thin fa-globe-pointer"></i>
                   </span>{" "}
-                  <Link href="#">www.manez.info</Link>
+                  <Link href="#">www.leadsmind.info</Link>
                 </li>
               </ul>
             </div>

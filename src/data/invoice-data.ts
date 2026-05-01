@@ -14,7 +14,7 @@ export const invoiceData: IInvoice[] = [
   {
     id: "#MZ-00114",
     name: "Emma Phillips",
-    email: "name@manez.com",
+    email: "name@leadsmind.com",
     number: "+1(800) 642 7676",
     location: "Washington",
     date: "Jan 14, 2024",
@@ -25,7 +25,7 @@ export const invoiceData: IInvoice[] = [
   {
     id: "#MZ-00115",
     name: "Emma Stone",
-    email: "name@manez.com",
+    email: "name@leadsmind.com",
     number: "+1(800) 642 7676",
     location: "Washington",
     date: "Dec 30, 2024",
@@ -36,7 +36,7 @@ export const invoiceData: IInvoice[] = [
   {
     id: "#MZ-00116",
     name: "Jackson Perry",
-    email: "name@manez.com",
+    email: "name@leadsmind.com",
     number: "+1(800) 642 7676",
     location: "New York",
     date: "Dec 28, 2024",
@@ -47,7 +47,7 @@ export const invoiceData: IInvoice[] = [
   {
     id: "#MZ-00117",
     name: "Chloe King",
-    email: "name@manez.com",
+    email: "name@leadsmind.com",
     number: "+1(800) 642 7676",
     location: "Florida",
     date: "Nov 28, 2024",
@@ -58,7 +58,7 @@ export const invoiceData: IInvoice[] = [
   {
     id: "#MZ-00118",
     name: "Logan Foster",
-    email: "name@manez.com",
+    email: "name@leadsmind.com",
     number: "+1(800) 642 7676",
     location: "Virginia",
     date: "Oct 11, 2024",
@@ -69,7 +69,7 @@ export const invoiceData: IInvoice[] = [
   {
     id: "#MZ-00119",
     name: "Ava Brooks",
-    email: "name@manez.com",
+    email: "name@leadsmind.com",
     number: "+1(800) 642 7676",
     location: "Washington",
     date: "Sep 14, 2024",
@@ -80,7 +80,7 @@ export const invoiceData: IInvoice[] = [
   {
     id: "#MZ-00120",
     name: "Lucas Anderson",
-    email: "name@manez.com",
+    email: "name@leadsmind.com",
     number: "+1(800) 642 7676",
     location: "Alaska",
     date: "Aug 11, 2024",
@@ -91,7 +91,7 @@ export const invoiceData: IInvoice[] = [
   {
     id: "#MZ-00121",
     name: "Sophia Miller",
-    email: "name@manez.com",
+    email: "name@leadsmind.com",
     number: "+1(800) 642 7676",
     location: "Alabama",
     date: "Jul 14, 2024",
@@ -102,7 +102,7 @@ export const invoiceData: IInvoice[] = [
   {
     id: "#MZ-00122",
     name: "Olivia Bennett",
-    email: "name@manez.com",
+    email: "name@leadsmind.com",
     number: "+1(800) 642 7676",
     location: "New Mexico",
     date: "Jun 29, 2024",
@@ -113,7 +113,7 @@ export const invoiceData: IInvoice[] = [
   {
     id: "#MZ-00123",
     name: "Carter White",
-    email: "name@manez.com",
+    email: "name@leadsmind.com",
     number: "+1(800) 642 7676",
     location: "Virginia",
     date: "May 16, 2024",
