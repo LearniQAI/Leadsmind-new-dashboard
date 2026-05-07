@@ -17,7 +17,7 @@ const DashboardFooter = () => {
                   alt="LeadsMind" 
                   width={120} 
                   height={32} 
-                  className="object-contain brightness-0 invert"
+                  className="object-contain"
                 />
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">

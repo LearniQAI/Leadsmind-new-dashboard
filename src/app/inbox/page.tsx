@@ -6,7 +6,7 @@ export default async function InboxPage() {
   const { data: conversations, error } = await getConversations();
 
   return (
-    <div className="p-6 h-[calc(100vh-100px)] font-body flex flex-col">
+    <div className="p-6 h-[calc(100vh-100px)] font-body flex flex-col bg-[#0A0F3D] rounded-3xl shadow-2xl">
       <div className="mb-6">
         <h1 className="text-3xl font-black uppercase tracking-tighter text-white">Unified <span className="text-primary">Inbox</span></h1>
         <p className="text-white/40 text-sm font-medium">Manage Email, SMS, and Social messages in one place.</p>

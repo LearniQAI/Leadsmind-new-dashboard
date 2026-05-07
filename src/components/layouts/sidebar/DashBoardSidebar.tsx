@@ -132,7 +132,7 @@ const DashBoardSidebar = () => {
                  src="/assets/images/brand/LeadsMind_Logo.png.png" 
                  alt="LeadsMind" 
                  fill
-                 className="object-contain brightness-0 invert"
+                 className="object-contain"
                  priority
                />
             </div>
