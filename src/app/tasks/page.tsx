@@ -6,7 +6,6 @@ export default async function TasksPage() {
   const { data: tasks, error } = await getTasks();
 
   return (
-  return (
     <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-100px)]">
       <div className="mb-8">
         <h1 className="text-3xl font-black uppercase tracking-tighter text-white">Tasks <span className="text-primary">Manager</span></h1>
