@@ -81,7 +81,7 @@ const HomeDashboardClient = ({ stats, recentActivities, topOpportunities }: Home
       <div className="grid grid-cols-12 gap-x-5 maxXs:gap-x-0">
         {/* Stats Cards */}
         {cardsData.map((card, index) => (
-          <div key={index} className="col-span-12 sm:col-span-6 xxl:col-span-4 mb-[20px]">
+          <div key={index} className="col-span-12 sm:col-span-6 lg:col-span-4 mb-[20px]">
             <SummarySingleCard {...card} />
           </div>
         ))}

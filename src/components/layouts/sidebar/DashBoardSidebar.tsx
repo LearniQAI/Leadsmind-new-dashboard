@@ -125,25 +125,22 @@ const DashBoardSidebar = () => {
       <div
         className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}
       >
-        <div className="main-sidebar-header !h-[80px] !py-0 !px-6 border-b border-white/5 bg-[#0b0b14] flex flex-col items-start justify-center shadow-lg shadow-black/20">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-10 h-10 overflow-hidden">
+        <div className="main-sidebar-header !h-[80px] !py-0 !px-4 border-b border-white/5 bg-[#0b0b14] flex flex-col items-center justify-center shadow-lg shadow-black/20">
+          <Link href="/" className="flex items-center justify-center w-full group mt-1">
+            <div className="relative w-40 h-10 overflow-hidden">
                <Image 
-                 src="/assets/images/brand/LeadsMind Logo.png" 
+                 src="/assets/images/brand/LeadsMind_Logo.png.png" 
                  alt="LeadsMind" 
-                 width={40} 
-                 height={40} 
+                 fill
                  className="object-contain"
+                 priority
                />
             </div>
-            <span className="text-xl font-black tracking-tighter text-white uppercase group-hover:text-primary transition-colors">
-              LeadsMind
-            </span>
           </Link>
           {enrichedWorkspace?.name && (
             <div className="flex items-center gap-1.5 mt-1 px-1">
-              <div className="w-1 h-1 rounded-full bg-primary" />
-              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 truncate max-w-[140px]">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(19,89,255,0.8)]" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 truncate max-w-[180px]">
                 {enrichedWorkspace.name}
               </span>
             </div>

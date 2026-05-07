@@ -48,16 +48,15 @@ const LandingContent = () => {
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#0A0F3D]/80 backdrop-blur-xl">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-             <div className="relative w-10 h-10 overflow-hidden">
+             <div className="relative w-48 h-12 overflow-hidden">
                 <Image 
-                  src="/assets/images/brand/LeadsMind Logo.png" 
+                  src="/assets/images/brand/LeadsMind_Logo.png.png" 
                   alt="LeadsMind" 
-                  width={40} 
-                  height={40} 
+                  fill
                   className="object-contain"
+                  priority
                 />
              </div>
-             <span className="text-xl font-black uppercase tracking-tighter">LeadsMind</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-xs font-black uppercase tracking-widest text-white/60">
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
@@ -346,16 +345,14 @@ const LandingContent = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-24">
             <div className="col-span-2">
               <div className="flex items-center gap-3 mb-8">
-                 <div className="relative w-10 h-10 overflow-hidden">
+                 <div className="relative w-40 h-10 overflow-hidden">
                     <Image 
-                      src="/assets/images/brand/LeadsMind Logo.png" 
+                      src="/assets/images/brand/LeadsMind_Logo.png.png" 
                       alt="LeadsMind" 
-                      width={40} 
-                      height={40} 
+                      fill
                       className="object-contain"
                     />
                  </div>
-                 <span className="text-2xl font-black uppercase tracking-tighter">LeadsMind</span>
               </div>
               <p className="text-white/30 text-base leading-relaxed max-w-sm mb-8 font-medium">
                 The definitive business operating system for high-performance teams. Build, automate, and scale with absolute precision.

@@ -1,25 +1,27 @@
-import Link from 'next/link';
-import React from 'react';
+import Image from 'next/image';
 
 const DashboardFooter = () => {
-  // Function to get the current year
   const getCurrentYear = () => {
     return new Date().getFullYear();
   };
 
   return (
     <>
-      {/* -- footer area start -- */}
       <footer className="footer">
         <div className="grid grid-cols-12">
           <div className="col-span-12 xl:col-span-12">
-            <div className="card__footer flex justify-center">
-              <p>
-                Copyright © {getCurrentYear()}{' '}
-                <span className="text-black dark:text-black-dark font-bold uppercase tracking-wider">LEADSMIND.</span> Designed with by{' '}
-                <Link href="https://themeforest.net/user/bdevs" target="_blank">
-                  Bdevs
-                </Link> All rights reserved
+            <div className="card__footer flex flex-col items-center justify-center py-6">
+              <div className="mb-4 opacity-40 hover:opacity-100 transition-opacity">
+                <Image 
+                  src="/assets/images/brand/LeadsMind_Logo.png.png" 
+                  alt="LeadsMind" 
+                  width={120} 
+                  height={32} 
+                  className="object-contain"
+                />
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
+                Copyright © {getCurrentYear()} LeadsMind. All rights reserved
               </p>
             </div>
           </div>

@@ -15,9 +15,9 @@ const ComingSoon = ({ title }: ComingSoonProps) => {
   return (
     <Wrapper>
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
-        <div className="w-24 h-24 mb-8 relative">
+        <div className="w-64 h-20 mb-12 relative">
            <Image 
-             src="/assets/images/brand/LeadsMind Logo.png" 
+             src="/assets/images/brand/LeadsMind_Logo.png.png" 
              alt="LeadsMind" 
              fill
              className="object-contain animate-pulse"
