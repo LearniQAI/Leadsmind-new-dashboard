@@ -11,13 +11,13 @@ const DashboardFooter = () => {
         <div className="grid grid-cols-12">
           <div className="col-span-12 xl:col-span-12">
             <div className="card__footer flex flex-col items-center justify-center py-6">
-              <div className="mb-4 opacity-70 hover:opacity-100 transition-opacity bg-white rounded-lg px-3 py-2 shadow-sm inline-block">
+              <div className="mb-4 opacity-70 hover:opacity-100 transition-opacity">
                 <Image 
                   src="/assets/images/brand/LeadsMind_Logo.png.png" 
                   alt="LeadsMind" 
                   width={120} 
                   height={32} 
-                  className="object-contain"
+                  className="object-contain brightness-0 invert"
                 />
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">

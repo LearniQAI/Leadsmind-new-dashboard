@@ -127,12 +127,12 @@ const DashBoardSidebar = () => {
       >
         <div className="main-sidebar-header !h-[80px] !py-0 !px-4 border-b border-white/5 bg-[#0b0b14] flex flex-col items-center justify-center shadow-lg shadow-black/20">
           <Link href="/" className="flex items-center justify-center w-full group mt-1">
-            <div className="relative w-40 h-10 overflow-hidden bg-white rounded-lg px-2 shadow-sm">
+            <div className="relative w-40 h-10 overflow-hidden">
                <Image 
                  src="/assets/images/brand/LeadsMind_Logo.png.png" 
                  alt="LeadsMind" 
                  fill
-                 className="object-contain"
+                 className="object-contain brightness-0 invert"
                  priority
                />
             </div>

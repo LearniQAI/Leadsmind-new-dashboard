@@ -10,7 +10,7 @@ import { Check, ArrowRight, Zap, Shield, BarChart3, Users, Globe, MessageSquare,
 import { createCheckoutSession, getSaaSTiers } from '@/app/actions/finance';
 import { toast } from 'sonner';
 
-const LandingContent = () => {
+const LandingContent = ({ user }: { user?: any }) => {
   const [tiers, setTiers] = React.useState<any[]>([]);
   const [isAnnual, setIsAnnual] = React.useState(false);
 
@@ -28,7 +28,7 @@ const LandingContent = () => {
     if (res.error) {
       toast.error(res.error);
       if (res.error === 'Not authenticated') {
-        window.location.href = '/auth/signin-basic';
+        window.location.href = '/auth/signup-basic';
       }
     } else if (res.url) {
       window.location.href = res.url;
@@ -48,12 +48,12 @@ const LandingContent = () => {
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#0A0F3D]/80 backdrop-blur-xl">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-             <div className="relative w-48 h-12 overflow-hidden bg-white rounded-lg px-3 py-1 shadow-sm">
+             <div className="relative w-48 h-12 overflow-hidden">
                 <Image 
                   src="/assets/images/brand/LeadsMind_Logo.png.png" 
                   alt="LeadsMind" 
                   fill
-                  className="object-contain"
+                  className="object-contain brightness-0 invert"
                   priority
                 />
              </div>
@@ -64,12 +64,20 @@ const LandingContent = () => {
             <Link href="#pricing" className="hover:text-white transition-colors">Pricing</Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/auth/signin-basic">
-              <Button variant="ghost" className="text-white hover:bg-white/5 text-xs font-bold uppercase tracking-widest">Login</Button>
-            </Link>
-            <Link href="/auth/signup-basic">
-              <Button className="bg-primary hover:bg-primary/90 border-none px-6 text-xs font-black uppercase tracking-widest h-10 shadow-lg shadow-primary/20">Get Started</Button>
-            </Link>
+            {user ? (
+              <Link href="/dashboard">
+                <Button className="bg-primary hover:bg-primary/90 border-none px-6 text-xs font-black uppercase tracking-widest h-10 shadow-lg shadow-primary/20">Dashboard</Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth/signin-basic">
+                  <Button variant="ghost" className="text-white hover:bg-white/5 text-xs font-bold uppercase tracking-widest">Login</Button>
+                </Link>
+                <Link href="/auth/signup-basic">
+                  <Button className="bg-primary hover:bg-primary/90 border-none px-6 text-xs font-black uppercase tracking-widest h-10 shadow-lg shadow-primary/20">Get Started</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -303,7 +311,7 @@ const LandingContent = () => {
                       onClick={() => handleCheckout(tier.id)}
                       className={`w-full h-16 font-black uppercase tracking-[0.2em] text-sm ${tier.id === 'pro' ? 'bg-primary hover:bg-primary/90 border-none shadow-xl shadow-primary/30' : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'}`}
                     >
-                      {tier.id === 'starter' ? 'Start Free' : 'Secure Access'}
+                      {tier.id === 'starter' ? 'Start Free' : 'Subscribe'}
                     </Button>
                   </div>
                 </Card>
@@ -349,12 +357,12 @@ const LandingContent = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-24">
             <div className="col-span-2">
               <div className="flex items-center gap-3 mb-8">
-                 <div className="relative w-40 h-10 overflow-hidden bg-white rounded-lg px-2 shadow-sm">
+                 <div className="relative w-40 h-10 overflow-hidden">
                     <Image 
                       src="/assets/images/brand/LeadsMind_Logo.png.png" 
                       alt="LeadsMind" 
                       fill
-                      className="object-contain"
+                      className="object-contain brightness-0 invert"
                     />
                  </div>
               </div>

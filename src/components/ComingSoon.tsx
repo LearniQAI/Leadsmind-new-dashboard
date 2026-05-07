@@ -15,12 +15,13 @@ const ComingSoon = ({ title }: ComingSoonProps) => {
   return (
     <Wrapper>
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
-        <div className="w-64 h-20 mb-12 relative bg-white rounded-xl px-4 py-2 shadow-lg shadow-white/5">
+        <div className="w-64 h-20 mb-12 relative">
            <Image 
              src="/assets/images/brand/LeadsMind_Logo.png.png" 
              alt="LeadsMind" 
              fill
-             className="object-contain animate-pulse"
+             className="object-contain brightness-0 invert"
+             priority
            />
         </div>
         <h1 className="text-4xl font-black tracking-tighter mb-4 uppercase">{title}</h1>

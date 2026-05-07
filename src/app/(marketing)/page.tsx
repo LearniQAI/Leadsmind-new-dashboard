@@ -5,5 +5,5 @@ export default async function MarketingPage() {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  return <LandingContent />;
+  return <LandingContent user={user} />;
 }
