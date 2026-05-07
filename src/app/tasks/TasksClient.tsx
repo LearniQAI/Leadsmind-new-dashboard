@@ -3,13 +3,15 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, Clock, AlertCircle, Plus, MoreHorizontal } from 'lucide-react';
-import { updateTaskStatus } from '@/app/actions/tasks';
+import { updateTaskStatus, createTask } from '@/app/actions/tasks';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
 export default function TasksClient({ initialTasks }: { initialTasks: any[] }) {
   const router = useRouter();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -32,6 +34,21 @@ export default function TasksClient({ initialTasks }: { initialTasks: any[] }) {
     setIsUpdating(null);
   };
 
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim()) return;
+    setIsUpdating('new');
+    const res = await createTask({ title: newTaskTitle, status: 'todo' });
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      toast.success('Task added');
+      setNewTaskTitle('');
+      setIsAdding(false);
+      router.refresh();
+    }
+    setIsUpdating(null);
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Todo Column */}
@@ -47,9 +64,32 @@ export default function TasksClient({ initialTasks }: { initialTasks: any[] }) {
           {initialTasks.filter(t => t.status === 'todo').map(task => (
             <TaskCard key={task.id} task={task} onStatusChange={handleStatusChange} isUpdating={isUpdating === task.id} />
           ))}
-          <Button variant="ghost" className="w-full text-white/50 hover:text-white hover:bg-white/5 border border-dashed border-white/20 mt-4">
-            <Plus className="w-4 h-4 mr-2" /> Add Task
-          </Button>
+          
+          {isAdding ? (
+            <div className="p-4 rounded-xl bg-[#0b0b1a] border border-primary/50 shadow-lg">
+              <input 
+                autoFocus
+                type="text" 
+                placeholder="Task title..." 
+                className="w-full bg-transparent border-none text-white text-sm focus:outline-none mb-3"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleAddTask} disabled={isUpdating === 'new'} className="h-8 text-[10px] font-black uppercase tracking-widest bg-primary hover:bg-primary/90">Save</Button>
+                <Button size="sm" variant="ghost" onClick={() => setIsAdding(false)} className="h-8 text-[10px] font-black uppercase tracking-widest text-white/40">Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <Button 
+              onClick={() => setIsAdding(true)}
+              variant="ghost" 
+              className="w-full text-white/50 hover:text-white hover:bg-white/5 border border-dashed border-white/20 mt-4"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Add Task
+            </Button>
+          )}
         </div>
       </div>
 
