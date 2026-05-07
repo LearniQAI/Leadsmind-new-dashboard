@@ -207,7 +207,7 @@ const SignInBasicForm = () => {
           </div>
         </div>
         <div className="mb-4">
-          <button className="btn btn-primary w-full" type="submit" disabled={isLoading}>
+          <button className="btn btn-gradient w-full" type="submit" disabled={isLoading}>
             {isLoading ? "Signing in..." : "Sign in"}
           </button>
         </div>

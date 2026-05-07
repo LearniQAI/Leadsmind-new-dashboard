@@ -7,9 +7,9 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 export const stripe = new Stripe(apiKey, {
-  apiVersion: '2026-04-22.dahlia', // Use the latest stable version supported by the SDK
+  apiVersion: '2025-01-27.acacia' as any, 
   appInfo: {
-    name: 'Leadsmind',
-    version: '0.1.0',
+    name: 'Leadsmind-Dashboard',
+    version: '1.0.0',
   },
 });

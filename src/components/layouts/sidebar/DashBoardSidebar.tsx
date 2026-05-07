@@ -126,9 +126,17 @@ const DashBoardSidebar = () => {
       >
         <div className="main-sidebar-header !h-[70px] !py-0 !px-6 border-b border-white/5 bg-[#0b0b14] flex flex-col items-start justify-center shadow-lg shadow-black/20">
           <Link href="/" className="flex flex-col gap-0.5 group">
-            <span className="text-lg font-black tracking-tighter uppercase text-white group-hover:text-primary transition-all duration-300">
-              LeadsMind
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-2xl font-black tracking-tight text-white uppercase">
+                Le
+              </span>
+              <div className="relative w-6 h-6 bg-gradientPrimary rounded-full flex items-center justify-center">
+                 <div className="w-2 h-2 bg-white rounded-full shadow-lg" />
+              </div>
+              <span className="text-2xl font-black tracking-tight text-white uppercase">
+                dsmind
+              </span>
+            </div>
             {enrichedWorkspace?.name && (
               <div className="flex items-center gap-1.5">
                 <div className="w-1 h-1 rounded-full bg-primary" />

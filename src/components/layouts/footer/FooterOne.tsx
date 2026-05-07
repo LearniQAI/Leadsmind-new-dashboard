@@ -16,7 +16,7 @@ const DashboardFooter = () => {
             <div className="card__footer flex justify-center">
               <p>
                 Copyright © {getCurrentYear()}{' '}
-                <span className="text-black dark:text-black-dark">LeadsMind.</span> Designed with by{' '}
+                <span className="text-black dark:text-black-dark font-bold uppercase tracking-wider">LEADSMIND.</span> Designed with by{' '}
                 <Link href="https://themeforest.net/user/bdevs" target="_blank">
                   Bdevs
                 </Link> All rights reserved

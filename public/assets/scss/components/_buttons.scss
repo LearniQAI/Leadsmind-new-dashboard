@@ -47,6 +47,13 @@
   }
 }
 
+.btn-gradient {
+  @apply bg-gradientPrimary text-white border-none;
+  &:hover {
+    @apply opacity-90;
+  }
+}
+
 .btn-secondary {
   @apply bg-secondary dark:bg-secondary-dark;
   @apply text-white dark:text-white;

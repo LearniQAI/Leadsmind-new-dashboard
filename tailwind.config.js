@@ -84,8 +84,8 @@ module.exports = {
       // => @media (min-width: 576px) and (max-width: 576px) { ... }
     },
     fontFamily: {
-      body: ["'Roboto', sans-serif"],
-      heading: ["'Roboto', sans-serif"],
+      body: ["'Poppins', sans-serif"],
+      heading: ["'Poppins', sans-serif"],
       fontawesome: ["Font Awesome 6 Pro"],
       icomoon: ["icomoon"],
     },
@@ -120,32 +120,32 @@ module.exports = {
           dark: '#FFFFFF',    // dark mode
         },
         primary: {
-          DEFAULT: '#6C5FFC', // light mode
-          dark: '#6C5FFC',    // dark mode
+          DEFAULT: '#1359FF', // Royal Blue
+          dark: '#1359FF',
         },
         secondary: {
-          DEFAULT: '#1ABC9C', // light mode
-          dark: '#1ABC9C',    // dark mode
+          DEFAULT: '#7B3FF2', // Violet
+          dark: '#7B3FF2',
         },
         tertiary: {
-          DEFAULT: '#ABA3FD', // light mode
-          dark: '#ABA3FD',    // dark mode
+          DEFAULT: '#FF3CAC', // Magenta
+          dark: '#FF3CAC',
         },
         success: {
-          DEFAULT: '#34B53A', // light mode
-          dark: '#34B53A',    // dark mode
+          DEFAULT: '#34B53A',
+          dark: '#34B53A',
         },
         info: {
-          DEFAULT: '#0dcaf0', // light mode
-          dark: '#0dcaf0',    // dark mode
+          DEFAULT: '#00B2FF', // Sky Blue
+          dark: '#00B2FF',
         },
         link: {
           DEFAULT: '#9747FF', // light mode
           dark: '#9747FF',    // dark mode
         },
         warning: {
-          DEFAULT: '#FFB200', // light mode
-          dark: '#FFB200',    // dark mode
+          DEFAULT: '#FF8A00', // Sunset Orange
+          dark: '#FF8A00',
         },
         danger: {
           DEFAULT: '#FF3A29', // light mode
@@ -183,12 +183,12 @@ module.exports = {
         },
         //background
         bgBody: {
-          DEFAULT: '#f8f8fb', // light mode
-          dark: '#111827',    // dark mode
+          DEFAULT: '#F5F7FA', // Light Gray
+          dark: '#0A0F3D',    // Deep Navy
         },
         bgLightest: {
-          DEFAULT: '#f8f9fd', // light mode
-          dark: '#374151',    // dark mode
+          DEFAULT: '#FFFFFF',
+          dark: '#1F2937',
         },
         //action
         actionInfo: "#80CAFF",
@@ -228,18 +228,23 @@ module.exports = {
         },
         //gradient
         gradientPrimary: {
-          DEFAULT: 'linear-gradient(90deg, #6C5FFC 0%, #003cff 100%)', // light mode
-          dark: 'linear-gradient(90deg, #4C51BF 0%, #2C5282 100%)',    // dark mode
+          DEFAULT: 'linear-gradient(90deg, #1359FF 0%, #7B3FF2 33%, #FF3CAC 66%, #FF8A00 100%)',
+          dark: 'linear-gradient(90deg, #1359FF 0%, #7B3FF2 33%, #FF3CAC 66%, #FF8A00 100%)',
         },
-        gradientSecondary: {
-          DEFAULT: 'linear-gradient(90deg, #FF6339 0%, #FF2259 100%)', // light mode
-          dark: 'linear-gradient(90deg, #D53F8C 0%, #B83280 100%)',    // dark mode
+        gradientBlue: {
+          DEFAULT: 'linear-gradient(90deg, #0A0F3D 0%, #1359FF 50%, #00B2FF 100%)',
+          dark: 'linear-gradient(90deg, #0A0F3D 0%, #1359FF 50%, #00B2FF 100%)',
+        },
+        gradientAccent: {
+          DEFAULT: 'linear-gradient(90deg, #FF3CAC 0%, #FF8A00 100%)',
+          dark: 'linear-gradient(90deg, #FF3CAC 0%, #FF8A00 100%)',
         },
       },
 
       backgroundImage: {
-        gradientPrimary: "linear-gradient(90deg, #6C5FFC 0%, #003cff 100%)", //gradient1
-        gradientSecondary: "linear-gradient(90deg, #FF6339 0%, #FF2259 100%)", //gradient2
+        gradientPrimary: "linear-gradient(90deg, #1359FF 0%, #7B3FF2 33%, #FF3CAC 66%, #FF8A00 100%)",
+        gradientBlue: "linear-gradient(90deg, #0A0F3D 0%, #1359FF 50%, #00B2FF 100%)",
+        gradientAccent: "linear-gradient(90deg, #FF3CAC 0%, #FF8A00 100%)",
       },
     },
   },
