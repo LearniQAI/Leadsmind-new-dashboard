@@ -11,7 +11,7 @@ const DashboardFooter = () => {
         <div className="grid grid-cols-12">
           <div className="col-span-12 xl:col-span-12">
             <div className="card__footer flex flex-col items-center justify-center py-6">
-              <div className="mb-4 opacity-40 hover:opacity-100 transition-opacity">
+              <div className="mb-4 opacity-70 hover:opacity-100 transition-opacity bg-white rounded-lg px-3 py-2 shadow-sm inline-block">
                 <Image 
                   src="/assets/images/brand/LeadsMind_Logo.png.png" 
                   alt="LeadsMind" 

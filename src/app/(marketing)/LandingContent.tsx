@@ -48,7 +48,7 @@ const LandingContent = () => {
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#0A0F3D]/80 backdrop-blur-xl">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-             <div className="relative w-48 h-12 overflow-hidden">
+             <div className="relative w-48 h-12 overflow-hidden bg-white rounded-lg px-3 py-1 shadow-sm">
                 <Image 
                   src="/assets/images/brand/LeadsMind_Logo.png.png" 
                   alt="LeadsMind" 
@@ -96,9 +96,11 @@ const LandingContent = () => {
                unifies your team, and turns leads into loyal advocates.
              </p>
              <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-               <Button className="h-16 px-10 text-lg bg-primary hover:bg-primary/90 border-none group shadow-2xl shadow-primary/30 font-black uppercase tracking-widest">
-                 Claim Your Free Trial <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
-               </Button>
+               <Link href="/auth/signup-basic">
+                 <Button className="h-16 px-10 text-lg bg-primary hover:bg-primary/90 border-none group shadow-2xl shadow-primary/30 font-black uppercase tracking-widest">
+                   Claim Your Free Trial <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                 </Button>
+               </Link>
                <button className="flex items-center gap-3 text-white/80 hover:text-white transition-colors group">
                  <div className="w-14 h-14 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
                     <Play className="w-5 h-5 fill-current ml-1" />
@@ -325,9 +327,11 @@ const LandingContent = () => {
                    Join the 1% of elite businesses that have unified their operations and achieved total market dominance with LeadsMind.
                 </p>
                 <div className="flex flex-col items-center gap-8">
-                   <Button className="h-20 px-16 text-2xl bg-white text-primary hover:scale-105 border-none font-black uppercase tracking-[0.2em] transition-all shadow-2xl">
-                      Start Your Empire Now
-                   </Button>
+                   <Link href="/auth/signup-basic">
+                     <Button className="h-20 px-16 text-2xl bg-white text-primary hover:scale-105 border-none font-black uppercase tracking-[0.2em] transition-all shadow-2xl">
+                        Start Your Empire Now
+                     </Button>
+                   </Link>
                    <div className="flex items-center gap-6 text-white/60 text-xs font-black uppercase tracking-[0.3em]">
                       <div className="flex items-center gap-2"><Check className="w-4 h-4" /> No Credit Card</div>
                       <div className="flex items-center gap-2"><Check className="w-4 h-4" /> 14-Day Free Trial</div>
@@ -345,7 +349,7 @@ const LandingContent = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-24">
             <div className="col-span-2">
               <div className="flex items-center gap-3 mb-8">
-                 <div className="relative w-40 h-10 overflow-hidden">
+                 <div className="relative w-40 h-10 overflow-hidden bg-white rounded-lg px-2 shadow-sm">
                     <Image 
                       src="/assets/images/brand/LeadsMind_Logo.png.png" 
                       alt="LeadsMind" 

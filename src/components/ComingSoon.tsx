@@ -15,7 +15,7 @@ const ComingSoon = ({ title }: ComingSoonProps) => {
   return (
     <Wrapper>
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
-        <div className="w-64 h-20 mb-12 relative">
+        <div className="w-64 h-20 mb-12 relative bg-white rounded-xl px-4 py-2 shadow-lg shadow-white/5">
            <Image 
              src="/assets/images/brand/LeadsMind_Logo.png.png" 
              alt="LeadsMind" 
