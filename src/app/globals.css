@@ -3,6 +3,20 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --primary: #1359FF;
+    --background: #FFFFFF;
+  }
+  .dark {
+    --primary: #1359FF;
+    --background: #0A0F3D;
+  }
+  body {
+    @apply bg-bgBody dark:bg-bgBody-dark text-body dark:text-body-dark;
+  }
+}
+
 @media print {
   body * {
     visibility: hidden;

@@ -2,10 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, ArrowRight, Zap, Shield, BarChart3, Users, Globe, MessageSquare } from 'lucide-react';
+import { Check, ArrowRight, Zap, Shield, BarChart3, Users, Globe, MessageSquare, Play, Sparkles, Layers, Target } from 'lucide-react';
 import { createCheckoutSession, getSaaSTiers } from '@/app/actions/finance';
 import { toast } from 'sonner';
 
@@ -46,23 +47,29 @@ const LandingContent = () => {
       {/* Navbar */}
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#0A0F3D]/80 backdrop-blur-xl">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-             <div className="relative w-8 h-8 bg-gradientPrimary rounded-full flex items-center justify-center">
-                <div className="w-2.5 h-2.5 bg-white rounded-full" />
+          <div className="flex items-center gap-3">
+             <div className="relative w-10 h-10 overflow-hidden">
+                <Image 
+                  src="/assets/images/brand/LeadsMind Logo.png" 
+                  alt="LeadsMind" 
+                  width={40} 
+                  height={40} 
+                  className="object-contain"
+                />
              </div>
              <span className="text-xl font-black uppercase tracking-tighter">LeadsMind</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-white/60">
+          <div className="hidden md:flex items-center gap-8 text-xs font-black uppercase tracking-widest text-white/60">
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
+            <Link href="#solutions" className="hover:text-white transition-colors">Solutions</Link>
             <Link href="#pricing" className="hover:text-white transition-colors">Pricing</Link>
-            <Link href="#about" className="hover:text-white transition-colors">About</Link>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/auth/signin-basic">
-              <Button variant="ghost" className="text-white hover:bg-white/5">Login</Button>
+              <Button variant="ghost" className="text-white hover:bg-white/5 text-xs font-bold uppercase tracking-widest">Login</Button>
             </Link>
             <Link href="/auth/signup-basic">
-              <Button className="bg-gradientPrimary hover:opacity-90 border-none px-6">Get Started</Button>
+              <Button className="bg-primary hover:bg-primary/90 border-none px-6 text-xs font-black uppercase tracking-widest h-10 shadow-lg shadow-primary/20">Get Started</Button>
             </Link>
           </div>
         </div>
@@ -70,57 +77,80 @@ const LandingContent = () => {
 
       {/* Hero Section */}
       <section className="relative pt-40 pb-20 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-radial from-primary/20 to-transparent opacity-50 pointer-events-none" />
+        {/* Animated Background Elements */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[800px] bg-gradient-radial from-primary/20 via-transparent to-transparent opacity-50 pointer-events-none" />
+        <div className="absolute top-1/4 -left-20 w-96 h-96 bg-secondary/10 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+        <div className="absolute bottom-0 -right-20 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
         
         <div className="container mx-auto px-6 relative z-10 text-center">
           <motion.div {...fadeUp}>
-             <span className="inline-block py-1 px-4 rounded-full bg-white/5 border border-white/10 text-primary text-xs font-bold uppercase tracking-widest mb-6">
-               New: CRM Automation 2.0
-             </span>
-             <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 leading-[1.1]">
-               Close More Deals. <br />
-               <span className="text-transparent bg-clip-text bg-gradientPrimary">Grow Faster.</span>
+             <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-white/5 border border-white/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-8">
+               <Sparkles className="w-3 h-3" />
+               The Future of Business Operating Systems
+             </div>
+             <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.9] uppercase">
+               Scale Your <br />
+               <span className="text-transparent bg-clip-text bg-gradientPrimary">Dominance.</span>
              </h1>
-             <p className="max-w-2xl mx-auto text-lg text-white/60 mb-10 leading-relaxed">
-               LeadsMind is the all-in-one business operating system designed to bring your sales, 
-               marketing, and operations into one unified, high-performance platform.
+             <p className="max-w-2xl mx-auto text-xl text-white/50 mb-12 leading-relaxed font-medium">
+               LeadsMind isn't just a CRM. It's an intelligent ecosystem that automates your growth, 
+               unifies your team, and turns leads into loyal advocates.
              </p>
-             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-               <Button className="h-14 px-8 text-lg bg-gradientPrimary border-none group">
-                 Start Free Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+               <Button className="h-16 px-10 text-lg bg-primary hover:bg-primary/90 border-none group shadow-2xl shadow-primary/30 font-black uppercase tracking-widest">
+                 Claim Your Free Trial <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
                </Button>
-               <Button variant="outline" className="h-14 px-8 text-lg border-white/10 bg-white/5 hover:bg-white/10 text-white">
-                 Watch Demo
-               </Button>
+               <button className="flex items-center gap-3 text-white/80 hover:text-white transition-colors group">
+                 <div className="w-14 h-14 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
+                    <Play className="w-5 h-5 fill-current ml-1" />
+                 </div>
+                 <span className="font-bold uppercase tracking-widest text-sm">See it in action</span>
+               </button>
              </div>
           </motion.div>
 
-          {/* Dashboard Mockup */}
+          {/* Luxury Dashboard Showcase */}
           <motion.div 
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 60 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="mt-20 relative max-w-5xl mx-auto"
+            transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+            className="mt-24 relative max-w-6xl mx-auto px-4"
           >
-            <div className="relative rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-2xl shadow-2xl">
-               <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-warning/10 rounded-2xl pointer-events-none" />
+            <div className="relative rounded-[2.5rem] border border-white/10 bg-[#0b0b1a]/50 p-3 backdrop-blur-3xl shadow-[0_0_100px_rgba(19,89,255,0.15)] overflow-hidden">
+               <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 via-transparent to-warning/10 rounded-[2.5rem] pointer-events-none opacity-50" />
+               <div className="absolute top-0 left-0 w-full h-20 bg-gradient-to-b from-[#0A0F3D] to-transparent z-10" />
                <img 
-                 src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=2070" 
-                 alt="Dashboard Mockup" 
-                 className="rounded-xl w-full border border-white/5 shadow-inner"
+                 src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=2426" 
+                 alt="LeadsMind Intelligence Hub" 
+                 className="rounded-[2rem] w-full border border-white/5 shadow-inner scale-[1.01]"
                />
             </div>
-            {/* Floaties */}
-            <div className="absolute -top-10 -right-10 hidden lg:block animate-bounce-slow">
-               <div className="bg-white/10 backdrop-blur-lg border border-white/20 p-4 rounded-xl shadow-xl">
-                  <div className="flex items-center gap-3">
-                     <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center text-success">
-                        <Users className="w-5 h-5" />
+            
+            {/* Dynamic UI Floaties */}
+            <div className="absolute -top-12 -right-12 hidden lg:block animate-float">
+               <div className="bg-white/10 backdrop-blur-2xl border border-white/20 p-6 rounded-3xl shadow-2xl">
+                  <div className="flex items-center gap-4">
+                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-success/40 to-success/10 flex items-center justify-center text-success border border-success/20">
+                        <Users className="w-7 h-7" />
                      </div>
                      <div>
-                        <div className="text-[10px] uppercase font-bold text-white/40">New Leads</div>
-                        <div className="text-xl font-bold">+1,284</div>
+                        <div className="text-xs uppercase font-black tracking-widest text-white/40 mb-1">Active Leads</div>
+                        <div className="text-3xl font-black tabular-nums">24,582</div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            
+            <div className="absolute -bottom-8 -left-12 hidden lg:block animate-float-delayed">
+               <div className="bg-white/10 backdrop-blur-2xl border border-white/20 p-6 rounded-3xl shadow-2xl">
+                  <div className="flex items-center gap-4">
+                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/40 to-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                        <BarChart3 className="w-7 h-7" />
+                     </div>
+                     <div>
+                        <div className="text-xs uppercase font-black tracking-widest text-white/40 mb-1">Conversion Rate</div>
+                        <div className="text-3xl font-black tabular-nums">14.8%</div>
                      </div>
                   </div>
                </div>
@@ -129,105 +159,150 @@ const LandingContent = () => {
         </div>
       </section>
 
-      {/* Trust Marquee */}
-      <section className="py-20 border-y border-white/5 bg-[#0b0b1a]">
+      {/* Social Proof */}
+      <section className="py-24 border-y border-white/5 bg-[#0b0b1a]/50">
         <div className="container mx-auto px-6">
-          <p className="text-center text-sm font-bold text-white/20 uppercase tracking-[0.3em] mb-12">Trusted by fast-growing teams</p>
-          <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-30 grayscale">
-            <span className="text-2xl font-black">ACME CORP</span>
-            <span className="text-2xl font-black">TECHGROW</span>
-            <span className="text-2xl font-black">NEXUS</span>
-            <span className="text-2xl font-black">SOLARIS</span>
-            <span className="text-2xl font-black">QUANTUM</span>
+          <p className="text-center text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-16">Powering the world's most aggressive teams</p>
+          <div className="flex flex-wrap justify-center items-center gap-16 md:gap-32 opacity-20 grayscale hover:opacity-50 transition-opacity duration-700">
+            <span className="text-3xl font-black italic tracking-tighter">VANGUARD</span>
+            <span className="text-3xl font-black tracking-widest">NEXUS.AI</span>
+            <span className="text-3xl font-black uppercase">Titan Group</span>
+            <span className="text-3xl font-black lowercase tracking-tighter">velocity.</span>
+            <span className="text-3xl font-black uppercase tracking-[0.2em]">Oracle</span>
           </div>
         </div>
       </section>
 
-      {/* Feature Grid */}
-      <section id="features" className="py-32">
+      {/* Feature Section with Bento Layout */}
+      <section id="features" className="py-40">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-6">Everything you need <br />in <span className="text-primary">one system</span>.</h2>
-            <p className="text-white/60 max-w-xl mx-auto text-lg">Stop jumping between 10 different tools. We consolidated your entire stack.</p>
+          <div className="max-w-3xl mb-24">
+            <div className="text-primary font-black uppercase tracking-[0.3em] text-xs mb-6 flex items-center gap-3">
+               <div className="w-10 h-[2px] bg-primary" />
+               Unrivaled Capabilities
+            </div>
+            <h2 className="text-5xl md:text-6xl font-black tracking-tighter mb-8 leading-[1.1] uppercase">
+              The Only Operating <br />System You'll <span className="text-primary">Ever Need</span>.
+            </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+            {/* Large Feature */}
+            <div className="md:col-span-8 group">
+               <div className="h-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 hover:border-primary/50 transition-all duration-500 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] -mr-32 -mt-32 group-hover:bg-primary/20 transition-all" />
+                  <div className="relative z-10 h-full flex flex-col">
+                     <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary mb-8 border border-primary/20 group-hover:bg-primary group-hover:text-white transition-all duration-500">
+                        <MessageSquare className="w-8 h-8" />
+                     </div>
+                     <h3 className="text-3xl font-black mb-6 uppercase">Universal Social Inbox</h3>
+                     <p className="text-white/40 text-lg leading-relaxed max-w-md mb-8">
+                        Centralize every conversation from WhatsApp, Instagram, Facebook, and Email into a single, lightning-fast interface. Never miss a lead again.
+                     </p>
+                     <div className="mt-auto pt-8 border-t border-white/5 flex gap-4">
+                        <div className="py-2 px-4 rounded-full bg-white/5 text-[10px] font-bold text-white/40 uppercase tracking-widest border border-white/10">WhatsApp</div>
+                        <div className="py-2 px-4 rounded-full bg-white/5 text-[10px] font-bold text-white/40 uppercase tracking-widest border border-white/10">Instagram</div>
+                        <div className="py-2 px-4 rounded-full bg-white/5 text-[10px] font-bold text-white/40 uppercase tracking-widest border border-white/10">SMS</div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* Small Feature */}
+            <div className="md:col-span-4 group">
+               <div className="h-full bg-white/5 border border-white/10 rounded-[2.5rem] p-10 hover:border-warning/50 transition-all duration-500 relative overflow-hidden">
+                  <div className="relative z-10">
+                     <div className="w-16 h-16 rounded-2xl bg-warning/20 flex items-center justify-center text-warning mb-8 border border-warning/20 group-hover:bg-warning group-hover:text-white transition-all duration-500">
+                        <Zap className="w-8 h-8" />
+                     </div>
+                     <h3 className="text-2xl font-black mb-4 uppercase">AI Automations</h3>
+                     <p className="text-white/40 leading-relaxed">
+                        Deploy autonomous agents that qualify leads, book appointments, and follow up 24/7 while you sleep.
+                     </p>
+                  </div>
+               </div>
+            </div>
+
+            {/* Grid Features */}
             {[
-              { title: "Smart CRM", desc: "Manage every interaction with deep intelligence and automated follow-ups.", icon: <Users className="w-6 h-6" /> },
-              { title: "Visual Pipelines", desc: "Track deals through customizable stages with drag-and-drop simplicity.", icon: <BarChart3 className="w-6 h-6" /> },
-              { title: "Social Inbox", desc: "Connect all your channels (WhatsApp, IG, FB) into one unified conversation stream.", icon: <MessageSquare className="w-6 h-6" /> },
-              { title: "Global Reach", desc: "Built-in telephony and SMS capabilities to reach clients anywhere, anytime.", icon: <Globe className="w-6 h-6" /> },
-              { title: "Bank-Grade Security", desc: "Your data is encrypted and protected by enterprise-level security protocols.", icon: <Shield className="w-6 h-6" /> },
-              { title: "Instant Insights", desc: "Real-time reporting on revenue, team performance, and campaign ROI.", icon: <Zap className="w-6 h-6" /> }
+              { title: "Visual CRM", icon: <Layers className="w-6 h-6" />, color: "primary" },
+              { title: "Funnel Builder", icon: <Target className="w-6 h-6" />, color: "secondary" },
+              { title: "Telephony", icon: <Globe className="w-6 h-6" />, color: "info" },
+              { title: "Reputation", icon: <Shield className="w-6 h-6" />, color: "success" }
             ].map((f, i) => (
-              <motion.div key={i} {...fadeUp} transition={{ delay: i * 0.1 }}>
-                <Card className="bg-white/5 border-white/10 hover:border-primary/50 transition-colors group">
-                  <CardHeader>
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
-                      {f.icon}
-                    </div>
-                    <CardTitle className="text-xl font-bold text-white">{f.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-white/60 leading-relaxed">{f.desc}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <div key={i} className="md:col-span-3 group">
+                <div className="h-full bg-white/5 border border-white/10 rounded-[2rem] p-8 hover:bg-white/10 transition-all duration-300 text-center flex flex-col items-center">
+                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 bg-${f.color}/10 text-${f.color} border border-${f.color}/20 group-hover:scale-110 transition-transform`}>
+                    {f.icon}
+                  </div>
+                  <h4 className="font-black uppercase tracking-widest text-sm">{f.title}</h4>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-32 bg-[#0b0b1a] relative overflow-hidden">
+      {/* Pricing Section - Ultra Premium */}
+      <section id="pricing" className="py-40 bg-[#0b0b1a] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[150px] -mr-96 -mt-96 pointer-events-none" />
         <div className="container mx-auto px-6 relative z-10">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-6">Simple, transparent <span className="text-warning">pricing</span>.</h2>
+          <div className="text-center mb-24">
+            <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 uppercase">Choose Your <span className="text-warning">Weapon.</span></h2>
             
-            <div className="flex items-center justify-center gap-4 mt-8">
-               <span className={`text-sm ${!isAnnual ? 'text-white' : 'text-white/40'}`}>Monthly</span>
+            <div className="inline-flex items-center gap-4 mt-8 p-1 rounded-full bg-white/5 border border-white/10">
                <button 
-                 onClick={() => setIsAnnual(!isAnnual)}
-                 className="w-12 h-6 rounded-full bg-white/10 relative p-1 transition-colors"
+                 onClick={() => setIsAnnual(false)}
+                 className={`px-8 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${!isAnnual ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}
                >
-                 <div className={`w-4 h-4 rounded-full bg-primary transition-transform ${isAnnual ? 'translate-x-6' : ''}`} />
+                 Monthly
                </button>
-               <span className={`text-sm ${isAnnual ? 'text-white' : 'text-white/40'}`}>Annual <span className="text-success text-xs ml-1">(Save 20%)</span></span>
+               <button 
+                 onClick={() => setIsAnnual(true)}
+                 className={`px-8 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${isAnnual ? 'bg-primary text-white' : 'text-white/40 hover:text-white'}`}
+               >
+                 Annual <span className="text-[10px] ml-1 opacity-70">(-20%)</span>
+               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
             {tiers.map((tier, i) => (
               <motion.div key={tier.id} {...fadeUp} transition={{ delay: i * 0.1 }}>
-                <Card className={`h-full border-white/10 bg-white/5 backdrop-blur-xl flex flex-col ${tier.id === 'pro' ? 'ring-2 ring-primary border-transparent' : ''}`}>
-                  <CardHeader>
-                    <CardTitle className="text-2xl font-bold text-white uppercase tracking-wider">{tier.name}</CardTitle>
-                    <CardDescription className="text-white/40 mt-2">
-                       {tier.id === 'starter' ? 'Perfect for solo entrepreneurs.' : tier.id === 'pro' ? 'For growing businesses.' : 'Scale without limits.'}
+                <Card className={`h-full border-white/10 bg-white/5 backdrop-blur-3xl flex flex-col relative overflow-hidden group ${tier.id === 'pro' ? 'ring-2 ring-primary scale-105 z-20' : 'scale-95 opacity-80 hover:opacity-100 transition-all'}`}>
+                  {tier.id === 'pro' && (
+                    <div className="absolute top-0 right-0 bg-primary text-white text-[10px] font-black uppercase px-6 py-1.5 rotate-45 translate-x-8 translate-y-4 shadow-xl">
+                      Most Popular
+                    </div>
+                  )}
+                  <CardHeader className="p-8 pb-0">
+                    <CardTitle className="text-3xl font-black text-white uppercase tracking-tighter mb-2">{tier.name}</CardTitle>
+                    <CardDescription className="text-white/30 font-bold uppercase tracking-widest text-[10px]">
+                       {tier.id === 'starter' ? 'The Foundation' : tier.id === 'pro' ? 'The Growth Engine' : 'The Enterprise Beast'}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="flex-grow">
-                    <div className="flex items-baseline gap-1 mb-8">
-                      <span className="text-4xl font-black text-white">${isAnnual ? Math.floor(tier.monthlyPrice * 0.8) : tier.monthlyPrice}</span>
-                      <span className="text-white/40">/mo</span>
+                  <CardContent className="p-8 flex-grow">
+                    <div className="flex items-baseline gap-2 mb-10">
+                      <span className="text-6xl font-black text-white tabular-nums">${isAnnual ? Math.floor(tier.monthlyPrice * 0.8) : tier.monthlyPrice}</span>
+                      <span className="text-white/30 font-bold uppercase tracking-widest text-xs">/month</span>
                     </div>
-                    <ul className="space-y-4">
+                    <ul className="space-y-5">
                       {tier.features.map((feature: string, j: number) => (
-                        <li key={j} className="flex items-center gap-3 text-sm text-white/70">
-                          <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
-                            <Check className="w-3 h-3" />
+                        <li key={j} className="flex items-start gap-3 text-sm text-white/70">
+                          <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0 mt-0.5 border border-primary/20">
+                            <Check className="w-3 h-3 stroke-[4px]" />
                           </div>
-                          {feature}
+                          <span className="font-medium">{feature}</span>
                         </li>
                       ))}
                     </ul>
                   </CardContent>
-                  <div className="p-6 pt-0">
+                  <div className="p-8 pt-0">
                     <Button 
                       onClick={() => handleCheckout(tier.id)}
-                      className={`w-full h-12 font-bold ${tier.id === 'pro' ? 'bg-gradientPrimary border-none' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                      className={`w-full h-16 font-black uppercase tracking-[0.2em] text-sm ${tier.id === 'pro' ? 'bg-primary hover:bg-primary/90 border-none shadow-xl shadow-primary/30' : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'}`}
                     >
-                      {tier.id === 'starter' ? 'Sign Up Free' : 'Get Started'}
+                      {tier.id === 'starter' ? 'Start Free' : 'Secure Access'}
                     </Button>
                   </div>
                 </Card>
@@ -237,24 +312,28 @@ const LandingContent = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-32 relative">
+      {/* CTA Section - Aggressive */}
+      <section className="py-40 relative">
         <div className="container mx-auto px-6">
-          <div className="relative rounded-[2rem] bg-gradientPrimary p-12 md:p-24 overflow-hidden text-center">
-             <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20" />
+          <div className="relative rounded-[3rem] bg-primary p-12 md:p-32 overflow-hidden text-center shadow-[0_0_100px_rgba(19,89,255,0.4)]">
+             <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-30" />
              </div>
              
              <motion.div {...fadeUp} className="relative z-10">
-                <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-8 text-white">Ready to lead your industry?</h2>
-                <p className="text-white/80 text-xl max-w-2xl mx-auto mb-12">
-                   Join 5,000+ businesses using LeadsMind to automate their operations and skyrocket their growth.
+                <h2 className="text-5xl md:text-8xl font-black tracking-tighter mb-10 text-white uppercase leading-[0.85]">Stop Guessing. <br />Start Winning.</h2>
+                <p className="text-white/80 text-2xl max-w-3xl mx-auto mb-16 font-medium leading-relaxed">
+                   Join the 1% of elite businesses that have unified their operations and achieved total market dominance with LeadsMind.
                 </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                   <Button className="h-16 px-10 text-xl bg-white text-primary hover:bg-white/90 border-none font-black uppercase">
-                      Start Your Free Trial
+                <div className="flex flex-col items-center gap-8">
+                   <Button className="h-20 px-16 text-2xl bg-white text-primary hover:scale-105 border-none font-black uppercase tracking-[0.2em] transition-all shadow-2xl">
+                      Start Your Empire Now
                    </Button>
-                   <p className="text-white/60 text-sm">No credit card required. Cancel anytime.</p>
+                   <div className="flex items-center gap-6 text-white/60 text-xs font-black uppercase tracking-[0.3em]">
+                      <div className="flex items-center gap-2"><Check className="w-4 h-4" /> No Credit Card</div>
+                      <div className="flex items-center gap-2"><Check className="w-4 h-4" /> 14-Day Free Trial</div>
+                      <div className="flex items-center gap-2"><Check className="w-4 h-4" /> Instant Setup</div>
+                   </div>
                 </div>
              </motion.div>
           </div>
@@ -262,54 +341,78 @@ const LandingContent = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-20 border-t border-white/5">
+      <footer className="py-32 border-t border-white/5 bg-[#050510]">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-            <div className="col-span-1 md:col-span-1">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="relative w-6 h-6 bg-gradientPrimary rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-full" />
-                </div>
-                <span className="text-lg font-black uppercase tracking-tighter">LeadsMind</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-24">
+            <div className="col-span-2">
+              <div className="flex items-center gap-3 mb-8">
+                 <div className="relative w-10 h-10 overflow-hidden">
+                    <Image 
+                      src="/assets/images/brand/LeadsMind Logo.png" 
+                      alt="LeadsMind" 
+                      width={40} 
+                      height={40} 
+                      className="object-contain"
+                    />
+                 </div>
+                 <span className="text-2xl font-black uppercase tracking-tighter">LeadsMind</span>
               </div>
-              <p className="text-white/40 text-sm leading-relaxed">
-                Everything your business needs. <br />One system. One unified platform.
+              <p className="text-white/30 text-base leading-relaxed max-w-sm mb-8 font-medium">
+                The definitive business operating system for high-performance teams. Build, automate, and scale with absolute precision.
               </p>
+              <div className="flex gap-6">
+                 {/* Social Icons Placeholder */}
+                 <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary transition-colors cursor-pointer text-white/40 hover:text-white font-bold">𝕏</div>
+                 <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary transition-colors cursor-pointer text-white/40 hover:text-white font-bold">in</div>
+                 <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary transition-colors cursor-pointer text-white/40 hover:text-white font-bold">ig</div>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold mb-6">Product</h4>
-              <ul className="space-y-4 text-sm text-white/40">
-                <li><Link href="#" className="hover:text-white transition-colors">Features</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Integrations</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Enterprise</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Solutions</Link></li>
+            
+            <div className="md:col-span-1">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 mb-8">Platform</h4>
+              <ul className="space-y-4 text-sm font-bold text-white/40 uppercase tracking-widest">
+                <li><Link href="#" className="hover:text-primary transition-colors">CRM</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">Marketing</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">Automations</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">Integrations</Link></li>
               </ul>
             </div>
-            <div>
-              <h4 className="font-bold mb-6">Company</h4>
-              <ul className="space-y-4 text-sm text-white/40">
-                <li><Link href="#" className="hover:text-white transition-colors">About Us</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Careers</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Terms of Service</Link></li>
+            
+            <div className="md:col-span-1">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 mb-8">Solutions</h4>
+              <ul className="space-y-4 text-sm font-bold text-white/40 uppercase tracking-widest">
+                <li><Link href="#" className="hover:text-primary transition-colors">Agencies</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">Real Estate</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">E-commerce</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">SaaS</Link></li>
               </ul>
             </div>
-            <div>
-              <h4 className="font-bold mb-6">Support</h4>
-              <ul className="space-y-4 text-sm text-white/40">
-                <li><Link href="#" className="hover:text-white transition-colors">Help Center</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">API Docs</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Community</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Contact</Link></li>
+
+            <div className="md:col-span-1">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 mb-8">Resources</h4>
+              <ul className="space-y-4 text-sm font-bold text-white/40 uppercase tracking-widest">
+                <li><Link href="#" className="hover:text-primary transition-colors">Docs</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">Community</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">Blog</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">Support</Link></li>
+              </ul>
+            </div>
+
+            <div className="md:col-span-1">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 mb-8">Legal</h4>
+              <ul className="space-y-4 text-sm font-bold text-white/40 uppercase tracking-widest">
+                <li><Link href="#" className="hover:text-primary transition-colors">Privacy</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">Terms</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">Security</Link></li>
               </ul>
             </div>
           </div>
-          <div className="flex flex-col md:flex-row items-center justify-between pt-12 border-t border-white/5 text-xs text-white/20 font-bold uppercase tracking-widest">
-            <p>© 2026 LeadsMind. All rights reserved.</p>
-            <div className="flex gap-8 mt-4 md:mt-0">
-               <Link href="#" className="hover:text-white transition-colors">Twitter</Link>
-               <Link href="#" className="hover:text-white transition-colors">LinkedIn</Link>
-               <Link href="#" className="hover:text-white transition-colors">Instagram</Link>
+          
+          <div className="flex flex-col md:flex-row items-center justify-between pt-16 border-t border-white/5 text-[10px] text-white/20 font-black uppercase tracking-[0.5em]">
+            <p>© 2026 LeadsMind. Built for the 1%.</p>
+            <div className="mt-8 md:mt-0 flex items-center gap-4">
+               <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+               System Status: Operational
             </div>
           </div>
         </div>

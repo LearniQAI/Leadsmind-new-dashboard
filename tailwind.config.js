@@ -97,7 +97,7 @@ module.exports = {
         },
         card: {
           DEFAULT: '#FFFFFF', // light mode
-          dark: '#1F2937',    // dark mode
+          dark: '#0A0F3D',    // Deep Navy
         },
         light: {
           DEFAULT: '#B8B8B8', // light mode

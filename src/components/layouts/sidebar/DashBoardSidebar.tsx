@@ -2,6 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import sidebarMainLogo from "../../../../public/assets/images/logo/logo.svg";
 import sidebarDarkLogo from "../../../../public/assets/images/logo/logo-white.svg";
 import useGlobalContext from "@/hooks/use-context";
@@ -124,37 +125,49 @@ const DashBoardSidebar = () => {
       <div
         className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}
       >
-        <div className="main-sidebar-header !h-[70px] !py-0 !px-6 border-b border-white/5 bg-[#0b0b14] flex flex-col items-start justify-center shadow-lg shadow-black/20">
-          <Link href="/" className="flex flex-col gap-0.5 group">
-            <div className="flex items-center gap-1">
-              <span className="text-2xl font-black tracking-tight text-white uppercase">
-                Le
-              </span>
-              <div className="relative w-6 h-6 bg-gradientPrimary rounded-full flex items-center justify-center">
-                 <div className="w-2 h-2 bg-white rounded-full shadow-lg" />
-              </div>
-              <span className="text-2xl font-black tracking-tight text-white uppercase">
-                dsmind
+        <div className="main-sidebar-header !h-[80px] !py-0 !px-6 border-b border-white/5 bg-[#0b0b14] flex flex-col items-start justify-center shadow-lg shadow-black/20">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative w-10 h-10 overflow-hidden">
+               <Image 
+                 src="/assets/images/brand/LeadsMind Logo.png" 
+                 alt="LeadsMind" 
+                 width={40} 
+                 height={40} 
+                 className="object-contain"
+               />
+            </div>
+            <span className="text-xl font-black tracking-tighter text-white uppercase group-hover:text-primary transition-colors">
+              LeadsMind
+            </span>
+          </Link>
+          {enrichedWorkspace?.name && (
+            <div className="flex items-center gap-1.5 mt-1 px-1">
+              <div className="w-1 h-1 rounded-full bg-primary" />
+              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 truncate max-w-[140px]">
+                {enrichedWorkspace.name}
               </span>
             </div>
-            {enrichedWorkspace?.name && (
-              <div className="flex items-center gap-1.5">
-                <div className="w-1 h-1 rounded-full bg-primary" />
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 truncate max-w-[140px]">
-                  {enrichedWorkspace.name}
-                </span>
-              </div>
-            )}
-          </Link>
+          )}
         </div>
 
         <div className="common-scrollbar max-h-screen overflow-y-auto">
-          <nav className="main-menu-container nav nav-pills flex-column sub-open mt-[70px]">
+          <div className="px-6 py-6">
+            <Link href="/contacts/new">
+              <Button className="w-full bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest h-12 shadow-lg shadow-primary/20 border-none group">
+                <span className="flex items-center gap-2">
+                  <i className="fa-light fa-plus text-lg" />
+                  New Contact
+                </span>
+              </Button>
+            </Link>
+          </div>
+
+          <nav className="main-menu-container nav nav-pills flex-column sub-open">
             <ul className="main-menu" style={{ display: "block" }}>
               {sidebarData.map((category) => (
                 <React.Fragment key={category.id}>
-                  <li className="sidebar__menu-category">
-                    <span className="category-name">{category.category}</span>
+                  <li className="sidebar__menu-category !px-6 !py-4 !my-2 sticky top-0 z-[5] bg-[#0A0F3D]/50 backdrop-blur-md border-y border-white/5">
+                    <span className="category-name text-[10px] font-black uppercase tracking-[0.3em] text-white/30">{category.category}</span>
                   </li>
                   {category.items.map((item) => (
                     <li
