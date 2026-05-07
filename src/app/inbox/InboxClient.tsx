@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Phone, Video, MoreVertical, Search, Mail, MessageSquare, Instagram, Facebook, Twitter } from 'lucide-react';
+import { Send, Phone, Video, MoreVertical, Search, Mail, MessageSquare, Check } from 'lucide-react';
 import { sendMessage } from '@/app/actions/messaging';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -19,9 +19,9 @@ export default function InboxClient({ initialConversations }: { initialConversat
     switch (platform) {
       case 'email': return <Mail className="w-4 h-4 text-white" />;
       case 'sms': case 'whatsapp': return <MessageSquare className="w-4 h-4 text-white" />;
-      case 'instagram': return <Instagram className="w-4 h-4 text-white" />;
-      case 'facebook': return <Facebook className="w-4 h-4 text-white" />;
-      case 'twitter': return <Twitter className="w-4 h-4 text-white" />;
+      case 'instagram': return <i className="fa-brands fa-instagram text-white text-[16px]" />;
+      case 'facebook': return <i className="fa-brands fa-facebook text-white text-[16px]" />;
+      case 'twitter': return <i className="fa-brands fa-twitter text-white text-[16px]" />;
       default: return <MessageSquare className="w-4 h-4 text-white" />;
     }
   };
