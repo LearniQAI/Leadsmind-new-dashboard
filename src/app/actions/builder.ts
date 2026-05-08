@@ -289,3 +289,73 @@ export async function updatePageSettings(pageId: string, settings: any) {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * --- LEAD & FORM PROCESSING ---
+ */
+
+export async function handlePageFormSubmission(pageId: string, workspaceId: string, payload: any) {
+  try {
+    const supabase = await createServerClient();
+    
+    // 1. Identify primary contact info
+    const email = payload.email || payload.Email;
+    const firstName = payload.first_name || payload.FirstName || payload.Name?.split(' ')[0] || '';
+    const lastName = payload.last_name || payload.LastName || payload.Name?.split(' ').slice(1).join(' ') || '';
+    const phone = payload.phone || payload.Phone || '';
+
+    // 2. Create or Update Contact
+    let contactId = null;
+    if (email) {
+      const { data: existingContact } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .eq('email', email)
+        .single();
+      
+      if (existingContact) {
+        contactId = existingContact.id;
+        // Optionally update contact
+        await supabase.from('contacts').update({
+          first_name: firstName || undefined,
+          last_name: lastName || undefined,
+          phone: phone || undefined,
+          updated_at: new Date().toISOString()
+        }).eq('id', contactId);
+      } else {
+        const { data: newContact, error: contactError } = await supabase
+          .from('contacts')
+          .insert({
+            workspace_id: workspaceId,
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            phone,
+            source: 'Website Form'
+          })
+          .select('id')
+          .single();
+        
+        if (contactError) throw contactError;
+        contactId = newContact.id;
+      }
+    }
+
+    // 3. Log Activity
+    if (contactId) {
+      await supabase.from('contact_activities').insert({
+        workspace_id: workspaceId,
+        contact_id: contactId,
+        type: 'form_submission',
+        description: `Submitted form on page: ${pageId}`,
+        metadata: payload
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[builder] Form submission error:', error);
+    return { success: false, error: error.message };
+  }
+}
