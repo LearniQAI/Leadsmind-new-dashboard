@@ -1,6 +1,6 @@
 import React from 'react';
-import ComingSoon from '@/components/ComingSoon';
+import WebsiteManager from '@/components/builder/WebsiteManager';
 
 export default function WebsitesPage() {
-  return <ComingSoon title="Website Builder" />;
+  return <WebsiteManager />;
 }

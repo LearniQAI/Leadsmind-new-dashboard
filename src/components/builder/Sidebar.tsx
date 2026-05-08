@@ -42,10 +42,12 @@ const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: an
           connectors.create(ref, component);
         }
       }}
-      className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:border-[#6c47ff]/50 hover:bg-[#6c47ff]/5 transition-all cursor-grab active:cursor-grabbing group"
+      className="flex flex-col items-center justify-center p-4 rounded-2xl border border-white/5 bg-[#12121c] hover:border-primary/50 hover:bg-primary/5 hover:shadow-[0_0_20px_rgba(19,89,255,0.1)] transition-all cursor-grab active:cursor-grabbing group"
     >
-      <Icon className="w-5 h-5 mb-2 group-hover:scale-110 transition-transform pointer-events-none text-muted-foreground group-hover:text-[#6c47ff]" />
-      <span className="text-[10px] font-bold text-muted-foreground group-hover:text-white uppercase tracking-tighter">{name}</span>
+      <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+        <Icon className="w-5 h-5 group-hover:scale-110 transition-transform pointer-events-none" />
+      </div>
+      <span className="text-[9px] font-black text-white/40 group-hover:text-white uppercase tracking-widest text-center leading-tight">{name}</span>
     </div>
   );
 };
@@ -66,54 +68,50 @@ export const Sidebar = ({
   const [activeTab, setActiveTab] = React.useState<'elements' | 'layers' | 'settings' | 'page'>(type === 'funnel' ? 'layers' : 'elements');
 
   return (
-    <div className="w-72 h-full bg-card border-r flex flex-col font-sans select-none">
-      <div className="p-2 border-b border-white/5 flex gap-1">
+    <div className="w-[300px] h-full bg-[#0b0b14] border-r border-white/5 flex flex-col font-sans select-none z-40">
+      <div className="p-3 border-b border-white/5 flex gap-2">
         <Button
           variant="ghost"
-          size="sm"
           onClick={() => setActiveTab('elements')}
           title="Elements"
-          className={`flex-1 h-9 transition-all duration-200 ${activeTab === 'elements' ? 'bg-[#6c47ff]/10 text-[#6c47ff]' : 'text-muted-foreground'}`}
+          className={`flex-1 h-11 rounded-xl transition-all duration-300 ${activeTab === 'elements' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-white/30 hover:text-white'}`}
         >
-          <LayoutGrid size={16} />
+          <LayoutGrid size={18} />
         </Button>
         <Button
           variant="ghost"
-          size="sm"
           onClick={() => setActiveTab('page')}
           title="Page Settings"
-          className={`flex-1 h-9 transition-all duration-200 ${activeTab === 'page' ? 'bg-[#6c47ff]/10 text-[#6c47ff]' : 'text-muted-foreground'}`}
+          className={`flex-1 h-11 rounded-xl transition-all duration-300 ${activeTab === 'page' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-white/30 hover:text-white'}`}
         >
-          <Search size={16} />
+          <Settings size={18} />
         </Button>
         {type === 'funnel' ? (
           <Button
             variant="ghost"
-            size="sm"
             onClick={() => setActiveTab('layers')}
             title="Funnel Steps"
-            className={`flex-1 h-9 transition-all duration-200 ${activeTab === 'layers' ? 'bg-[#6c47ff]/10 text-[#6c47ff]' : 'text-muted-foreground'}`}
+            className={`flex-1 h-11 rounded-xl transition-all duration-300 ${activeTab === 'layers' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-white/30 hover:text-white'}`}
           >
-            <Layers size={16} />
+            <Layers size={18} />
           </Button>
         ) : (
           <Button
             variant="ghost"
-            size="sm"
             onClick={() => setActiveTab('settings')}
             title="Site Settings"
-            className={`flex-1 h-9 transition-all duration-200 ${activeTab === 'settings' ? 'bg-[#6c47ff]/10 text-[#6c47ff]' : 'text-muted-foreground'}`}
+            className={`flex-1 h-11 rounded-xl transition-all duration-300 ${activeTab === 'settings' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-white/30 hover:text-white'}`}
           >
-            <Settings size={16} />
+            <Layout size={18} />
           </Button>
         )}
       </div>
 
 
       {activeTab === 'elements' ? (
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div className="flex-1 overflow-y-auto p-5 space-y-8 common-scrollbar">
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Layout</h3>
+            <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-4 px-1">Structure Nodes</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Section" icon={SectionIcon} component={<RESOLVER.Section canvas paddingBottom={64} paddingTop={64} paddingLeft={24} paddingRight={24} backgroundColor="transparent" />} />
               <DraggableItem name="Container" icon={Square} component={<RESOLVER.Container canvas layoutType="fixed" maxWidth="1200px" padding={16} backgroundColor="transparent" />} />

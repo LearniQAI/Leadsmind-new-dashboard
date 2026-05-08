@@ -400,48 +400,62 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
 
   return (
     <BuilderProvider pages={pages} websiteId={websiteData?.id} websiteData={websiteData} onUpdateWebsite={handleUpdateWebsite}>
-      <div className="h-screen w-full flex flex-col overflow-hidden">
-        <header className="h-14 border-b border-white/5 bg-background/50 backdrop-blur-md flex items-center justify-between px-4 shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 pr-4 border-r border-white/10">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center font-black">L</div>
-              <span className="font-bold text-sm tracking-tight text-white">Leadsmind</span>
+      <div className="h-screen w-full flex flex-col overflow-hidden bg-[#050508] text-white">
+        {/* Header Section */}
+        <header className="h-[70px] border-b border-white/5 bg-[#0b0b14]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 pr-6 border-r border-white/5">
+              <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+                <span className="font-black italic text-lg italic tracking-tighter">L</span>
+              </div>
+              <div>
+                <span className="block text-[11px] font-black uppercase italic tracking-tighter text-white leading-none">Leadsmind</span>
+                <span className="block text-[8px] font-bold uppercase tracking-[0.2em] text-primary mt-0.5">Neural Node Builder</span>
+              </div>
             </div>
 
             {/* Page Switcher */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground mr-1">Editing:</span>
+            <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Editing Mode:</span>
+              </div>
               <select
                 value={pageId as string}
                 onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
-                className="bg-white/5 border-none rounded-md px-3 py-1.5 text-xs font-bold text-white outline-none cursor-pointer hover:bg-white/10 transition-colors"
+                className="bg-transparent border-none text-[10px] font-black uppercase italic tracking-widest text-white outline-none cursor-pointer hover:text-primary transition-colors min-w-[120px]"
               >
                 {pages.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-slate-900">{p.name} ({p.slug})</option>
+                  <option key={p.id} value={p.id} className="bg-[#0b0b14] text-white">{p.name} ({p.slug})</option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-4 border-r border-white/5 mr-2">
+              <div className="text-right hidden sm:block">
+                <span className="block text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Node Status</span>
+                <span className="block text-[10px] font-black uppercase italic text-emerald-500">System Online</span>
+              </div>
+            </div>
+            
             <Button
               variant="ghost"
-              size="sm"
               onClick={handleSaveDraft}
               disabled={isSaving}
-              className="text-xs font-bold rounded-lg border border-white/10 hover:bg-white/5 text-muted-foreground hover:text-white"
+              className="h-11 px-6 text-[10px] font-black uppercase italic tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/60 hover:text-white transition-all"
             >
-              {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Save className="w-3 h-3 mr-2" />}
-              Save Draft
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              Save Node
             </Button>
             <Button
               onClick={handlePublish}
               disabled={isPublishing}
-              size="sm"
-              className="text-xs font-bold rounded-lg bg-[#6c47ff] hover:bg-[#6c47ff]/90 px-6 shadow-lg shadow-primary/20"
+              className="h-11 px-8 text-[10px] font-black uppercase italic tracking-widest rounded-xl bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 transition-all active:scale-95"
             >
-              {isPublishing ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Send className="w-3 h-3 mr-2" />}
-              Publish
+              {isPublishing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+              Deploy Live
             </Button>
           </div>
         </header>

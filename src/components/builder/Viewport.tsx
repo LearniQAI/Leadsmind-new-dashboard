@@ -25,15 +25,15 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-muted/30 overflow-hidden relative">
+    <div className="flex-1 flex flex-col bg-[#050508] overflow-hidden relative">
       {/* Device Toolbar */}
-      <div className="h-14 bg-background border-b flex items-center justify-center gap-4 px-4 shrink-0 z-10 shadow-sm">
-        <div className="flex bg-muted p-1 rounded-lg">
+      <div className="h-14 bg-[#0b0b14]/50 border-b border-white/5 flex items-center justify-center gap-4 px-4 shrink-0 z-10">
+        <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
             <button 
                 onClick={() => setViewMode('desktop')}
                 className={cn(
-                    "p-2 rounded-md transition-all",
-                    viewMode === 'desktop' ? "bg-background shadow text-primary" : "text-muted-foreground hover:text-foreground"
+                    "p-2 rounded-lg transition-all",
+                    viewMode === 'desktop' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-white/30 hover:text-white"
                 )}
             >
                 <Monitor className="w-4 h-4" />
@@ -41,8 +41,8 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
             <button 
                 onClick={() => setViewMode('tablet')}
                 className={cn(
-                    "p-2 rounded-md transition-all",
-                    viewMode === 'tablet' ? "bg-background shadow text-primary" : "text-muted-foreground hover:text-foreground"
+                    "p-2 rounded-lg transition-all",
+                    viewMode === 'tablet' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-white/30 hover:text-white"
                 )}
             >
                 <Tablet className="w-4 h-4" />
@@ -50,8 +50,8 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
             <button 
                 onClick={() => setViewMode('mobile')}
                 className={cn(
-                    "p-2 rounded-md transition-all",
-                    viewMode === 'mobile' ? "bg-background shadow text-primary" : "text-muted-foreground hover:text-foreground"
+                    "p-2 rounded-lg transition-all",
+                    viewMode === 'mobile' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-white/30 hover:text-white"
                 )}
             >
                 <Smartphone className="w-4 h-4" />
@@ -59,9 +59,9 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
         </div>
         
         <div className="absolute right-4 flex items-center gap-2">
-            <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                <Scale className="w-3 h-3" />
-                {viewMode === 'desktop' ? 'Fluid' : getWidth()}
+            <span className="text-[10px] text-white/20 font-black uppercase tracking-widest flex items-center gap-2">
+                <Scale className="w-3 h-3 text-primary" />
+                {viewMode === 'desktop' ? 'Fluid Canvas' : getWidth()}
             </span>
         </div>
       </div>

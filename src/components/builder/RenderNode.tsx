@@ -57,20 +57,20 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
             }
         }}
         className={cn(
-            "relative transition-all duration-200",
-            isActive && "outline-2 outline-solid outline-[#6c47ff] ring-2 ring-[#6c47ff] ring-offset-2 z-20",
-            isHovered && !isActive && "outline-2 outline-dashed outline-[#6c47ff]/40 z-10",
-            isHovered && isCanvas && "bg-[#6c47ff]/5 outline-4 outline-dotted outline-[#6c47ff]"
+            "relative transition-all duration-300",
+            isActive && "ring-2 ring-primary ring-offset-2 ring-offset-bgBody z-20 shadow-2xl shadow-primary/20",
+            isHovered && !isActive && "ring-2 ring-primary/30 ring-dashed z-10"
         )}
     >
       {isHovered && isCanvas && (
-        <div className="absolute top-2 right-2 bg-[#6c47ff]/20 text-[#6c47ff] text-[8px] font-bold px-2 py-1 rounded-full animate-pulse z-30">
-            DROP ZONE READY
+        <div className="absolute top-4 right-4 bg-primary/20 backdrop-blur-md border border-primary/30 text-primary text-[8px] font-black px-3 py-1.5 rounded-full animate-pulse z-30 uppercase tracking-[0.2em]">
+            Neural Node Ready
         </div>
       )}
       {isActive && (
-        <div className="absolute -top-6 left-0 bg-[#6c47ff] text-white text-[10px] px-2 py-0.5 rounded-t-sm flex items-center gap-1 z-30 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <span className="font-bold uppercase tracking-tighter">{name} ({nodesCount})</span>
+        <div className="absolute -top-7 left-0 bg-primary text-white text-[9px] px-4 py-1.5 rounded-t-xl flex items-center gap-2 z-30 animate-in fade-in slide-in-from-bottom-2 duration-500 shadow-lg shadow-primary/30">
+            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            <span className="font-black uppercase italic tracking-tighter">{name} <span className="opacity-40 ml-1 italic tracking-widest">({nodesCount})</span></span>
         </div>
       )}
       {render}
