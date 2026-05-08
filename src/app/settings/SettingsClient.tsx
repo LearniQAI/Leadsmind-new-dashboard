@@ -21,6 +21,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
+import { inviteTeamMember, updateWorkspaceBranding, createWebhook } from '@/app/actions/settings';
+import { useRouter } from 'next/navigation';
+
 export default function SettingsClient({ 
   branding, 
   members, 
@@ -32,14 +35,47 @@ export default function SettingsClient({
   webhooks: any[], 
   auditData: any 
 }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('workspace');
   const [copied, setCopied] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
     toast.success('Copied to clipboard');
+  };
+
+  const handleInvite = async () => {
+    const email = window.prompt('Enter Member Email:');
+    if (!email) return;
+    const res = await inviteTeamMember(email);
+    if (res.error) toast.error(res.error);
+    else toast.success(`Invitation sent to ${email}`);
+  };
+
+  const handleSaveWorkspace = async () => {
+    setIsSaving(true);
+    const nameInput = document.querySelector('input[defaultValue]') as HTMLInputElement;
+    const res = await updateWorkspaceBranding({ platform_name: nameInput?.value || 'LeadsMind' });
+    if (res.error) toast.error(res.error);
+    else {
+      toast.success('Workspace settings saved');
+      router.refresh();
+    }
+    setIsSaving(false);
+  };
+
+  const handleNewWebhook = async () => {
+    const url = window.prompt('Enter Webhook URL:');
+    if (!url) return;
+    const res = await createWebhook(url, ['all']);
+    if (res.error) toast.error(res.error);
+    else {
+      toast.success('Webhook created');
+      router.refresh();
+    }
   };
 
   const tabs = [
@@ -88,10 +124,18 @@ export default function SettingsClient({
                 <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Workspace Slug</label>
                 <div className="flex gap-2">
                   <input type="text" readOnly value="leadsmind.ai/workspace-alpha" className="flex-1 bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3 text-white/40 font-mono text-xs outline-none" />
-                  <Button variant="ghost" className="bg-white/5 border border-white/10 text-white/40 hover:text-white rounded-xl"><Copy size={14} /></Button>
+                  <Button variant="ghost" onClick={() => copyToClipboard('leadsmind.ai/workspace-alpha', 'slug')} className="bg-white/5 border border-white/10 text-white/40 hover:text-white rounded-xl">
+                    {copied === 'slug' ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+                  </Button>
                 </div>
               </div>
-              <Button className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-12 w-fit px-12 rounded-xl mt-4">Save Changes</Button>
+              <Button 
+                onClick={handleSaveWorkspace}
+                disabled={isSaving}
+                className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-12 w-fit px-12 rounded-xl mt-4"
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
             </div>
           </div>
         )}
@@ -103,7 +147,12 @@ export default function SettingsClient({
                 <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Team Nodes</h3>
                 <p className="text-white/40 text-sm font-medium">Manage access protocols for your neural workspace.</p>
               </div>
-              <Button className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-lg shadow-primary/20"><Plus className="w-3.5 h-3.5 mr-2" /> Invite Member</Button>
+              <Button 
+                onClick={handleInvite}
+                className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-lg shadow-primary/20"
+              >
+                <Plus className="w-3.5 h-3.5 mr-2" /> Invite Member
+              </Button>
             </div>
 
             <div className="border border-white/5 rounded-2xl overflow-hidden">
@@ -195,7 +244,12 @@ export default function SettingsClient({
                   <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Universal API</h3>
                   <p className="text-white/40 text-sm font-medium">Securely connect your workspace to external neural networks.</p>
                 </div>
-                <Button className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-10 px-6 rounded-xl"><Plus className="w-3.5 h-3.5 mr-2" /> New Webhook</Button>
+                <Button 
+                  onClick={handleNewWebhook}
+                  className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-10 px-6 rounded-xl"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-2" /> New Webhook
+                </Button>
              </div>
 
              <div className="p-6 bg-primary/5 border border-primary/20 rounded-2xl space-y-4">

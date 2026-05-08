@@ -5,7 +5,26 @@ import { Button } from '@/components/ui/button';
 import { Plus, FileText, Share2, ArrowRight, UserCheck, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
+import { createForm } from '@/app/actions/marketing';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+
 export default function FormsClient({ initialForms }: { initialForms: any[] }) {
+  const router = useRouter();
+
+  const handleCreate = async () => {
+    const name = window.prompt('Enter Form Name:');
+    if (!name) return;
+
+    const res = await createForm(name);
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      toast.success('Form created successfully!');
+      router.refresh();
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -13,7 +32,10 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
           <h1 className="text-4xl font-black uppercase tracking-tighter text-white italic leading-none">Smart <span className="text-primary">Forms</span></h1>
           <p className="text-white/40 text-sm font-medium mt-2 italic">Capture high-intent leads with neural data extraction.</p>
         </div>
-        <Button className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20">
+        <Button 
+          onClick={handleCreate}
+          className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20"
+        >
           <Plus className="w-4 h-4 mr-2" /> Build Form
         </Button>
       </div>

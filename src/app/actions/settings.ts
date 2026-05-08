@@ -61,6 +61,32 @@ export async function getWorkspaceMembers() {
   }
 }
 
+export async function inviteTeamMember(email: string, role: string = 'member') {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const supabase = await createServerClient();
+    
+    // In a real app, this would send an email. For now, we'll simulate it by creating an invitation record.
+    const { data, error } = await supabase
+      .from('workspace_invitations')
+      .insert({
+        workspace_id: workspaceId,
+        email,
+        role,
+        invited_by: (await supabase.auth.getUser()).data.user?.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
 // WEBHOOKS
 export async function getWebhooks() {
   try {

@@ -5,7 +5,26 @@ import { Button } from '@/components/ui/button';
 import { Plus, BookOpen, Layers, Users, PlayCircle, Star, MoreVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
+import { createCourse } from '@/app/actions/lms';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+
 export default function CoursesClient({ initialCourses }: { initialCourses: any[] }) {
+  const router = useRouter();
+
+  const handleCreate = async () => {
+    const title = window.prompt('Enter Course Title:');
+    if (!title) return;
+
+    const res = await createCourse(title);
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      toast.success('Course initialized successfully!');
+      router.refresh();
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -13,7 +32,10 @@ export default function CoursesClient({ initialCourses }: { initialCourses: any[
           <h1 className="text-4xl font-black uppercase tracking-tighter text-white italic leading-none">Neural <span className="text-primary">Academy</span></h1>
           <p className="text-white/40 text-sm font-medium mt-2 italic">Deploy high-frequency learning experiences with neural knowledge nodes.</p>
         </div>
-        <Button className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20">
+        <Button 
+          onClick={handleCreate}
+          className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20"
+        >
           <Plus className="w-4 h-4 mr-2" /> Initialize Course
         </Button>
       </div>

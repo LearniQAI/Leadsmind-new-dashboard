@@ -5,7 +5,26 @@ import { Button } from '@/components/ui/button';
 import { Plus, Send, Mail, Calendar, BarChart3, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
+import { createEmailCampaign } from '@/app/actions/marketing';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+
 export default function CampaignsClient({ initialCampaigns }: { initialCampaigns: any[] }) {
+  const router = useRouter();
+
+  const handleCreate = async () => {
+    const name = window.prompt('Enter Campaign Name:');
+    if (!name) return;
+
+    const res = await createEmailCampaign(name);
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      toast.success('Campaign created successfully!');
+      router.refresh();
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -13,7 +32,10 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
           <h1 className="text-4xl font-black uppercase tracking-tighter text-white italic leading-none">Email <span className="text-primary">Campaigns</span></h1>
           <p className="text-white/40 text-sm font-medium mt-2 italic">Broadcast your message with high-precision neural delivery.</p>
         </div>
-        <Button className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20">
+        <Button 
+          onClick={handleCreate}
+          className="bg-primary hover:bg-primary-dark text-white font-black uppercase italic tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20"
+        >
           <Plus className="w-4 h-4 mr-2" /> New Broadcast
         </Button>
       </div>

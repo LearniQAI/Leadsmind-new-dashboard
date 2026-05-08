@@ -48,15 +48,15 @@ const LandingContent = ({ user }: { user?: any }) => {
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#0A0F3D]/80 backdrop-blur-xl">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-             <div className="relative w-48 h-12 overflow-hidden">
+              <div className="relative w-48 h-12 overflow-hidden">
                 <Image 
-                  src="/assets/images/brand/LeadsMind_Logo.png.png" 
+                  src="/assets/images/logo/logo-white.svg" 
                   alt="LeadsMind" 
                   fill
                   className="object-contain"
                   priority
                 />
-             </div>
+              </div>
           </div>
           <div className="hidden md:flex items-center gap-8 text-xs font-black uppercase tracking-widest text-white/60">
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
@@ -109,17 +109,21 @@ const LandingContent = ({ user }: { user?: any }) => {
                    Claim Your Free Trial <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
                  </Button>
                </Link>
-               <button className="flex items-center gap-3 text-white/80 hover:text-white transition-colors group">
-                 <div className="w-14 h-14 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
-                    <Play className="w-5 h-5 fill-current ml-1" />
-                 </div>
-                 <span className="font-bold uppercase tracking-widest text-sm">See it in action</span>
-               </button>
+                <button 
+                  onClick={() => document.getElementById('showcase')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="flex items-center gap-3 text-white/80 hover:text-white transition-colors group"
+                >
+                  <div className="w-14 h-14 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
+                     <Play className="w-5 h-5 fill-current ml-1" />
+                  </div>
+                  <span className="font-bold uppercase tracking-widest text-sm">See it in action</span>
+                </button>
              </div>
           </motion.div>
 
           {/* Luxury Dashboard Showcase */}
           <motion.div 
+            id="showcase"
             initial={{ opacity: 0, y: 60 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -169,7 +173,7 @@ const LandingContent = ({ user }: { user?: any }) => {
       </section>
 
       {/* Social Proof */}
-      <section className="py-24 border-y border-white/5 bg-[#0b0b1a]/50">
+      <section id="solutions" className="py-24 border-y border-white/5 bg-[#0b0b1a]/50">
         <div className="container mx-auto px-6">
           <p className="text-center text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-16">Powering the world's most aggressive teams</p>
           <div className="flex flex-wrap justify-center items-center gap-16 md:gap-32 opacity-20 grayscale hover:opacity-50 transition-opacity duration-700">
@@ -359,7 +363,7 @@ const LandingContent = ({ user }: { user?: any }) => {
               <div className="flex items-center gap-3 mb-8">
                  <div className="relative w-40 h-10 overflow-hidden">
                     <Image 
-                      src="/assets/images/brand/LeadsMind_Logo.png.png" 
+                      src="/assets/images/logo/logo-white.svg" 
                       alt="LeadsMind" 
                       fill
                       className="object-contain"

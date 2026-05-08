@@ -22,6 +22,29 @@ export async function getCourses() {
   }
 }
 
+export async function createCourse(title: string) {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('courses')
+      .insert({
+        workspace_id: workspaceId,
+        title,
+        status: 'draft'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
 export async function getForumPosts() {
   try {
     const workspaceId = await getCurrentWorkspaceId();

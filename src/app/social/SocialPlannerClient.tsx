@@ -13,7 +13,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Instagram, Facebook, Twitter, Linkedin } from '@/components/icons/BrandIcons';
-import { createSocialPost } from '@/app/actions/social';
+import { createSocialPost, getMetaAuthUrl, getLinkedInAuthUrl, getTikTokAuthUrl } from '@/app/actions/social';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
@@ -29,6 +29,21 @@ export default function SocialPlannerClient({
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+
+  const handleConnect = async (platform: string) => {
+    let url = '';
+    try {
+      switch (platform) {
+        case 'facebook': case 'instagram': url = await getMetaAuthUrl(); break;
+        case 'linkedin': url = await getLinkedInAuthUrl(); break;
+        case 'tiktok': url = await getTikTokAuthUrl(); break;
+        default: toast.info(`${platform} connection coming soon!`); return;
+      }
+      if (url) window.location.href = url;
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to get connection URL');
+    }
+  };
 
   const platforms = [
     { id: 'facebook', icon: <Facebook className="w-4 h-4" />, color: 'bg-[#1877F2]' },
@@ -195,7 +210,12 @@ export default function SocialPlannerClient({
                     {isConnected ? (
                       <span className="text-[10px] font-black text-success uppercase tracking-widest">Active</span>
                     ) : (
-                      <button className="text-[10px] font-black text-white/20 hover:text-white uppercase tracking-widest transition-colors">Connect</button>
+                      <button 
+                        onClick={() => handleConnect(p.id)}
+                        className="text-[10px] font-black text-white/20 hover:text-white uppercase tracking-widest transition-colors"
+                      >
+                        Connect
+                      </button>
                     )}
                   </div>
                 );

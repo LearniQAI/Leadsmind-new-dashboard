@@ -88,3 +88,22 @@ export async function publishSocialPost(postId: string) {
     return { error: error.message };
   }
 }
+
+// OAUTH URL GENERATORS
+export async function getMetaAuthUrl() {
+  const appId = process.env.META_APP_ID;
+  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/facebook`;
+  return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=pages_manage_posts,instagram_basic,instagram_content_publish`;
+}
+
+export async function getLinkedInAuthUrl() {
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/linkedin`;
+  return `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=w_member_social`;
+}
+
+export async function getTikTokAuthUrl() {
+  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/tiktok`;
+  return `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&redirect_uri=${redirectUri}&scope=user.info.basic,video.upload,video.publish&response_type=code`;
+}
