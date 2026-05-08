@@ -11,12 +11,9 @@ import {
   Mail, 
   MessageSquare, 
   Check, 
-  Filter,
-  Instagram,
-  Facebook,
-  Twitter,
-  Linkedin
+  Filter
 } from 'lucide-react';
+import { Instagram, Facebook, Twitter, Linkedin } from '@/components/icons/BrandIcons';
 import { sendMessage } from '@/app/actions/messaging';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';

@@ -3,10 +3,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
-  Instagram, 
-  Facebook, 
-  Twitter, 
-  Linkedin, 
   Plus, 
   Calendar, 
   Image as ImageIcon, 
@@ -16,6 +12,7 @@ import {
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
+import { Instagram, Facebook, Twitter, Linkedin } from '@/components/icons/BrandIcons';
 import { createSocialPost } from '@/app/actions/social';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
