@@ -41,3 +41,26 @@ export async function getForumPosts() {
     return { error: error.message };
   }
 }
+
+export async function enrollStudent(courseId: string, contactId: string) {
+  try {
+    const supabase = await createServerClient();
+    const { error } = await supabase
+      .from('enrollments')
+      .upsert({ course_id: courseId, contact_id: contactId, status: 'active' });
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function updateProgress(courseId: string, contactId: string, lessonId: string) {
+  try {
+    // Progress tracking logic
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}

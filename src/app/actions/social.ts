@@ -46,6 +46,15 @@ export async function createSocialPost(postData: {
   media_urls?: string[];
   scheduled_at?: string;
 }) {
+  return publishSocialPost(postData);
+}
+
+export async function publishSocialPost(postData: {
+  platforms: string[];
+  content: string;
+  media_urls?: string[];
+  scheduled_at?: string;
+}) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
