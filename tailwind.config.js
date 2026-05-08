@@ -93,10 +93,10 @@ module.exports = {
       colors: {
         white: {
           DEFAULT: '#FFFFFF', // light mode
-          dark: '#362a2a',    // dark mode
+          dark: '#FFFFFF',    // dark mode (Stay White)
         },
         card: {
-          DEFAULT: '#FFFFFF', // light mode
+          DEFAULT: '#0A0F3D', // Deep Navy (Forced)
           dark: '#0A0F3D',    // Deep Navy
         },
         light: {
@@ -183,7 +183,7 @@ module.exports = {
         },
         //background
         bgBody: {
-          DEFAULT: '#F5F7FA', // Light Gray
+          DEFAULT: '#0A0F3D', // Deep Navy (Forced)
           dark: '#0A0F3D',    // Deep Navy
         },
         bgLightest: {

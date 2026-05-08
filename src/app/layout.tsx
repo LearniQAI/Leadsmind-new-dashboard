@@ -54,7 +54,7 @@ export default async function RootLayout({
   
   return (
     <>
-      <html lang="en">
+      <html lang="en" className="dark">
         <head>
           <meta httpEquiv="x-ua-compatible" content="ie=edge" />
           <title>LEADSMIND | All-in-One Business Operating System</title>
