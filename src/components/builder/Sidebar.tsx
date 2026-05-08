@@ -27,10 +27,10 @@ import { Hero } from './user/Hero';
 import { Navbar } from './user/Navbar';
 import { Footer } from './user/Footer';
 import { PageSettings } from './PageSettings';
-import { WebsiteManager } from './WebsiteManager';
 import { Layout, Type, Image as ImageIcon, RectangleHorizontal as ButtonIcon, Square, Columns as ColumnsIcon, FormInput, Timer, CreditCard, MessageCircleQuestion, Section as SectionIcon, ArrowUpDown, Minus, Heading as HeadingIcon, AlignLeft, Video as VideoIcon, Star, Navigation, LayoutGrid, Layers, Settings, Search, Code as CodeIcon } from 'lucide-react';
 import { BlogFeed } from './user/BlogFeed';
 import { RESOLVER } from '@/lib/builder/resolver';
+import { WebsiteSettings } from './WebsiteSettings';
 
 const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: any, component: React.ReactElement }) => {
   const { connectors } = useEditor();
@@ -173,10 +173,10 @@ export const Sidebar = ({
           <section>
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Advanced</h3>
             <div className="grid grid-cols-2 gap-2">
-              <DraggableItem 
-                name="Embed Code" 
-                icon={CodeIcon} 
-                component={<RESOLVER.CodeBlock customCode={`<div style="padding: 20px; background: #f4f4f5; border-radius: 12px; text-align: center; border: 1px dashed #e4e4e7;"><h3>Custom HTML Block</h3><p>Edit this in the settings panel</p></div>`} />} 
+              <DraggableItem
+                name="Embed Code"
+                icon={CodeIcon}
+                component={<RESOLVER.CodeBlock customCode={`<div style="padding: 20px; background: #f4f4f5; border-radius: 12px; text-align: center; border: 1px dashed #e4e4e7;"><h3>Custom HTML Block</h3><p>Edit this in the settings panel</p></div>`} />}
               />
             </div>
           </section>
@@ -191,7 +191,7 @@ export const Sidebar = ({
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
-          <WebsiteManager
+          <WebsiteSettings
             website={website || { name: '', subdomain: '' }}
             onUpdate={onUpdateWebsite || (() => { })}
           />
