@@ -129,7 +129,7 @@ const DashBoardSidebar = () => {
           <Link href="/" className="flex items-center justify-center w-full group mt-1">
             <div className="relative w-40 h-10 overflow-hidden">
                <Image 
-                 src="/assets/images/brand/LeadsMind_Logo.png.png" 
+                 src="/assets/images/logo/logo-white.svg" 
                  alt="LeadsMind" 
                  fill
                  className="object-contain"

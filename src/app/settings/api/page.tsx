@@ -1,6 +1,5 @@
-import React from 'react';
-import ComingSoon from '@/components/ComingSoon';
+import { redirect } from 'next/navigation';
 
-export default function ApiSettingsPage() {
-  return <ComingSoon title="API & Webhooks" />;
+export default function RedirectToSettings() {
+  redirect('/settings');
 }

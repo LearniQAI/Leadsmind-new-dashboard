@@ -3,6 +3,26 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 
+const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
+
+export async function getMetaAuthUrl() {
+  const appId = process.env.META_APP_ID;
+  const scope = 'pages_messaging,pages_manage_metadata,instagram_manage_messages';
+  return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${REDIRECT_URI}&scope=${scope}&response_type=code`;
+}
+
+export async function getLinkedInAuthUrl() {
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const scope = 'w_member_social,r_liteprofile';
+  return `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${REDIRECT_URI}&scope=${scope}`;
+}
+
+export async function getTikTokAuthUrl() {
+  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  const scope = 'user.info.basic,video.list,video.publish';
+  return `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&scope=${scope}&response_type=code&redirect_uri=${REDIRECT_URI}`;
+}
+
 export async function getConnectedPlatforms() {
   try {
     const workspaceId = await getCurrentWorkspaceId();

@@ -1,18 +1,16 @@
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import TrainingMainArea from "@/components/pagesUI/training/TrainingMainArea";
-import MetaData from "@/hooks/useMetaData";
-import React from "react";
+import React from 'react';
+import Wrapper from '@/components/layouts/DefaultWrapper';
+import CoursesClient from './CoursesClient';
+import { getCourses } from '@/app/actions/lms';
 
-const page = () => {
+export default async function CoursesPage() {
+  const { data: courses } = await getCourses();
+
   return (
-    <>
-      <MetaData pageTitle="Training">
-        <Wrapper>
-          <TrainingMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
+    <Wrapper>
+      <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)]">
+        <CoursesClient initialCourses={courses || []} />
+      </div>
+    </Wrapper>
   );
-};
-
-export default page;
+}

@@ -1,6 +1,5 @@
-import React from 'react';
-import ComingSoon from '@/components/ComingSoon';
+import { redirect } from 'next/navigation';
 
-export default function BillingSettingsPage() {
-  return <ComingSoon title="Billing & Subscriptions" />;
+export default function RedirectToSettings() {
+  redirect('/settings');
 }

@@ -1,6 +1,5 @@
-import React from 'react';
-import ComingSoon from '@/components/ComingSoon';
+import { redirect } from 'next/navigation';
 
-export default function WorkspaceSettingsPage() {
-  return <ComingSoon title="Workspace Settings" />;
+export default function RedirectToSettings() {
+  redirect('/settings');
 }

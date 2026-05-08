@@ -62,11 +62,11 @@ export default async function ContactsPage({
                     <p className="text-[10px] text-white/30 uppercase font-black tracking-widest">Segment and manage database relationships</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Link href="/apps/contacts/tags" className="btn btn-md btn-outline-theme-border !rounded-xl text-[10px] uppercase font-black tracking-widest">
+                    <Link href="/contacts/tags" className="btn btn-md btn-outline-theme-border !rounded-xl text-[10px] uppercase font-black tracking-widest">
                       <TagIcon size={14} className="mr-2" /> Manage Tags
                     </Link>
                     <ImportContactsModal />
-                    <Link href="/apps/contacts/new" className="btn btn-md btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest shadow-lg shadow-primary/20">
+                    <Link href="/contacts/new" className="btn btn-md btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest shadow-lg shadow-primary/20">
                       <Plus size={16} className="mr-2" /> Add Contact
                     </Link>
                   </div>
@@ -77,7 +77,7 @@ export default async function ContactsPage({
                     <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-white/10 group-focus-within:text-primary">
                       <Search className="h-4 w-4" />
                     </div>
-                    <form action="/apps/contacts" method="GET">
+                    <form action="/contacts" method="GET">
                       <input
                         name="q"
                         defaultValue={query}
@@ -90,16 +90,16 @@ export default async function ContactsPage({
 
                   {allTags.length > 0 && (
                     <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
-                      <Link href="/apps/contacts" className={`btn btn-sm rounded-lg text-[9px] uppercase font-black tracking-widest ${!tag ? 'btn-primary' : 'btn-outline-theme-border opacity-40'}`}>
+                      <Link href="/contacts" className={`btn btn-sm rounded-lg text-[9px] uppercase font-black tracking-widest ${!tag ? 'btn-primary' : 'btn-outline-theme-border opacity-40'}`}>
                         All
                       </Link>
                       {allTags.slice(0, 5).map(t => (
-                        <Link key={t.name} href={`/apps/contacts?tag=${t.name}${query ? `&q=${query}` : ''}`} className={`btn btn-sm rounded-lg text-[9px] uppercase font-black tracking-widest ${tag === t.name ? 'btn-primary' : 'btn-outline-theme-border opacity-40'}`}>
+                        <Link key={t.name} href={`/contacts?tag=${t.name}${query ? `&q=${query}` : ''}`} className={`btn btn-sm rounded-lg text-[9px] uppercase font-black tracking-widest ${tag === t.name ? 'btn-primary' : 'btn-outline-theme-border opacity-40'}`}>
                           {t.name}
                         </Link>
                       ))}
                       {tag && (
-                        <Link href="/apps/contacts" className="btn btn-icon btn-sm btn-outline-danger rounded-lg">
+                        <Link href="/contacts" className="btn btn-icon btn-sm btn-outline-danger rounded-lg">
                           <X size={12} />
                         </Link>
                       )}

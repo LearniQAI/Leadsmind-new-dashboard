@@ -4,7 +4,7 @@ import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Globe, Shield, Rocket, Info, Copy, ExternalLink } from 'lucide-react';
+import { Globe, Shield, Rocket, Info, Copy, ExternalLink, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface WebsiteSettingsProps {
@@ -17,6 +17,7 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
     name: website?.name || '',
     subdomain: website?.subdomain || '',
     custom_domain: website?.custom_domain || '',
+    config: website?.config || { social_links: { facebook: '', instagram: '', twitter: '' } }
   });
 
   React.useEffect(() => {
@@ -25,12 +26,26 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
         name: website.name || '',
         subdomain: website.subdomain || '',
         custom_domain: website.custom_domain || '',
+        config: website.config || { social_links: { facebook: '', instagram: '', twitter: '' } }
       });
     }
   }, [website]);
 
   const handleChange = (field: string, value: string) => {
     setLocalSettings(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSocialChange = (platform: string, value: string) => {
+    setLocalSettings(prev => ({
+      ...prev,
+      config: {
+        ...prev.config,
+        social_links: {
+          ...(prev.config?.social_links || {}),
+          [platform]: value
+        }
+      }
+    }));
   };
 
   const handleSave = () => {
@@ -104,6 +119,42 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
                 placeholder="www.example.com"
               />
               <p className="text-[9px] text-muted-foreground italic px-1">Connect your own domain via CNAME records.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Social Media Links */}
+        <section className="space-y-4">
+          <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">
+            <Share2 className="w-3 h-3" /> Social Presence
+          </h3>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Facebook URL</Label>
+              <Input 
+                value={localSettings.config?.social_links?.facebook || ''}
+                onChange={(e) => handleSocialChange('facebook', e.target.value)}
+                className="h-9 bg-white/5 border-white/5 text-sm"
+                placeholder="https://facebook.com/your-page"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Instagram URL</Label>
+              <Input 
+                value={localSettings.config?.social_links?.instagram || ''}
+                onChange={(e) => handleSocialChange('instagram', e.target.value)}
+                className="h-9 bg-white/5 border-white/5 text-sm"
+                placeholder="https://instagram.com/your-profile"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Twitter URL</Label>
+              <Input 
+                value={localSettings.config?.social_links?.twitter || ''}
+                onChange={(e) => handleSocialChange('twitter', e.target.value)}
+                className="h-9 bg-white/5 border-white/5 text-sm"
+                placeholder="https://twitter.com/your-handle"
+              />
             </div>
           </div>
         </section>

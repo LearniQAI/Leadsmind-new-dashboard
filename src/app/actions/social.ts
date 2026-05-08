@@ -1,64 +1,73 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
+import { getCurrentWorkspaceId } from '@/lib/auth';
 
-/**
- * Publishes a post to connected social media platforms.
- */
-export async function publishSocialPost(postId: string) {
+export async function getSocialAccounts() {
   try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
     const supabase = await createServerClient();
-    
-    // 1. Fetch post details
-    const { data: post, error: fetchError } = await supabase
-      .from('social_posts')
+    const { data, error } = await supabase
+      .from('social_accounts')
       .select('*')
-      .eq('id', postId)
-      .single();
+      .eq('workspace_id', workspaceId);
 
-    if (fetchError) throw fetchError;
-
-    // 2. Logic for publishing (mock for now, usually calls External APIs)
-    // Here we update the status
-    const { error: updateError } = await supabase
-      .from('social_posts')
-      .update({ 
-        status: 'published',
-        published_at: new Date().toISOString()
-      })
-      .eq('id', postId);
-
-    if (updateError) throw updateError;
-
-    return { success: true };
+    if (error) throw error;
+    return { data };
   } catch (error: any) {
-    console.error('[social] Publish error:', error);
-    return { success: false, error: error.message };
+    return { error: error.message };
   }
 }
 
-/**
- * Creates a new social media post record.
- */
-export async function createSocialPost(data: any) {
+export async function getSocialPosts() {
   try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
     const supabase = await createServerClient();
-    
-    const { data: post, error } = await supabase
+    const { data, error } = await supabase
       .from('social_posts')
-      .insert({
-        ...data,
-        status: 'draft',
-        created_at: new Date().toISOString()
-      })
-      .select('id')
-      .single();
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
-
-    return { success: true, id: post.id };
+    return { data };
   } catch (error: any) {
-    console.error('[social] Create error:', error);
-    return { success: false, error: error.message };
+    return { error: error.message };
+  }
+}
+
+export async function createSocialPost(postData: {
+  platforms: string[];
+  content: string;
+  media_urls?: string[];
+  scheduled_at?: string;
+}) {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const supabase = await createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error } = await supabase
+      .from('social_posts')
+      .insert({
+        workspace_id: workspaceId,
+        platforms: postData.platforms,
+        content: postData.content,
+        media_urls: postData.media_urls || [],
+        scheduled_at: postData.scheduled_at,
+        status: postData.scheduled_at ? 'scheduled' : 'draft',
+        created_by: user?.id
+      });
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
   }
 }
