@@ -154,7 +154,7 @@ export default function WebsiteManager() {
     const handleRename = async () => {
         if (!renameSite || !renameSite.name) return;
         setIsRenaming(true);
-        const result = await updateWebsiteSettings(renameSite.id, { name: renameSite.name });
+        const result = await updateWebsiteSettings(renameSite.id, 'website', { name: renameSite.name });
         if (result.success) {
             toast.success('Website renamed');
             fetchWebsites();
