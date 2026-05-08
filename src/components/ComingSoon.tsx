@@ -20,7 +20,8 @@ const ComingSoon = ({ title }: ComingSoonProps) => {
              src="/assets/images/brand/LeadsMind_Logo.png.png" 
              alt="LeadsMind" 
              fill
-             className="object-contain animate-pulse"
+             className="object-contain"
+             priority
            />
         </div>
         <h1 className="text-4xl font-black tracking-tighter mb-4 uppercase">{title}</h1>

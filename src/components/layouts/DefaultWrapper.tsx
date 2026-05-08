@@ -41,10 +41,10 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
   return (
     <>
       <div
-        className={`page__full-wrapper ${theme === "dark" ? "dark" : "light"}`}
+        className={`page__full-wrapper bg-[#0A0F3D] ${theme === "dark" ? "dark" : "light"}`}
       >
         <DashBoardSidebar />
-        <div className="page__body-wrapper">
+        <div className="page__body-wrapper bg-[#0A0F3D] min-h-screen">
           <BackToTop />
           {renderHeader()}
           {children}

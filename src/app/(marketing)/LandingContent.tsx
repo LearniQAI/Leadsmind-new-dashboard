@@ -10,7 +10,7 @@ import { Check, ArrowRight, Zap, Shield, BarChart3, Users, Globe, MessageSquare,
 import { createCheckoutSession, getSaaSTiers } from '@/app/actions/finance';
 import { toast } from 'sonner';
 
-const LandingContent = () => {
+const LandingContent = ({ user }: { user?: any }) => {
   const [tiers, setTiers] = React.useState<any[]>([]);
   const [isAnnual, setIsAnnual] = React.useState(false);
 
@@ -28,7 +28,7 @@ const LandingContent = () => {
     if (res.error) {
       toast.error(res.error);
       if (res.error === 'Not authenticated') {
-        window.location.href = '/auth/signin-basic';
+        window.location.href = '/auth/signup-basic';
       }
     } else if (res.url) {
       window.location.href = res.url;
@@ -64,12 +64,20 @@ const LandingContent = () => {
             <Link href="#pricing" className="hover:text-white transition-colors">Pricing</Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/auth/signin-basic">
-              <Button variant="ghost" className="text-white hover:bg-white/5 text-xs font-bold uppercase tracking-widest">Login</Button>
-            </Link>
-            <Link href="/auth/signup-basic">
-              <Button className="bg-primary hover:bg-primary/90 border-none px-6 text-xs font-black uppercase tracking-widest h-10 shadow-lg shadow-primary/20">Get Started</Button>
-            </Link>
+            {user ? (
+              <Link href="/dashboard">
+                <Button className="bg-primary hover:bg-primary/90 border-none px-6 text-xs font-black uppercase tracking-widest h-10 shadow-lg shadow-primary/20">Dashboard</Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth/signin-basic">
+                  <Button variant="ghost" className="text-white hover:bg-white/5 text-xs font-bold uppercase tracking-widest">Login</Button>
+                </Link>
+                <Link href="/auth/signup-basic">
+                  <Button className="bg-primary hover:bg-primary/90 border-none px-6 text-xs font-black uppercase tracking-widest h-10 shadow-lg shadow-primary/20">Get Started</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -96,9 +104,11 @@ const LandingContent = () => {
                unifies your team, and turns leads into loyal advocates.
              </p>
              <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-               <Button className="h-16 px-10 text-lg bg-primary hover:bg-primary/90 border-none group shadow-2xl shadow-primary/30 font-black uppercase tracking-widest">
-                 Claim Your Free Trial <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
-               </Button>
+               <Link href="/auth/signup-basic">
+                 <Button className="h-16 px-10 text-lg bg-primary hover:bg-primary/90 border-none group shadow-2xl shadow-primary/30 font-black uppercase tracking-widest">
+                   Claim Your Free Trial <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                 </Button>
+               </Link>
                <button className="flex items-center gap-3 text-white/80 hover:text-white transition-colors group">
                  <div className="w-14 h-14 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
                     <Play className="w-5 h-5 fill-current ml-1" />
@@ -301,7 +311,7 @@ const LandingContent = () => {
                       onClick={() => handleCheckout(tier.id)}
                       className={`w-full h-16 font-black uppercase tracking-[0.2em] text-sm ${tier.id === 'pro' ? 'bg-primary hover:bg-primary/90 border-none shadow-xl shadow-primary/30' : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'}`}
                     >
-                      {tier.id === 'starter' ? 'Start Free' : 'Secure Access'}
+                      {tier.id === 'starter' ? 'Start Free' : 'Subscribe'}
                     </Button>
                   </div>
                 </Card>
@@ -325,9 +335,11 @@ const LandingContent = () => {
                    Join the 1% of elite businesses that have unified their operations and achieved total market dominance with LeadsMind.
                 </p>
                 <div className="flex flex-col items-center gap-8">
-                   <Button className="h-20 px-16 text-2xl bg-white text-primary hover:scale-105 border-none font-black uppercase tracking-[0.2em] transition-all shadow-2xl">
-                      Start Your Empire Now
-                   </Button>
+                   <Link href="/auth/signup-basic">
+                     <Button className="h-20 px-16 text-2xl bg-white text-primary hover:scale-105 border-none font-black uppercase tracking-[0.2em] transition-all shadow-2xl">
+                        Start Your Empire Now
+                     </Button>
+                   </Link>
                    <div className="flex items-center gap-6 text-white/60 text-xs font-black uppercase tracking-[0.3em]">
                       <div className="flex items-center gap-2"><Check className="w-4 h-4" /> No Credit Card</div>
                       <div className="flex items-center gap-2"><Check className="w-4 h-4" /> 14-Day Free Trial</div>

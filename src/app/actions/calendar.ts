@@ -60,6 +60,31 @@ export async function createCalendar(payload: {
  * --- BOOKING & APPOINTMENTS ---
  */
 
+export async function getAppointments() {
+  return executeAction(async (supabase, workspaceId) => {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select(`
+        id,
+        title,
+        start_time,
+        end_time,
+        status,
+        waitlist_enabled,
+        current_attendee_count,
+        max_attendees,
+        calendar_id,
+        contact_id,
+        contacts (first_name, last_name, email)
+      `)
+      .eq('workspace_id', workspaceId)
+      .order('start_time', { ascending: true });
+
+    if (error) throw error;
+    return data;
+  });
+}
+
 export async function createBooking(payload: {
   calendarId: string;
   contactId: string;
@@ -232,10 +257,17 @@ export async function getBookingAnalytics(workspaceId: string) {
 // --- WAITLISTS ---
 
 export async function getWaitlistEntries(appointmentId: string) {
-  return executeAction(async (supabase) => {
+  return executeAction(async (supabase, workspaceId) => {
     const { data, error } = await supabase
       .from('booking_waitlists')
-      .select('*, contact:contacts(first_name, last_name, email)')
+      .select(`
+        id,
+        position,
+        offered_at,
+        confirmed,
+        contacts (id, first_name, last_name, email)
+      `)
+      .eq('workspace_id', workspaceId)
       .eq('appointment_id', appointmentId)
       .order('position', { ascending: true });
 
@@ -321,4 +353,3 @@ export async function createPackage(payload: {
     return data;
   });
 }
-
