@@ -46,15 +46,6 @@ export async function createSocialPost(postData: {
   media_urls?: string[];
   scheduled_at?: string;
 }) {
-  return publishSocialPost(postData);
-}
-
-export async function publishSocialPost(postData: {
-  platforms: string[];
-  content: string;
-  media_urls?: string[];
-  scheduled_at?: string;
-}) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
@@ -62,7 +53,7 @@ export async function publishSocialPost(postData: {
     const supabase = await createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('social_posts')
       .insert({
         workspace_id: workspaceId,
@@ -72,7 +63,24 @@ export async function publishSocialPost(postData: {
         scheduled_at: postData.scheduled_at,
         status: postData.scheduled_at ? 'scheduled' : 'draft',
         created_by: user?.id
-      });
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return { success: true, id: data.id };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function publishSocialPost(postId: string) {
+  try {
+    const supabase = await createServerClient();
+    const { error } = await supabase
+      .from('social_posts')
+      .update({ status: 'published', published_at: new Date().toISOString() })
+      .eq('id', postId);
 
     if (error) throw error;
     return { success: true };

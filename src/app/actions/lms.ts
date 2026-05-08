@@ -56,7 +56,7 @@ export async function enrollStudent(courseId: string, contactId: string) {
   }
 }
 
-export async function updateProgress(courseId: string, contactId: string, lessonId: string) {
+export async function updateProgress(contactId: string, lessonId: string, completed: boolean, progress: number) {
   try {
     // Progress tracking logic
     return { success: true };
