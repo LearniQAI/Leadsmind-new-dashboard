@@ -31,7 +31,7 @@ export function useGlobalSync(isGlobal: boolean, globalId: string, props: any) {
                 }
             });
         }
-    }, [propsString, isGlobal, globalId, onUpdateWebsite, websiteData]);
+    }, [propsString, isGlobal, globalId, onUpdateWebsite, websiteData]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /**

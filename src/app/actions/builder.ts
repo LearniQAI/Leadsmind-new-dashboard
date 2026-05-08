@@ -161,10 +161,11 @@ export async function deleteWebsite(websiteId: string) {
     });
 }
 
-export async function updateWebsiteSettings(websiteId: string, settings: any) {
+export async function updateWebsiteSettings(websiteId: string, type: 'website' | 'funnel', settings: any) {
     return executeAction(async (supabase, workspaceId) => {
+        const table = type === 'funnel' ? 'funnels' : 'websites';
         const { error } = await supabase
-            .from('websites')
+            .from(table)
             .update({ 
                 ...settings,
                 updated_at: new Date().toISOString()
@@ -173,7 +174,7 @@ export async function updateWebsiteSettings(websiteId: string, settings: any) {
             .eq('workspace_id', workspaceId);
         
         if (error) throw error;
-        revalidatePath('/websites');
+        revalidatePath(`/${table}`);
         return { success: true };
     });
 }
