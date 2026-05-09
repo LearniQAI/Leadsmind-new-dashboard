@@ -57,8 +57,8 @@ export default async function RootLayout({
       <html lang="en" className="dark">
         <head>
           <meta httpEquiv="x-ua-compatible" content="ie=edge" />
-          <title>LEADSMIND | All-in-One Business Operating System</title>
-          <meta name="description" content="LEADSMIND is an all-in-one business operating system that brings your sales, marketing, operations, finances and team together in one smart, unified platform." />
+          <title>ANTIGRAVITY | Neural Dashboard & All-in-One OS</title>
+          <meta name="description" content="ANTIGRAVITY is a next-generation neural dashboard and all-in-one business operating system designed for high-frequency operations." />
           <meta name="robots" content="noindex, follow" />
           <meta
             name="viewport"

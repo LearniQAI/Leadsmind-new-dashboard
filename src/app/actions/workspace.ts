@@ -31,7 +31,7 @@ export async function createWorkspace(name: string) {
         name,
         slug,
         owner_id: user.id,
-        plan: 'free',
+        plan_tier: 'free',
       })
       .select('id, name')
       .single();

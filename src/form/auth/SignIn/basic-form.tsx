@@ -55,7 +55,7 @@ const SignInBasicForm = () => {
         .select(`
           role,
           workspaces (
-            id, name, slug, logo_url, owner_id, plan, created_at
+            id, name, slug, logo_url, owner_id, plan_tier, created_at
           )
         `)
         .eq("user_id", authData.user.id);
@@ -75,7 +75,7 @@ const SignInBasicForm = () => {
         slug: string;
         logo_url: string | null;
         owner_id: string;
-        plan: "free" | "pro" | "enterprise";
+        plan_tier: "free" | "pro" | "enterprise";
         created_at: string;
       }
 
@@ -89,7 +89,7 @@ const SignInBasicForm = () => {
             slug: ws.slug,
             logoUrl: ws.logo_url,
             ownerId: ws.owner_id,
-            plan: ws.plan,
+            plan: ws.plan_tier,
             createdAt: ws.created_at,
             role: m.role,
           } as Workspace & { role: string };

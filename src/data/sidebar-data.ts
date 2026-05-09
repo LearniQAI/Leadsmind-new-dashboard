@@ -76,9 +76,9 @@ const sidebarData: SidebarCategory[] = [
     category: "Account",
     items: [
       { id: 29, label: "Settings", icon: "fa-light fa-gear", subItems: [
-        { label: "Account", link: "/settings/account" },
+        { label: "Account", link: "/settings" },
         { label: "Workspace", link: "/settings/workspace" },
-        { label: "Team", link: "/team-members" },
+        { label: "Team", link: "/settings/team" },
         { label: "Branding", link: "/settings/branding" },
         { label: "Billing", link: "/settings/billing" },
         { label: "Integrations", link: "/settings/integrations" },

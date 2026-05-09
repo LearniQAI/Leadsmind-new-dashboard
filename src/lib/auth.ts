@@ -160,7 +160,7 @@ export async function getCurrentWorkspace(existingUser?: any): Promise<Workspace
 
     const { data: ws } = await supabase
       .from('workspaces')
-      .insert({ name, slug, owner_id: user.id, plan: 'free' })
+      .insert({ name, slug, owner_id: user.id, plan_tier: 'free' })
       .select()
       .single();
 

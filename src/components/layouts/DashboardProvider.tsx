@@ -14,6 +14,7 @@ interface Workspace {
   id: string;
   name: string;
   logoUrl?: string | null;
+  planTier?: string;
   plan?: string;
 }
 
@@ -56,5 +57,8 @@ export function DashboardProvider({
 
 export function useDashboardContext() {
   const context = useContext(DashboardContext);
-  return context || { user: null, workspace: null, enrichedWorkspace: null, branding: null, role: null };
+  if (context === undefined) {
+    throw new Error('useDashboardContext must be used within a DashboardProvider');
+  }
+  return context;
 }
