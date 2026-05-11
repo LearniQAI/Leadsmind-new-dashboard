@@ -5,7 +5,7 @@ import Image from 'next/image';
 
 // Import Swiper and its necessary modules
 import { SwiperSlide, Swiper } from 'swiper/react';
-import { EffectCards } from 'swiper';
+import { EffectCards } from 'swiper/modules';
 
 const SwiperEffectCards = () => {
     return (

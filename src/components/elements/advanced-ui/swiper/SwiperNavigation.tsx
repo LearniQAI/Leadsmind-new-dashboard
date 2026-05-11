@@ -5,7 +5,7 @@ import React from 'react';
 
 //navigation swiper
 import { SwiperSlide, Swiper } from 'swiper/react';
-import { Navigation } from 'swiper';
+import { Navigation } from 'swiper/modules';
 
 const SwiperNavigation = () => {
     return (

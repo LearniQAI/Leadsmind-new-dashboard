@@ -178,7 +178,7 @@ const DashBoardSidebar = () => {
                     >
                       <Link
                         // onClick={() => handleClick(item.id)}
-                        onClick={(e) => {
+                        onClick={(e: React.MouseEvent) => {
                           if (!item.link || item.link === "#") {
                             e.preventDefault(); // Prevent navigation when the link is "#"
                           }

@@ -22,20 +22,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "types": [
-      "node",
-      "react",
-      "react-dom",
-      "js-cookie",
-      "lodash",
-      "hoist-non-react-statics",
-      "parse-json",
-      "prop-types",
-      "react-modal-video",
-      "react-redux",
-      "react-transition-group"
-    ]
+    }
   },
 
   "include": [

@@ -4,7 +4,7 @@ import swiperData from '@/data/swiper-data';
 import Image from 'next/image';
 // Import Swiper and its necessary modules
 import { SwiperSlide, Swiper } from 'swiper/react';
-import { Navigation, Pagination } from 'swiper';
+import { Navigation, Pagination } from 'swiper/modules';
 
 
 const SwiperSlidesRTL = () => {
