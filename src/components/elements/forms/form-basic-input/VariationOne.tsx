@@ -101,7 +101,7 @@ const BasicInputFieldWithRightSideLabel = () => {
                   <DatePicker
                     id='startTime'
                     selected={startTime}
-                    onChange={(date) => setStartTime(date)}
+                    onChange={(date: any) => setStartTime(date)}
                     showYearDropdown
                     showMonthDropdown
                     useShortMonthInDropdown
@@ -131,7 +131,7 @@ const BasicInputFieldWithRightSideLabel = () => {
                   <DatePicker
                     id='startDate'
                     selected={startDate}
-                    onChange={(date) => setStartDate(date)}
+                    onChange={(date: any) => setStartDate(date)}
                     showYearDropdown
                     showMonthDropdown
                     useShortMonthInDropdown
@@ -157,7 +157,7 @@ const BasicInputFieldWithRightSideLabel = () => {
                   <DatePicker
                     id='timeDate'
                     selected={timeDate}
-                    onChange={(date) => setTimeDate(date)}
+                    onChange={(date: any) => setTimeDate(date)}
                     showTimeSelect
                     isClearable
                     timeFormat="HH:mm"
@@ -180,7 +180,7 @@ const BasicInputFieldWithRightSideLabel = () => {
                   <DatePicker
                     id='weekPicker'
                     selected={weekPicker}
-                    onChange={(date) => setWeekPicker(date)}
+                    onChange={(date: any) => setWeekPicker(date)}
                     dateFormat="I/R"
                     showWeekNumbers
                     showWeekPicker
@@ -201,7 +201,7 @@ const BasicInputFieldWithRightSideLabel = () => {
                   <DatePicker
                     id='month'
                     selected={month}
-                    onChange={(date) => setMonth(date)}
+                    onChange={(date: any) => setMonth(date)}
                     showMonthYearPicker
                     isClearable
                     dateFormat="MMMM, yyyy"

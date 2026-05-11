@@ -34,7 +34,7 @@ const TimeAndDatePicker = () => {
               <DatePicker
                 id='selectStartDate'
                 selected={selectStartDate}
-                onChange={(date) => setSelectStartDate(date)}
+                onChange={(date: any) => setSelectStartDate(date)}
                 showYearDropdown
                 showMonthDropdown
                 useShortMonthInDropdown
@@ -54,7 +54,7 @@ const TimeAndDatePicker = () => {
               <DatePicker
                 id='selectEndDate'
                 selected={selectEndDate}
-                onChange={(date) => setSelectEndDate(date)}
+                onChange={(date: any) => setSelectEndDate(date)}
                 showYearDropdown
                 showMonthDropdown
                 useShortMonthInDropdown
@@ -74,7 +74,7 @@ const TimeAndDatePicker = () => {
               <DatePicker
                 id='nullDate'
                 selected={nullDate}
-                onChange={(date) => setNullDate(date)}
+                onChange={(date: any) => setNullDate(date)}
                 showYearDropdown
                 showMonthDropdown
                 useShortMonthInDropdown
@@ -94,7 +94,7 @@ const TimeAndDatePicker = () => {
               <DatePicker
                 id='startTime'
                 selected={startTime}
-                onChange={(date) => setStartTime(date)}
+                onChange={(date: any) => setStartTime(date)}
                 showYearDropdown
                 showMonthDropdown
                 useShortMonthInDropdown
@@ -118,7 +118,7 @@ const TimeAndDatePicker = () => {
               <DatePicker
                 id='endTime'
                 selected={endTime}
-                onChange={(date) => setEndTime(date)}
+                onChange={(date: any) => setEndTime(date)}
                 showYearDropdown
                 showMonthDropdown
                 useShortMonthInDropdown
@@ -142,7 +142,7 @@ const TimeAndDatePicker = () => {
               <DatePicker
                 id='nullTime'
                 selected={nullTime}
-                onChange={(date) => setNullTime(date)}
+                onChange={(date: any) => setNullTime(date)}
                 showYearDropdown
                 showMonthDropdown
                 useShortMonthInDropdown
@@ -166,7 +166,7 @@ const TimeAndDatePicker = () => {
               <DatePicker
                 id='timeDate'
                 selected={timeDate}
-                onChange={(date) => setTimeDate(date)}
+                onChange={(date: any) => setTimeDate(date)}
                 showTimeSelect
                 isClearable
                 timeFormat="HH:mm"
@@ -182,7 +182,7 @@ const TimeAndDatePicker = () => {
             <div className="datepicker-style">
               <DatePicker
                 selected={localTimeDate}
-                onChange={(date) => setLocalTimeDate(date)}
+                onChange={(date: any) => setLocalTimeDate(date)}
                 showTimeSelect
                 timeFormat="p"
                 timeIntervals={15}
@@ -198,7 +198,7 @@ const TimeAndDatePicker = () => {
               <DatePicker
                 id='weekPicker'
                 selected={weekPicker}
-                onChange={(date) => setWeekPicker(date)}
+                onChange={(date: any) => setWeekPicker(date)}
                 dateFormat="I/R"
                 showWeekNumbers
                 showWeekPicker
@@ -213,7 +213,7 @@ const TimeAndDatePicker = () => {
               <DatePicker
                 id='month'
                 selected={month}
-                onChange={(date) => setMonth(date)}
+                onChange={(date: any) => setMonth(date)}
                 showMonthYearPicker
                 isClearable
                 dateFormat="MMMM, yyyy"
