@@ -56,7 +56,7 @@ export const PropertiesPanel = () => {
       </div>
       
       <div className="flex-1 overflow-y-auto p-5 space-y-8 common-scrollbar">
-        {selected.settings && React.createElement(selected.settings)}
+        {selected.settings && React.createElement(selected.settings as any)}
         
         {!selected.settings && (
             <div className="text-center py-20">

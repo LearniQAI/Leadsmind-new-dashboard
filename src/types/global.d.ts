@@ -6,15 +6,8 @@ declare global {
       [key: string]: string | undefined;
     };
   };
-  namespace JSX {
-    interface IntrinsicElements {
-      [elemName: string]: any;
-    }
-  }
 }
 
-declare module 'react';
-declare module 'react-dom';
 declare module 'swiper';
 declare module 'swiper/react';
 declare module 'swiper/modules';
