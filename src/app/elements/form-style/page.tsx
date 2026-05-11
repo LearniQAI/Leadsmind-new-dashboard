@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const page = () => {
-    return (
-        <>
-            <MetaData pageTitle="Form Style">
-                <Wrapper>
-                    <FormStyleMain />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Form Style">
+        <Wrapper>
+          <FormStyleMain />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default page;

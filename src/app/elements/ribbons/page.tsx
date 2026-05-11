@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const RibbonsMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Ribbons">
-                <Wrapper>
-                    <RibbonsMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Ribbons">
+        <Wrapper>
+          <RibbonsMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default RibbonsMain;

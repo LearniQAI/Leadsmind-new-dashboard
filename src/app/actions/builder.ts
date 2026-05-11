@@ -88,97 +88,97 @@ export async function createWebsite(name: string, subdomain: string, templateId?
 }
 
 export async function duplicateWebsite(websiteId: string) {
-    return executeAction(async (supabase, workspaceId) => {
-        // 1. Fetch original website with nested pages
-        // We fetch websites -> website_pages -> pages
-        const { data: original, error: fetchError } = await supabase
-            .from('websites')
-            .select('*, website_pages(*, pages(*))')
-            .eq('id', websiteId)
-            .single();
-        
-        if (fetchError) throw fetchError;
+  return executeAction(async (supabase, workspaceId) => {
+    // 1. Fetch original website with nested pages
+    // We fetch websites -> website_pages -> pages
+    const { data: original, error: fetchError } = await supabase
+      .from('websites')
+      .select('*, website_pages(*, pages(*))')
+      .eq('id', websiteId)
+      .single();
+    
+    if (fetchError) throw fetchError;
 
-        // 2. Create new website
-        const { data: duplicate, error: createError } = await supabase
-            .from('websites')
-            .insert({
-                workspace_id: workspaceId,
-                name: `${original.name} (Copy)`,
-                subdomain: `${original.subdomain}-copy-${Date.now().toString(36)}`,
-                config: original.config,
-                is_published: false
-            })
-            .select()
-            .single();
-        
-        if (createError) throw createError;
+    // 2. Create new website
+    const { data: duplicate, error: createError } = await supabase
+      .from('websites')
+      .insert({
+        workspace_id: workspaceId,
+        name: `${original.name} (Copy)`,
+        subdomain: `${original.subdomain}-copy-${Date.now().toString(36)}`,
+        config: original.config,
+        is_published: false
+      })
+      .select()
+      .single();
+    
+    if (createError) throw createError;
 
-        // 3. Duplicate pages
-        for (const wp of (original.website_pages || [])) {
-            // Duplicate the website_page record
-            const { data: newWsPage, error: wsPageError } = await supabase
-                .from('website_pages')
-                .insert({
-                    website_id: duplicate.id,
-                    name: wp.name,
-                    path_name: wp.path_name
-                })
-                .select()
-                .single();
-            
-            if (wsPageError) throw wsPageError;
+    // 3. Duplicate pages
+    for (const wp of (original.website_pages || [])) {
+      // Duplicate the website_page record
+      const { data: newWsPage, error: wsPageError } = await supabase
+        .from('website_pages')
+        .insert({
+          website_id: duplicate.id,
+          name: wp.name,
+          path_name: wp.path_name
+        })
+        .select()
+        .single();
+      
+      if (wsPageError) throw wsPageError;
 
-            // Duplicate the content page record(s)
-            const originalPages = wp.pages || [];
-            for (const p of originalPages) {
-                await supabase
-                    .from('pages')
-                    .insert({
-                        workspace_id: workspaceId,
-                        website_page_id: newWsPage.id,
-                        name: p.name,
-                        content: p.content,
-                        status: 'draft'
-                    });
-            }
-        }
+      // Duplicate the content page record(s)
+      const originalPages = wp.pages || [];
+      for (const p of originalPages) {
+        await supabase
+          .from('pages')
+          .insert({
+            workspace_id: workspaceId,
+            website_page_id: newWsPage.id,
+            name: p.name,
+            content: p.content,
+            status: 'draft'
+          });
+      }
+    }
 
-        revalidatePath('/websites');
-        return { success: true };
-    });
+    revalidatePath('/websites');
+    return { success: true };
+  });
 }
 
 export async function deleteWebsite(websiteId: string) {
-    return executeAction(async (supabase, workspaceId) => {
-        const { error } = await supabase
-            .from('websites')
-            .delete()
-            .eq('id', websiteId)
-            .eq('workspace_id', workspaceId);
-        
-        if (error) throw error;
-        revalidatePath('/websites');
-        return { success: true };
-    });
+  return executeAction(async (supabase, workspaceId) => {
+    const { error } = await supabase
+      .from('websites')
+      .delete()
+      .eq('id', websiteId)
+      .eq('workspace_id', workspaceId);
+    
+    if (error) throw error;
+    revalidatePath('/websites');
+    return { success: true };
+  });
 }
 
 export async function updateWebsiteSettings(websiteId: string, type: 'website' | 'funnel', settings: any) {
-    return executeAction(async (supabase, workspaceId) => {
-        const table = type === 'funnel' ? 'funnels' : 'websites';
-        const { error } = await supabase
-            .from(table)
-            .update({ 
-                ...settings,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', websiteId)
-            .eq('workspace_id', workspaceId);
-        
-        if (error) throw error;
-        revalidatePath(`/${table}`);
-        return { success: true };
-    });
+  return executeAction(async (supabase, workspaceId) => {
+    const table = type === 'funnel' ? 'funnels' : 'websites';
+    const { error } = await supabase
+      .from(table)
+      .update({ 
+        ...settings,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', websiteId)
+      .eq('workspace_id', workspaceId);
+    
+    if (error) throw error;
+    revalidatePath(`/${table}`);
+    return { success: true };
+  });
 }
 
 /**

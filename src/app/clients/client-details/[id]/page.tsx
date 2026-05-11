@@ -4,16 +4,16 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const page = ({ params }: { params: { id: number } }) => {
-  const id = params.id;
-  return (
-    <>
-      <MetaData pageTitle="Client Details Dynamic">
-        <Wrapper>
-          <ClientDetailsMainArea id={id} />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ const id = params.id;
+ return (
+  <>
+   <MetaData pageTitle="Client Details Dynamic">
+    <Wrapper>
+     <ClientDetailsMainArea id={id} />
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default page;

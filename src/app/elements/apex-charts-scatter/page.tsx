@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartsScatterMain = () => {
-    return (
-        <>
-             <MetaData pageTitle="Scatter">
-                <Wrapper>
-                    <ApexChartsScatterMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+       <MetaData pageTitle="Scatter">
+        <Wrapper>
+          <ApexChartsScatterMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartsScatterMain;

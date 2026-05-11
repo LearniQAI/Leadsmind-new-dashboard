@@ -4,15 +4,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const EmailComposeMain = () => {
-  return (
-    <>
-      <MetaData pageTitle="Email Compose">
-        <Wrapper>
-          <EmailComposeMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="Email Compose">
+    <Wrapper>
+     <EmailComposeMainArea />
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default EmailComposeMain;

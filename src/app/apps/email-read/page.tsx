@@ -4,15 +4,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const EmailReadMain = () => {
-  return (
-    <>
-      <MetaData pageTitle="Email Read">
-        <Wrapper>
-          <EmailReadMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="Email Read">
+    <Wrapper>
+     <EmailReadMainArea />
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default EmailReadMain;

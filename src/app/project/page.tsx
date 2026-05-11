@@ -1,18 +1,5 @@
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import ProjectMainArea from "@/components/pagesUI/project/project/ProjectMainArea";
-import MetaData from "@/hooks/useMetaData";
-import React from "react";
+import { redirect } from "next/navigation";
 
-const page = () => {
-  return (
-    <>
-      <MetaData pageTitle="Project">
-        <Wrapper>
-          <ProjectMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
-};
-
-export default page;
+export default function ProjectRedirect() {
+  redirect("/projects");
+}

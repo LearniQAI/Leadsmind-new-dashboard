@@ -4,15 +4,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const InvoiceEditMain = () => {
-  return (
-    <>
-      <MetaData pageTitle="invoice edit">
-        <Wrapper>
-          <InvoiceEditMainArea/>
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="invoice edit">
+    <Wrapper>
+     <InvoiceEditMainArea/>
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default InvoiceEditMain;

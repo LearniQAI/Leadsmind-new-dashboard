@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ToastsMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Snackbar Toast">
-                <Wrapper>
-                    <ToastsMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Snackbar Toast">
+        <Wrapper>
+          <ToastsMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ToastsMain;

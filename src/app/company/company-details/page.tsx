@@ -4,16 +4,16 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const CompanyDetailsMain = () => {
-  const id = 1;
-  return (
-    <>
-      <MetaData pageTitle="Company Details">
-        <Wrapper>
-          <CompanyDetailsMainArea id={id} />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ const id = 1;
+ return (
+  <>
+   <MetaData pageTitle="Company Details">
+    <Wrapper>
+     <CompanyDetailsMainArea id={id} />
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default CompanyDetailsMain;

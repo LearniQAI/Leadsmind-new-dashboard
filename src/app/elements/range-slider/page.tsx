@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const RangeSlideMain = () => {
-    return (
-        <>
-              <MetaData pageTitle="Range Slider">
-                <Wrapper>
-                    <RangeSliderMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+       <MetaData pageTitle="Range Slider">
+        <Wrapper>
+          <RangeSliderMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default RangeSlideMain;

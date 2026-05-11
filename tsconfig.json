@@ -9,10 +9,10 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {
@@ -22,20 +22,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "types": [
-      "node",
-      "react",
-      "react-dom",
-      "js-cookie",
-      "lodash",
-      "hoist-non-react-statics",
-      "parse-json",
-      "prop-types",
-      "react-modal-video",
-      "react-redux",
-      "react-transition-group"
-    ]
+    }
   },
 
   "include": [

@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartPolarArea = () => {
-    return (
-        <>
-             <MetaData pageTitle="Polar Area">
-                <Wrapper>
-                    <ApexChartPolarAreaMain />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+       <MetaData pageTitle="Polar Area">
+        <Wrapper>
+          <ApexChartPolarAreaMain />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartPolarArea;

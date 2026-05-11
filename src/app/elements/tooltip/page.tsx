@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const TooltipMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Tooltip">
-                <Wrapper>
-                    <TooltipMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Tooltip">
+        <Wrapper>
+          <TooltipMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default TooltipMain;

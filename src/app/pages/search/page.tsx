@@ -5,15 +5,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const SearchMain = () => {
-  return (
-    <>
-      <MetaData pageTitle="Search">
-        <Wrapper>
-          <SearchMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="Search">
+    <Wrapper>
+     <SearchMainArea />
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default SearchMain;

@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const DropzoneMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Dropzone">
-                <Wrapper>
-                    <DropzoneMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Dropzone">
+        <Wrapper>
+          <DropzoneMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default DropzoneMain;

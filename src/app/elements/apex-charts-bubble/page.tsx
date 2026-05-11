@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartBubbleMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Bubble">
-                <Wrapper>
-                    <ApexChartBubbleMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Bubble">
+        <Wrapper>
+          <ApexChartBubbleMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartBubbleMain;

@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const FormInputGrup = () => {
-    return (
-        <>
-            <MetaData pageTitle="Form Style">
-                <Wrapper>
-                    <FormsInputGroupsMain />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Form Style">
+        <Wrapper>
+          <FormsInputGroupsMain />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default FormInputGrup;

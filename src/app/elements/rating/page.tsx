@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const RatingMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Rating">
-                <Wrapper>
-                    <RatingMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Rating">
+        <Wrapper>
+          <RatingMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default RatingMain;

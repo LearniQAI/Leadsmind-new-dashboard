@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartRangeMain = () => {
-    return (
-        <>
-             <MetaData pageTitle="Range">
-                <Wrapper>
-                    <ApexChartRangeMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+       <MetaData pageTitle="Range">
+        <Wrapper>
+          <ApexChartRangeMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartRangeMain;

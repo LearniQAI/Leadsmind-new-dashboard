@@ -4,15 +4,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const LeadsMain = () => {
-  return (
-    <>
-      <MetaData pageTitle="Leads">
-        <Wrapper>
-          <LeadsMainArea/>
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="Leads">
+    <Wrapper>
+     <LeadsMainArea/>
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default LeadsMain;

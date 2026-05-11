@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartColumnMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Column">
-                <Wrapper>
-                    <ApexChartColumnArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Column">
+        <Wrapper>
+          <ApexChartColumnArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartColumnMain;

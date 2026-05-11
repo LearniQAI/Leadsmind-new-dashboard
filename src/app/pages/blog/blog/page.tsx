@@ -4,15 +4,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const BlogMain = () => {
-  return (
-    <>
-      <MetaData pageTitle="Blog">
-        <Wrapper>
-          <BlogMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="Blog">
+    <Wrapper>
+     <BlogMainArea />
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default BlogMain;

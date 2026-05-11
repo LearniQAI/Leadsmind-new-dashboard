@@ -4,7 +4,7 @@
   <path d="M25 25C25 19.4772 29.4772 15 35 15C40.5228 15 45 19.4772 45 25C45 30.5228 40.5228 35 35 35C29.4772 35 25 30.5228 25 25Z" fill="#0A0F3D" fill-opacity="0.2"/>
   <path d="M35 10V40M20 25H50" stroke="#0A0F3D" stroke-width="2" stroke-linecap="round"/>
   
-  <!-- Text: ANTIGRAVITY -->
-  <text x="65" y="32" fill="#0A0F3D" style="font-family: Arial, sans-serif; font-weight: 900; font-size: 22px; letter-spacing: -1px; text-transform: uppercase; font-style: italic;">ANTIGRAVITY</text>
-  <text x="65" y="42" fill="#1359FF" fill-opacity="0.6" style="font-family: Arial, sans-serif; font-weight: 700; font-size: 8px; letter-spacing: 2px; text-transform: uppercase;">NEURAL DASHBOARD</text>
+  <!-- Text: LEADSMIND -->
+  <text x="65" y="32" fill="#0A0F3D" style="font-family: Arial, sans-serif; font-weight: 900; font-size: 22px; letter-spacing: -1px; text-transform: uppercase; font-style: italic;">LEADSMIND</text>
+  <text x="65" y="42" fill="#1359FF" fill-opacity="0.6" style="font-family: Arial, sans-serif; font-weight: 700; font-size: 8px; letter-spacing: 2px; text-transform: uppercase;">ALL-IN-ONE BUSINESS OS</text>
 </svg>

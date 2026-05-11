@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const TemplateColorMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Color Plate">
-                <Wrapper>
-                    <ThemeColorPlate />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Color Plate">
+        <Wrapper>
+          <ThemeColorPlate />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default TemplateColorMain;

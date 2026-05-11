@@ -4,13 +4,13 @@ import SmallTableScroll from './Partials/SmallTableScroll';
 import CalendarTable from './Partials/CalendarTable';
 
 const TabelBasicMain = () => {
-    return (
-        <>
-            <SmallTable />   
-            <SmallTableScroll />   
-            <CalendarTable />   
-        </>
-    );
+  return (
+    <>
+      <SmallTable />  
+      <SmallTableScroll />  
+      <CalendarTable />  
+    </>
+  );
 };
 
 export default TabelBasicMain;
