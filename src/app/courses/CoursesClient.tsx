@@ -158,7 +158,6 @@ export default function CoursesClient({
           Automate <Zap size={14} />
          </Button>
         </div>
-       </div>
       </div>
      ))
     )}
