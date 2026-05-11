@@ -6,7 +6,7 @@ import React from 'react';
 
 // Import Swiper and its necessary modules
 import { SwiperSlide, Swiper } from 'swiper/react';
-import { Pagination } from 'swiper/modules';
+import { Pagination } from 'swiper';
 
 const SwiperVertical = () => {
     return (

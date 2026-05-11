@@ -5,7 +5,7 @@ import swiperData from '@/data/swiper-data';
 
 // Import Swiper and its necessary modules
 import { SwiperSlide, Swiper } from 'swiper/react';
-import { Navigation, Pagination } from 'swiper/modules';
+import { Navigation, Pagination } from 'swiper';
 
 
 const PaginationFraction = () => {

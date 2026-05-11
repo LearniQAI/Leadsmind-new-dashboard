@@ -6,7 +6,7 @@ import Image from 'next/image';
 
 // Import Swiper and its necessary modules
 import { SwiperSlide, Swiper } from 'swiper/react';
-import { Scrollbar } from 'swiper/modules';
+import { Scrollbar } from 'swiper';
 
 const PaginationScrollbar = () => {
     return (

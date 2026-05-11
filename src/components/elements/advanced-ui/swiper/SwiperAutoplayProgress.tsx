@@ -5,7 +5,7 @@ import React, { useRef } from 'react';
 
 // Import Swiper and its necessary modules
 import { SwiperSlide, Swiper } from 'swiper/react';
-import { Autoplay, Navigation, Pagination } from 'swiper/modules';
+import { Autoplay, Navigation, Pagination } from 'swiper';
 
 const SwiperAutoplayProgress = () => {
     // Updated the type to SVGSVGElement
