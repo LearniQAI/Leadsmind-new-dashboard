@@ -100,15 +100,18 @@ export async function sendMessage(conversationId: string, content: string) {
       .eq('id', conversationId)
       .single();
 
-    if (conv?.platform === 'email' && conv.contacts?.email) {
-      try {
-        await sendEmail({
-          to: conv.contacts.email,
-          subject: 'New message from LeadsMind Support',
-          text: content,
-        });
-      } catch (emailErr) {
-        console.error('[messaging] Failed to send actual email:', emailErr);
+    if (conv?.platform === 'email') {
+      const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
+      if (contact?.email) {
+        try {
+          await sendEmail({
+            to: contact.email,
+            subject: 'New message from LeadsMind Support',
+            text: content,
+          });
+        } catch (emailErr) {
+          console.error('[messaging] Failed to send actual email:', emailErr);
+        }
       }
     }
 
