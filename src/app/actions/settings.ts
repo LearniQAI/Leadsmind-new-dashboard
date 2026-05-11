@@ -52,7 +52,7 @@ export async function getWorkspaceMembers() {
     const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('workspace_members')
-      .select('*, profile:profiles(*)')
+      .select('*, user:users(*)')
       .eq('workspace_id', workspaceId);
 
     if (error) throw error;
@@ -83,15 +83,13 @@ export async function inviteTeamMember(email: string, role: string = 'member') {
 
     if (error) throw error;
 
-    // 2. Send the actual invitation email
-    try {
-      const { data: workspace } = await supabase
-        .from('workspaces')
-        .select('name')
-        .eq('id', workspaceId)
-        .single();
+    const { data: workspace } = await supabase
+      .from('workspaces')
+      .select('name')
+      .eq('id', workspaceId)
+      .single();
 
-      await sendEmail({
+    await sendEmail({
         to: email,
         subject: `You've been invited to join ${workspace?.name || 'a workspace'} on LeadsMind`,
         html: `
@@ -113,9 +111,6 @@ export async function inviteTeamMember(email: string, role: string = 'member') {
           </div>
         `
       });
-    } catch (emailErr) {
-      console.error('[inviteTeamMember] Failed to send invitation email:', emailErr);
-    }
 
     return { data };
   } catch (error: any) {
@@ -156,6 +151,64 @@ export async function createWebhook(url: string, events: string[]) {
 
     if (error) throw error;
     return { data };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+// API KEYS
+export async function getWorkspaceApiKey() {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('workspaces')
+      .select('api_key')
+      .eq('id', workspaceId)
+      .single();
+
+    if (error) throw error;
+    return { data: data.api_key };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function generateWorkspaceApiKey() {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const newKey = `lm_sk_${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`;
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('workspaces')
+      .update({ api_key: newKey })
+      .eq('id', workspaceId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data: data.api_key };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function updateWorkspaceLogo(logoUrl: string) {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const supabase = await createServerClient();
+    
+    // Update both workspace branding and workspace table for compatibility
+    await supabase.from('workspace_branding').upsert({ workspace_id: workspaceId, logo_url: logoUrl });
+    await supabase.from('workspaces').update({ logo_url: logoUrl }).eq('id', workspaceId);
+
+    return { success: true };
   } catch (error: any) {
     return { error: error.message };
   }

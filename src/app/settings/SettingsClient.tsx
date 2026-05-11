@@ -21,8 +21,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
-import { inviteTeamMember, updateWorkspaceBranding, createWebhook } from '@/app/actions/settings';
+import { 
+  inviteTeamMember, 
+  updateWorkspaceBranding, 
+  createWebhook, 
+  getWorkspaceApiKey, 
+  generateWorkspaceApiKey,
+  updateWorkspaceLogo 
+} from '@/app/actions/settings';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 export default function SettingsClient({ 
   branding, 
@@ -36,9 +44,60 @@ export default function SettingsClient({
   auditData: any 
 }) {
   const router = useRouter();
+  const supabase = createClient();
   const [activeTab, setActiveTab] = useState('workspace');
   const [copied, setCopied] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (activeTab === 'api') {
+      getWorkspaceApiKey().then(res => {
+        if (res.data) setApiKey(res.data);
+      });
+    }
+  }, [activeTab]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsSaving(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `logo-${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('branding')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('branding')
+        .getPublicUrl(filePath);
+
+      const res = await updateWorkspaceLogo(publicUrl);
+      if (res.error) throw new Error(res.error);
+
+      toast.success('Logo updated successfully');
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload logo');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRegenerateKey = async () => {
+    if (!confirm('Regenerating the API key will break existing integrations. Continue?')) return;
+    const res = await generateWorkspaceApiKey();
+    if (res.data) {
+      setApiKey(res.data);
+      toast.success('API Key regenerated');
+    }
+  };
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -82,7 +141,7 @@ export default function SettingsClient({
     { id: 'workspace', label: 'Workspace', icon: <Globe size={16} /> },
     { id: 'team', label: 'Team', icon: <Users size={16} /> },
     { id: 'branding', label: 'Branding', icon: <Palette size={16} /> },
-    { id: 'billing', label: 'Billing', icon: <CreditCard size={16} /> },
+    { id: 'pricing', label: 'Pricing', icon: <Zap size={16} /> },
     { id: 'api', label: 'API & Webhooks', icon: <Code2 size={16} /> },
     { id: 'audit', label: 'System Health', icon: <Activity size={16} /> },
   ];
@@ -166,16 +225,16 @@ export default function SettingsClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {members.map(member => (
+                  {members.map((member: any) => (
                     <tr key={member.id} className="hover:bg-white/5 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-white font-black text-xs italic">
-                            {member.profile?.full_name?.[0] || 'U'}
+                            {member.user?.full_name?.[0] || 'U'}
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-white italic">{member.profile?.full_name || 'Anonymous Node'}</p>
-                            <p className="text-[10px] text-white/20 font-bold lowercase">{member.profile?.email}</p>
+                            <p className="text-sm font-bold text-white italic">{member.user?.full_name || 'Anonymous Node'}</p>
+                            <p className="text-[10px] text-white/20 font-bold lowercase">{member.user?.email}</p>
                           </div>
                         </div>
                       </td>
@@ -210,11 +269,32 @@ export default function SettingsClient({
                <div className="space-y-6">
                  <div className="space-y-4">
                     <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Platform Logo</label>
-                    <div className="h-40 border-2 border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center gap-3 bg-white/[0.02] hover:border-primary/50 transition-all group cursor-pointer">
-                      <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white/20 group-hover:scale-110 transition-transform">
-                        <Plus size={24} />
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Upload SVG/PNG</span>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleLogoUpload} 
+                      className="hidden" 
+                      accept="image/*" 
+                    />
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-40 border-2 border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center gap-3 bg-white/[0.02] hover:border-primary/50 transition-all group cursor-pointer overflow-hidden relative"
+                    >
+                      {branding?.logo_url ? (
+                        <>
+                          <img src={branding.logo_url} alt="Logo" className="max-h-24 object-contain" />
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Change Logo</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white/20 group-hover:scale-110 transition-transform">
+                            <Plus size={24} />
+                          </div>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Upload SVG/PNG</span>
+                        </>
+                      )}
                     </div>
                  </div>
                  <div className="space-y-4">
@@ -252,90 +332,123 @@ export default function SettingsClient({
                 </Button>
              </div>
 
-             <div className="p-6 bg-primary/5 border border-primary/20 rounded-2xl space-y-4">
+             <div className="p-8 bg-white/[0.02] border border-white/10 rounded-3xl space-y-6 relative overflow-hidden">
                 <div className="flex items-center justify-between">
                    <div className="flex items-center gap-3">
                       <ShieldCheck className="text-primary w-5 h-5" />
-                      <span className="text-xs font-black uppercase tracking-widest text-white italic">Master API Secret</span>
+                      <h4 className="text-sm font-black text-white uppercase tracking-widest">Master API Secret</h4>
                    </div>
-                   <Badge className="bg-success/10 text-success uppercase text-[9px] font-black tracking-widest border-none px-2 py-0.5">Secure</Badge>
+                   <Button onClick={handleRegenerateKey} variant="ghost" className="text-[10px] font-black text-primary uppercase tracking-widest hover:bg-primary/10">Regenerate</Button>
                 </div>
                 <div className="flex gap-2">
-                   <input type="password" readOnly value="lm_sk_live_9a8b7c6d5e4f3g2h1i0j" className="flex-1 bg-black/20 border border-white/5 rounded-xl px-4 py-3 text-primary font-mono text-xs outline-none" />
-                   <Button variant="ghost" onClick={() => copyToClipboard('lm_sk_live_9a8b7c6d5e4f3g2h1i0j', 'api')} className="bg-white/5 border border-white/10 text-white/40 hover:text-white rounded-xl">
-                      {copied === 'api' ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+                   <input 
+                     type="password" 
+                     readOnly 
+                     value={apiKey || '••••••••••••••••••••••••'} 
+                     className="flex-1 bg-[#050510] border border-white/10 rounded-xl px-4 py-4 text-white font-mono text-xs outline-none focus:border-primary/50" 
+                   />
+                   <Button 
+                     onClick={() => copyToClipboard(apiKey || '', 'apikey')}
+                     className="bg-white/5 border border-white/10 text-white/40 hover:text-white rounded-xl px-6"
+                   >
+                     {copied === 'apikey' ? <Check size={16} className="text-success" /> : <Copy size={16} />}
                    </Button>
                 </div>
-                <p className="text-[9px] text-white/30 italic uppercase font-bold tracking-widest">Warning: Never expose this secret in client-side code. Use it for backend-to-backend neural handshakes only.</p>
+                <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest leading-relaxed">Warning: Never expose this secret in client-side code. Use it for backend-to-backend neural handshakes only.</p>
              </div>
 
              <div className="space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/30 italic">Active Webhooks</h4>
-                {webhooks.length === 0 ? (
-                  <div className="p-12 border-2 border-dashed border-white/5 rounded-2xl text-center">
-                    <p className="text-[10px] font-black text-white/20 uppercase tracking-widest italic">No outgoing data streams configured</p>
-                  </div>
-                ) : (
-                  webhooks.map(wh => (
-                    <div key={wh.id} className="p-4 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                           <Zap size={14} />
-                         </div>
-                         <div className="font-mono text-[10px] text-white/60">{wh.url}</div>
-                      </div>
-                      <Badge className="bg-white/10 text-white/40 text-[8px] uppercase tracking-tighter border-none">Active</Badge>
-                    </div>
-                  ))
-                )}
+                <h4 className="text-sm font-black text-white uppercase tracking-widest italic">External Form Integration</h4>
+                <div className="p-6 bg-[#050510] border border-white/10 rounded-2xl space-y-4">
+                   <p className="text-xs text-white/40 leading-relaxed font-medium">Copy this snippet to any external website to capture leads directly into your LeadsMind CRM.</p>
+                   <div className="relative group">
+                      <pre className="p-4 bg-black/40 rounded-xl border border-white/5 text-[10px] text-primary font-mono overflow-x-auto">
+                        {`<script src="https://leadsmind.ai/api/embed.js" \n        data-key="${apiKey || 'YOUR_API_KEY'}" \n        data-workspace-id="${branding?.workspace_id || 'ID'}"></script>`}
+                      </pre>
+                      <Button 
+                        onClick={() => copyToClipboard(`<script src="https://leadsmind.ai/api/embed.js" data-key="${apiKey}" data-workspace-id="${branding?.workspace_id}"></script>`, 'embed')}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/10 hover:bg-white/20 text-white p-2 h-auto"
+                      >
+                         <Copy size={12} />
+                      </Button>
+                   </div>
+                </div>
+             </div>
+
+             <div className="space-y-4">
+                <h4 className="text-sm font-black text-white uppercase tracking-widest italic">Active Webhooks</h4>
+                <div className="border border-white/5 rounded-2xl divide-y divide-white/5">
+                   {webhooks.length === 0 ? (
+                     <div className="p-12 text-center">
+                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">No outgoing data streams configured</p>
+                     </div>
+                   ) : (
+                     webhooks.map(hook => (
+                       <div key={hook.id} className="p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                             <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center text-success">
+                                <Activity size={16} />
+                             </div>
+                             <div>
+                                <p className="text-xs font-bold text-white">{hook.url}</p>
+                                <div className="flex gap-2 mt-1">
+                                   {hook.events.map((e: string) => <Badge key={e} className="bg-white/5 text-[8px] font-bold text-white/40">{e}</Badge>)}
+                                </div>
+                             </div>
+                          </div>
+                          <Button variant="ghost" size="icon" className="text-white/20 hover:text-rose-500"><Trash2 size={14} /></Button>
+                       </div>
+                     ))
+                   )}
+                </div>
              </div>
           </div>
         )}
 
         {activeTab === 'audit' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-            <div>
-              <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">System Health Audit</h3>
-              <p className="text-white/40 text-sm font-medium">Real-time integrity verification of your neural data nodes.</p>
-            </div>
+             <div>
+                <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Neural Integrity</h3>
+                <p className="text-white/40 text-sm font-medium">Real-time audit of your neural workspace subsystems.</p>
+             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-               {[
-                 { label: 'Contacts', value: auditData?.leads || 0, icon: <Users className="text-primary" /> },
-                 { label: 'Orders', value: auditData?.orders || 0, icon: <CreditCard className="text-primary" /> },
-                 { label: 'Tasks', value: auditData?.tasks || 0, icon: <ShieldCheck className="text-primary" /> },
-                 { label: 'Chats', value: auditData?.conversations || 0, icon: <Activity className="text-primary" /> },
-               ].map((item, i) => (
-                 <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
-                   <div className="flex items-center justify-between">
-                      <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">{item.icon}</div>
-                      <Badge className="bg-success/10 text-success border-none text-[8px]">Live</Badge>
-                   </div>
-                   <div>
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Contacts', value: auditData?.leads || 0, icon: <Users className="text-primary" /> },
+                  { label: 'Orders', value: auditData?.orders || 0, icon: <CreditCard className="text-primary" /> },
+                  { label: 'Tasks', value: auditData?.tasks || 0, icon: <ShieldCheck className="text-primary" /> },
+                  { label: 'Chats', value: auditData?.conversations || 0, icon: <Activity className="text-primary" /> },
+                ].map((item: any, i: number) => (
+                  <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
+                    <div className="flex items-center justify-between">
+                       <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">{item.icon}</div>
+                       <Badge className="bg-success/10 text-success border-none text-[8px]">Live</Badge>
+                    </div>
+                    <div>
                       <span className="block text-2xl font-black text-white italic">{item.value}</span>
                       <span className="text-[9px] font-black uppercase tracking-widest text-white/20 italic">{item.label} Verified</span>
-                   </div>
-                 </div>
-               ))}
-            </div>
+                    </div>
+                  </div>
+                ))}
+             </div>
 
-            <div className="p-8 bg-success/5 border border-success/20 rounded-3xl flex items-center gap-6">
-               <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center text-success border border-success/20 animate-pulse">
-                  <Check size={32} />
-               </div>
-               <div>
-                  <h4 className="text-lg font-black text-white uppercase italic tracking-tighter">Production Ready</h4>
-                  <p className="text-xs text-white/40 font-medium italic">All neural data migrations have been verified. System integrity is at 100%.</p>
-               </div>
-            </div>
+             <div className="p-8 bg-success/5 border border-success/20 rounded-3xl flex items-center gap-6">
+                <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center text-success border border-success/20 animate-pulse">
+                   <Check size={32} />
+                </div>
+                <div>
+                   <h4 className="text-lg font-black text-white uppercase italic tracking-tighter">Production Ready</h4>
+                   <p className="text-xs text-white/40 font-medium italic">All neural data migrations have been verified. System integrity is at 100%.</p>
+                </div>
+             </div>
           </div>
         )}
 
-        {activeTab === 'billing' && (
+        {activeTab === 'pricing' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
             <div>
-              <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Neural Subscription</h3>
-              <p className="text-white/40 text-sm font-medium">Manage your resource allocation and billing cycles.</p>
+              <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Neural Pricing</h3>
+              <p className="text-white/40 text-sm font-medium">Manage your resource allocation and neural power levels.</p>
             </div>
 
             <div className="p-8 bg-gradient-to-br from-primary/20 to-transparent border border-primary/30 rounded-3xl relative overflow-hidden group">
@@ -344,10 +457,10 @@ export default function SettingsClient({
                   <div>
                     <Badge className="bg-primary text-white font-black uppercase tracking-widest text-[9px] px-3 py-1 mb-4 italic shadow-lg shadow-primary/30">Enterprise Pro Node</Badge>
                     <h4 className="text-3xl font-black text-white italic tracking-tighter mb-1 uppercase">Unlimited Neural Capacity</h4>
-                    <p className="text-white/40 text-xs font-bold uppercase tracking-widest italic">Renewal: June 12, 2026 • Visa Ending in 4242</p>
+                    <p className="text-white/40 text-xs font-bold uppercase tracking-widest italic">Lifetime Access • Priority Neural Support</p>
                   </div>
                   <Button className="bg-white text-primary hover:bg-white/90 font-black uppercase italic tracking-widest text-[11px] h-14 px-12 rounded-2xl shadow-2xl">
-                    Stripe Customer Portal
+                    View Pricing Plans
                   </Button>
                </div>
             </div>

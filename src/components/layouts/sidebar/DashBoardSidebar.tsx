@@ -129,11 +129,11 @@ const DashBoardSidebar = () => {
           <Link href="/" className="flex items-center justify-center w-full group mt-1">
             <div className="relative w-40 h-10 overflow-hidden">
                <Image 
-                 src="/assets/images/brand/LeadsMind_Logo.png.png" 
-                 alt="LeadsMind" 
+                 src={enrichedWorkspace?.logoUrl || enrichedWorkspace?.branding?.logoUrl || "/assets/images/brand/LeadsMind_Logo.png.png"} 
+                 alt={enrichedWorkspace?.branding?.platformName || "LeadsMind"} 
                  fill
-                 className="object-contain invert brightness-0 invert"
-                 style={{ filter: 'brightness(0) invert(1)' }}
+                 className={`object-contain ${!(enrichedWorkspace?.logoUrl || enrichedWorkspace?.branding?.logoUrl) ? 'invert brightness-0 invert' : ''}`}
+                 style={!(enrichedWorkspace?.logoUrl || enrichedWorkspace?.branding?.logoUrl) ? { filter: 'brightness(0) invert(1)' } : {}}
                  priority
                />
             </div>

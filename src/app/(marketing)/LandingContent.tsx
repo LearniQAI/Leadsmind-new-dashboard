@@ -48,15 +48,16 @@ const LandingContent = ({ user }: { user?: any }) => {
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#0A0F3D]/80 backdrop-blur-xl">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-              <div className="relative w-48 h-12 overflow-hidden">
+              <Link href="/" className="relative h-10 px-4 bg-white rounded-xl flex items-center justify-center shadow-lg hover:scale-105 transition-transform overflow-hidden">
                 <Image 
-                  src="/assets/images/logo/logo-white.svg" 
+                  src="/assets/images/logo/logo.svg" 
                   alt="LeadsMind" 
-                  fill
+                  width={140}
+                  height={35}
                   className="object-contain"
                   priority
                 />
-              </div>
+              </Link>
           </div>
           <div className="hidden md:flex items-center gap-8 text-xs font-black uppercase tracking-widest text-white/60">
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
@@ -242,7 +243,7 @@ const LandingContent = ({ user }: { user?: any }) => {
               { title: "Funnel Builder", icon: <Target className="w-6 h-6" />, color: "secondary" },
               { title: "Telephony", icon: <Globe className="w-6 h-6" />, color: "info" },
               { title: "Reputation", icon: <Shield className="w-6 h-6" />, color: "success" }
-            ].map((f, i) => (
+            ].map((f: any, i: number) => (
               <div key={i} className="md:col-span-3 group">
                 <div className="h-full bg-white/5 border border-white/10 rounded-[2rem] p-8 hover:bg-white/10 transition-all duration-300 text-center flex flex-col items-center">
                   <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 bg-${f.color}/10 text-${f.color} border border-${f.color}/20 group-hover:scale-110 transition-transform`}>
@@ -280,7 +281,7 @@ const LandingContent = ({ user }: { user?: any }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {tiers.map((tier, i) => (
+            {tiers.map((tier: any, i: number) => (
               <motion.div key={tier.id} {...fadeUp} transition={{ delay: i * 0.1 }}>
                 <Card className={`h-full border-white/10 bg-white/5 backdrop-blur-3xl flex flex-col relative overflow-hidden group ${tier.id === 'pro' ? 'ring-2 ring-primary scale-105 z-20' : 'scale-95 opacity-80 hover:opacity-100 transition-all'}`}>
                   {tier.id === 'pro' && (
@@ -361,14 +362,15 @@ const LandingContent = ({ user }: { user?: any }) => {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-24">
             <div className="col-span-2">
               <div className="flex items-center gap-3 mb-8">
-                 <div className="relative w-40 h-10 overflow-hidden">
+                 <Link href="/" className="relative h-10 px-4 bg-white rounded-xl flex items-center justify-center shadow-lg hover:scale-105 transition-transform overflow-hidden">
                     <Image 
-                      src="/assets/images/logo/logo-white.svg" 
+                      src="/assets/images/logo/logo.svg" 
                       alt="LeadsMind" 
-                      fill
+                      width={120}
+                      height={30}
                       className="object-contain"
                     />
-                 </div>
+                 </Link>
               </div>
               <p className="text-white/30 text-base leading-relaxed max-w-sm mb-8 font-medium">
                 The definitive business operating system for high-performance teams. Build, automate, and scale with absolute precision.
