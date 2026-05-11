@@ -71,6 +71,7 @@ export async function createWebsite(name: string, subdomain: string, templateId?
     const { data: page, error: pageError } = await supabase
       .from('pages')
       .insert({
+        workspace_id: workspaceId,
         website_page_id: wsPage.id, // Linked here
         name: 'Home',
         content,
@@ -134,6 +135,7 @@ export async function duplicateWebsite(websiteId: string) {
                 await supabase
                     .from('pages')
                     .insert({
+                        workspace_id: workspaceId,
                         website_page_id: newWsPage.id,
                         name: p.name,
                         content: p.content,
@@ -184,9 +186,7 @@ export async function updateWebsiteSettings(websiteId: string, type: 'website' |
  */
 
 export async function publishPage(pageId: string, content?: string) {
-  try {
-    const supabase = await createServerClient();
-    
+  return executeAction(async (supabase, workspaceId) => {
     const updateData: any = { 
       status: 'published',
       published_at: new Date().toISOString()
@@ -199,42 +199,34 @@ export async function publishPage(pageId: string, content?: string) {
     const { error } = await supabase
       .from('pages')
       .update(updateData)
-      .eq('id', pageId);
+      .eq('id', pageId)
+      .eq('workspace_id', workspaceId); // Add workspace_id check for security
 
     if (error) throw error;
 
     return { success: true };
-  } catch (error: any) {
-    console.error('[builder] Error publishing page:', error);
-    return { success: false, error: error.message };
-  }
+  });
 }
 
 export async function updatePageContent(pageId: string, content: string) {
-  try {
-    const supabase = await createServerClient();
-    
+  return executeAction(async (supabase, workspaceId) => {
     const { error } = await supabase
       .from('pages')
       .update({ 
         content,
         updated_at: new Date().toISOString()
       })
-      .eq('id', pageId);
+      .eq('id', pageId)
+      .eq('workspace_id', workspaceId);
 
     if (error) throw error;
 
     return { success: true };
-  } catch (error: any) {
-    console.error('[builder] Error updating page content:', error);
-    return { success: false, error: error.message };
-  }
+  });
 }
 
 export async function createPage(name: string, websiteId: string) {
-  try {
-    const supabase = await createServerClient();
-    
+  return executeAction(async (supabase, workspaceId) => {
     // 1. Create the routing record
     const { data: wsPage, error: wsPageError } = await supabase
       .from('website_pages')
@@ -252,6 +244,7 @@ export async function createPage(name: string, websiteId: string) {
     const { data: pageData, error: pageError } = await supabase
       .from('pages')
       .insert({
+        workspace_id: workspaceId,
         website_page_id: wsPage.id,
         name,
         content: '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}',
@@ -262,32 +255,25 @@ export async function createPage(name: string, websiteId: string) {
 
     if (pageError) throw pageError;
 
-    return { success: true, pageId: pageData.id };
-  } catch (error: any) {
-    console.error('[builder] Error creating page:', error);
-    return { success: false, error: error.message };
-  }
+    return { pageId: pageData.id };
+  });
 }
 
 export async function updatePageSettings(pageId: string, settings: any) {
-  try {
-    const supabase = await createServerClient();
-    
+  return executeAction(async (supabase, workspaceId) => {
     const { error } = await supabase
       .from('pages')
       .update({
         ...settings,
         updated_at: new Date().toISOString()
       })
-      .eq('id', pageId);
+      .eq('id', pageId)
+      .eq('workspace_id', workspaceId);
 
     if (error) throw error;
 
     return { success: true };
-  } catch (error: any) {
-    console.error('[builder] Error updating page settings:', error);
-    return { success: false, error: error.message };
-  }
+  });
 }
 
 /**
