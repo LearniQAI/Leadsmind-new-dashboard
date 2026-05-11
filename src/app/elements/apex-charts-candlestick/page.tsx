@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartCandlestick = () => {
-    return (
-        <>
-            <MetaData pageTitle="Candlestick">
-                <Wrapper>
-                    <ApexChartCandlestickArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Candlestick">
+        <Wrapper>
+          <ApexChartCandlestickArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartCandlestick;

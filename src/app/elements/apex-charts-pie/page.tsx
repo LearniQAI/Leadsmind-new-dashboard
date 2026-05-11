@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartPieMain = () => {
-    return (
-        <>
-             <MetaData pageTitle="Pie">
-                <Wrapper>
-                    <ApexChartPieMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+       <MetaData pageTitle="Pie">
+        <Wrapper>
+          <ApexChartPieMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartPieMain;

@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const DropdownMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Dropdown">
-                <Wrapper>
-                    <DropdownMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Dropdown">
+        <Wrapper>
+          <DropdownMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default DropdownMain;

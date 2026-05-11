@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ProgressbarMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Progress Bar">
-                <Wrapper>
-                    <ProgressMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Progress Bar">
+        <Wrapper>
+          <ProgressMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ProgressbarMain;

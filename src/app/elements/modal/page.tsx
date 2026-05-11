@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ModalsMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Modal">
-                <Wrapper>
-                    <ModalsMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Modal">
+        <Wrapper>
+          <ModalsMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ModalsMain;

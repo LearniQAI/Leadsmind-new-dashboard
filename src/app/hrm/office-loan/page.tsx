@@ -4,15 +4,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const page = () => {
-  return (
-    <>
-      <MetaData pageTitle="Office Loan">
-        <Wrapper>
-          <OfficeLoanMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="Office Loan">
+    <Wrapper>
+     <OfficeLoanMainArea />
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default page;

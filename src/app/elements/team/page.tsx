@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const TeamMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Team">
-                <Wrapper>
-                    <TeamMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Team">
+        <Wrapper>
+          <TeamMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default TeamMain;

@@ -41,534 +41,534 @@ import { Loader2, Save, Send, AlertCircle } from 'lucide-react';
 import { RESOLVER, wrapForReact19 } from '@/lib/builder/resolver';
 
 class SafeFrameErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false };
+ constructor(props: any) {
+  super(props);
+  this.state = { hasError: false };
+ }
+ static getDerivedStateFromError() { return { hasError: true }; }
+ componentDidCatch(error: any) {
+  if (error?.message?.includes("children") || error?.message?.includes("undefined")) {
+   // Silently catch the common CraftJS crawl errors
   }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(error: any) {
-    if (error?.message?.includes("children") || error?.message?.includes("undefined")) {
-      // Silently catch the common CraftJS crawl errors
-    }
+ }
+ render() {
+  if (this.state.hasError) {
+   return (
+    <div className="flex flex-col items-center justify-center min-h-[400px] text-white/20 bg-white/[0.02] rounded-3xl border border-white/5 m-8">
+     <AlertCircle className="w-8 h-8 mb-4 opacity-50" />
+     <p className="text-sm font-bold tracking-tight">The canvas encountered a temporary glitch.</p>
+     <Button
+      variant="outline"
+      size="sm"
+      className="mt-6 border-white/10 hover:bg-white/5 text-[10px] font-black uppercase tracking-widest"
+      onClick={() => window.location.reload()}
+     >
+      Reset Canvas
+     </Button>
+    </div>
+   );
   }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-white/20 bg-white/[0.02] rounded-3xl border border-white/5 m-8">
-          <AlertCircle className="w-8 h-8 mb-4 opacity-50" />
-          <p className="text-sm font-bold tracking-tight">The canvas encountered a temporary glitch.</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-6 border-white/10 hover:bg-white/5 text-[10px] font-black uppercase tracking-widest"
-            onClick={() => window.location.reload()}
-          >
-            Reset Canvas
-          </Button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+  return this.props.children;
+ }
 }
 
 const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
-  const { pageId } = useParams();
-  const router = useRouter();
+ const { pageId } = useParams();
+ const router = useRouter();
 
-  const [isPublishing, setIsPublishing] = React.useState(false);
-  const [isSaving, setIsSaving] = React.useState(false);
-  const { query, actions } = useEditor();
+ const [isPublishing, setIsPublishing] = React.useState(false);
+ const [isSaving, setIsSaving] = React.useState(false);
+ const { query, actions } = useEditor();
 
-  const handleSaveDraft = async () => {
-    if (!pageId) return;
-    setIsSaving(true);
-    const content = query.serialize();
+ const handleSaveDraft = async () => {
+  if (!pageId) return;
+  setIsSaving(true);
+  const content = query.serialize();
+
+  try {
+   // Use client-side supabase directly to bypass Server Action payload limits (1MB)
+   const supabase = createClient();
+   const { error } = await supabase
+    .from('pages')
+    .update({
+     content,
+     updated_at: new Date().toISOString()
+    })
+    .eq('id', pageId);
+
+   if (error) throw error;
+   toast.success('Draft saved successfully');
+  } catch (err: any) {
+   console.error('Save error:', err);
+   // Fallback to server action if client save fails (e.g. RLS issues)
+   const result = await updatePageContent(pageId as string, content);
+   if (result.success) {
+    toast.success('Draft saved (Server Fallback)');
+   } else {
+    toast.error('Failed to save draft: ' + (result.error || err.message));
+   }
+  } finally {
+   setIsSaving(false);
+  }
+ };
+
+ // Auto-save logic
+ React.useEffect(() => {
+  if (!pageId) return;
+
+  const interval = setInterval(() => {
+   handleSaveDraft();
+  }, 60000);
+
+  return () => clearInterval(interval);
+ }, [pageId, query]);
+
+ const handlePublish = async () => {
+  if (!pageId) return;
+  setIsPublishing(true);
+  const content = query.serialize();
+
+  try {
+   // 1. Save content client-side first
+   const supabase = createClient();
+   const { error: saveError } = await supabase
+    .from('pages')
+    .update({ content })
+    .eq('id', pageId);
+
+   if (saveError) throw saveError;
+
+   // 2. Trigger publishing logic on server (no need to send large content again)
+   const result = await publishPage(pageId as string);
+
+   if (result.success) {
+    toast.success('Page published live!');
+   } else {
+    toast.error('Failed to publish');
+   }
+  } catch (err: any) {
+   console.error('Publish error:', err);
+   // Fallback
+   const result = await publishPage(pageId as string, content);
+   if (result.success) {
+    toast.success('Page published (Server Fallback)');
+   } else {
+    toast.error('Failed to publish: ' + (result.error || err.message));
+   }
+  } finally {
+   setIsPublishing(false);
+  }
+ };
+
+
+ const handleUpdateWebsite = (updates: any) => {
+  if (!websiteData?.id) return;
+  setWebsiteData((prev: any) => ({ ...prev, ...updates }));
+  if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
+  updateTimerRef.current = setTimeout(async () => {
+   try {
+    const result = await updateWebsiteSettings(websiteData.id, type, updates);
+    if (!result.success) toast.error('Failed to update site settings');
+   } catch (err) {
+    console.error('Settings update error:', err);
+   }
+  }, 500);
+ };
+
+ const lastLoadedPageId = React.useRef<string | null>(null);
+ const [websiteData, setWebsiteData] = React.useState<any>(null);
+ const [pages, setPages] = React.useState<any[]>([]);
+ const [isLoadingContent, setIsLoadingContent] = React.useState(true);
+ const [initialContent, setInitialContent] = React.useState<string | null>(null);
+ const updateTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+ const BLANK_CANVAS = '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
+
+ // Task 1 & 5: The "Safe Deserialize" Hook
+ React.useEffect(() => {
+  if (!actions) return;
+
+  const performDeserialization = () => {
+   // Task 5: Wait for Resolver to be populated
+   const resolver = query.getOptions().resolver;
+   if (!resolver || Object.keys(resolver).length === 0) {
+    console.warn("[Builder Debug] Resolver not yet ready, deferring deserialization...");
+    setTimeout(performDeserialization, 100);
+    return;
+   }
+
+   // Validation Gate & Double-Parsing Protection
+   let rawData = initialContent || BLANK_CANVAS;
+   let dataToLoad: any;
+
+   try {
+    dataToLoad = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+
+    // Task 1 & 2: Sanitize Payload & Key Validation
+    const nodeIds = new Set(Object.keys(dataToLoad));
+    Object.keys(dataToLoad).forEach(id => {
+     const node = dataToLoad[id];
+
+     // Ensure required CraftJS properties
+     if (!node.type) node.type = { resolvedName: "Container" };
+     if (!node.props) node.props = {};
+     if (!node.nodes) node.nodes = [];
+     if (!node.displayName) node.displayName = node.type.resolvedName || "Component";
+
+     // Parent-Child linking integrity
+     if (node.nodes) {
+      node.nodes = node.nodes.filter((childId: string) => nodeIds.has(childId));
+     }
+     if (node.parent && !nodeIds.has(node.parent) && id !== "ROOT") {
+      node.parent = "ROOT";
+     }
+    });
+
+    // Ensure ROOT exists
+    if (!dataToLoad["ROOT"]) {
+     dataToLoad["ROOT"] = JSON.parse(BLANK_CANVAS)["ROOT"];
+    }
+
+    const serializedData = JSON.stringify(dataToLoad);
+    console.log("[Builder Debug] Attempting to deserialize sanitized content...");
 
     try {
-      // Use client-side supabase directly to bypass Server Action payload limits (1MB)
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('pages')
-        .update({
-          content,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', pageId);
+     actions.clearEvents();
+     actions.deserialize(serializedData);
 
-      if (error) throw error;
-      toast.success('Draft saved successfully');
-    } catch (err: any) {
-      console.error('Save error:', err);
-      // Fallback to server action if client save fails (e.g. RLS issues)
-      const result = await updatePageContent(pageId as string, content);
-      if (result.success) {
-        toast.success('Draft saved (Server Fallback)');
+     // Task 1: Implement Retry Logic
+     setTimeout(() => {
+      const nodes = query.getNodes();
+      if (!nodes["ROOT"]) {
+       console.warn("[Builder Debug] ROOT node missing after 500ms, retrying deserialize...");
+       actions.deserialize(serializedData);
       } else {
-        toast.error('Failed to save draft: ' + (result.error || err.message));
+       console.log("[Builder Debug] ROOT node verified. Canvas stable.");
       }
-    } finally {
-      setIsSaving(false);
+     }, 500);
+
+    } catch (err) {
+     // Task 3: Try-Catch Fallback to ROOT
+     console.error("[Builder Debug] Deserialization failed CRITICALLY:", err);
+     actions.deserialize(BLANK_CANVAS);
     }
+   } catch (parseErr) {
+    console.error("[Builder Debug] JSON Parse failed:", parseErr);
+    actions.deserialize(BLANK_CANVAS);
+   }
+
+   setIsLoadingContent(false);
   };
 
-  // Auto-save logic
-  React.useEffect(() => {
-    if (!pageId) return;
+  // Task 5: React 19 State Check - Deferred Injection
+  setTimeout(performDeserialization, 0);
 
-    const interval = setInterval(() => {
-      handleSaveDraft();
-    }, 60000);
+ }, [initialContent, actions, query]);
 
-    return () => clearInterval(interval);
-  }, [pageId, query]);
+ React.useEffect(() => {
+  const sanitizeCraftJson = (json: string) => {
+   try {
+    const data = JSON.parse(json);
+    const nodeIds = new Set(Object.keys(data));
 
-  const handlePublish = async () => {
-    if (!pageId) return;
-    setIsPublishing(true);
-    const content = query.serialize();
-
-    try {
-      // 1. Save content client-side first
-      const supabase = createClient();
-      const { error: saveError } = await supabase
-        .from('pages')
-        .update({ content })
-        .eq('id', pageId);
-
-      if (saveError) throw saveError;
-
-      // 2. Trigger publishing logic on server (no need to send large content again)
-      const result = await publishPage(pageId as string);
-
-      if (result.success) {
-        toast.success('Page published live!');
-      } else {
-        toast.error('Failed to publish');
-      }
-    } catch (err: any) {
-      console.error('Publish error:', err);
-      // Fallback
-      const result = await publishPage(pageId as string, content);
-      if (result.success) {
-        toast.success('Page published (Server Fallback)');
-      } else {
-        toast.error('Failed to publish: ' + (result.error || err.message));
-      }
-    } finally {
-      setIsPublishing(false);
-    }
+    Object.keys(data).forEach(id => {
+     const node = data[id];
+     if (node.nodes) {
+      node.nodes = node.nodes.filter((childId: string) => nodeIds.has(childId));
+     }
+     if (node.linkedNodes) {
+      Object.keys(node.linkedNodes).forEach(key => {
+       if (!nodeIds.has(node.linkedNodes[key])) {
+        delete node.linkedNodes[key];
+       }
+      });
+     }
+    });
+    return JSON.stringify(data);
+   } catch (e) {
+    return json;
+   }
   };
 
+  async function loadContent() {
+   if (!pageId || lastLoadedPageId.current === pageId) return;
+   setIsLoadingContent(true);
+   const { createClient } = await import('@/lib/supabase/client');
+   const supabase = createClient();
 
-  const handleUpdateWebsite = (updates: any) => {
-    if (!websiteData?.id) return;
-    setWebsiteData((prev: any) => ({ ...prev, ...updates }));
-    if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
-    updateTimerRef.current = setTimeout(async () => {
-      try {
-        const result = await updateWebsiteSettings(websiteData.id, type, updates);
-        if (!result.success) toast.error('Failed to update site settings');
-      } catch (err) {
-        console.error('Settings update error:', err);
-      }
-    }, 500);
-  };
+   // Fetch Page Content with website/funnel details
+   const { data, error: pageError } = await supabase
+    .from('pages')
+    .select(`
+     content, 
+     workspace:workspaces(slug), 
+     website_page:website_pages(
+      id,
+      name,
+      path_name,
+      website:websites(*)
+     ),
+     funnel_step:funnel_steps(
+      id,
+      name,
+      path_name,
+      funnel:funnels(*)
+     )
+    `)
+    .eq('id', pageId)
+    .single();
 
-  const lastLoadedPageId = React.useRef<string | null>(null);
-  const [websiteData, setWebsiteData] = React.useState<any>(null);
-  const [pages, setPages] = React.useState<any[]>([]);
-  const [isLoadingContent, setIsLoadingContent] = React.useState(true);
-  const [initialContent, setInitialContent] = React.useState<string | null>(null);
-  const updateTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+   if (pageError || !data) {
+    console.error('Builder load error:', pageError);
+    toast.error('Failed to load page content');
+    return;
+   }
 
-  const BLANK_CANVAS = '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
+   // Handle Resource Data (Website or Funnel)
+   const rawWebsitePage = (data as any)?.website_page;
+   const website = Array.isArray(rawWebsitePage) ? rawWebsitePage[0]?.website : rawWebsitePage?.website;
 
-  // Task 1 & 5: The "Safe Deserialize" Hook
-  React.useEffect(() => {
-    if (!actions) return;
+   const rawFunnelStep = (data as any)?.funnel_step;
+   const funnel = Array.isArray(rawFunnelStep) ? rawFunnelStep[0]?.funnel : rawFunnelStep?.funnel;
 
-    const performDeserialization = () => {
-      // Task 5: Wait for Resolver to be populated
-      const resolver = query.getOptions().resolver;
-      if (!resolver || Object.keys(resolver).length === 0) {
-        console.warn("[Builder Debug] Resolver not yet ready, deferring deserialization...");
-        setTimeout(performDeserialization, 100);
-        return;
-      }
+   const finalResource = Array.isArray(website) ? website[0] : (website || (Array.isArray(funnel) ? funnel[0] : funnel));
 
-      // Validation Gate & Double-Parsing Protection
-      let rawData = initialContent || BLANK_CANVAS;
-      let dataToLoad: any;
+   if (finalResource) {
+    // Attach workspace info for URL resolution
+    const workspace = (data as any)?.workspace;
+    const resourceWithWorkspace = { ...finalResource, workspaceSlug: workspace?.slug };
+    setWebsiteData(resourceWithWorkspace);
 
-      try {
-        dataToLoad = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+    // Fetch sibling steps/pages
+    if (type === 'website') {
+     const { data: siblingPages } = await supabase
+      .from('website_pages')
+      .select(`id, name, path_name, pages (id)`)
+      .eq('website_id', finalResource.id);
 
-        // Task 1 & 2: Sanitize Payload & Key Validation
-        const nodeIds = new Set(Object.keys(dataToLoad));
-        Object.keys(dataToLoad).forEach(id => {
-          const node = dataToLoad[id];
+     if (siblingPages) {
+      setPages(siblingPages.map(p => ({
+       id: (p.pages as any)?.[0]?.id || p.id,
+       name: p.name,
+       slug: p.path_name.replace('/', '') || 'home'
+      })));
+     }
+    } else {
+     const { data: siblingSteps } = await supabase
+      .from('funnel_steps')
+      .select(`id, name, path_name, pages (id)`)
+      .eq('funnel_id', finalResource.id)
+      .order('order', { ascending: true });
 
-          // Ensure required CraftJS properties
-          if (!node.type) node.type = { resolvedName: "Container" };
-          if (!node.props) node.props = {};
-          if (!node.nodes) node.nodes = [];
-          if (!node.displayName) node.displayName = node.type.resolvedName || "Component";
-
-          // Parent-Child linking integrity
-          if (node.nodes) {
-            node.nodes = node.nodes.filter((childId: string) => nodeIds.has(childId));
-          }
-          if (node.parent && !nodeIds.has(node.parent) && id !== "ROOT") {
-            node.parent = "ROOT";
-          }
-        });
-
-        // Ensure ROOT exists
-        if (!dataToLoad["ROOT"]) {
-          dataToLoad["ROOT"] = JSON.parse(BLANK_CANVAS)["ROOT"];
-        }
-
-        const serializedData = JSON.stringify(dataToLoad);
-        console.log("[Builder Debug] Attempting to deserialize sanitized content...");
-
-        try {
-          actions.clearEvents();
-          actions.deserialize(serializedData);
-
-          // Task 1: Implement Retry Logic
-          setTimeout(() => {
-            const nodes = query.getNodes();
-            if (!nodes["ROOT"]) {
-              console.warn("[Builder Debug] ROOT node missing after 500ms, retrying deserialize...");
-              actions.deserialize(serializedData);
-            } else {
-              console.log("[Builder Debug] ROOT node verified. Canvas stable.");
-            }
-          }, 500);
-
-        } catch (err) {
-          // Task 3: Try-Catch Fallback to ROOT
-          console.error("[Builder Debug] Deserialization failed CRITICALLY:", err);
-          actions.deserialize(BLANK_CANVAS);
-        }
-      } catch (parseErr) {
-        console.error("[Builder Debug] JSON Parse failed:", parseErr);
-        actions.deserialize(BLANK_CANVAS);
-      }
-
-      setIsLoadingContent(false);
-    };
-
-    // Task 5: React 19 State Check - Deferred Injection
-    setTimeout(performDeserialization, 0);
-
-  }, [initialContent, actions, query]);
-
-  React.useEffect(() => {
-    const sanitizeCraftJson = (json: string) => {
-      try {
-        const data = JSON.parse(json);
-        const nodeIds = new Set(Object.keys(data));
-
-        Object.keys(data).forEach(id => {
-          const node = data[id];
-          if (node.nodes) {
-            node.nodes = node.nodes.filter((childId: string) => nodeIds.has(childId));
-          }
-          if (node.linkedNodes) {
-            Object.keys(node.linkedNodes).forEach(key => {
-              if (!nodeIds.has(node.linkedNodes[key])) {
-                delete node.linkedNodes[key];
-              }
-            });
-          }
-        });
-        return JSON.stringify(data);
-      } catch (e) {
-        return json;
-      }
-    };
-
-    async function loadContent() {
-      if (!pageId || lastLoadedPageId.current === pageId) return;
-      setIsLoadingContent(true);
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-
-      // Fetch Page Content with website/funnel details
-      const { data, error: pageError } = await supabase
-        .from('pages')
-        .select(`
-          content, 
-          workspace:workspaces(slug), 
-          website_page:website_pages(
-            id,
-            name,
-            path_name,
-            website:websites(*)
-          ),
-          funnel_step:funnel_steps(
-            id,
-            name,
-            path_name,
-            funnel:funnels(*)
-          )
-        `)
-        .eq('id', pageId)
-        .single();
-
-      if (pageError || !data) {
-        console.error('Builder load error:', pageError);
-        toast.error('Failed to load page content');
-        return;
-      }
-
-      // Handle Resource Data (Website or Funnel)
-      const rawWebsitePage = (data as any)?.website_page;
-      const website = Array.isArray(rawWebsitePage) ? rawWebsitePage[0]?.website : rawWebsitePage?.website;
-
-      const rawFunnelStep = (data as any)?.funnel_step;
-      const funnel = Array.isArray(rawFunnelStep) ? rawFunnelStep[0]?.funnel : rawFunnelStep?.funnel;
-
-      const finalResource = Array.isArray(website) ? website[0] : (website || (Array.isArray(funnel) ? funnel[0] : funnel));
-
-      if (finalResource) {
-        // Attach workspace info for URL resolution
-        const workspace = (data as any)?.workspace;
-        const resourceWithWorkspace = { ...finalResource, workspaceSlug: workspace?.slug };
-        setWebsiteData(resourceWithWorkspace);
-
-        // Fetch sibling steps/pages
-        if (type === 'website') {
-          const { data: siblingPages } = await supabase
-            .from('website_pages')
-            .select(`id, name, path_name, pages (id)`)
-            .eq('website_id', finalResource.id);
-
-          if (siblingPages) {
-            setPages(siblingPages.map(p => ({
-              id: (p.pages as any)?.[0]?.id || p.id,
-              name: p.name,
-              slug: p.path_name.replace('/', '') || 'home'
-            })));
-          }
-        } else {
-          const { data: siblingSteps } = await supabase
-            .from('funnel_steps')
-            .select(`id, name, path_name, pages (id)`)
-            .eq('funnel_id', finalResource.id)
-            .order('order', { ascending: true });
-
-          if (siblingSteps) {
-            setPages(siblingSteps.map(s => ({
-              id: (s.pages as any)?.[0]?.id || s.id,
-              name: s.name,
-              slug: s.path_name.replace('/', '') || 'step'
-            })));
-          }
-        }
-      }
-
-      // Task 4: Empty Canvas Fallback
-      const content = data?.content ? sanitizeCraftJson(data.content) : BLANK_CANVAS;
-      setInitialContent(content);
-      lastLoadedPageId.current = pageId as string;
+     if (siblingSteps) {
+      setPages(siblingSteps.map(s => ({
+       id: (s.pages as any)?.[0]?.id || s.id,
+       name: s.name,
+       slug: s.path_name.replace('/', '') || 'step'
+      })));
+     }
     }
-    loadContent();
-  }, [pageId]);
+   }
 
-  // Silence internal CraftJS errors
-  React.useEffect(() => {
-    console.log("DEBUG: Editor mode:", type, "PageID:", pageId);
-    console.log("DEBUG: Resolver active:", Object.keys(RESOLVER));
+   // Task 4: Empty Canvas Fallback
+   const content = data?.content ? sanitizeCraftJson(data.content) : BLANK_CANVAS;
+   setInitialContent(content);
+   lastLoadedPageId.current = pageId as string;
+  }
+  loadContent();
+ }, [pageId]);
 
-    const handler = (e: ErrorEvent) => {
-      if (e.message.includes("children") || e.message.includes("t is undefined")) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener('error', handler);
-    return () => window.removeEventListener('error', handler);
-  }, [pageId, type]);
+ // Silence internal CraftJS errors
+ React.useEffect(() => {
+  console.log("DEBUG: Editor mode:", type, "PageID:", pageId);
+  console.log("DEBUG: Resolver active:", Object.keys(RESOLVER));
 
-  const websiteConfig = websiteData?.config || {};
-  const hasNav = websiteConfig.navLinks && websiteConfig.navLinks.length > 0;
-  const hasFooter = websiteConfig.footerLinks && websiteConfig.footerLinks.length > 0;
-  const navStyle = websiteConfig.navStyle || { bg: '#ffffff', text: '#374151', border: true, size: 'h-16' };
-  const footerStyle = websiteConfig.footerStyle || { bg: '#f8fafc', text: '#9ca3af', border: true, layout: 'between' };
+  const handler = (e: ErrorEvent) => {
+   if (e.message.includes("children") || e.message.includes("t is undefined")) {
+    e.preventDefault();
+   }
+  };
+  window.addEventListener('error', handler);
+  return () => window.removeEventListener('error', handler);
+ }, [pageId, type]);
 
-  return (
-    <BuilderProvider pages={pages} websiteId={websiteData?.id} websiteData={websiteData} onUpdateWebsite={handleUpdateWebsite}>
-      <div className="h-screen w-full flex flex-col overflow-hidden bg-[#050508] text-white">
-        {/* Header Section */}
-        <header className="h-[70px] border-b border-white/5 bg-[#0b0b14]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 pr-6 border-r border-white/5">
-              <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-                <span className="font-black italic text-lg italic tracking-tighter">L</span>
-              </div>
-              <div>
-                <span className="block text-[11px] font-black uppercase italic tracking-tighter text-white leading-none">Leadsmind</span>
-                <span className="block text-[8px] font-bold uppercase tracking-[0.2em] text-primary mt-0.5">Neural Node Builder</span>
-              </div>
-            </div>
+ const websiteConfig = websiteData?.config || {};
+ const hasNav = websiteConfig.navLinks && websiteConfig.navLinks.length > 0;
+ const hasFooter = websiteConfig.footerLinks && websiteConfig.footerLinks.length > 0;
+ const navStyle = websiteConfig.navStyle || { bg: '#ffffff', text: '#374151', border: true, size: 'h-16' };
+ const footerStyle = websiteConfig.footerStyle || { bg: '#f8fafc', text: '#9ca3af', border: true, layout: 'between' };
 
-            {/* Page Switcher */}
-            <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Editing Mode:</span>
-              </div>
-              <select
-                value={pageId as string}
-                onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
-                className="bg-transparent border-none text-[10px] font-black uppercase italic tracking-widest text-white outline-none cursor-pointer hover:text-primary transition-colors min-w-[120px]"
-              >
-                {pages.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-[#0b0b14] text-white">{p.name} ({p.slug})</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-4 border-r border-white/5 mr-2">
-              <div className="text-right hidden sm:block">
-                <span className="block text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Node Status</span>
-                <span className="block text-[10px] font-black uppercase italic text-emerald-500">System Online</span>
-              </div>
-            </div>
-            
-            <Button
-              variant="ghost"
-              onClick={handleSaveDraft}
-              disabled={isSaving}
-              className="h-11 px-6 text-[10px] font-black uppercase italic tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/60 hover:text-white transition-all"
-            >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-              Save Node
-            </Button>
-            <Button
-              onClick={handlePublish}
-              disabled={isPublishing}
-              className="h-11 px-8 text-[10px] font-black uppercase italic tracking-widest rounded-xl bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 transition-all active:scale-95"
-            >
-              {isPublishing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-              Deploy Live
-            </Button>
-          </div>
-        </header>
-
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar
-            type={type}
-            website={websiteData}
-            onUpdateWebsite={handleUpdateWebsite}
-          />
-          <Viewport>
-            <div className="flex flex-col min-h-screen w-full font-sans bg-white pointer-events-none select-none">
-              {hasNav && (
-                <nav
-                  className={`w-full sticky top-0 z-50 transition-all ${navStyle.border ? 'border-b border-black/10' : ''} ${navStyle.glass ? 'backdrop-blur-md bg-opacity-70' : ''}`}
-                  style={{ backgroundColor: navStyle.glass ? undefined : navStyle.bg }}
-                >
-                  {navStyle.glass && (
-                    <div className="absolute inset-0 z-[-1] opacity-70" style={{ backgroundColor: navStyle.bg }} />
-                  )}
-                  <div className={`max-w-7xl mx-auto px-4 flex items-center justify-between ${navStyle.size}`}>
-                    <div className="font-black tracking-tighter text-xl" style={{ color: navStyle.text }}>
-                      {websiteData?.name || 'Leadsmind'}
-                    </div>
-                    <div className="flex items-center gap-8">
-                      <div className="flex items-center gap-6">
-                        {websiteConfig.navLinks.map((link: any, i: number) => (
-                          <a
-                            key={i}
-                            href="#"
-                            className="text-sm font-bold opacity-80"
-                            style={{ color: navStyle.text }}
-                          >
-                            {link.label}
-                          </a>
-                        ))}
-                      </div>
-                      {navStyle.ctaText && (
-                        <div
-                          className="px-5 py-2 text-sm font-bold rounded-full"
-                          style={{ backgroundColor: navStyle.ctaBg || '#000', color: navStyle.ctaColor || '#fff' }}
-                        >
-                          {navStyle.ctaText}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </nav>
-              )}
-
-              <div className="flex-1 pointer-events-auto min-h-[500px]">
-                {isLoadingContent ? (
-                  <div className="w-full h-full flex items-center justify-center py-40">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#6c47ff]" />
-                  </div>
-                ) : (
-                  <Frame />
-                )}
-              </div>
-
-              {hasFooter && (
-                <footer
-                  className={`w-full mt-auto py-16 ${footerStyle.border ? 'border-t border-black/10' : ''}`}
-                  style={{ backgroundColor: footerStyle.bg }}
-                >
-                  <div className={`max-w-7xl mx-auto px-4 flex flex-col gap-8 ${footerStyle.layout === 'center' ? 'items-center text-center' : 'md:flex-row items-start justify-between'}`}>
-                    <div className="flex flex-col gap-3 max-w-sm">
-                      <div className="font-black tracking-tighter text-2xl" style={{ color: footerStyle.text }}>
-                        {websiteData?.name || 'Leadsmind'}
-                      </div>
-                      {footerStyle.tagline && (
-                        <p className="text-sm opacity-80 leading-relaxed" style={{ color: footerStyle.text }}>
-                          {footerStyle.tagline}
-                        </p>
-                      )}
-                      <div className="text-sm font-medium mt-2 opacity-60" style={{ color: footerStyle.text }}>
-                        © {new Date().getFullYear()} {websiteData?.name || 'Leadsmind'}. All rights reserved.
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-6 flex-wrap">
-                      {websiteConfig.footerLinks.map((link: any, i: number) => (
-                        <a
-                          key={i}
-                          href="#"
-                          className="text-sm font-bold opacity-80"
-                          style={{ color: footerStyle.text }}
-                        >
-                          {link.label}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                </footer>
-              )}
-            </div>
-          </Viewport>
-          <PropertiesPanel />
-        </div>
+ return (
+  <BuilderProvider pages={pages} websiteId={websiteData?.id} websiteData={websiteData} onUpdateWebsite={handleUpdateWebsite}>
+   <div className="h-screen w-full flex flex-col overflow-hidden bg-[#050508] text-white">
+    {/* Header Section */}
+    <header className="h-[70px] border-b border-white/5 bg-[#0b0b14]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50">
+     <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3 pr-6 border-r border-white/5">
+       <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+        <span className="font-black text-lg tracking-tighter">L</span>
+       </div>
+       <div>
+        <span className="block text-[11px] font-black uppercase tracking-tighter text-white leading-none">Leadsmind</span>
+        <span className="block text-[8px] font-bold uppercase tracking-[0.2em] text-primary mt-0.5">Neural Node Builder</span>
+       </div>
       </div>
-    </BuilderProvider>
-  );
+
+      {/* Page Switcher */}
+      <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+       <div className="flex items-center gap-2">
+        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+        <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Editing Mode:</span>
+       </div>
+       <select
+        value={pageId as string}
+        onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
+        className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-white outline-none cursor-pointer hover:text-primary transition-colors min-w-[120px]"
+       >
+        {pages.map((p) => (
+         <option key={p.id} value={p.id} className="bg-[#0b0b14] text-white">{p.name} ({p.slug})</option>
+        ))}
+       </select>
+      </div>
+     </div>
+
+     <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 px-4 border-r border-white/5 mr-2">
+       <div className="text-right hidden sm:block">
+        <span className="block text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Node Status</span>
+        <span className="block text-[10px] font-black uppercase text-emerald-500">System Online</span>
+       </div>
+      </div>
+      
+      <Button
+       variant="ghost"
+       onClick={handleSaveDraft}
+       disabled={isSaving}
+       className="h-11 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/60 hover:text-white transition-all"
+      >
+       {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+       Save Node
+      </Button>
+      <Button
+       onClick={handlePublish}
+       disabled={isPublishing}
+       className="h-11 px-8 text-[10px] font-black uppercase tracking-widest rounded-xl bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 transition-all active:scale-95"
+      >
+       {isPublishing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+       Deploy Live
+      </Button>
+     </div>
+    </header>
+
+    <div className="flex flex-1 overflow-hidden">
+     <Sidebar
+      type={type}
+      website={websiteData}
+      onUpdateWebsite={handleUpdateWebsite}
+     />
+     <Viewport>
+      <div className="flex flex-col min-h-screen w-full font-sans bg-white pointer-events-none select-none">
+       {hasNav && (
+        <nav
+         className={`w-full sticky top-0 z-50 transition-all ${navStyle.border ? 'border-b border-black/10' : ''} ${navStyle.glass ? 'backdrop-blur-md bg-opacity-70' : ''}`}
+         style={{ backgroundColor: navStyle.glass ? undefined : navStyle.bg }}
+        >
+         {navStyle.glass && (
+          <div className="absolute inset-0 z-[-1] opacity-70" style={{ backgroundColor: navStyle.bg }} />
+         )}
+         <div className={`max-w-7xl mx-auto px-4 flex items-center justify-between ${navStyle.size}`}>
+          <div className="font-black tracking-tighter text-xl" style={{ color: navStyle.text }}>
+           {websiteData?.name || 'Leadsmind'}
+          </div>
+          <div className="flex items-center gap-8">
+           <div className="flex items-center gap-6">
+            {websiteConfig.navLinks.map((link: any, i: number) => (
+             <a
+              key={i}
+              href="#"
+              className="text-sm font-bold opacity-80"
+              style={{ color: navStyle.text }}
+             >
+              {link.label}
+             </a>
+            ))}
+           </div>
+           {navStyle.ctaText && (
+            <div
+             className="px-5 py-2 text-sm font-bold rounded-full"
+             style={{ backgroundColor: navStyle.ctaBg || '#000', color: navStyle.ctaColor || '#fff' }}
+            >
+             {navStyle.ctaText}
+            </div>
+           )}
+          </div>
+         </div>
+        </nav>
+       )}
+
+       <div className="flex-1 pointer-events-auto min-h-[500px]">
+        {isLoadingContent ? (
+         <div className="w-full h-full flex items-center justify-center py-40">
+          <Loader2 className="w-8 h-8 animate-spin text-[#6c47ff]" />
+         </div>
+        ) : (
+         <Frame />
+        )}
+       </div>
+
+       {hasFooter && (
+        <footer
+         className={`w-full mt-auto py-16 ${footerStyle.border ? 'border-t border-black/10' : ''}`}
+         style={{ backgroundColor: footerStyle.bg }}
+        >
+         <div className={`max-w-7xl mx-auto px-4 flex flex-col gap-8 ${footerStyle.layout === 'center' ? 'items-center text-center' : 'md:flex-row items-start justify-between'}`}>
+          <div className="flex flex-col gap-3 max-w-sm">
+           <div className="font-black tracking-tighter text-2xl" style={{ color: footerStyle.text }}>
+            {websiteData?.name || 'Leadsmind'}
+           </div>
+           {footerStyle.tagline && (
+            <p className="text-sm opacity-80 leading-relaxed" style={{ color: footerStyle.text }}>
+             {footerStyle.tagline}
+            </p>
+           )}
+           <div className="text-sm font-medium mt-2 opacity-60" style={{ color: footerStyle.text }}>
+            © {new Date().getFullYear()} {websiteData?.name || 'Leadsmind'}. All rights reserved.
+           </div>
+          </div>
+          <div className="flex items-center gap-6 flex-wrap">
+           {websiteConfig.footerLinks.map((link: any, i: number) => (
+            <a
+             key={i}
+             href="#"
+             className="text-sm font-bold opacity-80"
+             style={{ color: footerStyle.text }}
+            >
+             {link.label}
+            </a>
+           ))}
+          </div>
+         </div>
+        </footer>
+       )}
+      </div>
+     </Viewport>
+     <PropertiesPanel />
+    </div>
+   </div>
+  </BuilderProvider>
+ );
 };
 
 export const BuilderEditor = ({ type }: { type: 'website' | 'funnel' }) => {
-  return (
-    <Editor
-      resolver={RESOLVER}
-      enabled={true}
-      onRender={({ render }) => <RenderNode render={render} />}
-    >
-      <BuilderEditorContent type={type} />
-    </Editor>
-  );
+ return (
+  <Editor
+   resolver={RESOLVER}
+   enabled={true}
+   onRender={({ render }) => <RenderNode render={render} />}
+  >
+   <BuilderEditorContent type={type} />
+  </Editor>
+ );
 };
 
 

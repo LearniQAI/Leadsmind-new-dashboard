@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartsHeatmap = () => {
-    return (
-        <>
-            <MetaData pageTitle="Heatmap">
-                <Wrapper>
-                    <ApexChartsHeatmapArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Heatmap">
+        <Wrapper>
+          <ApexChartsHeatmapArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
-export default ApexChartsHeatmap;     
+export default ApexChartsHeatmap;   

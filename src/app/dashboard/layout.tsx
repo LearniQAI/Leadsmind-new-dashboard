@@ -8,18 +8,18 @@ import { DashboardProvider } from '@/components/layouts/DashboardProvider';
 import { BrandingProvider } from '@/components/branding/BrandingProvider';
 
 export default async function DashboardLayout({
-  children,
+ children,
 }: {
-  children: React.ReactNode;
+ children: React.ReactNode;
 }) {
-  const supabase = await createServerClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  
-  if (!authUser) redirect('/auth/signin-basic');
+ const supabase = await createServerClient();
+ const { data: { user: authUser } } = await supabase.auth.getUser();
+ 
+ if (!authUser) redirect('/auth/signin-basic');
 
-  return (
-    <>
-      {children}
-    </>
-  );
+ return (
+  <>
+   {children}
+  </>
+ );
 }

@@ -4,15 +4,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const CrmSetupMain = () => {
-  return (
-    <>
-      <MetaData pageTitle="CRM Setup">
-        <Wrapper>
-          <CrmSetupMainArea/>
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="CRM Setup">
+    <Wrapper>
+     <CrmSetupMainArea/>
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default CrmSetupMain;

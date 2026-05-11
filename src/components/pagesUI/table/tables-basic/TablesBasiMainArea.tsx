@@ -1,7 +1,7 @@
 import React from "react";
 
 const TablesBasiMainArea = () => {
-  return <></>;
+ return <></>;
 };
 
 export default TablesBasiMainArea;

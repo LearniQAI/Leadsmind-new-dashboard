@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const GridMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Grid">
-                <Wrapper>
-                    <GridMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Grid">
+        <Wrapper>
+          <GridMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default GridMain;

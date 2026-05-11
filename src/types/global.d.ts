@@ -1,11 +1,11 @@
 import React from 'react';
 
 declare global {
-  var process: {
-    env: {
-      [key: string]: string | undefined;
-    };
+ var process: {
+  env: {
+   [key: string]: string | undefined;
   };
+ };
 }
 
 declare module 'swiper';

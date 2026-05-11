@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const StepsMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Steps">
-                <Wrapper>
-                    <StepsMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Steps">
+        <Wrapper>
+          <StepsMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default StepsMain;

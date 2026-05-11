@@ -6,43 +6,43 @@ import { profileSchema, passwordSchema, ProfileFormValues, PasswordFormValues } 
 import { getUser } from '@/lib/auth';
 
 export async function updateProfile(values: ProfileFormValues) {
-  const user = await getUser();
-  if (!user) return { success: false, error: 'Unauthorized' };
+ const user = await getUser();
+ if (!user) return { success: false, error: 'Unauthorized' };
 
-  const validated = profileSchema.safeParse(values);
-  if (!validated.success) return { success: false, error: 'Invalid data' };
+ const validated = profileSchema.safeParse(values);
+ if (!validated.success) return { success: false, error: 'Invalid data' };
 
-  const supabase = await createServerClient();
-  
-  const { error } = await supabase
-    .from('users')
-    .update({
-      first_name: values.firstName,
-      last_name: values.lastName,
-      avatar_url: values.avatarUrl,
-    })
-    .eq('id', user.id);
+ const supabase = await createServerClient();
+ 
+ const { error } = await supabase
+  .from('users')
+  .update({
+   first_name: values.firstName,
+   last_name: values.lastName,
+   avatar_url: values.avatarUrl,
+  })
+  .eq('id', user.id);
 
-  if (error) return { success: false, error: error.message };
+ if (error) return { success: false, error: error.message };
 
-  revalidatePath('/', 'layout');
-  return { success: true };
+ revalidatePath('/', 'layout');
+ return { success: true };
 }
 
 export async function updatePassword(values: PasswordFormValues) {
-  const user = await getUser();
-  if (!user) return { success: false, error: 'Unauthorized' };
+ const user = await getUser();
+ if (!user) return { success: false, error: 'Unauthorized' };
 
-  const validated = passwordSchema.safeParse(values);
-  if (!validated.success) return { success: false, error: 'Invalid data' };
+ const validated = passwordSchema.safeParse(values);
+ if (!validated.success) return { success: false, error: 'Invalid data' };
 
-  const supabase = await createServerClient();
+ const supabase = await createServerClient();
 
-  const { error } = await supabase.auth.updateUser({
-    password: values.newPassword,
-  });
+ const { error } = await supabase.auth.updateUser({
+  password: values.newPassword,
+ });
 
-  if (error) return { success: false, error: error.message };
+ if (error) return { success: false, error: error.message };
 
-  return { success: true };
+ return { success: true };
 }

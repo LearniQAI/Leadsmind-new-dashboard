@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartTimelineMain = () => {
-    return (
-        <>
-             <MetaData pageTitle="Timeline">
-                <Wrapper>
-                    <ApexChartTimelineMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+       <MetaData pageTitle="Timeline">
+        <Wrapper>
+          <ApexChartTimelineMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartTimelineMain;

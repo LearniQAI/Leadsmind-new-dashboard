@@ -14,90 +14,89 @@ import { WorkspaceSync } from "@/components/auth/WorkspaceSync";
 import AIChatbot from "@/components/common/AIChatbot";
 
 export default async function RootLayout({
-  children,
+ children,
 }: {
-  children: React.ReactNode;
+ children: React.ReactNode;
 }) {
-  const supabase = await createServerClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+ const supabase = await createServerClient();
+ const { data: { user: authUser } } = await supabase.auth.getUser();
 
-  let user = null;
-  let workspaceData = null;
-  let role = null;
-  let branding = null;
+ let user = null;
+ let workspaceData = null;
+ let role = null;
+ let branding = null;
 
-  if (authUser) {
-    const [profile, workspace, userRole] = await Promise.all([
-      getCurrentProfile(authUser),
-      getCurrentWorkspace(authUser),
-      getUserRole(),
-    ]);
+ if (authUser) {
+  const [profile, workspace, userRole] = await Promise.all([
+   getCurrentProfile(authUser),
+   getCurrentWorkspace(authUser),
+   getUserRole(),
+  ]);
 
-    role = userRole;
-    workspaceData = workspace ? {
-      id: workspace.id,
-      name: workspace.name,
-      logoUrl: workspace.logoUrl ?? null,
-      plan: workspace.plan,
-    } : null;
+  role = userRole;
+  workspaceData = workspace ? {
+   id: workspace.id,
+   name: workspace.name,
+   logoUrl: workspace.logoUrl ?? null,
+   plan: workspace.plan,
+  } : null;
 
-    user = {
-      id: authUser.id,
-      email: authUser.email,
-      firstName: profile?.firstName || authUser.user_metadata?.full_name?.split(' ')[0] || authUser.email?.split('@')[0] || 'User',
-      avatarUrl: profile?.avatarUrl ?? null,
-    };
+  user = {
+   id: authUser.id,
+   email: authUser.email,
+   firstName: profile?.firstName || authUser.user_metadata?.full_name?.split(' ')[0] || authUser.email?.split('@')[0] || 'User',
+   avatarUrl: profile?.avatarUrl ?? null,
+  };
 
-    if (workspaceData) {
-      branding = await fetchBranding(workspaceData.id);
-    }
+  if (workspaceData) {
+   branding = await fetchBranding(workspaceData.id);
   }
-  
-  return (
-    <>
-      <html lang="en" className="dark">
-        <head>
-          <meta httpEquiv="x-ua-compatible" content="ie=edge" />
-          <title>LeadsMind | All-in-One Business Operating System</title>
-          <meta name="description" content="LeadsMind is a next-generation all-in-one business operating system designed for high-frequency operations, CRM, and marketing automation." />
-          <meta name="robots" content="noindex, follow" />
-          <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1, shrink-to-fit=no"
-          />
-          <link rel="icon" href="/favicon.ico" />
-          <link
-            rel="stylesheet"
-            href="https://fonts.googleapis.com/icon?family=Material+Icons"
-          />
-        </head>
+ }
+ 
+ return (
+  <>
+   <html lang="en" className="dark">
+    <head>
+     <meta httpEquiv="x-ua-compatible" content="ie=edge" />
+     <title>LeadsMind | All-in-One Business Operating System</title>
+     <meta name="description" content="LeadsMind is a next-generation all-in-one business operating system designed for high-frequency operations, CRM, and marketing automation." />
+     <meta name="robots" content="noindex, follow" />
+     <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+     />
+     <link rel="icon" href="/favicon.ico" />
+     <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+     />
+    </head>
 
-        <body suppressHydrationWarning={true} className="body-area">
-          <ReduxProvider>
-            <AppProvider>
-              <DirectionProvider>
-                <WorkspaceSync workspaceId={workspaceData?.id ?? null} />
-                <DashboardProvider 
-                  user={user} 
-                  workspace={workspaceData} 
-                  role={role} 
-                  branding={branding ? { platformName: branding.platform_name, logoUrl: branding.logo_url } : null}
-                >
-                  <BrandingProvider 
-                    primaryColor={branding?.primary_color ?? undefined}
-                    platformName={branding?.platform_name ?? undefined}
-                  >
-                    {children}
-                    <AIChatbot />
-                  </BrandingProvider>
-                </DashboardProvider>
-                <Setting />
-              </DirectionProvider>
-            </AppProvider>
-            <Toaster position="top-center" richColors />
-          </ReduxProvider>
-        </body>
-      </html>
-    </>
-  );
+    <body suppressHydrationWarning={true} className="body-area">
+     <ReduxProvider>
+      <AppProvider>
+       <DirectionProvider>
+        <WorkspaceSync workspaceId={workspaceData?.id ?? null} />
+        <DashboardProvider 
+         user={user} 
+         workspace={workspaceData} 
+         role={role} 
+         branding={branding ? { platformName: branding.platform_name, logoUrl: branding.logo_url } : null}
+        >
+         <BrandingProvider 
+          primaryColor={branding?.primary_color ?? undefined}
+          platformName={branding?.platform_name ?? undefined}
+         >
+          {children}
+          <AIChatbot />
+         </BrandingProvider>
+        </DashboardProvider>
+       </DirectionProvider>
+      </AppProvider>
+      <Toaster position="top-center" richColors />
+     </ReduxProvider>
+    </body>
+   </html>
+  </>
+ );
 }

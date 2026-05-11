@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartLineMain = () => {
-    return (
-        <>
-             <MetaData pageTitle="Line">
-                <Wrapper>
-                    <ApexChartLineMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+       <MetaData pageTitle="Line">
+        <Wrapper>
+          <ApexChartLineMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartLineMain;

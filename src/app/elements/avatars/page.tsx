@@ -6,15 +6,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const AvatarMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Avatars">
-                <Wrapper>
-                    <AvatarMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Avatars">
+        <Wrapper>
+          <AvatarMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default AvatarMain;

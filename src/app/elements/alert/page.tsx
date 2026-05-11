@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const AlertMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Alert">
-                <Wrapper>
-                    <AlertMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Alert">
+        <Wrapper>
+          <AlertMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default AlertMain;

@@ -4,13 +4,13 @@ import TableWithCheckbox from './table-short-select/TableWithCheckbox';
 import TableWithoutCheckbox from './table-short-select/TableWithoutCheckbox';
 
 const TabelDatabaseMain = () => {
-    return (
-        <>
-            <TableWithoutCheckbox />   
-            <TableWithCheckbox />   
-            <AttendanceTable />   
-        </>
-    );
+  return (
+    <>
+      <TableWithoutCheckbox />  
+      <TableWithCheckbox />  
+      <AttendanceTable />  
+    </>
+  );
 };
 
 export default TabelDatabaseMain;

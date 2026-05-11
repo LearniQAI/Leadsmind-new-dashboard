@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ButtonsMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Buttons">
-                <Wrapper>
-                    <ButtonsMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Buttons">
+        <Wrapper>
+          <ButtonsMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ButtonsMain;

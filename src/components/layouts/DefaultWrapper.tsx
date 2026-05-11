@@ -9,50 +9,50 @@ import DashBoardSidebar from "./sidebar/DashBoardSidebar";
 import useGlobalContext from "@/hooks/use-context";
 
 interface WrapperProps {
-  children: React.ReactNode;
+ children: React.ReactNode;
 }
 
 import { useDashboardContext } from "./DashboardProvider";
 
 const Wrapper: React.FC<WrapperProps> = ({ children }) => {
-  const { theme } = useGlobalContext();
-  const { user, workspace, role, branding } = useDashboardContext();
-  const pathName = usePathname();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+ const { theme } = useGlobalContext();
+ const { user, workspace, role, branding } = useDashboardContext();
+ const pathName = usePathname();
+ const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  useEffect(() => {
-    setIsLoading(false);
-  }, []);
+ useEffect(() => {
+  setIsLoading(false);
+ }, []);
 
-  const renderHeader = () => {
-    switch (pathName) {
-      default:
-        return <DashboardHeader />;
-    }
-  };
+ const renderHeader = () => {
+  switch (pathName) {
+   default:
+    return <DashboardHeader />;
+  }
+ };
 
-  const renderFooter = () => {
-    switch (pathName) {
-      default:
-        return <DashboardFooter />;
-    }
-  };
+ const renderFooter = () => {
+  switch (pathName) {
+   default:
+    return <DashboardFooter />;
+  }
+ };
 
-  return (
-    <>
-      <div
-        className={`page__full-wrapper bg-[#0A0F3D] ${theme === "dark" ? "dark" : "light"}`}
-      >
-        <DashBoardSidebar />
-        <div className="page__body-wrapper bg-[#0A0F3D] min-h-screen">
-          <BackToTop />
-          {renderHeader()}
-          {children}
-          {renderFooter()}
-        </div>
-      </div>
-    </>
-  );
+ return (
+  <>
+   <div
+    className={`page__full-wrapper bg-[#0A0F3D] ${theme === "dark" ? "dark" : "light"}`}
+   >
+    <DashBoardSidebar />
+    <div className="page__body-wrapper bg-[#0A0F3D] min-h-screen">
+     <BackToTop />
+     {renderHeader()}
+     {children}
+     {renderFooter()}
+    </div>
+   </div>
+  </>
+ );
 };
 
 export default Wrapper;

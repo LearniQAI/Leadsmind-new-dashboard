@@ -4,13 +4,13 @@ import FunnelsClient from './FunnelsClient';
 import { getFunnels } from '@/app/actions/marketing';
 
 export default async function FunnelsPage() {
-  const { data: funnels } = await getFunnels();
+ const { data: funnels } = await getFunnels();
 
-  return (
-    <Wrapper>
-      <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)]">
-        <FunnelsClient initialFunnels={funnels || []} />
-      </div>
-    </Wrapper>
-  );
+ return (
+  <Wrapper>
+   <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)]">
+    <FunnelsClient initialFunnels={funnels || []} />
+   </div>
+  </Wrapper>
+ );
 }

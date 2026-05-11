@@ -4,15 +4,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const CompanyMain= () => {
-  return (
-    <>
-      <MetaData pageTitle="Company">
-        <Wrapper>
-          <CompaniesMainArea/>
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="Company">
+    <Wrapper>
+     <CompaniesMainArea/>
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default CompanyMain;

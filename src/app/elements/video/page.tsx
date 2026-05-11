@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const VideosMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Video">
-                <Wrapper>
-                    <VideosMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Video">
+        <Wrapper>
+          <VideosMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default VideosMain;

@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ElementIconMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Icommon">
-                <Wrapper>
-                    <ElementIconMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Icommon">
+        <Wrapper>
+          <ElementIconMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ElementIconMain;

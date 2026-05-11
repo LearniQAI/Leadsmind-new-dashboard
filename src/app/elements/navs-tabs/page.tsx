@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const NavsTabMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Navs Tabs">
-                <Wrapper>
-                    <NavsTabMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Navs Tabs">
+        <Wrapper>
+          <NavsTabMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default NavsTabMain;

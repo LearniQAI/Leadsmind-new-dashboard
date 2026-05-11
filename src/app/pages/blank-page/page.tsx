@@ -4,15 +4,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const BlankPageMain = () => {
-  return (
-    <>
-      <MetaData pageTitle="Blank Page">
-        <Wrapper>
-          <BlankPageMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="Blank Page">
+    <Wrapper>
+     <BlankPageMainArea />
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default BlankPageMain;

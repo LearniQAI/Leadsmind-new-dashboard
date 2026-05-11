@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartMixedMain = () => {
-    return (
-        <>
-             <MetaData pageTitle="Mixed">
-                <Wrapper>
-                    <ApexChartMixedMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+       <MetaData pageTitle="Mixed">
+        <Wrapper>
+          <ApexChartMixedMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartMixedMain;

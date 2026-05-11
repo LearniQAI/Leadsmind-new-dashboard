@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartBarMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Bar">
-                <Wrapper>
-                    <ApexChartBarMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Bar">
+        <Wrapper>
+          <ApexChartBarMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartBarMain;

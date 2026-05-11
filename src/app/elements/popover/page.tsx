@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const PopoverMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Navs Tabs">
-                <Wrapper>
-                    <PopoverMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Navs Tabs">
+        <Wrapper>
+          <PopoverMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default PopoverMain;

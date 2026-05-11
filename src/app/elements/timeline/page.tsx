@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const TimeLineMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Timeline">
-                <Wrapper>
-                    <TimelineMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Timeline">
+        <Wrapper>
+          <TimelineMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default TimeLineMain;

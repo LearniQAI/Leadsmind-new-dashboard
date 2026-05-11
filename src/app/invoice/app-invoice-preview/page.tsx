@@ -4,15 +4,15 @@ import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
 const InvoicePreviewMain = () => {
-  return (
-    <>
-      <MetaData pageTitle="invoice preview">
-        <Wrapper>
-          <AppInvoicePreviewMainArea/>
-        </Wrapper>
-      </MetaData>
-    </>
-  );
+ return (
+  <>
+   <MetaData pageTitle="invoice preview">
+    <Wrapper>
+     <AppInvoicePreviewMainArea/>
+    </Wrapper>
+   </MetaData>
+  </>
+ );
 };
 
 export default InvoicePreviewMain;

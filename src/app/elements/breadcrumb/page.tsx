@@ -5,15 +5,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const BreadcrumbMain = () => {
-    return (
-        <>
-            <MetaData pageTitle="Breadcrumb">
-                <Wrapper>
-                    <BreadcrumbMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Breadcrumb">
+        <Wrapper>
+          <BreadcrumbMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default BreadcrumbMain;

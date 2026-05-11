@@ -4,15 +4,15 @@ import React from 'react';
 import FormEditorsArea from "../../../components/elements/forms/form-editors/FormEditorsMain";
 
 const FormEditors = () => {
-    return (
-        <>
-            <MetaData pageTitle="Form Editors">
-                <Wrapper>
-                    <FormEditorsArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+      <MetaData pageTitle="Form Editors">
+        <Wrapper>
+          <FormEditorsArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default FormEditors;

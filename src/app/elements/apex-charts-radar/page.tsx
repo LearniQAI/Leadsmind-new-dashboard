@@ -4,15 +4,15 @@ import MetaData from '@/hooks/useMetaData';
 import React from 'react';
 
 const ApexChartRadarMain = () => {
-    return (
-        <>
-             <MetaData pageTitle="Radar">
-                <Wrapper>
-                    <ApexChartRadarMainArea />
-                </Wrapper>
-            </MetaData>
-        </>
-    );
+  return (
+    <>
+       <MetaData pageTitle="Radar">
+        <Wrapper>
+          <ApexChartRadarMainArea />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default ApexChartRadarMain;
