@@ -15,8 +15,6 @@ import { Button } from '@/components/ui/button';
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import { PremiumSection } from '@/components/calendar/BookingPrimitives';
 import MetaData from "@/hooks/useMetaData";
-import { CalendarClient } from '@/components/calendar/CalendarClient';
-
 
 export default async function CalendarPage() {
     await requireAuth();
