@@ -13,7 +13,7 @@
 // App header
 .app__header__area {
     @apply bg-card dark:bg-card-dark;
-    @apply fixed transition-all duration-[0.5s] ease-[ease-in-out] z-10 w-full xl:w-[calc(100%_-_255px)] top-0 start-0 xl:start-[255px];
+    @apply fixed transition-all duration-[0.5s] ease-[ease-in-out] z-10 w-full xl:w-[calc(100%_-_256px)] top-0 start-0 xl:start-[256px];
 }
 .app__header-toggle {
 	i {

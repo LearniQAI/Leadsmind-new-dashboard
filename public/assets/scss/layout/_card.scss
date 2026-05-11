@@ -4,7 +4,8 @@
 /*  CARD CSS START
 /*----------------------------------------*/
 .card-body {
-  @apply relative mb-5 p-[25px] rounded-[10px] shadow-[0_6px_30px_rgba(182,186,203,0.3)];
+    @apply relative mb-5 p-[25px] rounded-[10px];
+    box-shadow: var(--clr-card-shadow);
 
   .color-name {
     @apply mt-[15px] text-[18px];
@@ -206,8 +207,9 @@
   }
 
   &__wrapper {
-    @apply relative min-h-[calc(100%_-_20px)] mb-5 p-[15px] xs:p-[25px] rounded-[10px] shadow-[0_6px_30px_rgba(182,186,203,0.3)];
-    @apply bg-card dark:bg-card-dark dark:shadow-none;
+    @apply relative min-h-[calc(100%_-_20px)] mb-5 p-[15px] xs:p-[25px] rounded-[10px];
+    box-shadow: var(--clr-card-shadow);
+    @apply bg-card dark:bg-card-dark;
 
 
     &.no-height {
@@ -228,11 +230,6 @@
     &.style_four {
       @apply border border-borderLightest dark:border-borderLightest-dark relative mb-5 px-0 py-5 border-solid bg-card dark:bg-card-dark;
     }
-  }
-}
-.dark {
-  .card__wrapper {
-    @apply shadow-none;
   }
 }
 

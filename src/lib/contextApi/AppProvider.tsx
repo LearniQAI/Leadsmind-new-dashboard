@@ -20,6 +20,13 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  };
 
  useEffect(() => {
+  const root = window.document.documentElement;
+  root.classList.remove("light", "dark");
+  root.classList.add(theme);
+  root.setAttribute("bd-theme", theme === "dark" ? "bd-theme-dark" : "bd-theme-light");
+ }, [theme]);
+
+ useEffect(() => {
   let lastScrollY = window.scrollY;
 
   const updateScrollDirection = () => {

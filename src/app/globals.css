@@ -65,51 +65,5 @@
 }
 
 @layer utilities {
-  /* MASTER POLARITY REVERSAL FOR LIGHT MODE - FORCED DIRECTLY ON DOM NODES */
-  
-  /* 1. Force the entire application background to White */
-  body, html, .body-area, .page__body-wrapper, .app-sidebar, .app__slide-wrapper, .bg-bgBody, .bg-\[\#0A0F3D\], .bg-\[\#050508\] {
-    background-color: #FFFFFF !important;
-  }
-  
-  /* 2. Force Cards, Sections, and Sidebar to White */
-  .bg-card, .card__wrapper, .bg-\[\#0b0b1a\], .bg-\[\#0b0b14\], .bg-\[\#0b0b10\], .bg-\[\#0c0c14\], .bg-\[\#0a0a0f\], .bg-\[\#0e0e1a\] {
-    background-color: #FFFFFF !important;
-    border: 1px solid #e2e8f0 !important;
-  }
-  
-  /* 3. Convert ALL text to Brand Blue (Except Buttons) */
-  body, p, span, h1, h2, h3, h4, h5, h6, .text-white, .text-body, .sidebar__menu-label, .category-name {
-    color: #1359FF !important; /* Deep Royal Blue */
-  }
-  .text-white\/40, .text-white\/30, .text-white\/20, .text-white\/10, .text-white\/50 {
-    color: #3b82f6 !important; /* Lighter Blue for metadata */
-  }
-  
-  /* 4. Fix Borders and Translucent Elements */
-  .border-white\/10, .border-white\/5, .border-white\/20 {
-    border-color: #e2e8f0 !important;
-  }
-  
-  /* 5. PRESERVE THE LOGO BACKGROUND AND BUTTONS */
-  .main-sidebar-header {
-    background-color: #FFFFFF !important; /* Set Logo Header to White as requested */
-    border-bottom: 1px solid #e2e8f0 !important;
-  }
-  .main-sidebar-header * {
-    color: #1359FF !important; /* Keep text in logo header blue */
-  }
-  .btn-primary, .bg-primary {
-    background-color: #1359FF !important;
-    color: #ffffff !important;
-  }
-  .btn-primary *, .bg-primary * {
-    color: #ffffff !important;
-  }
-  
-  /* Fix sidebar backdrop blur and borders */
-  .sidebar__menu-category {
-    background-color: #FFFFFF !important;
-    border-color: #e2e8f0 !important;
-  }
+  /* Clean utilities */
 }

@@ -53,7 +53,7 @@ module.exports = {
         },
         card: {
           DEFAULT: '#FFFFFF', // Light Mode
-          dark: '#0A0F3D',    // Deep Navy
+          dark: '#0F172A',    // Slate 900 (Deeper than body)
         },
         light: {
           DEFAULT: '#B8B8B8', // light mode
@@ -113,34 +113,34 @@ module.exports = {
         },
         body: {
           DEFAULT: '#878a99', // light mode
-          dark: '#9CA3AF',    // dark mode
+          dark: '#E2E8F0',    // Slate 200 (Much brighter for readability)
         },
         label: {
           DEFAULT: '#495057', // light mode
-          dark: '#C6C8CC',    // dark mode
+          dark: '#94A3B8',    // Slate 400
         },
         taxonomy: {
           DEFAULT: '#A9ABB6', // light mode
-          dark: '#9CA3AF',    // dark mode
+          dark: '#94A3B8',    // Slate 400
         },
         rating: "#EC8D1D",
         //text color
         headingPrimary: {
           DEFAULT: '#444050', // light mode
-          dark: '#D1D5DB',    // dark mode
+          dark: '#F8FAFB',    // Brighter White
         },
         headingLight: {
           DEFAULT: '#525252', // light mode
-          dark: '#9CA3AF',    // dark mode
+          dark: '#CBD5E1',    // Slate 300
         },
         headingLightest: {
           DEFAULT: '#878a99', // light mode
-          dark: '#9CA3AF',    // dark mode
+          dark: '#94A3B8',    // Slate 400
         },
         //background
         bgBody: {
           DEFAULT: '#F8FAFC', // Slate 50
-          dark: '#0A0F3D',    // Deep Navy
+          dark: '#020617',    // Slate 950 (Deeper, more premium navy)
         },
         bgLightest: {
           DEFAULT: '#FFFFFF',

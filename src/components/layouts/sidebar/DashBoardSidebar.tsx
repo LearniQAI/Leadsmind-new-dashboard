@@ -164,9 +164,9 @@ const DashBoardSidebar = () => {
       <ul className="main-menu" style={{ display: "block" }}>
        {sidebarData.map((category) => (
         <React.Fragment key={category.id}>
-         <li className="sidebar__menu-category !px-6 !py-4 !my-2 sticky top-0 z-[5] bg-[#0A0F3D]/50 backdrop-blur-md border-y border-white/5">
-          <span className="category-name text-[10px] font-black uppercase tracking-[0.3em] text-white/30">{category.category}</span>
-         </li>
+          <li className="sidebar__menu-category !px-6 !py-4 !my-2">
+           <span className="category-name" style={{ color: '#ffffff', opacity: 1, fontWeight: 900, letterSpacing: '0.2em', fontSize: '11px', display: 'block' }}>{category.category}</span>
+          </li>
          {category.items.map((item) => (
           <li
            key={item.id}

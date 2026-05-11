@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    transpilePackages: ["date-fns"],
+    transpilePackages: ["date-fns", "lucide-react"],
 };
 
 module.exports = nextConfig;

@@ -304,7 +304,7 @@ span.MuiSlider-colorPrimary {
 }
 
 .form-control::file-selector-button {
-	@apply text-black me-[14px] bg-white pointer-events-none -mx-[.875rem] -my-[.422rem] py-[.422rem] px-[.875rem] border-inherit border-solid border-0 border-e rounded-none;
+	@apply text-black me-[14px] bg-bgLightest dark:bg-bgLightest-dark pointer-events-none -mx-[.875rem] -my-[.422rem] py-[.422rem] px-[.875rem] border-inherit border-solid border-0 border-e rounded-none;
 	transition: all .2s ease-in-out
 }
 
@@ -397,11 +397,11 @@ textarea.form-control-lg {
 		@apply relative;
 
 		.dropdown-menu-start {
-			@apply absolute top-[40px] left-[0px] w-[150px] border border-gray-300 bg-white z-[9999] dark:bg-card-dark dark:border-borderLightest-dark;
+			@apply absolute top-[40px] left-[0px] w-[150px] border border-borderLightest bg-white z-[9999] dark:bg-card-dark dark:border-borderLightest-dark;
 		}
 
 		.dropdown-menu-end {
-			@apply absolute top-[40px] right-0 border w-[150px] border-gray-300 bg-white dark:bg-card-dark dark:border-borderLightest-dark z-[9999];
+			@apply absolute top-[40px] right-0 border w-[150px] border-borderLightest bg-white dark:bg-card-dark dark:border-borderLightest-dark z-[9999];
 
 			.dropdown__item {
 				@apply w-[100%] outline-none outline-0;
