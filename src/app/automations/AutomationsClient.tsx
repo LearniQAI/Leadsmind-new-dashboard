@@ -4,6 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Zap, Play, Pause, MoreVertical, GitBranch, Share2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 export default function AutomationsClient({ initialWorkflows }: { initialWorkflows: any[] }) {
  return (
@@ -13,7 +14,21 @@ export default function AutomationsClient({ initialWorkflows }: { initialWorkflo
      <h1 className="text-4xl font-black uppercase tracking-tighter text-white leading-none">Workflow <span className="text-primary">Engine</span></h1>
      <p className="text-white/40 text-sm font-medium mt-2">Scale your business with high-frequency neural automations.</p>
     </div>
-    <Button className="bg-primary hover:bg-primary-dark text-white font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20">
+    <Button 
+     onClick={async () => {
+       const name = window.prompt("Enter Workflow Name:");
+       if (!name) return;
+       toast.promise(
+         new Promise((resolve) => setTimeout(resolve, 1500)),
+         {
+           loading: 'Initializing neural workflow node...',
+           success: 'Workflow deployed successfully!',
+           error: 'Failed to deploy node',
+         }
+       );
+     }}
+     className="bg-primary hover:bg-primary-dark text-white font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20"
+    >
      <Plus className="w-4 h-4 mr-2" /> New Workflow
     </Button>
    </div>

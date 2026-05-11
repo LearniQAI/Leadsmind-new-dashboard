@@ -1,6 +1,7 @@
 "use client"
 import Link from 'next/link';
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import EmailNotification from './EmailNotification';
 import Notification from './Notification';
 import HeaderUserProfile from './HeaderUserProfile';
@@ -19,6 +20,7 @@ const HeaderAction = () => {
    const [isOpenEmail, setIsOpenEmail] = useState<boolean>(false)
    const [isOpenNotification, setIsOpenNotification] = useState<boolean>(false)
    const [isOpenUserDropdown, setUserDropdown] = useState<boolean>(false);
+   const [selectedLang, setSelectedLang] = useState({ name: 'English', icon: <WorldSvg /> });
  
     // Toggle function to show/hide the dropdown
    const handleShowLanguage = () => {
@@ -86,62 +88,62 @@ const HeaderAction = () => {
             <div className="nav-item relative">
               <button id="langdropdown" className="langdropdown" onClick={handleShowLanguage}>
                 <span>
-                  <WorldSvg/>
+                  {selectedLang.icon}
                 </span>
-                <span className="language-text">English</span>
+                <span className="language-text">{selectedLang.name}</span>
               </button>
               {isOpenLanguage && (
               <div className={`lang__dropdown ${isOpenLanguage ? "lang-enable" : " "}`} >
                 <ul>
                   <li>
-                    <Link className="lang__item" href="#">
+                    <button className="lang__item w-full" onClick={() => { setSelectedLang({ name: 'English', icon: <EnglishFlag/> }); handleShowLanguage(); toast.success("Language switched to English"); }}>
                       <div className="lang__icon">
                         <EnglishFlag/>
                       </div>
                       <div className="lang__country">
                         <span>English</span>
                       </div>
-                    </Link>
+                    </button>
                   </li>
                   <li>
-                    <Link className="lang__item" href="#">
+                    <button className="lang__item w-full" onClick={() => { setSelectedLang({ name: 'لعربية', icon: <ArabicFlag/> }); handleShowLanguage(); toast.success("Language switched to Arabic"); }}>
                       <div className="lang__icon">
                         <ArabicFlag/>
                       </div>
                       <div className="lang__country">
                         <span>لعربية</span>
                       </div>
-                    </Link>
+                    </button>
                   </li>
                   <li>
-                    <Link className="lang__item" href="#">
+                    <button className="lang__item w-full" onClick={() => { setSelectedLang({ name: '简体中文', icon: <ChineseFlag/> }); handleShowLanguage(); toast.success("Language switched to Chinese"); }}>
                       <div className="lang__icon">
                         <ChineseFlag/>
                       </div>
                       <div className="lang__country">
                         <span>简体中文</span>
                       </div>
-                    </Link>
+                    </button>
                   </li>
                   <li>
-                    <Link className="lang__item" href="#">
+                    <button className="lang__item w-full" onClick={() => { setSelectedLang({ name: 'Deutsch', icon: <GermanFlag/> }); handleShowLanguage(); toast.success("Language switched to German"); }}>
                       <div className="lang__icon">
-                       <GermanFlag/>
+                        <GermanFlag/>
                       </div>
                       <div className="lang__country">
                         <span>Deutsch</span>
                       </div>
-                    </Link>
+                    </button>
                   </li>
                   <li>
-                    <Link className="lang__item" href="#">
+                    <button className="lang__item w-full" onClick={() => { setSelectedLang({ name: 'Français', icon: <FrenchFlag/> }); handleShowLanguage(); toast.success("Language switched to French"); }}>
                       <div className="lang__icon">
-                       <FrenchFlag/>
+                        <FrenchFlag/>
                       </div>
                       <div className="lang__country">
                         <span>Français</span>
                       </div>
-                    </Link>
+                    </button>
                   </li>
                 </ul>
               </div>

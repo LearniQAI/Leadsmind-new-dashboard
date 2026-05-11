@@ -39,11 +39,17 @@ export default function AnalyticsClient({ stats }: { stats: any }) {
           <p className="text-white/40 text-sm font-medium">Real-time performance metrics across your business ecosystem.</p>
         </div>
         <div className="flex gap-2">
-          <button className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all">
+          <button 
+            onClick={() => toast.info("Opening Neural Data Filter...")}
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all"
+          >
             <Filter size={14} />
             Filter Data
           </button>
-          <button className="bg-primary text-white rounded-xl px-4 py-2 text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all">
+          <button 
+            onClick={() => toast.success("Generating Neural PDF Report...")}
+            className="bg-primary text-white rounded-xl px-4 py-2 text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all"
+          >
             Export Report
           </button>
         </div>

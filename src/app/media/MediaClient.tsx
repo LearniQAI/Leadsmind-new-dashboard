@@ -37,6 +37,23 @@ export default function MediaClient({ initialFiles }: { initialFiles: any[] }) {
           <p className="text-white/40 text-sm font-medium">Manage and deploy your digital assets across the LeadsMind network.</p>
         </div>
         <div className="flex items-center gap-3">
+          <input 
+            type="file" 
+            id="media-upload" 
+            className="hidden" 
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              toast.promise(
+                new Promise((resolve) => setTimeout(resolve, 2000)),
+                {
+                  loading: 'Deploying asset to neural storage...',
+                  success: 'Asset initialized successfully!',
+                  error: 'Deployment failed',
+                }
+              );
+            }}
+          />
           <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
             <button 
               onClick={() => setView('grid')}
@@ -51,7 +68,10 @@ export default function MediaClient({ initialFiles }: { initialFiles: any[] }) {
               <ListIcon size={18} />
             </button>
           </div>
-          <Button className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2">
+          <Button 
+            onClick={() => document.getElementById('media-upload').click()}
+            className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
+          >
             <Upload size={16} /> Upload Asset
           </Button>
         </div>

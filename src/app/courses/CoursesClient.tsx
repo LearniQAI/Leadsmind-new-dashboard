@@ -139,22 +139,25 @@ export default function CoursesClient({
         </div>
        </div>
 
-       <div className="flex items-center justify-between pt-6 border-t border-white/5">
         <div className="flex items-center gap-2">
-         <div className="flex items-center text-warning">
-          <Star className="w-3 h-3 fill-warning" />
-          <Star className="w-3 h-3 fill-warning" />
-          <Star className="w-3 h-3 fill-warning" />
-          <Star className="w-3 h-3 fill-warning" />
-          <Star className="w-3 h-3 fill-warning" />
-         </div>
-         <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">
-          5.0 Rating
-         </span>
+         <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={() => {
+            const newTitle = window.prompt("New Title:", course.title);
+            if (newTitle) toast.success("Title updated (Simulated)");
+          }}
+          className="h-10 px-4 bg-white/5 border border-white/10 text-white rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-white/10 transition-all"
+         >
+          Edit
+         </Button>
+         <Button 
+          onClick={() => toast.info("Opening Neural Automation Engine...")}
+          className="h-10 px-5 bg-primary text-white rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+         >
+          Automate <Zap size={14} />
+         </Button>
         </div>
-        <Button className="h-10 px-5 bg-white/5 border border-white/10 text-white rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-primary transition-all flex items-center gap-2">
-         Launch Player <PlayCircle size={14} />
-        </Button>
        </div>
       </div>
      ))
@@ -162,4 +165,23 @@ export default function CoursesClient({
    </div>
   </div>
  );
+}
+
+function Zap({ size, className }: any) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width={size} 
+      height={size} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+    </svg>
+  );
 }

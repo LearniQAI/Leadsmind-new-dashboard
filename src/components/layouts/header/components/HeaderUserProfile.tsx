@@ -42,17 +42,26 @@ const HeaderUserProfile = ({handleShowUserDrowdown, isOpenUserDropdown}:TUserPro
         <Link id="userportfolio" href="#" onClick={handleShowUserDrowdown}>
           <div className="user__portfolio">
             <div className="user__portfolio-thumb">
-              <Image 
-                src={user?.avatarUrl || avatarImg} 
-                alt={user?.firstName || "user"} 
-                width={40} 
-                height={40} 
-                className="rounded-full"
-              />
+              {user?.avatarUrl ? (
+                <Image 
+                  src={user.avatarUrl} 
+                  alt={user?.firstName || "user"} 
+                  width={40} 
+                  height={40} 
+                  className="rounded-full object-cover w-10 h-10 border border-white/10"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white font-black text-sm shadow-inner border border-white/10">
+                  {user?.firstName?.[0]?.toUpperCase() || 'U'}
+                </div>
+              )}
             </div>
-            <div className="user__content text-left">
-              <h5 className="truncate max-w-[100px]">{user?.firstName || 'User'}</h5>
-              <span>online</span>
+            <div className="user__content text-left ml-3">
+              <h5 className="font-bold text-white text-sm max-w-[120px] truncate">{user?.firstName || 'User'}</h5>
+              <span className="text-[10px] text-success font-bold uppercase tracking-widest flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                online
+              </span>
             </div>
           </div>
         </Link>

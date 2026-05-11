@@ -30,19 +30,19 @@ const EmailNotification = ({handleShowNotificationEmail, isOpenEmail}:TEmailProp
               </div>
               {/* Rendering email notifications */}
               {emailNotifications.map((notification, index) => (
-                <div key={index} className="notification__item">
+                <div key={index} className="notification__item hover:bg-white/5 p-3 rounded-xl transition-all cursor-pointer">
                   <div className="notification__thumb">
-                    <Link href={notification.profileLink}>
-                      <Image src={notification.avatar} alt="image not found" />
-                    </Link>
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-black text-sm shadow-inner">
+                      {notification.message?.[0]?.toUpperCase() || 'M'}
+                    </div>
                   </div>
-                  <div className="notification__content">
-                    <p>
-                      <Link href={notification.messageLink}>{notification.message}</Link>
+                  <div className="notification__content ml-3">
+                    <p className="text-xs text-white/80 font-medium line-clamp-2">
+                      <Link href="/apps/email-inbox">{notification.message}</Link>
                     </p>
-                    <div className="notification__time">
-                      <span>{notification.time}</span>
-                      <span className="status">{notification.status}</span>
+                    <div className="notification__time flex items-center justify-between mt-2">
+                      <span className="text-[9px] text-white/40 uppercase tracking-widest">{notification.time}</span>
+                      <span className="status text-[8px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase tracking-widest">{notification.status}</span>
                     </div>
                   </div>
                 </div>

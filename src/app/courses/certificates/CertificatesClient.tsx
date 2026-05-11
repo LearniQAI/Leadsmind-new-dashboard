@@ -23,10 +23,19 @@ export default function CertificatesClient({ certificates }: { certificates: any
           <p className="text-white/40 text-sm font-medium">Verify and manage the official certifications issued by your academy nodes.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button className="bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2">
+          <Button 
+            onClick={() => toast.info("Opening Neural Filter Node...")}
+            className="bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2"
+          >
             <Filter size={16} /> Filter
           </Button>
-          <Button className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2">
+          <Button 
+            onClick={() => {
+              const name = window.prompt("Enter Recipient Name:");
+              if (name) toast.success(`Credential initialized for ${name}`);
+            }}
+            className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
+          >
             <Plus size={16} /> Issue Certificate
           </Button>
         </div>

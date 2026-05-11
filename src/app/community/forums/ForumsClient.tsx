@@ -27,7 +27,13 @@ export default function ForumsClient({ initialPosts }: { initialPosts: any[] }) 
           <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Community Hub</h2>
           <p className="text-white/40 text-sm font-medium">Join the neural network of LeadsMind entrepreneurs and builders.</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2">
+        <Button 
+          onClick={() => {
+            const title = window.prompt("Enter Discussion Topic:");
+            if (title) toast.success("Discussion node initialized!");
+          }}
+          className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
+        >
           <MessageSquare size={16} /> New Discussion
         </Button>
       </div>

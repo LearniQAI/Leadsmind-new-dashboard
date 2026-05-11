@@ -115,7 +115,7 @@ export async function createContact(values: any) {
 
  if (error) return { success: false, error: error.message };
  
- revalidatePath('/apps/contacts');
+ revalidatePath('/contacts');
  return { success: true, data };
 }
 
@@ -141,8 +141,8 @@ export async function updateContact(id: string, values: any) {
 
  if (error) return { success: false, error: error.message };
  
- revalidatePath('/apps/contacts');
- revalidatePath(`/apps/contacts/${id}`);
+ revalidatePath('/contacts');
+ revalidatePath(`/contacts/${id}`);
  return { success: true, data };
 }
 
@@ -155,7 +155,7 @@ export async function deleteContact(id: string) {
 
  if (error) return { success: false, error: error.message };
  
- revalidatePath('/apps/contacts');
+ revalidatePath('/contacts');
  return { success: true };
 }
 
@@ -180,7 +180,7 @@ export async function addTag(contactId: string, tag: string) {
 
  if (error) return { success: false, error: error.message };
  
- revalidatePath(`/apps/contacts/${contactId}`);
+ revalidatePath(`/contacts/${contactId}`);
  return { success: true };
 }
 
@@ -190,7 +190,7 @@ export async function bulkAddTag(ids: string[], tag: string) {
   if (!res.success) return res;
  }
 
- revalidatePath('/apps/contacts');
+ revalidatePath('/contacts');
  return { success: true };
 }
 
@@ -213,7 +213,7 @@ export async function bulkRemoveTag(ids: string[], tag: string) {
   if (error) return { success: false, error: error.message };
  }
 
- revalidatePath('/apps/contacts');
+ revalidatePath('/contacts');
  return { success: true };
 }
 
@@ -243,7 +243,7 @@ export async function createNote(values: { contactId: string; content: string })
   description: `Added a new note`
  });
 
- revalidatePath(`/apps/contacts/${values.contactId}`);
+ revalidatePath(`/contacts/${values.contactId}`);
  return { success: true, data };
 }
 
@@ -256,7 +256,7 @@ export async function deleteNote(id: string, contactId: string) {
 
  if (error) return { success: false, error: error.message };
  
- revalidatePath(`/apps/contacts/${contactId}`);
+ revalidatePath(`/contacts/${contactId}`);
  return { success: true };
 }
 
@@ -277,7 +277,7 @@ export async function createTask(values: { contactId: string; title: string }) {
 
  if (error) return { success: false, error: error.message };
  
- revalidatePath(`/apps/contacts/${values.contactId}`);
+ revalidatePath(`/contacts/${values.contactId}`);
  return { success: true, data };
 }
 
@@ -292,7 +292,7 @@ export async function toggleTaskStatus(id: string, contactId: string, currentSta
 
  if (error) return { success: false, error: error.message };
  
- revalidatePath(`/apps/contacts/${contactId}`);
+ revalidatePath(`/contacts/${contactId}`);
  return { success: true };
 }
 

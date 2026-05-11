@@ -46,17 +46,71 @@ export async function calculateLeadScore(contactId: string, eventType: string = 
 }
 
 export async function getAutomationLogsForContact(contactId: string) {
- const supabase = await createServerClient();
- const { data, error } = await supabase
-  .from('automation_logs')
-  .select('*')
-  .eq('contact_id', contactId)
-  .order('created_at', { ascending: false });
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from('automation_logs')
+    .select('*')
+    .eq('contact_id', contactId)
+    .order('created_at', { ascending: false });
 
- if (error) {
-  console.error('[automation] Error fetching logs:', error);
-  return [];
- }
- return data || [];
+  if (error) {
+    console.error('[automation] Error fetching logs:', error);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Triggers a neural automation sequence based on system events.
+ * Automatically adds tags and logs activities in the CRM.
+ */
+export async function triggerAutomation(contactId: string, event: 'course_completed' | 'form_submitted' | 'ticket_created' | 'project_started') {
+  try {
+    const supabase = await createServerClient();
+    
+    let tag = '';
+    let description = '';
+
+    switch (event) {
+      case 'course_completed':
+        tag = 'academy-graduate';
+        description = 'Completed a neural learning node';
+        break;
+      case 'form_submitted':
+        tag = 'lead-gen';
+        description = 'Submitted a capture form';
+        break;
+      case 'ticket_created':
+        tag = 'support-active';
+        description = 'Initialized a support protocol';
+        break;
+      case 'project_started':
+        tag = 'project-owner';
+        description = 'Deployed a new project node';
+        break;
+    }
+
+    if (tag) {
+      // 1. Add Tag to Contact
+      const { data: contact } = await supabase.from('contacts').select('tags').eq('id', contactId).single();
+      const currentTags = contact?.tags || [];
+      if (!currentTags.includes(tag)) {
+        await supabase.from('contacts').update({ tags: [...currentTags, tag] }).eq('id', contactId);
+      }
+
+      // 2. Log Activity
+      await supabase.from('contact_activities').insert({
+        contact_id: contactId,
+        type: 'system',
+        description: description,
+        workspace_id: (await supabase.from('contacts').select('workspace_id').eq('id', contactId).single()).data?.workspace_id
+      });
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('[automation] Trigger error:', err);
+    return { success: false };
+  }
 }
 

@@ -99,6 +99,17 @@ export async function createProject(name: string) {
       .single();
 
     if (error) throw error;
+
+    // CRM Automation Hook
+    try {
+      const { triggerAutomation } = await import('./automation');
+      if (data.contact_id) {
+        await triggerAutomation(data.contact_id, 'project_started');
+      }
+    } catch (autoErr) {
+      console.error('Automation hook failed:', autoErr);
+    }
+
     return { data };
   } catch (error: any) {
     return { error: error.message };
@@ -145,6 +156,17 @@ export async function createSupportTicket(formData: { subject: string, message: 
    .single();
 
   if (error) throw error;
+
+  // CRM Automation Hook
+  try {
+    const { triggerAutomation } = await import('./automation');
+    // Assuming we can link the current user to a contact for now, or use the contact_id if provided
+    if (data.contact_id) {
+      await triggerAutomation(data.contact_id, 'ticket_created');
+    }
+  } catch (autoErr) {
+    console.error('Automation hook failed:', autoErr);
+  }
 
   // Send Email Notification to LeadsMind Admin
   try {

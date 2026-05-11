@@ -7,8 +7,7 @@ const sidebarData: SidebarCategory[] = [
   items: [
    { id: 1, label: "Dashboard", icon: "icon-house", link: "/dashboard" },
    { id: 2, label: "Tasks", icon: "fa-light fa-circle-check", link: "/tasks" },
-   { id: 3, label: "Conversations", icon: "fa-light fa-message", link: "/conversations" },
-   { id: 4, label: "Inbox", icon: "fa-light fa-inbox", link: "/inbox" },
+   { id: 3, label: "Inbox", icon: "fa-light fa-inbox", link: "/conversations" },
   ],
  },
  {
@@ -81,3 +80,4 @@ const sidebarData: SidebarCategory[] = [
 ];
 
 export default sidebarData;
+

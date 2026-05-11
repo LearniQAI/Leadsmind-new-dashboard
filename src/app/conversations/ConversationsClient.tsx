@@ -98,7 +98,7 @@ export default function ConversationsClient({ initialConversations }: { initialC
      <div className="flex items-center justify-between">
       <h2 className="text-xl font-black uppercase tracking-tighter text-white">Inbox</h2>
       <div className="flex gap-1">
-       {['all', 'whatsapp', 'email', 'instagram', 'facebook'].map(p => (
+       {['all', 'sms', 'whatsapp', 'email', 'instagram', 'facebook', 'linkedin', 'twitter'].map(p => (
         <button 
          key={p}
          onClick={() => setFilter(p)}
@@ -123,7 +123,21 @@ export default function ConversationsClient({ initialConversations }: { initialC
     <div className="flex-1 overflow-y-auto common-scrollbar">
      {filteredConversations.length === 0 ? (
       <div className="p-12 text-center">
-       <p className="text-white/20 text-xs font-bold uppercase tracking-widest">No conversations found</p>
+       <div className="flex flex-col items-center justify-center text-center px-4">
+        <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-3 border border-white/10">
+         <MessageSquare className="w-5 h-5 text-white/20" />
+        </div>
+        <p className="text-white/40 text-[11px] font-black uppercase tracking-widest mb-2">No conversations found</p>
+        <p className="text-white/30 text-[10px] leading-relaxed mb-6 font-medium">
+         Connect your social media and email accounts to route all traffic to this command center.
+        </p>
+        <Button 
+         onClick={() => router.push('/dashboard/settings/integrations')}
+         className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white text-[9px] h-8 px-4 font-black uppercase tracking-widest transition-all rounded-lg"
+        >
+         Connect Platforms
+        </Button>
+       </div>
       </div>
      ) : (
       filteredConversations.map(conv => {

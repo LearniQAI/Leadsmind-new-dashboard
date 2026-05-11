@@ -90,7 +90,7 @@ export function ContactTable({ contacts }: ContactTableProps) {
         />
        </td>
        <td>
-        <Link href={`/apps/contacts/${contact.id}`} className="flex items-center gap-3">
+        <Link href={`/contacts/${contact.id}`} className="flex items-center gap-3">
          <Avatar className="h-8 w-8 border border-white/5">
           <AvatarFallback className="bg-white/5 text-white/40 text-[10px] font-bold">
            {contact.first_name?.[0]}{contact.last_name?.[0]}
@@ -134,7 +134,7 @@ export function ContactTable({ contacts }: ContactTableProps) {
          <DropdownMenuContent align="end" className="bg-[#0c0c14] border-white/10 text-white min-w-[160px] z-[9999]">
           <DropdownMenuItem 
            className="cursor-pointer flex items-center gap-2"
-           onClick={() => router.push(`/apps/contacts/${contact.id}`)}
+           onClick={() => router.push(`/contacts/${contact.id}`)}
           >
            <Users className="h-4 w-4 text-white/40" />
            <span>View Profile</span>
@@ -157,7 +157,7 @@ export function ContactTable({ contacts }: ContactTableProps) {
         <div className="flex flex-col items-center gap-3 text-white/20">
          <Users className="h-10 w-10 opacity-10" />
          <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">No contacts found</p>
-         <Link href="/apps/contacts/new" className="btn btn-sm btn-outline-theme-border rounded-xl mt-2">
+         <Link href="/contacts/new" className="btn btn-sm btn-outline-theme-border rounded-xl mt-2">
           Add First Contact
          </Link>
         </div>
