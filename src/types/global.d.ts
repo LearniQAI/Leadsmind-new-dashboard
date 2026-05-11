@@ -13,6 +13,8 @@ declare global {
   }
 }
 
+declare module 'react';
+declare module 'react-dom';
 declare module 'swiper';
 declare module 'swiper/react';
 declare module 'swiper/modules';
