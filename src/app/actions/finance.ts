@@ -217,7 +217,50 @@ export async function convertToInvoice(quoteId: string) {
  return { success: true, data: invoice };
 }
 
+export async function deleteInvoice(id: string) {
+ const supabase = await createServerClient();
+ const { error } = await supabase.from('invoices').delete().eq('id', id);
+ if (error) return { success: false, error: error.message };
+ revalidatePath('/invoices');
+ return { success: true };
+}
+
+export async function updateInvoiceStatus(id: string, status: string) {
+ const supabase = await createServerClient();
+ const { data, error } = await supabase
+  .from('invoices')
+  .update({ status, updated_at: new Date().toISOString() })
+  .eq('id', id)
+  .select()
+  .single();
+ if (error) return { success: false, error: error.message };
+ revalidatePath('/invoices');
+ return { success: true, data };
+}
+
+export async function deleteQuote(id: string) {
+ const supabase = await createServerClient();
+ const { error } = await supabase.from('quotes').delete().eq('id', id);
+ if (error) return { success: false, error: error.message };
+ revalidatePath('/proposals');
+ return { success: true };
+}
+
+export async function updateQuoteStatus(id: string, status: string) {
+ const supabase = await createServerClient();
+ const { data, error } = await supabase
+  .from('quotes')
+  .update({ status, updated_at: new Date().toISOString() })
+  .eq('id', id)
+  .select()
+  .single();
+ if (error) return { success: false, error: error.message };
+ revalidatePath('/proposals');
+ return { success: true, data };
+}
+
 // --- Stripe & SaaS Subscription Actions ---
+
 
 export async function getSaaSTiers() {
  return [

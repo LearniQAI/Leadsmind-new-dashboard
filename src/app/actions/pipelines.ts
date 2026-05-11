@@ -192,3 +192,54 @@ export async function updateOpportunity(id: string, values: any) {
   revalidatePath('/apps/pipelines');
   return { success: true, data };
 }
+
+export async function deletePipeline(pipelineId: string) {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No active workspace' };
+
+  const supabase = await createServerClient();
+  // Delete stages first (cascade may not be set)
+  await supabase.from('pipeline_stages').delete().eq('pipeline_id', pipelineId);
+  const { error } = await supabase.from('pipelines').delete().eq('id', pipelineId).eq('workspace_id', workspaceId);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/pipelines');
+  return { success: true };
+}
+
+export async function deleteOpportunity(id: string) {
+  const supabase = await createServerClient();
+  const { error } = await supabase.from('opportunities').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/pipelines');
+  return { success: true };
+}
+
+export async function updateAppointment(id: string, updates: {
+  title?: string;
+  start_time?: string;
+  end_time?: string;
+  status?: string;
+  notes?: string;
+}) {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/calendar');
+  return { success: true, data };
+}
+
+export async function deleteAppointment(id: string) {
+  const supabase = await createServerClient();
+  const { error } = await supabase.from('appointments').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/calendar');
+  return { success: true };
+}
+
