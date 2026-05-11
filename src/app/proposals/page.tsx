@@ -7,6 +7,7 @@ import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
 
@@ -28,10 +29,12 @@ export default async function ProposalsPage() {
         <p className="card__sub-title !text-[11px] uppercase tracking-[0.2em]">Craft and manage your business estimates</p>
        </div>
        <div className="flex items-center gap-3">
-        <Button className="btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
-         <Plus className="h-4 w-4 mr-2" />
-         <span>Create Proposal</span>
-        </Button>
+        <Link href="/invoices/new?type=proposal">
+         <Button className="btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
+          <Plus className="h-4 w-4 mr-2" />
+          <span>Create Proposal</span>
+         </Button>
+        </Link>
        </div>
       </div>
 

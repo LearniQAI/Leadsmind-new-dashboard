@@ -132,7 +132,7 @@ export default function ConversationsClient({ initialConversations }: { initialC
          Connect your social media and email accounts to route all traffic to this command center.
         </p>
         <Button 
-         onClick={() => router.push('/dashboard/settings/integrations')}
+         onClick={() => router.push('/dashboard/settings/account#integrations')}
          className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white text-[9px] h-8 px-4 font-black uppercase tracking-widest transition-all rounded-lg"
         >
          Connect Platforms

@@ -1,18 +1,19 @@
 import Wrapper from "@/components/layouts/DefaultWrapper";
-import ExpenseMainArea from "@/components/pagesUI/expense/ExpenseMainArea";
 import MetaData from "@/hooks/useMetaData";
 import React from "react";
+import { getExpensesLive } from "@/app/actions/expenses";
+import ExpenseLiveClient from "@/components/pagesUI/expense/ExpenseLiveClient";
 
-const page = () => {
+export const dynamic = 'force-dynamic';
+
+export default async function ExpensePage() {
+ const { data: expenses } = await getExpensesLive();
+
  return (
-  <>
-   <MetaData pageTitle="Expense">
-    <Wrapper>
-     <ExpenseMainArea />
-    </Wrapper>
-   </MetaData>
-  </>
+  <MetaData pageTitle="Expenses">
+   <Wrapper>
+    <ExpenseLiveClient initialExpenses={expenses || []} />
+   </Wrapper>
+  </MetaData>
  );
-};
-
-export default page;
+}

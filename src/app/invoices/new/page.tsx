@@ -13,11 +13,11 @@ export const dynamic = 'force-dynamic';
 export default async function NewInvoicePage({
  searchParams,
 }: {
- searchParams: Promise<{ contactId?: string }>;
+ searchParams: Promise<{ contactId?: string, type?: string }>;
 }) {
  await requireAuth();
  const workspaceId = await getCurrentWorkspaceId();
- const { contactId } = await searchParams;
+ const { contactId, type } = await searchParams;
 
  const [settings, contacts, products] = await Promise.all([
   getInvoiceSettings(workspaceId!),
@@ -61,6 +61,7 @@ export default async function NewInvoicePage({
          logo_url: null
        }} 
        initialData={{ contact_id: contactId }}
+       mode={type === 'proposal' ? 'quote' : 'invoice'}
       />
      </div>
     </div>

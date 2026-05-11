@@ -44,7 +44,7 @@ export default async function PipelinesPage({
        </p>
       </div>
       <div className="flex items-center gap-3">
-       <Link href="/apps/pipelines/new" className="btn btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
+       <Link href="/pipelines/new" className="btn btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
         <Plus className="h-4 w-4 mr-2" />
         Create Pipeline
        </Link>
@@ -101,7 +101,7 @@ export default async function PipelinesPage({
         />
        </div>
        <div className="flex items-center gap-3">
-        <Link href={`/apps/pipelines/${activePipelineId}/stages`} className="btn btn-outline-theme-border !rounded-xl text-[10px] uppercase font-black tracking-widest gap-2">
+        <Link href={`/pipelines/${activePipelineId}/stages`} className="btn btn-outline-theme-border !rounded-xl text-[10px] uppercase font-black tracking-widest gap-2">
          <Settings className="h-4 w-4" />
          <span>Configure Stages</span>
         </Link>

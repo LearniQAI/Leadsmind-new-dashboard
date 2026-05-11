@@ -62,6 +62,7 @@ interface InvoiceBuilderProps {
   products: any[];
   settings: any;
   initialData?: any;
+  mode?: 'invoice' | 'quote';
 }
 
 export function InvoiceBuilder({
@@ -69,7 +70,8 @@ export function InvoiceBuilder({
   contacts,
   products,
   settings,
-  initialData
+  initialData,
+  mode = 'invoice'
 }: InvoiceBuilderProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,7 +80,9 @@ export function InvoiceBuilder({
    resolver: zodResolver(invoiceSchema),
    defaultValues: {
      contact_id: initialData?.contact_id || '',
-     invoice_number: initialData?.invoice_number || `${settings?.invoice_prefix || 'INV-'}${(settings?.next_invoice_number || 1).toString().padStart(4, '0')}`,
+     invoice_number: initialData?.invoice_number || (mode === 'quote' 
+       ? `${settings?.quote_prefix || 'QT-'}${(settings?.next_quote_number || 1).toString().padStart(4, '0')}`
+       : `${settings?.invoice_prefix || 'INV-'}${(settings?.next_invoice_number || 1).toString().padStart(4, '0')}`),
      created_at: initialData?.created_at ? format(new Date(initialData.created_at), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
      due_date: initialData?.due_date ? format(new Date(initialData.due_date), 'yyyy-MM-dd') : '',
      items: initialData?.items || [{ description: '', quantity: 1, unit_amount: 0 }],
@@ -101,28 +105,45 @@ export function InvoiceBuilder({
   const onSubmit = async (data: InvoiceFormValues) => {
    setIsSubmitting(true);
    try {
-     const payload = {
-      ...data,
-      workspace_id: workspaceId,
-      subtotal,
-      total_amount: total,
-      amount_due: total,
-      amount_paid: initialData?.amount_paid || 0
-     };
-
      let result;
-     if (initialData?.id) {
-      result = await updateInvoice(initialData.id, payload);
+     
+     if (mode === 'quote') {
+       const payload = {
+        workspace_id: workspaceId,
+        contact_id: data.contact_id,
+        quote_number: data.invoice_number,
+        items: data.items,
+        subtotal,
+        total_amount: total,
+        tax_total: 0,
+        currency: data.currency,
+        notes: data.notes,
+        terms: data.terms,
+        status: data.status,
+       };
+       // Dynamically import quote actions to avoid circular deps if any
+       const { saveQuote, updateQuote } = await import('@/app/actions/finance');
+       if (initialData?.id) result = await updateQuote(initialData.id, payload);
+       else result = await saveQuote(payload);
      } else {
-      result = await saveInvoice(payload);
+       const payload = {
+        ...data,
+        workspace_id: workspaceId,
+        subtotal,
+        total_amount: total,
+        amount_due: total,
+        amount_paid: initialData?.amount_paid || 0
+       };
+       if (initialData?.id) result = await updateInvoice(initialData.id, payload);
+       else result = await saveInvoice(payload);
      }
 
      if (result.success) {
-      toast.success(initialData?.id ? 'Invoice updated' : 'Invoice created');
-      router.push('/apps/invoices');
+      toast.success(initialData?.id ? `${mode === 'quote' ? 'Proposal' : 'Invoice'} updated` : `${mode === 'quote' ? 'Proposal' : 'Invoice'} created`);
+      router.push(mode === 'quote' ? '/proposals' : '/invoices');
       router.refresh();
      } else {
-      toast.error(result.error || 'Failed to save invoice');
+      toast.error(result.error || `Failed to save ${mode}`);
      }
    } catch (error) {
      toast.error('An unexpected error occurred');

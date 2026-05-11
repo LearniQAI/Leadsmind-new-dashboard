@@ -28,7 +28,7 @@ export default async function InvoicesPage() {
         <p className="card__sub-title !text-[11px] uppercase tracking-[0.2em]">Manage your financial transactions and billing</p>
        </div>
        <div className="flex items-center gap-3">
-        <Link href="/apps/invoices/new">
+        <Link href="/invoices/new">
          <Button className="btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
           <Plus className="h-4 w-4 mr-2" />
           <span>New Invoice</span>

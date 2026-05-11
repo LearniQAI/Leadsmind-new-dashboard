@@ -188,8 +188,7 @@ export async function publishPage(pageId: string, content?: string) {
   const supabase = await createServerClient();
   
   const updateData: any = { 
-   status: 'published',
-   published_at: new Date().toISOString()
+   status: 'published'
   };
 
   if (content) {

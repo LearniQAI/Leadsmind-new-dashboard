@@ -135,6 +135,35 @@ export async function updateInvoice(id: string, data: any) {
  return { success: true, data: invoice };
 }
 
+export async function saveQuote(data: any) {
+ const supabase = await createServerClient();
+ const { data: quote, error } = await supabase
+  .from('quotes')
+  .insert(data)
+  .select()
+  .single();
+
+ if (error) {
+  return { success: false, error: error.message };
+ }
+ return { success: true, data: quote };
+}
+
+export async function updateQuote(id: string, data: any) {
+ const supabase = await createServerClient();
+ const { data: quote, error } = await supabase
+  .from('quotes')
+  .update(data)
+  .eq('id', id)
+  .select()
+  .single();
+
+ if (error) {
+  return { success: false, error: error.message };
+ }
+ return { success: true, data: quote };
+}
+
 export async function convertToInvoice(quoteId: string) {
  const supabase = await createServerClient();
 

@@ -173,3 +173,59 @@ export async function getAdCampaigns() {
   return { error: error.message };
  }
 }
+
+// --- CRUD EXTENSIONS ---
+
+export async function updateFunnel(id: string, updates: any) {
+ try {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.from('funnels').update(updates).eq('id', id).select().single();
+  if (error) throw error;
+  return { data };
+ } catch (error: any) { return { error: error.message }; }
+}
+
+export async function deleteFunnelAction(id: string) {
+ try {
+  const supabase = await createServerClient();
+  const { error } = await supabase.from('funnels').delete().eq('id', id);
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) { return { error: error.message }; }
+}
+
+export async function updateCampaign(id: string, updates: any) {
+ try {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.from('email_campaigns').update(updates).eq('id', id).select().single();
+  if (error) throw error;
+  return { data };
+ } catch (error: any) { return { error: error.message }; }
+}
+
+export async function deleteCampaignAction(id: string) {
+ try {
+  const supabase = await createServerClient();
+  const { error } = await supabase.from('email_campaigns').delete().eq('id', id);
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) { return { error: error.message }; }
+}
+
+export async function updateForm(id: string, updates: any) {
+ try {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.from('forms').update(updates).eq('id', id).select().single();
+  if (error) throw error;
+  return { data };
+ } catch (error: any) { return { error: error.message }; }
+}
+
+export async function deleteFormAction(id: string) {
+ try {
+  const supabase = await createServerClient();
+  const { error } = await supabase.from('forms').delete().eq('id', id);
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) { return { error: error.message }; }
+}

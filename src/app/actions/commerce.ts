@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { revalidatePath } from 'next/cache';
 
 export async function getProducts() {
  try {
@@ -17,6 +18,56 @@ export async function getProducts() {
 
   if (error) throw error;
   return { data };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function createProduct(productData: any) {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('products')
+   .insert({ ...productData, workspace_id: workspaceId })
+   .select()
+   .single();
+
+  if (error) throw error;
+  revalidatePath('/products');
+  return { data };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function updateProduct(id: string, updates: any) {
+ try {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('products')
+   .update({ ...updates, updated_at: new Date().toISOString() })
+   .eq('id', id)
+   .select()
+   .single();
+
+  if (error) throw error;
+  revalidatePath('/products');
+  return { data };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function deleteProduct(id: string) {
+ try {
+  const supabase = await createServerClient();
+  const { error } = await supabase.from('products').delete().eq('id', id);
+  if (error) throw error;
+  revalidatePath('/products');
+  return { success: true };
  } catch (error: any) {
   return { error: error.message };
  }

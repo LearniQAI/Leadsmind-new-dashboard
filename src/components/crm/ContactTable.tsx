@@ -131,12 +131,12 @@ export function ContactTable({ contacts }: ContactTableProps) {
          <DropdownMenuTrigger className="btn btn-icon btn-sm btn-primary rounded-xl shadow-lg shadow-primary/20">
           <MoreHorizontal size={14} />
          </DropdownMenuTrigger>
-         <DropdownMenuContent align="end" className="bg-[#0c0c14] border-white/10 text-white min-w-[160px] z-[9999]">
+         <DropdownMenuContent align="end" className="bg-white border border-gray-200 text-[#1359FF] min-w-[160px] z-[9999] shadow-xl rounded-xl p-2">
           <DropdownMenuItem 
-           className="cursor-pointer flex items-center gap-2"
+           className="cursor-pointer flex items-center gap-2 hover:bg-gray-50 rounded-lg p-2 font-bold transition-colors"
            onClick={() => router.push(`/contacts/${contact.id}`)}
           >
-           <Users className="h-4 w-4 text-white/40" />
+           <Users className="h-4 w-4 text-[#1359FF]/70" />
            <span>View Profile</span>
           </DropdownMenuItem>
           <DropdownMenuItem

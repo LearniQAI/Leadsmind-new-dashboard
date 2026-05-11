@@ -90,6 +90,52 @@ export async function getWorkspaceTags(workspaceId: string) {
  }));
 }
 
+export async function globalDeleteTag(tag: string) {
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) return { success: false, error: 'Unauthorized' };
+ const supabase = await createServerClient();
+ 
+ const { data: contacts } = await supabase
+  .from('contacts')
+  .select('id, tags')
+  .eq('workspace_id', workspaceId)
+  .contains('tags', [tag]);
+  
+ if (contacts) {
+  for (const c of contacts) {
+   const updatedTags = (c.tags || []).filter((t: string) => t !== tag);
+   await supabase.from('contacts').update({ tags: updatedTags }).eq('id', c.id);
+  }
+ }
+ revalidatePath('/contacts');
+ revalidatePath('/contacts/tags');
+ return { success: true };
+}
+
+export async function globalRenameTag(oldTag: string, newTag: string) {
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) return { success: false, error: 'Unauthorized' };
+ const supabase = await createServerClient();
+ 
+ const { data: contacts } = await supabase
+  .from('contacts')
+  .select('id, tags')
+  .eq('workspace_id', workspaceId)
+  .contains('tags', [oldTag]);
+  
+ if (contacts) {
+  for (const c of contacts) {
+   const updatedTags = (c.tags || []).map((t: string) => t === oldTag ? newTag : t);
+   // Ensure no duplicates if newTag already existed
+   const uniqueTags = Array.from(new Set(updatedTags));
+   await supabase.from('contacts').update({ tags: uniqueTags }).eq('id', c.id);
+  }
+ }
+ revalidatePath('/contacts');
+ revalidatePath('/contacts/tags');
+ return { success: true };
+}
+
 export async function createContact(values: any) {
  const workspaceId = await getCurrentWorkspaceId();
  if (!workspaceId) return { success: false, error: 'No active workspace' };
