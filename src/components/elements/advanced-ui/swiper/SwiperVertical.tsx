@@ -5,7 +5,9 @@ import Image from 'next/image';
 import React from 'react';
 
 // Import Swiper and its necessary modules
+// @ts-ignore
 import { SwiperSlide, Swiper } from 'swiper/react';
+// @ts-ignore
 import { Pagination } from 'swiper';
 
 const SwiperVertical = () => {

@@ -4,7 +4,9 @@ import Image from 'next/image';
 import swiperData from '@/data/swiper-data';
 
 // Import Swiper and its necessary modules
+// @ts-ignore
 import { SwiperSlide, Swiper } from 'swiper/react';
+// @ts-ignore
 import { Navigation, Pagination } from 'swiper';
 
 

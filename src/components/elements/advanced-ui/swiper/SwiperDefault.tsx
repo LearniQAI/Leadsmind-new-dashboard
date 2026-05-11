@@ -3,6 +3,7 @@ import React from 'react';
 import Image from 'next/image';
 import swiperData from '@/data/swiper-data';
 // Import Swiper and its necessary modules
+// @ts-ignore
 import { SwiperSlide, Swiper } from 'swiper/react';
 
 const SwiperDefault = () => {

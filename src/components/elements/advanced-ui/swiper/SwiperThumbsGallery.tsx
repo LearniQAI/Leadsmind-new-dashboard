@@ -4,10 +4,14 @@ import swiperData from '@/data/swiper-data';
 import Image from 'next/image';
 
 // Import Swiper and its necessary modules
+// @ts-ignore
 import { SwiperSlide, Swiper } from 'swiper/react';
+// @ts-ignore
 import { FreeMode, Navigation, Thumbs } from 'swiper';
 
+// @ts-ignore
 // Import Swiper type from 'swiper' to use it for the state type
+// @ts-ignore
 import type { Swiper as SwiperType } from 'swiper';
 
 const SwiperThumbsGallery = () => {

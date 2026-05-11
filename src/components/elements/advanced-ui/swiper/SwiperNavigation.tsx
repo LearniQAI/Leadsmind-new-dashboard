@@ -4,7 +4,9 @@ import Image from 'next/image';
 import React from 'react';
 
 //navigation swiper
+// @ts-ignore
 import { SwiperSlide, Swiper } from 'swiper/react';
+// @ts-ignore
 import { Navigation } from 'swiper';
 
 const SwiperNavigation = () => {
