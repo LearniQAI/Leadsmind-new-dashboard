@@ -58,7 +58,7 @@ export default function SettingsClient({
   const handleSaveWorkspace = async () => {
     setIsSaving(true);
     const nameInput = document.querySelector('input[defaultValue]') as HTMLInputElement;
-    const res = await updateWorkspaceBranding({ platform_name: nameInput?.value || 'Antigravity' });
+    const res = await updateWorkspaceBranding({ platform_name: nameInput?.value || 'LeadsMind' });
     if (res.error) toast.error(res.error);
     else {
       toast.success('Workspace settings saved');

@@ -11,6 +11,7 @@ import { fetchBranding } from "@/lib/branding";
 import { DashboardProvider } from "@/components/layouts/DashboardProvider";
 import { BrandingProvider } from "@/components/branding/BrandingProvider";
 import { WorkspaceSync } from "@/components/auth/WorkspaceSync";
+import AIChatbot from "@/components/common/AIChatbot";
 
 export default async function RootLayout({
   children,
@@ -57,8 +58,8 @@ export default async function RootLayout({
       <html lang="en" className="dark">
         <head>
           <meta httpEquiv="x-ua-compatible" content="ie=edge" />
-          <title>ANTIGRAVITY | Neural Dashboard & All-in-One OS</title>
-          <meta name="description" content="ANTIGRAVITY is a next-generation neural dashboard and all-in-one business operating system designed for high-frequency operations." />
+          <title>LeadsMind | All-in-One Business Operating System</title>
+          <meta name="description" content="LeadsMind is a next-generation all-in-one business operating system designed for high-frequency operations, CRM, and marketing automation." />
           <meta name="robots" content="noindex, follow" />
           <meta
             name="viewport"
@@ -87,6 +88,7 @@ export default async function RootLayout({
                     platformName={branding?.platform_name ?? undefined}
                   >
                     {children}
+                    <AIChatbot />
                   </BrandingProvider>
                 </DashboardProvider>
                 <Setting />

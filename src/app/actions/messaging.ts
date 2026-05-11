@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { sendEmail } from '@/lib/email';
 
 const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
 
@@ -91,6 +92,25 @@ export async function sendMessage(conversationId: string, content: string) {
     
     // Update conversation last_message_at
     await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
+
+    // If it's an email platform, send the actual email via Resend
+    const { data: conv } = await supabase
+      .from('conversations')
+      .select('platform, contacts(email)')
+      .eq('id', conversationId)
+      .single();
+
+    if (conv?.platform === 'email' && conv.contacts?.email) {
+      try {
+        await sendEmail({
+          to: conv.contacts.email,
+          subject: 'New message from LeadsMind Support',
+          text: content,
+        });
+      } catch (emailErr) {
+        console.error('[messaging] Failed to send actual email:', emailErr);
+      }
+    }
 
     return { success: true };
   } catch (error: any) {

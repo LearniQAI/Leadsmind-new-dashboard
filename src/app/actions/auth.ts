@@ -93,8 +93,8 @@ export async function setupWorkspace(payload: {
     try {
       await sendEmail({
         to: payload.email,
-        subject: `Welcome to Antigravity, ${payload.firstName}!`,
-        html: `<h1>Welcome to Antigravity</h1><p>Hi ${payload.firstName}, your workspace <strong>${payload.workspaceName}</strong> is ready.</p>`
+        subject: `Welcome to LeadsMind, ${payload.firstName}!`,
+        html: `<h1>Welcome to LeadsMind</h1><p>Hi ${payload.firstName}, your workspace <strong>${payload.workspaceName}</strong> is ready.</p>`
       });
     } catch (emailErr) {
       console.error('[setupWorkspace] Welcome email failed:', emailErr);

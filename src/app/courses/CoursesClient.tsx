@@ -58,7 +58,7 @@ export default function CoursesClient({
             </span>
           </div>
           <h1 className="text-4xl font-black uppercase tracking-tighter text-white italic leading-none">
-            Antigravity
+            LeadsMind
           </h1>
           <p className="text-white/40 text-sm font-medium mt-2 italic">
             Deploy and manage your learning nodes with precision.

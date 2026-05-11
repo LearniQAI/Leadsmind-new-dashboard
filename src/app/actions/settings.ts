@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { sendEmail } from '@/lib/email';
 
 // BRANDING
 export async function getWorkspaceBranding() {
@@ -68,7 +69,7 @@ export async function inviteTeamMember(email: string, role: string = 'member') {
 
     const supabase = await createServerClient();
     
-    // In a real app, this would send an email. For now, we'll simulate it by creating an invitation record.
+    // 1. Create the invitation record in the database
     const { data, error } = await supabase
       .from('workspace_invitations')
       .insert({
@@ -81,6 +82,41 @@ export async function inviteTeamMember(email: string, role: string = 'member') {
       .single();
 
     if (error) throw error;
+
+    // 2. Send the actual invitation email
+    try {
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('name')
+        .eq('id', workspaceId)
+        .single();
+
+      await sendEmail({
+        to: email,
+        subject: `You've been invited to join ${workspace?.name || 'a workspace'} on LeadsMind`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #6c47ff;">Join ${workspace?.name || 'LeadsMind'}</h2>
+            <p>You have been invited to join the <strong>${workspace?.name}</strong> workspace as a <strong>${role}</strong>.</p>
+            <p>Click the link below to accept your invitation and set up your account:</p>
+            <div style="margin: 30px 0;">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/signup?email=${encodeURIComponent(email)}&invite=${data.id}" 
+                 style="display: inline-block; padding: 14px 30px; background-color: #6c47ff; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                Accept Invitation
+              </a>
+            </div>
+            <hr style="border: 0; border-top: 1px solid #eee;" />
+            <p style="color: #888; font-size: 12px; margin-top: 20px;">
+              This invitation was sent by LeadsMind on behalf of ${workspace?.name}. 
+              If you didn't expect this invitation, you can safely ignore this email.
+            </p>
+          </div>
+        `
+      });
+    } catch (emailErr) {
+      console.error('[inviteTeamMember] Failed to send invitation email:', emailErr);
+    }
+
     return { data };
   } catch (error: any) {
     return { error: error.message };

@@ -18,6 +18,7 @@ const DashboardFooter = () => {
                   width={120} 
                   height={32} 
                   className="object-contain"
+                  style={{ filter: 'brightness(0) invert(1)' }}
                 />
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
