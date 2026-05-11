@@ -5,7 +5,7 @@ import CertificatesClient from './CertificatesClient';
 
 export default function CertificatesPage() {
   // Static for now as certificates aren't in the actions yet, but ready for data
-  const certificates = []; 
+  const certificates: any[] = []; 
 
   return (
     <MetaData pageTitle="Academy Certificates">
