@@ -1,7 +1,7 @@
 const fs = require('fs');
 let content = fs.readFileSync('tailwind.config.js', 'utf8');
 
-content = content.replace(/white:\s*\{\s*DEFAULT:\s*'#[Ff]{6}',\s*\/\/\s*light mode/g, "white: { DEFAULT: '#0F172A', // light mode");
+// Disabled white override to keep text-white legible across the app
 content = content.replace(/card:\s*\{\s*DEFAULT:\s*'#[0-9a-fA-F]{6}',\s*\/\/\s*Deep Navy \(Forced\)/g, "card: { DEFAULT: '#FFFFFF', // True Light Mode card");
 content = content.replace(/bgBody:\s*\{\s*DEFAULT:\s*'#[0-9a-fA-F]{6}',\s*\/\/\s*Deep Navy \(Forced\)/g, "bgBody: { DEFAULT: '#F8FAFC', // Slate 50");
 

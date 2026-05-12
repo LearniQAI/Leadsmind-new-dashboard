@@ -48,7 +48,7 @@ module.exports = {
     extend: {
       colors: {
         white: {
-          DEFAULT: '#0F172A', // light mode (Slate 900 for texts and backgrounds)
+          DEFAULT: '#FFFFFF', // true white for standard utility classes
           dark: '#FFFFFF',    // dark mode (Stay White)
         },
         card: {
