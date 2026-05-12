@@ -10,12 +10,12 @@ import Image from "next/image";
 interface ISelectWithImageProps<T> {
  data: T[];
  selectedValue: T | null;
- valueKey: keyof T; // Key to use as the value in options
- displayKey: keyof T; // Key to display in options
- imageKey: keyof T; // Key for the image source
+ valueKey: any; // Key to use as the value in options
+ displayKey: any; // Key to display in options
+ imageKey: any; // Key for the image source
  placeholder?: string;
  title?: string; // Default title to display initially
- image?: keyof T | any; // Default image to display initially
+ image?: any; // Default image to display initially
  onChange: (selected: T | null) => void;
 }
 
@@ -41,7 +41,7 @@ function SelectWithImage<T extends Record<string, any>>({
   }
  }, [selectedValue]);
 
- const handleChange = (event: SelectChangeEvent<T[keyof T]>) => {
+ const handleChange = (event: SelectChangeEvent<any>) => {
   const selected = data.find((item) => item[valueKey] === event.target.value);
   setIsDefault(false);
   onChange(selected || null);
