@@ -72,7 +72,7 @@ const AddNewAnnouncementModal = ({ open, setOpen }: statePropsType) => {
             <DatePicker
              id="selectStartDate"
              selected={selectStartDate}
-             onChange={(date) => setSelectStartDate(date)}
+             onChange={(date: any) => setSelectStartDate(date)}
              showYearDropdown
              showMonthDropdown
              useShortMonthInDropdown
@@ -92,7 +92,7 @@ const AddNewAnnouncementModal = ({ open, setOpen }: statePropsType) => {
             <DatePicker
              id="endDate"
              selected={selectEndDate}
-             onChange={(date) => setSelectEndDate(date)}
+             onChange={(date: any) => setSelectEndDate(date)}
              showYearDropdown
              showMonthDropdown
              useShortMonthInDropdown

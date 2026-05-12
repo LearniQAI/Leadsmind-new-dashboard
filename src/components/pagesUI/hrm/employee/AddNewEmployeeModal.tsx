@@ -138,7 +138,7 @@ const AddNewEmployeeModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectJoiningDate"
            selected={selectStartDate}
-           onChange={(date) => setSelectStartDate(date)}
+           onChange={(date: any) => setSelectStartDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

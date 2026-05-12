@@ -89,7 +89,7 @@ const UpdateEducationQualificationModal = ({ open, setOpen}: statePropsType) => 
           <DatePicker
            id="selectStartingDate"
            selected={selectStartingDate1}
-           onChange={(date) => setSelectStartingDate1(date)}
+           onChange={(date: any) => setSelectStartingDate1(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -109,7 +109,7 @@ const UpdateEducationQualificationModal = ({ open, setOpen}: statePropsType) => 
           <DatePicker
            id="selectStartingDate"
            selected={selectStartingDate2}
-           onChange={(date) => setSelectStartingDate2(date)}
+           onChange={(date: any) => setSelectStartingDate2(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -154,7 +154,7 @@ const UpdateEducationQualificationModal = ({ open, setOpen}: statePropsType) => 
           <DatePicker
            id="selectStartingDate"
            selected={selectStartingDate6}
-           onChange={(date) => setSelectStartingDate6(date)}
+           onChange={(date: any) => setSelectStartingDate6(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -174,7 +174,7 @@ const UpdateEducationQualificationModal = ({ open, setOpen}: statePropsType) => 
           <DatePicker
            id="selectStartingDate"
            selected={selectStartingDate3}
-           onChange={(date) => setSelectStartingDate3(date)}
+           onChange={(date: any) => setSelectStartingDate3(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -219,7 +219,7 @@ const UpdateEducationQualificationModal = ({ open, setOpen}: statePropsType) => 
           <DatePicker
            id="selectStartingDate"
            selected={selectStartingDate4}
-           onChange={(date) => setSelectStartingDate4(date)}
+           onChange={(date: any) => setSelectStartingDate4(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -239,7 +239,7 @@ const UpdateEducationQualificationModal = ({ open, setOpen}: statePropsType) => 
           <DatePicker
            id="selectStartingDate"
            selected={selectStartingDate5}
-           onChange={(date) => setSelectStartingDate5(date)}
+           onChange={(date: any) => setSelectStartingDate5(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

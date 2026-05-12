@@ -78,7 +78,7 @@ const UpdatePassportModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectIssueDate"
            selected={selectIssueDate}
-           onChange={(date) => setSelectIssueDate(date)}
+           onChange={(date: any) => setSelectIssueDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -98,7 +98,7 @@ const UpdatePassportModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectExpiryDate"
            selected={selectExpiryDate}
-           onChange={(date) => setSelectExpiryDate(date)}
+           onChange={(date: any) => setSelectExpiryDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

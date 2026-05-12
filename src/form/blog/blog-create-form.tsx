@@ -100,7 +100,7 @@ const BlogCreateForm = () => {
             <DatePicker
              id="selectCreateDate"
              selected={selectTransferDate}
-             onChange={(date) => setSelectTransferDate(date)}
+             onChange={(date: any) => setSelectTransferDate(date)}
              showYearDropdown
              showMonthDropdown
              useShortMonthInDropdown

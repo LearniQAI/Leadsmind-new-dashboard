@@ -116,7 +116,7 @@ const WarningEditModal = ({
           <DatePicker
            id="selectWarningDate"
            selected={selectWarningDate}
-           onChange={(date) => setSelectWarningDate(date)}
+           onChange={(date: any) => setSelectWarningDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

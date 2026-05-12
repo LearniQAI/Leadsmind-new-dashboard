@@ -6,6 +6,7 @@ import { CalendarList } from '@/components/calendar/CalendarList';
 import { OutcomeManager } from '@/components/calendar/OutcomeManager';
 import { IntakeFormBuilder } from '@/components/calendar/IntakeFormBuilder';
 import { CreditPackageEditor } from '@/components/calendar/CreditPackageEditor';
+import { CalendarClient } from '@/components/calendar/CalendarClient';
 import { CalendarDays, Info, LayoutTemplate, Users, BarChart3, Rocket, CreditCard, ArrowRight, Zap, Activity, Target } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import { PremiumSection } from '@/components/calendar/BookingPrimitives';
 import MetaData from "@/hooks/useMetaData";
-import { CalendarClient } from '@/components/calendar/CalendarClient';
 
 export default async function CalendarPage() {
     await requireAuth();

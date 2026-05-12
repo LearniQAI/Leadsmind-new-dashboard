@@ -63,7 +63,7 @@ const AddNewHoliday = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectHolidayDate"
            selected={selectHolidayDate}
-           onChange={(date) => setSelectHolidayDate(date)}
+           onChange={(date: any) => setSelectHolidayDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

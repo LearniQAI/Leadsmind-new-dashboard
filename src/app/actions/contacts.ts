@@ -77,7 +77,7 @@ export async function getWorkspaceTags(workspaceId: string) {
  if (!contacts) return [];
 
  const tagCounts: Record<string, number> = {};
- contacts.forEach(c => {
+ contacts.forEach((c: any) => {
   (c.tags || []).forEach((t: string) => {
    tagCounts[t] = (tagCounts[t] || 0) + 1;
   });

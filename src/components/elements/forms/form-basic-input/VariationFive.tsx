@@ -107,7 +107,7 @@ const BasicInputFieldWithLabelTop = () => {
       <div className="datepicker-style">
        <DatePicker
         selected={startTime}
-        onChange={(date) => setStartTime(date)}
+        onChange={(date: any) => setStartTime(date)}
         showYearDropdown
         showMonthDropdown
         useShortMonthInDropdown
@@ -132,7 +132,7 @@ const BasicInputFieldWithLabelTop = () => {
       <div className="datepicker-style">
        <DatePicker
         selected={startDate}
-        onChange={(date) => setStartDate(date)}
+        onChange={(date: any) => setStartDate(date)}
         showYearDropdown
         showMonthDropdown
         useShortMonthInDropdown
@@ -153,7 +153,7 @@ const BasicInputFieldWithLabelTop = () => {
       <div className="datepicker-style">
        <DatePicker
         selected={localTimeDate}
-        onChange={(date) => setLocalTimeDate(date)}
+        onChange={(date: any) => setLocalTimeDate(date)}
         showTimeSelect
         timeFormat="p"
         timeIntervals={15}
@@ -170,7 +170,7 @@ const BasicInputFieldWithLabelTop = () => {
       <div className="datepicker-style">
        <DatePicker
         selected={weekPicker}
-        onChange={(date) => setWeekPicker(date)}
+        onChange={(date: any) => setWeekPicker(date)}
         dateFormat="I/R"
         showWeekNumbers
         showWeekPicker
@@ -186,7 +186,7 @@ const BasicInputFieldWithLabelTop = () => {
       <div className="datepicker-style">
        <DatePicker
         selected={month}
-        onChange={(date) => setMonth(date)}
+        onChange={(date: any) => setMonth(date)}
         showMonthYearPicker
         isClearable
         dateFormat="MMMM, yyyy"

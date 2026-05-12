@@ -87,7 +87,7 @@ const AddNewResignationModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectResignationDate"
            selected={selectResignationDate}
-           onChange={(date) => setSelectResignationDate(date)}
+           onChange={(date: any) => setSelectResignationDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -110,7 +110,7 @@ const AddNewResignationModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectLastWorkingDate"
            selected={selectLastWorkingDate}
-           onChange={(date) => setSelectLastWorkingDate(date)}
+           onChange={(date: any) => setSelectLastWorkingDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

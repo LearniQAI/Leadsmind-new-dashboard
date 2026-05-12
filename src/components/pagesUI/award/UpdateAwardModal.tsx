@@ -104,7 +104,7 @@ const UpdateAwardModal = ({ open, setOpen, editData }: awardStatePropsType) => {
           <DatePicker
            id="selectGiftDate"
            selected={selectGiftDate}
-           onChange={(date) => setSelectGiftDate(date)}
+           onChange={(date: any) => setSelectGiftDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

@@ -54,7 +54,7 @@ const EditPersonalLoanModal = ({ open, setOpen, editData }: personalLoanStatePro
             <DatePicker
              id="selectStartDate"
              selected={selectStartDate}
-             onChange={(date) => setSelectStartDate(date)}
+             onChange={(date: any) => setSelectStartDate(date)}
              showYearDropdown
              showMonthDropdown
              useShortMonthInDropdown

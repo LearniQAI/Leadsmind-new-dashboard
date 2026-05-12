@@ -1,7 +1,7 @@
 import { StaticImageData } from "next/image";
 
 //Define an interface for the trainer 
-export interface ITrainer {
+export interface ITrainer extends Record<string, any> {
  name: string;
  userImg: StaticImageData | string;
 }

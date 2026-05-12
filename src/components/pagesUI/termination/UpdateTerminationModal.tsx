@@ -110,7 +110,7 @@ const UpdateTerminationModal = ({
             <DatePicker
              id="selectNoticeDate"
              selected={selectNoticeDate}
-             onChange={(date) => setSelectNoticeDate(date)}
+             onChange={(date: any) => setSelectNoticeDate(date)}
              showYearDropdown
              showMonthDropdown
              useShortMonthInDropdown
@@ -134,7 +134,7 @@ const UpdateTerminationModal = ({
             <DatePicker
              id="selectTerminationDate"
              selected={selectTerminationDate}
-             onChange={(date) => setSelectTerminationDate(date)}
+             onChange={(date: any) => setSelectTerminationDate(date)}
              showYearDropdown
              showMonthDropdown
              useShortMonthInDropdown

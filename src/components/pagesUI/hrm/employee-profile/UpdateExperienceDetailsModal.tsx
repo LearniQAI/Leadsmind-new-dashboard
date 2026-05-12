@@ -100,7 +100,7 @@ const UpdateExperienceDetailsModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectStartDate"
            selected={selectStartingDate1}
-           onChange={(date) => setSelectStartingDate1(date)}
+           onChange={(date: any) => setSelectStartingDate1(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -124,7 +124,7 @@ const UpdateExperienceDetailsModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectStartDate"
            selected={selectStartingDate2}
-           onChange={(date) => setSelectStartingDate2(date)}
+           onChange={(date: any) => setSelectStartingDate2(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -173,7 +173,7 @@ const UpdateExperienceDetailsModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectStartDate"
            selected={selectStartingDate3}
-           onChange={(date) => setSelectStartingDate3(date)}
+           onChange={(date: any) => setSelectStartingDate3(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -197,7 +197,7 @@ const UpdateExperienceDetailsModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectStartDate"
            selected={selectStartingDate4}
-           onChange={(date) => setSelectStartingDate4(date)}
+           onChange={(date: any) => setSelectStartingDate4(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -246,7 +246,7 @@ const UpdateExperienceDetailsModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectStartDate"
            selected={selectStartingDate5}
-           onChange={(date) => setSelectStartingDate5(date)}
+           onChange={(date: any) => setSelectStartingDate5(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -270,7 +270,7 @@ const UpdateExperienceDetailsModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectStartDate"
            selected={selectStartingDate6}
-           onChange={(date) => setSelectStartingDate6(date)}
+           onChange={(date: any) => setSelectStartingDate6(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
