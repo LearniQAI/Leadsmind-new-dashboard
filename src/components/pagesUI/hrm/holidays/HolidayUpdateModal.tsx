@@ -63,7 +63,7 @@ const HolidayUpdateModal = ({ open, setOpen, editData }: holidayStatePropsType) 
           <DatePicker
            id="selectHolidayDate"
            selected={selectHolidayDate}
-           onChange={(date) => setSelectHolidayDate(date)}
+           onChange={(date: any) => setSelectHolidayDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

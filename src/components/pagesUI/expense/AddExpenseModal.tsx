@@ -116,7 +116,7 @@ const AddExpenseModal = ({ open, setOpen }: statePropsType) => {
             <DatePicker
              id="selectPurchaseDate"
              selected={selectPurchaseDate}
-             onChange={(date) => setSelectPurchaseDate(date)}
+             onChange={(date: any) => setSelectPurchaseDate(date)}
              showYearDropdown
              showMonthDropdown
              useShortMonthInDropdown

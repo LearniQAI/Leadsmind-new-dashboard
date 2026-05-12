@@ -97,7 +97,7 @@ const AddTimeSheetModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectStartDate"
            selected={selectStartDate}
-           onChange={(date) => setSelectStartDate(date)}
+           onChange={(date: any) => setSelectStartDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

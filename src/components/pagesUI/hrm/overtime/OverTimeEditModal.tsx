@@ -98,7 +98,7 @@ const OverTimeEditModal = ({
           <DatePicker
            id="selectStartDate"
            selected={selectStartDate}
-           onChange={(date) => setSelectStartDate(date)}
+           onChange={(date: any) => setSelectStartDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

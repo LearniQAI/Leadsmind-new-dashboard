@@ -112,7 +112,7 @@ const UpdatePromotionModal = ({
           <DatePicker
            id="selectPromotionDate"
            selected={selectPromotionDate}
-           onChange={(date) => setSelectPromotionDate(date)}
+           onChange={(date: any) => setSelectPromotionDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

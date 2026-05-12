@@ -69,7 +69,7 @@ const AddEventModal = ({ open, setOpen }: statePropsType) => {
                     <DatePicker
                       id="humanFriendlyDates"
                       selected={selectEventDate}
-                      onChange={(date) => setSelectEventDate(date)}
+                      onChange={(date: any) => setSelectEventDate(date)}
                       showYearDropdown
                       showMonthDropdown
                       useShortMonthInDropdown

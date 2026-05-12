@@ -87,7 +87,7 @@ const AddNewTransferModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectTransferDate"
            selected={selectTransferDate}
-           onChange={(date) => setSelectTransferDate(date)}
+           onChange={(date: any) => setSelectTransferDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

@@ -70,7 +70,7 @@ const AddNewMettingModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="selectStartDate"
            selected={selectStartDate}
-           onChange={(date) => setSelectStartDate(date)}
+           onChange={(date: any) => setSelectStartDate(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown
@@ -90,7 +90,7 @@ const AddNewMettingModal = ({ open, setOpen }: statePropsType) => {
           <DatePicker
            id="startTime"
            selected={startTime}
-           onChange={(date) => setStartTime(date)}
+           onChange={(date: any) => setStartTime(date)}
            showYearDropdown
            showMonthDropdown
            useShortMonthInDropdown

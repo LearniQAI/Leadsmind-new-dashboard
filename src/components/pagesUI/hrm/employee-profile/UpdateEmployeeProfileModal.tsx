@@ -122,7 +122,7 @@ const UpdateEmployeeProfileModal = ({
          <DatePicker
           id="selectStartDate"
           selected={selectDateOfBirth}
-          onChange={(date) => setSelectDateOfBirth(date)}
+          onChange={(date: any) => setSelectDateOfBirth(date)}
           showYearDropdown
           showMonthDropdown
           useShortMonthInDropdown
@@ -166,7 +166,7 @@ const UpdateEmployeeProfileModal = ({
          <DatePicker
           id="selectJoiningDate"
           selected={selectStartDate}
-          onChange={(date) => setSelectStartDate(date)}
+          onChange={(date: any) => setSelectStartDate(date)}
           showYearDropdown
           showMonthDropdown
           useShortMonthInDropdown
