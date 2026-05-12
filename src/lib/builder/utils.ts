@@ -30,11 +30,17 @@ export function replaceMergeTags(text: string, data: Record<string, any> = {}): 
  * Resolves a LinkSelector value into a valid URL string
  */
 export function resolveLink(link: any, context?: { basePath?: string, websiteId?: string | null, funnelId?: string | null }): string {
+  const basePath = context?.basePath || '';
   if (!link) return '#';
-  if (typeof link === 'string') return link;
+  if (typeof link === 'string') {
+    if (basePath && link.startsWith('/') && !link.startsWith(basePath) && !link.startsWith('//')) {
+      const cleanLink = link === '/' ? '' : link;
+      return `${basePath}${cleanLink}` || '/';
+    }
+    return link;
+  }
 
   const { type, value } = link;
-  const basePath = context?.basePath || '';
 
   switch (type) {
     case 'url':

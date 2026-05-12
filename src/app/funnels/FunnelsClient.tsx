@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Filter, ArrowRight, Globe, Pencil, Trash2, X, ExternalLink,
-  CheckCircle, Clock, MoreVertical
+  CheckCircle, Clock, MoreVertical, Copy, BarChart2, Layout
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -113,6 +113,24 @@ export default function FunnelsClient({ initialFunnels }: { initialFunnels: any[
     setDeleting(false);
   };
 
+  const handleClone = async (funnel: any) => {
+    const toastId = toast.loading('Cloning funnel structure and steps...');
+    try {
+      const { duplicateFunnelAction } = await import('@/app/actions/marketing');
+      const res = await duplicateFunnelAction(funnel.id);
+      if (res.error) {
+        toast.error(res.error, { id: toastId });
+      } else {
+        toast.success('Funnel cloned successfully!', { id: toastId });
+        if (res.data) {
+          setFunnels(prev => [res.data, ...prev]);
+        }
+      }
+    } catch (err: any) {
+      toast.error('Failed to clone funnel', { id: toastId });
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -135,50 +153,80 @@ export default function FunnelsClient({ initialFunnels }: { initialFunnels: any[
             <p className="text-gray-400 text-[10px] font-bold mt-2 uppercase tracking-widest">Click to create your first funnel</p>
           </div>
         ) : funnels.map(funnel => (
-          <div key={funnel.id} className="card__wrapper !p-6 !mb-0 group hover:border-primary/50 transition-all duration-300 shadow-lg relative">
-            <div className="flex justify-between items-start mb-6">
-              <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                <Filter size={20} />
+          <div key={funnel.id} className="card__wrapper !p-6 !mb-0 group hover:border-primary/50 transition-all duration-300 shadow-lg relative flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start mb-6">
+                <div 
+                  onClick={() => router.push(`/funnels/${funnel.id}`)}
+                  className="h-12 w-12 rounded-2xl bg-primary/10 hover:bg-primary/20 cursor-pointer flex items-center justify-center text-primary border border-primary/20 transition-all"
+                  title="Open Funnel Builder"
+                >
+                  <Layout size={20} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border-none ${funnel.is_published ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {funnel.is_published ? 'Live' : 'Draft'}
+                  </Badge>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="h-8 w-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                        <MoreVertical size={14} className="text-gray-600" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-xl rounded-xl min-w-[200px] p-1">
+                      <DropdownMenuItem onClick={() => router.push(`/funnels/${funnel.id}`)} className="flex items-center gap-2 cursor-pointer text-primary hover:bg-primary/5 font-bold rounded-lg px-3 py-2">
+                        <Layout size={14} /> Open Builder
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push(`/funnels/${funnel.id}/analytics`)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg px-3 py-2">
+                        <BarChart2 size={14} /> View Analytics
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleClone(funnel)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg px-3 py-2">
+                        <Copy size={14} /> Clone Funnel
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openEdit(funnel)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg px-3 py-2">
+                        <Pencil size={14} /> Edit Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handlePublish(funnel)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg px-3 py-2">
+                        {funnel.is_published ? <><Clock size={14} /> Move to Draft</> : <><CheckCircle size={14} /> Publish Live</>}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openDelete(funnel)} className="flex items-center gap-2 cursor-pointer text-rose-600 hover:bg-rose-50 rounded-lg px-3 py-2">
+                        <Trash2 size={14} /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border-none ${funnel.is_published ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {funnel.is_published ? 'Live' : 'Draft'}
-                </Badge>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="h-8 w-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-                      <MoreVertical size={14} className="text-gray-600" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-xl rounded-xl min-w-[160px]">
-                    <DropdownMenuItem onClick={() => openEdit(funnel)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg mx-1 px-3 py-2">
-                      <Pencil size={14} /> Edit Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handlePublish(funnel)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg mx-1 px-3 py-2">
-                      {funnel.is_published ? <><Clock size={14} /> Move to Draft</> : <><CheckCircle size={14} /> Publish Live</>}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openDelete(funnel)} className="flex items-center gap-2 cursor-pointer text-rose-600 hover:bg-rose-50 rounded-lg mx-1 px-3 py-2">
-                      <Trash2 size={14} /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+
+              <div className="mb-6 cursor-pointer group-hover:translate-x-1 transition-transform" onClick={() => router.push(`/funnels/${funnel.id}`)}>
+                <h4 className="text-xl font-black text-gray-800 uppercase tracking-tighter mb-1 group-hover:text-primary transition-colors">{funnel.name}</h4>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  <Globe size={12} className="text-primary" />
+                  <span className="text-primary/70 lowercase">/{funnel.subdomain || 'funnel'}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 py-3 mb-4 bg-gray-50 rounded-xl px-3 text-center border border-gray-100">
+                <div>
+                  <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-wider">Steps</span>
+                  <span className="text-xs font-black text-gray-700">1+</span>
+                </div>
+                <div className="border-x border-gray-200">
+                  <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-wider">Views</span>
+                  <span className="text-xs font-black text-gray-700">0</span>
+                </div>
+                <div>
+                  <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-wider">Conv.</span>
+                  <span className="text-xs font-black text-emerald-600">0%</span>
+                </div>
               </div>
             </div>
 
-            <div className="mb-6">
-              <h4 className="text-xl font-black text-gray-800 uppercase tracking-tighter mb-1">{funnel.name}</h4>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                <Globe size={12} className="text-primary" />
-                <span className="text-primary/70 lowercase">/{funnel.subdomain}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-5 border-t border-gray-100">
-              <Button onClick={() => openEdit(funnel)} variant="outline" className="h-9 px-4 rounded-xl border-gray-200 text-[9px] font-black uppercase tracking-widest text-gray-600 hover:text-primary hover:border-primary hover:bg-primary/5 transition-all flex items-center gap-2">
-                <Pencil size={12} /> Edit
+            <div className="flex items-center gap-2 pt-4 border-t border-gray-100 mt-auto">
+              <Button onClick={() => router.push(`/funnels/${funnel.id}`)} className="flex-1 h-9 bg-primary hover:bg-primary/90 text-white font-black text-[9px] uppercase tracking-widest rounded-xl shadow-md shadow-primary/10">
+                Open Builder
               </Button>
-              <Button onClick={() => handlePublish(funnel)} className={`h-9 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${funnel.is_published ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
-                {funnel.is_published ? <><Clock size={12} /> Unpublish</> : <><CheckCircle size={12} /> Publish</>}
+              <Button onClick={() => openEdit(funnel)} variant="outline" size="icon" className="h-9 w-9 rounded-xl border-gray-200 text-gray-600 hover:text-primary hover:border-primary/40">
+                <Pencil size={12} />
               </Button>
             </div>
           </div>

@@ -60,43 +60,43 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
  };
 
  return (
-  <div className="h-full flex flex-col pt-2 bg-card select-none">
+  <div className="h-full flex flex-col pt-2 bg-transparent text-white select-none">
    <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
     <div className="flex items-center gap-2">
      <Globe className="w-3.5 h-3.5 text-primary" />
-     <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Global Site Settings</h2>
+     <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/60">Global Site Settings</h2>
     </div>
    </div>
 
    <div className="flex-1 overflow-y-auto p-4 space-y-8 common-scrollbar">
     {/* Core Identity */}
     <section className="space-y-4">
-     <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">
+     <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
       <Shield className="w-3 h-3" /> Brand Identity
      </h3>
      <div className="space-y-4">
       <div className="space-y-2">
-       <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Website Name</Label>
+       <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Website Name</Label>
        <Input 
         value={localSettings.name}
         onChange={(e) => handleChange('name', e.target.value)}
-        className="h-9 bg-white/5 border-white/5 text-sm"
+        className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
         placeholder="My Awesome Site"
        />
       </div>
       <div className="space-y-2">
-       <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Subdomain</Label>
+       <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Subdomain</Label>
        <div className="flex gap-2">
         <div className="relative flex-1">
          <Input 
           value={localSettings.subdomain}
           onChange={(e) => handleChange('subdomain', e.target.value)}
-          className="h-9 bg-white/5 border-white/5 text-sm pr-20"
+          className="h-9 bg-white/5 border-white/10 text-white text-sm pr-20 placeholder:text-white/20"
           placeholder="my-site"
          />
-         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-white/20 uppercase">.leadsmind</span>
+         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-white/40 uppercase">.leadsmind</span>
         </div>
-        <Button size="icon" variant="secondary" onClick={copyUrl} className="h-9 w-9 bg-white/5 border border-white/10 hover:bg-primary/10">
+        <Button size="icon" variant="secondary" onClick={copyUrl} className="h-9 w-9 bg-white/5 border border-white/10 text-white hover:bg-primary/10 hover:text-primary">
          <Copy size={14} />
         </Button>
        </div>
@@ -106,53 +106,53 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
 
     {/* Custom Domain */}
     <section className="space-y-4">
-     <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">
+     <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
       <Rocket className="w-3 h-3" /> Custom Routing
      </h3>
      <div className="space-y-4">
       <div className="space-y-2">
-       <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">External Domain</Label>
+       <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">External Domain</Label>
        <Input 
         value={localSettings.custom_domain}
         onChange={(e) => handleChange('custom_domain', e.target.value)}
-        className="h-9 bg-white/5 border-white/5 text-sm"
+        className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
         placeholder="www.example.com"
        />
-       <p className="text-[9px] text-muted-foreground px-1">Connect your own domain via CNAME records.</p>
+       <p className="text-[9px] text-white/40 px-1">Connect your own domain via CNAME records.</p>
       </div>
      </div>
     </section>
 
     {/* Social Media Links */}
     <section className="space-y-4">
-     <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">
+     <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
       <Share2 className="w-3 h-3" /> Social Presence
      </h3>
      <div className="space-y-4">
       <div className="space-y-2">
-       <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Facebook URL</Label>
+       <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Facebook URL</Label>
        <Input 
         value={localSettings.config?.social_links?.facebook || ''}
         onChange={(e) => handleSocialChange('facebook', e.target.value)}
-        className="h-9 bg-white/5 border-white/5 text-sm"
+        className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
         placeholder="https://facebook.com/your-page"
        />
       </div>
       <div className="space-y-2">
-       <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Instagram URL</Label>
+       <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Instagram URL</Label>
        <Input 
         value={localSettings.config?.social_links?.instagram || ''}
         onChange={(e) => handleSocialChange('instagram', e.target.value)}
-        className="h-9 bg-white/5 border-white/5 text-sm"
+        className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
         placeholder="https://instagram.com/your-profile"
        />
       </div>
       <div className="space-y-2">
-       <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Twitter URL</Label>
+       <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Twitter URL</Label>
        <Input 
         value={localSettings.config?.social_links?.twitter || ''}
         onChange={(e) => handleSocialChange('twitter', e.target.value)}
-        className="h-9 bg-white/5 border-white/5 text-sm"
+        className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
         placeholder="https://twitter.com/your-handle"
        />
       </div>

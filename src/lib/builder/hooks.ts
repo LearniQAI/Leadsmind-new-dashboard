@@ -10,6 +10,11 @@ import { useBuilder } from '@/components/builder/BuilderContext';
 export function useGlobalSync(isGlobal: boolean, globalId: string, props: any) {
   const { websiteData, onUpdateWebsite } = useBuilder();
   const firstRender = useRef(true);
+  const websiteDataRef = useRef(websiteData);
+
+  useEffect(() => {
+    websiteDataRef.current = websiteData;
+  }, [websiteData]);
 
   const propsString = JSON.stringify(props);
 
@@ -20,18 +25,19 @@ export function useGlobalSync(isGlobal: boolean, globalId: string, props: any) {
       return;
     }
 
-    if (isGlobal && globalId && websiteData) {
+    const currentData = websiteDataRef.current;
+    if (isGlobal && globalId && currentData) {
       onUpdateWebsite({
         config: {
-          ...websiteData.config,
+          ...currentData.config,
           globals: {
-            ...websiteData.config?.globals,
+            ...currentData.config?.globals,
             [globalId]: props
           }
         }
       });
     }
-  }, [propsString, isGlobal, globalId, onUpdateWebsite, websiteData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [propsString, isGlobal, globalId, onUpdateWebsite]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /**

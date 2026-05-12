@@ -23,30 +23,28 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
   nodesCount: node.data.nodes?.length || 0
  }));
 
- useEffect(() => {
-  if (isHovered) console.log(`DEBUG: Hovering over ${name} (ID: ${id}, Canvas: ${isCanvas})`);
-  console.log(`DEBUG: Rendering Node ${id} (${name})`);
- }, [isHovered, name, id, isCanvas]);
-
-
  const { isEnabled } = useEditor((state) => ({
   isEnabled: state.options.enabled,
  }));
 
  const handleRef = useCallback((ref: HTMLElement | null) => {
   if (ref) {
-    // We can attach custom logic here if needed
+    // Custom logic if needed
   }
  }, []);
 
  useEffect(() => {
-  if (dom) {
+  if (dom && isEnabled) {
    if (isActive || isHovered) dom.classList.add('component-selected');
    else dom.classList.remove('component-selected');
   }
- }, [dom, isActive, isHovered]);
+ }, [dom, isActive, isHovered, isEnabled]);
 
  const { connectors: { connect, drag } } = useNode();
+
+ if (!isEnabled) {
+  return <>{render}</>;
+ }
 
  return (
   <div 
@@ -58,23 +56,16 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
     }}
     className={cn(
       "relative transition-all duration-300",
-      isActive && "ring-2 ring-primary ring-offset-2 ring-offset-bgBody z-20 shadow-2xl shadow-primary/20",
-      isHovered && !isActive && "ring-2 ring-primary/30 ring-dashed z-10"
+      isActive && "ring-2 ring-primary ring-offset-2 ring-offset-bgBody z-20 shadow-xl",
+      isHovered && !isActive && "ring-1 ring-primary/40 ring-dashed z-10"
     )}
   >
-   {isHovered && isCanvas && (
-    <div className="absolute top-4 right-4 bg-primary/20 backdrop-blur-md border border-primary/30 text-primary text-[8px] font-black px-3 py-1.5 rounded-full animate-pulse z-30 uppercase tracking-[0.2em]">
-      Neural Node Ready
-    </div>
-   )}
-   {isActive && (
-    <div className="absolute -top-7 left-0 bg-primary text-white text-[9px] px-4 py-1.5 rounded-t-xl flex items-center gap-2 z-30 animate-in fade-in slide-in-from-bottom-2 duration-500 shadow-lg shadow-primary/30">
-      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-      <span className="font-black uppercase tracking-tighter">{name} <span className="opacity-40 ml-1 tracking-widest">({nodesCount})</span></span>
+   {isActive && id !== 'ROOT' && (
+    <div className="absolute -top-6 left-0 bg-primary text-white text-[9px] px-3 py-1 rounded-t-lg flex items-center gap-1.5 z-30 shadow-md pointer-events-none">
+      <span className="font-black uppercase tracking-wider">{name}</span>
     </div>
    )}
    {render}
   </div>
-
  );
 };

@@ -54,8 +54,6 @@ export const UserButton = (allProps: ButtonProps & any) => {
    xl: 'px-10 py-5 text-lg font-black uppercase tracking-tighter',
  };
 
- const isCustomColor = variant === 'primary';
-
  const getAction = () => {
   if (typeof link === 'object' && link.type === 'action') return (link as any).value;
   return undefined;
@@ -85,8 +83,8 @@ export const UserButton = (allProps: ButtonProps & any) => {
       className={`w-full transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group ${sizeClasses[(size || 'md') as keyof typeof sizeClasses]}`}
       style={{
         borderRadius: `${borderRadius}px`,
-        backgroundColor: isCustomColor ? color : undefined,
-        color: isCustomColor ? textColor : undefined,
+        backgroundColor: color || undefined,
+        color: textColor || undefined,
         border: variant === 'outline' ? `2px solid ${color}` : undefined,
       }}
     >

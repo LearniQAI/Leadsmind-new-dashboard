@@ -4,7 +4,7 @@ import React from 'react';
 import { BuilderEditor } from '@/components/builder/BuilderEditor';
 import { useParams } from 'next/navigation';
 
-export default function WebsiteEditorShell() {
+export default function FunnelEditorShell() {
  const { pageId } = useParams();
- return <BuilderEditor type="website" key={pageId as string} />;
+ return <BuilderEditor type="funnel" key={pageId as string} />;
 }

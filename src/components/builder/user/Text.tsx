@@ -40,9 +40,10 @@ export const Text = ({ text, fontSize, textAlign, color, dragRef, ...props }: an
      onChange={(e) => setProp((props: any) => (props.text = e.target.value), 500)}
      tagName="span"
      className="outline-none block w-full"
+     style={{ color: 'inherit' }}
     />
    ) : (
-    <span dangerouslySetInnerHTML={{ __html: displayText }} />
+    <span style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
    )}
   </div>
  );

@@ -67,45 +67,45 @@ export const PageSettings = () => {
   };
 
   return (
-    <div className="h-full flex flex-col pt-2 bg-card select-none">
+    <div className="h-full flex flex-col pt-2 bg-transparent text-white select-none">
       <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Search className="w-3.5 h-3.5 text-[#6c47ff]" />
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Page SEO & Social</h2>
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/60">Page SEO & Social</h2>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-8 custom-scrollbar">
         <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">
+          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
             <Globe className="w-3 h-3" /> Meta Tags
           </h3>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Display Name</Label>
+              <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Display Name</Label>
               <Input 
                 value={settings.name}
                 onChange={(e) => setSettings(s => ({ ...s, name: e.target.value }))}
-                className="h-9 bg-white/5 border-white/5 text-sm"
+                className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
                 placeholder="Internal page name"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">SEO Title</Label>
+              <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">SEO Title</Label>
               <Input 
                 value={settings.seo_title}
                 onChange={(e) => setSettings(s => ({ ...s, seo_title: e.target.value }))}
-                className="h-9 bg-white/5 border-white/5 text-sm"
+                className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
                 placeholder="Page title in search results"
               />
-              <p className="text-[9px] text-muted-foreground">Keep it under 60 characters for best results.</p>
+              <p className="text-[9px] text-white/40">Keep it under 60 characters for best results.</p>
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Meta Description</Label>
+              <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Meta Description</Label>
               <Textarea 
                 value={settings.seo_description}
                 onChange={(e) => setSettings(s => ({ ...s, seo_description: e.target.value }))}
-                className="bg-white/5 border-white/5 text-sm min-h-[100px]"
+                className="bg-white/5 border-white/10 text-white text-sm min-h-[100px] placeholder:text-white/20"
                 placeholder="Briefly describe what this page is about..."
               />
             </div>
@@ -113,7 +113,7 @@ export const PageSettings = () => {
         </section>
 
         <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">
+          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
             <Image className="w-3 h-3" /> Social Preview (OG)
           </h3>
           <div className="space-y-4">
@@ -123,17 +123,17 @@ export const PageSettings = () => {
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-30">
                   <Image size={32} />
-                  <span className="text-[10px] font-bold">No Image Set</span>
+                  <span className="text-[10px] font-bold text-white">No Image Set</span>
                 </div>
               )}
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">OG Image URL</Label>
+              <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">OG Image URL</Label>
               <div className="flex gap-2">
                 <Input 
                   value={settings.og_image_url}
                   onChange={(e) => setSettings(s => ({ ...s, og_image_url: e.target.value }))}
-                  className="h-9 bg-white/5 border-white/5 text-xs"
+                  className="h-9 bg-white/5 border-white/10 text-white text-xs placeholder:text-white/20"
                   placeholder="https://..."
                 />
                 <Button size="icon" variant="secondary" className="h-9 w-9 bg-[#6c47ff]/10 text-primary border border-[#6c47ff]/20">
@@ -151,49 +151,49 @@ export const PageSettings = () => {
         </div>
 
         <section className="space-y-4 pt-4 border-t border-white/5">
-          <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] flex items-center gap-2">
+          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
             <Sparkles className="w-3 h-3" /> Content Type & Meta
           </h3>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Page Type</Label>
+              <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Page Type</Label>
               <select 
                 value={settings.type}
                 onChange={(e) => setSettings(s => ({ ...s, type: e.target.value }))}
-                className="w-full h-9 bg-white/5 border border-white/5 rounded px-2 text-sm font-bold outline-none"
+                className="w-full h-9 bg-white/5 border border-white/10 text-white rounded px-2 text-sm font-bold outline-none"
               >
-                <option value="page">Standard Page</option>
-                <option value="blog_post">Blog Post</option>
-                <option value="funnel_step">Funnel Step</option>
+                <option value="page" className="bg-[#0b0b14]">Standard Page</option>
+                <option value="blog_post" className="bg-[#0b0b14]">Blog Post</option>
+                <option value="funnel_step" className="bg-[#0b0b14]">Funnel Step</option>
               </select>
             </div>
 
             {settings.type === 'blog_post' && (
               <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-300">
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Author Name</Label>
+                  <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Author Name</Label>
                   <Input 
                     value={settings.author}
                     onChange={(e) => setSettings(s => ({ ...s, author: e.target.value }))}
-                    className="h-9 bg-white/5 border-white/5 text-sm"
+                    className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
                     placeholder="Author name"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Category</Label>
+                  <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Category</Label>
                   <Input 
                     value={settings.category}
                     onChange={(e) => setSettings(s => ({ ...s, category: e.target.value }))}
-                    className="h-9 bg-white/5 border-white/5 text-sm"
+                    className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
                     placeholder="e.g. Marketing, Sales"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase text-muted-foreground font-bold tracking-tight">Blog Excerpt</Label>
+                  <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Blog Excerpt</Label>
                   <Textarea 
                     value={settings.excerpt}
                     onChange={(e) => setSettings(s => ({ ...s, excerpt: e.target.value }))}
-                    className="bg-white/5 border-white/5 text-sm min-h-[80px]"
+                    className="bg-white/5 border-white/10 text-white text-sm min-h-[80px] placeholder:text-white/20"
                     placeholder="Short summary for the blog feed..."
                   />
                 </div>
@@ -208,7 +208,7 @@ export const PageSettings = () => {
         <Button 
           disabled={loading}
           onClick={handleSave}
-          className="w-full bg-[#6c47ff] hover:bg-[#6c47ff]/90 text-white font-bold h-10 shadow-lg shadow-[#6c47ff]/20"
+          className="w-full bg-[#6c47ff] hover:bg-[#6c47ff]/90 text-white font-bold h-10 shadow-lg shadow-[#6c47ff]/20 uppercase text-[10px] tracking-widest"
         >
           {loading ? "SAVING..." : "SAVE PAGE SETTINGS"}
         </Button>

@@ -99,9 +99,10 @@ export const Heading = (allProps: HeadingProps & any) => {
       onChange={(e) => setProp((props: any) => (props.text = e.target.value), 500)}
       tagName={Tag as any}
       className="outline-none w-full m-0 p-0 leading-tight tracking-tight"
+      style={{ color: 'inherit' }}
     />
    ) : (
-    <Tag className="outline-none w-full m-0 p-0 leading-tight tracking-tight" dangerouslySetInnerHTML={{ __html: displayText }} />
+    <Tag className="outline-none w-full m-0 p-0 leading-tight tracking-tight" style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
    )}
   </div>
  );

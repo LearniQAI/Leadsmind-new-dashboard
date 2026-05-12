@@ -85,9 +85,10 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
       onChange={(e) => setProp((props: any) => (props.text = e.target.value), 500)}
       tagName="p"
       className="outline-none w-full m-0 p-0"
+      style={{ color: 'inherit' }}
     />
    ) : (
-    <span dangerouslySetInnerHTML={{ __html: displayText }} />
+    <span style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
    )}
   </div>
  );

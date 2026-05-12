@@ -29,18 +29,48 @@ export async function createFunnel(name: string) {
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
+  // 1. Create Funnel record
   const { data, error } = await supabase
    .from('funnels')
    .insert({
     workspace_id: workspaceId,
     name,
-    subdomain: name.toLowerCase().replace(/\s+/g, '-'),
+    subdomain: name.toLowerCase().replace(/\s+/g, '-') + '-' + Math.floor(Math.random() * 1000),
     is_published: false
    })
    .select()
    .single();
 
   if (error) throw error;
+
+  // 2. Create Initial Funnel Step
+  const { data: step, error: stepError } = await supabase
+   .from('funnel_steps')
+   .insert({
+    funnel_id: data.id,
+    name: 'Opt-in Page',
+    path_name: '/',
+    "order": 1
+   })
+   .select()
+   .single();
+
+  if (stepError) throw stepError;
+
+  // 3. Create initial CraftJS page content linked to funnel step
+  const initialContent = '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
+  const { error: pageError } = await supabase
+   .from('pages')
+   .insert({
+    workspace_id: workspaceId,
+    funnel_step_id: step.id,
+    name: 'Opt-in Page',
+    content: initialContent,
+    status: 'draft'
+   });
+
+  if (pageError) throw pageError;
+
   return { data };
  } catch (error: any) {
   return { error: error.message };
@@ -227,5 +257,74 @@ export async function deleteFormAction(id: string) {
   const { error } = await supabase.from('forms').delete().eq('id', id);
   if (error) throw error;
   return { success: true };
+ } catch (error: any) { return { error: error.message }; }
+}
+
+export async function duplicateFunnelAction(id: string) {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  // 1. Fetch original funnel
+  const { data: original, error: fetchError } = await supabase
+   .from('funnels')
+   .select('*')
+   .eq('id', id)
+   .single();
+
+  if (fetchError) throw fetchError;
+
+  // 2. Insert new funnel
+  const { data: duplicate, error: createError } = await supabase
+   .from('funnels')
+   .insert({
+    workspace_id: workspaceId,
+    name: `${original.name} (Clone)`,
+    subdomain: `${original.subdomain || 'funnel'}-clone-${Math.floor(Math.random() * 10000)}`,
+    is_published: false,
+    config: original.config
+   })
+   .select()
+   .single();
+
+  if (createError) throw createError;
+
+  // 3. Fetch steps and pages
+  const { data: steps } = await supabase
+   .from('funnel_steps')
+   .select('*, pages(*)')
+   .eq('funnel_id', id)
+   .order('order', { ascending: true });
+
+  if (steps) {
+   for (const step of steps) {
+    // Insert cloned step
+    const { data: newStep, error: stepErr } = await supabase
+     .from('funnel_steps')
+     .insert({
+      funnel_id: duplicate.id,
+      name: step.name,
+      path_name: step.path_name,
+      "order": step.order
+     })
+     .select()
+     .single();
+
+    if (!stepErr && step.pages && step.pages.length > 0) {
+     for (const p of step.pages) {
+      await supabase.from('pages').insert({
+       workspace_id: workspaceId,
+       funnel_step_id: newStep.id,
+       name: p.name,
+       content: p.content,
+       status: 'draft'
+      });
+     }
+    }
+   }
+  }
+
+  return { data: duplicate };
  } catch (error: any) { return { error: error.message }; }
 }
