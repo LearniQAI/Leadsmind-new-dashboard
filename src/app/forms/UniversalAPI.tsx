@@ -215,7 +215,7 @@ export default function UniversalAPI() {
 
 function Badge({ children, className, variant }: any) {
   return (
-    <span className={\`px-2 py-0.5 rounded-full \${className}\`}>
+    <span className={`px-2 py-0.5 rounded-full ${className}`}>
       {children}
     </span>
   );
@@ -223,7 +223,7 @@ function Badge({ children, className, variant }: any) {
 
 function Label({ children, className }: any) {
   return (
-    <label className={\`block mb-1 \${className}\`}>
+    <label className={`block mb-1 ${className}`}>
       {children}
     </label>
   );
