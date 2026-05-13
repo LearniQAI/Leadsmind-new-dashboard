@@ -3,7 +3,9 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
+import { sendPasswordResetEmail } from '@/lib/auth-emails';
 import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 
 function slugify(text: string) {
  return text
@@ -120,13 +122,30 @@ export async function setActiveWorkspace(workspaceId: string) {
 }
 
 export async function forgotPassword(email: string) {
- const supabase = await createServerClient();
- const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/auth/reset-password`,
- });
+ // Use service role to generate the link (bypass default Supabase email)
+ const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+ );
 
- if (error) return { success: false, error: error.message };
- return { success: true };
+ try {
+  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+   type: 'recovery',
+   email,
+   options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/auth/reset-password` }
+  });
+
+  if (error) throw error;
+
+  // Send branded email via Resend
+  await sendPasswordResetEmail(email, data.properties.hashed_token);
+
+  return { success: true };
+ } catch (error: any) {
+  console.error('[forgotPassword] Error:', error.message);
+  return { success: false, error: error.message };
+ }
 }
 
 export async function resetPassword(password: string) {
@@ -139,4 +158,56 @@ export async function resetPassword(password: string) {
 export async function handleLogout() {
  const { logout } = await import('@/lib/auth');
  await logout();
+}
+
+/**
+ * Notifies the user via email that a sign-in occurred.
+ */
+export async function notifySignIn(email: string) {
+ try {
+  await sendEmail({
+   to: email,
+   subject: 'New Login Detected',
+   html: `
+    <div style="font-family: sans-serif; padding: 20px; color: #333;">
+     <h2 style="color: #6c47ff;">New Login to LeadsMind</h2>
+     <p>Hello,</p>
+     <p>A new login was detected for your account at <strong>${new Date().toLocaleString()}</strong>.</p>
+     <p>If this was not you, please reset your password immediately.</p>
+     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+     <p style="font-size: 12px; color: #666;">This is a security notification from LeadsMind.</p>
+    </div>
+   `
+  });
+  return { success: true };
+ } catch (err) {
+  console.error('[notifySignIn] Error:', err);
+  return { success: false };
+ }
+}
+
+/**
+ * Sends a generic update notification.
+ */
+export async function notifyUpdate(email: string, updateTitle: string, updateDetails: string) {
+ try {
+  await sendEmail({
+   to: email,
+   subject: `System Update: ${updateTitle}`,
+   html: `
+    <div style="font-family: sans-serif; padding: 20px; color: #333;">
+     <h2 style="color: #6c47ff;">Update Notification</h2>
+     <p>Hello,</p>
+     <p>An update has occurred: <strong>${updateTitle}</strong></p>
+     <p>${updateDetails}</p>
+     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+     <p style="font-size: 12px; color: #666;">You are receiving this because you opted into update notifications.</p>
+    </div>
+   `
+  });
+  return { success: true };
+ } catch (err) {
+  console.error('[notifyUpdate] Error:', err);
+  return { success: false };
+ }
 }

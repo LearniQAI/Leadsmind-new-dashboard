@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { WorkspacePicker } from "@/components/auth/WorkspacePicker";
 import { Workspace } from "@/types/workspace.types";
-import { setActiveWorkspace } from "@/app/actions/auth";
+import { setActiveWorkspace, notifySignIn } from "@/app/actions/auth";
 
 const SignInBasicForm = () => {
  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -48,6 +48,9 @@ const SignInBasicForm = () => {
     toast.error("Login succeeded but no user session returned. Please try again.");
     return;
    }
+
+   // Notify user of sign-in
+   notifySignIn(authData.user.email!).catch(console.error);
 
    // Step 2: Fetch workspace memberships
    const { data: memberships, error: wsError } = await supabase

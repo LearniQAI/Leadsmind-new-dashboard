@@ -18,6 +18,8 @@ import {
 import { createForm } from '@/app/actions/marketing';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import UniversalAPI from './UniversalAPI';
 
 export default function FormsClient({ initialForms }: { initialForms: any[] }) {
   const router = useRouter();
@@ -125,73 +127,92 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {forms.length === 0 ? (
-          <div className="col-span-full py-20 bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary/40 transition-all" onClick={() => setCreateOpen(true)}>
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
-              <FileText className="w-8 h-8 text-primary" />
-            </div>
-            <h3 className="text-lg font-black uppercase text-gray-500 tracking-widest">No Forms Yet</h3>
-            <p className="text-gray-400 text-[10px] font-bold mt-2 uppercase tracking-widest">Click to build your first form</p>
-          </div>
-        ) : forms.map(form => (
-          <div key={form.id} className="card__wrapper !p-6 !mb-0 group hover:border-primary/50 transition-all duration-300 shadow-lg">
-            <div className="flex justify-between items-start mb-6">
-              <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                <FileText size={20} />
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border-none ${statusColor(form.status)}`}>
-                  {form.status || 'draft'}
-                </Badge>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="h-8 w-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-                      <MoreVertical size={14} className="text-gray-600" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-xl rounded-xl min-w-[160px]">
-                    <DropdownMenuItem onClick={() => openEdit(form)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg mx-1 px-3 py-2">
-                      <Pencil size={14} /> Edit Form
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handlePublish(form)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg mx-1 px-3 py-2">
-                      {form.status === 'published' ? <><Clock size={14} /> Move to Draft</> : <><Globe size={14} /> Publish Live</>}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => copyLink(form)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg mx-1 px-3 py-2">
-                      <Copy size={14} /> Copy Link
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openDelete(form)} className="flex items-center gap-2 cursor-pointer text-rose-600 hover:bg-rose-50 rounded-lg mx-1 px-3 py-2">
-                      <Trash2 size={14} /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
+      <Tabs defaultValue="forms" className="space-y-8">
+        <TabsList className="bg-white/5 border border-white/10 p-1 rounded-2xl h-14">
+          <TabsTrigger value="forms" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
+            <FileText className="w-4 h-4 mr-2" /> My Forms
+          </TabsTrigger>
+          <TabsTrigger value="api" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
+            <Globe className="w-4 h-4 mr-2" /> Universal API & Webhooks
+          </TabsTrigger>
+        </TabsList>
 
-            <div className="mb-6">
-              <h4 className="text-xl font-black text-gray-800 uppercase tracking-tighter mb-2">{form.name}</h4>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                <UserCheck className="w-3.5 h-3.5 text-primary" />
-                <span>{form.submissions?.[0]?.count || 0} Submissions</span>
+        <TabsContent value="forms" className="space-y-8 focus-visible:outline-none">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {forms.length === 0 ? (
+              <div className="col-span-full py-20 bg-white/5 border border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary/40 transition-all" onClick={() => setCreateOpen(true)}>
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
+                  <FileText className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-black uppercase text-white tracking-widest">No Forms Yet</h3>
+                <p className="text-white/40 text-[10px] font-bold mt-2 uppercase tracking-widest">Click to build your first form</p>
               </div>
-            </div>
+            ) : forms.map(form => (
+              <div key={form.id} className="bg-[#0b0b1a] border border-white/5 p-6 rounded-3xl group hover:border-primary/30 transition-all duration-300 shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-all" />
+                
+                <div className="flex justify-between items-start mb-6 relative z-10">
+                  <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                    <FileText size={20} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border-none ${form.status === 'published' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                      {form.status || 'draft'}
+                    </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+                          <MoreVertical size={14} className="text-white/60" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-[#0b0b1a] border border-white/10 shadow-2xl rounded-xl min-w-[160px]">
+                        <DropdownMenuItem onClick={() => openEdit(form)} className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-primary hover:bg-primary/5 rounded-lg mx-1 px-3 py-2">
+                          <Pencil size={14} /> Edit Form
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handlePublish(form)} className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-emerald-500 hover:bg-emerald-500/5 rounded-lg mx-1 px-3 py-2">
+                          {form.status === 'published' ? <><Clock size={14} /> Move to Draft</> : <><Globe size={14} /> Publish Live</>}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => copyLink(form)} className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-blue-500 hover:bg-blue-500/5 rounded-lg mx-1 px-3 py-2">
+                          <Copy size={14} /> Copy Link
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openDelete(form)} className="flex items-center gap-2 cursor-pointer text-rose-500 hover:bg-rose-500/5 rounded-lg mx-1 px-3 py-2">
+                          <Trash2 size={14} /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
 
-            <div className="flex items-center justify-between pt-5 border-t border-gray-100">
-              <Button onClick={() => copyLink(form)} variant="outline" size="sm" className="h-8 px-3 rounded-lg border-gray-200 text-[9px] font-black uppercase text-gray-500 hover:text-primary hover:border-primary hover:bg-primary/5 transition-all flex items-center gap-1.5">
-                <Share2 size={11} /> Share
-              </Button>
-              <div className="flex items-center gap-2">
-                <Button onClick={() => openEdit(form)} variant="outline" size="sm" className="h-8 px-3 rounded-lg border-gray-200 text-[9px] font-black uppercase text-gray-500 hover:text-primary hover:border-primary hover:bg-primary/5 flex items-center gap-1.5">
-                  <Pencil size={11} /> Edit
-                </Button>
-                <Button onClick={() => handlePublish(form)} size="sm" className={`h-8 px-3 rounded-lg text-[9px] font-black uppercase flex items-center gap-1.5 ${form.status === 'published' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
-                  {form.status === 'published' ? <><Clock size={11} /> Draft</> : <><Globe size={11} /> Publish</>}
-                </Button>
+                <div className="mb-6 relative z-10">
+                  <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-2">{form.name}</h4>
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                    <UserCheck className="w-3.5 h-3.5 text-primary" />
+                    <span>{form.submissions?.[0]?.count || 0} Submissions</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-5 border-t border-white/5 relative z-10">
+                  <Button onClick={() => copyLink(form)} variant="outline" size="sm" className="h-8 px-3 rounded-lg border-white/10 bg-transparent text-[9px] font-black uppercase text-white/40 hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all flex items-center gap-1.5">
+                    <Share2 size={11} /> Share
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button onClick={() => openEdit(form)} variant="outline" size="sm" className="h-8 px-3 rounded-lg border-white/10 bg-transparent text-[9px] font-black uppercase text-white/40 hover:text-primary hover:border-primary/50 hover:bg-primary/5 flex items-center gap-1.5">
+                      <Pencil size={11} /> Edit
+                    </Button>
+                    <Button onClick={() => handlePublish(form)} size="sm" className={`h-8 px-3 rounded-lg text-[9px] font-black uppercase flex items-center gap-1.5 ${form.status === 'published' ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'}`}>
+                      {form.status === 'published' ? <><Clock size={11} /> Draft</> : <><Globe size={11} /> Publish</>}
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </TabsContent>
+
+        <TabsContent value="api" className="focus-visible:outline-none">
+          <UniversalAPI />
+        </TabsContent>
+      </Tabs>
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

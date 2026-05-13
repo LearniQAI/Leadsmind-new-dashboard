@@ -328,3 +328,22 @@ export async function duplicateFunnelAction(id: string) {
   return { data: duplicate };
  } catch (error: any) { return { error: error.message }; }
 }
+
+export async function getWorkspaceApiKey() {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('workspaces')
+   .select('api_key')
+   .eq('id', workspaceId)
+   .single();
+
+  if (error) throw error;
+  return { apiKey: data.api_key };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}

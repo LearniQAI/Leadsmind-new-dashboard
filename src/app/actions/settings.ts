@@ -213,3 +213,30 @@ export async function updateWorkspaceLogo(logoUrl: string) {
   return { error: error.message };
  }
 }
+
+export async function testEmailConnection() {
+ try {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'No user email found' };
+
+  await sendEmail({
+   to: user.email,
+   subject: 'LeadsMind Email Connectivity Test',
+   html: `
+    <div style="font-family: sans-serif; padding: 20px; color: #333; border: 1px solid #6c47ff; border-radius: 12px;">
+     <h2 style="color: #6c47ff;">Connectivity Test Successful</h2>
+     <p>Hello,</p>
+     <p>This is a live test from your LeadsMind Dashboard. If you are reading this, your <strong>Resend API Connection</strong> is fully operational.</p>
+     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+     <p style="font-size: 12px; color: #666;">Timestamp: ${new Date().toLocaleString()}</p>
+    </div>
+   `
+  });
+
+  return { success: true };
+ } catch (error: any) {
+  console.error('[testEmailConnection] Error:', error.message);
+  return { error: error.message };
+ }
+}

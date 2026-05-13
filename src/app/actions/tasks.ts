@@ -1,8 +1,9 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { sendEmail } from '@/lib/email';
 
 export async function getTasks() {
  try {
@@ -54,6 +55,27 @@ export async function createTask(taskData: {
    .single();
 
   if (error) throw error;
+
+  // Send notification email to the creator
+  const user = await getUser();
+  if (user?.email) {
+   await sendEmail({
+    to: user.email,
+    subject: `New Task Assigned: ${taskData.title}`,
+    html: `
+      <div style="font-family: sans-serif; padding: 20px; color: #333;">
+       <h2 style="color: #6c47ff;">New Task Created</h2>
+       <p>Hello,</p>
+       <p>A new task has been added to your workspace: <strong>${taskData.title}</strong>.</p>
+       <p>Priority: ${taskData.priority || 'Normal'}</p>
+       <p>Due Date: ${taskData.due_date || 'Not set'}</p>
+       <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+       <p style="font-size: 12px; color: #666;">This is an automated notification from your LeadsMind Dashboard.</p>
+      </div>
+     `
+   }).catch(err => console.error('Failed to send task creation email:', err));
+  }
+
   revalidatePath('/tasks');
   return { data };
  } catch (error: any) {
@@ -83,9 +105,30 @@ export async function updateTask(taskId: string, updates: {
    .single();
 
   if (error) throw error;
+
+  // Send notification email about the update
+  const user = await getUser();
+  if (user?.email) {
+   await sendEmail({
+    to: user.email,
+    subject: `Task Updated: ${data.title}`,
+    html: `
+      <div style="font-family: sans-serif; padding: 20px; color: #333;">
+       <h2 style="color: #6c47ff;">Task Updated</h2>
+       <p>Hello,</p>
+       <p>The task <strong>${data.title}</strong> has been modified.</p>
+       <p>New Status: ${data.status}</p>
+       <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+       <p style="font-size: 12px; color: #666;">This is an automated notification from your LeadsMind Dashboard.</p>
+      </div>
+     `
+   }).catch(err => console.error('Failed to send task update email:', err));
+  }
+
   revalidatePath('/tasks');
   return { data };
  } catch (error: any) {
+  console.error('Error update task:', error);
   return { error: error.message || 'Failed to update task' };
  }
 }
@@ -105,6 +148,7 @@ export async function updateTaskStatus(taskId: string, status: string) {
   if (error) throw error;
   return { success: true };
  } catch (error: any) {
+  console.error('Error update task status:', error);
   return { error: error.message || 'Failed to update task' };
  }
 }
@@ -125,6 +169,7 @@ export async function deleteTask(taskId: string) {
   revalidatePath('/tasks');
   return { success: true };
  } catch (error: any) {
+  console.error('Error delete task:', error);
   return { error: error.message || 'Failed to delete task' };
  }
 }

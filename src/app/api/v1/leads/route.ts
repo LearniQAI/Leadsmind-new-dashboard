@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { sendEmail } from '@/lib/email';
 
 // Note: We use the service role key here because we need to bypass RLS 
 // to insert leads from an external source, but we validate the workspace_id via api_key
@@ -55,7 +56,27 @@ export async function POST(req: Request) {
    return NextResponse.json({ error: 'Failed to capture lead' }, { status: 500 });
   }
 
-  // 3. Trigger Webhooks if any (Optional enhancement)
+   // 3. Send notification email to the lead
+   try {
+    await sendEmail({
+     to: email,
+     subject: `Welcome to LeadsMind - Let's get started!`,
+     html: `
+      <div style="font-family: sans-serif; padding: 20px; color: #333;">
+       <h2 style="color: #6c47ff;">Thanks for stopping by!</h2>
+       <p>Hello ${first_name || 'there'},</p>
+       <p>We noticed you visited our platform and we've captured your interest. We're excited to help you grow your business with our automation tools.</p>
+       <p>If you haven't completed your signup yet, you can do so here: <a href="${process.env.NEXT_PUBLIC_APP_URL}/auth/signup-basic" style="color: #6c47ff; font-weight: bold;">Complete Signup</a></p>
+       <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+       <p style="font-size: 12px; color: #666;">This is an automated message from LeadsMind.</p>
+      </div>
+     `
+    });
+   } catch (emailErr) {
+    console.error('Failed to send lead capture email:', emailErr);
+   }
+
+   // 4. Trigger Webhooks if any (Optional enhancement)
   // We can add logic here to trigger webhooks defined in webhook_endpoints
 
   return NextResponse.json({ 
