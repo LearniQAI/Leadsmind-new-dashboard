@@ -30,14 +30,32 @@ export async function updateWorkspaceBranding(updates: any) {
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
-  const { data, error } = await supabase
+  
+  // Check existence to bypass ambiguous upsert unique constraint requirements
+  const { data: existing } = await supabase
    .from('workspace_branding')
-   .upsert({ workspace_id: workspaceId, ...updates, updated_at: new Date().toISOString() })
-   .select()
+   .select('id')
+   .eq('workspace_id', workspaceId)
    .single();
 
-  if (error) throw error;
-  return { data };
+  let queryResult;
+  if (existing) {
+   queryResult = await supabase
+    .from('workspace_branding')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('workspace_id', workspaceId)
+    .select()
+    .single();
+  } else {
+   queryResult = await supabase
+    .from('workspace_branding')
+    .insert({ workspace_id: workspaceId, ...updates, updated_at: new Date().toISOString() })
+    .select()
+    .single();
+  }
+
+  if (queryResult.error) throw queryResult.error;
+  return { data: queryResult.data };
  } catch (error: any) {
   return { error: error.message };
  }
@@ -204,8 +222,19 @@ export async function updateWorkspaceLogo(logoUrl: string) {
 
   const supabase = await createServerClient();
   
-  // Update both workspace branding and workspace table for compatibility
-  await supabase.from('workspace_branding').upsert({ workspace_id: workspaceId, logo_url: logoUrl });
+  // Check existence to bypass ambiguous upsert unique constraint requirements
+  const { data: existing } = await supabase
+   .from('workspace_branding')
+   .select('id')
+   .eq('workspace_id', workspaceId)
+   .single();
+
+  if (existing) {
+   await supabase.from('workspace_branding').update({ logo_url: logoUrl, updated_at: new Date().toISOString() }).eq('workspace_id', workspaceId);
+  } else {
+   await supabase.from('workspace_branding').insert({ workspace_id: workspaceId, logo_url: logoUrl, updated_at: new Date().toISOString() });
+  }
+
   await supabase.from('workspaces').update({ logo_url: logoUrl }).eq('id', workspaceId);
 
   return { success: true };

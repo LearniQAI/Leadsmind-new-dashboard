@@ -139,6 +139,20 @@ export default function SettingsClient({
   setIsSaving(false);
  };
 
+ const [primaryColor, setPrimaryColor] = useState(branding?.primary_color || '#1359FF');
+
+ const handleSaveBranding = async () => {
+  setIsSaving(true);
+  const res = await updateWorkspaceBranding({ primary_color: primaryColor });
+  if (res.error) toast.error(res.error);
+  else {
+   document.documentElement.style.setProperty('--primary-color', primaryColor);
+   toast.success('Neural branding colors synced globally');
+   router.refresh();
+  }
+  setIsSaving(false);
+ };
+
  const handleNewWebhook = async () => {
   // Automatically generate a webhook endpoint based on workspace ID
   const workspaceId = branding?.workspace_id || 'default';
@@ -316,9 +330,31 @@ export default function SettingsClient({
          <div className="space-y-4">
           <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Primary Identity Color</label>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary shadow-lg shadow-primary/20 border border-white/10 cursor-pointer hover:scale-110 transition-transform" />
-            <input type="text" defaultValue={branding?.primary_color || '#1359FF'} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-xs uppercase outline-none focus:border-primary/50" />
+            <div 
+             className="w-12 h-12 rounded-xl shadow-lg border border-white/10 cursor-pointer hover:scale-110 transition-transform relative overflow-hidden"
+             style={{ backgroundColor: primaryColor }}
+            >
+             <input 
+              type="color" 
+              value={primaryColor.startsWith('#') ? primaryColor.substring(0, 7) : '#1359ff'} 
+              onChange={(e) => setPrimaryColor(e.target.value)} 
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+             />
+            </div>
+            <input 
+             type="text" 
+             value={primaryColor} 
+             onChange={(e) => setPrimaryColor(e.target.value)} 
+             className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-xs uppercase outline-none focus:border-primary/50" 
+            />
           </div>
+          <Button 
+           onClick={handleSaveBranding}
+           disabled={isSaving}
+           className="bg-primary hover:bg-primary-dark text-white font-black uppercase tracking-widest text-[10px] h-12 w-full rounded-xl mt-2 shadow-lg shadow-primary/20"
+          >
+           {isSaving ? 'Saving Protocol...' : 'Save Branding Changes'}
+          </Button>
          </div>
         </div>
 

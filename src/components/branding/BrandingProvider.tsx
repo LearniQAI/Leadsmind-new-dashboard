@@ -27,6 +27,17 @@ export function BrandingProvider({
  return (
   <BrandingContext.Provider value={{ primaryColor, platformName }}>
    {children}
+   {primaryColor && (
+    <style dangerouslySetInnerHTML={{ __html: `
+     :root {
+      --primary-color: ${primaryColor};
+     }
+     .bg-primary, .btn-primary { background-color: ${primaryColor} !important; }
+     .text-primary { color: ${primaryColor} !important; }
+     .border-primary { border-color: ${primaryColor} !important; }
+     .btn-primary-light { background-color: ${primaryColor}1A !important; color: ${primaryColor} !important; }
+    `}} />
+   )}
   </BrandingContext.Provider>
  );
 }
