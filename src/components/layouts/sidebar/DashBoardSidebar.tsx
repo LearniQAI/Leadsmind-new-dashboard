@@ -1,180 +1,166 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import useGlobalContext from "@/hooks/use-context";
 import sidebarData from "@/data/sidebar-data";
 import { usePathname } from "next/navigation";
 import { useDashboardContext } from "../DashboardProvider";
+import { X, ChevronDown, Activity, Target, Zap, Layers, BarChart3, Users, Settings } from "lucide-react";
 
 const DashBoardSidebar = () => {
- const { isCollapse, setIsCollapse } = useGlobalContext();
+ const { isCollapse, setIsCollapse, sideMenuOpen, setSideMenuOpen } = useGlobalContext();
  const { enrichedWorkspace } = useDashboardContext();
  const [linkId, setlinkId] = useState<number | null>(null);
- const [linkIdTwo, setlinkIdTwo] = useState<number | null>(null);
- const [linkIdThree, setlinkIdThree] = useState<number | null>(null);
  const pathName = usePathname();
 
- const handleCollapse = (shouldCollapse: boolean) => {
-  if (window.matchMedia("(max-width: 1199px)").matches) {
-   setIsCollapse(shouldCollapse);
-  }
- };
-
  const handleClick = (id: number) => {
-  if (linkId === id) {
-   setlinkId(null);
-  } else {
-   setlinkId(id);
-   setlinkIdTwo(null);
-   setlinkIdThree(null);
-  }
- };
-
- const handleClickTwo = (id: number) => {
-  if (linkIdTwo === id) {
-   setlinkIdTwo(null);
-  } else {
-   setlinkIdTwo(id);
-   setlinkIdThree(null);
-  }
+  setlinkId(linkId === id ? null : id);
  };
 
  useEffect(() => {
   const findLayerIds = () => {
    let foundFirstLayerId = null;
-   let foundSecondLayerId = null;
-   let foundThirdLayerId = null;
-
    sidebarData.forEach((category) => {
     category.items.forEach((item) => {
      if (item.link === pathName) {
       foundFirstLayerId = item.id;
      } else if (item.subItems) {
-      item.subItems.forEach((subItem, subItemIndex) => {
+      item.subItems.forEach((subItem) => {
        if (subItem.link === pathName) {
         foundFirstLayerId = item.id;
-        foundSecondLayerId = subItemIndex;
-       } else if (subItem.subItems) {
-        subItem.subItems.forEach((thirdSubMenu, thirdSubIndex) => {
-         if (thirdSubMenu.link === pathName) {
-          foundFirstLayerId = item.id;
-          foundSecondLayerId = subItemIndex;
-          foundThirdLayerId = thirdSubIndex;
-         }
-        });
        }
       });
      }
     });
    });
-
    setlinkId(foundFirstLayerId);
-   setlinkIdTwo(foundSecondLayerId);
-   setlinkIdThree(foundThirdLayerId);
   };
-
   findLayerIds();
- }, [pathName]);
+  
+  if (window.innerWidth < 1200) {
+    setSideMenuOpen(false);
+  }
+ }, [pathName, setSideMenuOpen]);
+
+ // Force full width on mobile
+ const sidebarWidth = sideMenuOpen ? "w-[280px]" : (isCollapse ? "w-[80px]" : "w-[280px]");
 
  return (
   <>
-   <div className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}>
+   {/* Mobile Sidebar Overlay */}
+   {sideMenuOpen && (
+     <div 
+      onClick={() => setSideMenuOpen(false)}
+      className="fixed inset-0 bg-n900/95 backdrop-blur-md z-[1001] lg:hidden animate-in fade-in duration-300"
+     />
+   )}
+
+   <aside 
+    className={`fixed top-0 left-0 h-full bg-n900 border-r border-white/5 z-[1002] transition-all duration-300 ease-in-out flex flex-col ${sidebarWidth} ${
+      sideMenuOpen ? "translate-x-0 shadow-2xl shadow-black" : "-translate-x-full lg:translate-x-0"
+    }`}
+   >
     {/* Logo Area */}
-    <div className="sidebar-logo-area py-6 px-6 border-b border-white/5 mb-2">
-     <Link href="/" className="flex items-center gap-3 group">
-      <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
-       <i className="fa-solid fa-bolt text-white text-sm"></i>
+    <div className={`h-[70px] flex items-center px-6 border-b border-white/5 flex-shrink-0 ${isCollapse && !sideMenuOpen ? "justify-center" : "justify-between"}`}>
+     <Link href="/" className="flex items-center gap-3">
+      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent to-accent2 flex items-center justify-center shadow-lg shadow-accent/20 flex-shrink-0">
+       <Zap size={20} className="text-white fill-white" />
       </div>
-      {!isCollapse && (
-       <div className="flex flex-col">
-        <span className="text-sm font-space font-bold text-t1 tracking-tight">LEADSMIND</span>
-        <span className="text-[10px] font-bold text-accent2 tracking-widest uppercase opacity-80">OS</span>
+      {(!isCollapse || sideMenuOpen) && (
+       <div className="flex flex-col min-w-0">
+        <span className="text-[15px] font-space font-black text-t1 tracking-tighter truncate leading-none">LEADSMIND</span>
+        <span className="text-[9px] font-black text-accent2 tracking-[0.2em] uppercase opacity-80 mt-0.5">Operating System</span>
        </div>
       )}
      </Link>
+     {sideMenuOpen && (
+       <button onClick={() => setSideMenuOpen(false)} className="lg:hidden w-8 h-8 flex items-center justify-center bg-white/5 rounded-lg text-t3 hover:text-t1 transition-colors">
+         <X size={18} />
+       </button>
+     )}
     </div>
 
-    <div className="common-scrollbar max-h-[calc(100vh-100px)] overflow-y-auto">
-     <nav className="main-menu-container">
-      <ul className="main-menu">
-       {sidebarData.map((category) => (
-        <React.Fragment key={category.id}>
-         {!isCollapse && (
-          <li className="sidebar__menu-category">
-           <span className="category-name">{category.category}</span>
-          </li>
-         )}
-         {category.items.map((item) => (
-          <li
-           key={item.id}
-           className={`slide ${item.subItems?.length ? "has-sub" : ""} ${linkId === item.id ? "open" : ""}`}
-          >
+    {/* Navigation */}
+    <div className="flex-1 overflow-y-auto no-scrollbar py-6 px-4 space-y-8">
+     {sidebarData.map((category) => (
+      <div key={category.id} className="space-y-2">
+       {(!isCollapse || sideMenuOpen) && (
+        <h5 className="px-3 text-[9px] font-black uppercase tracking-[0.25em] text-t4">
+         {category.category}
+        </h5>
+       )}
+       <div className="space-y-1">
+        {category.items.map((item) => {
+         const isActive = pathName === item.link || (linkId === item.id && item.subItems);
+         return (
+          <div key={item.id} className="relative">
            <Link
-            onClick={(e: React.MouseEvent) => {
-             if (!item.link || item.link === "#") {
-              e.preventDefault();
+            onClick={(e) => {
+             if (item.subItems?.length) {
+               e.preventDefault();
+               handleClick(item.id);
              }
-             handleClick(item.id);
             }}
             href={item.link || "#"}
-            className={`sidebar__menu-item ${linkId === item.id ? "active" : ""}`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
+              isActive 
+              ? "bg-accent/10 text-accent2 shadow-sm shadow-accent/5" 
+              : "text-t2 hover:bg-white/[0.03] hover:text-t1"
+            } ${isCollapse && !sideMenuOpen ? "justify-center px-0" : ""}`}
            >
-            {item.icon && (
-             <div className="side-menu__icon">
-              <i className={`fa-solid ${item.icon}`}></i>
-             </div>
-            )}
-            {!isCollapse && (
+            {isActive && !isCollapse && <div className="absolute left-[-4px] top-3 bottom-3 w-[4px] bg-accent rounded-r-full shadow-[2px_0_10px_rgba(37,99,235,0.4)]"></div>}
+            <div className={`flex-shrink-0 w-6 flex items-center justify-center ${isActive ? "text-accent2" : "text-t3 group-hover:text-t2"}`}>
+              <i className={`fa-solid ${item.icon} text-[15px]`}></i>
+            </div>
+            {(!isCollapse || sideMenuOpen) && (
              <>
-              <span className="sidebar__menu-label flex-1">{item.label}</span>
+              <span className="text-[13px] font-bold flex-1 truncate">{item.label}</span>
               {item.subItems && (
-               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 ${linkId === item.id ? "rotate-180" : ""}`}></i>
+               <ChevronDown 
+                 size={14} 
+                 className={`transition-transform duration-200 opacity-40 group-hover:opacity-100 ${linkId === item.id ? "rotate-180" : ""}`} 
+               />
               )}
              </>
             )}
            </Link>
 
-           {item.subItems && !isCollapse && (
-            <ul
-             className="sidebar-submenu"
-             style={{ display: linkId === item.id ? "block" : "none" }}
-            >
-             {item.subItems.map((subOne, index) => (
-              <li key={index} className="pl-9 pr-4 py-1">
-               <Link
-                href={subOne.link || "/"}
-                className={`text-[12.5px] py-1.5 flex items-center gap-2 transition-colors duration-150 ${pathName === subOne.link ? "text-t1 font-semibold" : "text-t3 hover:text-t1"}`}
-               >
-                <div className={`w-1 h-1 rounded-full ${pathName === subOne.link ? "bg-accent" : "bg-t4"}`}></div>
-                {subOne.label}
-               </Link>
-              </li>
+           {item.subItems && (!isCollapse || sideMenuOpen) && linkId === item.id && (
+            <div className="mt-1 ml-4 border-l border-white/5 space-y-1 animate-in slide-in-from-top-2 duration-200">
+             {item.subItems.map((sub, idx) => (
+              <Link
+               key={idx}
+               href={sub.link || "/"}
+               className={`text-[12px] py-1.5 pl-6 pr-4 flex items-center transition-all rounded-r-lg ${
+                 pathName === sub.link ? "text-t1 font-bold bg-white/[0.02]" : "text-t3 hover:text-t1 hover:bg-white/[0.01]"
+               }`}
+              >
+               {sub.label}
+              </Link>
              ))}
-            </ul>
+            </div>
            )}
-          </li>
-         ))}
-        </React.Fragment>
-       ))}
-      </ul>
-     </nav>
+          </div>
+         );
+        })}
+       </div>
+      </div>
+     ))}
     </div>
     
-    {/* Sidebar Bottom Toggle */}
-    <div className="mt-auto p-4 border-t border-white/5">
+    {/* Sidebar Bottom */}
+    <div className="p-4 border-t border-white/5 bg-white/[0.01] hidden lg:block">
      <button 
       onClick={() => setIsCollapse(!isCollapse)}
-      className="w-full flex items-center justify-center py-2 text-t3 hover:text-t1 transition-colors"
+      className={`w-full flex items-center gap-3 py-2.5 rounded-xl hover:bg-white/5 text-t3 hover:text-t1 transition-all ${isCollapse ? "justify-center" : "px-4"}`}
      >
-      <i className={`fa-solid fa-angles-${isCollapse ? "right" : "left"} text-sm`}></i>
+      <div className="w-6 flex items-center justify-center">
+        <i className={`fa-solid fa-angles-${isCollapse ? "right" : "left"} text-xs`}></i>
+      </div>
+      {!isCollapse && <span className="text-[11px] font-black uppercase tracking-widest">Collapse Menu</span>}
      </button>
     </div>
-   </div>
-   <div 
-    onClick={() => setIsCollapse(false)}
-    className={`app__offcanvas-overlay ${!isCollapse ? "overlay-open" : ""}`}
-   ></div>
+   </aside>
   </>
  );
 };

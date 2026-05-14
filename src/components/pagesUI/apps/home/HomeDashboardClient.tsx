@@ -119,17 +119,21 @@ const HomeDashboardClient = ({ stats, recentActivities, topOpportunities }: Home
   return (
     <>
       {/* Page Header */}
-      <div className="page-header">
-        <div className="ph-left">
-          <h1>HELLO, <span style={{ color: "var(--accent2)" }}>{user?.firstName?.toUpperCase() || 'USER'}</span> 👋</h1>
-          <p>HERE IS WHAT IS HAPPENING WITH YOUR BUSINESS TODAY</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-6 md:py-8">
+        <div className="flex flex-col">
+          <h1 className="text-[20px] md:text-[28px] font-space font-black text-t1 tracking-tighter leading-tight">
+            HELLO, <span className="text-accent2">{user?.firstName?.toUpperCase() || 'USER'}</span> 👋
+          </h1>
+          <p className="text-[10px] md:text-[11px] text-t3 font-black uppercase tracking-[0.2em] mt-1">
+            HERE IS WHAT IS HAPPENING WITH YOUR BUSINESS TODAY
+          </p>
         </div>
-        <div className="ph-right">
-          <button className="btn-ghost mr-2">
-            <i className="fa-solid fa-calendar mr-2"></i> View Schedule
+        <div className="flex items-center gap-2">
+          <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white/[0.04] border border-white/5 rounded-xl text-[11px] font-bold text-t2 hover:text-t1 hover:bg-white/[0.08] transition-all whitespace-nowrap">
+            <i className="fa-solid fa-calendar text-[10px]"></i> View Schedule
           </button>
-          <button className="btn-primary">
-            <i className="fa-solid fa-plus mr-2"></i> New Opportunity
+          <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-xl text-[11px] font-bold shadow-lg shadow-accent/20 hover:bg-accent2 transition-all whitespace-nowrap">
+            <i className="fa-solid fa-plus text-[10px]"></i> New Opportunity
           </button>
         </div>
       </div>
