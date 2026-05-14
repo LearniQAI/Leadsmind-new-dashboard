@@ -27,16 +27,18 @@ import {
 
 //Define an interface for the context api data
 export interface AppContextType {
- scrollDirection?: string;
- setScrollDirection?: React.Dispatch<React.SetStateAction<string>> | undefined;
- sideMenuOpen: boolean;
- setSideMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
- sidebarHandle: () => void;
- toggleTheme: () => void;
- isCollapse: boolean;
- setIsCollapse: React.Dispatch<React.SetStateAction<boolean>>;
- theme: string;
- setTheme: React.Dispatch<React.SetStateAction<string>>;
+  scrollDirection?: string;
+  setScrollDirection?: React.Dispatch<React.SetStateAction<string>> | undefined;
+  sideMenuOpen: boolean;
+  setSideMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  sidebarHandle: () => void;
+  toggleTheme: () => void;
+  isCollapse: boolean;
+  setIsCollapse: React.Dispatch<React.SetStateAction<boolean>>;
+  theme: string;
+  setTheme: React.Dispatch<React.SetStateAction<string>>;
+  searchOpen: boolean;
+  setSearchOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 //Define an interface for the product

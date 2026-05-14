@@ -7,40 +7,65 @@ import CrmOrderOverview from "./CrmOrderOverview";
 import CrmCustomerSatisfaction from "./CrmCustomerSatisfaction";
 import CrmUserActivity from "./CrmUserActivity";
 import CrmDealsStaticTable from "./CrmDealsStaticTable";
+import QuickActions from "@/components/dashboard/QuickActions";
+import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 
 const CrmDashboardMainArea = () => {
- return (
-  <>
-   {/* -- App side area start -- */}
-   <div className="app__slide-wrapper">
-    <div className="grid grid-cols-12 gap-x-5 maxXs:gap-x-0">
-     <div className="col-span-12 xl:col-span-6 xxl:col-span-4">
-      <SalesOverview />
+  const { user } = useDashboardContext();
+  return (
+   <>
+    {/* Page Header */}
+    <div className="page-header">
+     <div className="ph-left">
+      <h1>HELLO, <span style={{ color: "var(--accent2)" }}>{user?.firstName?.toUpperCase() || 'USER'}</span> 👋</h1>
+      <p>OVERVIEW OF YOUR BUSINESS OPERATIONS & REVENUE TRENDS</p>
      </div>
-     <div className="col-span-12 xl:col-span-6 xxl:col-span-5">
+    <div className="ph-right">
+     <button className="btn-ghost mr-2">
+      <i className="fa-solid fa-download mr-2"></i> Export Report
+     </button>
+     <button className="btn-primary">
+      <i className="fa-solid fa-plus mr-2"></i> Customise View
+     </button>
+    </div>
+   </div>
+
+   {/* Quick Actions Bar */}
+   <QuickActions />
+
+   {/* -- App side area start -- */}
+   <div className="app__slide-wrapper p-6">
+    <div className="grid grid-cols-12 gap-5">
+     {/* Stat Cards (Full Width) */}
+     <div className="col-span-12">
       <DashboardAnalysisCard />
      </div>
-     <div className="col-span-12 md:col-span-5 lg:col-span-4 xl:col-span-5 xxl:col-span-3">
+
+     {/* Main Content Grid */}
+     <div className="col-span-12 lg:col-span-8">
+      <SalesOverview />
+     </div>
+     <div className="col-span-12 lg:col-span-4">
       <AudienceSection />
      </div>
-     <div className="col-span-12 md:col-span-7 lg:col-span-8 xl:col-span-7 xxl:col-span-4">
+
+     <div className="col-span-12 xl:col-span-8">
+      <CrmDealsStaticTable />
+     </div>
+     <div className="col-span-12 xl:col-span-4 grid gap-5">
+      <CrmCustomerSatisfaction />
+      <CrmUserActivity />
+     </div>
+
+     <div className="col-span-12 lg:col-span-7">
+      <CrmOrderOverview />
+     </div>
+     <div className="col-span-12 lg:col-span-5">
       <div className="card__wrapper">
        <div className="mini__calendar fc fc-media-screen fc-direction-ltr fc-theme-standard">
         <CrmMiniCalander />
        </div>
       </div>
-     </div>
-     <div className="col-span-12 lg:col-span-6 xl:col-span-7 xxl:col-span-5">
-      <CrmOrderOverview />
-     </div>
-     <div className="col-span-12 lg:col-span-6 xl:col-span-5 xxl:col-span-3">
-      <CrmCustomerSatisfaction />
-     </div>
-     <div className="col-span-12 xl:col-span-6 xxl:col-span-8">
-      <CrmDealsStaticTable />
-     </div>
-     <div className="col-span-12 xl:col-span-6 xxl:col-span-4">
-      <CrmUserActivity />
      </div>
     </div>
    </div>

@@ -124,6 +124,24 @@ module.exports = {
           dark: '#94A3B8',    // Slate 400
         },
         rating: "#EC8D1D",
+        n900: "#04091a",
+        n800: "#080f28",
+        n700: "#0c1535",
+        n600: "#111d47",
+        n500: "#172458",
+        n400: "#1f2f72",
+        t1: "#eef2ff",
+        t2: "#94a3c8",
+        t3: "#4a5a82",
+        t4: "#2a3557",
+        accent: "#2563eb",
+        accent2: "#3b82f6",
+        green: "#10b981",
+        amber: "#f59e0b",
+        red: "#ef4444",
+        purple: "#8b5cf6",
+        cyan: "#06b6d4",
+        pink: "#ec4899",
         //text color
         headingPrimary: {
           DEFAULT: '#444050', // light mode

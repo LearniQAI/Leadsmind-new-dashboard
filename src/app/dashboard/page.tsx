@@ -42,13 +42,13 @@ const Home = async () => {
   supabase.from('invoices').select('total_amount').eq('workspace_id', workspaceId).eq('status', 'paid'),
   // 7. Recent Activity
   supabase.from('contact_activities')
-   .select('*, contacts(first_name, last_name)')
+   .select('*, contacts(id, first_name, last_name)')
    .eq('workspace_id', workspaceId)
    .order('created_at', { ascending: false })
    .limit(8),
   // 8. Top Opportunities
   supabase.from('opportunities')
-   .select('*, contacts(first_name, last_name)')
+   .select('*, contacts(id, first_name, last_name)')
    .eq('workspace_id', workspaceId)
    .eq('status', 'open')
    .order('value', { ascending: false })

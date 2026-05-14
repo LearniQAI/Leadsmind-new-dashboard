@@ -7,12 +7,12 @@ import DashboardFooter from "./footer/FooterOne";
 import DashboardHeader from "./header/DashboardHeader";
 import DashBoardSidebar from "./sidebar/DashBoardSidebar";
 import useGlobalContext from "@/hooks/use-context";
+import { useDashboardContext } from "./DashboardProvider";
+import GlobalSearchModal from "../dashboard/GlobalSearchModal";
 
 interface WrapperProps {
  children: React.ReactNode;
 }
-
-import { useDashboardContext } from "./DashboardProvider";
 
 const Wrapper: React.FC<WrapperProps> = ({ children }) => {
  const { theme } = useGlobalContext();
@@ -38,21 +38,22 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
   }
  };
 
- return (
-  <>
-   <div
-    className={`page__full-wrapper bg-[#0A0F3D] ${theme === "dark" ? "dark" : "light"}`}
-   >
-    <DashBoardSidebar />
-    <div className="page__body-wrapper bg-[#0A0F3D] min-h-screen">
-     <BackToTop />
-     {renderHeader()}
-     {children}
-     {renderFooter()}
+  return (
+   <>
+    <div className="page__full-wrapper bg-n900">
+     <DashBoardSidebar />
+     <div className="page__body-wrapper bg-n900 min-h-screen flex flex-col">
+      <BackToTop />
+      {renderHeader()}
+      <main className="flex-1">
+        {children}
+      </main>
+      {renderFooter()}
+      <GlobalSearchModal />
+     </div>
     </div>
-   </div>
-  </>
- );
+   </>
+  );
 };
 
 export default Wrapper;

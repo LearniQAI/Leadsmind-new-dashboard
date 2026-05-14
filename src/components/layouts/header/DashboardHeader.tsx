@@ -1,165 +1,54 @@
 "use client";
-import Image from "next/image";
 import React, { useState } from "react";
-import handImg from "../../../../public/assets/images/shape/hand.png";
 import HeaderAction from "./components/HeaderAction";
 import useGlobalContext from "@/hooks/use-context";
 import sidebarData from "@/data/sidebar-data";
 import Link from "next/link";
 import { SidebarCategory } from "@/interface";
-
 import { useDashboardContext } from "../DashboardProvider";
 
 const DashboardHeader = () => {
- const { sidebarHandle } = useGlobalContext();
- const { user } = useDashboardContext();
- const [searchQuery, setSearchQuery] = useState("");
- const [showResults, setShowResults] = useState(false);
- const [searchResultData, setSearchResultData] = useState<
-  SidebarCategory[] | null
- >([]);
+    const { sidebarHandle, setSearchOpen } = useGlobalContext();
+    const { enrichedWorkspace } = useDashboardContext();
 
- const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const value = e.target.value.toLowerCase();
-  setSearchQuery(value);
-  setShowResults(value.trim().length > 0);
+    return (
+        <header className="app__header__area px-6 sticky top-0 z-[1000] bg-n900/80 backdrop-blur-md border-b border-white/5">
+            <div className="flex items-center justify-between h-full">
+                {/* Left: Greeting */}
+                <div className="flex items-center gap-4">
+                    <button onClick={sidebarHandle} className="text-t2 hover:text-t1 lg:hidden">
+                        <i className="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <h2 className="header__title whitespace-nowrap">
+                        Hello, <span>{enrichedWorkspace?.name || 'Workspace'}</span> 👋
+                    </h2>
+                </div>
 
-  if (value.trim().length > 0) {
-   // Filter data
-   const filteredData = sidebarData
-    .map((category) => {
-     const filteredItems = category.items
-      .map((item) => {
-       // Filter subItems
-       const filteredSubItems = item.subItems?.filter((subItem) =>
-        subItem.label.toLowerCase().includes(value)
-       );
+                {/* Center: Search */}
+                <div className="hidden md:flex flex-1 justify-center px-8">
+                    <div 
+                        className="relative w-full max-w-[320px] cursor-pointer"
+                        onClick={() => setSearchOpen(true)}
+                    >
+                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-t3">
+                            <i className="fa-solid fa-magnifying-glass text-xs"></i>
+                        </div>
+                        <div className="w-full bg-white/[0.05] border border-white/5 rounded-lg py-1.5 pl-9 pr-12 text-[13px] text-t3 select-none flex items-center h-[34px]">
+                            Search leads, tasks, funnels...
+                        </div>
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                            <span className="text-[10px] font-bold text-t4 border border-white/10 rounded px-1.5 py-0.5">⌘K</span>
+                        </div>
+                    </div>
+                </div>
 
-       // Include item if it matches or any of its subItems match
-       if (
-        item.label.toLowerCase().includes(value) ||
-        (filteredSubItems && filteredSubItems.length > 0)
-       ) {
-        return { ...item, subItems: filteredSubItems || item.subItems };
-       }
-
-       return null;
-      })
-      .filter(Boolean); // Remove null values
-
-     // Include category if it contains filtered items
-     if (filteredItems.length > 0) {
-      return { ...category, items: filteredItems };
-     }
-
-     return null;
-    })
-    .filter(Boolean) as SidebarCategory[]; // Remove null values
-
-   setSearchResultData(filteredData);
-  } else {
-   setSearchResultData([]);
-  }
- };
-
- return (
-  <>
-   {/* -- App header area start -- */}
-   <div className="app__header__area">
-    <div className="app__header-inner">
-     <div className="app__header-left">
-      <div className="flex">
-       <button
-        id="sidebar__active"
-        onClick={sidebarHandle}
-        className="app__header-toggle"
-       >
-        <div className="bar-icon-2">
-         <span></span>
-         <span></span>
-         <span></span>
-        </div>
-       </button>
-      </div>
-      <h2 className="header__title">
-       Hello {user?.firstName || 'User'}{" "}
-       <span>
-        <Image
-         className="inline-block"
-         src={handImg}
-         priority
-         alt="image"
-        />
-       </span>
-      </h2>
-     </div>
-     <div className="app__header-right">
-      <div className="app__herader-input relative">
-       <input
-        type="search"
-        id="search-field"
-        name="search-field"
-        placeholder="Search Here . . ."
-        value={searchQuery}
-        onChange={handleSearchChange}
-       />
-       <button>
-        <i className="icon-magnifying-glass"></i>
-       </button>
-
-       {/* Search Results Box */}
-       {showResults && (
-        <div className="search-results-box">
-         <ul>
-          {searchResultData?.length ? (
-           <>
-            {searchResultData.map((category) => (
-             <li key={category.id}>
-              <strong>{category.category}</strong>
-              <ul>
-               {category.items.map((item) => (
-                <li key={item.id}>
-                 {item.link ? (
-                  <Link href={item.link}>{item.label}</Link>
-                 ) : (
-                  item.label
-                 )}
-                 {item.subItems && (
-                  <ul>
-                   {item.subItems.map((subItem, index) => (
-                    <li key={index}>
-                     {subItem.link ? (
-                      <Link href={subItem.link}>
-                       {subItem.label}
-                      </Link>
-                     ) : (
-                      subItem.label
-                     )}
-                    </li>
-                   ))}
-                  </ul>
-                 )}
-                </li>
-               ))}
-              </ul>
-             </li>
-            ))}
-           </>
-          ) : (
-           <li>No results found</li>
-          )}
-         </ul>
-        </div>
-       )}
-      </div>
-      <HeaderAction />
-     </div>
-    </div>
-   </div>
-   <div className="body__overlay"></div>
-   {/* -- App header area end -- */}
-  </>
- );
+                {/* Right: Actions */}
+                <div className="flex items-center">
+                    <HeaderAction />
+                </div>
+            </div>
+        </header>
+    );
 };
 
 export default DashboardHeader;

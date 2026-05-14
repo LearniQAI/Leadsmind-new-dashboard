@@ -1,5 +1,5 @@
-import "./globals.css";
 import "../style/index.scss";
+import "./globals.css";
 import AppProvider from "@/lib/contextApi/AppProvider";
 import ReduxProvider from "@/redux/provider";
 import { DirectionProvider } from "@/hooks/useDirection";

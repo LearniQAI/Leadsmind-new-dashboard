@@ -10,6 +10,7 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  const [isCollapse, setIsCollapse] = useState<boolean>(false);
  const [theme, setTheme] = useState<string>("dark");
  const [scrollDirection, setScrollDirection] = useState<string>("up");
+ const [searchOpen, setSearchOpen] = useState<boolean>(false);
 
  const sidebarHandle = () => {
   setSideMenuOpen(!sideMenuOpen);
@@ -58,6 +59,8 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     setIsCollapse,
     theme,
     setTheme,
+    searchOpen,
+    setSearchOpen,
    }}
   >
    {children}

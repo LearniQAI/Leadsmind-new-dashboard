@@ -2,26 +2,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import sidebarMainLogo from "../../../../public/assets/images/logo/logo.svg";
-import sidebarDarkLogo from "../../../../public/assets/images/logo/logo-white.svg";
 import useGlobalContext from "@/hooks/use-context";
-import sidebarImg from "../../../../public/assets/images/bg/side-bar.png";
 import sidebarData from "@/data/sidebar-data";
 import { usePathname } from "next/navigation";
-
 import { useDashboardContext } from "../DashboardProvider";
 
 const DashBoardSidebar = () => {
  const { isCollapse, setIsCollapse } = useGlobalContext();
- const { user, enrichedWorkspace, role } = useDashboardContext();
+ const { enrichedWorkspace } = useDashboardContext();
  const [linkId, setlinkId] = useState<number | null>(null);
  const [linkIdTwo, setlinkIdTwo] = useState<number | null>(null);
  const [linkIdThree, setlinkIdThree] = useState<number | null>(null);
- const [linkIdFour, setlinkIdFour] = useState<number | null>(null);
- const pathName = usePathname(); // Current route
+ const pathName = usePathname();
 
- // Utility function to handle collapse behavior for screens with max-width: 1199px
  const handleCollapse = (shouldCollapse: boolean) => {
   if (window.matchMedia("(max-width: 1199px)").matches) {
    setIsCollapse(shouldCollapse);
@@ -31,77 +24,43 @@ const DashBoardSidebar = () => {
  const handleClick = (id: number) => {
   if (linkId === id) {
    setlinkId(null);
-   handleCollapse(true);
   } else {
    setlinkId(id);
    setlinkIdTwo(null);
    setlinkIdThree(null);
-   setlinkIdFour(null);
-   handleCollapse(true); // Expand when opening
   }
  };
 
  const handleClickTwo = (id: number) => {
   if (linkIdTwo === id) {
    setlinkIdTwo(null);
-   handleCollapse(true); // Collapse when closing
   } else {
    setlinkIdTwo(id);
    setlinkIdThree(null);
-   setlinkIdFour(null);
-   handleCollapse(true); // Expand when opening
   }
  };
 
- const handleClickThree = (id: number) => {
-  if (linkIdThree === id) {
-   setlinkIdThree(null);
-   handleCollapse(true); // Collapse when closing
-  } else {
-   setlinkIdThree(id);
-   setlinkIdFour(null);
-   handleCollapse(true); // Expand when opening
-  }
- };
-
- const handleClickFour = (id: number) => {
-  if (linkIdFour === id) {
-   setlinkIdFour(null);
-   handleCollapse(true); // Collapse when closing
-  } else {
-   setlinkIdFour(id);
-   handleCollapse(true); // Expand when opening
-  }
- };
-
- // UseEffect to find and set the active menu based on the current path
  useEffect(() => {
   const findLayerIds = () => {
    let foundFirstLayerId = null;
    let foundSecondLayerId = null;
    let foundThirdLayerId = null;
 
-   // Iterate through sidebarData to find the object that matches the pathName
    sidebarData.forEach((category) => {
     category.items.forEach((item) => {
-     // Check if the current pathName matches the link of the first level
      if (item.link === pathName) {
-      foundFirstLayerId = item.id; // First Layer ID
-      foundSecondLayerId = null; // Reset second-level ID
-      foundThirdLayerId = null; // Reset third-level ID
+      foundFirstLayerId = item.id;
      } else if (item.subItems) {
-      // Check within subItems recursively for the second layer
       item.subItems.forEach((subItem, subItemIndex) => {
        if (subItem.link === pathName) {
-        foundFirstLayerId = item.id; // First Layer ID
-        foundSecondLayerId = subItemIndex; // Second Layer ID
-        foundThirdLayerId = null; // Reset third-level ID
+        foundFirstLayerId = item.id;
+        foundSecondLayerId = subItemIndex;
        } else if (subItem.subItems) {
         subItem.subItems.forEach((thirdSubMenu, thirdSubIndex) => {
          if (thirdSubMenu.link === pathName) {
-          foundFirstLayerId = item.id; // First Layer ID
-          foundSecondLayerId = subItemIndex; // Second Layer ID
-          foundThirdLayerId = thirdSubIndex; // Third Layer ID
+          foundFirstLayerId = item.id;
+          foundSecondLayerId = subItemIndex;
+          foundThirdLayerId = thirdSubIndex;
          }
         });
        }
@@ -110,194 +69,86 @@ const DashBoardSidebar = () => {
     });
    });
 
-   // Set the found ids in state
    setlinkId(foundFirstLayerId);
    setlinkIdTwo(foundSecondLayerId);
    setlinkIdThree(foundThirdLayerId);
   };
 
-  // Call the function to find the matching object when pathName changes
   findLayerIds();
- }, [pathName]); // Re-run the effect whenever pathName changes
+ }, [pathName]);
 
  return (
   <>
-   <div
-    className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}
-   >
-    <div className="main-sidebar-header !h-[80px] !py-0 !px-4 border-b border-white/5 bg-[#0b0b14] flex flex-col items-center justify-center shadow-lg shadow-black/20">
-     <Link href="/" className="flex items-center justify-center w-full group mt-1">
-      <div className="relative w-40 h-10 bg-white rounded-lg px-2 overflow-hidden flex items-center justify-center shadow-sm">
-        <Image 
-         src={enrichedWorkspace?.logoUrl || enrichedWorkspace?.branding?.logoUrl || "/assets/images/brand/LeadsMind_Logo.png.png"} 
-         alt={enrichedWorkspace?.branding?.platformName || "LeadsMind"} 
-         width={120}
-         height={30}
-         className="object-contain"
-         priority
-        />
+   <div className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}>
+    {/* Logo Area */}
+    <div className="sidebar-logo-area py-6 px-6 border-b border-white/5 mb-2">
+     <Link href="/" className="flex items-center gap-3 group">
+      <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
+       <i className="fa-solid fa-bolt text-white text-sm"></i>
       </div>
+      {!isCollapse && (
+       <div className="flex flex-col">
+        <span className="text-sm font-space font-bold text-t1 tracking-tight">LEADSMIND</span>
+        <span className="text-[10px] font-bold text-accent2 tracking-widest uppercase opacity-80">OS</span>
+       </div>
+      )}
      </Link>
-     {enrichedWorkspace?.name && (
-      <div className="flex items-center gap-1.5 mt-1 px-1">
-       <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(19,89,255,0.8)]" />
-       <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 truncate max-w-[180px]">
-        {enrichedWorkspace.name}
-       </span>
-      </div>
-     )}
     </div>
 
-    <div className="common-scrollbar max-h-screen overflow-y-auto">
-     <div className="px-6 py-6">
-      <Link href="/contacts/new">
-       <Button className="w-full bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest h-12 shadow-lg shadow-primary/20 border-none group">
-        <span className="flex items-center gap-2">
-         <i className="fa-light fa-plus text-lg" />
-         New Contact
-        </span>
-       </Button>
-      </Link>
-     </div>
-
-     <nav className="main-menu-container nav nav-pills flex-column sub-open">
-      <ul className="main-menu" style={{ display: "block" }}>
+    <div className="common-scrollbar max-h-[calc(100vh-100px)] overflow-y-auto">
+     <nav className="main-menu-container">
+      <ul className="main-menu">
        {sidebarData.map((category) => (
         <React.Fragment key={category.id}>
-          <li className="sidebar__menu-category !px-6 !py-4 !my-2">
-           <span className="category-name" style={{ color: '#ffffff', opacity: 1, fontWeight: 900, letterSpacing: '0.2em', fontSize: '11px', display: 'block' }}>{category.category}</span>
+         {!isCollapse && (
+          <li className="sidebar__menu-category">
+           <span className="category-name">{category.category}</span>
           </li>
+         )}
          {category.items.map((item) => (
           <li
            key={item.id}
-           className={
-            item.subItems?.length
-             ? `slide has-sub ${linkId === item.id ? "open" : ""}` // Toggle based on first-level active state
-             : ""
-           }
+           className={`slide ${item.subItems?.length ? "has-sub" : ""} ${linkId === item.id ? "open" : ""}`}
           >
            <Link
-            // onClick={() => handleClick(item.id)}
             onClick={(e: React.MouseEvent) => {
              if (!item.link || item.link === "#") {
-              e.preventDefault(); // Prevent navigation when the link is "#"
+              e.preventDefault();
              }
-             handleClick(item.id); // Handle the menu toggle
+             handleClick(item.id);
             }}
             href={item.link || "#"}
-            className={`sidebar__menu-item ${
-             linkId === item.id ? "active" : ""
-            }`}
+            className={`sidebar__menu-item ${linkId === item.id ? "active" : ""}`}
            >
             {item.icon && (
              <div className="side-menu__icon">
-              <i className={item.icon}></i>
+              <i className={`fa-solid ${item.icon}`}></i>
              </div>
             )}
-            <span className="sidebar__menu-label">
-             {item.label}
-            </span>
-            {item.subItems && (
-             <i className="fa-regular fa-angle-down side-menu__angle"></i>
+            {!isCollapse && (
+             <>
+              <span className="sidebar__menu-label flex-1">{item.label}</span>
+              {item.subItems && (
+               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 ${linkId === item.id ? "rotate-180" : ""}`}></i>
+              )}
+             </>
             )}
            </Link>
 
-           {item.subItems && (
+           {item.subItems && !isCollapse && (
             <ul
-             className={
-              linkId === item.id
-               ? `sidebar-menu child1 active submenu-visible`
-               : `sidebar-menu child1`
-             }
-             style={{
-              display: linkId === item.id ? "block" : "none",
-             }}
+             className="sidebar-submenu"
+             style={{ display: linkId === item.id ? "block" : "none" }}
             >
              {item.subItems.map((subOne, index) => (
-              <li
-               key={index}
-               className={`slide has-sub ${
-                linkIdTwo === index ? "open" : ""
-               }`}
-              >
+              <li key={index} className="pl-9 pr-4 py-1">
                <Link
-                onClick={() => handleClickTwo(index)}
                 href={subOne.link || "/"}
-                className={`sidebar__menu-item ${
-                 linkIdTwo === index ? "active" : ""
-                }`}
+                className={`text-[12.5px] py-1.5 flex items-center gap-2 transition-colors duration-150 ${pathName === subOne.link ? "text-t1 font-semibold" : "text-t3 hover:text-t1"}`}
                >
+                <div className={`w-1 h-1 rounded-full ${pathName === subOne.link ? "bg-accent" : "bg-t4"}`}></div>
                 {subOne.label}
-                {subOne.subItems && (
-                 <i className="fa-regular fa-angle-down side-menu__angle"></i>
-                )}
                </Link>
-               {subOne.subItems && (
-                <ul
-                 className="sidebar-menu child2"
-                 style={{
-                  display:
-                   linkIdTwo === index ? "block" : "none",
-                 }}
-                >
-                 {subOne.subItems.map((subTwo, subIndex) => (
-                  <li
-                   key={subIndex}
-                   className={`slide has-sub ${
-                    linkIdThree === subIndex ? "open" : ""
-                   }`}
-                  >
-                   <Link
-                    onClick={() =>
-                     handleClickThree(subIndex)
-                    }
-                    href={subTwo.link || "#"}
-                    className={`sidebar__menu-item ${
-                     linkIdThree === subIndex
-                      ? "active"
-                      : ""
-                    }`}
-                   >
-                    {subTwo.label}
-                    {subTwo.subItems && (
-                     <i className="fa-regular fa-angle-down side-menu__angle"></i>
-                    )}
-                   </Link>
-                   {subTwo.subItems && (
-                    <ul
-                     className="sidebar-menu child3"
-                     style={{
-                      display:
-                       linkIdThree === subIndex
-                        ? "block"
-                        : "none",
-                     }}
-                    >
-                     {subTwo.subItems.map(
-                      (subThree, subThreeIndex) => (
-                       <li
-                        key={subThreeIndex}
-                        className={`slide ${
-                         subThree.subItems
-                          ? "has-sub"
-                          : ""
-                        }`}
-                       >
-                        <Link
-                         href={subThree.link || "#"}
-                         className="sidebar__menu-item"
-                        >
-                         {subThree.label}
-                        </Link>
-                       </li>
-                      )
-                     )}
-                    </ul>
-                   )}
-                  </li>
-                 ))}
-                </ul>
-               )}
               </li>
              ))}
             </ul>
@@ -308,14 +159,21 @@ const DashBoardSidebar = () => {
        ))}
       </ul>
      </nav>
-
-
+    </div>
+    
+    {/* Sidebar Bottom Toggle */}
+    <div className="mt-auto p-4 border-t border-white/5">
+     <button 
+      onClick={() => setIsCollapse(!isCollapse)}
+      className="w-full flex items-center justify-center py-2 text-t3 hover:text-t1 transition-colors"
+     >
+      <i className={`fa-solid fa-angles-${isCollapse ? "right" : "left"} text-sm`}></i>
+     </button>
     </div>
    </div>
-   <div className="app__offcanvas-overlay"></div>
-   <div
+   <div 
     onClick={() => setIsCollapse(false)}
-    className={`app__offcanvas-overlay ${isCollapse ? "overlay-open" : ""}`}
+    className={`app__offcanvas-overlay ${!isCollapse ? "overlay-open" : ""}`}
    ></div>
   </>
  );

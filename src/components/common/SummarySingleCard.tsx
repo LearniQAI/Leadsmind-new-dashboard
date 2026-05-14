@@ -1,12 +1,13 @@
 import React from "react";
 
 interface CardProps {
- iconClass: string; // Font Awesome icon class
- title: string; // Title of the card
- value: string | number; // Main value to display
- description?: string; // Optional description
- percentageChange?: string; // Optional percentage change info
- isIncrease?: boolean; // Indicates if the change is positive or negative
+ iconClass: string; 
+ title: string; 
+ value: string | number; 
+ description?: string; 
+ percentageChange?: string; 
+ isIncrease?: boolean; 
+ color?: string;
 }
 
 const SummarySingleCard: React.FC<CardProps> = ({
@@ -15,40 +16,25 @@ const SummarySingleCard: React.FC<CardProps> = ({
  value,
  description,
  percentageChange,
- isIncrease,
+ isIncrease = true,
+ color = 'var(--accent2)'
 }) => {
  return (
-  <div className="card__wrapper">
-   <div className="flex items-center gap-[30px] maxSm:gap-5">
-    <div className="card__icon">
-     <span>
-      <i className={iconClass}></i>
-     </span>
+  <div className="stat-card" style={{ '--card-accent': color } as React.CSSProperties}>
+   <div className="flex justify-between items-start mb-4">
+    <div className="stat-icon" style={{ backgroundColor: `${color}15`, color: color }}>
+     <i className={`fa-solid ${iconClass}`}></i>
     </div>
-    <div className="card__title-wrap">
-     <h6 className="card__sub-title mb-[10px]">{title}</h6>
-     <div className="flex flex-wrap items-end gap-[10px]">
-      <h3 className="card__title mb-0">{value}</h3>
-      {description && (
-       <span className="card__desc style_two">
-        {percentageChange && (
-         <span
-          className={`price-${isIncrease ? "increase" : "decrease"}`}
-         >
-          <i
-           className={`fa-light ${
-            isIncrease ? "fa-arrow-up" : "fa-arrow-down"
-           }`}
-          ></i>{" "}
-          {percentageChange}
-         </span>
-        )}{" "}
-        {description}
-       </span>
-      )}
+    {percentageChange && (
+     <div className={`stat-trend ${isIncrease ? 'up' : 'down'}`}>
+      <i className={`fa-solid fa-arrow-${isIncrease ? 'up' : 'down'} mr-1`}></i>
+      {percentageChange}
      </div>
-    </div>
+    )}
    </div>
+   <div className="stat-value font-space">{value}</div>
+   <div className="stat-label">{title}</div>
+   {description && <div className="stat-sublabel">{description}</div>}
   </div>
  );
 };
