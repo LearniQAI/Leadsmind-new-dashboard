@@ -29,6 +29,7 @@ interface DashboardContextType {
  enrichedWorkspace: (Workspace & { branding?: Branding | null }) | null;
  branding: Branding | null;
  role: string | null;
+ permissions: string[];
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -39,17 +40,19 @@ export function DashboardProvider({
  workspace,
  branding,
  role,
+ permissions = [],
 }: {
  children: React.ReactNode;
  user: User | null;
  workspace: Workspace | null;
  branding: Branding | null;
  role: string | null;
+ permissions?: string[];
 }) {
  const enrichedWorkspace = workspace ? { ...workspace, branding } : null;
 
  return (
-  <DashboardContext.Provider value={{ user, workspace, enrichedWorkspace, branding, role }}>
+  <DashboardContext.Provider value={{ user, workspace, enrichedWorkspace, branding, role, permissions }}>
    {children}
   </DashboardContext.Provider>
  );

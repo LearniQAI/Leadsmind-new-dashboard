@@ -1,12 +1,13 @@
 import { createServerClient as _createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createClient as _createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 export const createServerClient = async () => {
  const cookieStore = cookies()
 
  return _createServerClient(
-  'https://iejtgefkoiyrnyeedigr.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllanRnZWZrb2l5cm55ZWVkaWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NTI5ODAsImV4cCI6MjA5MTIyODk4MH0.2iTCPctmy0J1jxcVTovX5PSJy-yDJtKGqfBge_hTIJA',
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
    cookies: {
     get(name: string) {
@@ -27,6 +28,19 @@ export const createServerClient = async () => {
      }
     },
    },
+  }
+ )
+}
+
+export const createAdminClient = () => {
+ return _createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+   auth: {
+    autoRefreshToken: false,
+    persistSession: false
+   }
   }
  )
 }

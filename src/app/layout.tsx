@@ -6,7 +6,7 @@ import { DirectionProvider } from "@/hooks/useDirection";
 import Setting from "@/common/setting/Setting";
 import { Toaster } from "sonner";
 import { createServerClient } from "@/lib/supabase/server";
-import { getCurrentProfile, getCurrentWorkspace, getUserRole } from "@/lib/auth";
+import { getCurrentProfile, getCurrentWorkspace, getUserRole, getUserAccessInfo } from "@/lib/auth";
 import { fetchBranding } from "@/lib/branding";
 import { DashboardProvider } from "@/components/layouts/DashboardProvider";
 import { BrandingProvider } from "@/components/branding/BrandingProvider";
@@ -24,16 +24,19 @@ export default async function RootLayout({
  let user = null;
  let workspaceData = null;
  let role = null;
+ let permissions: string[] = [];
  let branding = null;
 
  if (authUser) {
-  const [profile, workspace, userRole] = await Promise.all([
+  const [profile, workspace, accessInfo] = await Promise.all([
    getCurrentProfile(authUser),
    getCurrentWorkspace(authUser),
-   getUserRole(),
+   getUserAccessInfo(),
   ]);
 
-  role = userRole;
+  role = accessInfo.role;
+  permissions = accessInfo.permissions;
+  
   workspaceData = workspace ? {
    id: workspace.id,
    name: workspace.name,
@@ -81,6 +84,7 @@ export default async function RootLayout({
          user={user} 
          workspace={workspaceData} 
          role={role} 
+         permissions={permissions}
          branding={branding ? { platformName: branding.platform_name, logoUrl: branding.logo_url } : null}
         >
          <BrandingProvider 

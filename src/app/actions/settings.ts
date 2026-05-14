@@ -1,13 +1,22 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
+import { getCurrentWorkspaceId as getWsId, getCurrentWorkspace } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
+import { revalidatePath } from 'next/cache';
+
+async function getActiveWorkspaceId() {
+  const id = await getWsId();
+  if (id) return id;
+  
+  const ws = await getCurrentWorkspace();
+  return ws?.id || null;
+}
 
 // BRANDING
 export async function getWorkspaceBranding() {
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -26,7 +35,7 @@ export async function getWorkspaceBranding() {
 
 export async function updateWorkspaceBranding(updates: any) {
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -64,13 +73,49 @@ export async function updateWorkspaceBranding(updates: any) {
 // TEAM
 export async function getWorkspaceMembers() {
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = createAdminClient();
+  // We use a broader select to ensure we get members even if user profile join has issues
+  const { data, error } = await supabase
+   .from('workspace_members')
+   .select(`
+     id,
+     workspace_id,
+     user_id,
+     role,
+     permissions,
+     user:users (
+       id,
+       email,
+       first_name,
+       last_name,
+       avatar_url
+     )
+   `)
+   .eq('workspace_id', workspaceId);
+
+  if (error) {
+    console.error('[getWorkspaceMembers] Error:', error);
+    throw error;
+  }
+  
+  return { data };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function getWorkspaceInvitations() {
+ try {
+  const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
   const { data, error } = await supabase
-   .from('workspace_members')
-   .select('*, user:users(*)')
+   .from('workspace_invitations')
+   .select('*')
    .eq('workspace_id', workspaceId);
 
   if (error) throw error;
@@ -80,57 +125,154 @@ export async function getWorkspaceMembers() {
  }
 }
 
-export async function inviteTeamMember(email: string, role: string = 'member') {
+export async function inviteTeamMember(
+ email: string, 
+ role: string = 'member', 
+ permissions: string[] = ['dashboard'],
+ options?: { directCreate?: boolean; fullName?: string; password?: string }
+) {
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
-  
-  // 1. Create the invitation record in the database
-  const { data, error } = await supabase
-   .from('workspace_invitations')
-   .insert({
-    workspace_id: workspaceId,
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+  // Security check: Only admins can invite/create members
+  const { data: currentMember } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', currentUser?.id)
+    .single();
+
+  if (currentMember?.role !== 'admin') {
+    return { error: 'Unauthorized: Only workspace admins can manage team members' };
+  }
+
+  if (options?.directCreate) {
+   const adminSupabase = createAdminClient();
+   
+   // 1. Create the user directly via Admin Auth
+   const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
     email,
-    role,
-    invited_by: (await supabase.auth.getUser()).data.user?.id
-   })
-   .select()
-   .single();
+    password: options.password,
+    email_confirm: true,
+    user_metadata: { full_name: options.fullName }
+   });
+
+   if (authError) return { error: authError.message };
+
+   // 1.5 Create user profile record in public.users
+   const { error: profileError } = await adminSupabase
+    .from('users')
+    .insert({
+     id: authData.user.id,
+     email: email,
+     first_name: options.fullName?.split(' ')[0] || '',
+     last_name: options.fullName?.split(' ').slice(1).join(' ') || '',
+    });
+
+   if (profileError) console.error('Error creating user profile:', profileError);
+
+   // 2. Insert into workspace_members via Admin to bypass RLS
+   const { error: memberError } = await adminSupabase
+    .from('workspace_members')
+    .insert({
+     workspace_id: workspaceId,
+     user_id: authData.user.id,
+     role,
+     permissions
+    });
+
+   if (memberError) return { error: memberError.message };
+
+   revalidatePath('/settings');
+   return { data: authData.user };
+  } else {
+   const adminSupabase = createAdminClient();
+   // Invitation Logic via Admin to bypass RLS
+   const { data, error } = await adminSupabase
+    .from('workspace_invitations')
+    .insert({
+     workspace_id: workspaceId,
+     email,
+     role,
+     permissions,
+     invited_by: currentUser?.id
+    })
+    .select()
+    .single();
+
+   if (error) return { error: error.message };
+
+   revalidatePath('/settings');
+
+   const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('name')
+    .eq('id', workspaceId)
+    .single();
+
+   await sendEmail({
+     to: email,
+     subject: `Join ${workspace?.name || 'LeadsMind'} Workspace`,
+     html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #2563eb; border-radius: 16px; background-color: #04091a; color: #eef2ff;">
+       <h2 style="color: #3b82f6; font-size: 24px;">Workspace <span style="color: #ffffff;">Invitation</span></h2>
+       <p style="color: #94a3c8; font-size: 14px;">You have been authorized to join <strong>${workspace?.name}</strong>.</p>
+       <div style="margin: 24px 0; padding: 20px; background-color: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+         <p style="margin: 0; font-size: 12px; color: #4a5a82; text-transform: uppercase; letter-spacing: 1px;">Access Protocol</p>
+         <p style="margin: 8px 0 0; font-size: 16px; font-weight: bold; color: #3b82f6;">${role.toUpperCase()}</p>
+       </div>
+       <p style="color: #94a3c8;">Accept the invitation below to initialize your node:</p>
+       <div style="margin: 30px 0;">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/signup?email=${encodeURIComponent(email)}&invite=${data.id}" 
+          style="display: inline-block; padding: 14px 40px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+         Accept Invitation
+        </a>
+       </div>
+      </div>
+     `
+    });
+
+   return { data };
+  }
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function updateMemberPermissions(memberId: string, role: string, permissions: string[]) {
+ try {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+  // Security check: Only admins can manage permissions
+  const { data: currentMember } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', currentUser?.id)
+    .single();
+
+  if (currentMember?.role !== 'admin') {
+    return { error: 'Unauthorized' };
+  }
+
+  const { error } = await supabase
+   .from('workspace_members')
+   .update({ role, permissions })
+   .eq('id', memberId)
+   .eq('workspace_id', workspaceId);
 
   if (error) throw error;
 
-  const { data: workspace } = await supabase
-   .from('workspaces')
-   .select('name')
-   .eq('id', workspaceId)
-   .single();
-
-  await sendEmail({
-    to: email,
-    subject: `You've been invited to join ${workspace?.name || 'a workspace'} on LeadsMind`,
-    html: `
-     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-      <h2 style="color: #6c47ff;">Join ${workspace?.name || 'LeadsMind'}</h2>
-      <p>You have been invited to join the <strong>${workspace?.name}</strong> workspace as a <strong>${role}</strong>.</p>
-      <p>Click the link below to accept your invitation and set up your account:</p>
-      <div style="margin: 30px 0;">
-       <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/signup?email=${encodeURIComponent(email)}&invite=${data.id}" 
-         style="display: inline-block; padding: 14px 30px; background-color: #6c47ff; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-        Accept Invitation
-       </a>
-      </div>
-      <hr style="border: 0; border-top: 1px solid #eee;" />
-      <p style="color: #888; font-size: 12px; margin-top: 20px;">
-       This invitation was sent by LeadsMind on behalf of ${workspace?.name}. 
-       If you didn't expect this invitation, you can safely ignore this email.
-      </p>
-     </div>
-    `
-   });
-
-  return { data };
+  revalidatePath('/settings');
+  return { success: true };
  } catch (error: any) {
   return { error: error.message };
  }
@@ -139,7 +281,7 @@ export async function inviteTeamMember(email: string, role: string = 'member') {
 // WEBHOOKS
 export async function getWebhooks() {
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -157,7 +299,7 @@ export async function getWebhooks() {
 
 export async function createWebhook(url: string, events: string[]) {
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -177,7 +319,7 @@ export async function createWebhook(url: string, events: string[]) {
 // API KEYS
 export async function getWorkspaceApiKey() {
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -196,7 +338,7 @@ export async function getWorkspaceApiKey() {
 
 export async function generateWorkspaceApiKey() {
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const newKey = `lm_sk_${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`;
@@ -217,7 +359,7 @@ export async function generateWorkspaceApiKey() {
 
 export async function updateWorkspaceLogo(logoUrl: string) {
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();

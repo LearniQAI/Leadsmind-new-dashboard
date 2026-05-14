@@ -8,6 +8,7 @@ import DashBoardSidebar from "./sidebar/DashBoardSidebar";
 import useGlobalContext from "@/hooks/use-context";
 import { useDashboardContext } from "./DashboardProvider";
 import GlobalSearchModal from "../dashboard/GlobalSearchModal";
+import AccessDenied from "../auth/AccessDenied";
 
 interface WrapperProps {
  children: React.ReactNode;
@@ -15,12 +16,40 @@ interface WrapperProps {
 
 const Wrapper: React.FC<WrapperProps> = ({ children }) => {
  const { isCollapse } = useGlobalContext();
+ const { role, permissions } = useDashboardContext() as any;
  const pathName = usePathname();
  const [isLoading, setIsLoading] = useState<boolean>(true);
 
  useEffect(() => {
   setIsLoading(false);
  }, []);
+
+ // Simple path to permission mapping
+ const hasPermission = () => {
+   if (role === 'admin') return true;
+   if (pathName === '/dashboard' || pathName === '/' || pathName.startsWith('/auth')) return true;
+   
+   const routeMap: Record<string, string> = {
+     '/contacts': 'contacts',
+     '/pipelines': 'pipelines',
+     '/proposals': 'proposals',
+     '/invoices': 'invoices',
+     '/calendar': 'calendar',
+     '/websites': 'marketing',
+     '/funnels': 'marketing',
+     '/campaigns': 'marketing',
+     '/automations': 'automation',
+     '/analytics': 'analytics',
+     '/settings': 'settings',
+   };
+
+   const requiredPermission = Object.entries(routeMap).find(([path]) => pathName.startsWith(path))?.[1];
+   if (!requiredPermission) return true; 
+   
+   return permissions.includes(requiredPermission);
+ };
+
+ const accessGranted = hasPermission();
 
   return (
    <>
@@ -41,7 +70,7 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       
       {/* Page Content */}
       <main className="flex-1 w-full max-w-[100vw]">
-        {children}
+        {accessGranted ? children : <AccessDenied />}
       </main>
       
       {/* Footer */}

@@ -12,6 +12,7 @@ interface SubItem {
   icon?: string;
   link?: string;
   subItems?: SubItem[];
+  permission?: string;
  };
  
  export interface SidebarCategory {

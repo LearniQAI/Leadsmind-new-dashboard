@@ -9,7 +9,7 @@ import { X, ChevronDown, Activity, Target, Zap, Layers, BarChart3, Users, Settin
 
 const DashBoardSidebar = () => {
  const { isCollapse, setIsCollapse, sideMenuOpen, setSideMenuOpen } = useGlobalContext();
- const { enrichedWorkspace } = useDashboardContext();
+ const { enrichedWorkspace, role, permissions } = useDashboardContext() as any;
  const [linkId, setlinkId] = useState<number | null>(null);
  const pathName = usePathname();
 
@@ -82,70 +82,84 @@ const DashBoardSidebar = () => {
 
     {/* Navigation */}
     <div className="flex-1 overflow-y-auto no-scrollbar py-6 px-4 space-y-8">
-     {sidebarData.map((category) => (
-      <div key={category.id} className="space-y-2">
-       {(!isCollapse || sideMenuOpen) && (
-        <h5 className="px-3 text-[9px] font-black uppercase tracking-[0.25em] text-t4">
-         {category.category}
-        </h5>
-       )}
-       <div className="space-y-1">
-        {category.items.map((item) => {
-         const isActive = pathName === item.link || (linkId === item.id && item.subItems);
-         return (
-          <div key={item.id} className="relative">
-           <Link
-            onClick={(e) => {
-             if (item.subItems?.length) {
-               e.preventDefault();
-               handleClick(item.id);
-             }
-            }}
-            href={item.link || "#"}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
-              isActive 
-              ? "bg-accent/10 text-accent2 shadow-sm shadow-accent/5" 
-              : "text-t2 hover:bg-white/[0.03] hover:text-t1"
-            } ${isCollapse && !sideMenuOpen ? "justify-center px-0" : ""}`}
-           >
-            {isActive && !isCollapse && <div className="absolute left-[-4px] top-3 bottom-3 w-[4px] bg-accent rounded-r-full shadow-[2px_0_10px_rgba(37,99,235,0.4)]"></div>}
-            <div className={`flex-shrink-0 w-6 flex items-center justify-center ${isActive ? "text-accent2" : "text-t3 group-hover:text-t2"}`}>
-              <i className={`fa-solid ${item.icon} text-[15px]`}></i>
-            </div>
-            {(!isCollapse || sideMenuOpen) && (
-             <>
-              <span className="text-[13px] font-bold flex-1 truncate">{item.label}</span>
-              {item.subItems && (
-               <ChevronDown 
-                 size={14} 
-                 className={`transition-transform duration-200 opacity-40 group-hover:opacity-100 ${linkId === item.id ? "rotate-180" : ""}`} 
-               />
-              )}
-             </>
-            )}
-           </Link>
+     {sidebarData.map((category) => {
+      // Filter items in category based on permissions
+      const filteredItems = category.items.filter(item => {
+        if (role === 'admin') return true;
+        // Use the permission key from sidebarData
+        const requiredPermission = item.permission;
+        if (!requiredPermission) return true; // Items without explicit permission are public or basic
+        
+        return permissions.includes(requiredPermission);
+      });
 
-           {item.subItems && (!isCollapse || sideMenuOpen) && linkId === item.id && (
-            <div className="mt-1 ml-4 border-l border-white/5 space-y-1 animate-in slide-in-from-top-2 duration-200">
-             {item.subItems.map((sub, idx) => (
-              <Link
-               key={idx}
-               href={sub.link || "/"}
-               className={`text-[12px] py-1.5 pl-6 pr-4 flex items-center transition-all rounded-r-lg ${
-                 pathName === sub.link ? "text-t1 font-bold bg-white/[0.02]" : "text-t3 hover:text-t1 hover:bg-white/[0.01]"
-               }`}
-              >
-               {sub.label}
-              </Link>
-             ))}
-            </div>
-           )}
-          </div>
-         );
-        })}
+      if (filteredItems.length === 0) return null;
+
+      return (
+       <div key={category.id} className="space-y-2">
+        {(!isCollapse || sideMenuOpen) && (
+         <h5 className="px-3 text-[9px] font-black uppercase tracking-[0.25em] text-t4">
+          {category.category}
+         </h5>
+        )}
+        <div className="space-y-1">
+         {filteredItems.map((item) => {
+          const isActive = pathName === item.link || (linkId === item.id && item.subItems);
+          return (
+           <div key={item.id} className="relative">
+            <Link
+             onClick={(e) => {
+              if (item.subItems?.length) {
+                e.preventDefault();
+                handleClick(item.id);
+              }
+             }}
+             href={item.link || "#"}
+             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
+               isActive 
+               ? "bg-accent/10 text-accent2 shadow-sm shadow-accent/5" 
+               : "text-t2 hover:bg-white/[0.03] hover:text-t1"
+             } ${isCollapse && !sideMenuOpen ? "justify-center px-0" : ""}`}
+            >
+             {isActive && !isCollapse && <div className="absolute left-[-4px] top-3 bottom-3 w-[4px] bg-accent rounded-r-full shadow-[2px_0_10px_rgba(37,99,235,0.4)]"></div>}
+             <div className={`flex-shrink-0 w-6 flex items-center justify-center ${isActive ? "text-accent2" : "text-t3 group-hover:text-t2"}`}>
+               <i className={`fa-solid ${item.icon} text-[15px]`}></i>
+             </div>
+             {(!isCollapse || sideMenuOpen) && (
+              <>
+               <span className="text-[13px] font-bold flex-1 truncate">{item.label}</span>
+               {item.subItems && (
+                <ChevronDown 
+                  size={14} 
+                  className={`transition-transform duration-200 opacity-40 group-hover:opacity-100 ${linkId === item.id ? "rotate-180" : ""}`} 
+                />
+               )}
+              </>
+             )}
+            </Link>
+
+            {item.subItems && (!isCollapse || sideMenuOpen) && linkId === item.id && (
+             <div className="mt-1 ml-4 border-l border-white/5 space-y-1 animate-in slide-in-from-top-2 duration-200">
+              {item.subItems.map((sub, idx) => (
+               <Link
+                key={idx}
+                href={sub.link || "/"}
+                className={`text-[12px] py-1.5 pl-6 pr-4 flex items-center transition-all rounded-r-lg ${
+                  pathName === sub.link ? "text-t1 font-bold bg-white/[0.02]" : "text-t3 hover:text-t1 hover:bg-white/[0.01]"
+                }`}
+               >
+                {sub.label}
+               </Link>
+              ))}
+             </div>
+            )}
+           </div>
+          );
+         })}
+        </div>
        </div>
-      </div>
-     ))}
+      );
+     })}
     </div>
     
     {/* Sidebar Bottom */}

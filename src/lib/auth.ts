@@ -1,4 +1,4 @@
-"use server";
+
 
 import { redirect } from 'next/navigation';
 import { createServerClient } from './supabase/server';
@@ -201,26 +201,35 @@ export async function getCurrentWorkspace(existingUser?: any): Promise<Workspace
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getUserRole(): Promise<string | null> {
- const user = await getUser();
- if (!user) return null;
+ const info = await getUserAccessInfo();
+ return info.role;
+}
 
- let workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) {
-  const workspace = await getCurrentWorkspace(user);
-  workspaceId = workspace?.id ?? null;
- }
- if (!workspaceId) return null;
+export async function getUserAccessInfo(): Promise<{ role: string | null; permissions: string[] }> {
+  const user = await getUser();
+  if (!user) return { role: null, permissions: [] };
 
- const supabase = await createServerClient();
- const { data, error } = await supabase
-  .from('workspace_members')
-  .select('role')
-  .eq('workspace_id', workspaceId)
-  .eq('user_id', user.id)
-  .single();
+  let workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) {
+   const workspace = await getCurrentWorkspace(user);
+   workspaceId = workspace?.id ?? null;
+  }
+  if (!workspaceId) return { role: null, permissions: [] };
 
- if (error || !data) return null;
- return data.role;
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('workspace_members')
+   .select('role, permissions')
+   .eq('workspace_id', workspaceId)
+   .eq('user_id', user.id)
+   .single();
+
+  if (error || !data) return { role: null, permissions: [] };
+  
+  // Ensure permissions is an array of strings
+  const permissions = Array.isArray(data.permissions) ? data.permissions : [];
+  
+  return { role: data.role, permissions };
 }
 
 export async function requireAdmin() {

@@ -29,6 +29,7 @@
 22. [Animation & Transitions](#22-animation--transitions)
 23. [Prohibited Patterns](#23-prohibited-patterns)
 24. [New Feature Checklist](#24-new-feature-checklist)
+25. [Engineering Rules](#25-engineering-rules)
 
 ---
 
@@ -1123,6 +1124,34 @@ Before marking any feature as complete, verify every item:
 - [ ] Active item has blue tint highlight
 - [ ] Action bar is at the bottom of the main panel
 - [ ] Document/detail view is centred with max-width
+
+---
+
+## 25. Engineering: Component Atomicity & File Limits
+
+To maintain a high-velocity, maintainable codebase, **Antigravity must follow a "Small-File First" architecture.** ### The 300-Line Circuit Breaker
+
+* **Strict Limit:** No single file should exceed **300 lines of code**.
+* **The Action:** If a component or page is approaching 250 lines, Antigravity **must** pause and refactor sub-elements into a `components/` subdirectory within that module.
+* **Exceptions:** Extremely complex configuration files or large SVG sprite maps (though these should ideally be separate assets).
+
+### Decomposition Hierarchy
+
+When building a new feature (e.g., the **School Management System** or **Leadsmind UI**), break the UI down as follows:
+
+| Level | Content | Target Length |
+| --- | --- | --- |
+| **Page** (`page.tsx`) | Layout wrapper, high-level state, and major sections only. | < 150 lines |
+| **Section** (`/sections/`) | Large UI blocks like a "Financial Summary" or "Student List Table". | < 200 lines |
+| **Component** (`/components/`) | Reusable atoms like Custom Modals, Form Groups, or Stat Cards. | < 100 lines |
+| **Logic** (`/hooks/`) | Move complex `useEffect` or `useState` logic into custom hooks. | < 100 lines |
+
+### Implementation Rules
+
+1. **Implicit Refactoring:** Do not ask for permission to create a new file once the 300-line limit is reached. Extract the logic and export/import it automatically.
+2. **Prop Drilling vs. Context:** If a component is split into more than 3 sub-components, evaluate if a local `Context` or `Zustand` store is cleaner than passing props down multiple levels.
+3. **Tailwind Hygiene:** If a component’s Tailwind class string exceeds 50% of the line length, extract those styles into a constant or a reusable `cn()` utility to keep the JSX readable.
+4. **Naming Convention:** Sub-components extracted from a main page should be named `[PageName][Role].tsx` (e.g., `InvoicesTable.tsx`, `InvoicesFilterBar.tsx`).
 
 ---
 
