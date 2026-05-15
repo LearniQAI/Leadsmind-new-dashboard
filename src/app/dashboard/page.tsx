@@ -8,75 +8,61 @@ import { redirect } from 'next/navigation';
 import HomeDashboardClient from "@/components/pagesUI/apps/home/HomeDashboardClient";
 
 const Home = async () => {
- const user = await requireAuth();
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) redirect('/login');
+  const user = await requireAuth();
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) redirect('/login');
 
- const supabase = await createServerClient();
+  const supabase = await createServerClient();
 
- const sevenDaysAgo = new Date();
- sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
- // Fetch Live KPI Data for General Dashboard
- const [
-  { count: contactCount },
-  { count: newLeadsCount },
-  { count: activeWorkflows },
-  { count: wonOpportunities },
-  { count: socialQueueCount },
-  { data: revenueData },
-  { data: recentActivities },
-  { data: topOpportunities }
- ] = await Promise.all([
-  // 1. Total Leads
-  supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
-  // 2. New Leads (7d)
-  supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).gte('created_at', sevenDaysAgo.toISOString()),
-  // 3. Active Automations
-  supabase.from('automation_workflows').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true),
-  // 4. Won Deals
-  supabase.from('opportunities').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'won'),
-  // 5. Social Queue
-  supabase.from('social_posts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'scheduled'),
-  // 6. Revenue
-  supabase.from('invoices').select('total_amount').eq('workspace_id', workspaceId).eq('status', 'paid'),
-  // 7. Recent Activity
-  supabase.from('contact_activities')
-   .select('*, contacts(id, first_name, last_name)')
-   .eq('workspace_id', workspaceId)
-   .order('created_at', { ascending: false })
-   .limit(8),
-  // 8. Top Opportunities
-  supabase.from('opportunities')
-   .select('*, contacts(id, first_name, last_name)')
-   .eq('workspace_id', workspaceId)
-   .eq('status', 'open')
-   .order('value', { ascending: false })
-   .limit(5)
- ]);
+  // Fetch Live KPI Data for General Dashboard
+  const results = await Promise.all([
+    supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
+    supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).gte('created_at', sevenDaysAgo.toISOString()),
+    supabase.from('automation_workflows').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true),
+    supabase.from('opportunities').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'won'),
+    supabase.from('social_posts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'scheduled'),
+    supabase.from('invoices').select('total_amount').eq('workspace_id', workspaceId).eq('status', 'paid'),
+    supabase.from('contact_activities').select('*, contacts(id, first_name, last_name)').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(8),
+    supabase.from('opportunities').select('*, contacts(id, first_name, last_name)').eq('workspace_id', workspaceId).eq('status', 'open').order('value', { ascending: false }).limit(5),
+    supabase.from('tasks').select('id, title, due_date').eq('workspace_id', workspaceId).eq('priority', 'high').neq('status', 'done').lt('due_date', new Date().toISOString())
+  ]);
 
- const totalRevenue = revenueData?.reduce((acc, curr) => acc + (Number(curr.total_amount) || 0), 0) || 0;
+  const contactCount = results[0].count || 0;
+  const newLeadsCount = results[1].count || 0;
+  const activeWorkflows = results[2].count || 0;
+  const wonOpportunities = results[3].count || 0;
+  const socialQueueCount = results[4].count || 0;
+  const revenueData = results[5].data || [];
+  const recentActivities = results[6].data || [];
+  const topOpportunities = results[7].data || [];
+  const overdueTasks = results[8].data || [];
 
- return (
-  <>
-   <MetaData pageTitle="Main Dashboard">
-    <Wrapper>
-     <HomeDashboardClient
-      stats={{
-       leads: contactCount || 0,
-       newLeads: newLeadsCount || 0,
-       automations: activeWorkflows || 0,
-       wonDeals: wonOpportunities || 0,
-       socialQueue: socialQueueCount || 0,
-       revenue: totalRevenue,
-      }}
-      recentActivities={recentActivities || []}
-      topOpportunities={topOpportunities || []}
-     />
-    </Wrapper>
-   </MetaData>
-  </>
- );
+  const totalRevenue = revenueData?.reduce((acc: any, curr: any) => acc + (Number(curr.total_amount) || 0), 0) || 0;
+
+  return (
+    <>
+      <MetaData pageTitle="Main Dashboard">
+        <Wrapper>
+          <HomeDashboardClient
+            stats={{
+              leads: contactCount,
+              newLeads: newLeadsCount,
+              automations: activeWorkflows,
+              wonDeals: wonOpportunities,
+              socialQueue: socialQueueCount,
+              revenue: totalRevenue,
+            }}
+            recentActivities={recentActivities || []}
+            topOpportunities={topOpportunities || []}
+            overdueTasks={overdueTasks || []}
+          />
+        </Wrapper>
+      </MetaData>
+    </>
+  );
 };
 
 export default Home;

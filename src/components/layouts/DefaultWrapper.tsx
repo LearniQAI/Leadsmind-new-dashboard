@@ -59,8 +59,8 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
      
      {/* Main Content Area */}
      <div 
-      className={`flex flex-col flex-1 min-h-screen transition-all duration-300 ease-in-out ${
-        isCollapse ? "lg:ml-[80px]" : "lg:ml-[280px]"
+      className={`flex flex-col flex-1 min-h-screen w-full max-w-full transition-all duration-300 ease-in-out ${
+        isCollapse ? "lg:pl-[80px]" : "lg:pl-[280px]"
       }`}
      >
       <BackToTop />
@@ -69,7 +69,7 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       <DashboardHeader />
       
       {/* Page Content */}
-      <main className="flex-1 w-full max-w-[100vw]">
+      <main className="flex-1 w-full overflow-hidden">
         {accessGranted ? children : <AccessDenied />}
       </main>
       

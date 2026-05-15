@@ -27,9 +27,10 @@ interface HomeDashboardClientProps {
   };
   recentActivities: any[];
   topOpportunities: any[];
+  overdueTasks?: any[];
 }
 
-const HomeDashboardClient = ({ stats, recentActivities, topOpportunities }: HomeDashboardClientProps) => {
+const HomeDashboardClient = ({ stats, recentActivities, topOpportunities, overdueTasks = [] }: HomeDashboardClientProps) => {
   const { user } = useDashboardContext();
   const conversionRate = stats.leads > 0 ? ((stats.wonDeals / stats.leads) * 100).toFixed(1) : "0";
 
@@ -137,6 +138,37 @@ const HomeDashboardClient = ({ stats, recentActivities, topOpportunities }: Home
           </button>
         </div>
       </div>
+
+      {/* Critical Alerts Zone */}
+      {overdueTasks.length > 0 && (
+        <div className="px-6 pb-6">
+          <div className="relative overflow-hidden p-4 md:p-6 rounded-2xl bg-red/10 border border-red/20 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+            {/* Pulsing Accent */}
+            <div className="absolute top-0 left-0 w-1 h-full bg-red shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse" />
+            
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-red/20 flex items-center justify-center text-red border border-red/20">
+                <Zap size={24} className="fill-current" />
+              </div>
+              <div>
+                <h4 className="text-[15px] font-space font-black text-white uppercase tracking-tight">
+                  CRITICAL: <span className="text-red">{overdueTasks.length} HIGH PRIORITY</span> OBJECTIVES ARE OVERDUE
+                </h4>
+                <p className="text-[11px] text-red/60 font-bold uppercase tracking-widest mt-0.5">
+                  Strategic intervention required immediately to maintain operational velocity.
+                </p>
+              </div>
+            </div>
+
+            <Link 
+              href="/tasks" 
+              className="px-6 py-2.5 bg-red text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red/90 transition-all text-center shadow-lg shadow-red/20"
+            >
+              TAKE COMMAND
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions Bar */}
       <QuickActions />
