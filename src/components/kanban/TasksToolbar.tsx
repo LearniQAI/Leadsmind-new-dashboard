@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, Filter, Plus, ListFilter, LayoutGrid, Calendar as CalendarIcon, 
+import {
+  Search, Filter, Plus, ListFilter, LayoutGrid, Calendar as CalendarIcon,
   User, CheckCircle2, Circle, ArrowUpDown, ChevronDown, Clock, AlertCircle
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -117,20 +117,20 @@ export function TasksToolbar({
 
           {/* View Toggle (Segmented) */}
           <div className="flex items-center bg-white/5 p-1 rounded-lg border border-white/5 shrink-0">
-            <ViewButton 
-              active={view === 'kanban'} 
+            <ViewButton
+              active={view === 'kanban'}
               onClick={() => onViewChange('kanban')}
               icon={<LayoutGrid className="w-3.5 h-3.5" />}
               label="Kanban"
             />
-            <ViewButton 
-              active={view === 'list'} 
+            <ViewButton
+              active={view === 'list'}
               onClick={() => onViewChange('list')}
               icon={<ListFilter className="w-3.5 h-3.5" />}
               label="List"
             />
-            <ViewButton 
-              active={view === 'calendar'} 
+            <ViewButton
+              active={view === 'calendar'}
               onClick={() => onViewChange('calendar')}
               icon={<CalendarIcon className="w-3.5 h-3.5" />}
               label="Calendar"
@@ -140,7 +140,7 @@ export function TasksToolbar({
 
         <div className="flex items-center gap-3">
           {onInitializeTask && (
-            <button 
+            <button
               onClick={onInitializeTask}
               className="flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
             >
@@ -155,12 +155,12 @@ export function TasksToolbar({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-3 border-t border-white/5">
         <div className="flex flex-wrap items-center gap-6">
           {/* My Tasks Toggle */}
-          <button 
+          <button
             onClick={() => onDueTodayToggle(!dueTodayOnly)}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all border",
-              dueTodayOnly 
-                ? "bg-accent/10 border-accent/20 text-accent" 
+              dueTodayOnly
+                ? "bg-accent/10 border-accent/20 text-accent"
                 : "bg-white/5 border-white/5 text-white/30 hover:text-white/50"
             )}
           >
@@ -168,12 +168,12 @@ export function TasksToolbar({
             <span className="text-[9px] font-black uppercase tracking-[0.15em] font-space-grotesk">DUE TODAY</span>
           </button>
 
-          <button 
+          <button
             onClick={() => onHighPriorityToggle(!highPriorityOnly)}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all border",
-              highPriorityOnly 
-                ? "bg-red/10 border-red/20 text-red" 
+              highPriorityOnly
+                ? "bg-red/10 border-red/20 text-red"
                 : "bg-white/5 border-white/5 text-white/30 hover:text-white/50"
             )}
           >
@@ -197,13 +197,13 @@ export function TasksToolbar({
                 className={cn(
                   "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border",
                   selectedAssignees.length === 0 && !myTasksActive
-                    ? "bg-primary/10 border-primary/20 text-primary" 
+                    ? "bg-primary/10 border-primary/20 text-primary"
                     : "bg-white/5 border-white/5 text-white/30 hover:text-white/50"
                 )}
               >
                 All
               </button>
-              
+
               {members.map((member) => {
                 const isSelected = selectedAssignees.includes(member.user_id);
                 return (
@@ -212,8 +212,8 @@ export function TasksToolbar({
                     onClick={() => onAssigneeToggle(member.user_id)}
                     className={cn(
                       "flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border transition-all shrink-0",
-                      isSelected 
-                        ? "bg-primary/10 border-primary/20 text-primary shadow-lg shadow-primary/10" 
+                      isSelected
+                        ? "bg-primary/10 border-primary/20 text-primary shadow-lg shadow-primary/10"
                         : "bg-white/[0.03] border-white/5 text-white/30 hover:bg-white/5"
                     )}
                   >
@@ -230,13 +230,13 @@ export function TasksToolbar({
         </div>
 
         <div className="flex items-center gap-4">
-           <span className="text-[9px] font-bold text-white/10 uppercase tracking-[0.2em] font-space-grotesk">
-              Showing {selectedAssignees.length > 0 || searchQuery ? 'Tactical' : 'Global'} View
-           </span>
-           <button className="flex items-center gap-2 text-white/10 hover:text-white/40 transition-colors">
-              <Filter className="w-3 h-3" />
-              <span className="text-[9px] font-black uppercase tracking-widest font-space-grotesk">Filters</span>
-           </button>
+          <span className="text-[9px] font-bold text-white/10 uppercase tracking-[0.2em] font-space-grotesk">
+            Showing {selectedAssignees.length > 0 || searchQuery ? 'Tactical' : 'Global'} View
+          </span>
+          <button className="flex items-center gap-2 text-white/10 hover:text-white/40 transition-colors">
+            <Filter className="w-3 h-3" />
+            <span className="text-[9px] font-black uppercase tracking-widest font-space-grotesk">Filters</span>
+          </button>
         </div>
       </div>
     </div>
@@ -245,12 +245,12 @@ export function TasksToolbar({
 
 function ViewButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
   return (
-    <button 
+    <button
       onClick={onClick}
       className={cn(
         "flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all",
-        active 
-          ? "bg-primary text-white shadow-lg" 
+        active
+          ? "bg-primary text-white shadow-lg"
           : "text-white/20 hover:text-white/50"
       )}
     >

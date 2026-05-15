@@ -1,0 +1,90 @@
+'use client';
+
+import React from 'react';
+import { MessageBubble } from './MessageBubble';
+import { MessageInput } from './MessageInput';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+
+interface ConversationThreadProps {
+  conversation: any;
+  onSendMessage: (text: string) => void;
+  isSending: boolean;
+}
+
+export function ConversationThread({ conversation, onSendMessage, isSending }: ConversationThreadProps) {
+  if (!conversation) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-[#04091a]">
+        <div className="w-24 h-24 bg-[#2563eb]/10 rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl shadow-[#2563eb]/10 relative z-10 rotate-12">
+          <i className="fa-solid fa-inbox text-[32px] text-[#2563eb]"></i>
+        </div>
+        <h2 className="text-3xl font-bold text-[#eef2ff] mb-4 relative z-10 tracking-tight font-space-grotesk">
+          Select a <span className="text-[#3b82f6]">Thread</span>
+        </h2>
+        <p className="text-[#4a5a82] max-w-sm relative z-10 font-dm-sans leading-relaxed text-[13.5px]">
+          Your unified communications command center. Select a conversation to start dominating the conversation.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col bg-[#04091a] relative overflow-hidden">
+      {/* Dynamic Background Element */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#2563eb]/5 rounded-full blur-[150px] pointer-events-none" />
+      
+      {/* Header */}
+      <div className="h-20 border-b border-white/5 flex items-center justify-between px-8 z-10 bg-[#080f28]/80 backdrop-blur-xl shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 text-[#3b82f6]">
+            <i className={cn("fa-solid", conversation.platform === 'email' ? 'fa-envelope' : 'fa-comment')}></i>
+          </div>
+          <div>
+            <h3 className="text-[15px] font-bold text-[#eef2ff] font-space-grotesk tracking-tight">
+              {conversation.contacts ? `${conversation.contacts.first_name} ${conversation.contacts.last_name}` : conversation.title}
+            </h3>
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+              <span className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-widest font-dm-sans">
+                Active via {conversation.platform}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" className="w-10 h-10 p-0 rounded-xl bg-white/5 border border-white/5 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/10 transition-all">
+            <i className="fa-solid fa-phone text-[14px]"></i>
+          </Button>
+          <Button variant="ghost" className="w-10 h-10 p-0 rounded-xl bg-white/5 border border-white/5 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/10 transition-all">
+            <i className="fa-solid fa-video text-[14px]"></i>
+          </Button>
+          <Button variant="ghost" className="w-10 h-10 p-0 rounded-xl bg-white/5 border border-white/5 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/10 transition-all">
+            <i className="fa-solid fa-ellipsis-vertical text-[14px]"></i>
+          </Button>
+        </div>
+      </div>
+
+      {/* Messages List */}
+      <div className="flex-1 overflow-y-auto p-8 z-10 common-scrollbar flex flex-col-reverse">
+        <div className="flex flex-col space-y-2">
+          {conversation.messages?.slice().reverse().map((msg: any, i: number) => (
+            <MessageBubble 
+              key={i}
+              content={msg.content}
+              direction={msg.direction}
+              sentAt={msg.sent_at}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Input Area */}
+      <MessageInput 
+        onSend={onSendMessage}
+        disabled={isSending}
+        placeholder={`Type your reply to ${conversation.contacts?.first_name || 'them'}...`}
+      />
+    </div>
+  );
+}
