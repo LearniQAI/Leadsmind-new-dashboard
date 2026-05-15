@@ -1,137 +1,90 @@
-import { requireAuth, getCurrentWorkspaceId } from '@/lib/auth';
-import { getContact } from '@/app/actions/contacts';
-import { 
- getContactActivities, 
- getContactNotes, 
- getContactTasks 
-} from '@/app/actions/contacts';
-import { getAutomationLogsForContact } from '@/app/actions/automation';
-import { ContactDetailLayout } from '@/components/crm/ContactDetailLayout';
-import { ActivityTimeline } from '@/components/crm/ActivityTimeline';
-import { NotesSection } from '@/components/crm/NotesSection';
-import { TasksSection } from '@/components/crm/TasksSection';
-import { notFound } from 'next/navigation';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
- History, 
- MessageSquare, 
- CheckSquare,
- FileText,
- Zap,
- ReceiptText
-} from 'lucide-react';
-import { getContactDocuments } from '@/app/actions/media';
-import { DocumentsSection } from '@/components/crm/DocumentsSection';
-import { AutomationLogsSection } from '@/components/crm/AutomationLogsSection';
-import { getInvoices, getQuotes } from '@/app/actions/finance';
-import { ContactInvoicesSection } from '@/components/crm/ContactInvoicesSection';
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import MetaData from "@/hooks/useMetaData";
+import React from 'react';
+import { getContact, getContactActivities, getContactNotes, getContactTasks } from '@/app/actions/contacts';
+import Wrapper from '@/components/layouts/DefaultWrapper';
+import MetaData from '@/hooks/useMetaData';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { requireAuth } from '@/lib/auth';
+import { ProfileSidebar } from '@/components/crm/ProfileSidebar';
+import { ProfileContent } from '@/components/crm/ProfileContent';
 
-export const dynamic = 'force-dynamic';
+/**
+ * Contact 360° Profile Page
+ * High-fidelity orchestrator for relationship data and tactical interactions.
+ */
+interface ContactProfilePageProps {
+  params: { id: string };
+}
 
-export default async function ContactDetailPage({
- params,
-}: {
- params: { id: string };
-}) {
- await requireAuth();
- const { id } = params;
- const workspaceId = await getCurrentWorkspaceId();
+export default async function ContactProfilePage({ params }: ContactProfilePageProps) {
+  await requireAuth();
 
- const [
-  contactResult, 
-  activitiesResult, 
-  notesResult, 
-  tasksResult,
-  docsResult,
-  automationLogsResult,
-  invoices,
-  quotes
- ] = await Promise.all([
-  getContact(id),
-  getContactActivities(id),
-  getContactNotes(id),
-  getContactTasks(id),
-  getContactDocuments(id),
-  getAutomationLogsForContact(id),
-  getInvoices(workspaceId!, id),
-  getQuotes(workspaceId!, id)
- ]);
+  const [contactRes, activitiesRes, notesRes, tasksRes] = await Promise.all([
+    getContact(params.id),
+    getContactActivities(params.id),
+    getContactNotes(params.id),
+    getContactTasks(params.id)
+  ]);
 
- if (!contactResult.success || !contactResult.data) {
-  notFound();
- }
+  if (!contactRes.success || !contactRes.data) {
+    redirect('/contacts');
+  }
 
- const activities = activitiesResult.success ? (activitiesResult.data ?? []) : [];
- const notes = notesResult.success ? (notesResult.data ?? []) : [];
- const tasks = tasksResult.success ? (tasksResult.data ?? []) : [];
- const documents = docsResult || [];
+  const contact = contactRes.data;
+  const activities = activitiesRes.data || [];
+  const notes = notesRes.data || [];
+  const tasks = tasksRes.data || [];
 
- return (
-  <MetaData pageTitle="Contact Details">
-   <Wrapper>
-    <div className="py-10 px-4 max-w-7xl mx-auto">
-     <ContactDetailLayout contact={contactResult.data}>
-      <Tabs defaultValue="activity" className="space-y-8">
-       <TabsList className="bg-[#0b0b10] border border-white/5 p-1 rounded-2xl h-14 w-full justify-start overflow-x-auto no-scrollbar">
-        <TabsTrigger value="activity" className="rounded-xl px-6 data-[state=active]:bg-white/5 data-[state=active]:text-[#6c47ff] gap-2 font-bold transition-all">
-         <History className="h-4 w-4" />
-         <span>Timeline</span>
-        </TabsTrigger>
-        <TabsTrigger value="notes" className="rounded-xl px-6 data-[state=active]:bg-white/5 data-[state=active]:text-[#6c47ff] gap-2 font-bold transition-all">
-         <MessageSquare className="h-4 w-4" />
-         <span>Notes</span>
-        </TabsTrigger>
-        <TabsTrigger value="tasks" className="rounded-xl px-6 data-[state=active]:bg-white/5 data-[state=active]:text-[#6c47ff] gap-2 font-bold transition-all">
-         <CheckSquare className="h-4 w-4" />
-         <span>Tasks</span>
-        </TabsTrigger>
-        <TabsTrigger value="documents" className="rounded-xl px-6 data-[state=active]:bg-white/5 data-[state=active]:text-[#6c47ff] gap-2 font-bold transition-all">
-         <FileText className="h-4 w-4" />
-         <span>Documents</span>
-        </TabsTrigger>
-        <TabsTrigger value="automation" className="rounded-xl px-6 data-[state=active]:bg-white/5 data-[state=active]:text-[#6c47ff] gap-2 font-bold transition-all">
-         <Zap className="h-4 w-4" />
-         <span>Automation</span>
-        </TabsTrigger>
-        <TabsTrigger value="invoices" className="rounded-xl px-6 data-[state=active]:bg-white/5 data-[state=active]:text-[#6c47ff] gap-2 font-bold transition-all">
-         <ReceiptText className="h-4 w-4" />
-         <span>Invoices</span>
-        </TabsTrigger>
-       </TabsList>
+  return (
+    <MetaData pageTitle={`${contact.first_name} ${contact.last_name} | Profile`}>
+      <Wrapper>
+        <div className="flex flex-col min-h-screen bg-[#04091a]">
+          {/* Header Section */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 px-6 pt-5">
+            <div className="flex items-center gap-4">
+              <Link
+                href="/contacts"
+                className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-[#4a5a82] hover:text-[#eef2ff] transition-all"
+              >
+                <i className="fa-solid fa-arrow-left"></i>
+              </Link>
+              <div>
+                <h1 className="text-[22px] font-bold text-[#eef2ff] uppercase tracking-tight leading-none mb-1.5 font-space-grotesk">
+                  Contact <span className="text-[#3b82f6]">Profile</span>
+                </h1>
+                <p className="text-[11.5px] font-medium text-[#4a5a82] uppercase tracking-[0.8px] font-dm-sans">
+                  Comprehensive 360° view of relationship status and history
+                </p>
+              </div>
+            </div>
 
-       <TabsContent value="activity" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <ActivityTimeline activities={activities} />
-       </TabsContent>
+            <div className="flex items-center gap-2">
+              <button className="h-9 px-4 rounded-[8px] bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[13px] font-semibold font-dm-sans flex items-center gap-2 transition-all">
+                <i className="fa-solid fa-envelope text-[13px] text-[#4a5a82]"></i>
+                Send Email
+              </button>
+              <button className="h-9 px-4 rounded-[8px] bg-[#2563eb] text-white hover:bg-[#2563eb]/90 text-[13px] font-bold font-dm-sans flex items-center gap-2 transition-all shadow-lg shadow-[#2563eb]/20">
+                <i className="fa-solid fa-bolt text-[12px]"></i>
+                AI Assist
+              </button>
+            </div>
+          </div>
 
-       <TabsContent value="notes" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <NotesSection contactId={id} notes={notes} />
-       </TabsContent>
+          {/* 360 Layout */}
+          <div className="flex-1 flex gap-6 px-6 pb-10">
+            {/* 1. Sidebar (280px) */}
+            <ProfileSidebar contact={contact} />
 
-       <TabsContent value="tasks" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <TasksSection contactId={id} tasks={tasks} />
-       </TabsContent>
-
-       <TabsContent value="documents" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <DocumentsSection contactId={id} documents={documents} />
-       </TabsContent>
-
-       <TabsContent value="automation" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <AutomationLogsSection logs={automationLogsResult || []} />
-       </TabsContent>
-
-       <TabsContent value="invoices" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <ContactInvoicesSection 
-         contactId={id} 
-         invoices={invoices || []} 
-         quotes={quotes || []} 
-        />
-       </TabsContent>
-      </Tabs>
-     </ContactDetailLayout>
-    </div>
-   </Wrapper>
-  </MetaData>
- );
+            {/* 2. Content Area (Flex: 1) */}
+            <ProfileContent
+              contact={contact}
+              activities={activities}
+              notes={notes}
+              tasks={tasks}
+            />
+          </div>
+        </div>
+      </Wrapper>
+    </MetaData>
+  );
 }

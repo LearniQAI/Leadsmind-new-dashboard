@@ -136,33 +136,58 @@ export async function globalRenameTag(oldTag: string, newTag: string) {
  return { success: true };
 }
 
+export async function checkDuplicateContact(email: string) {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId || !email) return { success: true, exists: false };
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('id, first_name, last_name')
+    .eq('workspace_id', workspaceId)
+    .eq('email', email)
+    .maybeSingle();
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, exists: !!data, contact: data };
+}
+
 export async function createContact(values: any) {
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) return { success: false, error: 'No active workspace' };
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No active workspace' };
 
- const supabase = await createServerClient();
- 
- const payload = {
-  workspace_id: workspaceId,
-  first_name: values.firstName,
-  last_name: values.lastName,
-  email: values.email,
-  phone: values.phone,
-  source: values.source,
-  owner_id: values.ownerId || null,
-  tags: values.tags || [],
- };
+  const supabase = await createServerClient();
+  
+  const payload = {
+    workspace_id: workspaceId,
+    first_name: values.firstName,
+    last_name: values.lastName,
+    email: values.email,
+    phone: values.phone,
+    source: values.source,
+    owner_id: values.ownerId || null,
+    tags: values.tags || [],
+  };
 
- const { data, error } = await supabase
-  .from('contacts')
-  .insert(payload)
-  .select()
-  .single();
+  const { data, error } = await supabase
+    .from('contacts')
+    .insert(payload)
+    .select()
+    .single();
 
- if (error) return { success: false, error: error.message };
- 
- revalidatePath('/contacts');
- return { success: true, data };
+  if (error) return { success: false, error: error.message };
+  
+  // Automated Audit Log for creation
+  await supabase.from('contact_activities').insert({
+    workspace_id: workspaceId,
+    contact_id: data.id,
+    type: 'edit',
+    description: `Contact created manually`,
+    metadata: { source: 'form' }
+  });
+
+  revalidatePath('/contacts');
+  return { success: true, data };
 }
 
 export async function updateContact(id: string, values: any) {
@@ -207,60 +232,112 @@ export async function deleteContact(id: string) {
 
 
 export async function addTag(contactId: string, tag: string) {
- const supabase = await createServerClient();
- 
- // Get current tags
- const { data: contact } = await supabase
-  .from('contacts')
-  .select('tags')
-  .eq('id', contactId)
-  .single();
+  const supabase = await createServerClient();
+  
+  // Get current tags
+  const { data: contact, error: fetchError } = await supabase
+    .from('contacts')
+    .select('tags')
+    .eq('id', contactId)
+    .single();
 
- const tags = contact?.tags || [];
- if (tags.includes(tag)) return { success: true };
+  if (fetchError) {
+    console.error(`[contacts] Error fetching tags for ${contactId}:`, fetchError);
+    return { success: false, error: fetchError.message };
+  }
 
- const { error } = await supabase
-  .from('contacts')
-  .update({ tags: [...tags, tag] })
-  .eq('id', contactId);
+  if (!contact) {
+    return { success: false, error: 'Contact not found' };
+  }
 
- if (error) return { success: false, error: error.message };
- 
- revalidatePath(`/contacts/${contactId}`);
- return { success: true };
+  const tags = contact.tags || [];
+  if (tags.includes(tag)) return { success: true };
+
+  const { error: updateError } = await supabase
+    .from('contacts')
+    .update({ 
+      tags: [...tags, tag],
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', contactId);
+
+  if (updateError) {
+    console.error(`[contacts] Error updating tags for ${contactId}:`, updateError);
+    return { success: false, error: updateError.message };
+  }
+  
+  revalidatePath(`/contacts/${contactId}`);
+  return { success: true };
 }
 
-export async function bulkAddTag(ids: string[], tag: string) {
- for (const id of ids) {
-  const res = await addTag(id, tag);
-  if (!res.success) return res;
- }
+export async function bulkAddTag(ids: string[], tag: string): Promise<{ success: boolean; error?: string }> {
+  const workspaceId = await getCurrentWorkspaceId();
+  const supabase = await createServerClient();
+  const successfulIds: string[] = [];
 
- revalidatePath('/contacts');
- return { success: true };
+  for (const id of ids) {
+    const res = await addTag(id, tag);
+    if (res.success) {
+      successfulIds.push(id);
+    } else {
+      // If any fail, we should probably stop or at least report it
+      return { success: false, error: `Failed to update contact ${id}: ${res.error}` };
+    }
+  }
+
+  if (successfulIds.length > 0) {
+    // Bulk Log Activity
+    const activities = successfulIds.map(id => ({
+      workspace_id: workspaceId,
+      contact_id: id,
+      type: 'system',
+      description: `Strategic tag added: ${tag}`,
+      metadata: { tag, operation: 'bulk_tag', event: 'tagging' }
+    }));
+
+    const { error: logError } = await supabase.from('contact_activities').insert(activities);
+    if (logError) return { success: false, error: logError.message };
+  }
+
+  revalidatePath('/contacts');
+  revalidatePath('/contacts/tags');
+  return { success: true };
 }
 
 export async function bulkRemoveTag(ids: string[], tag: string) {
- const supabase = await createServerClient();
- 
- for (const id of ids) {
-  const { data: contact } = await supabase
-   .from('contacts')
-   .select('tags')
-   .eq('id', id)
-   .single();
-
-  const tags = (contact?.tags || []).filter((t: string) => t !== tag);
-  const { error } = await supabase
-   .from('contacts')
-   .update({ tags })
-   .eq('id', id);
+  const workspaceId = await getCurrentWorkspaceId();
+  const supabase = await createServerClient();
   
-  if (error) return { success: false, error: error.message };
- }
+  for (const id of ids) {
+    const { data: contact, error: fetchError } = await supabase
+      .from('contacts')
+      .select('tags')
+      .eq('id', id)
+      .single();
 
- revalidatePath('/contacts');
- return { success: true };
+    if (fetchError || !contact) {
+      console.error(`[contacts] Error fetching tags for ${id}:`, fetchError);
+      continue; // Or return error
+    }
+
+    const tags = (contact.tags || []).filter((t: string) => t !== tag);
+    const { error: updateError } = await supabase
+      .from('contacts')
+      .update({ 
+        tags,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+    
+    if (updateError) {
+      console.error(`[contacts] Error removing tag from ${id}:`, updateError);
+      return { success: false, error: updateError.message };
+    }
+  }
+
+  revalidatePath('/contacts');
+  revalidatePath('/contacts/tags');
+  return { success: true };
 }
 
 

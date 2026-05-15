@@ -101,7 +101,7 @@ export async function triggerAutomation(contactId: string, event: 'course_comple
       // 2. Log Activity
       await supabase.from('contact_activities').insert({
         contact_id: contactId,
-        type: 'system',
+        type: 'edit',
         description: description,
         workspace_id: (await supabase.from('contacts').select('workspace_id').eq('id', contactId).single()).data?.workspace_id
       });

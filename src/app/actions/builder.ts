@@ -333,9 +333,9 @@ export async function handlePageFormSubmission(pageId: string, workspaceId: stri
       await supabase.from('contact_activities').insert({
         workspace_id: workspaceId,
         contact_id: contactId,
-        type: 'form_submission',
+        type: 'edit',
         description: `Submitted form on page: ${pageId}`,
-        metadata: payload
+        metadata: { ...payload, page_id: pageId, type: 'form_submission' }
       });
     }
 
