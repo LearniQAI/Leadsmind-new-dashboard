@@ -13,6 +13,12 @@ async function getActiveWorkspaceId() {
   return ws?.id || null;
 }
 
+// Audit Trail Stub
+async function logAdminAction(action: string, targetId: string, details: any) {
+  console.log(`[AUDIT] Action: ${action}, Target: ${targetId}, Details:`, details);
+  // This can be expanded to write to an 'audit_logs' table
+}
+
 // BRANDING
 export async function getWorkspaceBranding() {
  try {
@@ -244,38 +250,139 @@ export async function inviteTeamMember(
 }
 
 export async function updateMemberPermissions(memberId: string, role: string, permissions: string[]) {
- try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  try {
+    const workspaceId = await getActiveWorkspaceId();
+    if (!workspaceId) {
+      console.error('[updateMemberPermissions] No active workspace found');
+      return { error: 'No workspace active' };
+    }
 
-  const supabase = await createServerClient();
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+    const supabase = await createServerClient();
+    const adminClient = await createAdminClient();
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-  // Security check: Only admins can manage permissions
-  const { data: currentMember } = await supabase
-    .from('workspace_members')
-    .select('role')
-    .eq('workspace_id', workspaceId)
-    .eq('user_id', currentUser?.id)
-    .single();
+    // Security check: Only admins can manage permissions
+    const { data: currentMember, error: checkError } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', currentUser?.id)
+      .single();
 
-  if (currentMember?.role !== 'admin') {
-    return { error: 'Unauthorized' };
+    if (checkError || !currentMember) {
+      console.error('[updateMemberPermissions] Security check failed:', checkError);
+      return { error: 'Unauthorized: Could not verify permissions' };
+    }
+
+    if (currentMember.role !== 'admin' && currentMember.role !== 'owner') {
+      console.error('[updateMemberPermissions] Unauthorized role:', currentMember.role);
+      return { error: 'Unauthorized: Insufficient privileges' };
+    }
+
+    console.log(`[updateMemberPermissions] Updating member ${memberId} in workspace ${workspaceId} to role ${role} with permissions:`, permissions);
+
+    const { error: updateError } = await adminClient
+      .from('workspace_members')
+      .update({ 
+        role, 
+        permissions
+      })
+      .eq('id', memberId)
+      .eq('workspace_id', workspaceId);
+
+    if (updateError) {
+      console.error('[updateMemberPermissions] Update error details:', {
+        message: updateError.message,
+        code: updateError.code,
+        details: updateError.details,
+        hint: updateError.hint
+      });
+      throw updateError;
+    }
+
+    console.log(`[updateMemberPermissions] Successfully updated member ${memberId}`);
+
+    revalidatePath('/settings');
+    await logAdminAction('UPDATE_PERMISSIONS', memberId, { role, permissions });
+    return { success: true };
+  } catch (error: any) {
+    console.error('[updateMemberPermissions] Caught error:', error);
+    return { error: error.message };
   }
+}
 
-  const { error } = await supabase
-   .from('workspace_members')
-   .update({ role, permissions })
-   .eq('id', memberId)
-   .eq('workspace_id', workspaceId);
+export async function deleteMember(memberId: string) {
+  try {
+    const workspaceId = await getActiveWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
 
-  if (error) throw error;
+    const supabase = await createServerClient();
+    const adminClient = await createAdminClient();
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-  revalidatePath('/settings');
-  return { success: true };
- } catch (error: any) {
-  return { error: error.message };
- }
+    // Security check
+    const { data: currentMember } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', currentUser?.id)
+      .single();
+
+    if (currentMember?.role !== 'admin' && currentMember?.role !== 'owner') {
+      return { error: 'Unauthorized' };
+    }
+
+    const { error } = await adminClient
+      .from('workspace_members')
+      .delete()
+      .eq('id', memberId)
+      .eq('workspace_id', workspaceId);
+
+    if (error) throw error;
+
+    revalidatePath('/settings');
+    await logAdminAction('DELETE_MEMBER', memberId, { workspaceId });
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function revokeInvitation(invitationId: string) {
+  try {
+    const workspaceId = await getActiveWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const supabase = await createServerClient();
+    const adminClient = await createAdminClient();
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+    // Security check
+    const { data: currentMember } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', currentUser?.id)
+      .single();
+
+    if (currentMember?.role !== 'admin' && currentMember?.role !== 'owner') {
+      return { error: 'Unauthorized' };
+    }
+
+    const { error } = await adminClient
+      .from('workspace_invitations')
+      .delete()
+      .eq('id', invitationId)
+      .eq('workspace_id', workspaceId);
+
+    if (error) throw error;
+
+    revalidatePath('/settings');
+    await logAdminAction('REVOKE_INVITATION', invitationId, { workspaceId });
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
 }
 
 // WEBHOOKS
