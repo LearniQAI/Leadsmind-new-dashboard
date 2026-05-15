@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { createContact, checkDuplicateContact } from '@/app/actions/contacts';
+import { createContact, updateContact, checkDuplicateContact } from '@/app/actions/contacts';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,12 @@ const contactSchema = z.object({
 
 type ContactFormValues = z.infer<typeof contactSchema>;
 
-export function ContactForm() {
+interface ContactFormProps {
+  initialData?: any;
+  members?: { id: string; name: string }[];
+}
+
+export function ContactForm({ initialData, members }: ContactFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   
@@ -33,7 +38,14 @@ export function ContactForm() {
     watch,
   } = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { source: 'Direct Entry' }
+    defaultValues: { 
+      firstName: initialData?.first_name || '',
+      lastName: initialData?.last_name || '',
+      email: initialData?.email || '',
+      phone: initialData?.phone || '',
+      source: initialData?.source || 'Direct Entry',
+      tags: initialData?.tags?.join(', ') || ''
+    }
   });
 
   const email = watch('email');
@@ -41,8 +53,8 @@ export function ContactForm() {
   const onSubmit = async (values: ContactFormValues) => {
     setIsSubmitting(true);
     
-    // Final duplicate check before submit if email provided
-    if (values.email) {
+    // Only check for duplicate if it's a NEW contact and email is provided
+    if (!initialData && values.email) {
       const dup = await checkDuplicateContact(values.email);
       if (dup.success && dup.exists) {
         toast.error(`Contact already exists: ${dup.contact.first_name} ${dup.contact.last_name}`, {
@@ -60,15 +72,19 @@ export function ContactForm() {
 
     const payload = {
       ...values,
-      tags: values.tags ? values.tags.split(',').map(t => t.trim()) : []
+      tags: values.tags ? values.tags.split(',').map(t => t.trim()).filter(Boolean) : []
     };
 
-    const res = await createContact(payload);
+    const res = initialData 
+      ? await updateContact(initialData.id, payload)
+      : await createContact(payload);
+
     if (res.success) {
-      toast.success('Contact created successfully');
-      router.push('/contacts');
+      toast.success(initialData ? 'Contact updated successfully' : 'Contact created successfully');
+      router.push(initialData ? `/contacts/${initialData.id}` : '/contacts');
+      router.refresh();
     } else {
-      toast.error(res.error || 'Failed to create contact');
+      toast.error(res.error || 'Failed to process contact');
     }
     setIsSubmitting(false);
   };
@@ -130,7 +146,7 @@ export function ContactForm() {
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest ml-1">Initial Tags</label>
+          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest ml-1">Tags (Comma Separated)</label>
           <input 
             {...register('tags')}
             className="w-full bg-white/[0.03] border border-white/5 rounded-lg px-4 h-10 text-[13.5px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb]/40 transition-all font-dm-sans"
@@ -152,7 +168,7 @@ export function ContactForm() {
           disabled={isSubmitting}
           className="flex-1 h-10 rounded-lg bg-[#2563eb] text-white hover:bg-[#2563eb]/90 text-[13px] font-bold font-dm-sans transition-all shadow-lg shadow-[#2563eb]/20 disabled:opacity-50"
         >
-          {isSubmitting ? 'Creating...' : 'Create Lead'}
+          {isSubmitting ? (initialData ? 'Saving...' : 'Creating...') : (initialData ? 'Save Changes' : 'Create Lead')}
         </button>
       </div>
     </form>
