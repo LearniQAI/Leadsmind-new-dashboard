@@ -10,6 +10,7 @@ interface ContactFiltersProps {
   owners: { id: string, name: string }[];
   selectedOwner: string | null;
   onOwnerChange: (id: string | null) => void;
+  onManageTags?: () => void;
 }
 
 export function ContactFilters({
@@ -18,7 +19,8 @@ export function ContactFilters({
   onTagToggle,
   owners,
   selectedOwner,
-  onOwnerChange
+  onOwnerChange,
+  onManageTags
 }: ContactFiltersProps) {
   return (
     <div className="w-[240px] shrink-0 space-y-8 bg-[#080f28] p-6 border-r border-white/5 h-full overflow-y-auto no-scrollbar">
@@ -60,7 +62,12 @@ export function ContactFilters({
           <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] font-dm-sans">
             Strategic Tags
           </h4>
-          <button className="text-[10px] font-bold text-[#2563eb] hover:underline uppercase tracking-widest">Manage</button>
+          <button 
+            onClick={onManageTags}
+            className="text-[10px] font-bold text-[#2563eb] hover:underline uppercase tracking-widest"
+          >
+            Manage
+          </button>
         </div>
         <div className="flex flex-wrap gap-2">
           {tags.map(tag => {

@@ -5,6 +5,7 @@ import MetaData from "@/hooks/useMetaData";
 import ContactsClient from './ContactsClient';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { getWorkspaceTags } from '../actions/contacts';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,15 +15,17 @@ export default async function ContactsPage() {
   if (!workspaceId) redirect('/login');
 
   const supabase = await createServerClient();
-  const { data: contacts, error } = await supabase
-    .from('contacts')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: false });
+  const [contactsRes, tagsRes] = await Promise.all([
+    supabase
+      .from('contacts')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false }),
+    getWorkspaceTags(workspaceId)
+  ]);
 
-  if (error) {
-    console.error('Error fetching contacts:', error);
-  }
+  const contacts = contactsRes.data || [];
+  const tags = tagsRes || [];
 
   return (
     <MetaData pageTitle="Relationship Management">
@@ -56,7 +59,7 @@ export default async function ContactsPage() {
 
           {/* Main Content */}
           <div className="flex-1 overflow-hidden">
-            <ContactsClient initialContacts={contacts || []} />
+            <ContactsClient initialContacts={contacts} initialTags={tags} />
           </div>
         </div>
       </Wrapper>

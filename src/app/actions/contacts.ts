@@ -63,77 +63,118 @@ export async function getContactTasks(contactId: string) {
 }
 
 export async function getWorkspaceTags(workspaceId: string) {
- const supabase = await createServerClient();
- 
- // Tags are stored as a TEXT[] in contacts. 
- // To get a list of all unique tags, we can use a raw SQL query or aggregate them.
- // For simplicity, we'll fetch all contacts and flatten their tags in this version,
- // but a dedicated 'tags' table would be better for scaling.
- const { data: contacts } = await supabase
-  .from('contacts')
-  .select('tags')
-  .eq('workspace_id', workspaceId);
+  const supabase = await createServerClient();
+  
+  // 1. Get registry tags (Master list)
+  const { data: registryTags } = await supabase
+    .from('contact_tags_registry')
+    .select('name')
+    .eq('workspace_id', workspaceId);
 
- if (!contacts) return [];
+  // 2. Get dynamic tags from contacts
+  const { data: contacts } = await supabase
+    .from('contacts')
+    .select('tags')
+    .eq('workspace_id', workspaceId);
 
- const tagCounts: Record<string, number> = {};
- contacts.forEach((c: any) => {
-  (c.tags || []).forEach((t: string) => {
-   tagCounts[t] = (tagCounts[t] || 0) + 1;
+  const tagCounts: Record<string, number> = {};
+  
+  // Initialize with registry tags (even if count is 0)
+  registryTags?.forEach(t => {
+    tagCounts[t.name] = 0;
   });
- });
 
- return Object.entries(tagCounts).map(([name, count]) => ({
-  id: name,
-  name,
-  count
- }));
+  // Count from contacts
+  contacts?.forEach((c: any) => {
+    (c.tags || []).forEach((t: string) => {
+      tagCounts[t] = (tagCounts[t] || 0) + 1;
+    });
+  });
+
+  return Object.entries(tagCounts).map(([name, count]) => ({
+    id: name,
+    name,
+    count
+  }));
 }
 
 export async function globalDeleteTag(tag: string) {
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) return { success: false, error: 'Unauthorized' };
- const supabase = await createServerClient();
- 
- const { data: contacts } = await supabase
-  .from('contacts')
-  .select('id, tags')
-  .eq('workspace_id', workspaceId)
-  .contains('tags', [tag]);
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'Unauthorized' };
+  const supabase = await createServerClient();
   
- if (contacts) {
-  for (const c of contacts) {
-   const updatedTags = (c.tags || []).filter((t: string) => t !== tag);
-   await supabase.from('contacts').update({ tags: updatedTags }).eq('id', c.id);
+  // 1. Delete from Registry
+  await supabase
+    .from('contact_tags_registry')
+    .delete()
+    .eq('workspace_id', workspaceId)
+    .eq('name', tag);
+
+  // 2. Remove from Contacts
+  const { data: contacts } = await supabase
+    .from('contacts')
+    .select('id, tags')
+    .eq('workspace_id', workspaceId)
+    .contains('tags', [tag]);
+   
+  if (contacts) {
+    for (const c of contacts) {
+      const updatedTags = (c.tags || []).filter((t: string) => t !== tag);
+      await supabase.from('contacts').update({ tags: updatedTags }).eq('id', c.id);
+    }
   }
- }
- revalidatePath('/contacts');
- revalidatePath('/contacts/tags');
- return { success: true };
+  revalidatePath('/contacts');
+  revalidatePath('/contacts/tags');
+  return { success: true };
 }
 
 export async function globalRenameTag(oldTag: string, newTag: string) {
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) return { success: false, error: 'Unauthorized' };
- const supabase = await createServerClient();
- 
- const { data: contacts } = await supabase
-  .from('contacts')
-  .select('id, tags')
-  .eq('workspace_id', workspaceId)
-  .contains('tags', [oldTag]);
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'Unauthorized' };
+  const supabase = await createServerClient();
   
- if (contacts) {
-  for (const c of contacts) {
-   const updatedTags = (c.tags || []).map((t: string) => t === oldTag ? newTag : t);
-   // Ensure no duplicates if newTag already existed
-   const uniqueTags = Array.from(new Set(updatedTags));
-   await supabase.from('contacts').update({ tags: uniqueTags }).eq('id', c.id);
+  // 1. Update Registry
+  await supabase
+    .from('contact_tags_registry')
+    .update({ name: newTag })
+    .eq('workspace_id', workspaceId)
+    .eq('name', oldTag);
+
+  // 2. Update Contacts
+  const { data: contacts } = await supabase
+    .from('contacts')
+    .select('id, tags')
+    .eq('workspace_id', workspaceId)
+    .contains('tags', [oldTag]);
+   
+  if (contacts) {
+    for (const c of contacts) {
+      const updatedTags = (c.tags || []).map((t: string) => t === oldTag ? newTag : t);
+      const uniqueTags = Array.from(new Set(updatedTags));
+      await supabase.from('contacts').update({ tags: uniqueTags }).eq('id', c.id);
+    }
   }
- }
- revalidatePath('/contacts');
- revalidatePath('/contacts/tags');
- return { success: true };
+  revalidatePath('/contacts');
+  revalidatePath('/contacts/tags');
+  return { success: true };
+}
+
+export async function createRegistryTag(name: string) {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No active workspace' };
+
+  const supabase = await createServerClient();
+  const { error } = await supabase
+    .from('contact_tags_registry')
+    .insert({ workspace_id: workspaceId, name: name.trim() });
+
+  if (error) {
+    if (error.code === '23505') return { success: false, error: 'Tag already exists' };
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/contacts/tags');
+  return { success: true };
 }
 
 export async function checkDuplicateContact(email: string) {

@@ -10,12 +10,14 @@ import { bulkAddTag, deleteContact } from '../actions/contacts';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TagDialog } from '@/components/crm/TagDialog';
+import { ManageTagsDialog } from '@/components/crm/ManageTagsDialog';
 
 interface ContactsClientProps {
   initialContacts: Contact[];
+  initialTags: { id: string; name: string; count: number }[];
 }
 
-export default function ContactsClient({ initialContacts }: ContactsClientProps) {
+export default function ContactsClient({ initialContacts, initialTags }: ContactsClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -23,13 +25,17 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
   const [isDeleting, setIsDeleting] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+  const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
 
   // Derived state
   const allTags = useMemo(() => {
+    if (initialTags && initialTags.length > 0) {
+      return initialTags.map(t => t.name);
+    }
     const tags = new Set<string>();
     initialContacts.forEach(c => c.tags?.forEach(t => tags.add(t)));
     return Array.from(tags);
-  }, [initialContacts]);
+  }, [initialContacts, initialTags]);
 
   const filteredContacts = useMemo(() => {
     return initialContacts.filter(c => {
@@ -116,6 +122,7 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
         owners={[]} // Would fetch from workspace members
         selectedOwner={selectedOwner}
         onOwnerChange={setSelectedOwner}
+        onManageTags={() => setIsManageTagsOpen(true)}
       />
 
       {/* 2. Main Content: Table */}
@@ -178,6 +185,15 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
         onClose={() => setIsTagDialogOpen(false)}
         onConfirm={handleBulkAddTag}
         selectedCount={selectedIds.size}
+      />
+      <ManageTagsDialog 
+        isOpen={isManageTagsOpen}
+        onClose={() => setIsManageTagsOpen(false)}
+        tags={initialTags && initialTags.length > 0 ? initialTags : allTags.map(tag => ({
+          id: tag,
+          name: tag,
+          count: initialContacts.filter(c => c.tags?.includes(tag)).length
+        }))}
       />
     </div>
   );
