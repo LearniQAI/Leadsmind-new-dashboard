@@ -473,3 +473,19 @@ export async function deleteTask(id: string) {
  return { success: true };
 }
 
+
+export async function searchContacts(query: string) {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'Unauthorized' };
+  
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('id, first_name, last_name, email')
+    .eq('workspace_id', workspaceId)
+    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
+    .limit(10);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data };
+}

@@ -87,7 +87,7 @@ export async function getAppointments() {
 
 export async function createBooking(payload: {
  calendarId: string;
- contactId: string;
+ contactId: string | null;
  title: string;
  startTime: string;
  endTime: string;

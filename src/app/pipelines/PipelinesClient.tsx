@@ -31,7 +31,7 @@ export default function PipelinesClient({
 }: PipelinesClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  
+
   // Modals state
   const [isOppModalOpen, setIsOppModalOpen] = useState(false);
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
@@ -42,9 +42,9 @@ export default function PipelinesClient({
   const [optimisticOpps, updateOptimisticOpps] = useOptimistic(
     initialOpportunities,
     (state, { dealId, newStageId, newPosition }) => {
-      return state.map(opp => 
-        opp.id === dealId 
-          ? { ...opp, stage_id: newStageId, position: newPosition, updated_at: new Date().toISOString() } 
+      return state.map(opp =>
+        opp.id === dealId
+          ? { ...opp, stage_id: newStageId, position: newPosition, updated_at: new Date().toISOString() }
           : opp
       );
     }
@@ -75,7 +75,7 @@ export default function PipelinesClient({
     // Tactical Optimistic Update
     startTransition(async () => {
       updateOptimisticOpps({ dealId, newStageId, newPosition });
-      
+
       const res = await updateDealStage(dealId, newStageId, newPosition);
       if (!res.success) {
         toast.error('Tactical failure: Could not update deal stage');
@@ -93,7 +93,7 @@ export default function PipelinesClient({
               {activePipeline.name}
             </h1>
             <div className="h-4 w-[1px] bg-white/10 mx-2"></div>
-            <select 
+            <select
               value={activePipeline.id}
               onChange={(e) => router.push(`/pipelines?pipelineId=${e.target.value}`)}
               className="bg-transparent text-[12px] font-bold text-[#4a5a82] uppercase tracking-widest focus:outline-none cursor-pointer hover:text-[#eef2ff] transition-colors"
@@ -107,14 +107,14 @@ export default function PipelinesClient({
           </div>
 
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => setIsStageModalOpen(true)}
               className="h-9 px-4 rounded-xl bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-bold font-dm-sans transition-all flex items-center gap-2"
             >
               <i className="fa-solid fa-gear text-[11px] text-[#4a5a82]"></i>
               Stages
             </button>
-            <button 
+            <button
               onClick={() => handleCreateDeal()}
               className="h-9 px-4 rounded-xl bg-[#2563eb] text-white hover:bg-[#2563eb]/90 text-[12px] font-bold font-dm-sans transition-all flex items-center gap-2 shadow-lg shadow-[#2563eb]/20"
             >
@@ -140,7 +140,7 @@ export default function PipelinesClient({
                 onAddDeal={() => handleCreateDeal(stage.id)}
               />
             ))}
-            
+
             {/* Add Stage Placeholder */}
             <div className="flex flex-col min-h-[200px] items-center justify-center border-2 border-dashed border-white/5 rounded-2xl group hover:border-white/10 transition-all cursor-pointer bg-[#080f28]/20">
               <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:bg-[#2563eb]/10 transition-all">
@@ -153,7 +153,7 @@ export default function PipelinesClient({
       </div>
 
       {/* 3. Modals */}
-      <OpportunityModal 
+      <OpportunityModal
         isOpen={isOppModalOpen}
         onClose={() => setIsOppModalOpen(false)}
         opportunity={selectedOpp}
@@ -162,7 +162,7 @@ export default function PipelinesClient({
         stages={initialStages}
       />
 
-      <StageSettingsModal 
+      <StageSettingsModal
         isOpen={isStageModalOpen}
         onClose={() => setIsStageModalOpen(false)}
         pipelineId={activePipeline.id}
