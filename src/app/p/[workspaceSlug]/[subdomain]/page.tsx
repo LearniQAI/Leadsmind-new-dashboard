@@ -99,12 +99,12 @@ export default async function PublishedSubdomainRootPage({
 
  if (!targetPageContent) {
   return (
-   <div className="min-h-screen flex flex-col items-center justify-center bg-bgBody dark:bg-bgBody-dark text-heading dark:text-heading-dark p-6 text-center">
+   <div className="min-h-screen flex flex-col items-center justify-center bg-white text-black p-6 text-center">
     <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mb-4 border border-amber-500/20">
      <AlertCircle className="w-8 h-8" />
     </div>
     <h1 className="text-2xl font-black uppercase tracking-tight mb-2">Node Pending Configuration</h1>
-    <p className="text-xs text-placeholder max-w-md">
+    <p className="text-xs text-slate-500 max-w-md">
      The requested endpoint <span className="text-primary font-bold">{subdomain}</span> exists but has no active layout assigned to its index path.
     </p>
    </div>

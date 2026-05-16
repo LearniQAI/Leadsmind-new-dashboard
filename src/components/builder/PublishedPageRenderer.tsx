@@ -31,7 +31,7 @@ export default function PublishedPageRenderer({
  }
 
  return (
-  <div className="w-full min-h-screen bg-bgBody dark:bg-bgBody-dark text-heading dark:text-heading-dark selection:bg-primary selection:text-white antialiased overflow-x-hidden">
+  <div className="w-full min-h-screen bg-white text-black selection:bg-primary selection:text-white antialiased overflow-x-hidden">
    <BuilderProvider
     websiteData={websiteData || null}
     pages={pages || []}
