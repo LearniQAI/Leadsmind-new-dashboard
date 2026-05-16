@@ -81,6 +81,10 @@ export default function WebsiteManager() {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
+  // Template Filter States
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templateCategory, setTemplateCategory] = useState('All');
+
   const router = useRouter();
   const supabase = createClient();
 
@@ -149,6 +153,20 @@ export default function WebsiteManager() {
     return result;
   }, [websites, filter, searchQuery]);
 
+  const categories = useMemo(() => {
+    const cats = new Set(dbTemplates.map(t => t.category).filter(Boolean));
+    return ['All', ...Array.from(cats).sort()];
+  }, [dbTemplates]);
+
+  const filteredTemplates = useMemo(() => {
+    return dbTemplates.filter(t => {
+      const matchesSearch = t.name.toLowerCase().includes(templateSearch.toLowerCase()) ||
+        t.description.toLowerCase().includes(templateSearch.toLowerCase());
+      const matchesCategory = templateCategory === 'All' || t.category === templateCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [dbTemplates, templateSearch, templateCategory]);
+
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -166,13 +184,13 @@ export default function WebsiteManager() {
   const confirmBulkDelete = async () => {
     setIsBulkDeleting(true);
     let successCount = 0;
-    
+
     try {
       for (const id of Array.from(selectedIds)) {
         const res = await deleteWebsite(id);
         if (res.success) successCount++;
       }
-      
+
       toast.success(`Successfully purged ${successCount} nodes`);
       setSelectedIds(new Set());
       fetchWebsites();
@@ -285,7 +303,7 @@ export default function WebsiteManager() {
                 className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-[8px] font-semibold text-[13px] h-9 px-5 shadow-lg shadow-[#2563eb]/20 transition-all active:scale-[0.98]"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Deploy New Site
+                New
               </Button>
             </div>
           </div>
@@ -365,7 +383,7 @@ export default function WebsiteManager() {
               <p className="text-[13px] text-[#4a5a82] max-w-[300px] leading-relaxed mb-6">
                 Initialize your first marketing node to start capturing traffic and deploying specialized neural funnels.
               </p>
-              <Button 
+              <Button
                 onClick={() => setIsModalOpen(true)}
                 className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-[8px] font-semibold text-[13px] h-10 px-6 shadow-lg shadow-[#2563eb]/20"
               >
@@ -376,8 +394,8 @@ export default function WebsiteManager() {
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xxl:grid-cols-3 gap-[14px] mt-2">
               {filteredWebsites.map((site) => (
-                <div 
-                  key={site.id} 
+                <div
+                  key={site.id}
                   className={cn(
                     "relative bg-[#0c1535]/85 border border-white/[0.07] rounded-[12px] p-[18px] transition-all duration-300 hover:bg-[#152550]/90 hover:border-white/[0.13] hover:-translate-y-0.5 group overflow-hidden shadow-sm",
                     site.is_published ? "before:bg-[#10b981]" : "before:bg-[#8b5cf6]",
@@ -387,7 +405,7 @@ export default function WebsiteManager() {
                 >
                   <div className="flex justify-between items-start mb-5 relative z-20">
                     <div className="flex items-center gap-3">
-                      <div 
+                      <div
                         onClick={() => toggleSelection(site.id)}
                         className={cn(
                           "w-5 h-5 rounded-md border flex items-center justify-center cursor-pointer transition-all",
@@ -400,17 +418,17 @@ export default function WebsiteManager() {
                         <Globe size={18} />
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <div className={cn(
                         "text-[10.5px] font-bold px-2.5 py-0.5 rounded-full border shadow-sm",
-                        site.is_published 
-                          ? "bg-[#10b981]/10 text-[#34d399] border-[#10b981]/20" 
+                        site.is_published
+                          ? "bg-[#10b981]/10 text-[#34d399] border-[#10b981]/20"
                           : "bg-[#8b5cf6]/10 text-[#a78bfa] border-[#8b5cf6]/20"
                       )}>
                         {site.is_published ? 'Live Node' : 'Draft'}
                       </div>
-                      
+
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 transition-all">
@@ -418,7 +436,7 @@ export default function WebsiteManager() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-52 bg-[#0c1535] border-white/[0.07] p-1.5 rounded-[12px] shadow-2xl z-[9999]">
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="flex items-center gap-2.5 p-2.5 rounded-[8px] text-[12px] font-medium text-[#94a3c8] cursor-pointer hover:bg-white/[0.05] hover:text-[#eef2ff] transition-all"
                             onClick={() => {
                               const pageId = site.website_pages?.[0]?.pages?.[0]?.id;
@@ -427,20 +445,20 @@ export default function WebsiteManager() {
                           >
                             <Edit3 size={14} className="text-[#3b82f6]" /> Launch Builder
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="flex items-center gap-2.5 p-2.5 rounded-[8px] text-[12px] font-medium text-[#94a3c8] cursor-pointer hover:bg-white/[0.05] hover:text-[#eef2ff] transition-all"
                             onClick={() => setRenameSite({ id: site.id, name: site.name })}
                           >
                             <Settings2 size={14} /> Rename Site
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="flex items-center gap-2.5 p-2.5 rounded-[8px] text-[12px] font-medium text-[#94a3c8] cursor-pointer hover:bg-white/[0.05] hover:text-[#eef2ff] transition-all"
                             onClick={() => handleDuplicate(site.id)}
                           >
                             <Copy size={14} /> Clone Node
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/[0.07] my-1" />
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="flex items-center gap-2.5 p-2.5 rounded-[8px] text-[12px] font-medium text-[#ef4444] cursor-pointer hover:bg-[#ef4444]/10 transition-all"
                             onClick={() => setDeleteSite(site)}
                           >
@@ -485,7 +503,7 @@ export default function WebsiteManager() {
               ))}
 
               {/* Dashed Add New Card */}
-              <div 
+              <div
                 onClick={() => setIsModalOpen(true)}
                 className="relative bg-white/[0.03] border-1.5 border-dashed border-white/[0.07] rounded-[12px] flex flex-col items-center justify-center gap-3 min-h-[180px] cursor-pointer hover:bg-[#2563eb]/[0.06] hover:border-[#2563eb]/30 transition-all group shadow-sm"
               >
@@ -509,14 +527,14 @@ export default function WebsiteManager() {
                 <div className="text-right">Actions</div>
               </div>
               {filteredWebsites.map((site) => (
-                <div 
+                <div
                   key={site.id}
                   className={cn(
                     "grid grid-cols-[40px_1fr_150px_150px_150px] gap-4 items-center bg-[#0c1535]/60 border border-white/[0.05] rounded-[10px] px-6 py-3 hover:bg-[#152550]/80 hover:border-white/10 transition-all group",
                     selectedIds.has(site.id) && "bg-[#3b82f6]/5 border-[#3b82f6]/30"
                   )}
                 >
-                  <div 
+                  <div
                     onClick={() => toggleSelection(site.id)}
                     className={cn(
                       "w-5 h-5 rounded-md border flex items-center justify-center cursor-pointer transition-all",
@@ -590,124 +608,187 @@ export default function WebsiteManager() {
               </div>
             </DialogHeader>
 
-            <div className="flex-1 overflow-y-auto bg-[#04091a]/30 custom-scrollbar">
-              <div className="px-6 py-6 space-y-6">
-                {/* Step 1: Designation */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="w-4.5 h-4.5 rounded-full bg-[#2563eb]/15 text-[#3b82f6] text-[9px] font-bold flex items-center justify-center border border-[#2563eb]/20">1</span>
-                    <Label htmlFor="name" className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Website Designation</Label>
+            <div className="flex-1 overflow-hidden flex bg-[#04091a]/30 min-h-0">
+              {/* Sidebar for Filtering */}
+              <div className="w-[240px] border-r border-white/[0.05] p-6 space-y-8 hidden md:block overflow-y-auto custom-scrollbar">
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82]">Templates Library</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#4a5a82]" />
+                    <Input
+                      placeholder="Search blueprints..."
+                      value={templateSearch}
+                      onChange={(e) => setTemplateSearch(e.target.value)}
+                      className="h-9 bg-white/[0.04] border-white/10 rounded-[8px] pl-9 text-[11px] font-medium placeholder:text-[#2a3557] focus:border-[#2563eb]/50 transition-all"
+                    />
                   </div>
-                  <Input
-                    id="name"
-                    placeholder="E.g. Lunar AI Marketing Site..."
-                    value={newSiteName}
-                    onChange={(e) => setNewSiteName(e.target.value)}
-                    className="h-11 bg-white/[0.04] border-white/10 text-[#eef2ff] rounded-[10px] px-5 text-[14px] font-medium placeholder:text-[#2a3557] focus:border-[#2563eb]/50 focus:bg-white/[0.06] transition-all outline-none"
-                  />
                 </div>
 
-                {/* Step 2: Blueprints */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-4.5 h-4.5 rounded-full bg-[#2563eb]/15 text-[#3b82f6] text-[9px] font-bold flex items-center justify-center border border-[#2563eb]/20">2</span>
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Strategic Blueprints</Label>
-                    </div>
-                    <div className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[0.2em] bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
-                      {dbTemplates.length + 1} Options Available
-                    </div>
-                  </div>
-
-                  {templateError ? (
-                    <div className="p-12 rounded-[16px] border border-dashed border-[#ef4444]/20 bg-[#ef4444]/5 flex flex-col items-center justify-center gap-5 text-center">
-                      <div className="h-14 w-14 rounded-full bg-[#ef4444]/10 text-[#ef4444] flex items-center justify-center">
-                        <AlertCircle className="w-8 h-8" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-[#eef2ff] uppercase tracking-tight">Interface Link Interrupted</h4>
-                        <p className="text-[11px] text-[#4a5a82] mt-1 max-w-[240px] uppercase tracking-widest">{templateError}</p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={fetchTemplates}
-                        className="h-11 border-white/10 hover:bg-white/10 text-[#94a3c8] font-bold uppercase tracking-widest text-[10px] px-8 rounded-[8px]"
-                      >
-                        Restart Sync
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {/* Blank Canvas Option */}
-                      <div
-                        onClick={() => setSelectedTemplate(null)}
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82]">Categories</Label>
+                  <div className="flex flex-col gap-1.5">
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setTemplateCategory(cat)}
                         className={cn(
-                          "group relative cursor-pointer rounded-[12px] border-2 transition-all duration-300 overflow-hidden flex flex-col h-full",
-                          selectedTemplate === null
-                            ? "border-[#2563eb] bg-[#2563eb]/5 shadow-[0_0_20px_rgba(37,99,235,0.15)]"
-                            : "border-white/[0.05] bg-white/[0.03] hover:border-white/[0.15] hover:bg-white/[0.05]"
+                          "px-3 py-2 rounded-lg text-left text-[11px] font-semibold transition-all",
+                          templateCategory === cat
+                            ? "bg-[#2563eb]/10 text-[#3b82f6] border border-[#2563eb]/20"
+                            : "text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5"
                         )}
                       >
-                        <div className="aspect-[16/9] flex items-center justify-center bg-white/[0.02] border-b border-white/[0.05] relative">
-                          <div className="w-10 h-10 rounded-full border-2 border-dashed border-[#4a5a82] flex items-center justify-center text-[#4a5a82] group-hover:scale-110 group-hover:text-[#2563eb] group-hover:border-[#2563eb]/40 transition-all">
-                            <Plus size={20} />
-                          </div>
-                          {selectedTemplate === null && (
-                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#2563eb] border-[3px] border-[#080f28] flex items-center justify-center shadow-lg">
-                              <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
-                            </div>
-                          )}
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <div className="p-4 rounded-xl bg-[#2563eb]/5 border border-[#2563eb]/10">
+                    <h5 className="text-[10px] font-bold text-[#3b82f6] uppercase tracking-wider mb-2">Pro Tip</h5>
+                    <p className="text-[9px] text-[#4a5a82] leading-relaxed">
+                      Choose a template that matches your industry for the best pre-configured neural hooks.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Content Area */}
+              <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                  <div className="space-y-8">
+                    {/* Step 1: Designation */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-4.5 h-4.5 rounded-full bg-[#2563eb]/15 text-[#3b82f6] text-[9px] font-bold flex items-center justify-center border border-[#2563eb]/20">1</span>
+                        <Label htmlFor="name" className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Website Designation</Label>
+                      </div>
+                      <Input
+                        id="name"
+                        placeholder="E.g. Lunar AI Marketing Site..."
+                        value={newSiteName}
+                        onChange={(e) => setNewSiteName(e.target.value)}
+                        className="h-11 bg-white/[0.04] border-white/10 text-[#eef2ff] rounded-[10px] px-5 text-[14px] font-medium placeholder:text-[#2a3557] focus:border-[#2563eb]/50 focus:bg-white/[0.06] transition-all outline-none"
+                      />
+                    </div>
+
+                    {/* Step 2: Blueprints */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-4.5 h-4.5 rounded-full bg-[#2563eb]/15 text-[#3b82f6] text-[9px] font-bold flex items-center justify-center border border-[#2563eb]/20">2</span>
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Strategic Blueprints</Label>
                         </div>
-                        <div className="p-3.5 flex-1">
-                          <span className="font-bold text-[11px] block uppercase tracking-wider text-[#eef2ff]">Blank Slate</span>
-                          <span className="text-[9px] font-medium text-[#4a5a82] line-clamp-2 mt-1">Custom layout with zero pre-sets. Clean architecture.</span>
+                        <div className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[0.2em] bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
+                          {filteredTemplates.length + 1} Options Matching
                         </div>
                       </div>
 
-                      {/* Professional Blueprints */}
-                      {dbTemplates.map((t) => (
-                        <div
-                          key={t.id}
-                          onClick={() => setSelectedTemplate(t.id)}
-                          className={cn(
-                            "group relative cursor-pointer rounded-[12px] border-2 transition-all duration-300 overflow-hidden flex flex-col h-full",
-                            selectedTemplate === t.id
-                              ? "border-[#2563eb] bg-[#2563eb]/5 shadow-[0_0_20px_rgba(37,99,235,0.15)]"
-                              : "border-white/[0.05] bg-white/[0.03] hover:border-white/[0.15] hover:bg-white/[0.05]"
-                          )}
-                        >
-                          <div className="aspect-[16/9] bg-[#04091a] relative overflow-hidden">
-                            {(t.thumbnail || t.preview_image) && (
-                              <img
-                                src={t.thumbnail || t.preview_image}
-                                alt={t.name}
-                                className={cn(
-                                  "absolute inset-0 w-full h-full object-cover transition-all duration-1000",
-                                  selectedTemplate === t.id ? "scale-105 opacity-80" : "opacity-30 group-hover:opacity-60 group-hover:scale-105"
-                                )}
-                              />
-                            )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#04091a] to-transparent opacity-60" />
-                            {selectedTemplate === t.id && (
-                              <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#2563eb] border-[3px] border-[#080f28] flex items-center justify-center shadow-lg z-20">
-                                <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
-                              </div>
-                            )}
-                            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-[7px] font-black uppercase tracking-widest text-white/70">
-                              Premium
-                            </div>
+                      {templateError ? (
+                        <div className="p-12 rounded-[16px] border border-dashed border-[#ef4444]/20 bg-[#ef4444]/5 flex flex-col items-center justify-center gap-5 text-center">
+                          <div className="h-14 w-14 rounded-full bg-[#ef4444]/10 text-[#ef4444] flex items-center justify-center">
+                            <AlertCircle className="w-8 h-8" />
                           </div>
-                          <div className="p-3.5 bg-white/[0.02] flex-1">
-                            <span className={cn(
-                              "font-bold text-[11px] block uppercase tracking-wider transition-colors leading-tight",
-                              selectedTemplate === t.id ? "text-[#3b82f6]" : "text-[#eef2ff] group-hover:text-[#3b82f6]"
-                            )}>{t.name}</span>
-                            <span className="text-[9px] font-medium text-[#4a5a82] line-clamp-2 mt-1">{t.description}</span>
+                          <div>
+                            <h4 className="font-bold text-[#eef2ff] uppercase tracking-tight">Interface Link Interrupted</h4>
+                            <p className="text-[11px] text-[#4a5a82] mt-1 max-w-[240px] uppercase tracking-widest">{templateError}</p>
                           </div>
+                          <Button
+                            variant="outline"
+                            onClick={fetchTemplates}
+                            className="h-11 border-white/10 hover:bg-white/10 text-[#94a3c8] font-bold uppercase tracking-widest text-[10px] px-8 rounded-[8px]"
+                          >
+                            Restart Sync
+                          </Button>
                         </div>
-                      ))}
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                          {/* Blank Canvas Option */}
+                          {(templateCategory === 'All' || templateSearch === '') && (
+                            <div
+                              onClick={() => setSelectedTemplate(null)}
+                              className={cn(
+                                "group relative cursor-pointer rounded-[14px] border-2 transition-all duration-300 overflow-hidden flex flex-col h-full min-h-[220px]",
+                                selectedTemplate === null
+                                  ? "border-[#2563eb] bg-[#2563eb]/5 shadow-[0_0_30px_rgba(37,99,235,0.2)]"
+                                  : "border-white/[0.05] bg-white/[0.03] hover:border-white/[0.15] hover:bg-white/[0.05]"
+                              )}
+                            >
+                              <div className="flex-1 flex items-center justify-center bg-white/[0.02] border-b border-white/[0.05] relative">
+                                <div className="w-12 h-12 rounded-full border-2 border-dashed border-[#4a5a82] flex items-center justify-center text-[#4a5a82] group-hover:scale-110 group-hover:text-[#2563eb] group-hover:border-[#2563eb]/40 transition-all duration-500 shadow-inner">
+                                  <Plus size={24} />
+                                </div>
+                                {selectedTemplate === null && (
+                                  <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#2563eb] border-[4px] border-[#080f28] flex items-center justify-center shadow-lg">
+                                    <Check className="w-3 h-3 text-white" strokeWidth={4} />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-4 bg-[#0c1535]/50">
+                                <span className="font-bold text-[12px] block uppercase tracking-wider text-[#eef2ff]">Blank Slate</span>
+                                <span className="text-[10px] font-medium text-[#4a5a82] line-clamp-1 mt-1">Start with a zero pre-set clean canvas</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Professional Blueprints */}
+                          {filteredTemplates.map((t) => (
+                            <div
+                              key={t.id}
+                              onClick={() => setSelectedTemplate(t.id)}
+                              className={cn(
+                                "group relative cursor-pointer rounded-[14px] border-2 transition-all duration-300 overflow-hidden flex flex-col h-full min-h-[220px]",
+                                selectedTemplate === t.id
+                                  ? "border-[#2563eb] bg-[#2563eb]/5 shadow-[0_0_30px_rgba(37,99,235,0.2)]"
+                                  : "border-white/[0.05] bg-white/[0.03] hover:border-white/[0.15] hover:bg-white/[0.05]"
+                              )}
+                            >
+                              <div className="flex-1 bg-[#04091a] relative overflow-hidden">
+                                {(t.thumbnail || t.preview_image) && (
+                                  <img
+                                    src={t.thumbnail || t.preview_image}
+                                    alt={t.name}
+                                    className={cn(
+                                      "absolute inset-0 w-full h-full object-cover transition-all duration-1000",
+                                      selectedTemplate === t.id ? "scale-110 opacity-90 blur-[1px]" : "opacity-40 group-hover:opacity-70 group-hover:scale-110"
+                                    )}
+                                  />
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#04091a] via-[#04091a]/20 to-transparent opacity-80" />
+
+                                {selectedTemplate === t.id && (
+                                  <div className="absolute inset-0 flex items-center justify-center z-20">
+                                    <div className="w-10 h-10 rounded-full bg-[#2563eb] flex items-center justify-center shadow-2xl scale-125 transition-all">
+                                      <Check className="w-5 h-5 text-white" strokeWidth={4} />
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="absolute top-3 left-3 flex gap-2">
+                                  <div className="px-2.5 py-0.5 rounded-full bg-[#2563eb]/20 backdrop-blur-md border border-[#2563eb]/30 text-[8px] font-black uppercase tracking-widest text-[#3b82f6]">
+                                    {t.category}
+                                  </div>
+                                  {t.is_premium && (
+                                    <div className="px-2.5 py-0.5 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-500/30 text-[8px] font-black uppercase tracking-widest text-amber-500">
+                                      Premium
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="p-4 bg-[#0c1535]/50 backdrop-blur-md">
+                                <span className={cn(
+                                  "font-bold text-[12px] block uppercase tracking-wider transition-colors leading-tight",
+                                  selectedTemplate === t.id ? "text-[#3b82f6]" : "text-[#eef2ff] group-hover:text-[#3b82f6]"
+                                )}>{t.name}</span>
+                                <span className="text-[10px] font-medium text-[#4a5a82] line-clamp-1 mt-1">{t.description}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -801,21 +882,21 @@ export default function WebsiteManager() {
                 Bulk <span className="text-[#eef2ff]">Purge</span>
               </DialogTitle>
               <DialogDescription className="text-[13px] text-[#4a5a82] mt-4 leading-relaxed font-medium">
-                You are about to permanently delete <span className="text-[#eef2ff] font-bold">{selectedIds.size} selected nodes</span>. 
+                You are about to permanently delete <span className="text-[#eef2ff] font-bold">{selectedIds.size} selected nodes</span>.
                 This action is irreversible and will remove all associated pages, assets, and configurations.
               </DialogDescription>
             </div>
             <div className="p-8 bg-[#ef4444]/[0.02] border-t border-white/[0.07] flex flex-col-reverse sm:flex-row gap-3">
-              <Button 
-                variant="ghost" 
-                onClick={() => setIsBulkDeleteModalOpen(false)} 
+              <Button
+                variant="ghost"
+                onClick={() => setIsBulkDeleteModalOpen(false)}
                 className="text-[11px] font-bold uppercase tracking-widest text-[#4a5a82] hover:text-[#eef2ff] h-12 flex-1 rounded-[10px]"
               >
                 Abort Action
               </Button>
-              <Button 
-                variant="destructive" 
-                onClick={confirmBulkDelete} 
+              <Button
+                variant="destructive"
+                onClick={confirmBulkDelete}
                 disabled={isBulkDeleting}
                 className="bg-[#ef4444] hover:bg-[#b91c1c] text-white h-12 flex-1 rounded-[10px] font-bold uppercase text-[11px] shadow-lg shadow-[#ef4444]/20 transition-all active:scale-[0.98]"
               >

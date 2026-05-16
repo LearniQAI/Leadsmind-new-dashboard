@@ -26,9 +26,9 @@ async function executeAction<T>(action: (supabase: any, workspaceId: string) => 
  * --- WEBSITE MANAGEMENT ---
  */
 
-export async function getTemplates(category?: 'website' | 'funnel' | 'both') {
-    if (!category) return BUILDER_TEMPLATES;
-    return BUILDER_TEMPLATES.filter(t => t.category === category || t.category === 'both');
+export async function getTemplates(type?: 'website' | 'funnel' | 'both') {
+    if (!type) return BUILDER_TEMPLATES;
+    return BUILDER_TEMPLATES.filter(t => t.type === type || t.type === 'both');
 }
 
 export async function createWebsite(name: string, subdomain: string, templateId?: string) {

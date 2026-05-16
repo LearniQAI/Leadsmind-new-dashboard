@@ -53,6 +53,7 @@ export const RESOLVER = {
  Heading: wrapForReact19(Heading),
  Paragraph: wrapForReact19(Paragraph),
  Image: wrapForReact19(ImageComponent),
+ UserImage: wrapForReact19(ImageComponent),
  Video: wrapForReact19(Video),
  Icon: wrapForReact19(Icon),
  Text: wrapForReact19(Text),
