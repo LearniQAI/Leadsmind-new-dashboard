@@ -201,3 +201,36 @@ export async function deleteStage(id: string) {
   return { success: true };
 }
 
+export async function updatePipelineStages(pipelineId: string, stages: { id: string, name: string }[]) {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'Unauthorized' };
+  const supabase = await createServerClient();
+
+  try {
+    for (let i = 0; i < stages.length; i++) {
+      const stage = stages[i];
+      const isNew = stage.id.startsWith('new-');
+
+      if (isNew) {
+        await supabase.from('pipeline_stages').insert({
+          workspace_id: workspaceId,
+          pipeline_id: pipelineId,
+          name: stage.name,
+          position: i
+        });
+      } else {
+        await supabase.from('pipeline_stages').update({
+          name: stage.name,
+          position: i,
+          updated_at: new Date().toISOString()
+        }).eq('id', stage.id);
+      }
+    }
+
+    revalidatePath('/pipelines');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+

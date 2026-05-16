@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, GripVertical, Check, X } from 'lucide-react';
-import { updatePipelineStages, deletePipelineStage } from '@/app/actions/pipelines';
-import { PipelineStage } from '@/types/crm.types';
+import { updatePipelineStages, deleteStage } from '@/app/actions/pipelines';
+import { PipelineStage } from '@/types/crm';
 import { toast } from 'sonner';
 
 interface StageManagerProps {
@@ -24,7 +24,7 @@ export function StageManager({ pipelineId, initialStages }: StageManagerProps) {
  const removeStage = async (id: string, index: number) => {
   if (!id.startsWith('new-')) {
    if (!confirm('Are you sure? This will delete all deals in this stage.')) return;
-   const res = await deletePipelineStage(id);
+   const res = await deleteStage(id);
    if (!res.success) return toast.error(res.error);
   }
   setStages(stages.filter((_, i) => i !== index));
