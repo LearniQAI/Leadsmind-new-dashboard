@@ -115,18 +115,33 @@ export async function createBooking(payload: {
 }
 
 export async function updateAppointmentStatus(id: string, status: string) {
- return executeAction(async (supabase, workspaceId) => {
-  const { error } = await supabase
-   .from('appointments')
-   .update({ status, updated_at: new Date().toISOString() })
-   .eq('id', id)
-   .eq('workspace_id', workspaceId);
+  return executeAction(async (supabase, workspaceId) => {
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('workspace_id', workspaceId);
 
-  if (error) throw error;
+    if (error) throw error;
 
-  revalidatePath('/apps/calendar');
-  return true;
- });
+    revalidatePath('/apps/calendar');
+    return true;
+  });
+}
+
+export async function deleteAppointment(id: string) {
+  return executeAction(async (supabase, workspaceId) => {
+    const { error } = await supabase
+      .from('appointments')
+      .delete()
+      .eq('id', id)
+      .eq('workspace_id', workspaceId);
+
+    if (error) throw error;
+
+    revalidatePath('/apps/calendar');
+    return true;
+  });
 }
 
 /**

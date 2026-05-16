@@ -23,7 +23,7 @@ import {
   eachDayOfInterval, isSameMonth, isSameDay, startOfWeek, endOfWeek
 } from 'date-fns';
 import { toast } from 'sonner';
-import { createBooking, updateAppointmentStatus } from '@/app/actions/calendar';
+import { createBooking, updateAppointmentStatus, deleteAppointment } from '@/app/actions/calendar';
 
 const APT_STATUSES = ['scheduled', 'confirmed', 'showed_up', 'no_show', 'cancelled'];
 
@@ -127,16 +127,18 @@ export function CalendarClient({ appointments: initialAppointments, calendars }:
     if (!selectedApt) return;
     setDeleting(true);
     try {
-      const { deleteAppointment } = await import('@/app/actions/pipelines');
       const res = await deleteAppointment(selectedApt.id);
-      if (!res.success) { toast.error(res.error || 'Delete failed'); }
-      else {
+      if (res.success) {
         toast.success('Appointment deleted');
         setAppointments(prev => prev.filter(a => a.id !== selectedApt.id));
         setDeleteOpen(false);
         setViewOpen(false);
+      } else {
+        toast.error(res.error || 'Delete failed');
       }
-    } catch { toast.error('Delete failed'); }
+    } catch { 
+      toast.error('Tactical failure during deletion'); 
+    }
     setDeleting(false);
   };
 
