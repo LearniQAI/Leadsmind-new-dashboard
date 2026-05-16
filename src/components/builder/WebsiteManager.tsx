@@ -2,15 +2,17 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { 
-  Plus, 
-  Globe, 
-  MoreVertical, 
-  ExternalLink, 
-  Loader2, 
-  Check, 
+import {
+  Plus,
+  Globe,
+  MoreVertical,
+  ExternalLink,
+  Loader2,
+  Check,
   AlertCircle,
   LayoutTemplate,
+  LayoutGrid,
+  LayoutList,
   Trash2,
   Settings2,
   Copy,
@@ -23,12 +25,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { 
-  createWebsite, 
-  duplicateWebsite, 
-  deleteWebsite, 
-  updateWebsiteSettings, 
-  getTemplates 
+import {
+  createWebsite,
+  duplicateWebsite,
+  deleteWebsite,
+  updateWebsiteSettings,
+  getTemplates
 } from '@/app/actions/builder';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -72,6 +74,13 @@ export default function WebsiteManager() {
   const [dbTemplates, setDbTemplates] = useState<any[]>([]);
   const [templateError, setTemplateError] = useState<string | null>(null);
 
+  // New features state
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
   const router = useRouter();
   const supabase = createClient();
 
@@ -95,7 +104,7 @@ export default function WebsiteManager() {
 
   const fetchWebsites = async () => {
     if (!workspace?.id) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('websites')
@@ -112,7 +121,7 @@ export default function WebsiteManager() {
         toast.error('Failed to load websites');
         return;
       }
-      
+
       if (data) setWebsites(data);
     } catch (err) {
       console.error('Fetch error:', err);
@@ -122,11 +131,58 @@ export default function WebsiteManager() {
   };
 
   const filteredWebsites = useMemo(() => {
-    if (filter === 'all') return websites;
-    if (filter === 'live') return websites.filter(s => s.is_published);
-    if (filter === 'draft') return websites.filter(s => !s.is_published);
-    return websites;
-  }, [websites, filter]);
+    let result = [...websites];
+
+    // Status Filter
+    if (filter === 'live') result = result.filter(s => s.is_published);
+    if (filter === 'draft') result = result.filter(s => !s.is_published);
+
+    // Search Filter
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(s =>
+        s.name.toLowerCase().includes(q) ||
+        s.subdomain?.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [websites, filter, searchQuery]);
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setIsBulkDeleteModalOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    let successCount = 0;
+    
+    try {
+      for (const id of Array.from(selectedIds)) {
+        const res = await deleteWebsite(id);
+        if (res.success) successCount++;
+      }
+      
+      toast.success(`Successfully purged ${successCount} nodes`);
+      setSelectedIds(new Set());
+      fetchWebsites();
+      setIsBulkDeleteModalOpen(false);
+    } catch (err) {
+      toast.error('Bulk purge operation encountered errors');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!newSiteName) {
@@ -203,7 +259,7 @@ export default function WebsiteManager() {
     <MetaData pageTitle="Websites | Leadsmind">
       <Wrapper>
         <div className="flex flex-col gap-y-6 px-6 py-5">
-          
+
           {/* PAGE HEADER */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="ph-left">
@@ -217,13 +273,15 @@ export default function WebsiteManager() {
             <div className="ph-right flex items-center gap-3">
               <div className="relative hidden lg:block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#4a5a82]" />
-                <Input 
-                  placeholder="SEARCH NODES..." 
+                <Input
+                  placeholder="SEARCH NODES..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-9 w-[220px] bg-white/5 border-white/10 rounded-[8px] pl-9 text-[11px] font-medium placeholder:text-[#4a5a82] focus:border-[#2563eb]/50 transition-all shadow-inner"
                 />
               </div>
-              <Button 
-                onClick={() => setIsModalOpen(true)} 
+              <Button
+                onClick={() => setIsModalOpen(true)}
                 className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-[8px] font-semibold text-[13px] h-9 px-5 shadow-lg shadow-[#2563eb]/20 transition-all active:scale-[0.98]"
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -235,7 +293,7 @@ export default function WebsiteManager() {
           {/* TOOLBAR */}
           <div className="flex items-center justify-between border-y border-white/[0.07] py-3">
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={() => setFilter('all')}
                 className={cn(
                   "px-4 py-1.5 rounded-full text-[10.5px] font-semibold transition-all",
@@ -244,7 +302,7 @@ export default function WebsiteManager() {
               >
                 All Nodes ({websites.length})
               </button>
-              <button 
+              <button
                 onClick={() => setFilter('live')}
                 className={cn(
                   "px-4 py-1.5 rounded-full text-[10.5px] font-semibold transition-all flex items-center gap-1.5",
@@ -254,7 +312,7 @@ export default function WebsiteManager() {
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
                 Live ({websites.filter(s => s.is_published).length})
               </button>
-              <button 
+              <button
                 onClick={() => setFilter('draft')}
                 className={cn(
                   "px-4 py-1.5 rounded-full text-[10.5px] font-semibold transition-all flex items-center gap-1.5",
@@ -265,11 +323,31 @@ export default function WebsiteManager() {
                 Draft ({websites.filter(s => !s.is_published).length})
               </button>
             </div>
-            
+
             <div className="flex items-center gap-2">
+              {selectedIds.size > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20"
+                >
+                  {isBulkDeleting ? <Loader2 size={12} className="animate-spin mr-2" /> : <Trash2 size={12} className="mr-2" />}
+                  Purge Selected ({selectedIds.size})
+                </Button>
+              )}
+
               <div className="h-4 w-[1px] bg-white/[0.07] mx-2" />
-              <button className="p-2 text-[#4a5a82] hover:text-[#eef2ff] transition-colors" title="Template View">
-                <LayoutTemplate className="w-4 h-4" />
+              <button
+                onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+                className={cn(
+                  "p-2 transition-colors rounded-lg",
+                  viewMode === 'list' ? "bg-[#2563eb]/10 text-[#3b82f6]" : "text-[#4a5a82] hover:text-[#eef2ff]"
+                )}
+                title={viewMode === 'grid' ? "Switch to List View" : "Switch to Grid View"}
+              >
+                {viewMode === 'grid' ? <LayoutList className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
               </button>
               <button className="p-2 text-[#4a5a82] hover:text-[#eef2ff] transition-colors" title="Sort & Filter">
                 <Filter className="w-4 h-4" />
@@ -295,7 +373,7 @@ export default function WebsiteManager() {
                 Initialize First Site
               </Button>
             </div>
-          ) : (
+          ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xxl:grid-cols-3 gap-[14px] mt-2">
               {filteredWebsites.map((site) => (
                 <div 
@@ -303,12 +381,24 @@ export default function WebsiteManager() {
                   className={cn(
                     "relative bg-[#0c1535]/85 border border-white/[0.07] rounded-[12px] p-[18px] transition-all duration-300 hover:bg-[#152550]/90 hover:border-white/[0.13] hover:-translate-y-0.5 group overflow-hidden shadow-sm",
                     site.is_published ? "before:bg-[#10b981]" : "before:bg-[#8b5cf6]",
-                    "before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[2.5px] before:rounded-t-[12px] before:z-10"
+                    "before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[2.5px] before:rounded-t-[12px] before:z-10",
+                    selectedIds.has(site.id) && "border-[#3b82f6]/50 bg-[#3b82f6]/5"
                   )}
                 >
                   <div className="flex justify-between items-start mb-5 relative z-20">
-                    <div className="h-10 w-10 rounded-[10px] bg-white/[0.05] border border-white/[0.07] flex items-center justify-center text-[#94a3c8] group-hover:text-[#3b82f6] group-hover:bg-[#3b82f6]/10 group-hover:border-[#3b82f6]/20 transition-all shadow-inner">
-                      <Globe size={18} />
+                    <div className="flex items-center gap-3">
+                      <div 
+                        onClick={() => toggleSelection(site.id)}
+                        className={cn(
+                          "w-5 h-5 rounded-md border flex items-center justify-center cursor-pointer transition-all",
+                          selectedIds.has(site.id) ? "bg-[#3b82f6] border-[#3b82f6]" : "bg-white/5 border-white/10 hover:border-white/20"
+                        )}
+                      >
+                        {selectedIds.has(site.id) && <Check size={12} className="text-white" strokeWidth={4} />}
+                      </div>
+                      <div className="h-10 w-10 rounded-[10px] bg-white/[0.05] border border-white/[0.07] flex items-center justify-center text-[#94a3c8] group-hover:text-[#3b82f6] group-hover:bg-[#3b82f6]/10 group-hover:border-[#3b82f6]/20 transition-all shadow-inner">
+                        <Globe size={18} />
+                      </div>
                     </div>
                     
                     <div className="flex items-center gap-2">
@@ -408,11 +498,81 @@ export default function WebsiteManager() {
                 </div>
               </div>
             </div>
+          ) : (
+            /* LIST VIEW */
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="grid grid-cols-[40px_1fr_150px_150px_150px] gap-4 px-6 py-2 text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest">
+                <div></div>
+                <div>Node Name</div>
+                <div>Status</div>
+                <div>Last Updated</div>
+                <div className="text-right">Actions</div>
+              </div>
+              {filteredWebsites.map((site) => (
+                <div 
+                  key={site.id}
+                  className={cn(
+                    "grid grid-cols-[40px_1fr_150px_150px_150px] gap-4 items-center bg-[#0c1535]/60 border border-white/[0.05] rounded-[10px] px-6 py-3 hover:bg-[#152550]/80 hover:border-white/10 transition-all group",
+                    selectedIds.has(site.id) && "bg-[#3b82f6]/5 border-[#3b82f6]/30"
+                  )}
+                >
+                  <div 
+                    onClick={() => toggleSelection(site.id)}
+                    className={cn(
+                      "w-5 h-5 rounded-md border flex items-center justify-center cursor-pointer transition-all",
+                      selectedIds.has(site.id) ? "bg-[#3b82f6] border-[#3b82f6]" : "bg-white/5 border-white/10 hover:border-white/20"
+                    )}
+                  >
+                    {selectedIds.has(site.id) && <Check size={12} className="text-white" strokeWidth={4} />}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-[#4a5a82]">
+                      <Globe size={14} />
+                    </div>
+                    <div>
+                      <h4 className="text-[13px] font-bold text-[#eef2ff] leading-tight">{site.name}</h4>
+                      <p className="text-[10px] text-[#4a5a82] font-medium">{site.subdomain}.leadsmind.ai</p>
+                    </div>
+                  </div>
+                  <div>
+                    <span className={cn(
+                      "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md",
+                      site.is_published ? "text-emerald-500 bg-emerald-500/10" : "text-violet-500 bg-violet-500/10"
+                    )}>
+                      {site.is_published ? 'Live' : 'Draft'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-[#94a3c8] font-medium">
+                    {formatDistanceToNow(new Date(site.updated_at || site.created_at))} ago
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <Link href={`/editor/website/${site.id}/${site.website_pages?.[0]?.pages?.[0]?.id}`}>
+                      <button className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/5 text-[#4a5a82] hover:text-[#3b82f6] hover:bg-[#3b82f6]/10 transition-all">
+                        <Edit3 size={14} />
+                      </button>
+                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/5 text-[#4a5a82] hover:text-[#eef2ff] transition-all">
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-[#0c1535] border-white/10">
+                        <DropdownMenuItem onClick={() => handleDuplicate(site.id)}>Clone</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setRenameSite({ id: site.id, name: site.name })}>Rename</DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-white/5" />
+                        <DropdownMenuItem className="text-red-500" onClick={() => setDeleteSite(site)}>Delete</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
         {/* MODALS */}
-        
+
         {/* New Website Modal - High Fidelity Blueprint Selection */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-[950px] max-h-[90vh] flex flex-col p-0 bg-[#080f28] border-white/[0.07] text-[#eef2ff] overflow-hidden rounded-[16px] shadow-2xl z-[9999]">
@@ -458,7 +618,7 @@ export default function WebsiteManager() {
                       {dbTemplates.length + 1} Options Available
                     </div>
                   </div>
-                  
+
                   {templateError ? (
                     <div className="p-12 rounded-[16px] border border-dashed border-[#ef4444]/20 bg-[#ef4444]/5 flex flex-col items-center justify-center gap-5 text-center">
                       <div className="h-14 w-14 rounded-full bg-[#ef4444]/10 text-[#ef4444] flex items-center justify-center">
@@ -468,8 +628,8 @@ export default function WebsiteManager() {
                         <h4 className="font-bold text-[#eef2ff] uppercase tracking-tight">Interface Link Interrupted</h4>
                         <p className="text-[11px] text-[#4a5a82] mt-1 max-w-[240px] uppercase tracking-widest">{templateError}</p>
                       </div>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={fetchTemplates}
                         className="h-11 border-white/10 hover:bg-white/10 text-[#94a3c8] font-bold uppercase tracking-widest text-[10px] px-8 rounded-[8px]"
                       >
@@ -483,8 +643,8 @@ export default function WebsiteManager() {
                         onClick={() => setSelectedTemplate(null)}
                         className={cn(
                           "group relative cursor-pointer rounded-[12px] border-2 transition-all duration-300 overflow-hidden flex flex-col h-full",
-                          selectedTemplate === null 
-                            ? "border-[#2563eb] bg-[#2563eb]/5 shadow-[0_0_20px_rgba(37,99,235,0.15)]" 
+                          selectedTemplate === null
+                            ? "border-[#2563eb] bg-[#2563eb]/5 shadow-[0_0_20px_rgba(37,99,235,0.15)]"
                             : "border-white/[0.05] bg-white/[0.03] hover:border-white/[0.15] hover:bg-white/[0.05]"
                         )}
                       >
@@ -511,15 +671,15 @@ export default function WebsiteManager() {
                           onClick={() => setSelectedTemplate(t.id)}
                           className={cn(
                             "group relative cursor-pointer rounded-[12px] border-2 transition-all duration-300 overflow-hidden flex flex-col h-full",
-                            selectedTemplate === t.id 
-                              ? "border-[#2563eb] bg-[#2563eb]/5 shadow-[0_0_20px_rgba(37,99,235,0.15)]" 
+                            selectedTemplate === t.id
+                              ? "border-[#2563eb] bg-[#2563eb]/5 shadow-[0_0_20px_rgba(37,99,235,0.15)]"
                               : "border-white/[0.05] bg-white/[0.03] hover:border-white/[0.15] hover:bg-white/[0.05]"
                           )}
                         >
                           <div className="aspect-[16/9] bg-[#04091a] relative overflow-hidden">
                             {(t.thumbnail || t.preview_image) && (
-                              <img 
-                                src={t.thumbnail || t.preview_image} 
+                              <img
+                                src={t.thumbnail || t.preview_image}
                                 alt={t.name}
                                 className={cn(
                                   "absolute inset-0 w-full h-full object-cover transition-all duration-1000",
@@ -553,9 +713,9 @@ export default function WebsiteManager() {
             </div>
 
             <div className="px-6 py-5 border-t border-white/[0.07] bg-[#0c1535]/40 flex items-center justify-end gap-3">
-              <Button 
-                variant="ghost" 
-                onClick={() => setIsModalOpen(false)} 
+              <Button
+                variant="ghost"
+                onClick={() => setIsModalOpen(false)}
                 className="text-[11px] font-bold uppercase tracking-widest text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 h-10 px-6 rounded-[8px]"
               >
                 Abort
@@ -616,7 +776,7 @@ export default function WebsiteManager() {
                 Purge <span className="text-[#eef2ff]">Node</span>
               </DialogTitle>
               <DialogDescription className="text-[13px] text-[#4a5a82] mt-4 leading-relaxed font-medium">
-                Are you sure you want to delete <span className="text-[#eef2ff] font-bold underline decoration-[#ef4444]/40 underline-offset-4">"{deleteSite?.name}"</span>? 
+                Are you sure you want to delete <span className="text-[#eef2ff] font-bold underline decoration-[#ef4444]/40 underline-offset-4">"{deleteSite?.name}"</span>?
                 This action is destructive and will remove all associated infrastructure.
               </DialogDescription>
             </div>
@@ -626,6 +786,41 @@ export default function WebsiteManager() {
               </Button>
               <Button variant="destructive" onClick={handleConfirmDelete} className="bg-[#ef4444] hover:bg-[#b91c1c] text-white h-12 flex-1 rounded-[10px] font-bold uppercase text-[11px] shadow-lg shadow-[#ef4444]/20 transition-all active:scale-[0.98]">
                 Purge Permanently
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        {/* Bulk Delete Confirmation Modal */}
+        <Dialog open={isBulkDeleteModalOpen} onOpenChange={setIsBulkDeleteModalOpen}>
+          <DialogContent className="sm:max-w-[440px] bg-[#080f28] border-white/[0.07] text-[#eef2ff] rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-[#ef4444]/10 text-[#ef4444] flex items-center justify-center mx-auto mb-6 border border-[#ef4444]/20 shadow-[0_0_20px_rgba(239,68,68,0.1)]">
+                <Trash2 size={28} />
+              </div>
+              <DialogTitle className="text-[20px] font-bold font-display uppercase tracking-tight text-[#ef4444]">
+                Bulk <span className="text-[#eef2ff]">Purge</span>
+              </DialogTitle>
+              <DialogDescription className="text-[13px] text-[#4a5a82] mt-4 leading-relaxed font-medium">
+                You are about to permanently delete <span className="text-[#eef2ff] font-bold">{selectedIds.size} selected nodes</span>. 
+                This action is irreversible and will remove all associated pages, assets, and configurations.
+              </DialogDescription>
+            </div>
+            <div className="p-8 bg-[#ef4444]/[0.02] border-t border-white/[0.07] flex flex-col-reverse sm:flex-row gap-3">
+              <Button 
+                variant="ghost" 
+                onClick={() => setIsBulkDeleteModalOpen(false)} 
+                className="text-[11px] font-bold uppercase tracking-widest text-[#4a5a82] hover:text-[#eef2ff] h-12 flex-1 rounded-[10px]"
+              >
+                Abort Action
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmBulkDelete} 
+                disabled={isBulkDeleting}
+                className="bg-[#ef4444] hover:bg-[#b91c1c] text-white h-12 flex-1 rounded-[10px] font-bold uppercase text-[11px] shadow-lg shadow-[#ef4444]/20 transition-all active:scale-[0.98]"
+              >
+                {isBulkDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 size={16} className="mr-2" />}
+                Purge All Selected
               </Button>
             </div>
           </DialogContent>

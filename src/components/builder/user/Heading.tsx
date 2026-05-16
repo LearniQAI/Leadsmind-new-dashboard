@@ -18,94 +18,96 @@ export interface HeadingProps {
 }
 
 export const Heading = (allProps: HeadingProps & any) => {
- const { 
-  text, 
-  level, 
-  fontWeight: _fw,
-  fontWeight_mobile,
-  fontWeight_tablet,
-  textAlign: _ta,
-  textAlign_mobile,
-  textAlign_tablet,
-  color, 
-  fontSize: _fs,
-  fontSize_mobile,
-  fontSize_tablet,
-  dragRef, 
-  ...props 
- } = allProps;
- const { connectors: { connect, drag }, actions: { setProp } } = useNode();
- const { viewMode } = useBuilder();
- const { enabled } = useEditor((state) => ({
-  enabled: state.options.enabled
- }));
+  const { 
+   text, 
+   level, 
+   fontWeight: _fw,
+   fontWeight_mobile,
+   fontWeight_tablet,
+   textAlign: _ta,
+   textAlign_mobile,
+   textAlign_tablet,
+   color: _color, 
+   fontSize: _fs,
+   fontSize_mobile,
+   fontSize_tablet,
+   dragRef, 
+   ...props 
+  } = allProps;
+  const { connectors: { connect, drag }, actions: { setProp } } = useNode();
+  const { viewMode } = useBuilder();
+  const { enabled } = useEditor((state) => ({
+   enabled: state.options.enabled
+  }));
 
- const Tag = level;
- const displayText = enabled ? text : replaceMergeTags(text);
+  const Tag = level;
+  const displayText = enabled ? text : replaceMergeTags(text);
 
- // Responsive values
- const fontSize = useResponsiveValue(allProps, 'fontSize', undefined);
- const fontWeight = useResponsiveValue(allProps, 'fontWeight', _fw);
- const textAlign = useResponsiveValue(allProps, 'textAlign', _ta);
- 
- // Base scales for sizes based on level if fontSize is not strictly provided
- const baseSizes = {
-  h1: 'text-5xl md:text-6xl',
-  h2: 'text-4xl md:text-5xl',
-  h3: 'text-3xl md:text-4xl',
-  h4: 'text-2xl md:text-3xl',
-  h5: 'text-xl md:text-2xl',
-  h6: 'text-lg md:text-xl',
- };
+  // Responsive values
+  const fontSize = useResponsiveValue(allProps, 'fontSize', undefined);
+  const fontWeight = useResponsiveValue(allProps, 'fontWeight', _fw);
+  const textAlign = useResponsiveValue(allProps, 'textAlign', _ta);
+  const color = useResponsiveValue(allProps, 'color', _color);
+  
+  // Base scales for sizes based on level if fontSize is not strictly provided
+  const baseSizes = {
+   h1: 'text-5xl md:text-6xl',
+   h2: 'text-4xl md:text-5xl',
+   h3: 'text-3xl md:text-4xl',
+   h4: 'text-2xl md:text-3xl',
+   h5: 'text-xl md:text-2xl',
+   h6: 'text-lg md:text-xl',
+  };
 
- const weights = {
-  normal: 'font-normal',
-  medium: 'font-medium',
-  semibold: 'font-semibold',
-  bold: 'font-bold',
-  black: 'font-black',
- };
+  const weights = {
+   normal: 'font-normal',
+   medium: 'font-medium',
+   semibold: 'font-semibold',
+   bold: 'font-bold',
+   black: 'font-black',
+  };
 
- const alignments = {
-  left: 'text-left',
-  center: 'text-center',
-  right: 'text-right',
-  justify: 'text-justify',
- };
+  const alignments = {
+   left: 'text-left',
+   center: 'text-center',
+   right: 'text-right',
+   justify: 'text-justify',
+  };
 
- return (
-  <div
-   {...props}
-   ref={(el) => {
-    if (el) {
-      connect(el);
-      drag(el);
-      if (dragRef) {
-       if (typeof dragRef === 'function') dragRef(el);
-       else dragRef.current = el;
-      }
-    }
-   }}
-   className={`w-full outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all ${baseSizes[level as keyof typeof baseSizes]} ${weights[fontWeight as keyof typeof weights]} ${alignments[textAlign as keyof typeof alignments]} ${props.className || ''}`}
-   style={{
-    color,
-    fontSize: fontSize ? `${fontSize}px` : undefined,
-   }}
-  >
-   {enabled ? (
-    <ContentEditable
-      html={text}
-      disabled={!enabled}
-      onChange={(e) => setProp((props: any) => (props.text = e.target.value), 500)}
-      tagName={Tag as any}
-      className="outline-none w-full m-0 p-0 leading-tight tracking-tight"
-      style={{ color: 'inherit' }}
-    />
-   ) : (
-    <Tag className="outline-none w-full m-0 p-0 leading-tight tracking-tight" style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
-   )}
-  </div>
- );
+  return (
+   <div
+    {...props}
+    ref={(el) => {
+     if (el) {
+       connect(el);
+       drag(el);
+       if (dragRef) {
+        if (typeof dragRef === 'function') dragRef(el);
+        else dragRef.current = el;
+       }
+     }
+    }}
+    className={`w-full outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all ${!fontSize ? baseSizes[level as keyof typeof baseSizes] : ''} ${weights[fontWeight as keyof typeof weights]} ${alignments[textAlign as keyof typeof alignments]} ${props.className || ''}`}
+    style={{
+     color,
+     fontSize: fontSize ? `${fontSize}px` : undefined,
+     lineHeight: '1.2'
+    }}
+   >
+    {enabled ? (
+     <ContentEditable
+       html={text}
+       disabled={!enabled}
+       onChange={(e) => setProp((props: any) => (props.text = e.target.value), 500)}
+       tagName={Tag as any}
+       className="outline-none w-full m-0 p-0 leading-tight tracking-tight"
+       style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }}
+     />
+    ) : (
+     <Tag className="outline-none w-full m-0 p-0 leading-tight tracking-tight" style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
+    )}
+   </div>
+  );
 };
 
 Heading.craft = {

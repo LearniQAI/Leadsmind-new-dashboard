@@ -39,12 +39,12 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
    },
    'hero-h-1': {
      type: { resolvedName: 'Heading' },
-     props: { text: 'Intelligence Redefined.', level: 'h1', className: 'text-7xl font-black tracking-tighter mb-6 bg-gradient-to-r from-white to-white/40 bg-clip-text text-transparent' },
+     props: { text: 'Intelligence Redefined.', level: 'h1', className: 'text-4xl md:text-7xl font-black tracking-tighter mb-6 bg-gradient-to-r from-white to-white/40 bg-clip-text text-transparent' },
      parent: 'hero-content-1'
    },
    'hero-p-1': {
      type: { resolvedName: 'Paragraph' },
-     props: { text: 'Deploy neural-scale infrastructure in seconds. The most powerful AI workspace for modern engineering teams.', className: 'text-xl text-white/60 mb-10 max-w-xl' },
+     props: { text: 'Deploy neural-scale infrastructure in seconds. The most powerful AI workspace for modern engineering teams.', className: 'text-lg md:text-xl text-white/60 mb-10 max-w-xl' },
      parent: 'hero-content-1'
    },
    'hero-btn-1': {
@@ -59,13 +59,13 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
    },
    'features-1': {
      type: { resolvedName: 'Section' },
-     props: { backgroundColor: '#0a0a12', padding: 100 },
+     props: { backgroundColor: '#0a0a12', paddingTop: 100, paddingBottom: 100, paddingTop_mobile: 50, paddingBottom_mobile: 50 },
      nodes: ['feat-h-1', 'feat-grid-1'],
      parent: 'ROOT'
    },
    'feat-h-1': {
      type: { resolvedName: 'Heading' },
-     props: { text: 'Core Capabilities', level: 'h2', className: 'text-center text-4xl font-black mb-20 uppercase tracking-widest' },
+     props: { text: 'Core Capabilities', level: 'h2', className: 'text-center text-3xl md:text-4xl font-black mb-12 md:mb-20 uppercase tracking-widest' },
      parent: 'features-1'
    },
    'feat-grid-1': {
@@ -113,15 +113,15 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
    'hero-cont-2': {
     type: { resolvedName: 'Container' },
     isCanvas: true,
-    props: { className: 'text-center max-w-4xl' },
+    props: { className: 'text-center max-w-4xl px-6' },
     nodes: ['h2-h-1', 'h2-p-1', 'h2-btn-1'],
     parent: 'hero-2'
    },
-   'h2-h-1': { type: { resolvedName: 'Heading' }, props: { text: 'We Build Iconic Digital Brands.', level: 'h1', className: 'text-8xl font-black tracking-tighter leading-[0.9] mb-10' }, parent: 'hero-cont-2' },
-   'h2-p-1': { type: { resolvedName: 'Paragraph' }, props: { text: 'Award-winning design and development for forward-thinking companies worldwide.', className: 'text-2xl font-medium opacity-60 mb-12' }, parent: 'hero-cont-2' },
+   'h2-h-1': { type: { resolvedName: 'Heading' }, props: { text: 'We Build Iconic Digital Brands.', level: 'h1', className: 'text-5xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-10' }, parent: 'hero-cont-2' },
+   'h2-p-1': { type: { resolvedName: 'Paragraph' }, props: { text: 'Award-winning design and development for forward-thinking companies worldwide.', className: 'text-xl md:text-2xl font-medium opacity-60 mb-12' }, parent: 'hero-cont-2' },
    'h2-btn-1': { type: { resolvedName: 'UserButton' }, props: { text: 'View Case Studies', variant: 'outline', className: 'rounded-none border-2 border-black px-12 h-16 text-lg' }, parent: 'hero-cont-2' },
-   'work-2': { type: { resolvedName: 'Section' }, props: { padding: 120 }, nodes: ['work-h'], parent: 'ROOT' },
-   'work-h': { type: { resolvedName: 'Heading' }, props: { text: 'Selected Work', level: 'h2', className: 'text-4xl font-black mb-16' }, parent: 'work-2' },
+   'work-2': { type: { resolvedName: 'Section' }, props: { paddingTop: 120, paddingBottom: 120, paddingTop_mobile: 60, paddingBottom_mobile: 60 }, nodes: ['work-h'], parent: 'ROOT' },
+   'work-h': { type: { resolvedName: 'Heading' }, props: { text: 'Selected Work', level: 'h2', className: 'text-3xl md:text-4xl font-black mb-16' }, parent: 'work-2' },
    'footer-2': { type: { resolvedName: 'Footer' }, props: { bg: '#000000', text: '#ffffff' }, parent: 'ROOT' }
   })
  },
@@ -147,14 +147,15 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
    'h3-cont': {
     type: { resolvedName: 'Container' },
     isCanvas: true,
+    props: { className: 'px-6' },
     nodes: ['h3-h', 'h3-p', 'h3-btn'],
     parent: 'hero-3'
    },
-   'h3-h': { type: { resolvedName: 'Heading' }, props: { text: 'Unrivaled Luxury.', level: 'h1', className: 'text-white text-7xl font-serif mb-6' }, parent: 'h3-cont' },
-   'h3-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Exclusive listings in the world\'s most prestigious locations.', className: 'text-white/80 text-xl font-light mb-10 tracking-widest uppercase' }, parent: 'h3-cont' },
+   'h3-h': { type: { resolvedName: 'Heading' }, props: { text: 'Unrivaled Luxury.', level: 'h1', className: 'text-white text-5xl md:text-7xl font-serif mb-6' }, parent: 'h3-cont' },
+   'h3-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Exclusive listings in the world\'s most prestigious locations.', className: 'text-white/80 text-lg md:text-xl font-light mb-10 tracking-widest uppercase' }, parent: 'h3-cont' },
    'h3-btn': { type: { resolvedName: 'UserButton' }, props: { text: 'Explore Collection', variant: 'outline', className: 'border-white text-white rounded-none h-14 px-10' }, parent: 'h3-cont' },
-   'about-3': { type: { resolvedName: 'Section' }, props: { padding: 100 }, parent: 'ROOT' },
-   'gallery-3': { type: { resolvedName: 'Section' }, props: { padding: 80, backgroundColor: '#ffffff' }, parent: 'ROOT' },
+   'about-3': { type: { resolvedName: 'Section' }, props: { paddingTop: 100, paddingBottom: 100, paddingTop_mobile: 50, paddingBottom_mobile: 50 }, parent: 'ROOT' },
+   'gallery-3': { type: { resolvedName: 'Section' }, props: { paddingTop: 80, paddingBottom: 80, backgroundColor: '#ffffff', paddingTop_mobile: 40, paddingBottom_mobile: 40 }, parent: 'ROOT' },
    'footer-3': { type: { resolvedName: 'Footer' }, parent: 'ROOT' }
   })
  },
@@ -178,11 +179,11 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
       nodes: ['h4-cont'],
       parent: 'ROOT'
     },
-    'h4-cont': { type: { resolvedName: 'Container' }, isCanvas: true, nodes: ['h4-h', 'h4-p', 'h4-btn'], parent: 'hero-4' },
-    'h4-h': { type: { resolvedName: 'Heading' }, props: { text: 'New Season Collection.', level: 'h1', className: 'text-6xl font-black mb-6 italic' }, parent: 'h4-cont' },
-    'h4-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Discover the latest trends in sustainable fashion and accessories.', className: 'text-lg opacity-60 mb-8' }, parent: 'h4-cont' },
+    'h4-cont': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'px-6' }, nodes: ['h4-h', 'h4-p', 'h4-btn'], parent: 'hero-4' },
+    'h4-h': { type: { resolvedName: 'Heading' }, props: { text: 'New Season Collection.', level: 'h1', className: 'text-4xl md:text-6xl font-black mb-6 italic' }, parent: 'h4-cont' },
+    'h4-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Discover the latest trends in sustainable fashion and accessories.', className: 'text-base md:text-lg opacity-60 mb-8' }, parent: 'h4-cont' },
     'h4-btn': { type: { resolvedName: 'UserButton' }, props: { text: 'Shop Now', className: 'rounded-full h-12 px-8' }, parent: 'h4-cont' },
-    'featured-4': { type: { resolvedName: 'Section' }, props: { padding: 80 }, parent: 'ROOT' },
+    'featured-4': { type: { resolvedName: 'Section' }, props: { paddingTop: 80, paddingBottom: 80, paddingTop_mobile: 40, paddingBottom_mobile: 40 }, parent: 'ROOT' },
     'footer-4': { type: { resolvedName: 'Footer' }, parent: 'ROOT' }
   })
  },
@@ -205,11 +206,11 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
       nodes: ['h5-cont'],
       parent: 'ROOT'
     },
-    'h5-cont': { type: { resolvedName: 'Container' }, isCanvas: true, nodes: ['h5-h', 'h5-p', 'h5-btn'], parent: 'hero-5' },
-    'h5-h': { type: { resolvedName: 'Heading' }, props: { text: 'LIMITS ARE AN ILLUSION.', level: 'h1', className: 'text-8xl font-black tracking-tighter italic mb-4' }, parent: 'h5-cont' },
-    'h5-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Join the elite. Professional coaching for those who refuse to settle.', className: 'text-xl font-bold uppercase mb-10' }, parent: 'h5-cont' },
+    'h5-cont': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'px-6' }, nodes: ['h5-h', 'h5-p', 'h5-btn'], parent: 'hero-5' },
+    'h5-h': { type: { resolvedName: 'Heading' }, props: { text: 'LIMITS ARE AN ILLUSION.', level: 'h1', className: 'text-5xl md:text-8xl font-black tracking-tighter italic mb-4' }, parent: 'h5-cont' },
+    'h5-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Join the elite. Professional coaching for those who refuse to settle.', className: 'text-lg md:text-xl font-bold uppercase mb-10' }, parent: 'h5-cont' },
     'h5-btn': { type: { resolvedName: 'UserButton' }, props: { text: 'Start 7-Day Trial', variant: 'secondary', className: 'bg-white text-black h-16 px-12 rounded-none font-black text-lg' }, parent: 'h5-cont' },
-    'stats-5': { type: { resolvedName: 'Section' }, props: { padding: 60, backgroundColor: '#000000' }, parent: 'ROOT' },
+    'stats-5': { type: { resolvedName: 'Section' }, props: { paddingTop: 60, paddingBottom: 60, backgroundColor: '#000000', paddingTop_mobile: 30, paddingBottom_mobile: 30 }, parent: 'ROOT' },
     'pricing-5': { type: { resolvedName: 'PricingTable' }, parent: 'ROOT' },
     'footer-5': { type: { resolvedName: 'Footer' }, parent: 'ROOT' }
   })
@@ -234,11 +235,11 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
       nodes: ['h6-cont'],
       parent: 'ROOT'
     },
-    'h6-cont': { type: { resolvedName: 'Container' }, isCanvas: true, nodes: ['h6-h', 'h6-p', 'h6-btn'], parent: 'hero-6' },
-    'h6-h': { type: { resolvedName: 'Heading' }, props: { text: 'Modern Care, Personal Touch.', level: 'h1', className: 'text-5xl font-bold text-sky-900 mb-6' }, parent: 'h6-cont' },
-    'h6-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Comprehensive medical services designed around your family\'s well-being.', className: 'text-lg text-slate-600 mb-8' }, parent: 'h6-cont' },
+    'h6-cont': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'px-6' }, nodes: ['h6-h', 'h6-p', 'h6-btn'], parent: 'hero-6' },
+    'h6-h': { type: { resolvedName: 'Heading' }, props: { text: 'Modern Care, Personal Touch.', level: 'h1', className: 'text-4xl md:text-5xl font-bold text-sky-900 mb-6' }, parent: 'h6-cont' },
+    'h6-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Comprehensive medical services designed around your family\'s well-being.', className: 'text-base md:text-lg text-slate-600 mb-8' }, parent: 'h6-cont' },
     'h6-btn': { type: { resolvedName: 'UserButton' }, props: { text: 'Book Appointment', className: 'bg-sky-600 rounded-lg h-12' }, parent: 'h6-cont' },
-    'services-6': { type: { resolvedName: 'Section' }, props: { padding: 80 }, parent: 'ROOT' },
+    'services-6': { type: { resolvedName: 'Section' }, props: { paddingTop: 80, paddingBottom: 80, paddingTop_mobile: 40, paddingBottom_mobile: 40 }, parent: 'ROOT' },
     'booking-6': { type: { resolvedName: 'Form' }, props: { title: 'New Patient Registration' }, parent: 'ROOT' },
     'footer-6': { type: { resolvedName: 'Footer' }, parent: 'ROOT' }
   })
@@ -262,12 +263,12 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
       nodes: ['h7-cont'],
       parent: 'ROOT'
     },
-    'h7-cont': { type: { resolvedName: 'Container' }, isCanvas: true, nodes: ['h7-h', 'h7-p', 'h7-btn'], parent: 'hero-7' },
-    'h7-h': { type: { resolvedName: 'Heading' }, props: { text: 'Defending Your Future.', level: 'h1', className: 'text-6xl font-serif font-medium mb-6' }, parent: 'h7-cont' },
-    'h7-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Strategic legal counsel for complex business and personal matters.', className: 'text-xl opacity-60 mb-10 tracking-widest uppercase text-amber-500' }, parent: 'h7-cont' },
+    'h7-cont': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'px-6' }, nodes: ['h7-h', 'h7-p', 'h7-btn'], parent: 'hero-7' },
+    'h7-h': { type: { resolvedName: 'Heading' }, props: { text: 'Defending Your Future.', level: 'h1', className: 'text-5xl md:text-6xl font-serif font-medium mb-6' }, parent: 'h7-cont' },
+    'h7-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Strategic legal counsel for complex business and personal matters.', className: 'text-lg md:text-xl opacity-60 mb-10 tracking-widest uppercase text-amber-500' }, parent: 'h7-cont' },
     'h7-btn': { type: { resolvedName: 'UserButton' }, props: { text: 'Request Consultation', variant: 'outline', className: 'border-amber-500 text-amber-500 h-14' }, parent: 'h7-cont' },
     'logos-7': { type: { resolvedName: 'LogoStrip' }, props: { grayscale: true }, parent: 'ROOT' },
-    'services-7': { type: { resolvedName: 'Section' }, props: { padding: 100 }, parent: 'ROOT' },
+    'services-7': { type: { resolvedName: 'Section' }, props: { paddingTop: 100, paddingBottom: 100, paddingTop_mobile: 50, paddingBottom_mobile: 50 }, parent: 'ROOT' },
     'footer-7': { type: { resolvedName: 'Footer' }, parent: 'ROOT' }
   })
  },
@@ -290,11 +291,11 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
       nodes: ['h8-cont'],
       parent: 'ROOT'
     },
-    'h8-cont': { type: { resolvedName: 'Container' }, isCanvas: true, nodes: ['h8-h', 'h8-p', 'h8-btn'], parent: 'hero-8' },
-    'h8-h': { type: { resolvedName: 'Heading' }, props: { text: 'Master Your Craft.', level: 'h1', className: 'text-6xl font-black text-indigo-900 mb-6' }, parent: 'h8-cont' },
-    'h8-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'The ultimate blueprint to scaling your digital business from zero to $100k.', className: 'text-xl text-indigo-600/60 mb-8' }, parent: 'h8-cont' },
+    'h8-cont': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'px-6' }, nodes: ['h8-h', 'h8-p', 'h8-btn'], parent: 'hero-8' },
+    'h8-h': { type: { resolvedName: 'Heading' }, props: { text: 'Master Your Craft.', level: 'h1', className: 'text-4xl md:text-6xl font-black text-indigo-900 mb-6' }, parent: 'h8-cont' },
+    'h8-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'The ultimate blueprint to scaling your digital business from zero to $100k.', className: 'text-lg md:text-xl text-indigo-600/60 mb-8' }, parent: 'h8-cont' },
     'h8-btn': { type: { resolvedName: 'UserButton' }, props: { text: 'Enroll Now - 50% Off', className: 'bg-indigo-600 rounded-xl h-14 text-lg' }, parent: 'h8-cont' },
-    'features-8': { type: { resolvedName: 'Section' }, props: { padding: 80 }, parent: 'ROOT' },
+    'features-8': { type: { resolvedName: 'Section' }, props: { paddingTop: 80, paddingBottom: 80, paddingTop_mobile: 40, paddingBottom_mobile: 40 }, parent: 'ROOT' },
     'pricing-8': { type: { resolvedName: 'PricingTable' }, parent: 'ROOT' },
     'faq-8': { type: { resolvedName: 'FAQ' }, parent: 'ROOT' },
     'footer-8': { type: { resolvedName: 'Footer' }, parent: 'ROOT' }
@@ -319,9 +320,9 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
       nodes: ['h9-cont'],
       parent: 'ROOT'
     },
-    'h9-cont': { type: { resolvedName: 'Container' }, isCanvas: true, nodes: ['h9-h', 'h9-p', 'h9-btn'], parent: 'hero-9' },
-    'h9-h': { type: { resolvedName: 'Heading' }, props: { text: 'The Nexus Summit 2026', level: 'h1', className: 'text-8xl font-black tracking-tighter text-center' }, parent: 'h9-cont' },
-    'h9-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Silicon Valley | Oct 12-14 | The Future of Neural Engineering', className: 'text-xl font-bold tracking-[0.4em] text-primary text-center mb-12' }, parent: 'h9-cont' },
+    'h9-cont': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'px-6' }, nodes: ['h9-h', 'h9-p', 'h9-btn'], parent: 'hero-9' },
+    'h9-h': { type: { resolvedName: 'Heading' }, props: { text: 'The Nexus Summit 2026', level: 'h1', className: 'text-5xl md:text-8xl font-black tracking-tighter text-center' }, parent: 'h9-cont' },
+    'h9-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Silicon Valley | Oct 12-14 | The Future of Neural Engineering', className: 'text-lg md:text-xl font-bold tracking-[0.4em] text-primary text-center mb-12' }, parent: 'h9-cont' },
     'h9-btn': { type: { resolvedName: 'UserButton' }, props: { text: 'Get Your Pass', size: 'lg', className: 'rounded-full' }, parent: 'h9-cont' },
     'countdown-9': { type: { resolvedName: 'Countdown' }, props: { endDate: '2026-10-12' }, parent: 'ROOT' },
     'pricing-9': { type: { resolvedName: 'PricingTable' }, props: { title: 'Ticket Tiers' }, parent: 'ROOT' },
@@ -347,10 +348,10 @@ export const BUILDER_TEMPLATES: BuilderTemplate[] = [
       nodes: ['h10-cont'],
       parent: 'ROOT'
     },
-    'h10-cont': { type: { resolvedName: 'Container' }, isCanvas: true, nodes: ['h10-h', 'h10-p'], parent: 'hero-10' },
-    'h10-h': { type: { resolvedName: 'Heading' }, props: { text: 'Less is More.', level: 'h1', className: 'text-9xl font-black tracking-tighter mb-4' }, parent: 'h10-cont' },
-    'h10-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Visual Storyteller & Digital Craftsman.', className: 'text-2xl font-medium tracking-[0.2em] uppercase opacity-40' }, parent: 'h10-cont' },
-    'work-10': { type: { resolvedName: 'Section' }, props: { padding: 40 }, parent: 'ROOT' },
+    'h10-cont': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'px-6' }, nodes: ['h10-h', 'h10-p'], parent: 'hero-10' },
+    'h10-h': { type: { resolvedName: 'Heading' }, props: { text: 'Less is More.', level: 'h1', className: 'text-6xl md:text-9xl font-black tracking-tighter mb-4' }, parent: 'h10-cont' },
+    'h10-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Visual Storyteller & Digital Craftsman.', className: 'text-xl md:text-2xl font-medium tracking-[0.2em] uppercase opacity-40' }, parent: 'h10-cont' },
+    'work-10': { type: { resolvedName: 'Section' }, props: { paddingTop: 40, paddingBottom: 40, paddingTop_mobile: 20, paddingBottom_mobile: 20 }, parent: 'ROOT' },
     'footer-10': { type: { resolvedName: 'Footer' }, parent: 'ROOT' }
   })
  }

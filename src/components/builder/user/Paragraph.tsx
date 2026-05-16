@@ -22,7 +22,7 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
   textAlign: _ta, 
   textAlign_mobile,
   textAlign_tablet,
-  color, 
+  color: _color, 
   lineHeight: _lh, 
   lineHeight_mobile,
   lineHeight_tablet,
@@ -44,6 +44,7 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
  const fontSize = useResponsiveValue(allProps, 'fontSize', 16);
  const textAlign = useResponsiveValue(allProps, 'textAlign', _ta);
  const lineHeight = useResponsiveValue(allProps, 'lineHeight', _lh);
+ const color = useResponsiveValue(allProps, 'color', _color);
  
  const alignments = {
   left: 'text-left',
@@ -85,10 +86,10 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
       onChange={(e) => setProp((props: any) => (props.text = e.target.value), 500)}
       tagName="p"
       className="outline-none w-full m-0 p-0"
-      style={{ color: 'inherit' }}
+      style={{ color: 'inherit', fontSize: 'inherit', textAlign: 'inherit' }}
     />
    ) : (
-    <span style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
+    <p style={{ color: 'inherit', margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
    )}
   </div>
  );
