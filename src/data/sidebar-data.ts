@@ -18,6 +18,7 @@ const sidebarData: SidebarCategory[] = [
    { id: 6, label: "Pipelines", icon: "icon-projects", link: "/pipelines", permission: "pipelines" },
    { id: 7, label: "Proposals", icon: "fa-light fa-file-signature", link: "/proposals", permission: "proposals" },
    { id: 8, label: "Invoices", icon: "fa-light fa-file-invoice-dollar", link: "/invoices", permission: "invoices" },
+   { id: 81, label: "Quotes", icon: "fa-light fa-file-invoice", link: "/quotes", permission: "invoices" },
   ],
  },
  {
@@ -68,6 +69,7 @@ const sidebarData: SidebarCategory[] = [
   category: "Analytics",
   items: [
    { id: 28, label: "Reporting", icon: "fa-sharp fa-regular fa-chart-network", link: "/analytics", permission: "analytics" },
+   { id: 281, label: "Billing Metrics", icon: "fa-light fa-chart-pie", link: "/analytics/billing", permission: "analytics" },
   ],
  },
  {
@@ -75,6 +77,7 @@ const sidebarData: SidebarCategory[] = [
   category: "Account",
   items: [
    { id: 29, label: "Settings", icon: "fa-light fa-gear", link: "/settings", permission: "settings" },
+   { id: 291, label: "Client Portal", icon: "fa-light fa-door-open", link: "/portal/login", permission: "dashboard" },
   ],
  },
 ];

@@ -17,30 +17,34 @@ export default async function InvoicesPage() {
  
  const invoices = await getInvoices(workspaceId);
 
- return (
-  <MetaData pageTitle="Invoices">
-   <Wrapper>
-    <div className="app__slide-wrapper">
-     <div className="space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-2">
-       <div>
-        <h1 className="card__title !text-4xl uppercase mb-1">Billing <span className="text-primary">Ledger</span></h1>
-        <p className="card__sub-title !text-[11px] uppercase tracking-[0.2em]">Manage your financial transactions and billing</p>
-       </div>
-       <div className="flex items-center gap-3">
-        <Link href="/invoices/new">
-         <Button className="btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
-          <Plus className="h-4 w-4 mr-2" />
-          <span>New Invoice</span>
-         </Button>
-        </Link>
-       </div>
-      </div>
+  return (
+    <MetaData pageTitle="Billing Ledger">
+      <Wrapper>
+        <div className="flex flex-col min-h-screen">
+          <div className="page-header px-6 py-6 flex-shrink-0 bg-[var(--n900)] border-b border-white/5">
+            <div className="ph-left">
+              <h1 className="text-3xl font-black font-space text-[var(--t1)] uppercase tracking-tight">
+                BILLING <span className="text-[var(--accent2)]">LEDGER</span>
+              </h1>
+              <p className="text-[11px] text-[var(--t3)] uppercase tracking-[0.2em] mt-2 font-medium">
+                Comprehensive financial orchestration
+              </p>
+            </div>
+            <div className="ph-right">
+              <Link href="/invoices/new">
+                <button className="btn-primary !h-12 !px-8 text-xs font-black uppercase tracking-widest gap-2">
+                  <Plus className="h-4 w-4" />
+                  <span>Create Invoice</span>
+                </button>
+              </Link>
+            </div>
+          </div>
 
-      <InvoiceMasterDetail invoices={invoices} />
-     </div>
-    </div>
-   </Wrapper>
-  </MetaData>
- );
+          <div className="flex-1 bg-[var(--n900)]">
+            <InvoiceMasterDetail invoices={invoices} />
+          </div>
+        </div>
+      </Wrapper>
+    </MetaData>
+  );
 }

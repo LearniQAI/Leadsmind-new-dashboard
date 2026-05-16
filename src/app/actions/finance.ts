@@ -242,7 +242,7 @@ export async function deleteQuote(id: string) {
  const supabase = await createServerClient();
  const { error } = await supabase.from('quotes').delete().eq('id', id);
  if (error) return { success: false, error: error.message };
- revalidatePath('/proposals');
+ revalidatePath('/quotes');
  return { success: true };
 }
 
@@ -255,7 +255,7 @@ export async function updateQuoteStatus(id: string, status: string) {
   .select()
   .single();
  if (error) return { success: false, error: error.message };
- revalidatePath('/proposals');
+ revalidatePath('/quotes');
  return { success: true, data };
 }
 
@@ -312,4 +312,32 @@ export async function createCheckoutSession(tierId: string, interval: 'month' | 
  });
 
  return { url: session.url };
+}
+export async function writeOffInvoice(invoiceId: string, workspaceId: string, amount: number, reason: string) {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // 1. Create write-off record
+  const { error: writeOffError } = await supabase
+    .from('invoice_write_offs')
+    .insert({
+      invoice_id: invoiceId,
+      workspace_id: workspaceId,
+      amount_written_off: amount,
+      reason: reason,
+      logged_by: user?.id
+    });
+
+  if (writeOffError) return { success: false, error: writeOffError.message };
+
+  // 2. Update invoice status
+  const { error: updateError } = await supabase
+    .from('invoices')
+    .update({ status: 'written_off' })
+    .eq('id', invoiceId);
+
+  if (updateError) return { success: false, error: updateError.message };
+
+  revalidatePath('/invoices');
+  return { success: true };
 }
