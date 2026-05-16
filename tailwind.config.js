@@ -40,8 +40,10 @@ module.exports = {
       minMaxSm: { min: "576px", max: "767px" },
     },
     fontFamily: {
-      body: ["'Poppins', sans-serif"],
-      heading: ["'Poppins', sans-serif"],
+      sans: ["'DM Sans', sans-serif"],
+      body: ["'DM Sans', sans-serif"],
+      display: ["'Space Grotesk', sans-serif"],
+      heading: ["'Space Grotesk', sans-serif"],
       fontawesome: ["Font Awesome 6 Pro"],
       icomoon: ["icomoon"],
     },

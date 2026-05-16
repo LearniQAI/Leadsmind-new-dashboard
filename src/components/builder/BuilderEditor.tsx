@@ -37,7 +37,7 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, Send, AlertCircle } from 'lucide-react';
+import { Loader2, Save, Send, AlertCircle, Copy as CopyIcon } from 'lucide-react';
 import { RESOLVER, wrapForReact19 } from '@/lib/builder/resolver';
 
 class SafeFrameErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
@@ -122,6 +122,12 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
 
   return () => clearInterval(interval);
  }, [pageId, query]);
+
+ const handleExportJSON = () => {
+  const content = query.serialize();
+  navigator.clipboard.writeText(content);
+  toast.success('Template JSON copied to clipboard!');
+ };
 
  const handlePublish = async () => {
   if (!pageId) return;
@@ -440,6 +446,14 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
        </div>
       </div>
       
+      <Button
+       variant="ghost"
+       onClick={handleExportJSON}
+       className="h-11 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/40 hover:text-white transition-all mr-2"
+       title="Export for Template System"
+      >
+       <CopyIcon className="w-4 h-4" />
+      </Button>
       <Button
        variant="ghost"
        onClick={handleSaveDraft}

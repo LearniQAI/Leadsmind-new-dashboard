@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,19 @@ import { createOpportunity, updateOpportunity, deleteOpportunity } from '@/app/a
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { 
+  Rocket, 
+  PenSquare, 
+  Trash2, 
+  Check, 
+  X, 
+  DollarSign, 
+  Target, 
+  User, 
+  Loader2,
+  AlertCircle
+} from 'lucide-react';
 
 interface OpportunityModalProps {
   isOpen: boolean;
@@ -31,7 +44,7 @@ export function OpportunityModal({
   stages
 }: OpportunityModalProps) {
   const router = useRouter();
-  console.log(`[DEBUG] OpportunityModal received ${stages.length} stages:`, stages.map(s => s.name));
+  const [isPending, startTransition] = useTransition();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
@@ -56,11 +69,11 @@ export function OpportunityModal({
         title: '',
         value: '',
         contact_id: '',
-        stage_id: stageId || '',
+        stage_id: stageId || (stages.length > 0 ? stages[0].id : ''),
         status: 'open'
       });
     }
-  }, [opportunity, isOpen, stageId]);
+  }, [opportunity, isOpen, stageId, stages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,21 +86,26 @@ export function OpportunityModal({
       value: parseFloat(formData.value) || 0,
     };
 
-    console.log(`[DEBUG] Submitting strategic deal. Action: ${opportunity ? 'UPDATE' : 'CREATE'}, ID: ${opportunity?.id || 'NEW'}, Payload:`, payload);
+    console.log(`[TACTICAL DEBUG] Syncing deal. Action: ${opportunity ? 'UPDATE' : 'CREATE'}, Payload:`, payload);
 
     const res = opportunity 
       ? await updateOpportunity(opportunity.id, payload)
       : await createOpportunity(payload);
 
     if ((res as any).success) {
-      toast.success(opportunity ? 'Deal synchronized' : 'Tactical deal launched');
-      router.refresh();
-      onClose();
+      toast.success(opportunity ? 'Strategic deal synchronized' : 'Tactical deal launched');
+      
+      // Use transition to ensure refresh completes before closing
+      startTransition(() => {
+        router.refresh();
+        setIsProcessing(false);
+        onClose();
+      });
     } else {
-      console.error(`[DEBUG] Deal submission failure:`, (res as any).error);
+      console.error(`[TACTICAL DEBUG] Sync failure:`, (res as any).error);
       toast.error((res as any).error || 'Tactical failure');
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
   };
 
   const handleDelete = async () => {
@@ -96,99 +114,112 @@ export function OpportunityModal({
     const res = await deleteOpportunity(opportunity.id);
     if (res.success) {
       toast.success('Deal purged from pipeline');
-      onClose();
+      startTransition(() => {
+        router.refresh();
+        setIsProcessing(false);
+        onClose();
+      });
     } else {
       toast.error(res.error || 'Failed to delete deal');
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
     setShowDeleteConfirm(false);
   };
 
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="bg-[#0b0f1a] border-white/5 text-[#eef2ff] max-w-md p-0 overflow-hidden rounded-3xl shadow-2xl z-[1001]">
-          <DialogHeader className="p-6 pb-4 border-b border-white/5 bg-white/[0.02]">
-            <DialogTitle className="text-xl font-extrabold font-space tracking-tight text-white flex items-center justify-between gap-3">
+        <DialogContent className="max-w-[460px] p-0 bg-[#080f28] border border-white/[0.07] text-[#eef2ff] overflow-hidden rounded-[16px] shadow-2xl z-[9999]">
+          <DialogHeader className="px-6 py-5 bg-[#0c1535]/50 border-b border-white/[0.07]">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <i className={className("fa-solid", opportunity ? "fa-pen-to-square text-[#3b82f6]" : "fa-rocket text-[#ff9d00]")}></i>
-                {opportunity ? 'Edit Strategic Deal' : 'Launch New Deal'}
+                <div className={cn(
+                  "h-10 w-10 rounded-[10px] flex items-center justify-center border shadow-lg",
+                  opportunity 
+                    ? "bg-[#2563eb]/10 border-[#2563eb]/20 text-[#3b82f6]" 
+                    : "bg-[#f59e0b]/10 border-[#f59e0b]/20 text-[#f59e0b]"
+                )}>
+                  {opportunity ? <PenSquare size={20} /> : <Rocket size={20} />}
+                </div>
+                <div>
+                  <DialogTitle className="text-[18px] font-bold font-display uppercase tracking-tight">
+                    {opportunity ? 'Edit Strategic' : 'Launch New'} <span className="text-[#3b82f6]">Deal</span>
+                  </DialogTitle>
+                  <p className="text-[10px] text-[#4a5a82] font-medium uppercase tracking-[0.8px] mt-0.5">
+                    {opportunity ? 'Sync tactical data' : 'Initialize fresh node'}
+                  </p>
+                </div>
               </div>
               {opportunity && (
                 <button 
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center"
+                  className="w-9 h-9 rounded-[8px] bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444] hover:text-white transition-all flex items-center justify-center border border-[#ef4444]/20 shadow-sm"
                 >
-                  <i className="fa-solid fa-trash-can text-[12px]"></i>
+                  <Trash2 size={16} />
                 </button>
               )}
-            </DialogTitle>
+            </div>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
             {/* 1. Title */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans ml-1">
-                Opportunity Title
-              </label>
-              <input 
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="e.g. Enterprise Expansion Q3"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[14px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb] transition-all font-dm-sans"
-              />
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82] ml-1">Opportunity Designation</Label>
+              <div className="relative">
+                <input 
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="e.g. Enterprise Expansion Q4"
+                  className="w-full h-11 bg-white/[0.04] border border-white/10 rounded-[10px] px-4 text-[14px] font-medium text-[#eef2ff] placeholder:text-[#2a3557] focus:outline-none focus:border-[#2563eb]/50 transition-all shadow-inner"
+                />
+                <Target className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2a3557]" />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {/* 2. Value */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans ml-1">
-                  Deal Value (R)
-                </label>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82] ml-1">Contract Value</Label>
                 <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#3b82f6] font-bold text-[13px]">R</span>
                   <input 
                     type="number"
                     step="0.01"
                     value={formData.value}
                     onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[16px] text-[#ff9d00] font-space font-bold focus:outline-none focus:border-[#ff9d00]/50 transition-all"
+                    className="w-full h-11 bg-white/[0.04] border border-white/10 rounded-[10px] pl-9 pr-3 text-[15px] text-[#f59e0b] font-display font-bold focus:outline-none focus:border-[#f59e0b]/50 transition-all shadow-inner"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest pointer-events-none">ZAR</span>
                 </div>
               </div>
 
               {/* 3. Status */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans ml-1">
-                  Tactical Status
-                </label>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82] ml-1">Node Status</Label>
                 <select 
                   value={formData.status}
                   onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb] transition-all font-dm-sans appearance-none cursor-pointer"
+                  className="w-full h-11 bg-white/[0.04] border border-white/10 rounded-[10px] px-3 text-[12px] font-bold text-[#eef2ff] focus:outline-none focus:border-[#2563eb]/50 transition-all appearance-none cursor-pointer uppercase tracking-widest"
                 >
-                  <option value="open" className="bg-[#0b0f1a]">Open / Active</option>
-                  <option value="won" className="bg-[#0b0f1a]">Won / Closed</option>
-                  <option value="lost" className="bg-[#0b0f1a]">Lost / Stalled</option>
+                  <option value="open" className="bg-[#080f28]">Active Node</option>
+                  <option value="won" className="bg-[#080f28]">Won / Sync</option>
+                  <option value="lost" className="bg-[#080f28]">Lost / Stalled</option>
                 </select>
               </div>
             </div>
 
             {/* 4. Sales Stage */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans ml-1">
-                Sales Pipeline Stage
-              </label>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82] ml-1">Pipeline Architecture Level</Label>
               <select 
                 value={formData.stage_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, stage_id: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb] transition-all font-dm-sans appearance-none cursor-pointer"
+                className="w-full h-11 bg-white/[0.04] border border-white/10 rounded-[10px] px-3 text-[12px] font-bold text-[#eef2ff] focus:outline-none focus:border-[#2563eb]/50 transition-all appearance-none cursor-pointer uppercase tracking-widest"
               >
-                <option value="" disabled className="bg-[#0b0f1a]">Select a stage</option>
+                <option value="" disabled className="bg-[#080f28]">Select tactical stage</option>
                 {stages.map(s => (
-                  <option key={s.id} value={s.id} className="bg-[#0b0f1a]">
+                  <option key={s.id} value={s.id} className="bg-[#080f28]">
                     {s.name}
                   </option>
                 ))}
@@ -196,38 +227,40 @@ export function OpportunityModal({
             </div>
 
             {/* 5. Contact Selector */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans ml-1">
-                Associate Lead
-              </label>
-              <select 
-                value={formData.contact_id}
-                onChange={(e) => setFormData(prev => ({ ...prev, contact_id: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb] transition-all font-dm-sans appearance-none cursor-pointer"
-              >
-                <option value="" className="bg-[#0b0f1a]">Select a contact (Optional)</option>
-                {contacts.map(c => (
-                  <option key={c.id} value={c.id} className="bg-[#0b0f1a]">
-                    {c.first_name} {c.last_name} ({c.email})
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82] ml-1">Associated Entity</Label>
+              <div className="relative">
+                <select 
+                  value={formData.contact_id}
+                  onChange={(e) => setFormData(prev => ({ ...prev, contact_id: e.target.value }))}
+                  className="w-full h-11 bg-white/[0.04] border border-white/10 rounded-[10px] px-3 pl-11 text-[13px] font-medium text-[#eef2ff] focus:outline-none focus:border-[#2563eb]/50 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="" className="bg-[#080f28]">Detach contact (Optional)</option>
+                  {contacts.map(c => (
+                    <option key={c.id} value={c.id} className="bg-[#080f28]">
+                      {c.first_name} {c.last_name} ({c.email})
+                    </option>
+                  ))}
+                </select>
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2a3557]" />
+              </div>
             </div>
 
-            <div className="pt-4 flex gap-3">
+            <div className="pt-2 flex gap-3">
               <button 
                 type="button"
                 onClick={onClose}
-                className="flex-1 h-11 rounded-xl bg-white/5 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/10 text-[12px] font-bold uppercase tracking-widest transition-all"
+                className="flex-1 h-11 rounded-[10px] bg-white/[0.03] text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 text-[11px] font-bold uppercase tracking-widest transition-all border border-white/[0.05]"
               >
-                Cancel
+                Abort
               </button>
               <button 
                 type="submit"
-                disabled={isProcessing}
-                className="flex-1 h-11 rounded-xl bg-[#2563eb] text-white hover:bg-[#2563eb]/90 text-[12px] font-bold uppercase tracking-widest transition-all shadow-lg shadow-[#2563eb]/20 disabled:opacity-50"
+                disabled={isProcessing || isPending}
+                className="flex-1 h-11 rounded-[10px] bg-[#2563eb] text-white hover:bg-[#1d4ed8] text-[11px] font-bold uppercase tracking-widest transition-all shadow-lg shadow-[#2563eb]/20 disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98]"
               >
-                {isProcessing ? 'Syncing...' : (opportunity ? 'Save Changes' : 'Create Deal')}
+                {isProcessing || isPending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                {opportunity ? 'Sync Changes' : 'Initialize Deal'}
               </button>
             </div>
           </form>
@@ -239,7 +272,7 @@ export function OpportunityModal({
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDelete}
         title="Purge Strategic Deal?"
-        description="This action is irreversible. All tactical data associated with this opportunity will be permanently removed from the pipeline."
+        description="This action is irreversible. All tactical data associated with this opportunity will be permanently removed from the pipeline architecture."
         confirmLabel="Yes, Purge Deal"
         cancelLabel="Keep Deal"
         variant="danger"
@@ -248,6 +281,10 @@ export function OpportunityModal({
   );
 }
 
-function className(...classes: string[]) {
-  return classes.filter(Boolean).join(' ');
+function Label({ children, className }: { children: React.ReactNode, className?: string }) {
+  return (
+    <label className={cn("block text-[11px] font-bold uppercase tracking-wider text-[#4a5a82]", className)}>
+      {children}
+    </label>
+  );
 }

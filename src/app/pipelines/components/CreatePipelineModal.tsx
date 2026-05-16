@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { createPipeline } from '@/app/actions/pipelines';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface CreatePipelineModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function CreatePipelineModal({
   isOpen,
   onClose,
 }: CreatePipelineModalProps) {
+  const router = useRouter();
   const [name, setName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -34,6 +36,10 @@ export function CreatePipelineModal({
     if (res.success) {
       toast.success('Strategy pipeline launched');
       setName('');
+      router.refresh();
+      if (res.data?.id) {
+        router.push(`/pipelines?pipelineId=${res.data.id}`);
+      }
       onClose();
     } else {
       toast.error(res.error || 'Failed to create pipeline');
