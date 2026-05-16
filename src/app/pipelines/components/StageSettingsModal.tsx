@@ -11,6 +11,7 @@ import { PipelineStage } from '@/types/crm';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { updateStageOrder, updateStage, deleteStage, updatePipelineStages } from '@/app/actions/pipelines';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface StageSettingsModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export function StageSettingsModal({
   pipelineId,
   initialStages
 }: StageSettingsModalProps) {
+  const router = useRouter();
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,12 +60,15 @@ export function StageSettingsModal({
     if (!editName.trim()) return setEditingId(null);
 
     setIsProcessing(true);
+    console.log(`[DEBUG] Renaming stage ${id} to "${editName.trim()}"`);
     const res = await updateStage(id, editName.trim());
     if (res.success) {
       setStages(prev => prev.map(s => s.id === id ? { ...s, name: editName.trim() } : s));
       setEditingId(null);
       toast.success('Stage synchronized');
+      router.refresh();
     } else {
+      console.error(`[DEBUG] Rename failure:`, res.error);
       toast.error('Failed to rename stage');
     }
     setIsProcessing(false);
@@ -90,14 +95,18 @@ export function StageSettingsModal({
     const tempId = `new-${Date.now()}`;
     const newStage = { id: tempId, name: newStageName.trim(), position: stages.length };
 
+    console.log(`[DEBUG] Adding new stage:`, newStage);
+
     // Using updatePipelineStages which already handles 'new-' prefixed IDs
     const res = await updatePipelineStages(pipelineId, [...stages, newStage]);
 
     if (res.success) {
       toast.success('New stage activated');
       setNewStageName('');
+      router.refresh();
       // The useEffect will refresh the stages from props when the page revalidates
     } else {
+      console.error(`[DEBUG] Add stage failure:`, res.error);
       toast.error('Failed to create stage');
     }
     setIsProcessing(false);

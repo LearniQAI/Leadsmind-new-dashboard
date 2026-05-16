@@ -11,6 +11,7 @@ import { Opportunity, Contact, PipelineStage } from '@/types/crm';
 import { createOpportunity, updateOpportunity, deleteOpportunity } from '@/app/actions/pipelines';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { useRouter } from 'next/navigation';
 
 interface OpportunityModalProps {
   isOpen: boolean;
@@ -29,6 +30,8 @@ export function OpportunityModal({
   contacts,
   stages
 }: OpportunityModalProps) {
+  const router = useRouter();
+  console.log(`[DEBUG] OpportunityModal received ${stages.length} stages:`, stages.map(s => s.name));
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
@@ -70,14 +73,18 @@ export function OpportunityModal({
       value: parseFloat(formData.value) || 0,
     };
 
+    console.log(`[DEBUG] Submitting strategic deal. Action: ${opportunity ? 'UPDATE' : 'CREATE'}, ID: ${opportunity?.id || 'NEW'}, Payload:`, payload);
+
     const res = opportunity 
       ? await updateOpportunity(opportunity.id, payload)
       : await createOpportunity(payload);
 
     if ((res as any).success) {
       toast.success(opportunity ? 'Deal synchronized' : 'Tactical deal launched');
+      router.refresh();
       onClose();
     } else {
+      console.error(`[DEBUG] Deal submission failure:`, (res as any).error);
       toast.error((res as any).error || 'Tactical failure');
     }
     setIsProcessing(false);

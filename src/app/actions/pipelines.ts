@@ -6,6 +6,8 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 
 import { Pipeline, PipelineStage, Opportunity } from '@/types/crm';
 
+console.log('>>> [CRITICAL DEBUG] Pipelines Actions File Loaded');
+
 export async function createPipeline({ name, stages }: { name: string, stages: string[] }) {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'No active workspace' };
@@ -43,6 +45,8 @@ export async function createOpportunity(values: any) {
   const workspaceId = await getCurrentWorkspaceId();
   const supabase = await createServerClient();
 
+  console.log(`[SERVER DEBUG] Creating strategic deal:`, values);
+
   const { data, error } = await supabase
     .from('opportunities')
     .insert({
@@ -57,7 +61,10 @@ export async function createOpportunity(values: any) {
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error(`[SERVER DEBUG] Create deal error:`, error);
+    return { success: false, error: error.message };
+  }
   
   revalidatePath('/pipelines');
   return { success: true, data: data as Opportunity };
@@ -131,22 +138,36 @@ export async function updateDealStage(dealId: string, stageId: string, position:
 }
 
 export async function updateOpportunity(id: string, values: any) {
+  console.log(`>>> [CRITICAL DEBUG] updateOpportunity CALLED for ID: ${id}`);
+  console.log(`>>> [CRITICAL DEBUG] Values:`, JSON.stringify(values, null, 2));
+  
   const supabase = await createServerClient();
+  
+  // Explicitly log the payload we are about to send to Supabase
+  const payload = {
+    contact_id: values.contact_id || null,
+    stage_id: values.stage_id,
+    title: values.title,
+    value: values.value || 0,
+    status: values.status || 'open',
+    updated_at: new Date().toISOString()
+  };
+  
+  console.log(`>>> [CRITICAL DEBUG] Supabase Payload:`, JSON.stringify(payload, null, 2));
 
   const { data, error } = await supabase
     .from('opportunities')
-    .update({
-      contact_id: values.contact_id || null,
-      title: values.title,
-      value: values.value || 0,
-      status: values.status || 'open',
-      updated_at: new Date().toISOString()
-    })
+    .update(payload)
     .eq('id', id)
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error(`>>> [CRITICAL DEBUG] Supabase Error:`, error);
+    return { success: false, error: error.message };
+  }
+  
+  console.log(`>>> [CRITICAL DEBUG] Supabase Success! Returned data:`, JSON.stringify(data, null, 2));
   
   revalidatePath('/pipelines');
   return { success: true, data: data as Opportunity };
@@ -183,12 +204,16 @@ export async function updateStageOrder(pipelineId: string, stages: { id: string,
 
 export async function updateStage(id: string, name: string) {
   const supabase = await createServerClient();
+  console.log(`[SERVER DEBUG] Updating stage ${id} name to "${name}"`);
   const { error } = await supabase
     .from('pipeline_stages')
     .update({ name, updated_at: new Date().toISOString() })
     .eq('id', id);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error(`[SERVER DEBUG] Update error:`, error);
+    return { success: false, error: error.message };
+  }
   revalidatePath('/pipelines');
   return { success: true };
 }
@@ -206,30 +231,35 @@ export async function updatePipelineStages(pipelineId: string, stages: { id: str
   if (!workspaceId) return { success: false, error: 'Unauthorized' };
   const supabase = await createServerClient();
 
+  console.log(`[SERVER DEBUG] Bulk updating stages for pipeline ${pipelineId}:`, stages);
   try {
     for (let i = 0; i < stages.length; i++) {
       const stage = stages[i];
       const isNew = stage.id.startsWith('new-');
 
       if (isNew) {
-        await supabase.from('pipeline_stages').insert({
+        console.log(`[SERVER DEBUG] Inserting new stage: ${stage.name}`);
+        const { error: insError } = await supabase.from('pipeline_stages').insert({
           workspace_id: workspaceId,
           pipeline_id: pipelineId,
           name: stage.name,
           position: i
         });
+        if (insError) throw insError;
       } else {
-        await supabase.from('pipeline_stages').update({
+        const { error: updError } = await supabase.from('pipeline_stages').update({
           name: stage.name,
           position: i,
           updated_at: new Date().toISOString()
         }).eq('id', stage.id);
+        if (updError) throw updError;
       }
     }
 
     revalidatePath('/pipelines');
     return { success: true };
   } catch (err: any) {
+    console.error(`[SERVER DEBUG] Bulk update error:`, err);
     return { success: false, error: err.message };
   }
 }
