@@ -1,4 +1,5 @@
-import { requireAuth, getCurrentWorkspace } from '@/lib/auth';
+import { requireAuth, getCurrentWorkspaceId } from '@/lib/auth';
+import { createServerClient } from '@/lib/supabase/server';
 import {
   getPipelines,
   getPipelineStages,
@@ -7,8 +8,8 @@ import {
 import { redirect } from 'next/navigation';
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
-import PipelineClient from './PipelineClient';
-
+import PipelinesClient from './PipelinesClient';
+import { getWorkspaceMembers } from '@/app/actions/workspace';
 export const dynamic = 'force-dynamic';
 
 export default async function PipelinesPage({
@@ -17,15 +18,16 @@ export default async function PipelinesPage({
   searchParams: { pipelineId?: string };
 }) {
   await requireAuth();
-  const workspace = await getCurrentWorkspace();
-  if (!workspace) redirect('/login');
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) redirect('/login');
 
+  const supabase = await createServerClient();
   const pipelinesResult = await getPipelines();
-  const pipelines = pipelinesResult.success ? pipelinesResult.data || [] : [];
+  const pipelines = (pipelinesResult as any).success ? (pipelinesResult as any).data || [] : [];
 
   if (pipelines.length === 0) {
     return (
-      <MetaData pageTitle="Pipelines">
+      <MetaData pageTitle="Strategic Pipelines">
         <Wrapper>
           <div className="flex flex-col h-[calc(100vh-200px)] items-center justify-center text-center space-y-6">
             <div className="w-24 h-24 bg-[#2563eb]/10 rounded-[2rem] flex items-center justify-center mb-4 shadow-2xl shadow-[#2563eb]/10 rotate-12">
@@ -49,24 +51,30 @@ export default async function PipelinesPage({
 
   const { pipelineId } = searchParams;
   const activePipelineId = pipelineId || pipelines[0].id;
+  const activePipeline = pipelines.find((p: any) => p.id === activePipelineId) || pipelines[0];
 
-  const [stagesResult, opportunitiesResult] = await Promise.all([
+  const [stagesResult, opportunitiesResult, contactsRes, members] = await Promise.all([
     getPipelineStages(activePipelineId),
-    getPipelineOpportunities(activePipelineId)
+    getPipelineOpportunities(activePipelineId),
+    supabase.from('contacts').select('*').eq('workspace_id', workspaceId).order('first_name'),
+    getWorkspaceMembers()
   ]);
 
-  const stages = stagesResult.success ? stagesResult.data || [] : [];
-  const opportunities = opportunitiesResult.success ? opportunitiesResult.data || [] : [];
+  const stages = (stagesResult as any).success ? (stagesResult as any).data || [] : [];
+  const opportunities = (opportunitiesResult as any).success ? (opportunitiesResult as any).data || [] : [];
+  const contacts = contactsRes.data || [];
 
   return (
-    <MetaData pageTitle="Strategic Pipelines">
+    <MetaData pageTitle={`Sales Pipeline | ${activePipeline.name}`}>
       <Wrapper>
-        <div className="flex flex-col min-h-screen bg-[#04091a]">
-          <PipelineClient 
+        <div className="flex flex-col h-screen bg-[#04091a] overflow-hidden">
+          <PipelinesClient 
             pipelines={pipelines}
-            stages={stages}
-            opportunities={opportunities}
-            activePipelineId={activePipelineId}
+            activePipeline={activePipeline}
+            initialStages={stages}
+            initialOpportunities={opportunities}
+            contacts={contacts}
+            members={members}
           />
         </div>
       </Wrapper>
