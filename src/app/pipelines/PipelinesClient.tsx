@@ -11,6 +11,7 @@ import { updateDealStage } from '@/app/actions/pipelines';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Contact } from '@/types/crm';
+import { CreatePipelineModal } from './components/CreatePipelineModal';
 
 interface PipelinesClientProps {
   pipelines: Pipeline[];
@@ -35,6 +36,7 @@ export default function PipelinesClient({
   // Modals state
   const [isOppModalOpen, setIsOppModalOpen] = useState(false);
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
+  const [isPipelineModalOpen, setIsPipelineModalOpen] = useState(false);
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
   const [targetStageId, setTargetStageId] = useState<string | null>(null);
 
@@ -79,6 +81,8 @@ export default function PipelinesClient({
       const res = await updateDealStage(dealId, newStageId, newPosition);
       if (!res.success) {
         toast.error('Tactical failure: Could not update deal stage');
+      } else {
+        router.refresh();
       }
     });
   };
@@ -104,6 +108,13 @@ export default function PipelinesClient({
                 </option>
               ))}
             </select>
+            <button 
+              onClick={() => setIsPipelineModalOpen(true)}
+              className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-[#4a5a82] hover:text-[#2563eb] hover:bg-[#2563eb]/10 transition-all"
+              title="Add New Pipeline"
+            >
+              <i className="fa-solid fa-plus text-[10px]"></i>
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -142,7 +153,10 @@ export default function PipelinesClient({
             ))}
 
             {/* Add Stage Placeholder */}
-            <div className="flex flex-col min-h-[200px] items-center justify-center border-2 border-dashed border-white/5 rounded-2xl group hover:border-white/10 transition-all cursor-pointer bg-[#080f28]/20">
+            <div 
+              onClick={() => setIsStageModalOpen(true)}
+              className="flex flex-col min-h-[200px] items-center justify-center border-2 border-dashed border-white/5 rounded-2xl group hover:border-white/10 transition-all cursor-pointer bg-[#080f28]/20"
+            >
               <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:bg-[#2563eb]/10 transition-all">
                 <i className="fa-solid fa-plus text-[#4a5a82] group-hover:text-[#2563eb]"></i>
               </div>
@@ -167,6 +181,11 @@ export default function PipelinesClient({
         onClose={() => setIsStageModalOpen(false)}
         pipelineId={activePipeline.id}
         initialStages={initialStages}
+      />
+
+      <CreatePipelineModal 
+        isOpen={isPipelineModalOpen}
+        onClose={() => setIsPipelineModalOpen(false)}
       />
     </div>
   );

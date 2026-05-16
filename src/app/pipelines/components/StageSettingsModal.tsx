@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { PipelineStage } from '@/types/crm';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { updateStageOrder, updateStage, deleteStage } from '@/app/actions/pipelines';
+import { updateStageOrder, updateStage, deleteStage, updatePipelineStages } from '@/app/actions/pipelines';
 import { toast } from 'sonner';
 
 interface StageSettingsModalProps {
@@ -29,6 +29,7 @@ export function StageSettingsModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [newStageName, setNewStageName] = useState('');
 
   useEffect(() => {
     setStages(initialStages);
@@ -47,7 +48,7 @@ export function StageSettingsModal({
     }));
 
     setStages(updatedItems);
-    
+
     // Persist reorder
     const res = await updateStageOrder(pipelineId, updatedItems.map(s => ({ id: s.id, position: s.position })));
     if (!res.success) toast.error('Failed to sync stage order');
@@ -55,7 +56,7 @@ export function StageSettingsModal({
 
   const handleRename = async (id: string) => {
     if (!editName.trim()) return setEditingId(null);
-    
+
     setIsProcessing(true);
     const res = await updateStage(id, editName.trim());
     if (res.success) {
@@ -70,7 +71,7 @@ export function StageSettingsModal({
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure? All deals in this stage will be permanently detached.')) return;
-    
+
     setIsProcessing(true);
     const res = await deleteStage(id);
     if (res.success) {
@@ -78,6 +79,26 @@ export function StageSettingsModal({
       toast.success('Stage purged');
     } else {
       toast.error('Failed to delete stage');
+    }
+    setIsProcessing(false);
+  };
+
+  const handleAddStage = async () => {
+    if (!newStageName.trim()) return;
+
+    setIsProcessing(true);
+    const tempId = `new-${Date.now()}`;
+    const newStage = { id: tempId, name: newStageName.trim(), position: stages.length };
+
+    // Using updatePipelineStages which already handles 'new-' prefixed IDs
+    const res = await updatePipelineStages(pipelineId, [...stages, newStage]);
+
+    if (res.success) {
+      toast.success('New stage activated');
+      setNewStageName('');
+      // The useEffect will refresh the stages from props when the page revalidates
+    } else {
+      toast.error('Failed to create stage');
     }
     setIsProcessing(false);
   };
@@ -125,7 +146,7 @@ export function StageSettingsModal({
 
                           <div className="flex-1">
                             {editingId === stage.id ? (
-                              <input 
+                              <input
                                 autoFocus
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
@@ -139,7 +160,7 @@ export function StageSettingsModal({
                           </div>
 
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
+                            <button
                               onClick={() => {
                                 setEditingId(stage.id);
                                 setEditName(stage.name);
@@ -148,7 +169,7 @@ export function StageSettingsModal({
                             >
                               <i className="fa-solid fa-pen text-[12px]"></i>
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleDelete(stage.id)}
                               className="p-2 rounded-lg text-[#4a5a82] hover:text-red-500 hover:bg-red-500/10 transition-all"
                             >
@@ -165,8 +186,25 @@ export function StageSettingsModal({
             </Droppable>
           </DragDropContext>
 
+          <div className="mt-4 flex items-center gap-2 p-1 bg-white/5 border border-white/10 rounded-xl focus-within:border-[#2563eb]/50 transition-all">
+            <input
+              value={newStageName}
+              onChange={(e) => setNewStageName(e.target.value)}
+              placeholder="Enter stage name..."
+              className="flex-1 bg-transparent px-3 py-2 text-[13px] text-white focus:outline-none"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddStage()}
+            />
+            <button
+              onClick={handleAddStage}
+              disabled={isProcessing || !newStageName.trim()}
+              className="h-8 px-3 rounded-lg bg-[#2563eb] text-white text-[11px] font-bold hover:bg-[#2563eb]/90 transition-all disabled:opacity-50"
+            >
+              Add Stage
+            </button>
+          </div>
+
           <div className="mt-8">
-            <button 
+            <button
               onClick={onClose}
               className="w-full h-11 rounded-xl bg-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-bold uppercase tracking-widest transition-all"
             >
