@@ -160,3 +160,44 @@ export async function deleteOpportunity(id: string) {
   return { success: true };
 }
 
+export async function updateStageOrder(pipelineId: string, stages: { id: string, position: number }[]) {
+  const supabase = await createServerClient();
+  
+  const { error } = await supabase.rpc('update_stage_positions', {
+    stage_updates: stages
+  });
+
+  if (error) {
+    // Fallback if RPC doesn't exist yet
+    for (const stage of stages) {
+      await supabase
+        .from('pipeline_stages')
+        .update({ position: stage.position })
+        .eq('id', stage.id);
+    }
+  }
+
+  revalidatePath('/pipelines');
+  return { success: true };
+}
+
+export async function updateStage(id: string, name: string) {
+  const supabase = await createServerClient();
+  const { error } = await supabase
+    .from('pipeline_stages')
+    .update({ name, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/pipelines');
+  return { success: true };
+}
+
+export async function deleteStage(id: string) {
+  const supabase = await createServerClient();
+  const { error } = await supabase.from('pipeline_stages').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/pipelines');
+  return { success: true };
+}
+
