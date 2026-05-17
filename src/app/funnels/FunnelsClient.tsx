@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Filter, ArrowRight, Globe, Pencil, Trash2, X, ExternalLink,
   CheckCircle, Clock, MoreVertical, Copy, BarChart2, Layout
@@ -14,12 +13,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { createFunnel } from '@/app/actions/marketing';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { createServerClient } from '@/lib/supabase/server';
+import { EmptyState } from '@/components/funnels/EmptyState';
+import { cn } from '@/lib/utils';
 
 export default function FunnelsClient({ initialFunnels }: { initialFunnels: any[] }) {
   const router = useRouter();
@@ -132,64 +132,80 @@ export default function FunnelsClient({ initialFunnels }: { initialFunnels: any[
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 select-none">
+      {/* Page Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="card__title !text-4xl uppercase mb-1">Marketing <span className="text-primary">Funnels</span></h1>
-          <p className="card__sub-title !text-[11px] uppercase tracking-[0.2em]">Design high-performance conversion pathways.</p>
+        <div className="ph-left">
+          <h1 className="text-[22px] font-bold font-display tracking-tight text-[#eef2ff]">
+            Marketing <span className="text-[#3b82f6]">Funnels</span>
+          </h1>
+          <p className="text-[11.5px] text-[#4a5a82] uppercase tracking-[0.8px] font-medium mt-1">
+            Design high-performance conversion pathways and sequential user steps
+          </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
-          <Plus className="w-4 h-4 mr-2" /> New Funnel
+        <Button 
+          onClick={() => setCreateOpen(true)} 
+          className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-[8px] font-semibold text-[13px] h-9 px-5 shadow-lg shadow-[#2563eb]/20 transition-all active:scale-[0.98] flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> 
+          <span>New Funnel</span>
         </Button>
       </div>
 
+      {/* Main Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {funnels.length === 0 ? (
-          <div className="col-span-full py-20 bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary/40 transition-all" onClick={() => setCreateOpen(true)}>
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
-              <Filter className="w-8 h-8 text-primary" />
-            </div>
-            <h3 className="text-lg font-black uppercase text-gray-500 tracking-widest">No Funnels Yet</h3>
-            <p className="text-gray-400 text-[10px] font-bold mt-2 uppercase tracking-widest">Click to create your first funnel</p>
+          <div className="col-span-full">
+            <EmptyState onCreateFunnel={() => setCreateOpen(true)} />
           </div>
         ) : funnels.map(funnel => (
-          <div key={funnel.id} className="card__wrapper !p-6 !mb-0 group hover:border-primary/50 transition-all duration-300 shadow-lg relative flex flex-col justify-between">
+          <div 
+            key={funnel.id} 
+            className="relative bg-[#0c1535]/85 border border-white/[0.07] rounded-xl p-[18px] transition-all duration-300 hover:bg-[#152550]/90 hover:border-white/[0.13] hover:-translate-y-0.5 group flex flex-col justify-between shadow-sm border-t-[3.5px] border-t-white/10"
+          >
             <div>
-              <div className="flex justify-between items-start mb-6">
-                <div 
+              <div className="flex justify-between items-start mb-5">
+                <div
                   onClick={() => router.push(`/funnels/${funnel.id}`)}
-                  className="h-12 w-12 rounded-2xl bg-primary/10 hover:bg-primary/20 cursor-pointer flex items-center justify-center text-primary border border-primary/20 transition-all"
+                  className="h-10 w-10 rounded-[10px] bg-white/[0.05] border border-white/[0.07] flex items-center justify-center text-[#94a3c8] group-hover:text-[#3b82f6] group-hover:bg-[#3b82f6]/10 group-hover:border-[#3b82f6]/20 cursor-pointer transition-all shadow-inner"
                   title="Open Funnel Builder"
                 >
-                  <Layout size={20} />
+                  <Layout size={18} />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border-none ${funnel.is_published ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  <span className={cn(
+                    "text-[10.5px] font-bold px-2.5 py-0.5 rounded-full border shadow-sm",
+                    funnel.is_published
+                      ? "bg-[#10b981]/10 text-[#34d399] border-[#10b981]/20"
+                      : "bg-[#8b5cf6]/10 text-[#a78bfa] border-[#8b5cf6]/20"
+                  )}>
                     {funnel.is_published ? 'Live' : 'Draft'}
-                  </Badge>
+                  </span>
+                  
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="h-8 w-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-                        <MoreVertical size={14} className="text-gray-600" />
+                      <button className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 transition-all">
+                        <MoreVertical className="h-4 w-4" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-xl rounded-xl min-w-[200px] p-1">
-                      <DropdownMenuItem onClick={() => router.push(`/funnels/${funnel.id}`)} className="flex items-center gap-2 cursor-pointer text-primary hover:bg-primary/5 font-bold rounded-lg px-3 py-2">
-                        <Layout size={14} /> Open Builder
+                    <DropdownMenuContent align="end" className="w-52 bg-[#0c1535] border-white/[0.07] p-1.5 rounded-[12px] shadow-2xl z-[9999]">
+                      <DropdownMenuItem onClick={() => router.push(`/funnels/${funnel.id}`)} className="flex items-center gap-2.5 p-2.5 rounded-[8px] text-[12px] font-medium text-[#94a3c8] cursor-pointer hover:bg-white/[0.05] hover:text-[#eef2ff] transition-all">
+                        <Layout size={14} className="text-[#3b82f6]" /> Open Builder
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/funnels/${funnel.id}/analytics`)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg px-3 py-2">
+                      <DropdownMenuItem onClick={() => router.push(`/funnels/${funnel.id}/analytics`)} className="flex items-center gap-2.5 p-2.5 rounded-[8px] text-[12px] font-medium text-[#94a3c8] cursor-pointer hover:bg-white/[0.05] hover:text-[#eef2ff] transition-all">
                         <BarChart2 size={14} /> View Analytics
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleClone(funnel)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg px-3 py-2">
+                      <DropdownMenuItem onClick={() => handleClone(funnel)} className="flex items-center gap-2.5 p-2.5 rounded-[8px] text-[12px] font-medium text-[#94a3c8] cursor-pointer hover:bg-white/[0.05] hover:text-[#eef2ff] transition-all">
                         <Copy size={14} /> Clone Funnel
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openEdit(funnel)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg px-3 py-2">
+                      <DropdownMenuItem onClick={() => openEdit(funnel)} className="flex items-center gap-2.5 p-2.5 rounded-[8px] text-[12px] font-medium text-[#94a3c8] cursor-pointer hover:bg-white/[0.05] hover:text-[#eef2ff] transition-all">
                         <Pencil size={14} /> Edit Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handlePublish(funnel)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg px-3 py-2">
+                      <DropdownMenuItem onClick={() => handlePublish(funnel)} className="flex items-center gap-2.5 p-2.5 rounded-[8px] text-[12px] font-medium text-[#94a3c8] cursor-pointer hover:bg-white/[0.05] hover:text-[#eef2ff] transition-all">
                         {funnel.is_published ? <><Clock size={14} /> Move to Draft</> : <><CheckCircle size={14} /> Publish Live</>}
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openDelete(funnel)} className="flex items-center gap-2 cursor-pointer text-rose-600 hover:bg-rose-50 rounded-lg px-3 py-2">
+                      <DropdownMenuSeparator className="bg-white/[0.07] my-1" />
+                      <DropdownMenuItem onClick={() => openDelete(funnel)} className="flex items-center gap-2.5 p-2.5 rounded-[8px] text-[12px] font-medium text-[#ef4444] cursor-pointer hover:bg-[#ef4444]/10 transition-all">
                         <Trash2 size={14} /> Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -197,35 +213,46 @@ export default function FunnelsClient({ initialFunnels }: { initialFunnels: any[
                 </div>
               </div>
 
-              <div className="mb-6 cursor-pointer group-hover:translate-x-1 transition-transform" onClick={() => router.push(`/funnels/${funnel.id}`)}>
-                <h4 className="text-xl font-black text-gray-800 uppercase tracking-tighter mb-1 group-hover:text-primary transition-colors">{funnel.name}</h4>
-                <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  <Globe size={12} className="text-primary" />
-                  <span className="text-primary/70 lowercase">/{funnel.subdomain || 'funnel'}</span>
+              <div className="mb-5 cursor-pointer group-hover:translate-x-0.5 transition-transform" onClick={() => router.push(`/funnels/${funnel.id}`)}>
+                <h4 className="text-[15px] font-bold text-[#eef2ff] tracking-tight font-display mb-1 group-hover:text-[#3b82f6] transition-colors leading-tight">
+                  {funnel.name}
+                </h4>
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                  <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-wider shrink-0">Path:</span>
+                  <span className="text-[11px] font-medium text-[#3b82f6]/70 lowercase truncate">/{funnel.subdomain || 'funnel'}</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 py-3 mb-4 bg-gray-50 rounded-xl px-3 text-center border border-gray-100">
+              <div className="grid grid-cols-3 gap-2 py-3 bg-white/[0.02] border border-white/5 rounded-xl text-center mb-6">
                 <div>
-                  <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-wider">Steps</span>
-                  <span className="text-xs font-black text-gray-700">1+</span>
+                  <span className="block text-[8px] font-bold text-[#4a5a82] uppercase tracking-wider mb-0.5">Steps</span>
+                  <span className="text-xs font-black text-[#eef2ff]">1+</span>
                 </div>
-                <div className="border-x border-gray-200">
-                  <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-wider">Views</span>
-                  <span className="text-xs font-black text-gray-700">0</span>
+                <div className="border-x border-white/10">
+                  <span className="block text-[8px] font-bold text-[#4a5a82] uppercase tracking-wider mb-0.5">Views</span>
+                  <span className="text-xs font-black text-[#eef2ff]">0</span>
                 </div>
                 <div>
-                  <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-wider">Conv.</span>
-                  <span className="text-xs font-black text-emerald-600">0%</span>
+                  <span className="block text-[8px] font-bold text-[#4a5a82] uppercase tracking-wider mb-0.5">Conv.</span>
+                  <span className="text-xs font-black text-emerald-500">0%</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-4 border-t border-gray-100 mt-auto">
-              <Button onClick={() => router.push(`/funnels/${funnel.id}`)} className="flex-1 h-9 bg-primary hover:bg-primary/90 text-white font-black text-[9px] uppercase tracking-widest rounded-xl shadow-md shadow-primary/10">
-                Open Builder
+            <div className="flex items-center gap-2 pt-4 border-t border-white/[0.07] mt-auto">
+              <Button 
+                onClick={() => router.push(`/funnels/${funnel.id}`)} 
+                className="flex-1 h-8.5 bg-[#2563eb] text-white rounded-[8px] font-bold text-[11.5px] hover:bg-[#1d4ed8] transition-all flex items-center justify-center gap-2 shadow-md shadow-[#2563eb]/10"
+              >
+                <span>Open Builder</span>
+                <ArrowRight size={13} />
               </Button>
-              <Button onClick={() => openEdit(funnel)} variant="outline" size="icon" className="h-9 w-9 rounded-xl border-gray-200 text-gray-600 hover:text-primary hover:border-primary/40">
+              <Button 
+                onClick={() => openEdit(funnel)} 
+                variant="outline" 
+                size="icon" 
+                className="h-8.5 w-8.5 rounded-[8px] bg-white/[0.04] border border-white/[0.07] text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 transition-all"
+              >
                 <Pencil size={12} />
               </Button>
             </div>
@@ -235,56 +262,72 @@ export default function FunnelsClient({ initialFunnels }: { initialFunnels: any[
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="bg-white border border-gray-200 rounded-3xl max-w-md p-8 shadow-2xl">
+        <DialogContent className="bg-[#080f28] border border-white/[0.07] text-[#eef2ff] max-w-md p-8 shadow-2xl rounded-[16px] z-[9999]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-gray-800">New <span className="text-primary">Funnel</span></DialogTitle>
+            <DialogTitle className="text-[18px] font-bold font-display uppercase tracking-tight">Deploy <span className="text-[#3b82f6]">New Funnel</span></DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Funnel Name</Label>
-              <Input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="e.g. Lead Capture Funnel" className="h-12 border-gray-200 rounded-xl text-gray-800" onKeyDown={e => e.key === 'Enter' && handleCreate()} />
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Funnel Name</Label>
+              <Input 
+                value={createName} 
+                onChange={e => setCreateName(e.target.value)} 
+                placeholder="e.g. Lead Capture Funnel" 
+                className="h-11 bg-white/[0.04] border-white/10 text-white rounded-[10px] px-5 text-[13px] font-medium placeholder:text-[#2a3557] focus:border-[#2563eb]/50 focus:bg-white/[0.06] transition-all outline-none" 
+                onKeyDown={e => e.key === 'Enter' && handleCreate()} 
+              />
             </div>
           </div>
           <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setCreateOpen(false)} className="border-gray-200 text-gray-600 rounded-xl">Cancel</Button>
-            <Button onClick={handleCreate} disabled={creating} className="btn-primary rounded-xl font-black uppercase text-xs px-8">{creating ? 'Creating...' : 'Create Funnel'}</Button>
+            <Button variant="ghost" onClick={() => setCreateOpen(false)} className="text-[11px] font-bold uppercase tracking-widest text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 h-10 px-6 rounded-[8px]">Cancel</Button>
+            <Button onClick={handleCreate} disabled={creating} className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-[8px] font-semibold text-[11px] uppercase tracking-widest h-10 px-6 shadow-lg shadow-[#2563eb]/20">{creating ? 'Creating...' : 'Create'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="bg-white border border-gray-200 rounded-3xl max-w-md p-8 shadow-2xl">
+        <DialogContent className="bg-[#080f28] border border-white/[0.07] text-[#eef2ff] max-w-md p-8 shadow-2xl rounded-[16px] z-[9999]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-gray-800">Edit <span className="text-primary">Funnel</span></DialogTitle>
+            <DialogTitle className="text-[18px] font-bold font-display uppercase tracking-tight">Configure <span className="text-[#3b82f6]">Funnel Settings</span></DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Name</Label>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-12 border-gray-200 rounded-xl text-gray-800" />
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Name</Label>
+              <Input 
+                value={editName} 
+                onChange={e => setEditName(e.target.value)} 
+                className="h-11 bg-white/[0.04] border-white/10 text-white rounded-[10px] px-5 text-[13px] font-medium focus:border-[#2563eb]/50 focus:bg-white/[0.06] transition-all outline-none" 
+              />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">URL Slug</Label>
-              <Input value={editSubdomain} onChange={e => setEditSubdomain(e.target.value.toLowerCase().replace(/\s+/g, '-'))} className="h-12 border-gray-200 rounded-xl text-gray-800" />
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">URL Path Slug</Label>
+              <Input 
+                value={editSubdomain} 
+                onChange={e => setEditSubdomain(e.target.value.toLowerCase().replace(/\s+/g, '-'))} 
+                className="h-11 bg-white/[0.04] border-white/10 text-white rounded-[10px] px-5 text-[13px] font-medium focus:border-[#2563eb]/50 focus:bg-white/[0.06] transition-all outline-none" 
+              />
             </div>
           </div>
           <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setEditOpen(false)} className="border-gray-200 text-gray-600 rounded-xl">Cancel</Button>
-            <Button onClick={handleSaveEdit} disabled={saving} className="btn-primary rounded-xl font-black uppercase text-xs px-8">{saving ? 'Saving...' : 'Save Changes'}</Button>
+            <Button variant="ghost" onClick={() => setEditOpen(false)} className="text-[11px] font-bold uppercase tracking-widest text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 h-10 px-6 rounded-[8px]">Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={saving} className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-[8px] font-semibold text-[11px] uppercase tracking-widest h-10 px-6 shadow-lg shadow-[#2563eb]/20">{saving ? 'Saving...' : 'Save'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="bg-white border border-gray-200 rounded-3xl max-w-sm p-8 shadow-2xl">
+        <DialogContent className="bg-[#080f28] border border-white/[0.07] text-[#eef2ff] max-w-sm p-8 shadow-2xl rounded-[16px] z-[9999]">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight text-gray-800">Delete Funnel?</DialogTitle>
+            <DialogTitle className="text-[18px] font-bold font-display uppercase tracking-tight text-red-500">Purge Funnel?</DialogTitle>
           </DialogHeader>
-          <p className="text-gray-500 text-sm py-4">This will permanently delete <strong className="text-gray-800">{deleteFunnel?.name}</strong> and all its data. This cannot be undone.</p>
+          <p className="text-[#94a3c8] text-[13px] py-4 leading-relaxed">
+            This will permanently delete funnel <strong className="text-[#eef2ff]">{deleteFunnel?.name}</strong> and all its ordered page lanes. This action is irreversible.
+          </p>
           <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)} className="border-gray-200 text-gray-600 rounded-xl">Cancel</Button>
-            <Button onClick={handleDelete} disabled={deleting} className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black uppercase text-xs px-8">{deleting ? 'Deleting...' : 'Delete'}</Button>
+            <Button variant="ghost" onClick={() => setDeleteOpen(false)} className="text-[11px] font-bold uppercase tracking-widest text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 h-10 px-6 rounded-[8px]">Cancel</Button>
+            <Button onClick={handleDelete} disabled={deleting} className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-[8px] font-semibold text-[11px] uppercase tracking-widest h-10 px-6">{deleting ? 'Purging...' : 'Confirm Purge'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

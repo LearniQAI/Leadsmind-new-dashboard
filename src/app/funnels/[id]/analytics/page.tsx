@@ -20,7 +20,7 @@ export default async function FunnelAnalyticsPage({ params }: { params: { id: st
  if (!funnel) return notFound();
 
  // Sort steps by order
- const steps = (funnel.steps || []).sort((a: any, b: any) => a.order - b.order);
+ const steps = (funnel.steps || []).sort((a: any, b: any) => a.position - b.position);
 
  // Simulated high-fidelity statistics for dashboard WOW factor
  const totalViews = 1248;
@@ -135,7 +135,7 @@ export default async function FunnelAnalyticsPage({ params }: { params: { id: st
            <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
              <h4 className="font-black text-sm text-gray-800 uppercase truncate">{step.name}</h4>
-             <span className="text-[10px] font-bold text-gray-400 lowercase truncate">({step.path_name})</span>
+             <span className="text-[10px] font-bold text-gray-400 lowercase truncate">({step.path})</span>
             </div>
             {/* Visual throughput bar */}
             <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden mt-2">

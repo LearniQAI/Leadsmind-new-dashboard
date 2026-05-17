@@ -5,12 +5,12 @@ export default async function FunnelEditorRedirectPage({ params }: { params: { i
  const supabase = await createClient();
  const { id } = await params;
 
- // Find the first step for this funnel ordered by 'order'
+ // Find the first step for this funnel ordered by 'position'
  const { data: firstStep } = await supabase
   .from('funnel_steps')
   .select('id, pages(id)')
   .eq('funnel_id', id)
-  .order('order', { ascending: true })
+  .order('position', { ascending: true })
   .limit(1)
   .single();
 
@@ -50,9 +50,10 @@ export default async function FunnelEditorRedirectPage({ params }: { params: { i
   .from('funnel_steps')
   .insert({
    funnel_id: id,
+   workspace_id: funnel.workspace_id,
    name: 'Opt-in Page',
-   path_name: '/',
-   "order": 1
+   path: '/',
+   position: 1
   })
   .select()
   .single();

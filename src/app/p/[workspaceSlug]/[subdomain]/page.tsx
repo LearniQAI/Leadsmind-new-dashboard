@@ -46,7 +46,7 @@ export default async function PublishedSubdomainRootPage({
   // Fetch all routing pages for context
   const { data: wsPages } = await supabase
    .from('website_pages')
-   .select('id, name, path_name, pages(content)')
+   .select('id, name, path, pages(content)')
    .eq('website_id', website.id);
 
   if (wsPages) {
@@ -81,15 +81,15 @@ export default async function PublishedSubdomainRootPage({
    // Fetch all funnel steps
    const { data: steps } = await supabase
     .from('funnel_steps')
-    .select('id, name, path_name, pages(content)')
+    .select('id, name, path, pages(content)')
     .eq('funnel_id', funnel.id)
-    .order('order', { ascending: true });
+    .order('position', { ascending: true });
 
    if (steps) {
     allPages = steps.map(s => ({
      id: s.id,
      name: s.name,
-     slug: s.path_name.replace(/^\/+/, '') || 'step'
+     slug: s.path.replace(/^\/+/, '') || 'step'
     }));
 
     targetPageContent = (steps[0]?.pages as any)?.[0]?.content || null;

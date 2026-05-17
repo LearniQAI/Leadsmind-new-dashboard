@@ -289,7 +289,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
      funnel_step:funnel_steps(
       id,
       name,
-      path_name,
+      path,
       funnel:funnels(*)
      )
     `)
@@ -334,15 +334,16 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 } else {
                     const { data: siblingSteps } = await supabase
                         .from('funnel_steps')
-                        .select(`id, name, path_name, pages (id)`)
+                        .select(`id, name, path, pages (id)`)
                         .eq('funnel_id', finalResource.id)
-                        .order('order', { ascending: true });
+                        .order('position', { ascending: true });
 
                     if (siblingSteps) {
                         setPages(siblingSteps.map(s => ({
                             id: (s.pages as any)?.[0]?.id || s.id,
+                            stepId: s.id,
                             name: s.name,
-                            slug: s.path_name.replace('/', '') || 'step'
+                            slug: s.path.replace('/', '') || 'step'
                         })));
                     }
                 }

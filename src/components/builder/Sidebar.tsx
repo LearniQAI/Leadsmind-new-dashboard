@@ -31,6 +31,11 @@ import { Layout, Type, Image as ImageIcon, RectangleHorizontal as ButtonIcon, Sq
 import { BlogFeed } from './user/BlogFeed';
 import { RESOLVER } from '@/lib/builder/resolver';
 import { WebsiteSettings } from './WebsiteSettings';
+import { useBuilder } from './BuilderContext';
+import { useRouter, useParams } from 'next/navigation';
+import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
+import StepNavigator from '@/components/funnels/StepNavigator';
 
 const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: any, component: React.ReactElement }) => {
  const { connectors } = useEditor();
@@ -65,7 +70,97 @@ export const Sidebar = ({
  website?: any,
  onUpdateWebsite?: (updates: any) => void
 }) => {
+ const router = useRouter();
+ const { pageId } = useParams();
+ const { pages, websiteData } = useBuilder();
  const [activeTab, setActiveTab] = React.useState<'elements' | 'layers' | 'settings' | 'page'>(type === 'funnel' ? 'layers' : 'elements');
+
+ // Map the pages array from builder context to the step navigator format
+ const funnelSteps = pages.map((p, idx) => ({
+  id: p.id,
+  stepId: p.stepId,
+  name: p.name,
+  path: '/' + p.slug,
+  position: idx + 1,
+  type: p.name.toLowerCase().includes('thank') ? 'thankyou' as const : 
+        p.name.toLowerCase().includes('checkout') ? 'checkout' as const : 
+        p.name.toLowerCase().includes('sales') ? 'sales' as const : 'optin' as const
+ }));
+
+ const handleSelectStep = (targetPageId: string) => {
+  router.push(`/editor/funnel/${websiteData?.id}/${targetPageId}`);
+ };
+
+ const handleAddStep = async () => {
+  if (!websiteData?.id) return;
+  const toastId = toast.loading('Adding new funnel step...');
+  try {
+   const supabase = createClient();
+   const nextOrder = funnelSteps.length + 1;
+   const stepName = `Step ${nextOrder}`;
+   const stepPath = `/step-${nextOrder}`;
+
+   // 1. Insert new funnel step
+   const { data: step, error: stepError } = await supabase
+    .from('funnel_steps')
+    .insert({
+     funnel_id: websiteData.id,
+     workspace_id: websiteData.workspace_id,
+     name: stepName,
+     path: stepPath,
+     position: nextOrder
+    })
+    .select()
+    .single();
+
+   if (stepError) throw stepError;
+
+   // 2. Insert new page
+   const initialContent = '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
+   const { data: page, error: pageError } = await supabase
+    .from('pages')
+    .insert({
+     workspace_id: step.workspace_id,
+     funnel_step_id: step.id,
+     name: stepName,
+     content: initialContent,
+     status: 'draft'
+    })
+    .select()
+    .single();
+
+   if (pageError) throw pageError;
+
+   toast.success('Step added successfully!', { id: toastId });
+   router.push(`/editor/funnel/${websiteData.id}/${page.id}`);
+   setTimeout(() => window.location.reload(), 300);
+  } catch (err: any) {
+   toast.error('Failed to add step: ' + err.message, { id: toastId });
+  }
+ };
+
+ const handleReorderSteps = async (newSteps: any[]) => {
+  const toastId = toast.loading('Saving step order...');
+  try {
+   const supabase = createClient();
+   
+   // Parallel batch updates of order column
+   const updates = newSteps.map((step, idx) => 
+    supabase
+     .from('funnel_steps')
+     .update({ position: idx + 1 })
+     .eq('id', step.stepId)
+   );
+
+   await Promise.all(updates);
+   toast.success('Step order updated!', { id: toastId });
+   
+   // Reload context steps
+   window.location.reload();
+  } catch (err: any) {
+   toast.error('Failed to save order: ' + err.message, { id: toastId });
+  }
+ };
 
  return (
   <div className="w-[300px] h-full bg-[#0b0b14] border-r border-white/5 flex flex-col font-sans select-none z-40">
@@ -181,10 +276,16 @@ export const Sidebar = ({
       </div>
      </section>
     </div>
-   ) : activeTab === 'layers' ? (
-    <div className="flex-1 overflow-hidden">
-     {/* Funnel content if needed */}
-    </div>
+    ) : activeTab === 'layers' ? (
+     <div className="flex-1 overflow-hidden h-full">
+      <StepNavigator
+       steps={funnelSteps}
+       activeStepId={pageId as string}
+       onSelectStep={handleSelectStep}
+       onReorder={handleReorderSteps}
+       onAddStep={handleAddStep}
+      />
+     </div>
    ) : activeTab === 'page' ? (
     <div className="flex-1 overflow-hidden">
      <PageSettings />
