@@ -10,8 +10,8 @@ import { TaskDetailDrawer } from './TaskDetailDrawer';
 import { CreateTaskModal } from './CreateTaskModal';
 import { getTasks, updateTaskStatus, getUserRole } from '@/app/actions/tasks';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
+import { TasksBoardSkeleton } from './skeletons/TasksBoardSkeleton';
 
 const COLUMNS = [
   { id: 'todo', title: 'To Do' },
@@ -160,11 +160,7 @@ export function TasksBoard() {
   }, [tasks, searchQuery, myTasksOnly, selectedAssignees, dueTodayOnly, highPriorityOnly, sortBy, user]);
 
   if (loading && tasks.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-[400px]">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
+    return <TasksBoardSkeleton />;
   }
 
   return (
