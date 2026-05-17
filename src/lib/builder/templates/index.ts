@@ -11,6 +11,7 @@ import { creativePortfolio } from './creative-portfolio';
 import { etherealWellness } from './ethereal-wellness';
 import { humanInterest } from './human-interest';
 import { hutsArchitectural } from './huts-architectural';
+import { agenticCopilot } from './agentic-copilot';
 import { BuilderTemplate } from '../templates';
 
 export const ALL_TEMPLATES: BuilderTemplate[] = [
@@ -26,5 +27,6 @@ export const ALL_TEMPLATES: BuilderTemplate[] = [
   creativePortfolio,
   etherealWellness,
   humanInterest,
-  hutsArchitectural
+  hutsArchitectural,
+  agenticCopilot
 ];
