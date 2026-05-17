@@ -56,6 +56,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
+import { WebsitesSkeleton } from "@/components/builder/skeletons/WebsitesSkeleton";
 
 export default function WebsiteManager() {
   const { workspace } = useDashboardContext();
@@ -267,9 +268,13 @@ export default function WebsiteManager() {
 
   if (loading) {
     return (
-      <div className="h-[400px] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#2563eb]" />
-      </div>
+      <MetaData pageTitle="Websites | Leadsmind">
+        <Wrapper>
+          <div className="flex flex-col min-h-screen bg-[var(--n900)] overflow-hidden">
+            <WebsitesSkeleton />
+          </div>
+        </Wrapper>
+      </MetaData>
     );
   }
 
