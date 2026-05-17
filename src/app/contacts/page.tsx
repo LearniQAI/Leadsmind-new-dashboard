@@ -6,6 +6,7 @@ import ContactsClient from './ContactsClient';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getWorkspaceTags } from '../actions/contacts';
+import { ImportContactsModal } from '@/components/crm/ImportContactsModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,10 +44,7 @@ export default async function ContactsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button className="h-8 px-3 rounded-[6px] bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-semibold font-dm-sans flex items-center gap-2 transition-all">
-                <i className="fa-solid fa-file-import text-[12px] text-[#4a5a82]"></i>
-                Import
-              </button>
+              <ImportContactsModal />
               <Link
                 href="/contacts/new"
                 className="h-8 px-3 rounded-[6px] bg-[#2563eb] text-white hover:bg-[#2563eb]/90 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all shadow-lg shadow-[#2563eb]/20"

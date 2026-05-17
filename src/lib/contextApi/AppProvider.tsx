@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useRef } from "react";
 import { AppContextType } from "@/interface/common.interface";
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -11,6 +11,23 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  const [theme, setTheme] = useState<string>("dark");
  const [scrollDirection, setScrollDirection] = useState<string>("up");
  const [searchOpen, setSearchOpen] = useState<boolean>(false);
+ const isMounted = useRef(false);
+
+ // Read persisted collapse state from localStorage on mount
+ useEffect(() => {
+  const persisted = localStorage.getItem("sidebar_collapsed");
+  if (persisted !== null) {
+   setIsCollapse(persisted === "true");
+  }
+  isMounted.current = true;
+ }, []);
+
+ // Persist collapse state changes to localStorage
+ useEffect(() => {
+  if (isMounted.current) {
+   localStorage.setItem("sidebar_collapsed", String(isCollapse));
+  }
+ }, [isCollapse]);
 
  const sidebarHandle = () => {
   setSideMenuOpen(!sideMenuOpen);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -8,12 +8,14 @@ import {
   createColumnHelper,
   getSortedRowModel,
   SortingState,
+  getPaginationRowModel,
 } from '@tanstack/react-table';
 import { Contact } from '@/types/crm';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
-
 import { useRouter } from 'next/navigation';
+import { Pagination } from '@/components/common/Pagination';
+import { ContactRowSkeleton } from './skeletons/ContactRowSkeleton';
 
 interface ContactTableProps {
   contacts: Contact[];
@@ -21,6 +23,7 @@ interface ContactTableProps {
   selectedIds: Set<string>;
   onToggleAll: (checked: boolean) => void;
   onToggleOne: (id: string, checked: boolean) => void;
+  isLoading?: boolean;
 }
 
 const columnHelper = createColumnHelper<Contact>();
@@ -30,9 +33,14 @@ export function ContactTable({
   onSelectContact,
   selectedIds,
   onToggleAll,
-  onToggleOne
+  onToggleOne,
+  isLoading = false
 }: ContactTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
   const router = useRouter();
 
   const isAllSelected = contacts.length > 0 && selectedIds.size === contacts.length;
@@ -59,9 +67,7 @@ export function ContactTable({
     columnHelper.accessor('first_name', {
       header: 'Lead Name',
       cell: (info) => (
-        <div 
-          className="flex items-center gap-2.5 cursor-pointer group"
-        >
+        <div className="flex items-center gap-2.5 cursor-pointer group">
           <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[11px] font-bold text-[#eef2ff] font-space-grotesk">
             {info.row.original.first_name[0]}{info.row.original.last_name[0]}
           </div>
@@ -115,69 +121,92 @@ export function ContactTable({
   const table = useReactTable({
     data: contacts,
     columns,
-    state: { sorting },
+    state: { 
+      sorting,
+      pagination,
+    },
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   });
 
   return (
-    <div className="w-full overflow-x-auto common-scrollbar">
-      <table className="w-full text-left border-collapse">
-        <thead>
-          {table.getHeaderGroups().map(headerGroup => (
-            <tr key={headerGroup.id} className="border-b border-white/5">
-              {headerGroup.headers.map(header => (
-                <th 
-                  key={header.id} 
-                  className={cn(
-                    "px-4 py-3 text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans transition-colors select-none",
-                    header.column.getCanSort() && "cursor-pointer hover:text-[#eef2ff]"
-                  )}
-                  onClick={header.column.getToggleSortingHandler()}
-                >
-                  <div className="flex items-center gap-2">
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getCanSort() && (
-                      <div className="flex flex-col text-[8px] leading-[1] text-[#4a5a82]">
-                        <i className={cn(
-                          "fa-solid fa-caret-up mb-[1px]",
-                          header.column.getIsSorted() === 'asc' && "text-[#3b82f6]"
-                        )}></i>
-                        <i className={cn(
-                          "fa-solid fa-caret-down",
-                          header.column.getIsSorted() === 'desc' && "text-[#3b82f6]"
-                        )}></i>
-                      </div>
+    <div className="w-full flex flex-col h-full justify-between">
+      <div className="w-full overflow-x-auto common-scrollbar flex-grow">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            {table.getHeaderGroups().map(headerGroup => (
+              <tr key={headerGroup.id} className="border-b border-white/5">
+                {headerGroup.headers.map(header => (
+                  <th
+                    key={header.id}
+                    className={cn(
+                      "px-4 py-3 text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans transition-colors select-none",
+                      header.column.getCanSort() && "cursor-pointer hover:text-[#eef2ff]"
                     )}
-                  </div>
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody className="divide-y divide-white/[0.03]">
-          {table.getRowModel().rows.map(row => (
-            <tr 
-              key={row.id} 
-              onClick={(e) => {
-                // Ensure we only navigate if clicking the row background or cells (not checkboxes)
-                router.push(`/contacts/${row.original.id}`);
-              }}
-              className={cn(
-                "group transition-all hover:bg-white/[0.02] cursor-pointer border-b border-white/[0.03]",
-                selectedIds.has(row.original.id) && "bg-[#2563eb]/5"
-              )}
-            >
-              {row.getVisibleCells().map(cell => (
-                <td key={cell.id} className="px-4 py-3 align-middle">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    <div className="flex items-center gap-2">
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getCanSort() && (
+                        <div className="flex flex-col text-[8px] leading-[1] text-[#4a5a82]">
+                          <i className={cn(
+                            "fa-solid fa-caret-up mb-[1px]",
+                            header.column.getIsSorted() === 'asc' && "text-[#3b82f6]"
+                          )}></i>
+                          <i className={cn(
+                            "fa-solid fa-caret-down",
+                            header.column.getIsSorted() === 'desc' && "text-[#3b82f6]"
+                          )}></i>
+                        </div>
+                      )}
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="divide-y divide-white/[0.03]">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, idx) => (
+                <ContactRowSkeleton key={`skeleton-${idx}`} />
+              ))
+            ) : (
+              table.getRowModel().rows.map(row => (
+                <tr
+                  key={row.id}
+                  onClick={() => router.push(`/contacts/${row.original.id}`)}
+                  className={cn(
+                    "group transition-all hover:bg-white/[0.02] cursor-pointer border-b border-white/[0.03]",
+                    selectedIds.has(row.original.id) && "bg-[#2563eb]/5"
+                  )}
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <td key={cell.id} className="px-4 py-3 align-middle">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Reusable Pagination Footer */}
+      <Pagination
+        pageIndex={pagination.pageIndex}
+        pageSize={pagination.pageSize}
+        totalRows={contacts.length}
+        pageCount={table.getPageCount()}
+        canPreviousPage={table.getCanPreviousPage()}
+        canNextPage={table.getCanNextPage()}
+        onPageChange={table.setPageIndex}
+        onPageSizeChange={table.setPageSize}
+        label="leads"
+      />
     </div>
   );
 }

@@ -67,7 +67,7 @@ const SignInBasicForm = () => {
     console.error("[LoginForm] Error fetching workspaces:", wsError);
     toast.success("Logged in successfully!");
     setTimeout(() => {
-     window.location.href = next || "/";
+     window.location.href = next || "/dashboard";
     }, 100);
     return;
    }
@@ -102,7 +102,7 @@ const SignInBasicForm = () => {
     console.warn("[LoginForm] No workspaces found — redirecting to dashboard to auto-create");
     toast.success("Logged in! Setting up your workspace...");
     setTimeout(() => {
-     window.location.href = next || "/";
+     window.location.href = next || "/dashboard";
     }, 100);
     return;
    }
@@ -114,7 +114,7 @@ const SignInBasicForm = () => {
     });
     toast.success("Welcome back!");
     setTimeout(() => {
-     window.location.href = next || "/";
+     window.location.href = next || "/dashboard";
     }, 100);
    } else {
     setWorkspaces(formattedWorkspaces);
@@ -133,7 +133,7 @@ const SignInBasicForm = () => {
   await setActiveWorkspace(workspace.id);
   toast.success(`Switched to ${workspace.name}`);
   setTimeout(() => {
-   window.location.href = next || "/";
+   window.location.href = next || "/dashboard";
   }, 100);
  }
 

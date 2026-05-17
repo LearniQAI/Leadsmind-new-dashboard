@@ -1034,6 +1034,16 @@ transform: translateY(-1px);   /* subtle — not -3px or more */
 transition: width 0.25s ease;
 ```
 
+### Pulse Loading Skeletons (YouTube Style)
+- **Pulse Animation**: Always use a smooth, modern pulse animation (`.animate-pulse` or custom pulse keyframe) for loading indicators.
+- **Flat Styling (No Glowing Shadows)**: Skeletons must be completely flat with absolutely **no shadows** (`shadow-none`) and no heavy borders. Fills must use a transparent dark-mode navy like `bg-white/[0.04]` (maximum opacity `4%`) or `bg-[#0c1535]`.
+- **Skeleton Component Atomicity (Strict Rule)**: Skeletons **must never** be implemented inline inside main components or pages. Every skeleton layout must live in its own dedicated, reusable file inside a `skeletons/` subdirectory (e.g., `src/components/crm/skeletons/ContactRowSkeleton.tsx` or `src/components/common/skeletons/CardSkeleton.tsx`).
+- **Structural Mimicry**: Skeletons must mimic the exact shapes, sizes, and layout of the elements they represent:
+  - Checkboxes / Checkbox Columns → flat square skeleton (e.g. `w-4 h-4 rounded`)
+  - Avatars / Badges → circular or rounded pills (e.g. `w-7 h-7 rounded-lg`)
+  - Text lines → horizontal bars (`h-3 rounded` with random widths between 40% and 80% to look natural)
+  - Tables → replace content rows by mapping multiple skeleton elements to prevent cumulative layout shifts (CLS).
+
 ### No Heavy Animations
 - No `animation-duration` over `0.4s` for UI interactions
 - No bounce or spring effects on form elements

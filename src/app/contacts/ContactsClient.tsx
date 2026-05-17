@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Contact } from '@/types/crm';
 import { ContactTable } from '@/components/crm/ContactTable';
 import { ContactFilters } from '@/components/crm/ContactFilters';
@@ -11,6 +12,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TagDialog } from '@/components/crm/TagDialog';
 import { ManageTagsDialog } from '@/components/crm/ManageTagsDialog';
+import { ImportContactsModal } from '@/components/crm/ImportContactsModal';
 
 interface ContactsClientProps {
   initialContacts: Contact[];
@@ -26,6 +28,16 @@ export default function ContactsClient({ initialContacts, initialTags }: Contact
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
   const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const handleRefresh = () => {
+    startTransition(() => {
+      router.refresh();
+    });
+  };
 
   // Derived state
   const allTags = useMemo(() => {
@@ -101,8 +113,13 @@ export default function ContactsClient({ initialContacts, initialTags }: Contact
           description="Your database is currently empty. Start by importing leads or adding them manually to activate the command center."
           action={{
             label: "Import Contacts",
-            onClick: () => console.log('Import triggered')
+            onClick: () => setIsImportModalOpen(true)
           }}
+        />
+        <ImportContactsModal
+          isOpen={isImportModalOpen}
+          onOpenChange={setIsImportModalOpen}
+          trigger={<span className="hidden" />}
         />
       </div>
     );
@@ -144,8 +161,12 @@ export default function ContactsClient({ initialContacts, initialTags }: Contact
             <span className="text-[11px] font-bold text-[#4a5a82] uppercase tracking-widest font-dm-sans">
               Displaying {filteredContacts.length} Leads
             </span>
-            <button className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors" onClick={() => window.location.reload()}>
-              <i className="fa-solid fa-arrows-rotate text-[13px]"></i>
+            <button 
+              className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors disabled:opacity-50" 
+              onClick={handleRefresh}
+              disabled={isPending}
+            >
+              <i className={`fa-solid fa-arrows-rotate text-[13px] ${isPending ? 'animate-spin text-[#3b82f6]' : ''}`}></i>
             </button>
           </div>
         </div>
@@ -158,6 +179,7 @@ export default function ContactsClient({ initialContacts, initialTags }: Contact
             selectedIds={selectedIds}
             onToggleOne={toggleOne}
             onToggleAll={toggleAll}
+            isLoading={isPending}
           />
         </div>
       </div>
@@ -186,7 +208,7 @@ export default function ContactsClient({ initialContacts, initialTags }: Contact
         onConfirm={handleBulkAddTag}
         selectedCount={selectedIds.size}
       />
-      <ManageTagsDialog 
+      <ManageTagsDialog
         isOpen={isManageTagsOpen}
         onClose={() => setIsManageTagsOpen(false)}
         tags={initialTags && initialTags.length > 0 ? initialTags : allTags.map(tag => ({
