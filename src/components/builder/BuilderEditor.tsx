@@ -194,10 +194,10 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
 
     // Optimized Deserialization Hook
     const hasDeserialized = React.useRef<string | null>(null);
-    
+
     React.useEffect(() => {
         if (!actions || !initialContent) return;
-        
+
         // Prevent redundant deserialization if content hasn't changed
         if (hasDeserialized.current === initialContent) return;
 
@@ -210,7 +210,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
 
             try {
                 const dataToLoad = typeof initialContent === 'string' ? JSON.parse(initialContent) : initialContent;
-                
+
                 // Sanitize Payload
                 const nodeIds = new Set(Object.keys(dataToLoad));
                 Object.keys(dataToLoad).forEach(id => {
@@ -231,7 +231,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 actions.deserialize(JSON.stringify(dataToLoad));
                 hasDeserialized.current = initialContent;
                 setIsLoadingContent(false);
-                
+
                 console.log("[Builder] Content deserialized and stable.");
             } catch (err) {
                 console.error("[Builder] Deserialization failed:", err);
@@ -283,7 +283,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
      website_page:website_pages(
       id,
       name,
-      path_name,
+      path,
       website:websites(*)
      ),
      funnel_step:funnel_steps(
@@ -321,14 +321,14 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 if (type === 'website') {
                     const { data: siblingPages } = await supabase
                         .from('website_pages')
-                        .select(`id, name, path_name, pages (id)`)
+                        .select(`id, name, path, pages (id)`)
                         .eq('website_id', finalResource.id);
 
                     if (siblingPages) {
                         setPages(siblingPages.map(p => ({
                             id: (p.pages as any)?.[0]?.id || p.id,
                             name: p.name,
-                            slug: p.path_name.replace('/', '') || 'home'
+                            slug: p.path.replace('/', '') || 'home'
                         })));
                     }
                 } else {
@@ -378,7 +378,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
 
     return (
         <BuilderProvider pages={pages} websiteId={websiteData?.id} websiteData={websiteData} onUpdateWebsite={handleUpdateWebsite}>
-            <BuilderEditorLayout 
+            <BuilderEditorLayout
                 type={type}
                 websiteData={websiteData}
                 handleUpdateWebsite={handleUpdateWebsite}
@@ -399,9 +399,9 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
     );
 };
 
-const BuilderEditorLayout = ({ 
-    type, 
-    websiteData, 
+const BuilderEditorLayout = ({
+    type,
+    websiteData,
     handleUpdateWebsite,
     hasNav,
     hasFooter,
@@ -427,217 +427,217 @@ const BuilderEditorLayout = ({
     const { pageId } = useParams();
 
     return (
-            <div className="h-screen w-full flex flex-col overflow-hidden bg-[#050508] text-white">
-                {/* Header Section */}
-                <header className="h-[70px] border-b border-white/5 bg-[#0b0b14]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50">
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-3 pr-6 border-r border-white/5">
-                            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-                                <span className="font-black text-lg tracking-tighter">L</span>
-                            </div>
-                            <div>
-                                <span className="block text-[11px] font-black uppercase tracking-tighter text-white leading-none">Leadsmind</span>
-                                <span className="block text-[8px] font-bold uppercase tracking-[0.2em] text-primary mt-0.5">Neural Node Builder</span>
-                            </div>
+        <div className="h-screen w-full flex flex-col overflow-hidden bg-[#050508] text-white">
+            {/* Header Section */}
+            <header className="h-[70px] border-b border-white/5 bg-[#0b0b14]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3 pr-6 border-r border-white/5">
+                        <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+                            <span className="font-black text-lg tracking-tighter">L</span>
                         </div>
-
-                        {/* Sidebar Toggles */}
-                        <div className="flex items-center gap-2 px-4 border-r border-white/5">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                title="Toggle Elements Sidebar"
-                                onClick={() => setSidebarOpen(!sidebarOpen)}
-                                className={cn(
-                                    "h-9 w-9 rounded-lg border border-white/5 transition-all",
-                                    sidebarOpen ? "bg-white/10 text-white" : "text-white/30 hover:text-white"
-                                )}
-                            >
-                                <LayoutTemplate className="w-4 h-4" />
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                title="Toggle Properties Panel"
-                                onClick={() => setPropertiesOpen(!propertiesOpen)}
-                                className={cn(
-                                    "h-9 w-9 rounded-lg border border-white/5 transition-all",
-                                    propertiesOpen ? "bg-white/10 text-white" : "text-white/30 hover:text-white"
-                                )}
-                            >
-                                <Settings2 className="w-4 h-4" />
-                            </Button>
-                        </div>
-
-                        {/* Page Switcher */}
-                        <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-                            <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Editing Mode:</span>
-                            </div>
-                            <select
-                                value={pageId as string}
-                                onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
-                                className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-white outline-none cursor-pointer hover:text-primary transition-colors min-w-[120px]"
-                            >
-                                {pages.map((p) => (
-                                    <option key={p.id} value={p.id} className="bg-[#0b0b14] text-white">{p.name} ({p.slug})</option>
-                                ))}
-                            </select>
+                        <div>
+                            <span className="block text-[11px] font-black uppercase tracking-tighter text-white leading-none">Leadsmind</span>
+                            <span className="block text-[8px] font-bold uppercase tracking-[0.2em] text-primary mt-0.5">Neural Node Builder</span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 px-4 border-r border-white/5 mr-2">
-                            <div className="text-right hidden sm:block">
-                                <span className="block text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Node Status</span>
-                                <span className="block text-[10px] font-black uppercase text-emerald-500">System Online</span>
-                            </div>
-                        </div>
-
+                    {/* Sidebar Toggles */}
+                    <div className="flex items-center gap-2 px-4 border-r border-white/5">
                         <Button
                             variant="ghost"
-                            onClick={handleExportJSON}
-                            className="h-11 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/40 hover:text-white transition-all mr-2"
-                            title="Export for Template System"
-                        >
-                            <CopyIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            onClick={handleSaveDraft}
-                            disabled={isSaving}
-                            className="h-11 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/60 hover:text-white transition-all"
-                        >
-                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                            Save Node
-                        </Button>
-                        <Button
-                            onClick={handlePublish}
-                            disabled={isPublishing}
-                            className="h-11 px-8 text-[10px] font-black uppercase tracking-widest rounded-xl bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 transition-all active:scale-95"
-                        >
-                            {isPublishing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                            Deploy Live
-                        </Button>
-                    </div>
-                </header>
-
-                <div className="flex flex-1 overflow-hidden relative">
-                    {/* Left Sidebar Transition Wrapper */}
-                    <div
-                        className={cn(
-                            "transition-all duration-300 ease-in-out border-r border-white/5 bg-[#0b0b14] overflow-hidden shrink-0",
-                            sidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0 border-none"
-                        )}
-                    >
-                        <div className="w-[300px] h-full"> {/* Fixed width and height inner to prevent squishing and enable scrolling */}
-                            <Sidebar
-                                type={type}
-                                website={websiteData}
-                                onUpdateWebsite={handleUpdateWebsite}
-                            />
-                        </div>
-                    </div>
-                    <Viewport>
-                        <div className="flex flex-col min-h-screen w-full font-sans bg-white pointer-events-none select-none">
-                            {hasNav && (
-                                <nav
-                                    className={`w-full sticky top-0 z-50 transition-all ${navStyle.border ? 'border-b border-black/10' : ''} ${navStyle.glass ? 'backdrop-blur-md bg-opacity-70' : ''}`}
-                                    style={{ backgroundColor: navStyle.glass ? undefined : navStyle.bg }}
-                                >
-                                    {navStyle.glass && (
-                                        <div className="absolute inset-0 z-[-1] opacity-70" style={{ backgroundColor: navStyle.bg }} />
-                                    )}
-                                    <div className={`max-w-7xl mx-auto px-4 flex items-center justify-between ${navStyle.size}`}>
-                                        <div className="font-black tracking-tighter text-xl" style={{ color: navStyle.text }}>
-                                            {websiteData?.name || 'Leadsmind'}
-                                        </div>
-                                        <div className="flex items-center gap-8">
-                                            <div className="flex items-center gap-6">
-                                                {websiteConfig.navLinks.map((link: any, i: number) => (
-                                                    <a
-                                                        key={i}
-                                                        href="#"
-                                                        className="text-sm font-bold opacity-80"
-                                                        style={{ color: navStyle.text }}
-                                                    >
-                                                        {link.label}
-                                                    </a>
-                                                ))}
-                                            </div>
-                                            {navStyle.ctaText && (
-                                                <div
-                                                    className="px-5 py-2 text-sm font-bold rounded-full"
-                                                    style={{ backgroundColor: navStyle.ctaBg || '#000', color: navStyle.ctaColor || '#fff' }}
-                                                >
-                                                    {navStyle.ctaText}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </nav>
+                            size="icon"
+                            title="Toggle Elements Sidebar"
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            className={cn(
+                                "h-9 w-9 rounded-lg border border-white/5 transition-all",
+                                sidebarOpen ? "bg-white/10 text-white" : "text-white/30 hover:text-white"
                             )}
+                        >
+                            <LayoutTemplate className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Toggle Properties Panel"
+                            onClick={() => setPropertiesOpen(!propertiesOpen)}
+                            className={cn(
+                                "h-9 w-9 rounded-lg border border-white/5 transition-all",
+                                propertiesOpen ? "bg-white/10 text-white" : "text-white/30 hover:text-white"
+                            )}
+                        >
+                            <Settings2 className="w-4 h-4" />
+                        </Button>
+                    </div>
 
-                            <div className="flex-1 pointer-events-auto min-h-[500px]">
-                                {isLoadingContent ? (
-                                    <div className="w-full h-full flex items-center justify-center py-40">
-                                        <Loader2 className="w-8 h-8 animate-spin text-[#6c47ff]" />
-                                    </div>
-                                ) : (
-                                    <Frame />
+                    {/* Page Switcher */}
+                    <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Editing Mode:</span>
+                        </div>
+                        <select
+                            value={pageId as string}
+                            onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
+                            className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-white outline-none cursor-pointer hover:text-primary transition-colors min-w-[120px]"
+                        >
+                            {pages.map((p) => (
+                                <option key={p.id} value={p.id} className="bg-[#0b0b14] text-white">{p.name} ({p.slug})</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 px-4 border-r border-white/5 mr-2">
+                        <div className="text-right hidden sm:block">
+                            <span className="block text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Node Status</span>
+                            <span className="block text-[10px] font-black uppercase text-emerald-500">System Online</span>
+                        </div>
+                    </div>
+
+                    <Button
+                        variant="ghost"
+                        onClick={handleExportJSON}
+                        className="h-11 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/40 hover:text-white transition-all mr-2"
+                        title="Export for Template System"
+                    >
+                        <CopyIcon className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        onClick={handleSaveDraft}
+                        disabled={isSaving}
+                        className="h-11 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/60 hover:text-white transition-all"
+                    >
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                        Save Node
+                    </Button>
+                    <Button
+                        onClick={handlePublish}
+                        disabled={isPublishing}
+                        className="h-11 px-8 text-[10px] font-black uppercase tracking-widest rounded-xl bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 transition-all active:scale-95"
+                    >
+                        {isPublishing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                        Deploy Live
+                    </Button>
+                </div>
+            </header>
+
+            <div className="flex flex-1 overflow-hidden relative">
+                {/* Left Sidebar Transition Wrapper */}
+                <div
+                    className={cn(
+                        "transition-all duration-300 ease-in-out border-r border-white/5 bg-[#0b0b14] overflow-hidden shrink-0",
+                        sidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0 border-none"
+                    )}
+                >
+                    <div className="w-[300px] h-full"> {/* Fixed width and height inner to prevent squishing and enable scrolling */}
+                        <Sidebar
+                            type={type}
+                            website={websiteData}
+                            onUpdateWebsite={handleUpdateWebsite}
+                        />
+                    </div>
+                </div>
+                <Viewport>
+                    <div className="flex flex-col min-h-screen w-full font-sans bg-white pointer-events-none select-none">
+                        {hasNav && (
+                            <nav
+                                className={`w-full sticky top-0 z-50 transition-all ${navStyle.border ? 'border-b border-black/10' : ''} ${navStyle.glass ? 'backdrop-blur-md bg-opacity-70' : ''}`}
+                                style={{ backgroundColor: navStyle.glass ? undefined : navStyle.bg }}
+                            >
+                                {navStyle.glass && (
+                                    <div className="absolute inset-0 z-[-1] opacity-70" style={{ backgroundColor: navStyle.bg }} />
                                 )}
-                            </div>
-
-                            {hasFooter && (
-                                <footer
-                                    className={`w-full mt-auto py-16 ${footerStyle.border ? 'border-t border-black/10' : ''}`}
-                                    style={{ backgroundColor: footerStyle.bg }}
-                                >
-                                    <div className={`max-w-7xl mx-auto px-4 flex flex-col gap-8 ${footerStyle.layout === 'center' ? 'items-center text-center' : 'md:flex-row items-start justify-between'}`}>
-                                        <div className="flex flex-col gap-3 max-w-sm">
-                                            <div className="font-black tracking-tighter text-2xl" style={{ color: footerStyle.text }}>
-                                                {websiteData?.name || 'Leadsmind'}
-                                            </div>
-                                            {footerStyle.tagline && (
-                                                <p className="text-sm opacity-80 leading-relaxed" style={{ color: footerStyle.text }}>
-                                                    {footerStyle.tagline}
-                                                </p>
-                                            )}
-                                            <div className="text-sm font-medium mt-2 opacity-60" style={{ color: footerStyle.text }}>
-                                                © {new Date().getFullYear()} {websiteData?.name || 'Leadsmind'}. All rights reserved.
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-6 flex-wrap">
-                                            {websiteConfig.footerLinks.map((link: any, i: number) => (
+                                <div className={`max-w-7xl mx-auto px-4 flex items-center justify-between ${navStyle.size}`}>
+                                    <div className="font-black tracking-tighter text-xl" style={{ color: navStyle.text }}>
+                                        {websiteData?.name || 'Leadsmind'}
+                                    </div>
+                                    <div className="flex items-center gap-8">
+                                        <div className="flex items-center gap-6">
+                                            {websiteConfig.navLinks.map((link: any, i: number) => (
                                                 <a
                                                     key={i}
                                                     href="#"
                                                     className="text-sm font-bold opacity-80"
-                                                    style={{ color: footerStyle.text }}
+                                                    style={{ color: navStyle.text }}
                                                 >
                                                     {link.label}
                                                 </a>
                                             ))}
                                         </div>
+                                        {navStyle.ctaText && (
+                                            <div
+                                                className="px-5 py-2 text-sm font-bold rounded-full"
+                                                style={{ backgroundColor: navStyle.ctaBg || '#000', color: navStyle.ctaColor || '#fff' }}
+                                            >
+                                                {navStyle.ctaText}
+                                            </div>
+                                        )}
                                     </div>
-                                </footer>
+                                </div>
+                            </nav>
+                        )}
+
+                        <div className="flex-1 pointer-events-auto min-h-[500px]">
+                            {isLoadingContent ? (
+                                <div className="w-full h-full flex items-center justify-center py-40">
+                                    <Loader2 className="w-8 h-8 animate-spin text-[#6c47ff]" />
+                                </div>
+                            ) : (
+                                <Frame />
                             )}
                         </div>
-                    </Viewport>
-                    {/* Right Properties Transition Wrapper */}
-                    <div
-                        className={cn(
-                            "transition-all duration-300 ease-in-out border-l border-white/5 bg-[#0b0b14] overflow-hidden shrink-0",
-                            propertiesOpen ? "w-[320px] opacity-100" : "w-0 opacity-0 border-none"
+
+                        {hasFooter && (
+                            <footer
+                                className={`w-full mt-auto py-16 ${footerStyle.border ? 'border-t border-black/10' : ''}`}
+                                style={{ backgroundColor: footerStyle.bg }}
+                            >
+                                <div className={`max-w-7xl mx-auto px-4 flex flex-col gap-8 ${footerStyle.layout === 'center' ? 'items-center text-center' : 'md:flex-row items-start justify-between'}`}>
+                                    <div className="flex flex-col gap-3 max-w-sm">
+                                        <div className="font-black tracking-tighter text-2xl" style={{ color: footerStyle.text }}>
+                                            {websiteData?.name || 'Leadsmind'}
+                                        </div>
+                                        {footerStyle.tagline && (
+                                            <p className="text-sm opacity-80 leading-relaxed" style={{ color: footerStyle.text }}>
+                                                {footerStyle.tagline}
+                                            </p>
+                                        )}
+                                        <div className="text-sm font-medium mt-2 opacity-60" style={{ color: footerStyle.text }}>
+                                            © {new Date().getFullYear()} {websiteData?.name || 'Leadsmind'}. All rights reserved.
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-6 flex-wrap">
+                                        {websiteConfig.footerLinks.map((link: any, i: number) => (
+                                            <a
+                                                key={i}
+                                                href="#"
+                                                className="text-sm font-bold opacity-80"
+                                                style={{ color: footerStyle.text }}
+                                            >
+                                                {link.label}
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            </footer>
                         )}
-                    >
-                        <div className="w-[320px] h-full">
-                            <PropertiesPanel />
-                        </div>
+                    </div>
+                </Viewport>
+                {/* Right Properties Transition Wrapper */}
+                <div
+                    className={cn(
+                        "transition-all duration-300 ease-in-out border-l border-white/5 bg-[#0b0b14] overflow-hidden shrink-0",
+                        propertiesOpen ? "w-[320px] opacity-100" : "w-0 opacity-0 border-none"
+                    )}
+                >
+                    <div className="w-[320px] h-full">
+                        <PropertiesPanel />
                     </div>
                 </div>
             </div>
+        </div>
     );
 };
 

@@ -53,7 +53,7 @@ export interface WebsitePage {
  id: string;
  website_id: string;
  name: string;
- path_name: string;
+ path: string;
  created_at: string;
  updated_at: string;
 }

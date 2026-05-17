@@ -53,7 +53,7 @@ export async function createWebsite(name: string, subdomain: string, templateId?
       .insert({
         website_id: website.id,
         name: 'Home',
-        path_name: '/'
+        path: '/'
       })
       .select()
       .single();
@@ -122,7 +122,7 @@ export async function duplicateWebsite(websiteId: string) {
         .insert({
           website_id: duplicate.id,
           name: wp.name,
-          path_name: wp.path_name
+          path: wp.path
         })
         .select()
         .single();
@@ -233,7 +233,7 @@ export async function createPage(name: string, websiteId: string) {
       .insert({
         website_id: websiteId,
         name,
-        path_name: `/${name.toLowerCase().replace(/\s+/g, '-')}`
+        path: `/${name.toLowerCase().replace(/\s+/g, '-')}`
       })
       .select()
       .single();
