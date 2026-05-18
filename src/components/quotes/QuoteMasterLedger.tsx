@@ -75,20 +75,29 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
 
   const handleStatusChange = async (quote: any, status: string) => {
     if (!quote?.id) return;
+
     toast.promise(updateQuoteStatus(quote.id, status), {
       loading: `Updating status to ${status}...`,
       success: (res) => {
         if (!res?.success) throw new Error(res?.error || 'Update failed');
-        setQuotes(prev => prev.map(q => q?.id === quote.id ? { ...q, status } : q));
+
+        setQuotes(prev => prev.map(q =>
+          q?.id === quote.id
+            ? { ...q, status }
+            : q
+        ));
+
         return `Quote marked as ${status}`;
       },
-      error: (err) => err?.message || 'Failed to update status'
+      error: (err) => {
+        console.error("Runtime error intercepted during state re-render:", err);
+        return err?.message || 'Failed to update status';
+      }
     });
   };
-
   const handleDelete = async () => {
     if (!deleteId) return;
-    
+
     toast.promise(deleteQuote(deleteId), {
       loading: 'Deleting proposal...',
       success: (res) => {
