@@ -56,8 +56,12 @@ export async function convertQuoteToInvoice(quoteId: string) {
 
   if (updateError) return { success: false, error: updateError.message };
 
-  revalidatePath('/invoices');
-  revalidatePath('/quotes');
+  try {
+    revalidatePath('/invoices');
+    revalidatePath('/quotes');
+  } catch (e) {
+    console.warn('revalidatePath warning:', e);
+  }
   return { success: true, invoiceId: invoice.id };
 }
 
@@ -71,7 +75,11 @@ export async function updateQuoteStatus(id: string, status: string) {
     .single();
 
   if (error) return { success: false, error: error.message };
-  revalidatePath('/quotes');
+  try {
+    revalidatePath('/quotes');
+  } catch (e) {
+    console.warn('revalidatePath warning:', e);
+  }
   return { success: true, data };
 }
 
@@ -83,7 +91,11 @@ export async function deleteQuote(id: string) {
     .eq('id', id);
 
   if (error) return { success: false, error: error.message };
-  revalidatePath('/quotes');
+  try {
+    revalidatePath('/quotes');
+  } catch (e) {
+    console.warn('revalidatePath warning:', e);
+  }
   return { success: true };
 }
 
@@ -96,7 +108,11 @@ export async function saveQuote(data: any) {
     .single();
 
   if (error) return { success: false, error: error.message };
-  revalidatePath('/quotes');
+  try {
+    revalidatePath('/quotes');
+  } catch (e) {
+    console.warn('revalidatePath warning:', e);
+  }
   return { success: true, data: quote };
 }
 
@@ -130,7 +146,11 @@ export async function updateQuote(id: string, data: any) {
     .single();
 
   if (error) return { success: false, error: error.message };
-  revalidatePath('/quotes');
+  try {
+    revalidatePath('/quotes');
+  } catch (e) {
+    console.warn('revalidatePath warning:', e);
+  }
   return { success: true, data: quote };
 }
 
