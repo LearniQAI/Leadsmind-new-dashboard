@@ -225,7 +225,7 @@ export default async function PublicBlogPostPage({ params, searchParams }: PageP
               {!isDraft && <ShareButtons url={articleUrl} title={post.title} />}
 
               {/* Newsletter Capture form */}
-              <NewsletterCapture />
+              <NewsletterCapture workspaceId={post.workspace_id} />
             </div>
 
           </div>

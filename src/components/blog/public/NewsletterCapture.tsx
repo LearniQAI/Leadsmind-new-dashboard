@@ -4,7 +4,11 @@ import React, { useState } from 'react';
 import { subscribeToNewsletter } from '@/app/actions/publicBlog';
 import { Mail, Loader2, CheckCircle2 } from 'lucide-react';
 
-export const NewsletterCapture: React.FC = () => {
+interface NewsletterCaptureProps {
+  workspaceId?: string;
+}
+
+export const NewsletterCapture: React.FC<NewsletterCaptureProps> = ({ workspaceId }) => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -15,7 +19,7 @@ export const NewsletterCapture: React.FC = () => {
 
     try {
       setStatus('loading');
-      const res = await subscribeToNewsletter(email.trim());
+      const res = await subscribeToNewsletter(email.trim(), workspaceId);
       if (res.error) {
         setStatus('error');
         setMessage(res.error);

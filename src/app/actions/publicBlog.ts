@@ -55,13 +55,6 @@ export async function getPublicBlogPost(slug: string, preview = false) {
   try {
     const supabase = await createServerClient();
 
-    // Resolve workspace from session (admin preview) or fall back to any published match
-    let workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) {
-      const { data: firstWs } = await supabase.from('workspaces').select('id').limit(1).maybeSingle();
-      if (firstWs) workspaceId = firstWs.id;
-    }
-
     let query = supabase
       .from('blog_posts')
       .select(`
@@ -71,13 +64,14 @@ export async function getPublicBlogPost(slug: string, preview = false) {
       `)
       .eq('slug', slug);
 
-    // Scope to workspace when we know it
-    if (workspaceId) {
-      query = query.eq('workspace_id', workspaceId);
-    }
-
-    // Only enforce published filter for public (non-preview) access
-    if (!preview) {
+    // For previewing draft content, we scope to the admin's current workspace
+    if (preview) {
+      const workspaceId = await getCurrentWorkspaceId();
+      if (workspaceId) {
+        query = query.eq('workspace_id', workspaceId);
+      }
+    } else {
+      // Public visitors read published articles globally across any workspace context
       query = query.eq('status', 'published');
     }
 
@@ -121,18 +115,18 @@ export async function getPublicCategories() {
 /**
  * Pipes a newsletter lead straight into the CRM contacts ledger.
  */
-export async function subscribeToNewsletter(email: string) {
+export async function subscribeToNewsletter(email: string, workspaceId?: string) {
   try {
     const supabase = await createServerClient();
-    let workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) {
+    let wsId = workspaceId || await getCurrentWorkspaceId();
+    if (!wsId) {
       const { data: firstWs } = await supabase.from('workspaces').select('id').limit(1).maybeSingle();
-      if (firstWs) workspaceId = firstWs.id;
+      if (firstWs) wsId = firstWs.id;
     }
-    if (!workspaceId) return { error: 'Active workspace context could not be resolved.' };
+    if (!wsId) return { error: 'Active workspace context could not be resolved.' };
 
     const { error } = await supabase.from('contacts').insert({
-      workspace_id: workspaceId,
+      workspace_id: wsId,
       email: email.trim().toLowerCase(),
       first_name: 'Newsletter',
       last_name: 'Subscriber',

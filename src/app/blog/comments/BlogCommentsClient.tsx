@@ -69,52 +69,52 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
     <div className="flex flex-col min-h-screen bg-[var(--n900)]">
 
       {/* Page Header */}
-      <div className="page-header px-6 py-5 flex-shrink-0 bg-[var(--n900)] border-b border-white/5">
+      <div className="page-header px-8 py-6 flex-shrink-0 bg-[var(--n900)] border-b border-white/5">
         <div className="ph-left">
-          <div className="flex items-center gap-2 mb-0.5">
-            <Link href="/blog/manage" className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition">
-              <ArrowLeft className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-3.5 mb-1">
+            <Link href="/blog/manage" className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200">
+              <ArrowLeft className="w-4 h-4" />
             </Link>
-            <h1 className="text-2xl font-black font-space-grotesk text-white uppercase tracking-tight flex items-center gap-2.5">
-              <ShieldCheck className="w-6 h-6 text-primary shrink-0" />
+            <h1 className="text-2xl sm:text-3xl font-extrabold font-space-grotesk text-white uppercase tracking-tight flex items-center gap-3">
+              <ShieldCheck className="w-7 h-7 text-primary shrink-0" />
               Comments <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-400">&amp; Moderation</span>
             </h1>
           </div>
-          <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-semibold mt-1 ml-10">
+          <p className="text-xs font-medium text-white/50 tracking-wide mt-1.5 ml-14">
             Review submissions &amp; configure workspace discussion preferences
           </p>
         </div>
         <div className="ph-right">
-          <Link href="/blog/analytics" className="btn-outline !h-9 !px-4 text-[10px] font-bold uppercase tracking-widest gap-1.5">
+          <Link href="/blog/analytics" className="btn-outline !h-10 !px-5 text-xs font-bold uppercase tracking-widest gap-2 rounded-xl">
             Analytics
           </Link>
         </div>
       </div>
 
       {/* Body */}
-      <div className="flex-1 p-6 grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+      <div className="flex-1 p-8 sm:p-10 grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
 
         {/* LEFT — Moderation Queue */}
-        <div className="xl:col-span-8 bg-[#080f28] rounded-xl shadow-xl flex flex-col" style={{ minHeight: '600px', maxHeight: 'calc(100vh - 180px)' }}>
+        <div className="xl:col-span-8 bg-[#080f28] border border-white/5 rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ minHeight: '600px', maxHeight: 'calc(100vh - 180px)' }}>
 
           {/* Queue Header */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/5 shrink-0">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-purple-400 shrink-0" />
-              <h2 className="text-sm font-bold text-white">Moderation Queue</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-5 border-b border-white/5 gap-4 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <MessageSquare className="w-5 h-5 text-purple-400 shrink-0" />
+              <h2 className="text-base font-bold text-white tracking-wide">Moderation Queue</h2>
             </div>
-            <div className="flex bg-[#04091a] p-0.5 rounded-lg border border-white/5">
+            <div className="flex bg-[#04091a] p-1 rounded-xl border border-white/10">
               {TABS.map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold rounded-md transition-all capitalize ${activeTab === tab ? 'bg-white/10 text-white shadow' : 'text-white/40 hover:text-white/70'
+                  className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-all capitalize ${activeTab === tab ? 'bg-white/10 text-white shadow-lg' : 'text-white/40 hover:text-white/70'
                     }`}
                 >
                   {tab}
-                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${tab === 'pending' ? 'bg-amber-500/20 text-amber-400' :
-                    tab === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
-                      'bg-rose-500/20 text-rose-400'
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${tab === 'pending' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/20' :
+                    tab === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' :
+                      'bg-rose-500/20 text-rose-400 border border-rose-500/20'
                     }`}>
                     {tabCounts[tab]}
                   </span>
@@ -126,76 +126,76 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
           {/* Comment List */}
           <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
             {filteredComments.length > 0 ? filteredComments.map(comment => (
-              <div key={comment.id} className="px-5 py-4 hover:bg-white/[0.015] transition group">
-                <div className="flex items-start justify-between gap-3">
+              <div key={comment.id} className="px-6 py-6 hover:bg-white/[0.015] transition-all duration-200 group">
+                <div className="flex items-start justify-between gap-4">
                   {/* Avatar */}
-                  <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/20 flex items-center justify-center shrink-0 text-xs font-black text-primary mt-0.5">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
                     {comment.author_name.charAt(0).toUpperCase()}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     {/* Meta */}
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-xs font-bold text-white">{comment.author_name}</span>
+                    <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                      <span className="text-sm font-bold text-white">{comment.author_name}</span>
                       {comment.author_email && (
-                        <span className="text-[9px] text-white/30">({comment.author_email})</span>
+                        <span className="text-xs text-white/40">({comment.author_email})</span>
                       )}
                       <span className="w-px h-3 bg-white/10" />
-                      <span className="flex items-center gap-0.5 text-[9px] text-white/30">
-                        <Clock className="w-2.5 h-2.5" />
+                      <span className="flex items-center gap-1 text-xs text-white/40">
+                        <Clock className="w-3.5 h-3.5" />
                         {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     </div>
                     {comment.post && (
-                      <Link href={`/blog/${comment.post.slug}`} target="_blank" className="text-[9px] text-primary hover:underline block mb-1.5">
-                        On: {comment.post.title}
+                      <Link href={`/blog/${comment.post.slug}`} target="_blank" className="text-xs text-primary/80 hover:text-primary font-medium block mb-2">
+                        On article: {comment.post.title}
                       </Link>
                     )}
-                    <p className="text-[11px] text-white/65 leading-relaxed border-l-2 border-white/10 pl-3">
+                    <p className="text-sm text-white/70 leading-relaxed border-l-2 border-white/10 pl-4 py-0.5 mb-3">
                       {comment.content}
                     </p>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+                    <div className="flex items-center gap-2 mt-4 flex-wrap">
                       {activeTab !== 'approved' && (
                         <button
                           onClick={() => handleStatusChange(comment.id, 'approved')}
-                          className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-md transition"
+                          className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-3.5 py-1.5 rounded-lg transition"
                         >
-                          <CheckCircle2 className="w-3 h-3" /> Approve
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Approve
                         </button>
                       )}
                       {activeTab !== 'spam' && (
                         <button
                           onClick={() => handleStatusChange(comment.id, 'spam')}
-                          className="flex items-center gap-1 text-[9px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-md transition"
+                          className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-3.5 py-1.5 rounded-lg transition"
                         >
-                          <ShieldAlert className="w-3 h-3" /> Spam
+                          <ShieldAlert className="w-3.5 h-3.5" /> Spam
                         </button>
                       )}
                       {activeTab !== 'pending' && (
                         <button
                           onClick={() => handleStatusChange(comment.id, 'pending')}
-                          className="flex items-center gap-1 text-[9px] font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 px-2.5 py-1 rounded-md transition"
+                          className="flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 px-3.5 py-1.5 rounded-lg transition"
                         >
-                          <XCircle className="w-3 h-3" /> Move to Pending
+                          <XCircle className="w-3.5 h-3.5" /> Move to Pending
                         </button>
                       )}
                       <button
                         onClick={() => handleDelete(comment.id)}
-                        className="flex items-center gap-1 text-[9px] font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-md transition ml-auto"
+                        className="flex items-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 px-3.5 py-1.5 rounded-lg transition ml-auto"
                       >
-                        <Trash2 className="w-3 h-3" /> Delete
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
                       </button>
                     </div>
                   </div>
                 </div>
               </div>
             )) : (
-              <div className="flex flex-col items-center justify-center h-full py-20 text-center px-6">
-                <CheckCircle2 className="w-10 h-10 text-white/10 mb-3" />
-                <p className="text-xs text-white/30 font-medium capitalize">No {activeTab} comments</p>
-                <p className="text-[10px] text-white/20 mt-1">
+              <div className="flex flex-col items-center justify-center h-full py-24 text-center px-6">
+                <CheckCircle2 className="w-12 h-12 text-white/10 mb-4 animate-pulse" />
+                <p className="text-sm text-white/40 font-bold uppercase tracking-wider capitalize">No {activeTab} comments</p>
+                <p className="text-xs text-white/20 mt-1.5">
                   {activeTab === 'pending' ? 'All caught up — no new submissions await review.' : `No comments in the ${activeTab} queue.`}
                 </p>
               </div>
@@ -204,21 +204,21 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
         </div>
 
         {/* RIGHT — Settings Panel */}
-        <div className="xl:col-span-4 bg-[#080f28] rounded-xl shadow-xl">
-          <div className="flex items-center gap-2 px-5 py-3.5 border-b border-white/5">
-            <Settings className="w-4 h-4 text-emerald-400 shrink-0" />
-            <h2 className="text-sm font-bold text-white">Workspace Config</h2>
+        <div className="xl:col-span-4 bg-[#080f28] border border-white/5 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="flex items-center gap-2.5 px-6 py-5 border-b border-white/5">
+            <Settings className="w-5 h-5 text-emerald-400 shrink-0" />
+            <h2 className="text-base font-bold text-white tracking-wide">Workspace Config</h2>
           </div>
 
-          <div className="p-5 space-y-5">
+          <div className="p-6 space-y-6">
 
             {/* Engine selector */}
-            <div className="space-y-1.5">
-              <label className="text-[9px] text-white/40 font-bold uppercase tracking-widest block">Discussion Engine</label>
+            <div className="space-y-2">
+              <label className="text-xs text-white/50 font-bold uppercase tracking-wider block">Discussion Engine</label>
               <select
                 value={engine}
                 onChange={(e) => setEngine(e.target.value)}
-                className="w-full bg-[#04091a] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 transition appearance-none cursor-pointer"
+                className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-primary/50 transition appearance-none cursor-pointer"
               >
                 <option value="none">Disabled (No Comments)</option>
                 <option value="native">LeadsMind Native (Moderated)</option>
@@ -228,31 +228,33 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
 
             {/* Disqus shortname */}
             {engine === 'disqus' && (
-              <div className="space-y-1.5">
-                <label className="text-[9px] text-white/40 font-bold uppercase tracking-widest block">Disqus Shortname</label>
+              <div className="space-y-2 animate-fade-in">
+                <label className="text-xs text-white/50 font-bold uppercase tracking-wider block">Disqus Shortname</label>
                 <input
                   type="text"
                   value={disqusName}
                   onChange={(e) => setDisqusName(e.target.value)}
                   placeholder="your-shortname"
-                  className="w-full bg-[#04091a] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 transition placeholder-white/20"
+                  className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-primary/50 transition placeholder-white/20"
                 />
-                <p className="text-[9px] text-amber-400/70">Moderation occurs inside the Disqus portal.</p>
+                <p className="text-xs text-amber-400/80 leading-relaxed">
+                  Note: Moderation of Disqus comments occurs directly inside the Disqus publisher portal.
+                </p>
               </div>
             )}
 
             {/* Analytics toggle */}
-            <div className="pt-2 border-t border-white/5 space-y-3">
-              <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Tracking Preferences</p>
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div className="relative shrink-0">
+            <div className="pt-4 border-t border-white/5 space-y-4">
+              <p className="text-xs text-white/50 font-bold uppercase tracking-wider">Tracking Preferences</p>
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <div className="relative shrink-0 mt-0.5">
                   <input type="checkbox" className="sr-only" checked={analyticsEnabled} onChange={e => setAnalyticsEnabled(e.target.checked)} />
                   <div className={`w-9 h-5 rounded-full transition-colors ${analyticsEnabled ? 'bg-primary' : 'bg-white/10'}`} />
                   <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full shadow transition-transform ${analyticsEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-white group-hover:text-primary transition block">Analytics Tracking</span>
-                  <span className="text-[9px] text-white/35 leading-snug">Track anonymous impressions, reading time &amp; scroll depth</span>
+                  <span className="text-sm font-bold text-white group-hover:text-primary transition block">Analytics Tracking</span>
+                  <span className="text-xs text-white/40 leading-relaxed block mt-0.5">Track anonymous impressions, reading time &amp; scroll depth</span>
                 </div>
               </label>
             </div>
@@ -261,31 +263,31 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
             <button
               onClick={handleSaveSettings}
               disabled={savingSettings}
-              className={`w-full py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${settingsSaved
+              className={`w-full py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 ${settingsSaved
                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                : 'bg-primary hover:bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.15)]'
+                : 'bg-primary hover:bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]'
                 } disabled:opacity-50`}
             >
               {settingsSaved ? (
-                <><CheckCircle2 className="w-3.5 h-3.5" /> Saved Successfully</>
+                <><CheckCircle2 className="w-4 h-4" /> Saved Successfully</>
               ) : (
-                <><Save className="w-3.5 h-3.5" /> {savingSettings ? 'Saving...' : 'Save Configuration'}</>
+                <><Save className="w-4 h-4" /> {savingSettings ? 'Saving...' : 'Save Configuration'}</>
               )}
             </button>
 
             {/* Quick Stats */}
-            <div className="pt-3 border-t border-white/5 grid grid-cols-3 gap-2">
+            <div className="pt-4 border-t border-white/5 grid grid-cols-3 gap-3">
               {TABS.map(tab => (
                 <div
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`text-center p-2.5 rounded-lg border cursor-pointer transition ${activeTab === tab ? 'bg-white/5 border-white/15' : 'bg-[#04091a] border-white/5 hover:border-white/10'
+                  className={`text-center p-3 rounded-xl border cursor-pointer transition ${activeTab === tab ? 'bg-white/5 border-white/15' : 'bg-[#04091a] border-white/5 hover:border-white/10'
                     }`}
                 >
-                  <div className={`text-lg font-black font-space-grotesk ${tab === 'pending' ? 'text-amber-400' :
+                  <div className={`text-xl font-extrabold font-space-grotesk ${tab === 'pending' ? 'text-amber-400' :
                     tab === 'approved' ? 'text-emerald-400' : 'text-rose-400'
                     }`}>{tabCounts[tab]}</div>
-                  <div className="text-[8px] text-white/30 uppercase tracking-widest font-bold capitalize mt-0.5">{tab}</div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold capitalize mt-1">{tab}</div>
                 </div>
               ))}
             </div>
