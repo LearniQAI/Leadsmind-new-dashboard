@@ -24,35 +24,94 @@ interface ShareEmbedModalProps {
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsmind.io';
 
+const platformRecommendations: Record<string, { mode: EmbedType; tip: string }> = {
+  'WordPress': {
+    mode: 'iframe',
+    tip: 'WordPress setup: Add a "Custom HTML" block in the Block Editor (Gutenberg) or Elementor, then paste the iframe snippet below.',
+  },
+  'Webflow': {
+    mode: 'iframe',
+    tip: 'Webflow setup: Drag an "Embed" component from the Webflow Add panel, and paste the iframe snippet below.',
+  },
+  'Shopify': {
+    mode: 'inline',
+    tip: 'Shopify setup: In your Theme Editor, add a "Custom Liquid" or "Custom HTML" section and paste the inline script block below.',
+  },
+  'Wix': {
+    mode: 'iframe',
+    tip: 'Wix setup: Add an "HTML iframe" element from the Wix Embeds menu, click "Enter Code", and paste the iframe snippet below.',
+  },
+  'Squarespace': {
+    mode: 'iframe',
+    tip: 'Squarespace setup: Add a "Code" block to your page section, set the dropdown mode to "HTML", and paste the iframe snippet below.',
+  },
+  'Plain HTML': {
+    mode: 'inline',
+    tip: 'Static HTML setup: Paste the script block below into your HTML document where you want the form element to appear.',
+  },
+};
+
 export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
   const [embedMode, setEmbedMode] = useState<EmbedType>('iframe');
+  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
 
   const isPublished = form.status === 'published';
   const publicUrl = `${APP_URL}/public/forms/${form.id}`;
   const workspaceId = form.workspace_id || '';
 
-  // Generate appropriate embed code snippet based on selected mode
+  // Generate clean, robust, IIFE-scoped scripts to avoid variable leaks and breaks
   const getEmbedSnippet = (): string => {
     switch (embedMode) {
       case 'iframe':
         return `<!-- LeadsMind Form: ${form.name} -->
-<iframe src="${publicUrl}" style="width: 100%; height: 600px; border: none; background: transparent;" title="${form.name}"></iframe>`;
+<iframe
+  src="${publicUrl}"
+  style="width: 100%; height: 600px; border: none; background: transparent;"
+  title="${form.name}"
+  scrolling="no"
+  allow="payment; camera; microphone"
+></iframe>`;
       
       case 'inline':
         return `<!-- LeadsMind Form: ${form.name} -->
 <div id="leadsmind-form-${form.id}"></div>
-<script src="${APP_URL}/embed/form.js" data-form-id="${form.id}" data-workspace="${workspaceId}" data-mode="inline" async></script>`;
+<script>
+  (function() {
+    var d = document, s = d.createElement('script');
+    s.src = "${APP_URL}/embed/form.js";
+    s.async = true;
+    s.setAttribute('data-form-id', "${form.id}");
+    s.setAttribute('data-workspace', "${workspaceId}");
+    s.setAttribute('data-mode', "inline");
+    d.body.appendChild(s);
+  })();
+</script>`;
 
       case 'popup':
-        return `<!-- LeadsMind Form: ${form.name} Trigger Button -->
-<button id="leadsmind-popup-btn-${form.id}" style="background: #2563eb; color: #ffffff; padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Open Form</button>
+        return `<!-- LeadsMind Form Trigger Button -->
+<button id="leadsmind-popup-btn-${form.id}" style="background: #2563eb; color: #ffffff; padding: 12px 24px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: sans-serif; transition: background 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
+  Open Form
+</button>
 
 <!-- LeadsMind Form Script -->
-<script src="${APP_URL}/embed/form.js" data-form-id="${form.id}" data-workspace="${workspaceId}" data-mode="popup" data-trigger="leadsmind-popup-btn-${form.id}" async></script>`;
+<script>
+  (function() {
+    var d = document, s = d.createElement('script');
+    s.src = "${APP_URL}/embed/form.js";
+    s.async = true;
+    s.setAttribute('data-form-id', "${form.id}");
+    s.setAttribute('data-workspace', "${workspaceId}");
+    s.setAttribute('data-mode', "popup");
+    s.setAttribute('data-trigger', "leadsmind-popup-btn-${form.id}");
+    d.body.appendChild(s);
+  })();
+</script>`;
 
       case 'fullpage':
         return `<!-- LeadsMind Form: ${form.name} Link Button -->
-<a href="${publicUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Fill Out Form</a>`;
+<a href="${publicUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: sans-serif; transition: background 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
+  Fill Out Form
+</a>`;
       
       default:
         return '';
@@ -75,6 +134,19 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
 
   const handleOpenUrl = () => {
     window.open(publicUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handlePreview = () => {
+    window.open(`${APP_URL}/forms/builder/${form.id}?mode=preview`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleSelectPlatform = (platform: string) => {
+    setSelectedPlatform(platform);
+    const recommendation = platformRecommendations[platform];
+    if (recommendation) {
+      setEmbedMode(recommendation.mode);
+      toast.info(`Switched to recommended mode for ${platform}!`);
+    }
   };
 
   return (
@@ -134,7 +206,19 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
               </p>
             </div>
             
-            <EmbedTypeSelector selected={embedMode} onChange={setEmbedMode} />
+            <EmbedTypeSelector selected={embedMode} onChange={(mode) => {
+              setEmbedMode(mode);
+              setSelectedPlatform(null); // Clear active platform indicator if mode changed manually
+            }} />
+
+            {/* Custom Setup Instruction Tip */}
+            {selectedPlatform && platformRecommendations[selectedPlatform] && (
+              <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[10.5px] text-blue-300 font-sans flex items-start gap-2 animate-scale-in">
+                <span className="font-bold uppercase tracking-widest text-blue-400">Setup Tip:</span>
+                <span>{platformRecommendations[selectedPlatform].tip}</span>
+              </div>
+            )}
+
             <EmbedCodeBlock code={activeSnippet} />
           </div>
 
@@ -143,12 +227,15 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] font-sans">
               Step 3: Deploy &amp; Test
             </span>
-            <PlatformCompatibilityGrid />
+            <PlatformCompatibilityGrid 
+              selectedPlatform={selectedPlatform} 
+              onSelectPlatform={handleSelectPlatform} 
+            />
             <ShareActionsBar
               onCopyUrl={handleCopyUrl}
               onCopyEmbed={handleCopyEmbed}
               onOpenUrl={handleOpenUrl}
-              onPreview={handleOpenUrl}
+              onPreview={handlePreview}
             />
           </div>
         </div>
