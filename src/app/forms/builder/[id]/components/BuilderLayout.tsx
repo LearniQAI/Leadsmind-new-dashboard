@@ -192,18 +192,41 @@ export function BuilderLayout() {
               .eq('id', state.formId)
               .single();
 
-            const { error } = await supabase
+            const workspaceId = form?.workspace_id || '00000000-0000-0000-0000-000000000000';
+
+            // 1. Insert workflow metadata
+            const { data: workflow, error: wfError } = await supabase
               .from('workflows')
               .insert({
                 form_id: state.formId,
-                workspace_id: form?.workspace_id || null,
+                workspace_id: workspaceId,
                 name: wf.name,
                 trigger_type: wf.trigger_type,
                 description: wf.description,
-                steps: wf.steps,
                 is_active: true
-              });
-            if (error) throw error;
+              })
+              .select()
+              .single();
+
+            if (wfError) throw wfError;
+
+            // 2. Insert workflow steps relational rows
+            if (workflow && Array.isArray(wf.steps) && wf.steps.length > 0) {
+              const stepsPayload = wf.steps.map((step: any, idx: number) => ({
+                workflow_id: workflow.id,
+                workspace_id: workspaceId,
+                position: idx + 1,
+                type: step.type,
+                config: step.config
+              }));
+
+              const { error: stepsError } = await supabase
+                .from('workflow_steps')
+                .insert(stepsPayload);
+
+              if (stepsError) throw stepsError;
+            }
+
             toast.success(`Successfully saved and activated CRM automation: "${wf.name}"!`);
           } catch (err: any) {
             console.error('Failed to apply workflow suggestion:', err);
