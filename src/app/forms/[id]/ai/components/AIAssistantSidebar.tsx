@@ -202,8 +202,11 @@ export function AIAssistantSidebar({
             id: createdId
           }
         };
+        toast.success('Applied workflow template advice to active Draft!');
+      } else {
+        toast.error('Failed to apply workflow suggestion. Check database permissions.');
+        return;
       }
-      toast.success('Applied workflow template advice to active Draft!');
     } else {
       toast.success(`Approved recommendation: "${item.title}"`);
     }
@@ -375,6 +378,14 @@ export function AIAssistantSidebar({
               >
                 {loading ? <Loader2 className="animate-spin" size={14} /> : null} Recommends CRM Workflows
               </button>
+              <a
+                href={`/forms/${formId}/automations`}
+                target="_blank"
+                rel="noreferrer"
+                className="h-9 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border border-white/10 hover:border-white/20 cursor-pointer decoration-transparent"
+              >
+                Go to Automations Dashboard ↗
+              </a>
             </div>
           )}
 

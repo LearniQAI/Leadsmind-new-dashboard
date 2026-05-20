@@ -147,6 +147,31 @@ export function BuilderTopbar() {
         <button 
           onClick={() => {
             if (state.formId) {
+              router.push(`/forms/${state.formId}/automations`);
+            }
+          }}
+          disabled={!state.formId}
+          className="builder-action-btn flex items-center gap-2" 
+          style={{
+            padding: '8px 16px',
+            fontSize: 11,
+            fontWeight: 900,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            borderRadius: 'var(--r8)',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid var(--bdr)',
+            color: 'var(--t1)',
+            cursor: !state.formId ? 'not-allowed' : 'pointer',
+            opacity: !state.formId ? 0.4 : 1
+          }}
+        >
+          Automations
+        </button>
+
+        <button 
+          onClick={() => {
+            if (state.formId) {
               router.push(`/forms/${state.formId}/governance`);
             }
           }}
