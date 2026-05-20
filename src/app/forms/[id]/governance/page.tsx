@@ -3,19 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { ArrowLeft, ShieldAlert, GitCommit, History, Globe, BookOpen } from 'lucide-react';
+import { ArrowLeft, ShieldAlert, GitCommit, History, Globe, BookOpen, Users } from 'lucide-react';
 import { CollaborationIndicator } from './components/CollaborationIndicator';
 import { VersionHistoryTimeline } from './components/VersionHistoryTimeline';
 import { AuditLogsViewer } from './components/AuditLogsViewer';
 import { DiagnosticsDashboard } from './components/DiagnosticsDashboard';
 import { HelpDocumentationRenderer } from './components/HelpDocumentationRenderer';
+import { CollaboratorsManager } from './components/CollaboratorsManager';
 
 export default function GovernancePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'versions' | 'audit' | 'diagnostics' | 'help'>('versions');
+  const [activeTab, setActiveTab] = useState<'versions' | 'audit' | 'diagnostics' | 'collaborators' | 'help'>('versions');
 
   const loadForm = async () => {
     try {
@@ -112,6 +113,17 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
           </button>
 
           <button
+            onClick={() => setActiveTab('collaborators')}
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${
+              activeTab === 'collaborators'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-white/40 hover:text-white'
+            }`}
+          >
+            <Users size={12} /> Collaborators
+          </button>
+
+          <button
             onClick={() => setActiveTab('help')}
             className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${
               activeTab === 'help'
@@ -141,6 +153,10 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
 
           {activeTab === 'diagnostics' && (
             <DiagnosticsDashboard formId={params.id} />
+          )}
+
+          {activeTab === 'collaborators' && (
+            <CollaboratorsManager formId={params.id} />
           )}
 
           {activeTab === 'help' && (
