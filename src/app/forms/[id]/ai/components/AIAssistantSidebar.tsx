@@ -14,7 +14,7 @@ import { AuditLogger } from '@/lib/governance/AuditLogger';
 interface AIAssistantSidebarProps {
   formId: string;
   onApplyFormSchema?: (schema: any) => void;
-  onApplyWorkflowSuggestion?: (wf: any) => Promise<string | undefined>;
+  onApplyWorkflowSuggestion?: (wf: any) => Promise<any>;
   onApplyCopySuggestion?: (copy: any) => void;
   onRevertFormSchema?: (original: { name: string; fields: any[]; steps: any[] }) => void;
   onRevertCopySuggestion?: (original: { id: string; label: string; placeholder: string; helpText: string }) => void;
