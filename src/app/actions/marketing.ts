@@ -142,6 +142,22 @@ export async function getForms() {
  }
 }
 
+export async function getForm(id: string) {
+ try {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('forms')
+   .select('*')
+   .eq('id', id)
+   .single();
+
+  if (error) throw error;
+  return { data };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
 export async function createForm(name: string) {
  try {
   const workspaceId = await getCurrentWorkspaceId();
@@ -153,7 +169,9 @@ export async function createForm(name: string) {
    .insert({
     workspace_id: workspaceId,
     name,
-    config: {}
+    fields: [],
+    config: {},
+    status: 'draft',
    })
    .select()
    .single();
@@ -246,7 +264,23 @@ export async function deleteCampaignAction(id: string) {
 export async function updateForm(id: string, updates: any) {
  try {
   const supabase = await createServerClient();
-  const { data, error } = await supabase.from('forms').update(updates).eq('id', id).select().single();
+
+  // Build a clean update payload — only include columns that exist in the schema
+  const payload: Record<string, any> = { updated_at: new Date().toISOString() };
+
+  if (updates.name !== undefined) payload.name = updates.name;
+  if (updates.status !== undefined) payload.status = updates.status;
+  if (updates.fields !== undefined) payload.fields = updates.fields;
+  if (updates.config !== undefined) payload.config = updates.config;
+  if (updates.settings !== undefined) payload.settings = updates.settings;
+
+  const { data, error } = await supabase
+   .from('forms')
+   .update(payload)
+   .eq('id', id)
+   .select()
+   .single();
+
   if (error) throw error;
   return { data };
  } catch (error: any) { return { error: error.message }; }
