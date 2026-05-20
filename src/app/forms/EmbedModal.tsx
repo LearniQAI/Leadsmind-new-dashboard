@@ -32,23 +32,10 @@ export function EmbedModal({ form, open, onClose }: EmbedModalProps) {
 
   const inlineSnippet = `<!-- LeadsMind Form: ${form.name} -->
 <div id="leadsmind-form-${form.id}"></div>
-<script
-  src="${APP_URL}/embed/form.js"
-  data-form-id="${form.id}"
-  data-workspace="${workspaceId}"
-  data-mode="inline"
-  async>
-</script>`;
+<script src="${APP_URL}/embed/form.js" data-form-id="${form.id}" data-workspace="${workspaceId}" data-mode="inline" async></script>`;
 
   const iframeSnippet = `<!-- LeadsMind Form: ${form.name} -->
-<div id="leadsmind-form-${form.id}"></div>
-<script
-  src="${APP_URL}/embed/form.js"
-  data-form-id="${form.id}"
-  data-workspace="${workspaceId}"
-  data-mode="iframe"
-  async>
-</script>`;
+<iframe src="${publicUrl}" width="100%" height="600px" style="border: none; background: transparent;" title="${form.name}"></iframe>`;
 
   const activeSnippet = embedMode === 'inline' ? inlineSnippet : iframeSnippet;
 
