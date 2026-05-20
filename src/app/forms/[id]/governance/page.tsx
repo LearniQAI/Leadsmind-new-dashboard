@@ -9,7 +9,6 @@ import { VersionHistoryTimeline } from './components/VersionHistoryTimeline';
 import { PublishControls } from './components/PublishControls';
 import { AuditLogsViewer } from './components/AuditLogsViewer';
 import { DiagnosticsDashboard } from './components/DiagnosticsDashboard';
-import { BetaHealthDashboard } from './components/BetaHealthDashboard';
 import { HelpDocumentationRenderer } from './components/HelpDocumentationRenderer';
 
 export default function GovernancePage({ params }: { params: { id: string } }) {
@@ -17,7 +16,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'publish' | 'versions' | 'audit' | 'diagnostics' | 'beta' | 'help'>('publish');
+  const [activeTab, setActiveTab] = useState<'publish' | 'versions' | 'audit' | 'diagnostics' | 'help'>('publish');
 
   const loadForm = async () => {
     try {
@@ -70,7 +69,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
                   {form?.status || 'draft'}
                 </span>
               </h1>
-              <p className="text-xs text-[#4a5a82]">Governance, immutable snapshots, and release control logs</p>
+              <p className="text-xs text-[#4a5a82]">Version control, deployment history, and settings</p>
             </div>
           </div>
 
@@ -88,7 +87,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
                 : 'text-white/40 hover:text-white'
             }`}
           >
-            <Globe size={12} /> Release Control
+            <Globe size={12} /> Publish Settings
           </button>
           
           <button
@@ -99,7 +98,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
                 : 'text-white/40 hover:text-white'
             }`}
           >
-            <GitCommit size={12} /> Snapshots Timeline
+            <GitCommit size={12} /> Version History
           </button>
 
           <button
@@ -110,7 +109,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
                 : 'text-white/40 hover:text-white'
             }`}
           >
-            <History size={12} /> Audit Log
+            <History size={12} /> Activity Log
           </button>
 
           <button
@@ -121,18 +120,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
                 : 'text-white/40 hover:text-white'
             }`}
           >
-            <ShieldAlert size={12} /> Diagnostics
-          </button>
-
-          <button
-            onClick={() => setActiveTab('beta')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${
-              activeTab === 'beta'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-white/40 hover:text-white'
-            }`}
-          >
-            <ShieldAlert size={12} /> Beta Health
+            <ShieldAlert size={12} /> Form Health
           </button>
 
           <button
@@ -173,10 +161,6 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
 
           {activeTab === 'diagnostics' && (
             <DiagnosticsDashboard formId={params.id} />
-          )}
-
-          {activeTab === 'beta' && (
-            <BetaHealthDashboard formId={params.id} />
           )}
 
           {activeTab === 'help' && (
