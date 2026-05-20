@@ -29,7 +29,7 @@ export function EmbedCodeBlock({ code }: EmbedCodeBlockProps) {
         .replace(/>/g, '&gt;');
       
       return escaped
-        .replace(/(&lt;!--.*?--&gt;)/gs, '<span class="text-[#4a5a82] font-medium">$1</span>') // HTML Comments
+        .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="text-[#4a5a82] font-medium">$1</span>') // HTML Comments
         .replace(/(&lt;\/?[a-zA-Z0-9\-]+)/g, '<span class="text-[#ff79c6]">$1</span>') // Tag names
         .replace(/(\s[a-zA-Z0-9\-]+)=/g, ' <span class="text-[#50fa7b]">$1</span>=') // Attribute keys
         .replace(/(".*?")/g, '<span class="text-[#f1fa8c]">$1</span>') // String values
