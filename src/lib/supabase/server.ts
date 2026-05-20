@@ -33,16 +33,20 @@ export const createServerClient = async () => {
 }
 
 export const createAdminClient = () => {
- return _createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-   auth: {
-    autoRefreshToken: false,
-    persistSession: false
-   }
-  }
- )
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const isPlaceholder = !serviceKey || serviceKey === 'your_supabase_service_role_key' || serviceKey.startsWith('your_');
+  const activeKey = isPlaceholder ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! : serviceKey;
+
+  return _createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    activeKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
 }
 
 export const createClient = createServerClient;

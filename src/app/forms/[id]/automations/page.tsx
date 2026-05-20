@@ -38,9 +38,14 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
         .eq('form_id', params.id)
         .order('created_at', { ascending: false });
 
-      setWorkflows(wfs || []);
-      if (wfs && wfs.length > 0 && !selectedWorkflowId) {
-        setSelectedWorkflowId(wfs[0].id);
+      const mappedWfs = (wfs || []).map((w: any) => ({
+        ...w,
+        steps_count: w.steps?.[0]?.count || 0
+      }));
+
+      setWorkflows(mappedWfs);
+      if (mappedWfs.length > 0 && !selectedWorkflowId) {
+        setSelectedWorkflowId(mappedWfs[0].id);
       }
     } catch (err) {
       console.error('[AutomationsPage] Failed to fetch workflows:', err);
