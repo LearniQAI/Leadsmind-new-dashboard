@@ -35,7 +35,7 @@ export function EmbedModal({ form, open, onClose }: EmbedModalProps) {
 <script src="${APP_URL}/embed/form.js" data-form-id="${form.id}" data-workspace="${workspaceId}" data-mode="inline" async></script>`;
 
   const iframeSnippet = `<!-- LeadsMind Form: ${form.name} -->
-<iframe src="${publicUrl}" width="100%" height="600px" style="border: none; background: transparent;" title="${form.name}"></iframe>`;
+<iframe src="${publicUrl}" style="width: 100%; height: 600px; border: none; background: transparent;" title="${form.name}"></iframe>`;
 
   const activeSnippet = embedMode === 'inline' ? inlineSnippet : iframeSnippet;
 
@@ -153,7 +153,7 @@ export function EmbedModal({ form, open, onClose }: EmbedModalProps) {
           </div>
 
           <div className="relative">
-            <pre className="p-4 bg-[#04081a] border border-white/8 rounded-2xl text-[11px] text-[#94a3c8] font-mono overflow-x-auto leading-relaxed custom-scrollbar whitespace-pre-wrap break-all">
+            <pre className="p-4 bg-[#04081a] border border-white/8 rounded-2xl text-[11px] text-[#94a3c8] font-mono overflow-x-auto leading-relaxed custom-scrollbar whitespace-pre">
               {activeSnippet}
             </pre>
           </div>
