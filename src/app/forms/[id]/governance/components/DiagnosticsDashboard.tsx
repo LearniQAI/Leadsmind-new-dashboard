@@ -19,8 +19,30 @@ export function DiagnosticsDashboard({ formId }: { formId: string }) {
 
   useEffect(() => {
     loadDiagnostics();
-    const interval = setInterval(loadDiagnostics, 15000); // refresh every 15s
-    return () => clearInterval(interval);
+    
+    // Add real-time subscription
+    const supabase = (async () => (await import('@/lib/supabase/client')).createClient())();
+    let channel: any;
+    
+    supabase.then(client => {
+      channel = client
+        .channel(`diagnostics_${formId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'form_diagnostics_logs', filter: `form_id=eq.${formId}` }, (payload) => {
+          const newLog = payload.new as DiagnosticsLog;
+          setLogs(current => [newLog, ...current.slice(0, 19)]); // Keep last 20
+          setMetrics(current => ({
+            ...current,
+            [newLog.error_type]: (current[newLog.error_type] || 0) + 1
+          }));
+        })
+        .subscribe();
+    });
+
+    return () => {
+      if (channel) {
+        supabase.then(client => client.removeChannel(channel));
+      }
+    };
   }, [formId]);
 
   if (loading) {

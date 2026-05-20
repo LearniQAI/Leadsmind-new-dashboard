@@ -17,6 +17,25 @@ export function AuditLogsViewer({ formId }: { formId: string }) {
 
   useEffect(() => {
     loadLogs();
+    
+    // Add real-time subscription
+    const supabase = (async () => (await import('@/lib/supabase/client')).createClient())();
+    let channel: any;
+    
+    supabase.then(client => {
+      channel = client
+        .channel(`audit_logs_${formId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'form_audit_logs', filter: `form_id=eq.${formId}` }, (payload) => {
+          setLogs(current => [payload.new as FormAuditLog, ...current]);
+        })
+        .subscribe();
+    });
+
+    return () => {
+      if (channel) {
+        supabase.then(client => client.removeChannel(channel));
+      }
+    };
   }, [formId]);
 
   if (loading) {

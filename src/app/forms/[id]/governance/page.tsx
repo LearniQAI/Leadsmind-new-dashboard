@@ -3,21 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { ArrowLeft, ShieldAlert, GitCommit, History, Globe, BookOpen } from 'lucide-react';
+import { ArrowLeft, ShieldAlert, GitCommit, History, Globe, BookOpen, Users } from 'lucide-react';
 import { CollaborationIndicator } from './components/CollaborationIndicator';
 import { VersionHistoryTimeline } from './components/VersionHistoryTimeline';
-import { PublishControls } from './components/PublishControls';
 import { AuditLogsViewer } from './components/AuditLogsViewer';
 import { DiagnosticsDashboard } from './components/DiagnosticsDashboard';
-import { BetaHealthDashboard } from './components/BetaHealthDashboard';
 import { HelpDocumentationRenderer } from './components/HelpDocumentationRenderer';
+import { CollaboratorsManager } from './components/CollaboratorsManager';
 
 export default function GovernancePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'publish' | 'versions' | 'audit' | 'diagnostics' | 'beta' | 'help'>('publish');
+  const [activeTab, setActiveTab] = useState<'versions' | 'audit' | 'diagnostics' | 'collaborators' | 'help'>('versions');
 
   const loadForm = async () => {
     try {
@@ -70,7 +69,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
                   {form?.status || 'draft'}
                 </span>
               </h1>
-              <p className="text-xs text-[#4a5a82]">Governance, immutable snapshots, and release control logs</p>
+              <p className="text-xs text-[#4a5a82]">Version control, deployment history, and settings</p>
             </div>
           </div>
 
@@ -81,17 +80,6 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
         {/* Tab Selection */}
         <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl self-start overflow-x-auto max-w-full">
           <button
-            onClick={() => setActiveTab('publish')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${
-              activeTab === 'publish'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-white/40 hover:text-white'
-            }`}
-          >
-            <Globe size={12} /> Release Control
-          </button>
-          
-          <button
             onClick={() => setActiveTab('versions')}
             className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${
               activeTab === 'versions'
@@ -99,7 +87,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
                 : 'text-white/40 hover:text-white'
             }`}
           >
-            <GitCommit size={12} /> Snapshots Timeline
+            <GitCommit size={12} /> Version History
           </button>
 
           <button
@@ -110,7 +98,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
                 : 'text-white/40 hover:text-white'
             }`}
           >
-            <History size={12} /> Audit Log
+            <History size={12} /> Activity Log
           </button>
 
           <button
@@ -121,18 +109,18 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
                 : 'text-white/40 hover:text-white'
             }`}
           >
-            <ShieldAlert size={12} /> Diagnostics
+            <ShieldAlert size={12} /> Form Health
           </button>
 
           <button
-            onClick={() => setActiveTab('beta')}
+            onClick={() => setActiveTab('collaborators')}
             className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${
-              activeTab === 'beta'
+              activeTab === 'collaborators'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'text-white/40 hover:text-white'
             }`}
           >
-            <ShieldAlert size={12} /> Beta Health
+            <Users size={12} /> Collaborators
           </button>
 
           <button
@@ -149,14 +137,6 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
 
         {/* Central Display Pane */}
         <div className="mt-2 min-h-[400px]">
-          {activeTab === 'publish' && (
-            <PublishControls
-              formId={params.id}
-              currentDraft={form}
-              onPublishCompleted={loadForm}
-            />
-          )}
-
           {activeTab === 'versions' && (
             <VersionHistoryTimeline
               formId={params.id}
@@ -175,8 +155,12 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
             <DiagnosticsDashboard formId={params.id} />
           )}
 
-          {activeTab === 'beta' && (
-            <BetaHealthDashboard formId={params.id} />
+          {activeTab === 'collaborators' && (
+            <CollaboratorsManager 
+              formId={params.id} 
+              workspaceId={form?.workspace_id}
+              formName={form?.name}
+            />
           )}
 
           {activeTab === 'help' && (

@@ -48,6 +48,14 @@ export function FormBuilderProvider({
         lastSaved: initialForm.updated_at ? new Date(initialForm.updated_at) : null,
         config,
       });
+
+      // If URL has ?mode=preview, initialize in preview mode
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.get('mode') === 'preview') {
+          dispatch({ type: 'SET_MODE', mode: 'preview' });
+        }
+      }
     }
   }, [initialForm]);
 

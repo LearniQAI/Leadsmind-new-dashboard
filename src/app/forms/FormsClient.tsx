@@ -242,6 +242,7 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
                 onPublishToggle={handlePublish} onCopyLink={copyLink} onDelete={openDelete}
                 onOpenBuilder={(f) => router.push(`/forms/builder/${f.id}`)}
                 onViewPartials={(f) => router.push(`/forms/${f.id}/partial-submissions`)}
+                onViewSubmissions={(f) => router.push(`/forms/${f.id}/submissions`)}
                 onViewAutomations={(f) => router.push(`/forms/${f.id}/automations`)}
                 onViewGovernance={(f) => router.push(`/forms/${f.id}/governance`)}
                 onViewAnalytics={(f) => router.push(`/forms/${f.id}/analytics`)}

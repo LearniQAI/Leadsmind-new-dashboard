@@ -18,6 +18,7 @@ interface FormCardProps {
   onDelete: (form: any) => void;
   onOpenBuilder: (form: any) => void;
   onViewPartials?: (form: any) => void;
+  onViewSubmissions?: (form: any) => void;
   onViewAutomations?: (form: any) => void;
   onViewGovernance?: (form: any) => void;
   onViewAnalytics?: (form: any) => void;
@@ -33,6 +34,7 @@ export function FormCard({
   onDelete,
   onOpenBuilder,
   onViewPartials,
+  onViewSubmissions,
   onViewAutomations,
   onViewGovernance,
   onViewAnalytics,
@@ -64,6 +66,9 @@ export function FormCard({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onRename(form)} className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-white hover:bg-white/5 rounded-lg mx-1 px-3 py-2">
                 <CheckCircleHack size={14} /> Rename Form
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onViewSubmissions?.(form)} className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-emerald-400 hover:bg-emerald-500/5 rounded-lg mx-1 px-3 py-2">
+                <UserCheck size={14} /> View Submissions
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onViewPartials?.(form)} className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-amber-400 hover:bg-amber-500/5 rounded-lg mx-1 px-3 py-2">
                 <Clock size={14} /> Recovery Sessions
