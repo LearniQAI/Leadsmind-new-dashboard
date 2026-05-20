@@ -17,9 +17,10 @@ import { ImportContactsModal } from '@/components/crm/ImportContactsModal';
 interface ContactsClientProps {
   initialContacts: Contact[];
   initialTags: { id: string; name: string; count: number }[];
+  owners?: { id: string; name: string }[];
 }
 
-export default function ContactsClient({ initialContacts, initialTags }: ContactsClientProps) {
+export default function ContactsClient({ initialContacts, initialTags, owners = [] }: ContactsClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -136,7 +137,7 @@ export default function ContactsClient({ initialContacts, initialTags }: Contact
             prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
           );
         }}
-        owners={[]} // Would fetch from workspace members
+        owners={owners}
         selectedOwner={selectedOwner}
         onOwnerChange={setSelectedOwner}
         onManageTags={() => setIsManageTagsOpen(true)}

@@ -1,17 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Plus, FileText, Share2, UserCheck, Pencil, Trash2, Globe, X,
-  CheckCircle, Clock, MoreVertical, Copy
+  CheckCircle, Clock, MoreVertical, Copy, Loader2, Search, Code2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
-} from '@/components/ui/dialog';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
@@ -20,10 +17,47 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import UniversalAPI from './UniversalAPI';
+import { EmbedModal } from './EmbedModal';
+import { CreateFormDialog, EditFormDialog, DeleteFormDialog } from './FormsModals';
+import { FormCard } from './FormCard';
 
 export default function FormsClient({ initialForms }: { initialForms: any[] }) {
   const router = useRouter();
   const [forms, setForms] = useState(initialForms);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');
+
+  useEffect(() => {
+    async function loadPartialCounts() {
+      const supabase = (await import('@/lib/supabase/client')).createClient();
+      const { data } = await supabase
+        .from('form_partial_submissions')
+        .select('form_id');
+      
+      if (data) {
+        const counts: Record<string, number> = {};
+        data.forEach((p: any) => {
+          counts[p.form_id] = (counts[p.form_id] || 0) + 1;
+        });
+        
+        setForms(prev =>
+          prev.map(f => ({
+            ...f,
+            partial_count: counts[f.id] || 0,
+          }))
+        );
+      }
+    }
+    loadPartialCounts();
+  }, []);
+
+  const filteredForms = forms.filter(form => {
+    const matchesSearch = form.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filter === 'all' || 
+                         (filter === 'published' && form.status === 'published') || 
+                         (filter === 'draft' && form.status !== 'published');
+    return matchesSearch && matchesFilter;
+  });
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState('');
@@ -38,17 +72,48 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
   const [deleteForm, setDeleteForm] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [embedOpen, setEmbedOpen] = useState(false);
+  const [embedForm, setEmbedForm] = useState<any>(null);
+
+  const openEmbed = (form: any) => { setEmbedForm(form); setEmbedOpen(true); };
+
   const handleCreate = async () => {
     if (!createName.trim()) { toast.error('Please enter a form name'); return; }
     setCreating(true);
-    const res = await createForm(createName.trim());
-    setCreating(false);
-    if (res.error) { toast.error(res.error); }
-    else {
-      toast.success('Form created!');
-      setForms(prev => [res.data, ...prev]);
+    
+    try {
+      const res = await createForm(createName.trim());
+      
+      setCreating(false);
+      
+      if (res.error) { 
+        toast.error(res.error); 
+        return;
+      }
+      
+      if (!res.data || !res.data.id) {
+        toast.error('Failed to get new form ID. Please try again.');
+        return;
+      }
+
+      const targetId = res.data.id;
+      toast.success('Form created! Opening builder...');
       setCreateName('');
       setCreateOpen(false);
+      
+      // Wait for Radix Dialog exit animation then navigate
+      setTimeout(() => {
+        document.body.style.removeProperty('pointer-events');
+        document.body.style.removeProperty('overflow');
+        document.body.removeAttribute('data-scroll-locked');
+        document.querySelectorAll('[data-radix-portal]').forEach((el) => el.remove());
+        router.push(`/forms/builder/${targetId}`);
+      }, 350);
+
+    } catch (err) {
+      setCreating(false);
+      console.error('[Forms] Unhandled error during creation:', err);
+      toast.error('An unexpected error occurred.');
     }
   };
 
@@ -110,11 +175,6 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
     setDeleting(false);
   };
 
-  const statusColor = (status: string) => {
-    if (status === 'published') return 'bg-emerald-100 text-emerald-700';
-    return 'bg-amber-100 text-amber-700';
-  };
-
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -138,73 +198,54 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
         </TabsList>
 
         <TabsContent value="forms" className="space-y-8 focus-visible:outline-none">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white/5 border border-white/10 p-4 rounded-3xl">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute left-4 top-3.5 h-4 w-4 text-white/30" />
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search forms..."
+                className="pl-11 h-12 bg-white/5 border-white/10 rounded-xl text-white placeholder-white/30 focus:border-primary focus:ring-0"
+              />
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto overflow-x-auto w-full sm:w-auto">
+              {(['all', 'published', 'draft'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setFilter(p)}
+                  className={`px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                    filter === p
+                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                      : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {p === 'all' ? 'All Forms' : p === 'published' ? 'Published' : 'Drafts'}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {forms.length === 0 ? (
+            {filteredForms.length === 0 ? (
               <div className="col-span-full py-20 bg-white/5 border border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary/40 transition-all" onClick={() => setCreateOpen(true)}>
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
                   <FileText className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-lg font-black uppercase text-white tracking-widest">No Forms Yet</h3>
-                <p className="text-white/40 text-[10px] font-bold mt-2 uppercase tracking-widest">Click to build your first form</p>
+                <h3 className="text-lg font-black uppercase text-white tracking-widest">No Forms Found</h3>
+                <p className="text-white/40 text-[10px] font-bold mt-2 uppercase tracking-widest">
+                  {searchQuery ? 'Adjust your search query' : 'Click to build your first form'}
+                </p>
               </div>
-            ) : forms.map(form => (
-              <div key={form.id} className="bg-[#0b0b1a] border border-white/5 p-6 rounded-3xl group hover:border-primary/30 transition-all duration-300 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-all" />
-                
-                <div className="flex justify-between items-start mb-6 relative z-10">
-                  <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                    <FileText size={20} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border-none ${form.status === 'published' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                      {form.status || 'draft'}
-                    </Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
-                          <MoreVertical size={14} className="text-white/60" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-[#0b0b1a] border border-white/10 shadow-2xl rounded-xl min-w-[160px]">
-                        <DropdownMenuItem onClick={() => openEdit(form)} className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-primary hover:bg-primary/5 rounded-lg mx-1 px-3 py-2">
-                          <Pencil size={14} /> Edit Form
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handlePublish(form)} className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-emerald-500 hover:bg-emerald-500/5 rounded-lg mx-1 px-3 py-2">
-                          {form.status === 'published' ? <><Clock size={14} /> Move to Draft</> : <><Globe size={14} /> Publish Live</>}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => copyLink(form)} className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-blue-500 hover:bg-blue-500/5 rounded-lg mx-1 px-3 py-2">
-                          <Copy size={14} /> Copy Link
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openDelete(form)} className="flex items-center gap-2 cursor-pointer text-rose-500 hover:bg-rose-500/5 rounded-lg mx-1 px-3 py-2">
-                          <Trash2 size={14} /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-
-                <div className="mb-6 relative z-10">
-                  <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-2">{form.name}</h4>
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-white/30 uppercase tracking-widest">
-                    <UserCheck className="w-3.5 h-3.5 text-primary" />
-                    <span>{form.submissions?.[0]?.count || 0} Submissions</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-5 border-t border-white/5 relative z-10">
-                  <Button onClick={() => copyLink(form)} variant="outline" size="sm" className="h-8 px-3 rounded-lg border-white/10 bg-transparent text-[9px] font-black uppercase text-white/40 hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all flex items-center gap-1.5">
-                    <Share2 size={11} /> Share
-                  </Button>
-                  <div className="flex items-center gap-2">
-                    <Button onClick={() => openEdit(form)} variant="outline" size="sm" className="h-8 px-3 rounded-lg border-white/10 bg-transparent text-[9px] font-black uppercase text-white/40 hover:text-primary hover:border-primary/50 hover:bg-primary/5 flex items-center gap-1.5">
-                      <Pencil size={11} /> Edit
-                    </Button>
-                    <Button onClick={() => handlePublish(form)} size="sm" className={`h-8 px-3 rounded-lg text-[9px] font-black uppercase flex items-center gap-1.5 ${form.status === 'published' ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'}`}>
-                      {form.status === 'published' ? <><Clock size={11} /> Draft</> : <><Globe size={11} /> Publish</>}
-                    </Button>
-                  </div>
-                </div>
-              </div>
+            ) : filteredForms.map(form => (
+              <FormCard
+                key={form.id} form={form} onEdit={openEdit} onEmbed={openEmbed} onRename={openEdit}
+                onPublishToggle={handlePublish} onCopyLink={copyLink} onDelete={openDelete}
+                onOpenBuilder={(f) => router.push(`/forms/builder/${f.id}`)}
+                onViewPartials={(f) => router.push(`/forms/${f.id}/partial-submissions`)}
+                onViewAutomations={(f) => router.push(`/forms/${f.id}/automations`)}
+                onViewGovernance={(f) => router.push(`/forms/${f.id}/governance`)}
+                onViewAnalytics={(f) => router.push(`/forms/${f.id}/analytics`)}
+              />
             ))}
           </div>
         </TabsContent>
@@ -214,66 +255,41 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
         </TabsContent>
       </Tabs>
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="bg-white border border-gray-200 rounded-3xl max-w-md p-8 shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-gray-800">Build a <span className="text-primary">Form</span></DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Form Name</Label>
-              <Input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="e.g. Contact Us Form" className="h-12 border-gray-200 rounded-xl" onKeyDown={e => e.key === 'Enter' && handleCreate()} />
-            </div>
-          </div>
-          <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setCreateOpen(false)} className="border-gray-200 text-gray-600 rounded-xl">Cancel</Button>
-            <Button onClick={handleCreate} disabled={creating} className="btn-primary rounded-xl font-black uppercase text-xs px-8">{creating ? 'Creating...' : 'Create Form'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateFormDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        name={createName}
+        setName={setCreateName}
+        creating={creating}
+        onSubmit={handleCreate}
+      />
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="bg-white border border-gray-200 rounded-3xl max-w-md p-8 shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-gray-800">Edit <span className="text-primary">Form</span></DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Form Name</Label>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-12 border-gray-200 rounded-xl" />
-            </div>
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Current Status</p>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-blue-800">{editForm?.status === 'published' ? 'Live — visible to users' : 'Draft — not public'}</span>
-                <Button onClick={() => { if (editForm) handlePublish(editForm); }} size="sm" className={`h-8 px-4 rounded-lg text-[9px] font-black uppercase ${editForm?.status === 'published' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
-                  {editForm?.status === 'published' ? 'Unpublish' : 'Publish'}
-                </Button>
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setEditOpen(false)} className="border-gray-200 text-gray-600 rounded-xl">Cancel</Button>
-            <Button onClick={handleSaveEdit} disabled={saving} className="btn-primary rounded-xl font-black uppercase text-xs px-8">{saving ? 'Saving...' : 'Save Changes'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditFormDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        name={editName}
+        setName={setEditName}
+        form={editForm}
+        saving={saving}
+        onSubmit={handleSaveEdit}
+        onPublishToggle={() => { if (editForm) handlePublish(editForm); }}
+      />
 
-      {/* Delete Dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="bg-white border border-gray-200 rounded-3xl max-w-sm p-8 shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight text-gray-800">Delete Form?</DialogTitle>
-          </DialogHeader>
-          <p className="text-gray-500 text-sm py-4">This will permanently delete <strong className="text-gray-800">{deleteForm?.name}</strong> and all its submissions.</p>
-          <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)} className="border-gray-200 text-gray-600 rounded-xl">Cancel</Button>
-            <Button onClick={handleDelete} disabled={deleting} className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black uppercase text-xs px-8">{deleting ? 'Deleting...' : 'Delete'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteFormDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        form={deleteForm}
+        deleting={deleting}
+        onSubmit={handleDelete}
+      />
+      {/* Embed Modal */}
+      {embedForm && (
+        <EmbedModal
+          form={embedForm}
+          open={embedOpen}
+          onClose={() => { setEmbedOpen(false); setEmbedForm(null); }}
+        />
+      )}
     </div>
   );
 }
