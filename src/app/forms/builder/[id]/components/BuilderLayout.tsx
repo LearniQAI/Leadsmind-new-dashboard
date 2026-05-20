@@ -233,6 +233,24 @@ export function BuilderLayout() {
             toast.error(`Failed to activate automation: ${err.message || err}`);
           }
         }}
+        onApplyCopySuggestion={(copy) => {
+          if (state.selectedFieldId) {
+            dispatch({
+              type: 'UPDATE_FIELD',
+              id: state.selectedFieldId,
+              updates: {
+                label: copy.headline,
+                placeholder: copy.cta || '',
+                helpText: copy.helperText || ''
+              }
+            });
+          } else {
+            dispatch({
+              type: 'UPDATE_FORM_NAME',
+              name: copy.headline
+            });
+          }
+        }}
       />
     </div>
   );

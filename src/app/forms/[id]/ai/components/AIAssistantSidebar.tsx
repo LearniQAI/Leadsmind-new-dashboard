@@ -15,6 +15,7 @@ interface AIAssistantSidebarProps {
   formId: string;
   onApplyFormSchema?: (schema: any) => void;
   onApplyWorkflowSuggestion?: (wf: any) => void;
+  onApplyCopySuggestion?: (copy: any) => void;
   floatingOffsetClass?: string;
 }
 
@@ -22,6 +23,7 @@ export function AIAssistantSidebar({
   formId,
   onApplyFormSchema,
   onApplyWorkflowSuggestion,
+  onApplyCopySuggestion,
   floatingOffsetClass
 }: AIAssistantSidebarProps) {
   const [open, setOpen] = useState(false);
@@ -145,6 +147,9 @@ export function AIAssistantSidebar({
     if (item.type === 'copy' && onApplyFormSchema && item.meta?.fields) {
       onApplyFormSchema(item.meta);
       toast.success('Applied generated form schema layout to active Draft!');
+    } else if (item.type === 'copy' && onApplyCopySuggestion && item.meta?.headline) {
+      onApplyCopySuggestion(item.meta);
+      toast.success('Applied optimized copy to selected element!');
     } else if (item.type === 'workflow' && onApplyWorkflowSuggestion && item.meta) {
       onApplyWorkflowSuggestion(item.meta);
       toast.success('Applied workflow template advice to active Draft!');
