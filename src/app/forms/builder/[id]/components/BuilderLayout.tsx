@@ -12,6 +12,7 @@ import { AIAssistantSidebar } from '@/app/forms/[id]/ai/components/AIAssistantSi
 import { CollabPresenceList } from '@/app/forms/[id]/realtime/components/CollabPresenceList';
 import { ConflictWarnings } from '@/app/forms/[id]/realtime/components/ConflictWarnings';
 import { RealtimeNotificationHandler } from '@/app/forms/[id]/realtime/components/RealtimeNotificationHandler';
+import { toast } from 'sonner';
 
 export function BuilderLayout() {
   const { state, dispatch } = useFormBuilder();
@@ -181,6 +182,33 @@ export function BuilderLayout() {
             lastSaved: null,
             config: { ...state.config, autoSaveEnabled: true }
           });
+        }}
+        onApplyWorkflowSuggestion={async (wf) => {
+          try {
+            const supabase = (await import('@/lib/supabase/client')).createClient();
+            const { data: form } = await supabase
+              .from('forms')
+              .select('workspace_id')
+              .eq('id', state.formId)
+              .single();
+
+            const { error } = await supabase
+              .from('workflows')
+              .insert({
+                form_id: state.formId,
+                workspace_id: form?.workspace_id || null,
+                name: wf.name,
+                trigger_type: wf.trigger_type,
+                description: wf.description,
+                steps: wf.steps,
+                is_active: true
+              });
+            if (error) throw error;
+            toast.success(`Successfully saved and activated CRM automation: "${wf.name}"!`);
+          } catch (err: any) {
+            console.error('Failed to apply workflow suggestion:', err);
+            toast.error(`Failed to activate automation: ${err.message || err}`);
+          }
         }}
       />
     </div>
