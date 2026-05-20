@@ -17,6 +17,8 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
   const [isLocked, setIsLocked] = useState(false);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [activeUsers, setActiveUsers] = useState<any[]>([]);
+  const [channel, setChannel] = useState<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isOwner = userEmail.toLowerCase() === 'oderinwalematthew3@gmail.com';
 
