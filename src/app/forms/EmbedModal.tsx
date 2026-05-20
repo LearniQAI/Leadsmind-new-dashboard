@@ -49,7 +49,7 @@ export function EmbedModal({ form, open, onClose }: EmbedModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#080f28] border border-white/10 rounded-3xl max-w-xl p-8 shadow-2xl">
+      <DialogContent className="bg-[#080f28] border border-white/10 rounded-3xl !max-w-xl p-8 shadow-2xl w-[95vw] sm:w-full overflow-hidden">
         <DialogHeader className="mb-6 border-b border-white/5 pb-4">
           <DialogTitle className="text-xl font-black uppercase text-white tracking-widest font-space-grotesk">
             Share &amp; <span className="text-[#2563eb]">Embed</span>
@@ -152,8 +152,8 @@ export function EmbedModal({ form, open, onClose }: EmbedModalProps) {
             </button>
           </div>
 
-          <div className="relative">
-            <pre className="p-4 bg-[#04081a] border border-white/8 rounded-2xl text-[11px] text-[#94a3c8] font-mono overflow-x-auto leading-relaxed custom-scrollbar whitespace-pre">
+          <div className="relative w-full overflow-hidden">
+            <pre className="p-4 bg-[#04081a] border border-white/8 rounded-2xl text-[11px] text-[#94a3c8] font-mono overflow-x-auto leading-relaxed custom-scrollbar whitespace-pre max-w-full">
               {activeSnippet}
             </pre>
           </div>
