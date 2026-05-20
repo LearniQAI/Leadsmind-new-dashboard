@@ -41,6 +41,7 @@
     "src/components/pagesUI/project/project-create/ProjectDescription.jsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "workers"
   ]
 }

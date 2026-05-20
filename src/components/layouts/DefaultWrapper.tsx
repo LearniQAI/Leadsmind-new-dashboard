@@ -9,6 +9,8 @@ import useGlobalContext from "@/hooks/use-context";
 import { useDashboardContext } from "./DashboardProvider";
 import GlobalSearchModal from "../dashboard/GlobalSearchModal";
 import AccessDenied from "../auth/AccessDenied";
+import LENAChat from "../support/LENAChat";
+import HelpDrawer from "../platform/HelpDrawer";
 
 interface WrapperProps {
  children: React.ReactNode;
@@ -78,6 +80,8 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       
       {/* Global Modals */}
       <GlobalSearchModal />
+      <LENAChat />
+      <HelpDrawer />
      </div>
     </div>
    </>

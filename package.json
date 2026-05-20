@@ -118,6 +118,7 @@
     "dotenv": "^17.4.2",
     "eslint": "^8",
     "eslint-config-next": "14.0.3",
+    "playwright": "^1.60.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "tsx": "^4.22.0",

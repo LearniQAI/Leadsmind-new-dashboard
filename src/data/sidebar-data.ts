@@ -58,6 +58,7 @@ const sidebarData: SidebarCategory[] = [
   items: [
    { id: 21, label: "Projects", icon: "icon-projects", link: "/projects", permission: "business" },
    { id: 22, label: "Support", icon: "fa-light fa-life-ring", link: "/support", permission: "business" },
+   { id: 221, label: "Help Center", icon: "fa-light fa-circle-question", link: "/articles", permission: "business" },
    { id: 23, label: "Automations", icon: "fa-light fa-bolt", link: "/automations", permission: "automation" },
    { id: 24, label: "Learning", icon: "icon-training", link: "/courses", permission: "business" },
    { id: 25, label: "Certificates", icon: "icon-trophy", link: "/courses/certificates", permission: "business" },

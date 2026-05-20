@@ -1,14 +1,40 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import HeaderAction from "./components/HeaderAction";
 import useGlobalContext from "@/hooks/use-context";
 import { useDashboardContext } from "../DashboardProvider";
-import { Menu, Search, Command as CommandIcon, Zap } from "lucide-react";
+import { Menu, Search, Command as CommandIcon, Zap, HelpCircle } from "lucide-react";
 import Link from "next/link";
 
 const DashboardHeader = () => {
     const { setSideMenuOpen, setSearchOpen } = useGlobalContext();
     const { enrichedWorkspace } = useDashboardContext();
+    const pathname = usePathname();
+    const [hasUpdate, setHasUpdate] = useState(false);
+
+    useEffect(() => {
+        if (!pathname) return;
+        
+        async function checkReleaseNotes() {
+            try {
+                const res = await fetch(`/api/platform/release-notes?route=${encodeURIComponent(pathname)}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    setHasUpdate(json.data && json.data.length > 0);
+                }
+            } catch (err) {
+                console.error("Failed to check release notes:", err);
+            }
+        }
+
+        checkReleaseNotes();
+        
+        // Listen to a custom event if release notes are read/dismissed
+        const handleDismiss = () => setHasUpdate(false);
+        window.addEventListener('dismiss-help-alert', handleDismiss);
+        return () => window.removeEventListener('dismiss-help-alert', handleDismiss);
+    }, [pathname]);
 
     return (
         <header className="sticky top-0 z-40 w-full bg-n900/80 backdrop-blur-md border-b border-white/5 h-[70px] flex items-center px-4 md:px-6">
@@ -60,12 +86,18 @@ const DashboardHeader = () => {
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-                    {/* Mobile Search Button */}
                     <button 
-                        onClick={() => setSearchOpen(true)}
-                        className="xl:hidden w-9 h-9 flex items-center justify-center text-t2 hover:text-t1 hover:bg-white/[0.05] rounded-xl transition-all"
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-help-drawer'))}
+                        title="Open page help documentation"
+                        className="relative w-9 h-9 flex items-center justify-center text-t2 hover:text-primary hover:bg-white/[0.05] rounded-xl transition-all active:scale-95"
                     >
-                        <Search size={20} />
+                        <HelpCircle size={18} />
+                        {hasUpdate && (
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full animate-ping" style={{ animationDuration: '1.5s' }} />
+                        )}
+                        {hasUpdate && (
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full" />
+                        )}
                     </button>
                     <HeaderAction />
                 </div>
