@@ -16,6 +16,8 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
   const [triggerType, setTriggerType] = useState('form_submitted');
   const [steps, setSteps] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [owners, setOwners] = useState<any[]>([]);
+  const [stages, setStages] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadWorkflow() {
@@ -29,6 +31,28 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
       if (wf) {
         setName(wf.name);
         setTriggerType(wf.trigger_type);
+
+        // Fetch workspace members for owner assignment
+        const { data: members } = await supabase
+          .from('workspace_members')
+          .select('user_id, user:users(first_name, last_name)')
+          .eq('workspace_id', wf.workspace_id);
+        if (members) {
+          setOwners(members.map((m: any) => ({
+            id: m.user_id,
+            name: m.user ? `${m.user.first_name} ${m.user.last_name}`.trim() : 'Unknown Personnel'
+          })));
+        }
+
+        // Fetch pipeline stages
+        const { data: pipelineStages } = await supabase
+          .from('pipeline_stages')
+          .select('id, name, pipeline:pipelines(name)')
+          .eq('workspace_id', wf.workspace_id)
+          .order('position', { ascending: true });
+        if (pipelineStages) {
+          setStages(pipelineStages);
+        }
       }
 
       // 2. Fetch steps
@@ -79,6 +103,12 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
         matchAction: 'continue',
         fallbackAction: 'stop'
       };
+    } else if (type === 'assign_owner') {
+      nextSteps[idx].config = { ownerId: '' };
+    } else if (type === 'update_pipeline') {
+      nextSteps[idx].config = { stageId: '' };
+    } else if (type === 'create_note') {
+      nextSteps[idx].config = { content: '' };
     } else {
       nextSteps[idx].config = { templateType: 'confirmation', subject: 'Subject', body: 'Body' };
     }
@@ -239,7 +269,13 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
             {step.type === 'apply_tags' && (
               <input
                 type="text"
-                value={step.config?.tags?.join(', ') || ''}
+                value={
+                  Array.isArray(step.config?.tags)
+                    ? step.config.tags.join(', ')
+                    : typeof step.config?.tags === 'string'
+                    ? step.config.tags
+                    : ''
+                }
                 onChange={(e) => updateStepConfig(idx, 'tags', e.target.value.split(',').map(s => s.trim()))}
                 className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
                 placeholder="Comma separated tags (e.g. Lead, High-Value)"
@@ -281,6 +317,53 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
                     <strong>Fallback path:</strong> Stop execution run
                   </div>
                 </div>
+              </div>
+            )}
+
+            {step.type === 'assign_owner' && (
+              <div className="flex items-center gap-2 text-xs">
+                <span>Assign to owner:</span>
+                <select
+                  value={step.config?.ownerId || ''}
+                  onChange={(e) => updateStepConfig(idx, 'ownerId', e.target.value)}
+                  className="bg-[#0b132c] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="">Select Owner...</option>
+                  {owners.map(o => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {step.type === 'update_pipeline' && (
+              <div className="flex items-center gap-2 text-xs">
+                <span>Move opportunity to stage:</span>
+                <select
+                  value={step.config?.stageId || step.config?.stage || ''}
+                  onChange={(e) => updateStepConfig(idx, 'stageId', e.target.value)}
+                  className="bg-[#0b132c] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="">Select Stage...</option>
+                  {stages.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.pipeline?.name ? `${s.pipeline.name} → ` : ''}{s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {step.type === 'create_note' && (
+              <div className="flex flex-col gap-2 text-xs">
+                <span>Add note to contact profile:</span>
+                <textarea
+                  value={step.config?.content || ''}
+                  onChange={(e) => updateStepConfig(idx, 'content', e.target.value)}
+                  rows={2}
+                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-[11px]"
+                  placeholder="Note content (supports {{name}} tags)"
+                />
               </div>
             )}
 

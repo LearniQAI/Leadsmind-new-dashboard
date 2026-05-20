@@ -34,7 +34,7 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
 
       const { data: wfs } = await supabase
         .from('workflows')
-        .select('*')
+        .select('*, steps:workflow_steps(count)')
         .eq('form_id', params.id)
         .order('created_at', { ascending: false });
 
@@ -116,7 +116,7 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
   };
 
   const handleApplyWorkflowSuggestion = async (wf: any) => {
-    if (!form) return;
+    if (!form) return undefined;
     try {
       const { data: newWf, error: wfErr } = await supabase
         .from('workflows')
@@ -136,8 +136,9 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
       if (Array.isArray(wf.steps) && wf.steps.length > 0) {
         const stepRecords = wf.steps.map((step: any, index: number) => ({
           workflow_id: newWf.id,
+          workspace_id: form.workspace_id,
           type: step.type,
-          position: index,
+          position: index + 1,
           config: step.config
         }));
 
@@ -150,8 +151,10 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
 
       toast.success('Successfully applied AI Recommended Workflow steps!');
       loadData();
+      return newWf?.id;
     } catch (err: any) {
       toast.error(err.message || 'Failed to insert workflow suggestion.');
+      return undefined;
     }
   };
 
@@ -226,6 +229,7 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
           {activeTab === 'editor' ? (
             selectedWorkflowId ? (
               <WorkflowEditor
+                key={selectedWorkflowId}
                 workflowId={selectedWorkflowId}
                 onSaved={loadData}
               />

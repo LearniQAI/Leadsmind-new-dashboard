@@ -36,7 +36,7 @@ export const CRMActionHandler = {
           return await this.assignContactOwner(supabase, contactId, config.ownerId);
 
         case 'update_pipeline':
-          return await this.updatePipelineStage(supabase, payload.workspaceId, contactId, config.stage);
+          return await this.updatePipelineStage(supabase, payload.workspaceId, contactId, config.stage || config.stageId);
 
         case 'apply_tags':
           return await this.applyContactTags(supabase, contactId, config.tags || []);
@@ -78,7 +78,7 @@ export const CRMActionHandler = {
    */
   async createTask(supabase: any, workspaceId: string, contactId: string | null, config: any) {
     const { data, error } = await supabase
-      .from('tasks')
+      .from('contact_tasks')
       .insert({
         workspace_id: workspaceId,
         contact_id: contactId,
@@ -111,7 +111,7 @@ export const CRMActionHandler = {
   /**
    * Action: Update Pipeline Stage
    */
-  async updatePipelineStage(supabase: any, workspaceId: string, contactId: string, stage: string) {
+  async updatePipelineStage(supabase: any, workspaceId: string, contactId: string, stageId: string) {
     // Find or upsert opportunity for contact
     const { data: existingOpp } = await supabase
       .from('opportunities')
@@ -124,7 +124,7 @@ export const CRMActionHandler = {
     if (existingOpp) {
       res = await supabase
         .from('opportunities')
-        .update({ stage, updated_at: new Date().toISOString() })
+        .update({ stage_id: stageId, updated_at: new Date().toISOString() })
         .eq('id', existingOpp.id);
     } else {
       res = await supabase
@@ -133,7 +133,7 @@ export const CRMActionHandler = {
           workspace_id: workspaceId,
           contact_id: contactId,
           title: 'Form Qualified Lead',
-          stage: stage,
+          stage_id: stageId,
           value: 0.00
         });
     }
@@ -170,11 +170,11 @@ export const CRMActionHandler = {
   async createContactNote(supabase: any, workspaceId: string, contactId: string, content: string, formName: string) {
     const noteText = content || `Submitted form: ${formName}`;
     const { data, error } = await supabase
-      .from('notes')
+      .from('contact_notes')
       .insert({
         workspace_id: workspaceId,
         contact_id: contactId,
-        body: noteText,
+        content: noteText,
         created_at: new Date().toISOString()
       })
       .select()
@@ -209,7 +209,7 @@ export const CRMActionHandler = {
    */
   async createReminder(supabase: any, workspaceId: string, contactId: string, config: any) {
     const { data, error } = await supabase
-      .from('tasks')
+      .from('contact_tasks')
       .insert({
         workspace_id: workspaceId,
         contact_id: contactId,

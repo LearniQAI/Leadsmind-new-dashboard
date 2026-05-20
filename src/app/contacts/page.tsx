@@ -16,17 +16,25 @@ export default async function ContactsPage() {
   if (!workspaceId) redirect('/login');
 
   const supabase = await createServerClient();
-  const [contactsRes, tagsRes] = await Promise.all([
+  const [contactsRes, tagsRes, membersRes] = await Promise.all([
     supabase
       .from('contacts')
       .select('*')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false }),
-    getWorkspaceTags(workspaceId)
+    getWorkspaceTags(workspaceId),
+    supabase
+      .from('workspace_members')
+      .select('user_id, user:users(first_name, last_name)')
+      .eq('workspace_id', workspaceId)
   ]);
 
   const contacts = contactsRes.data || [];
   const tags = tagsRes || [];
+  const owners = (membersRes.data || []).map((m: any) => ({
+    id: m.user_id,
+    name: m.user ? `${m.user.first_name} ${m.user.last_name}`.trim() : 'Unknown Personnel'
+  }));
 
   return (
     <MetaData pageTitle="Relationship Management">
@@ -57,7 +65,7 @@ export default async function ContactsPage() {
 
           {/* Main Content */}
           <div className="flex-1 overflow-hidden">
-            <ContactsClient initialContacts={contacts} initialTags={tags} />
+            <ContactsClient initialContacts={contacts} initialTags={tags} owners={owners} />
           </div>
         </div>
       </Wrapper>
