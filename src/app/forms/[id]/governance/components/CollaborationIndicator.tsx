@@ -15,18 +15,84 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
   const [userInitials, setUserInitials] = useState('Y');
   const [isLocked, setIsLocked] = useState(false);
 
+  const [activeUsers, setActiveUsers] = useState<any[]>([]);
+  const [channel, setChannel] = useState<any>(null);
+
   useEffect(() => {
-    const fetchUser = async () => {
+    let activeChannel: any;
+    
+    const initPresence = async () => {
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
       const { data } = await supabase.auth.getUser();
+      
+      let email = 'Guest';
+      let initials = 'G';
+      
       if (data?.user?.email) {
-        setUserEmail(data.user.email);
-        setUserInitials(data.user.email.substring(0, 2).toUpperCase());
+        email = data.user.email;
+        initials = email.substring(0, 2).toUpperCase();
+        setUserEmail(email);
+        setUserInitials(initials);
+      }
+
+      activeChannel = supabase.channel(`form_presence_${formId}`, {
+        config: { presence: { key: email } },
+      });
+
+      activeChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = activeChannel.presenceState();
+          const users: any[] = [];
+          let isGloballyLocked = false;
+          let lockerEmail = '';
+
+          for (const key in state) {
+            const presences = state[key] as any[];
+            if (presences && presences.length > 0) {
+              const p = presences[0];
+              users.push(p);
+              if (p.locked) {
+                isGloballyLocked = true;
+                lockerEmail = p.email;
+              }
+            }
+          }
+          
+          setActiveUsers(users.filter(u => u.email !== email)); // Others
+
+          // If someone else locked it, we force our state to locked (view-only)
+          // But actually we just want to know if it's locked by US or THEM.
+          if (isGloballyLocked && lockerEmail !== email) {
+            setIsLocked(true); // Technically locked by someone else
+          }
+        })
+        .subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED') {
+            await activeChannel.track({ email, initials, locked: false });
+          }
+        });
+        
+      setChannel(activeChannel);
+    };
+
+    initPresence();
+
+    return () => {
+      if (activeChannel) {
+        activeChannel.untrack();
+        activeChannel.unsubscribe();
       }
     };
-    fetchUser();
-  }, []);
+  }, [formId]);
+
+  const toggleLock = async () => {
+    const nextState = !isLocked;
+    setIsLocked(nextState);
+    if (channel) {
+      await channel.track({ email: userEmail, initials: userInitials, locked: nextState });
+    }
+  };
 
   return (
     <div className="flex items-center gap-4 bg-[#0c1535] border border-white/5 px-4 py-2 rounded-xl text-white font-dm-sans">
@@ -38,15 +104,25 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
           title={userEmail}
         >
           {userInitials}
-          
-          {/* Status dot */}
           <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border border-[#04081a] animate-pulse" />
-
-          {/* Tooltip */}
           <div className="absolute bottom-full mb-2 hidden group-hover:block bg-[#0b132c] border border-white/10 text-[9px] font-bold uppercase tracking-wider py-1 px-2.5 rounded shadow-xl whitespace-nowrap z-50">
-            {userEmail} (Active)
+            {userEmail} (You)
           </div>
         </div>
+
+        {activeUsers.map((u, i) => (
+          <div
+            key={i}
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-[#04081a] bg-purple-500 text-white cursor-pointer relative group`}
+            title={u.email}
+          >
+            {u.initials}
+            <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border border-[#04081a] animate-pulse" />
+            <div className="absolute bottom-full mb-2 hidden group-hover:block bg-[#0b132c] border border-white/10 text-[9px] font-bold uppercase tracking-wider py-1 px-2.5 rounded shadow-xl whitespace-nowrap z-50">
+              {u.email} {u.locked ? '(Locked Form)' : ''}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Connection Indicator Stats */}
@@ -61,7 +137,7 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
 
       {/* Editing Lock Toggle Scaffold */}
       <button
-        onClick={() => setIsLocked(!isLocked)}
+        onClick={toggleLock}
         className={`h-7 px-3 rounded-lg border flex items-center gap-1.5 transition-all text-[9px] font-black uppercase tracking-wider ${
           isLocked 
             ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' 
