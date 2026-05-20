@@ -179,12 +179,12 @@ export function BuilderCanvas() {
                 onDragOver={(e) => { e.preventDefault(); setIsOver(true); }}
                 onDragLeave={() => setIsOver(false)}
                 onDrop={handleHTML5Drop}
-                className={`transition-all duration-300 ${
-                  isOver ? 'border-[#2563eb]/50 bg-[#2563eb]/2 shadow-[inset_0_0_10px_rgba(37,99,235,0.05)]' : ''
+                className={`transition-all duration-300 rounded-2xl ${
+                  isOver ? 'border border-dashed border-[#2563eb]/40 bg-[#2563eb]/5 shadow-[0_0_30px_rgba(37,99,235,0.05)]' : 'border border-transparent'
                 }`}
                 style={{
-                  display: 'flex', flexDirection: 'column', gap: 16, padding: 24,
-                  background: 'var(--card)', border: '1px solid var(--bdr)', borderRadius: 'var(--r12)', minHeight: 450
+                  display: 'flex', flexDirection: 'column', gap: 16, padding: 12,
+                  minHeight: 450
                 }}
               >
                 <Droppable droppableId="form-fields">
@@ -206,7 +206,7 @@ export function BuilderCanvas() {
                   )}
                 </Droppable>
 
-                <div style={{ marginTop: 'auto', paddingTop: 24, borderTop: '1px solid var(--bdr)' }}>
+                <div style={{ marginTop: 'auto', paddingTop: 24 }}>
                   <button className="btn-primary" style={{ width: '100%', padding: '14px 24px', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 900, opacity: 0.9, pointerEvents: 'none' }}>
                     Submit Form
                   </button>
