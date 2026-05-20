@@ -1,0 +1,30 @@
+import { NextResponse } from 'next/server';
+import { triggerCompetitorKeywordsWeekly } from '@/app/actions/seo';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const key = searchParams.get('key');
+
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && key !== cronSecret) {
+      return NextResponse.json({ error: 'Unauthorized: Invalid cron access key.' }, { status: 401 });
+    }
+
+    const result = await triggerCompetitorKeywordsWeekly();
+    if ('error' in result) {
+      return NextResponse.json({ success: false, error: result.error }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, result });
+  } catch (error: any) {
+    console.error('[Competitor Keywords Cron Sync API] Failed:', error.message);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  return GET(req);
+}

@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Globe, Users, Palette, Code2, CreditCard, ShieldCheck, Monitor, Zap, Activity, FileSignature, Target, BarChart3, Settings as SettingsIcon 
+import {
+  Globe, Users, Palette, Code2, CreditCard, ShieldCheck, Monitor, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -34,6 +34,7 @@ import AppearanceTab from './components/tabs/AppearanceTab';
 // Modals
 import InviteModal from './components/modals/InviteModal';
 import EditMemberModal from './components/modals/EditMemberModal';
+import SeoTab from './components/tabs/SeoTab';
 
 interface SettingsClientProps {
   branding: any;
@@ -54,7 +55,7 @@ export default function SettingsClient({
   const supabase = createClient();
   const { theme, toggleTheme } = useGlobalContext();
   const { direction, toggleDirection } = useDirection();
-  
+
   // State
   const [activeTab, setActiveTab] = useState('team');
   const [isSaving, setIsSaving] = useState(false);
@@ -94,6 +95,7 @@ export default function SettingsClient({
     { id: 'workspace', label: 'Workspace', icon: Globe, description: 'Neural configuration & identity' },
     { id: 'team', label: 'Team Node', icon: Users, description: 'Manage access protocols' },
     { id: 'branding', label: 'Branding', icon: Palette, description: 'Interface identity markers' },
+    { id: 'seo', label: 'SEO Settings', icon: TrendingUp, description: 'Google Search Console sync' },
     { id: 'api', label: 'API & Webhooks', icon: Code2, description: 'Neural handshakes' },
     { id: 'pricing', label: 'Billing', icon: CreditCard, description: 'Resource allocation' },
     { id: 'audit', label: 'Security', icon: ShieldCheck, description: 'Audit logs & integrity' },
@@ -101,6 +103,34 @@ export default function SettingsClient({
   ];
 
   // Effects
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab) {
+        setActiveTab(tab);
+      }
+
+      const success = params.get('success');
+      if (success === 'gsc_connected') {
+        toast.success('Google Search Console connected successfully!');
+        window.history.replaceState({}, '', window.location.pathname + '?tab=seo');
+      } else if (success) {
+        toast.success(success.replace(/_/g, ' '));
+        window.history.replaceState({}, '', window.location.pathname + `?tab=${tab || 'team'}`);
+      }
+
+      const error = params.get('error');
+      if (error === 'gsc_auth_failed') {
+        toast.error('Failed to authenticate with Google Search Console.');
+        window.history.replaceState({}, '', window.location.pathname + '?tab=seo');
+      } else if (error) {
+        toast.error(error.replace(/_/g, ' '));
+        window.history.replaceState({}, '', window.location.pathname + `?tab=${tab || 'team'}`);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'api') {
       getWorkspaceApiKey().then(res => {
@@ -232,7 +262,7 @@ export default function SettingsClient({
     setIsSaving(true);
     const res = await updateMemberPermissions(editingMember.id, editRole, editPermissions);
     setIsSaving(false);
-    
+
     if (res.error) {
       toast.error(res.error);
     } else {
@@ -246,23 +276,23 @@ export default function SettingsClient({
 
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-160px)]">
-      <SettingsSidebar 
-        menuItems={menuItems} 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+      <SettingsSidebar
+        menuItems={menuItems}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
       />
 
       <div className="flex-1 min-w-0 bg-[#04091a] relative overflow-y-auto">
-        <SettingsHeader 
-          title={currentMenu?.label || ''} 
-          description={currentMenu?.description || ''} 
+        <SettingsHeader
+          title={currentMenu?.label || ''}
+          description={currentMenu?.description || ''}
         />
 
         <div className="p-8 max-w-4xl mx-auto">
           {activeTab === 'workspace' && (
-            <WorkspaceTab 
-              branding={branding} 
-              isSaving={isSaving} 
+            <WorkspaceTab
+              branding={branding}
+              isSaving={isSaving}
               onSave={handleSaveWorkspace}
               onCopy={copyToClipboard}
               copiedId={copied}
@@ -270,7 +300,7 @@ export default function SettingsClient({
           )}
 
           {activeTab === 'team' && (
-            <TeamTab 
+            <TeamTab
               members={members}
               invitations={invitations}
               onInviteClick={() => setIsInviteOpen(true)}
@@ -286,7 +316,7 @@ export default function SettingsClient({
           )}
 
           {activeTab === 'branding' && (
-            <BrandingTab 
+            <BrandingTab
               branding={branding}
               primaryColor={primaryColor}
               setPrimaryColor={setPrimaryColor}
@@ -297,8 +327,10 @@ export default function SettingsClient({
             />
           )}
 
+          {activeTab === 'seo' && <SeoTab />}
+
           {activeTab === 'api' && (
-            <ApiTab 
+            <ApiTab
               apiKey={apiKey}
               onRegenerateKey={handleRegenerateKey}
               onCopy={copyToClipboard}
@@ -311,11 +343,11 @@ export default function SettingsClient({
           )}
 
           {activeTab === 'pricing' && <BillingTab memberCount={members.length} />}
-          
+
           {activeTab === 'audit' && <SecurityTab auditData={auditData} />}
 
           {activeTab === 'appearance' && (
-            <AppearanceTab 
+            <AppearanceTab
               theme={theme || 'dark'}
               toggleTheme={toggleTheme}
               direction={direction || 'ltr'}
@@ -326,7 +358,7 @@ export default function SettingsClient({
       </div>
 
       {/* Modals */}
-      <InviteModal 
+      <InviteModal
         isOpen={isInviteOpen}
         onClose={() => setIsInviteOpen(false)}
         inviteMode={inviteMode}
@@ -346,7 +378,7 @@ export default function SettingsClient({
         permissionModules={PERMISSION_MODULES}
       />
 
-      <EditMemberModal 
+      <EditMemberModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         member={editingMember}
