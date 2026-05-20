@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Users, Lock, Unlock, Eye } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Users, Lock, Unlock, Eye, ChevronDown } from 'lucide-react';
+import { AuditLogger } from '@/lib/governance/AuditLogger';
 
 interface ActiveUser {
   email: string;
@@ -15,8 +16,9 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
   const [userInitials, setUserInitials] = useState('Y');
   const [isLocked, setIsLocked] = useState(false);
 
-  const [activeUsers, setActiveUsers] = useState<any[]>([]);
-  const [channel, setChannel] = useState<any>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const isOwner = userEmail.toLowerCase() === 'oderinwalematthew3@gmail.com';
 
   useEffect(() => {
     let activeChannel: any;
@@ -44,32 +46,24 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
         .on('presence', { event: 'sync' }, () => {
           const state = activeChannel.presenceState();
           const users: any[] = [];
-          let isGloballyLocked = false;
-          let lockerEmail = '';
-
+          
           for (const key in state) {
             const presences = state[key] as any[];
             if (presences && presences.length > 0) {
-              const p = presences[0];
-              users.push(p);
-              if (p.locked) {
-                isGloballyLocked = true;
-                lockerEmail = p.email;
-              }
+              users.push(presences[0]);
             }
           }
           
           setActiveUsers(users.filter(u => u.email !== email)); // Others
-
-          // If someone else locked it, we force our state to locked (view-only)
-          // But actually we just want to know if it's locked by US or THEM.
-          if (isGloballyLocked && lockerEmail !== email) {
-            setIsLocked(true); // Technically locked by someone else
+        })
+        .on('broadcast', { event: 'lock_state_change' }, ({ payload }: any) => {
+          if (payload.targetEmail === email && !isOwner) { // Owner cannot be locked
+            setIsLocked(payload.locked);
           }
         })
         .subscribe(async (status: string) => {
           if (status === 'SUBSCRIBED') {
-            await activeChannel.track({ email, initials, locked: false });
+            await activeChannel.track({ email, initials });
           }
         });
         
@@ -78,20 +72,42 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
 
     initPresence();
 
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+
     return () => {
       if (activeChannel) {
         activeChannel.untrack();
         activeChannel.unsubscribe();
       }
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [formId]);
 
-  const toggleLock = async () => {
-    const nextState = !isLocked;
-    setIsLocked(nextState);
+  const toggleUserLock = async (targetEmail: string, currentLockState: boolean) => {
+    if (!isOwner) return; // Only owner can toggle locks
+    const newLockState = !currentLockState;
+
+    // Send broadcast to the specific user
     if (channel) {
-      await channel.track({ email: userEmail, initials: userInitials, locked: nextState });
+      channel.send({
+        type: 'broadcast',
+        event: 'lock_state_change',
+        payload: { targetEmail, locked: newLockState }
+      });
     }
+
+    // Log the action so it appears in real-time Activity Logs
+    await AuditLogger.logAction(
+      formId,
+      'collab',
+      userEmail,
+      `${newLockState ? 'Locked' : 'Unlocked'} editing access for ${targetEmail}`
+    );
   };
 
   return (
@@ -125,35 +141,67 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
         ))}
       </div>
 
-      {/* Connection Indicator Stats */}
-      <div className="flex flex-col gap-0.5 border-l border-white/10 pl-3">
-        <span className="text-[9px] font-black uppercase tracking-widest text-[#4a5a82] flex items-center gap-1">
-          <Eye size={10} className="text-emerald-400" /> Active Session
-        </span>
-        <span className="text-[10px] font-bold text-white/70">
-          Editing as {userEmail.split('@')[0]}
-        </span>
-      </div>
+      {/* Connection Indicator Stats & Dropdown */}
+      <div className="relative flex flex-col border-l border-white/10 pl-3" ref={dropdownRef}>
+        <button
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
+        >
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] font-black uppercase tracking-widest text-[#4a5a82] flex items-center gap-1">
+              <Eye size={10} className="text-emerald-400" /> Active Session
+            </span>
+            <span className="text-[10px] font-bold text-white/70">
+              Editing as {userEmail.split('@')[0]} {isOwner && <span className="text-blue-400 font-black">(Owner)</span>}
+            </span>
+          </div>
+          <ChevronDown size={14} className="text-white/40" />
+        </button>
 
-      {/* Editing Lock Toggle Scaffold */}
-      <button
-        onClick={toggleLock}
-        className={`h-7 px-3 rounded-lg border flex items-center gap-1.5 transition-all text-[9px] font-black uppercase tracking-wider ${
-          isLocked 
-            ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' 
-            : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/60 hover:text-white'
-        }`}
-      >
-        {isLocked ? (
-          <>
-            <Lock size={11} /> Locked
-          </>
-        ) : (
-          <>
-            <Unlock size={11} /> Unlocked
-          </>
+        {isDropdownOpen && (
+          <div className="absolute top-full mt-3 right-0 w-64 bg-[#0b132c] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1">
+            <div className="px-2 py-1.5 border-b border-white/5 mb-1">
+              <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Active Collaborators</span>
+            </div>
+
+            {/* Current User */}
+            <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-blue-500 text-[8px] font-black flex items-center justify-center text-white">{userInitials}</div>
+                <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{userEmail} (You)</span>
+              </div>
+              <span className="text-[8px] font-black uppercase tracking-wider text-[#4a5a82]">
+                {isOwner ? 'Owner' : isLocked ? 'Locked' : 'Editor'}
+              </span>
+            </div>
+
+            {/* Other Users */}
+            {activeUsers.map((u, i) => (
+              <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-purple-500 text-[8px] font-black flex items-center justify-center text-white">{u.initials}</div>
+                  <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{u.email}</span>
+                </div>
+                
+                {isOwner && (
+                  <button
+                    onClick={() => toggleUserLock(u.email, false)} // We simplify by just saying "Toggle" or we could track their specific lock state
+                    className="h-6 px-2 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-[8px] font-black uppercase tracking-wider transition-all flex items-center gap-1"
+                  >
+                    Toggle Access
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {activeUsers.length === 0 && (
+              <div className="p-3 text-center text-[9px] font-bold text-white/30 uppercase tracking-wider">
+                No other users active right now.
+              </div>
+            )}
+          </div>
         )}
-      </button>
+      </div>
 
     </div>
   );
