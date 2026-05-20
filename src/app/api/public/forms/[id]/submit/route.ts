@@ -204,7 +204,7 @@ export async function POST(
 
     if (submissionError) {
       console.error('[Public Submit] Submission error:', submissionError);
-      return corsError('Failed to record submission', 500);
+      return corsError(`Database error: ${submissionError.message || JSON.stringify(submissionError)}`, 500);
     }
 
     // Trigger workflow automations asynchronously
