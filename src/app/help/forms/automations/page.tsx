@@ -1,19 +1,23 @@
+'use client';
+
 import React from 'react';
 import { ArrowLeft, Sliders } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function HelpAutomationsPage() {
+  const router = useRouter();
+  
   return (
     <div className="min-h-screen bg-[#04081a] text-white p-8 font-dm-sans">
       <div className="max-w-4xl mx-auto flex flex-col gap-8">
         
         <div className="flex items-center gap-4">
-          <Link
-            href="/forms"
+          <button
+            onClick={() => router.back()}
             className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/10"
           >
             <ArrowLeft size={16} className="text-[#4a5a82]" />
-          </Link>
+          </button>
           <div>
             <h1 className="text-2xl font-space-grotesk font-black uppercase tracking-tight flex items-center gap-2">
               <Sliders size={20} className="text-purple-400" />
