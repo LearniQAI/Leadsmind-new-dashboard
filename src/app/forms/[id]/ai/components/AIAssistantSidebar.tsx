@@ -180,9 +180,10 @@ export function AIAssistantSidebar({
       {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
-        className={`fixed bottom-6 ${floatingOffsetClass || 'right-6'} p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center gap-2 border border-blue-500/30 transition-all hover:scale-105 z-50 font-dm-sans text-xs font-black uppercase tracking-wider`}
+        className={`fixed bottom-6 ${floatingOffsetClass || 'right-6'} w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center border border-blue-500/30 transition-all hover:scale-110 z-50`}
+        title="LeadsMind AI Assistant"
       >
-        <Sparkles size={16} /> LeadsMind AI Assistant
+        <Sparkles size={20} className="animate-pulse" />
       </button>
 
       {/* Slide-out Sidebar Panel */}
