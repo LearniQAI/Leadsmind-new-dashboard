@@ -30,6 +30,25 @@ export function VersionHistoryTimeline({
 
   useEffect(() => {
     loadHistory();
+    
+    // Add real-time subscription
+    const supabase = (async () => (await import('@/lib/supabase/client')).createClient())();
+    let channel: any;
+    
+    supabase.then(client => {
+      channel = client
+        .channel(`version_history_${formId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'form_versions', filter: `form_id=eq.${formId}` }, (payload) => {
+          setHistory(current => [payload.new as FormVersion, ...current]);
+        })
+        .subscribe();
+    });
+
+    return () => {
+      if (channel) {
+        supabase.then(client => client.removeChannel(channel));
+      }
+    };
   }, [formId]);
 
   const handleRollback = async (version: FormVersion) => {

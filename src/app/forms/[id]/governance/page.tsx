@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import { ArrowLeft, ShieldAlert, GitCommit, History, Globe, BookOpen } from 'lucide-react';
 import { CollaborationIndicator } from './components/CollaborationIndicator';
 import { VersionHistoryTimeline } from './components/VersionHistoryTimeline';
-import { PublishControls } from './components/PublishControls';
 import { AuditLogsViewer } from './components/AuditLogsViewer';
 import { DiagnosticsDashboard } from './components/DiagnosticsDashboard';
 import { HelpDocumentationRenderer } from './components/HelpDocumentationRenderer';
@@ -16,7 +15,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'publish' | 'versions' | 'audit' | 'diagnostics' | 'help'>('publish');
+  const [activeTab, setActiveTab] = useState<'versions' | 'audit' | 'diagnostics' | 'help'>('versions');
 
   const loadForm = async () => {
     try {
@@ -80,17 +79,6 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
         {/* Tab Selection */}
         <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl self-start overflow-x-auto max-w-full">
           <button
-            onClick={() => setActiveTab('publish')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${
-              activeTab === 'publish'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-white/40 hover:text-white'
-            }`}
-          >
-            <Globe size={12} /> Publish Settings
-          </button>
-          
-          <button
             onClick={() => setActiveTab('versions')}
             className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${
               activeTab === 'versions'
@@ -137,14 +125,6 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
 
         {/* Central Display Pane */}
         <div className="mt-2 min-h-[400px]">
-          {activeTab === 'publish' && (
-            <PublishControls
-              formId={params.id}
-              currentDraft={form}
-              onPublishCompleted={loadForm}
-            />
-          )}
-
           {activeTab === 'versions' && (
             <VersionHistoryTimeline
               formId={params.id}

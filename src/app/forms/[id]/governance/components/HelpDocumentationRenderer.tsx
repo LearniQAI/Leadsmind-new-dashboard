@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Search, BookOpen, ExternalLink, Code, Sliders, Shield } from 'lucide-react';
+import Link from 'next/link';
 
 interface HelpTopic {
   title: string;
@@ -22,7 +23,7 @@ export function HelpDocumentationRenderer() {
       icon: <Code size={14} className="text-blue-400" />,
       content: 'Copy the dynamic iframe loader script from the dashboard dropdown and paste it directly into your HTML code. Fully compatible with Webflow embed blocks, Shopify custom liquid blocks, and WordPress element builders.',
       linkText: 'Universal Embed documentation',
-      linkUrl: '#'
+      linkUrl: '/help/forms/embed'
     },
     {
       title: 'Configuring Workflow Logic',
@@ -30,7 +31,7 @@ export function HelpDocumentationRenderer() {
       icon: <Sliders size={14} className="text-purple-400" />,
       content: 'Navigate to the Workflow Automations manager from the Form Card. Connect trigger conditions (e.g. Form Submitted, Step Completed) directly to actions like pipeline stage movements, marketing list inserts, and email templates.',
       linkText: 'Automation guides',
-      linkUrl: '#'
+      linkUrl: '/help/forms/automations'
     },
     {
       title: 'Managing Versions & Snapshots',
@@ -38,7 +39,7 @@ export function HelpDocumentationRenderer() {
       icon: <Shield size={14} className="text-indigo-400" />,
       content: 'Every change in the Form Builder edits the draft version. To push changes live to your embed, go to Governance and click "Publish live version". This stores an immutable snapshot you can rollback to at any time.',
       linkText: 'Snapshot rollbacks explanation',
-      linkUrl: '#'
+      linkUrl: '/help/forms/governance'
     }
   ];
 
@@ -100,12 +101,12 @@ export function HelpDocumentationRenderer() {
             </div>
 
             {topic.linkText && (
-              <a
-                href={topic.linkUrl}
+              <Link
+                href={topic.linkUrl || '#'}
                 className="text-[9px] font-black uppercase tracking-wider text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-2.5"
               >
                 {topic.linkText} <ExternalLink size={10} />
-              </a>
+              </Link>
             )}
           </div>
         ))}
