@@ -22,7 +22,7 @@ export const EmbedOptimizer = {
   /**
    * Safe frame sizing signals sent to host elements (WordPress/Webflow integrations).
    */
-  private sendResizeSignal(iframeId: string) {
+  sendResizeSignal(iframeId: string) {
     const el = document.getElementById(iframeId);
     if (!el) return;
     
