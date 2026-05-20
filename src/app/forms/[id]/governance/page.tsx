@@ -156,7 +156,11 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
           )}
 
           {activeTab === 'collaborators' && (
-            <CollaboratorsManager formId={params.id} />
+            <CollaboratorsManager 
+              formId={params.id} 
+              workspaceId={form?.workspace_id}
+              formName={form?.name}
+            />
           )}
 
           {activeTab === 'help' && (

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Users, UserPlus, Shield, Mail, Trash2, CheckCircle2 } from 'lucide-react';
+import { Users, UserPlus, Shield, Mail, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { inviteFormCollaborator } from '@/app/actions/collaborators';
 
 interface Collaborator {
   id: string;
@@ -12,11 +13,20 @@ interface Collaborator {
   addedAt: string;
 }
 
-export function CollaboratorsManager({ formId }: { formId: string }) {
+export function CollaboratorsManager({ 
+  formId, 
+  workspaceId, 
+  formName 
+}: { 
+  formId: string; 
+  workspaceId: string; 
+  formName: string; 
+}) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
+  const [inviting, setInviting] = useState(false);
   
-  // Mock data for the demo
+  // Mock list of collaborators for display
   const [collaborators, setCollaborators] = useState<Collaborator[]>([
     {
       id: '1',
@@ -34,7 +44,7 @@ export function CollaboratorsManager({ formId }: { formId: string }) {
     }
   ]);
 
-  const handleInvite = (e: React.FormEvent) => {
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
 
@@ -43,17 +53,36 @@ export function CollaboratorsManager({ formId }: { formId: string }) {
       return;
     }
 
-    const newCollab: Collaborator = {
-      id: Math.random().toString(36).substr(2, 9),
-      email: inviteEmail,
-      role: inviteRole,
-      status: 'pending',
-      addedAt: new Date().toISOString()
-    };
+    setInviting(true);
+    try {
+      const res = await inviteFormCollaborator({
+        email: inviteEmail,
+        formId,
+        formName: formName || 'Untitled Form',
+        role: inviteRole
+      });
 
-    setCollaborators([...collaborators, newCollab]);
-    setInviteEmail('');
-    toast.success(`Invitation sent to ${inviteEmail}!`);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+
+      const newCollab: Collaborator = {
+        id: Math.random().toString(36).substr(2, 9),
+        email: inviteEmail.trim().toLowerCase(),
+        role: inviteRole,
+        status: 'pending',
+        addedAt: new Date().toISOString()
+      };
+
+      setCollaborators([...collaborators, newCollab]);
+      setInviteEmail('');
+      toast.success(`Invitation sent! Real-time notification delivered to ${inviteEmail}.`);
+    } catch (err: any) {
+      toast.error(err.message || 'An error occurred sending the invitation.');
+    } finally {
+      setInviting(false);
+    }
   };
 
   const handleRemove = (id: string) => {
@@ -91,16 +120,18 @@ export function CollaboratorsManager({ formId }: { formId: string }) {
             <input
               type="email"
               value={inviteEmail}
+              disabled={inviting}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="Enter email address..."
-              className="w-full bg-[#04081a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-[#04081a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50"
             />
           </div>
           
           <select
             value={inviteRole}
+            disabled={inviting}
             onChange={(e) => setInviteRole(e.target.value as any)}
-            className="bg-[#04081a] border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-blue-500 cursor-pointer appearance-none min-w-[140px]"
+            className="bg-[#04081a] border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-blue-500 cursor-pointer appearance-none min-w-[140px] disabled:opacity-50"
           >
             <option value="editor">Can Edit</option>
             <option value="viewer">Can View</option>
@@ -108,10 +139,18 @@ export function CollaboratorsManager({ formId }: { formId: string }) {
           
           <button
             type="submit"
-            disabled={!inviteEmail}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+            disabled={!inviteEmail || inviting}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 min-w-[160px]"
           >
-            <UserPlus size={16} /> Send Invite
+            {inviting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Sending...
+              </>
+            ) : (
+              <>
+                <UserPlus size={16} /> Send Invite
+              </>
+            )}
           </button>
         </form>
       </div>
