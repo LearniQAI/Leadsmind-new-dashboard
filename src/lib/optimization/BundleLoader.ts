@@ -19,9 +19,9 @@ export const BundleLoader = {
 
     console.log(`[BundleLoader] Lazy loading dynamic package chunk: ${moduleName}`);
     try {
-      const module = await importFn();
+      const importedModule = await importFn();
       this.privateLoadedModules.add(moduleName);
-      return module;
+      return importedModule;
     } catch (err) {
       console.error(`[BundleLoader] Failed to dynamically import "${moduleName}":`, err);
       throw err;
