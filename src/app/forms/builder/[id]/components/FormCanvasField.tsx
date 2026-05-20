@@ -32,12 +32,12 @@ export function FormCanvasField({ field, index }: FormCanvasFieldProps) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           onClick={handleSelect}
-          className={`relative group p-5 bg-[#0c1535]/80 border rounded-2xl transition-all duration-200 cursor-pointer ${
+          className={`relative group p-5 bg-[#0c1535]/80 border rounded-2xl transition-all duration-300 transform cursor-pointer ${
             isSelected
-              ? 'border-[#2563eb] shadow-[0_0_15px_rgba(37,99,235,0.15)] bg-[#0c1535]'
+              ? 'border-[#2563eb] shadow-[0_0_20px_rgba(37,99,235,0.2)] bg-[#0c1535] scale-[1.01]'
               : snapshot.isDragging
-              ? 'border-[#2563eb]/50 shadow-2xl bg-[#0c1535]'
-              : 'border-white/5 hover:border-white/10'
+              ? 'border-[#2563eb]/60 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-[#0c1535]/90 scale-[1.03] rotate-[0.5deg] z-50'
+              : 'border-white/5 hover:border-white/20 hover:bg-[#0c1535] hover:-translate-y-[2px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)]'
           } ${field.width === 'half' ? 'col-span-1' : 'col-span-2'}`}
         >
           {/* Drag Handle */}

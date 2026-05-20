@@ -110,7 +110,15 @@ export function BuilderCanvas() {
 
   return (
     <div 
-      style={{ flex: 1, background: 'var(--n900)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{ 
+        flex: 1, 
+        background: 'var(--n900)', 
+        backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.05) 1.5px, transparent 1.5px)',
+        backgroundSize: '24px 24px',
+        display: 'flex', 
+        flexDirection: 'column', 
+        overflow: 'hidden' 
+      }}
       onClick={() => dispatch({ type: 'SELECT_FIELD', id: null })}
     >
       {/* Steps Navigation Bar */}

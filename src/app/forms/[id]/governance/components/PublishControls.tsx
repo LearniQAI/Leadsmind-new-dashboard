@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Globe, XCircle, AlertTriangle, CheckCircle, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { PublishManager, PublishValidationResult } from '@/lib/governance/PublishManager';
@@ -17,6 +18,7 @@ export function PublishControls({
   currentDraft,
   onPublishCompleted
 }: PublishControlsProps) {
+  const router = useRouter();
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<PublishValidationResult | null>(null);
   const [notes, setNotes] = useState('');
@@ -61,9 +63,12 @@ export function PublishControls({
     try {
       const res = await PublishManager.publishDraft(formId, notes, 'Alex Cooper');
       if (res.success) {
-        toast.success('Form published to production!');
+        toast.success('Form published to production! Redirecting back to builder...');
         setNotes('');
         onPublishCompleted();
+        setTimeout(() => {
+          router.push(`/forms/builder/${formId}`);
+        }, 1500);
       } else {
         toast.error(res.error || 'Failed to publish draft.');
       }
