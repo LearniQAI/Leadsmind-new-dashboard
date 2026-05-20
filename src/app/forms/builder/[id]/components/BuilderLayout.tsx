@@ -192,7 +192,22 @@ export function BuilderLayout() {
               .eq('id', state.formId)
               .single();
 
-            const workspaceId = form?.workspace_id || '00000000-0000-0000-0000-000000000000';
+            let workspaceId = form?.workspace_id;
+            if (!workspaceId) {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                const { data: member } = await supabase
+                  .from('workspace_members')
+                  .select('workspace_id')
+                  .eq('user_id', user.id)
+                  .limit(1)
+                  .single();
+                workspaceId = member?.workspace_id;
+              }
+            }
+            if (!workspaceId) {
+              workspaceId = '00000000-0000-0000-0000-000000000000';
+            }
 
             // 1. Insert workflow metadata
             const { data: workflow, error: wfError } = await supabase
