@@ -156,6 +156,7 @@ export function BuilderLayout() {
       </div>
       <AIAssistantSidebar
         formId={state.formId}
+        floatingOffsetClass="right-[320px]"
         onApplyFormSchema={(schema) => {
           dispatch({
             type: 'INITIALIZE',
