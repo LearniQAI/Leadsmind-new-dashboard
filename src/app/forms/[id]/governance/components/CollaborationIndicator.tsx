@@ -100,7 +100,6 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
     if (!isOwner) return; // Only owner can toggle locks
     const newLockState = !currentLockState;
 
-    // Send broadcast to the specific user
     if (channel) {
       channel.send({
         type: 'broadcast',
@@ -108,6 +107,11 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
         payload: { targetEmail, locked: newLockState }
       });
     }
+
+    // Instantly update the local UI state for snappy feedback
+    setActiveUsers(prev => prev.map(u => 
+      u.email === targetEmail ? { ...u, locked: newLockState } : u
+    ));
 
     // Log the action so it appears in real-time Activity Logs
     await AuditLogger.logAction(
