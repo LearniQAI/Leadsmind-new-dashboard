@@ -65,7 +65,7 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
         })
         .subscribe(async (status: string) => {
           if (status === 'SUBSCRIBED') {
-            await activeChannel.track({ email, initials });
+            await activeChannel.track({ email, initials, locked: false });
           }
         });
         
@@ -89,6 +89,12 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [formId]);
+
+  useEffect(() => {
+    if (channel) {
+      channel.track({ email: userEmail, initials: userInitials, locked: isLocked });
+    }
+  }, [isLocked]);
 
   const toggleUserLock = async (targetEmail: string, currentLockState: boolean) => {
     if (!isOwner) return; // Only owner can toggle locks
@@ -187,10 +193,15 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
                 
                 {isOwner && (
                   <button
-                    onClick={() => toggleUserLock(u.email, false)} // We simplify by just saying "Toggle" or we could track their specific lock state
-                    className="h-6 px-2 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-[8px] font-black uppercase tracking-wider transition-all flex items-center gap-1"
+                    onClick={() => toggleUserLock(u.email, u.locked || false)}
+                    className={`h-6 px-2 rounded border text-[8px] font-black uppercase tracking-wider transition-all flex items-center gap-1 ${
+                      u.locked
+                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20'
+                        : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20'
+                    }`}
                   >
-                    Toggle Access
+                    {u.locked ? <Unlock size={10} /> : <Lock size={10} />}
+                    {u.locked ? 'Unlock' : 'Lock'}
                   </button>
                 )}
               </div>
