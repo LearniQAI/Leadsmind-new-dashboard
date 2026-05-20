@@ -14,8 +14,15 @@ import { AuditLogger } from '@/lib/governance/AuditLogger';
 interface AIAssistantSidebarProps {
   formId: string;
   onApplyFormSchema?: (schema: any) => void;
-  onApplyWorkflowSuggestion?: (wf: any) => void;
+  onApplyWorkflowSuggestion?: (wf: any) => Promise<string | undefined>;
   onApplyCopySuggestion?: (copy: any) => void;
+  onRevertFormSchema?: (original: { name: string; fields: any[]; steps: any[] }) => void;
+  onRevertCopySuggestion?: (original: { id: string; label: string; placeholder: string; helpText: string }) => void;
+  onRevertWorkflowSuggestion?: (workflowId: string) => Promise<void>;
+  currentFormName?: string;
+  currentFields?: any[];
+  currentSteps?: any[];
+  selectedFieldId?: string | null;
   floatingOffsetClass?: string;
 }
 
@@ -24,6 +31,13 @@ export function AIAssistantSidebar({
   onApplyFormSchema,
   onApplyWorkflowSuggestion,
   onApplyCopySuggestion,
+  onRevertFormSchema,
+  onRevertCopySuggestion,
+  onRevertWorkflowSuggestion,
+  currentFormName,
+  currentFields,
+  currentSteps,
+  selectedFieldId,
   floatingOffsetClass
 }: AIAssistantSidebarProps) {
   const [open, setOpen] = useState(false);
@@ -141,21 +155,61 @@ export function AIAssistantSidebar({
     if (!reviewingProposal) return;
     const item = reviewingProposal;
 
-    // Track for revert capability
-    setAppliedPatches([item, ...appliedPatches]);
+    let revertPayload: any = null;
 
     if (item.type === 'copy' && onApplyFormSchema && item.meta?.fields) {
+      // 1. Layout generation snapshot
+      revertPayload = {
+        type: 'schema',
+        data: {
+          name: currentFormName || '',
+          fields: currentFields || [],
+          steps: currentSteps || []
+        }
+      };
       onApplyFormSchema(item.meta);
       toast.success('Applied generated form schema layout to active Draft!');
     } else if (item.type === 'copy' && onApplyCopySuggestion && item.meta?.headline) {
+      // 2. Copy optimization snapshot
+      const activeField = currentFields?.find(f => f.id === selectedFieldId);
+      if (activeField) {
+        revertPayload = {
+          type: 'copy_field',
+          data: {
+            id: activeField.id,
+            label: activeField.label,
+            placeholder: activeField.placeholder,
+            helpText: activeField.helpText
+          }
+        };
+      } else {
+        revertPayload = {
+          type: 'copy_form_name',
+          data: {
+            name: currentFormName || ''
+          }
+        };
+      }
       onApplyCopySuggestion(item.meta);
       toast.success('Applied optimized copy to selected element!');
     } else if (item.type === 'workflow' && onApplyWorkflowSuggestion && item.meta) {
-      onApplyWorkflowSuggestion(item.meta);
+      // 3. Automation workflow database insert
+      const createdId = await onApplyWorkflowSuggestion(item.meta);
+      if (createdId) {
+        revertPayload = {
+          type: 'workflow',
+          data: {
+            id: createdId
+          }
+        };
+      }
       toast.success('Applied workflow template advice to active Draft!');
     } else {
       toast.success(`Approved recommendation: "${item.title}"`);
     }
+
+    // Save with the snapshot
+    setAppliedPatches([{ ...item, revertPayload }, ...appliedPatches]);
 
     // Write audit log trace
     await AuditLogger.logAction(
@@ -170,14 +224,40 @@ export function AIAssistantSidebar({
     setReviewingProposal(null);
   };
 
-  const handleRevertLastPatch = () => {
+  const handleRevertLastPatch = async () => {
     if (appliedPatches.length === 0) return;
     const confirm = window.confirm('Revert the last approved AI patch suggestion?');
     if (!confirm) return;
 
     const reverted = appliedPatches[0];
     setAppliedPatches(prev => prev.slice(1));
-    toast.success(`Reverted changes from: "${reverted.title}"`);
+
+    try {
+      const payload = reverted.revertPayload;
+      if (!payload) {
+        toast.success(`Removed tracking for: "${reverted.title}"`);
+        return;
+      }
+
+      if (payload.type === 'schema' && onRevertFormSchema) {
+        onRevertFormSchema(payload.data);
+        toast.success(`Reverted form layout back to: "${payload.data.name}"`);
+      } else if (payload.type === 'copy_field' && onRevertCopySuggestion) {
+        onRevertCopySuggestion(payload.data);
+        toast.success(`Reverted active field copy changes.`);
+      } else if (payload.type === 'copy_form_name' && onRevertCopySuggestion) {
+        onRevertCopySuggestion({ id: '', label: payload.data.name, placeholder: '', helpText: '' });
+        toast.success(`Reverted form name.`);
+      } else if (payload.type === 'workflow' && onRevertWorkflowSuggestion && payload.data.id) {
+        await onRevertWorkflowSuggestion(payload.data.id);
+        toast.success(`Deleted CRM automation from database.`);
+      } else {
+        toast.success(`Reverted changes from: "${reverted.title}"`);
+      }
+    } catch (err: any) {
+      console.error('Revert failed:', err);
+      toast.error(`Revert failed: ${err.message || err}`);
+    }
   };
 
   return (

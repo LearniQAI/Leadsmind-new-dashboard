@@ -228,9 +228,11 @@ export function BuilderLayout() {
             }
 
             toast.success(`Successfully saved and activated CRM automation: "${wf.name}"!`);
+            return workflow?.id;
           } catch (err: any) {
             console.error('Failed to apply workflow suggestion:', err);
             toast.error(`Failed to activate automation: ${err.message || err}`);
+            return undefined;
           }
         }}
         onApplyCopySuggestion={(copy) => {
@@ -251,6 +253,47 @@ export function BuilderLayout() {
             });
           }
         }}
+        onRevertFormSchema={(original) => {
+          dispatch({
+            type: 'INITIALIZE',
+            formId: state.formId,
+            formName: original.name,
+            fields: original.fields,
+            steps: original.steps,
+            logicRules: state.logicRules,
+            progressBarType: state.progressBarType,
+            lastSaved: state.lastSaved,
+            config: state.config
+          });
+        }}
+        onRevertCopySuggestion={(original) => {
+          if (original.id) {
+            dispatch({
+              type: 'UPDATE_FIELD',
+              id: original.id,
+              updates: {
+                label: original.label,
+                placeholder: original.placeholder,
+                helpText: original.helpText
+              }
+            });
+          } else {
+            dispatch({
+              type: 'UPDATE_FORM_NAME',
+              name: original.label
+            });
+          }
+        }}
+        onRevertWorkflowSuggestion={async (workflowId) => {
+          const supabase = (await import('@/lib/supabase/client')).createClient();
+          await supabase.from('workflow_steps').delete().eq('workflow_id', workflowId);
+          const { error } = await supabase.from('workflows').delete().eq('id', workflowId);
+          if (error) throw error;
+        }}
+        currentFormName={state.formName}
+        currentFields={state.fields}
+        currentSteps={state.steps}
+        selectedFieldId={state.selectedFieldId}
       />
     </div>
   );
