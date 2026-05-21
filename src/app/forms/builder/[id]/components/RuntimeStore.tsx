@@ -1,8 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { FormField, FormStep } from './FormBuilderContext';
-import { LogicRule, evaluateLogicRules } from './LogicEngine';
+import { LogicRule } from './LogicEngine';
+import { evaluateRulesSafely } from './RuleEvaluator';
 import { validateStep, validateField } from './ValidationEngine';
 
 interface RuntimeState {
@@ -12,6 +13,7 @@ interface RuntimeState {
   navHistory: number[];
   completed: boolean;
   hiddenFieldIds: Set<string>;
+  skipStepIds: Set<string>;
 }
 
 const RuntimeContext = createContext<{
@@ -43,13 +45,22 @@ export function RuntimeProvider({
   const [navHistory, setNavHistory] = useState<number[]>([]);
   const [completed, setCompleted] = useState(false);
   const [hiddenFieldIds, setHiddenFieldIds] = useState<Set<string>>(new Set());
+  const [skipStepIds, setSkipStepIds] = useState<Set<string>>(new Set());
+  const logicRulesRef = useRef(logicRules);
+  logicRulesRef.current = logicRules;
+
+  const evalOptions = { fields: fields.map(f => ({ id: f.id, stepId: f.stepId })), steps: steps.map(s => ({ id: s.id })) };
 
   // Evaluate conditional logic whenever values change
   useEffect(() => {
-    const { hiddenFieldIds: newHidden, overriddenValues } = evaluateLogicRules(logicRules, values);
+    const { hiddenFieldIds: newHidden, overriddenValues, skipStepIds: newSkip } = evaluateRulesSafely(
+      logicRulesRef.current,
+      values,
+      evalOptions
+    );
     setHiddenFieldIds(newHidden);
+    setSkipStepIds(newSkip);
 
-    // Apply overridden values silently if needed
     let hasOverrides = false;
     const nextValues = { ...values };
     for (const [k, v] of Object.entries(overriddenValues)) {
@@ -63,30 +74,34 @@ export function RuntimeProvider({
     }
   }, [values, logicRules]);
 
-  const updateValue = (fieldId: string, val: any) => {
+  const updateValue = useCallback((fieldId: string, val: any) => {
     setValues(prev => ({ ...prev, [fieldId]: val }));
-
-    // Dynamic field validation on value change
-    const field = fields.find(f => f.id === fieldId);
-    if (field) {
+    setErrors(prev => {
+      const field = fields.find(f => f.id === fieldId);
+      if (!field) return prev;
       const err = validateField(field, val);
+      const next = { ...prev };
       if (err) {
-        setErrors(prev => ({ ...prev, [fieldId]: err }));
+        next[fieldId] = err;
       } else {
-        setErrors(prev => {
-          const next = { ...prev };
-          delete next[fieldId];
-          return next;
-        });
+        delete next[fieldId];
       }
-    }
-  };
+      return next;
+    });
+  }, [fields]);
 
-  const nextStep = () => {
+  const getNextNonSkippedIndex = useCallback((fromIndex: number, skipIds: Set<string>): number => {
+    let idx = fromIndex;
+    while (idx < steps.length && skipIds.has(steps[idx].id)) {
+      idx++;
+    }
+    return idx >= steps.length ? fromIndex : idx;
+  }, [steps]);
+
+  const nextStep = useCallback(() => {
     const currentStep = steps[currentStepIndex];
     if (!currentStep) return false;
 
-    // Get active fields for current step
     const currentStepFields = fields.filter(f => f.stepId === currentStep.id);
     const stepErrors = validateStep(currentStepFields, values, hiddenFieldIds);
 
@@ -97,37 +112,46 @@ export function RuntimeProvider({
 
     setErrors({});
 
-    // Jump Logic Checks
-    const { jumpToStepId } = evaluateLogicRules(logicRules, values);
+    // Check for jump_to_step rules
+    const { jumpToStepId, skipStepIds: currentSkip } = evaluateRulesSafely(
+      logicRulesRef.current,
+      values,
+      evalOptions
+    );
+
     if (jumpToStepId) {
       const jumpIndex = steps.findIndex(s => s.id === jumpToStepId);
       if (jumpIndex !== -1 && jumpIndex > currentStepIndex) {
+        const finalIndex = getNextNonSkippedIndex(jumpIndex, currentSkip);
         setNavHistory(prev => [...prev, currentStepIndex]);
-        setCurrentStepIndex(jumpIndex);
+        setCurrentStepIndex(finalIndex);
         return true;
       }
     }
 
-    // Default progression
-    if (currentStepIndex < steps.length - 1) {
+    // Default progression with skip_step support
+    const nextRawIndex = currentStepIndex + 1;
+    if (nextRawIndex < steps.length) {
+      const finalIndex = getNextNonSkippedIndex(nextRawIndex, currentSkip);
       setNavHistory(prev => [...prev, currentStepIndex]);
-      setCurrentStepIndex(prev => prev + 1);
+      setCurrentStepIndex(finalIndex);
       return true;
     }
 
     return true;
-  };
+  }, [currentStepIndex, steps, fields, values, hiddenFieldIds, getNextNonSkippedIndex]);
 
-  const prevStep = () => {
-    if (navHistory.length === 0) return;
-    const prevIndex = navHistory[navHistory.length - 1];
-    setNavHistory(prev => prev.slice(0, -1));
-    setCurrentStepIndex(prevIndex);
-    setErrors({});
-  };
+  const prevStep = useCallback(() => {
+    setNavHistory(prev => {
+      if (prev.length === 0) return prev;
+      const prevIndex = prev[prev.length - 1];
+      setCurrentStepIndex(prevIndex);
+      setErrors({});
+      return prev.slice(0, -1);
+    });
+  }, []);
 
-  const submitForm = () => {
-    // Validate final step
+  const submitForm = useCallback(() => {
     const currentStep = steps[currentStepIndex];
     const currentStepFields = fields.filter(f => f.stepId === currentStep.id);
     const stepErrors = validateStep(currentStepFields, values, hiddenFieldIds);
@@ -142,12 +166,12 @@ export function RuntimeProvider({
     if (onSubmit) {
       onSubmit(values);
     }
-  };
+  }, [currentStepIndex, steps, fields, values, hiddenFieldIds, onSubmit]);
 
   return (
     <RuntimeContext.Provider
       value={{
-        state: { values, errors, currentStepIndex, navHistory, completed, hiddenFieldIds },
+        state: { values, errors, currentStepIndex, navHistory, completed, hiddenFieldIds, skipStepIds },
         updateValue,
         nextStep,
         prevStep,

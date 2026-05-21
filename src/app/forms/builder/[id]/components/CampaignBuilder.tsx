@@ -22,8 +22,10 @@ export function CampaignBuilder() {
     });
   };
 
-  const addTrigger = (type: string) => {
-    const newTrigger = { type, value: type === 'time-delay' ? 5 : 50 };
+  const addTrigger = (type: string, value?: number) => {
+    const val = value ?? (type === 'time-delay' ? 5 : type === 'scroll' ? 50 : undefined);
+    const newTrigger: any = { type };
+    if (val !== undefined) newTrigger.value = val;
     updateCampaign({ triggers: [...(campaign.triggers || []), newTrigger] });
   };
 
@@ -104,18 +106,33 @@ export function CampaignBuilder() {
                 className="bg-transparent border-none text-[9px] font-black uppercase tracking-wider text-primary outline-none cursor-pointer"
               >
                 <option value="">+ ADD</option>
-                <option value="time-delay">Time Delay</option>
-                <option value="exit-intent">Exit Intent</option>
-                <option value="scroll">Scroll Percentage</option>
-                <option value="page-load">Instant Load</option>
-                <option value="inactivity">Inactivity Delay</option>
+                <option value="page-load">On Page Load</option>
+                <option value="time-delay">After N Seconds</option>
+                <option value="scroll">At Scroll %</option>
+                <option value="exit-intent">On Exit Intent</option>
               </select>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(!campaign.triggers || campaign.triggers.length === 0) && (
-                <div className="text-center py-4 bg-white/2 rounded-xl border border-white/5 border-dashed">
-                  <p className="text-[10px] text-white/30 font-dm-sans">Form will never display automatically.</p>
+                <div className="text-center py-6 bg-white/2 rounded-xl border border-white/5 border-dashed">
+                  <p className="text-[10px] text-white/30 font-dm-sans mb-3">No automatic triggers set. Try adding one:</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {[
+                      { type: 'page-load', label: 'On Page Load', desc: 'Show immediately' },
+                      { type: 'time-delay', value: 5, label: 'After 5s', desc: 'Timed delay' },
+                      { type: 'scroll', value: 50, label: 'At 50% scroll', desc: 'Scroll trigger' },
+                    ].map((s) => (
+                      <button
+                        key={s.type + (s.value || '')}
+                        onClick={() => addTrigger(s.type, s.value)}
+                        className="px-3 py-2 bg-white/5 border border-white/10 hover:border-[#2563eb]/20 rounded-lg text-[9px] text-white/50 hover:text-white font-dm-sans transition-all text-left"
+                      >
+                        <span className="block font-bold text-[10px] text-white/70">{s.label}</span>
+                        <span className="block text-[8px] text-[#4a5a82] mt-0.5">{s.desc}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -123,6 +140,7 @@ export function CampaignBuilder() {
                 <div key={i} className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-xl group relative">
                   <div>
                     <p className="text-[10px] font-bold text-white uppercase tracking-wider mb-1">{trigger.type.replace('-', ' ')}</p>
+                    {trigger.type === 'page-load' && <p className="text-[9px] text-[#4a5a82] m-0">Shows immediately on page load</p>}
                     {trigger.type === 'time-delay' && <p className="text-[9px] text-[#4a5a82] m-0">Shows after {trigger.value} seconds</p>}
                     {trigger.type === 'scroll' && <p className="text-[9px] text-[#4a5a82] m-0">Shows at {trigger.value}% scroll</p>}
                     {trigger.type === 'exit-intent' && <p className="text-[9px] text-[#4a5a82] m-0">Shows on mouse leave</p>}

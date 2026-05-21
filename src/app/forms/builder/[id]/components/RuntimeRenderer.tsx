@@ -5,7 +5,7 @@ import { useRuntimeForm } from './RuntimeStore';
 import { ProgressBar } from './ProgressBar';
 import { StepNavigation } from './StepNavigation';
 import { RuntimeField } from './RuntimeField';
-import { CheckCircle2, MessageSquare } from 'lucide-react';
+import { CheckCircle2, MessageSquare, SkipForward } from 'lucide-react';
 
 interface RuntimeRendererProps {
   progressBarType: 'percentage' | 'numbered' | 'minimal';
@@ -13,11 +13,10 @@ interface RuntimeRendererProps {
 
 export function RuntimeRenderer({ progressBarType }: RuntimeRendererProps) {
   const { state, steps, fields } = useRuntimeForm();
-  const { currentStepIndex, completed } = state;
-  
+  const { currentStepIndex, completed, skipStepIds } = state;
+
   const currentStep = steps[currentStepIndex];
 
-  // Success / Completed Screen
   if (completed) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-16 px-6 bg-[#0c1535] border border-white/5 rounded-3xl max-w-lg mx-auto shadow-2xl relative overflow-hidden">
@@ -37,6 +36,22 @@ export function RuntimeRenderer({ progressBarType }: RuntimeRendererProps) {
     return (
       <div className="text-center py-12">
         <p className="text-xs text-white/30 font-dm-sans">Form contains no steps configured.</p>
+      </div>
+    );
+  }
+
+  // If current step is skipped by conditional logic, show a notice
+  if (skipStepIds.has(currentStep.id)) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-12 px-6 bg-[#0c1535]/80 border border-white/5 rounded-3xl max-w-lg mx-auto shadow-xl">
+        <div className="w-12 h-12 bg-[#2563eb]/10 rounded-full flex items-center justify-center mb-4 border border-[#2563eb]/20 text-[#2563eb]">
+          <SkipForward size={20} />
+        </div>
+        <h3 className="text-lg font-black uppercase text-white tracking-widest font-space-grotesk">Step Skipped</h3>
+        <p className="text-[#94a3c8] text-xs font-dm-sans mt-2 max-w-xs leading-relaxed">
+          This step is not needed based on your previous answers and has been skipped automatically.
+        </p>
+        <StepNavigation />
       </div>
     );
   }

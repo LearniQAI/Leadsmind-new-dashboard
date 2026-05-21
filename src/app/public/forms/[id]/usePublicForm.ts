@@ -41,6 +41,7 @@ export function usePublicForm(
   const [stepIndex, setStepIndex] = useState(0);
   const [navHistory, setNavHistory] = useState<number[]>([]);
   const [hiddenFieldIds, setHiddenFieldIds] = useState<Set<string>>(new Set());
+  const [skipStepIds, setSkipStepIds] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -76,8 +77,9 @@ export function usePublicForm(
 
   // Evaluate conditional logic on value changes
   useEffect(() => {
-    const { hiddenFieldIds: newHidden, overriddenValues } = evaluateLogicRules(logicRules, values);
+    const { hiddenFieldIds: newHidden, overriddenValues, skipStepIds: newSkip } = evaluateLogicRules(logicRules, values);
     setHiddenFieldIds(newHidden);
+    setSkipStepIds(newSkip);
 
     let hasOverrides = false;
     const next = { ...values };
@@ -88,7 +90,7 @@ export function usePublicForm(
       }
     }
     if (hasOverrides) setValues(next);
-  }, [values, logicRules]);
+  }, [values, logicRules, steps]);
 
   // Analytics Tracking Integration
   const tracker = useMemo(() => {
@@ -206,17 +208,26 @@ export function usePublicForm(
       isReturningContact: !!returningContact,
     });
 
-    const { jumpToStepId } = evaluateLogicRules(logicRules, values);
+    const { jumpToStepId, skipStepIds: newSkip } = evaluateLogicRules(logicRules, values);
     if (jumpToStepId) {
       const jumpIdx = steps.findIndex(s => s.id === jumpToStepId);
       if (jumpIdx !== -1 && jumpIdx > stepIndex) {
+        let finalIdx = jumpIdx;
+        while (finalIdx < steps.length && newSkip.has(steps[finalIdx].id)) {
+          finalIdx++;
+        }
         setNavHistory(p => [...p, stepIndex]);
-        setStepIndex(jumpIdx);
+        setStepIndex(finalIdx >= steps.length ? jumpIdx : finalIdx);
         return;
       }
     }
+    // Apply skip_step: find next non-skipped step
+    let nextIdx = stepIndex + 1;
+    while (nextIdx < steps.length && newSkip.has(steps[nextIdx].id)) {
+      nextIdx++;
+    }
     setNavHistory(p => [...p, stepIndex]);
-    setStepIndex(p => p + 1);
+    setStepIndex(nextIdx >= steps.length ? stepIndex + 1 : nextIdx);
   };
 
   const handleBack = () => {
@@ -268,6 +279,7 @@ export function usePublicForm(
     stepIndex,
     navHistory,
     hiddenFieldIds,
+    skipStepIds,
     submitting,
     completed,
     submitError,

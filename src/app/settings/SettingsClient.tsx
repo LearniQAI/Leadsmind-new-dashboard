@@ -17,7 +17,9 @@ import {
   getWorkspaceApiKey,
   generateWorkspaceApiKey,
   updateWorkspaceLogo,
-  updateMemberPermissions
+  updateMemberPermissions,
+  revokeInvitation,
+  deleteMember
 } from '@/app/actions/settings';
 
 // Components
@@ -96,7 +98,7 @@ export default function SettingsClient({
     { id: 'team', label: 'Team Node', icon: Users, description: 'Manage access protocols' },
     { id: 'branding', label: 'Branding', icon: Palette, description: 'Interface identity markers' },
     { id: 'seo', label: 'SEO Settings', icon: TrendingUp, description: 'Google Search Console sync' },
-    { id: 'api', label: 'API & Webhooks', icon: Code2, description: 'Neural handshakes' },
+    { id: 'api', label: 'Developer', icon: Code2, description: 'API keys, webhooks & SDK' },
     { id: 'pricing', label: 'Billing', icon: CreditCard, description: 'Resource allocation' },
     { id: 'audit', label: 'Security', icon: ShieldCheck, description: 'Audit logs & integrity' },
     { id: 'appearance', label: 'Appearance', icon: Monitor, description: 'Visual preferences' },
@@ -310,8 +312,20 @@ export default function SettingsClient({
                 setEditPermissions(member.permissions || ['dashboard']);
                 setIsEditModalOpen(true);
               }}
-              onDeleteMember={() => toast.info('Delete functionality coming soon')}
-              onDeleteInvitation={() => toast.info('Revoke functionality coming soon')}
+              onDeleteMember={async (member) => {
+                if (!confirm(`Remove ${member.user?.email || 'this member'} from the workspace?`)) return;
+                const res = await deleteMember(member.id);
+                if (res.error) { toast.error(res.error); return; }
+                toast.success('Member removed');
+                router.refresh();
+              }}
+              onDeleteInvitation={async (invite) => {
+                if (!confirm(`Revoke invitation for ${invite.email}?`)) return;
+                const res = await revokeInvitation(invite.id);
+                if (res.error) { toast.error(res.error); return; }
+                toast.success('Invitation revoked');
+                router.refresh();
+              }}
             />
           )}
 

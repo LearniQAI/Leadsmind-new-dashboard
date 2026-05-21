@@ -3,24 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
-  Plus, FileText, Share2, UserCheck, Pencil, Trash2, Globe, X,
-  CheckCircle, Clock, MoreVertical, Copy, Loader2, Search, Code2, Users, ExternalLink
+  Plus, FileText, Share2, UserCheck, Trash2, X,
+  CheckCircle, Clock, Loader2, Search, Users, ExternalLink, Bell
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
 import { createForm } from '@/app/actions/marketing';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import UniversalAPI from './UniversalAPI';
 import { EmbedModal } from './EmbedModal';
 import { CreateFormDialog, EditFormDialog, DeleteFormDialog } from './FormsModals';
 import { FormCard } from './FormCard';
-import { getUserCollaborations, acceptFormInvitation } from '@/app/actions/collaborators';
+import { getUserCollaborations, acceptFormInvitation, declineFormInvitation, sendInviteNotificationAfterAcceptance } from '@/app/actions/collaborators';
+import { InviteAcceptancePanel } from '@/components/collaboration/InviteAcceptancePanel';
+import { CollaborationNotifications } from '@/components/collaboration/CollaborationNotifications';
+import { InviteStatusCard } from '@/components/collaboration/InviteStatusCard';
 
 export default function FormsClient({ initialForms }: { initialForms: any[] }) {
   const router = useRouter();
@@ -44,18 +41,23 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
     }
   };
 
+  const [acceptingCollabId, setAcceptingCollabId] = useState<string | null>(null);
+
   const handleAcceptInvitation = async (collabId: string) => {
-    try {
-      const res = await acceptFormInvitation(collabId);
-      if (res.error) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success('Invitation accepted!');
+    setAcceptingCollabId(collabId);
+    const res = await acceptFormInvitation(collabId);
+    if (res.success) {
+      await sendInviteNotificationAfterAcceptance(collabId);
       loadCollaborations();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to accept invitation');
     }
+    setAcceptingCollabId(null);
+    return res;
+  };
+
+  const handleDeclineInvitation = async (collabId: string) => {
+    const res = await declineFormInvitation(collabId);
+    if (res.success) loadCollaborations();
+    return res;
   };
 
   useEffect(() => {
@@ -227,9 +229,6 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
           <TabsTrigger value="forms" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
             <FileText className="w-4 h-4 mr-2" /> My Forms
           </TabsTrigger>
-          <TabsTrigger value="api" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
-            <Globe className="w-4 h-4 mr-2" /> Universal API & Webhooks
-          </TabsTrigger>
           <TabsTrigger value="collaborations" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
             <Users className="w-4 h-4 mr-2" /> Collaborations
           </TabsTrigger>
@@ -289,110 +288,132 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
           </div>
         </TabsContent>
 
-        <TabsContent value="api" className="focus-visible:outline-none">
-          <UniversalAPI />
-        </TabsContent>
-
         <TabsContent value="collaborations" className="space-y-8 focus-visible:outline-none">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Forms Shared with You */}
-            <div className="bg-[#0b132c] border border-white/10 p-6 rounded-3xl flex flex-col gap-6">
+
+            <div className="bg-[#0c1535] border border-white/5 p-6 rounded-3xl flex flex-col gap-6">
               <div>
                 <h2 className="text-lg font-space-grotesk font-black uppercase tracking-tight flex items-center gap-2 text-white">
                   <UserCheck className="text-emerald-400" size={20} /> Forms Shared With You
                 </h2>
-                <p className="text-xs text-[#4a5a82] mt-1">Forms you have been invited to edit or view.</p>
+                <p className="text-xs text-t3 mt-1">Forms you've been invited to edit or view.</p>
               </div>
 
-              <div className="flex flex-col gap-3 max-h-[480px] overflow-y-auto pr-1">
+              <div className="flex flex-col gap-3 max-h-[540px] overflow-y-auto pr-1">
                 {loadingCollabs ? (
-                  <div className="py-8 text-center text-xs font-black uppercase tracking-widest text-[#4a5a82] animate-pulse">Loading invitations...</div>
+                  <div className="py-8 text-center text-[10px] font-black uppercase tracking-widest text-t3 animate-pulse">Loading invitations...</div>
                 ) : collaborations.invitedTo.length === 0 ? (
-                  <div className="py-12 text-center text-xs font-black uppercase tracking-widest text-white/30 border border-dashed border-white/5 rounded-2xl">
-                    No shared forms found
+                  <div className="py-14 text-center border border-dashed border-white/5 rounded-2xl">
+                    <div className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 mx-auto mb-3 flex items-center justify-center">
+                      <UserCheck size={20} className="text-t4 opacity-40" />
+                    </div>
+                    <p className="text-[11px] font-bold text-t3 uppercase tracking-widest">No shared forms</p>
                   </div>
                 ) : (
-                  collaborations.invitedTo.map((item) => (
-                    <div key={item.id} className="bg-[#04081a] border border-white/5 hover:border-white/10 p-4 rounded-2xl flex items-center justify-between transition-colors">
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <span className="text-sm font-bold text-white truncate">{item.formName}</span>
-                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                          <span className="text-[9px] text-[#4a5a82] font-black uppercase tracking-widest">By: {item.invitedByEmail}</span>
-                          <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                            {item.role}
-                          </span>
-                          {item.status === 'pending' && (
-                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                              Pending
-                            </span>
+                  collaborations.invitedTo.map((item) => {
+                    if (acceptingCollabId === item.id) {
+                      return (
+                        <InviteAcceptancePanel
+                          key={item.id}
+                          invitation={item}
+                          onAccept={handleAcceptInvitation}
+                          onDecline={handleDeclineInvitation}
+                          onComplete={() => { setAcceptingCollabId(null); loadCollaborations(); }}
+                        />
+                      );
+                    }
+                    return (
+                      <div key={item.id} className="bg-[#04091a] border border-white/5 hover:border-white/10 p-4 rounded-2xl flex items-center justify-between transition-colors">
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-sm font-bold text-white truncate">{item.formName}</span>
+                          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                            <span className="text-[9px] text-t3 font-medium">by <strong className="text-t2">{item.invitedByEmail}</strong></span>
+                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{item.role}</span>
+                            <InviteStatusCard status={item.status as any} role={item.role} />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {item.status === 'pending' ? (
+                            <button
+                              onClick={() => setAcceptingCollabId(item.id)}
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
+                            >
+                              Accept <CheckCircle size={10} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => router.push(`/forms/${item.formId}/governance`)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
+                            >
+                              Open <ExternalLink size={10} />
+                            </button>
                           )}
                         </div>
                       </div>
-                      
-                      {item.status === 'pending' ? (
-                        <button
-                          onClick={() => handleAcceptInvitation(item.id)}
-                          className="bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
-                        >
-                          Accept <CheckCircle size={10} />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => router.push(`/forms/${item.formId}/governance`)}
-                          className="bg-primary hover:bg-primary/80 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
-                        >
-                          Open <ExternalLink size={10} />
-                        </button>
-                      )}
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
 
-            {/* Forms You Shared with Others */}
-            <div className="bg-[#0b132c] border border-white/10 p-6 rounded-3xl flex flex-col gap-6">
-              <div>
-                <h2 className="text-lg font-space-grotesk font-black uppercase tracking-tight flex items-center gap-2 text-white">
-                  <Share2 className="text-blue-400" size={20} /> People You Invited
-                </h2>
-                <p className="text-xs text-[#4a5a82] mt-1">Collaborators you have added to your forms.</p>
+            <div className="flex flex-col gap-6">
+              <div className="bg-[#0c1535] border border-white/5 p-6 rounded-3xl flex flex-col gap-6">
+                <div>
+                  <h2 className="text-lg font-space-grotesk font-black uppercase tracking-tight flex items-center gap-2 text-white">
+                    <Share2 className="text-blue-400" size={20} /> People You Invited
+                  </h2>
+                  <p className="text-xs text-t3 mt-1">Collaborators you've added to your forms.</p>
+                </div>
+
+                <div className="flex flex-col gap-3 max-h-[280px] overflow-y-auto pr-1">
+                  {loadingCollabs ? (
+                    <div className="py-6 text-center text-[10px] font-black uppercase tracking-widest text-t3 animate-pulse">Loading...</div>
+                  ) : collaborations.invitedOthers.length === 0 ? (
+                    <div className="py-10 text-center border border-dashed border-white/5 rounded-2xl">
+                      <div className="w-10 h-10 rounded-2xl bg-white/[0.02] border border-white/5 mx-auto mb-3 flex items-center justify-center">
+                        <Share2 size={18} className="text-t4 opacity-40" />
+                      </div>
+                      <p className="text-[10px] font-bold text-t3 uppercase tracking-widest">No invitations sent</p>
+                    </div>
+                  ) : (
+                    collaborations.invitedOthers.map((item) => (
+                      <div key={item.id} className="bg-[#04091a] border border-white/5 hover:border-white/10 p-3.5 rounded-2xl flex items-center justify-between transition-colors">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-[9px] font-black text-purple-400 flex-shrink-0">
+                            {item.email?.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-white truncate block">{item.email}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[8px] text-t3">on <strong className="text-t2">{item.formName}</strong></span>
+                              <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">{item.role}</span>
+                              <InviteStatusCard status={item.status as any} role={item.role} />
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => router.push(`/forms/${item.formId}/governance`)}
+                          className="bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0 ml-2"
+                        >
+                          Manage <ExternalLink size={9} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
-              <div className="flex flex-col gap-3 max-h-[480px] overflow-y-auto pr-1">
-                {loadingCollabs ? (
-                  <div className="py-8 text-center text-xs font-black uppercase tracking-widest text-[#4a5a82] animate-pulse">Loading invitations...</div>
-                ) : collaborations.invitedOthers.length === 0 ? (
-                  <div className="py-12 text-center text-xs font-black uppercase tracking-widest text-white/30 border border-dashed border-white/5 rounded-2xl">
-                    No active invitations
-                  </div>
-                ) : (
-                  collaborations.invitedOthers.map((item) => (
-                    <div key={item.id} className="bg-[#04081a] border border-white/5 hover:border-white/10 p-4 rounded-2xl flex items-center justify-between transition-colors">
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <span className="text-sm font-bold text-white truncate">{item.email}</span>
-                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                          <span className="text-[9px] text-[#4a5a82] font-black uppercase tracking-widest">Form: {item.formName}</span>
-                          <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                            {item.role}
-                          </span>
-                          {item.status === 'pending' && (
-                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                              Pending
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => router.push(`/forms/${item.formId}/governance`)}
-                        className="bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
-                      >
-                        Manage <ExternalLink size={10} />
-                      </button>
-                    </div>
-                  ))
-                )}
+              <div className="bg-[#0c1535] border border-white/5 p-6 rounded-3xl flex flex-col gap-4">
+                <div>
+                  <h2 className="text-base font-space-grotesk font-bold uppercase tracking-tight flex items-center gap-2 text-white">
+                    <Bell className="text-amber-400" size={16} /> Activity Updates
+                  </h2>
+                  <p className="text-[10px] text-t3 mt-0.5">Real-time collaboration activity</p>
+                </div>
+                <div className="max-h-[240px] overflow-y-auto pr-1">
+                  <CollaborationNotifications />
+                </div>
               </div>
             </div>
 

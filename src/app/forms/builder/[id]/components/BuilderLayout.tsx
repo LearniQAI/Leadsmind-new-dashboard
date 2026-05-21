@@ -8,6 +8,7 @@ import { BuilderTopbar } from './BuilderTopbar';
 import { useFormBuilder } from './FormBuilderContext';
 import { RuntimeProvider } from './RuntimeStore';
 import { RuntimeRenderer } from './RuntimeRenderer';
+import { ActiveRuleIndicator } from './LogicPreviewRenderer';
 import { AIAssistantSidebar } from '@/app/forms/[id]/ai/components/AIAssistantSidebar';
 import { CollabPresenceList } from '@/app/forms/[id]/realtime/components/CollabPresenceList';
 import { ConflictWarnings } from '@/app/forms/[id]/realtime/components/ConflictWarnings';
@@ -102,14 +103,20 @@ export function BuilderLayout() {
               
               <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
                 <RuntimeProvider fields={state.fields} steps={state.steps} logicRules={state.logicRules}>
-                  <RuntimeRenderer progressBarType={state.progressBarType} />
+                  <div className="flex flex-col gap-3">
+                    <ActiveRuleIndicator />
+                    <RuntimeRenderer progressBarType={state.progressBarType} />
+                  </div>
                 </RuntimeProvider>
               </div>
             </div>
           ) : (
             <div className="custom-scrollbar" style={{ width: '100%', maxWidth: 680, maxHeight: '90%', overflowY: 'auto' }}>
               <RuntimeProvider fields={state.fields} steps={state.steps} logicRules={state.logicRules}>
-                <RuntimeRenderer progressBarType={state.progressBarType} />
+                <div className="flex flex-col gap-3">
+                  <ActiveRuleIndicator />
+                  <RuntimeRenderer progressBarType={state.progressBarType} />
+                </div>
               </RuntimeProvider>
             </div>
           )}
