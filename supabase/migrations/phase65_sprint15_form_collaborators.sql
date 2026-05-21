@@ -21,7 +21,7 @@ DROP POLICY IF EXISTS "Allow authenticated to manage collaborations" ON public.f
 -- Create open policies for authenticated users
 CREATE POLICY "Allow authenticated to view collaborations"
     ON public.form_collaborators FOR SELECT
-    WITH CHECK (auth.uid() IS NOT NULL);
+    USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Allow authenticated to manage collaborations"
     ON public.form_collaborators FOR ALL
