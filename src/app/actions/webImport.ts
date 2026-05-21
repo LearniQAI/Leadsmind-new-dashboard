@@ -3,7 +3,6 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
-import * as cheerio from 'cheerio';
 import { convert } from 'html-to-text';
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
@@ -99,6 +98,7 @@ export async function importWebPageAction(url: string) {
     }
 
     const html = await response.text();
+    const cheerio = await import('cheerio');
     const $ = cheerio.load(html);
 
     // Extract basic page metadata for cover image and title backup
