@@ -4,6 +4,7 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
+import type { InviteActionResponse } from '@/types/invitation.types';
 
 export async function inviteFormCollaborator({
   email,
@@ -15,12 +16,11 @@ export async function inviteFormCollaborator({
   formId: string;
   formName: string;
   role: 'editor' | 'viewer';
-}) {
+}): Promise<InviteActionResponse> {
   try {
     const supabase = await createServerClient();
     const adminSupabase = createAdminClient();
     
-    // Get the current user (owner/inviter)
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) return { error: 'Unauthorized' };
 
@@ -28,24 +28,38 @@ export async function inviteFormCollaborator({
     if (!workspaceId) return { error: 'No active workspace' };
 
     const targetEmail = email.trim().toLowerCase();
+    if (!targetEmail.includes('@')) return { error: 'Invalid email address' };
 
-    // 1. Resolve user ID by email
-    const { data: targetUser, error: findError } = await adminSupabase
+    const { data: targetUser } = await adminSupabase
       .from('users')
       .select('id')
       .eq('email', targetEmail)
       .maybeSingle();
 
-    if (findError) {
-      console.error('[inviteFormCollaborator] Find user error:', findError);
-      return { error: 'Database error searching for user' };
-    }
-
     if (!targetUser) {
-      return { error: `User with email ${email} not found on LeadsMind.` };
+      return { error: `User with email ${targetEmail} not found on LeadsMind.` };
     }
 
-    // 2. Insert into form_collaborators table (persistent record)
+    if (targetUser.id === currentUser.id) {
+      return { error: 'You cannot invite yourself to a form.' };
+    }
+
+    const { data: existing } = await adminSupabase
+      .from('form_collaborators')
+      .select('id, status')
+      .eq('form_id', formId)
+      .eq('email', targetEmail)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status === 'active') {
+        return { error: 'This user is already an active collaborator on this form.' };
+      }
+      if (existing.status === 'pending') {
+        return { error: 'A pending invitation already exists for this user.' };
+      }
+    }
+
     const { error: collabError } = await adminSupabase
       .from('form_collaborators')
       .upsert({
@@ -53,17 +67,15 @@ export async function inviteFormCollaborator({
         invited_by: currentUser.id,
         email: targetEmail,
         role: role,
-        status: 'pending' // Require explicit acceptance
+        status: 'pending'
       }, {
         onConflict: 'form_id,email'
       });
 
     if (collabError) {
-      console.error('[inviteFormCollaborator] Collaborator insert/upsert error:', collabError);
-      return { error: 'Failed to add collaborator' };
+      return { error: 'Failed to create invitation. Please try again.' };
     }
 
-    // 3. Insert notification into public.notifications table
     const { error: notifError } = await adminSupabase
       .from('notifications')
       .insert({
@@ -71,31 +83,41 @@ export async function inviteFormCollaborator({
         user_id: targetUser.id,
         type: 'team',
         title: 'Form Collaboration Invite',
-        message: `${currentUser.email} invited you to collaborate on form "${formName}"`,
-        link: `/forms/${formId}/governance`,
+        message: `${currentUser.email} invited you to collaborate on "${formName}" as ${role}`,
+        link: `/forms/${formId}/governance?accept=invite`,
         read: false
       });
 
     if (notifError) {
       console.error('[inviteFormCollaborator] Notification insert error:', notifError);
-      // Don't fail the whole action if only notification failed
     }
 
-    // 4. Send beautiful HTML email
     try {
-      const link = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/forms/${formId}/governance?accept=${collabError ? '' : 'invite'}`;
+      const link = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/forms/${formId}/governance?accept=${formId}`;
       await sendEmail({
         to: targetEmail,
-        subject: `You have been invited to collaborate on "${formName}"`,
+        subject: `You've been invited to collaborate on "${formName}"`,
         html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #2563eb; border-radius: 16px; background-color: #04091a; color: #eef2ff;">
-            <h2 style="color: #3b82f6; font-size: 24px;">Form <span style="color: #ffffff;">Collaboration</span></h2>
-            <p style="color: #94a3c8; font-size: 14px;">You have been invited by <strong>${currentUser.email}</strong> to collaborate on the form <strong>"${formName}"</strong>.</p>
-            <div style="margin: 24px 0; padding: 20px; background-color: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
-              <p style="margin: 0; font-size: 12px; color: #4a5a82; text-transform: uppercase; letter-spacing: 1px;">Granted Access Role</p>
-              <p style="margin: 8px 0 0; font-size: 16px; font-weight: bold; color: #3b82f6;">${role.toUpperCase()}</p>
+          <div style="font-family: 'DM Sans', sans-serif; max-width: 560px; margin: 0 auto; background: #04091a; border-radius: 20px; border: 1px solid rgba(37,99,235,0.3); overflow: hidden;">
+            <div style="padding: 40px 36px 24px; background: linear-gradient(180deg, #0c1535 0%, #04091a 100%);">
+              <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; margin: 0 0 4px; color: #eef2ff;">
+                Collaboration <span style="color: #3b82f6;">Invite</span>
+              </h1>
+              <p style="color: #4a5a82; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin: 0 0 28px;">LeadsMind Form Access</p>
+              <p style="color: #94a3c8; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
+                <strong style="color: #eef2ff;">${currentUser.email}</strong> has invited you to collaborate on the form <strong style="color: #3b82f6;">"${formName}"</strong>.
+              </p>
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px; margin-bottom: 24px;">
+                <p style="margin: 0 0 4px; font-size: 10px; color: #4a5a82; text-transform: uppercase; letter-spacing: 1.5px;">Your Role</p>
+                <p style="margin: 0; font-size: 18px; font-weight: 700; color: #3b82f6; font-family: 'Space Grotesk', sans-serif;">${role.toUpperCase()}</p>
+                <p style="margin: 8px 0 0; font-size: 12px; color: #4a5a82;">${role === 'editor' ? 'Full edit access to form fields and settings.' : 'Read-only view of form data and submissions.'}</p>
+              </div>
+              <a href="${link}" style="display: inline-block; padding: 16px 48px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; font-family: 'Space Grotesk', sans-serif;">Accept Invitation</a>
+              <p style="color: #4a5a82; font-size: 11px; margin-top: 16px;">This invitation expires in 7 days.</p>
             </div>
-            <p style="color: #94a3c8;">You must accept the invitation to access the form.</p>
+            <div style="padding: 20px 36px; border-top: 1px solid rgba(255,255,255,0.05); background: #080f28;">
+              <p style="margin: 0; color: #2a3557; font-size: 10px; text-align: center;">LeadsMind — Smart Form Builder</p>
+            </div>
           </div>
         `
       });
@@ -103,12 +125,11 @@ export async function inviteFormCollaborator({
       console.error('[inviteFormCollaborator] Email sending failed:', emailError);
       revalidatePath('/forms');
       revalidatePath(`/forms/${formId}/governance`);
-      return { success: true, warning: 'Saved but email failed to send (Check Resend Config)' };
+      return { success: true, warning: 'Invitation saved but email failed to send. Check Resend config.' };
     }
 
     revalidatePath('/forms');
     revalidatePath(`/forms/${formId}/governance`);
-
     return { success: true };
   } catch (error: any) {
     console.error('[inviteFormCollaborator] Error:', error);
@@ -116,21 +137,148 @@ export async function inviteFormCollaborator({
   }
 }
 
-export async function acceptFormInvitation(collabId: string) {
+export async function acceptFormInvitation(collabId: string): Promise<InviteActionResponse> {
   try {
     const adminSupabase = createAdminClient();
+
+    const { data: existing } = await adminSupabase
+      .from('form_collaborators')
+      .select('id, status, form_id, email')
+      .eq('id', collabId)
+      .single();
+
+    if (!existing) return { error: 'Invitation not found.' };
+    if (existing.status === 'active') return { error: 'This invitation has already been accepted.' };
+    if (existing.status !== 'pending') return { error: 'This invitation is no longer valid.' };
+
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ status: 'active' })
       .eq('id', collabId);
 
     if (error) throw error;
-    
+
     revalidatePath('/forms');
     return { success: true };
   } catch (error: any) {
     console.error('[acceptFormInvitation] Error:', error);
     return { error: error.message || 'Failed to accept invitation' };
+  }
+}
+
+export async function declineFormInvitation(collabId: string): Promise<InviteActionResponse> {
+  try {
+    const adminSupabase = createAdminClient();
+
+    const { data: existing } = await adminSupabase
+      .from('form_collaborators')
+      .select('id, status')
+      .eq('id', collabId)
+      .single();
+
+    if (!existing) return { error: 'Invitation not found.' };
+    if (existing.status !== 'pending') return { error: 'Can only decline pending invitations.' };
+
+    const { error } = await adminSupabase
+      .from('form_collaborators')
+      .update({ status: 'declined' })
+      .eq('id', collabId);
+
+    if (error) throw error;
+
+    revalidatePath('/forms');
+    return { success: true };
+  } catch (error: any) {
+    console.error('[declineFormInvitation] Error:', error);
+    return { error: error.message || 'Failed to decline invitation' };
+  }
+}
+
+export async function resendFormInvitation(collabId: string, formId: string): Promise<InviteActionResponse> {
+  try {
+    const adminSupabase = createAdminClient();
+    const supabase = await createServerClient();
+
+    const { data: collab } = await adminSupabase
+      .from('form_collaborators')
+      .select('id, email, role, status')
+      .eq('id', collabId)
+      .single();
+
+    if (!collab) return { error: 'Invitation not found.' };
+    if (collab.status !== 'pending') return { error: 'Can only resend pending invitations.' };
+
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) return { error: 'Unauthorized' };
+
+    const { data: form } = await supabase
+      .from('forms')
+      .select('name')
+      .eq('id', formId)
+      .single();
+
+    const formName = form?.name || 'Untitled Form';
+
+    const link = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/forms/${formId}/governance?accept=${formId}`;
+    await sendEmail({
+      to: collab.email,
+      subject: `Reminder: You're invited to collaborate on "${formName}"`,
+      html: `
+        <div style="font-family: 'DM Sans', sans-serif; max-width: 560px; margin: 0 auto; background: #04091a; border-radius: 20px; border: 1px solid rgba(37,99,235,0.3); overflow: hidden;">
+          <div style="padding: 40px 36px 24px; background: linear-gradient(180deg, #0c1535 0%, #04091a 100%);">
+            <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; margin: 0 0 4px; color: #eef2ff;">
+              Reminder: <span style="color: #3b82f6;">Invite</span>
+            </h1>
+            <p style="color: #4a5a82; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin: 0 0 28px;">Form Collaboration Access</p>
+            <p style="color: #94a3c8; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
+              <strong style="color: #eef2ff;">${currentUser.email}</strong> sent you a reminder about collaborating on <strong style="color: #3b82f6;">"${formName}"</strong>.
+            </p>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px; margin-bottom: 24px;">
+              <p style="margin: 0 0 4px; font-size: 10px; color: #4a5a82; text-transform: uppercase; letter-spacing: 1.5px;">Your Role</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 700; color: #3b82f6; font-family: 'Space Grotesk', sans-serif;">${collab.role.toUpperCase()}</p>
+            </div>
+            <a href="${link}" style="display: inline-block; padding: 16px 48px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; font-family: 'Space Grotesk', sans-serif;">Accept Invitation</a>
+          </div>
+          <div style="padding: 20px 36px; border-top: 1px solid rgba(255,255,255,0.05); background: #080f28;">
+            <p style="margin: 0; color: #2a3557; font-size: 10px; text-align: center;">LeadsMind — Smart Form Builder</p>
+          </div>
+        </div>
+      `
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[resendFormInvitation] Error:', error);
+    return { error: error.message || 'Failed to resend invitation' };
+  }
+}
+
+export async function revokeFormInvitation(collabId: string, formId: string): Promise<InviteActionResponse> {
+  try {
+    const adminSupabase = createAdminClient();
+
+    const { data: existing } = await adminSupabase
+      .from('form_collaborators')
+      .select('id, status')
+      .eq('id', collabId)
+      .single();
+
+    if (!existing) return { error: 'Invitation not found.' };
+    if (existing.status !== 'pending') return { error: 'Can only revoke pending invitations.' };
+
+    const { error } = await adminSupabase
+      .from('form_collaborators')
+      .update({ status: 'revoked' })
+      .eq('id', collabId);
+
+    if (error) throw error;
+
+    revalidatePath('/forms');
+    revalidatePath(`/forms/${formId}/governance`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[revokeFormInvitation] Error:', error);
+    return { error: error.message || 'Failed to revoke invitation' };
   }
 }
 
@@ -145,7 +293,6 @@ export async function getFormCollaborators(formId: string) {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    console.error('[getFormCollaborators] Error:', error);
     return { error: error.message || 'Failed to fetch collaborators' };
   }
 }
@@ -164,7 +311,6 @@ export async function removeFormCollaborator(collabId: string, formId: string) {
     revalidatePath(`/forms/${formId}/governance`);
     return { success: true };
   } catch (error: any) {
-    console.error('[removeFormCollaborator] Error:', error);
     return { error: error.message || 'Failed to remove collaborator' };
   }
 }
@@ -183,7 +329,6 @@ export async function updateFormCollaboratorRole(collabId: string, role: 'editor
     revalidatePath(`/forms/${formId}/governance`);
     return { success: true };
   } catch (error: any) {
-    console.error('[updateFormCollaboratorRole] Error:', error);
     return { error: error.message || 'Failed to update role' };
   }
 }
@@ -199,7 +344,6 @@ export async function getUserCollaborations() {
     const userEmail = user.email?.toLowerCase();
     if (!userEmail) return { error: 'User email not found' };
 
-    // 1. Fetch forms where YOU were invited by others
     const { data: invitedTo, error: err1 } = await adminSupabase
       .from('form_collaborators')
       .select(`
@@ -217,12 +361,8 @@ export async function getUserCollaborations() {
       `)
       .eq('email', userEmail);
 
-    if (err1) {
-      console.error('[getUserCollaborations] Fetch invitedTo error:', err1);
-      throw err1;
-    }
+    if (err1) throw err1;
 
-    // 2. Fetch forms where YOU invited others
     const { data: invitedOthers, error: err2 } = await adminSupabase
       .from('form_collaborators')
       .select(`
@@ -240,12 +380,8 @@ export async function getUserCollaborations() {
       `)
       .eq('invited_by', user.id);
 
-    if (err2) {
-      console.error('[getUserCollaborations] Fetch invitedOthers error:', err2);
-      throw err2;
-    }
+    if (err2) throw err2;
 
-    // Resolve inviter emails manually to be secure and fast
     const inviterIds = Array.from(new Set(invitedTo?.map(item => item.invited_by).filter(Boolean) || []));
     let inviterMap: Record<string, string> = {};
     if (inviterIds.length > 0) {
@@ -292,5 +428,54 @@ export async function getUserCollaborations() {
   } catch (error: any) {
     console.error('[getUserCollaborations] Error:', error);
     return { error: error.message || 'Failed to fetch collaborations' };
+  }
+}
+
+export async function sendInviteNotificationAfterAcceptance(collabId: string) {
+  try {
+    const adminSupabase = createAdminClient();
+    const supabase = await createServerClient();
+
+    const { data: collab } = await adminSupabase
+      .from('form_collaborators')
+      .select('id, form_id, email, invited_by')
+      .eq('id', collabId)
+      .single();
+
+    if (!collab) return { error: 'Collaborator not found' };
+
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No active workspace' };
+
+    const { data: form } = await supabase
+      .from('forms')
+      .select('name')
+      .eq('id', collab.form_id)
+      .single();
+
+    const formName = form?.name || 'Untitled Form';
+
+    const { data: inviter } = await adminSupabase
+      .from('users')
+      .select('id, email')
+      .eq('id', collab.invited_by)
+      .single();
+
+    if (inviter) {
+      await adminSupabase.from('notifications').insert({
+        workspace_id: workspaceId,
+        user_id: inviter.id,
+        type: 'team',
+        title: 'Invitation Accepted',
+        message: `${collab.email} accepted your invitation to collaborate on "${formName}"`,
+        link: `/forms/${collab.form_id}/governance`,
+        read: false
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[sendInviteNotificationAfterAcceptance] Error:', error);
+    return { error: error.message };
   }
 }
