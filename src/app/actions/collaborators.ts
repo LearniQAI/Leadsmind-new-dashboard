@@ -53,7 +53,7 @@ export async function inviteFormCollaborator({
         invited_by: currentUser.id,
         email: targetEmail,
         role: role,
-        status: 'active' // Auto-active since the account already exists
+        status: 'pending' // Require explicit acceptance
       }, {
         onConflict: 'form_id,email'
       });
@@ -83,7 +83,7 @@ export async function inviteFormCollaborator({
 
     // 4. Send beautiful HTML email
     try {
-      const link = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/forms/${formId}/governance`;
+      const link = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/forms/${formId}/governance?accept=${collabError ? '' : 'invite'}`;
       await sendEmail({
         to: targetEmail,
         subject: `You have been invited to collaborate on "${formName}"`,
@@ -95,18 +95,15 @@ export async function inviteFormCollaborator({
               <p style="margin: 0; font-size: 12px; color: #4a5a82; text-transform: uppercase; letter-spacing: 1px;">Granted Access Role</p>
               <p style="margin: 8px 0 0; font-size: 16px; font-weight: bold; color: #3b82f6;">${role.toUpperCase()}</p>
             </div>
-            <p style="color: #94a3c8;">Click the button below to open the form governance dashboard:</p>
-            <div style="margin: 30px 0;">
-              <a href="${link}" 
-                style="display: inline-block; padding: 14px 40px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
-                Open Form
-              </a>
-            </div>
+            <p style="color: #94a3c8;">You must accept the invitation to access the form.</p>
           </div>
         `
       });
-    } catch (emailError) {
+    } catch (emailError: any) {
       console.error('[inviteFormCollaborator] Email sending failed:', emailError);
+      revalidatePath('/forms');
+      revalidatePath(`/forms/${formId}/governance`);
+      return { success: true, warning: 'Saved but email failed to send (Check Resend Config)' };
     }
 
     revalidatePath('/forms');
@@ -116,6 +113,24 @@ export async function inviteFormCollaborator({
   } catch (error: any) {
     console.error('[inviteFormCollaborator] Error:', error);
     return { error: error.message || 'Invitation failed' };
+  }
+}
+
+export async function acceptFormInvitation(collabId: string) {
+  try {
+    const adminSupabase = createAdminClient();
+    const { error } = await adminSupabase
+      .from('form_collaborators')
+      .update({ status: 'active' })
+      .eq('id', collabId);
+
+    if (error) throw error;
+    
+    revalidatePath('/forms');
+    return { success: true };
+  } catch (error: any) {
+    console.error('[acceptFormInvitation] Error:', error);
+    return { error: error.message || 'Failed to accept invitation' };
   }
 }
 
@@ -145,6 +160,7 @@ export async function removeFormCollaborator(collabId: string, formId: string) {
 
     if (error) throw error;
     
+    revalidatePath('/forms');
     revalidatePath(`/forms/${formId}/governance`);
     return { success: true };
   } catch (error: any) {
@@ -163,6 +179,7 @@ export async function updateFormCollaboratorRole(collabId: string, role: 'editor
 
     if (error) throw error;
 
+    revalidatePath('/forms');
     revalidatePath(`/forms/${formId}/governance`);
     return { success: true };
   } catch (error: any) {

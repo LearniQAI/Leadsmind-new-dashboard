@@ -86,7 +86,11 @@ export function CollaboratorsManager({
         return;
       }
 
-      toast.success(`Invitation sent! Real-time notification delivered to ${inviteEmail}.`);
+      if ((res as any).warning) {
+        toast.warning((res as any).warning);
+      } else {
+        toast.success(`Invitation sent! Real-time notification delivered to ${inviteEmail}.`);
+      }
       setInviteEmail('');
       await fetchCollaborators();
     } catch (err: any) {

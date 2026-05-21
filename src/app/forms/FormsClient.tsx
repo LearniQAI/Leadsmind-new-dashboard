@@ -20,7 +20,7 @@ import UniversalAPI from './UniversalAPI';
 import { EmbedModal } from './EmbedModal';
 import { CreateFormDialog, EditFormDialog, DeleteFormDialog } from './FormsModals';
 import { FormCard } from './FormCard';
-import { getUserCollaborations } from '@/app/actions/collaborators';
+import { getUserCollaborations, acceptFormInvitation } from '@/app/actions/collaborators';
 
 export default function FormsClient({ initialForms }: { initialForms: any[] }) {
   const router = useRouter();
@@ -41,6 +41,20 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
       console.error(err);
     } finally {
       setLoadingCollabs(false);
+    }
+  };
+
+  const handleAcceptInvitation = async (collabId: string) => {
+    try {
+      const res = await acceptFormInvitation(collabId);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success('Invitation accepted!');
+      loadCollaborations();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to accept invitation');
     }
   };
 
@@ -308,14 +322,29 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
                           <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
                             {item.role}
                           </span>
+                          {item.status === 'pending' && (
+                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              Pending
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <button
-                        onClick={() => router.push(`/forms/${item.formId}/governance`)}
-                        className="bg-primary hover:bg-primary/80 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
-                      >
-                        Open <ExternalLink size={10} />
-                      </button>
+                      
+                      {item.status === 'pending' ? (
+                        <button
+                          onClick={() => handleAcceptInvitation(item.id)}
+                          className="bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
+                        >
+                          Accept <CheckCircle size={10} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => router.push(`/forms/${item.formId}/governance`)}
+                          className="bg-primary hover:bg-primary/80 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
+                        >
+                          Open <ExternalLink size={10} />
+                        </button>
+                      )}
                     </div>
                   ))
                 )}
@@ -348,6 +377,11 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
                           <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
                             {item.role}
                           </span>
+                          {item.status === 'pending' && (
+                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              Pending
+                            </span>
+                          )}
                         </div>
                       </div>
                       <button
