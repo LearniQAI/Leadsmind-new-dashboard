@@ -38,28 +38,6 @@ export function FormGlobalSettings({ config, dispatch }: FormGlobalSettingsProps
         </div>
       </div>
 
-      {/* Recovery Email Toggle */}
-      <div className="flex items-center justify-between p-3 bg-white/2 border border-white/5 rounded-xl">
-        <div>
-          <label htmlFor="form-recovery-toggle" className="text-xs font-bold text-white/80 font-dm-sans cursor-pointer select-none block">
-            Recovery Emails
-          </label>
-          <span className="text-[9px] text-[#4a5a82] block font-dm-sans mt-0.5">Allows resuming via emailed links</span>
-        </div>
-        <div className="relative flex items-center">
-          <input
-            id="form-recovery-toggle"
-            type="checkbox"
-            checked={config.recoveryEmailEnabled ?? false}
-            onChange={(e) => dispatch({
-              type: 'UPDATE_CONFIG',
-              config: { recoveryEmailEnabled: e.target.checked }
-            })}
-            className="w-9 h-5 rounded-full border border-white/10 bg-white/5 checked:bg-[#2563eb] checked:border-transparent focus:outline-none transition-all appearance-none cursor-pointer relative before:content-[''] before:absolute before:w-3.5 before:h-3.5 before:rounded-full before:bg-white/40 before:top-0.5 before:left-0.5 checked:before:left-4.5 checked:before:bg-white before:transition-all"
-          />
-        </div>
-      </div>
-
       {/* Expiration Timing */}
       <div>
         <label className="settings-label" htmlFor="form-session-expiration">Session Expiration</label>
