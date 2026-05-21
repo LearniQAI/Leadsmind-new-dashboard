@@ -21,6 +21,10 @@ const statusConfig: Record<InviteStatus, {
     label: 'Pending', icon: Clock,
     bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20'
   },
+  active: {
+    label: 'Active', icon: CheckCircle,
+    bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20'
+  },
   accepted: {
     label: 'Accepted', icon: CheckCircle,
     bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20'
