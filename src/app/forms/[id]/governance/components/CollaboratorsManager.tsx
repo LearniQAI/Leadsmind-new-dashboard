@@ -1,9 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, Shield, Mail, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { inviteFormCollaborator } from '@/app/actions/collaborators';
+import { 
+  inviteFormCollaborator, 
+  getFormCollaborators, 
+  removeFormCollaborator, 
+  updateFormCollaboratorRole 
+} from '@/app/actions/collaborators';
 
 interface Collaborator {
   id: string;
@@ -25,24 +30,38 @@ export function CollaboratorsManager({
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
   const [inviting, setInviting] = useState(false);
-  
-  // Mock list of collaborators for display
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([
-    {
-      id: '1',
-      email: 'oderinwalematthew3@gmail.com',
-      role: 'owner',
-      status: 'active',
-      addedAt: new Date().toISOString()
-    },
-    {
-      id: '2',
-      email: 'yungthrapist7@gmail.com',
-      role: 'editor',
-      status: 'active',
-      addedAt: new Date(Date.now() - 86400000).toISOString()
+  const [loadingList, setLoadingList] = useState(true);
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+
+  const fetchCollaborators = async () => {
+    setLoadingList(true);
+    try {
+      const res = await getFormCollaborators(formId);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      if (res.data) {
+        const mapped = res.data.map((item: any) => ({
+          id: item.id,
+          email: item.email,
+          role: item.role as 'editor' | 'viewer',
+          status: item.status as 'active' | 'pending',
+          addedAt: item.created_at
+        }));
+
+        setCollaborators(mapped);
+      }
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoadingList(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchCollaborators();
+  }, [formId]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,17 +86,13 @@ export function CollaboratorsManager({
         return;
       }
 
-      const newCollab: Collaborator = {
-        id: Math.random().toString(36).substr(2, 9),
-        email: inviteEmail.trim().toLowerCase(),
-        role: inviteRole,
-        status: 'pending',
-        addedAt: new Date().toISOString()
-      };
-
-      setCollaborators([...collaborators, newCollab]);
+      if ((res as any).warning) {
+        toast.warning((res as any).warning);
+      } else {
+        toast.success(`Invitation sent! Real-time notification delivered to ${inviteEmail}.`);
+      }
       setInviteEmail('');
-      toast.success(`Invitation sent! Real-time notification delivered to ${inviteEmail}.`);
+      await fetchCollaborators();
     } catch (err: any) {
       toast.error(err.message || 'An error occurred sending the invitation.');
     } finally {
@@ -85,14 +100,32 @@ export function CollaboratorsManager({
     }
   };
 
-  const handleRemove = (id: string) => {
-    setCollaborators(collaborators.filter(c => c.id !== id));
-    toast.success('Collaborator removed successfully.');
+  const handleRemove = async (id: string) => {
+    try {
+      const res = await removeFormCollaborator(id, formId);
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success('Collaborator removed successfully.');
+        await fetchCollaborators();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Remove failed');
+    }
   };
 
-  const handleChangeRole = (id: string, newRole: 'editor' | 'viewer') => {
-    setCollaborators(collaborators.map(c => c.id === id ? { ...c, role: newRole } : c));
-    toast.success('Collaborator role updated.');
+  const handleChangeRole = async (id: string, newRole: 'editor' | 'viewer') => {
+    try {
+      const res = await updateFormCollaboratorRole(id, newRole, formId);
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success('Collaborator role updated.');
+        await fetchCollaborators();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Role update failed');
+    }
   };
 
   return (
@@ -166,57 +199,67 @@ export function CollaboratorsManager({
 
         {/* List Items */}
         <div className="flex flex-col">
-          {collaborators.map((c) => (
-            <div key={c.id} className="px-6 py-4 border-b border-white/5 last:border-0 flex items-center justify-between hover:bg-white/2 transition-colors">
-              
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-black border-2 border-[#04081a] ${
-                  c.role === 'owner' ? 'bg-amber-500 text-white' : 'bg-purple-500 text-white'
-                }`}>
-                  {c.email.substring(0, 2).toUpperCase()}
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-white flex items-center gap-2">
-                    {c.email}
-                    {c.status === 'pending' && (
-                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        Pending
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-[10px] text-white/40">Added {new Date(c.addedAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                {c.role === 'owner' ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-wider">
-                    <Shield size={12} /> Owner
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={c.role}
-                      onChange={(e) => handleChangeRole(c.id, e.target.value as any)}
-                      className="bg-transparent border border-white/10 hover:border-white/20 rounded-lg py-1.5 px-3 text-[10px] font-black uppercase tracking-wider text-white/70 focus:outline-none cursor-pointer"
-                    >
-                      <option value="editor" className="bg-[#0b132c]">Can Edit</option>
-                      <option value="viewer" className="bg-[#0b132c]">Can View</option>
-                    </select>
-
-                    <button
-                      onClick={() => handleRemove(c.id)}
-                      className="p-1.5 rounded-lg text-white/30 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                      title="Remove Access"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-
+          {loadingList ? (
+            <div className="p-8 text-center text-t3 uppercase font-black tracking-widest text-xs animate-pulse">
+              Loading Collaborators...
             </div>
-          ))}
+          ) : collaborators.length === 0 ? (
+            <div className="p-8 text-center text-t3 uppercase font-black tracking-widest text-xs">
+              No Collaborators Configured
+            </div>
+          ) : (
+            collaborators.map((c) => (
+              <div key={c.id} className="px-6 py-4 border-b border-white/5 last:border-0 flex items-center justify-between hover:bg-white/2 transition-colors">
+                
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-black border-2 border-[#04081a] ${
+                    c.role === 'owner' ? 'bg-amber-500 text-white' : 'bg-purple-500 text-white'
+                  }`}>
+                    {c.email.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white flex items-center gap-2">
+                      {c.email}
+                      {c.status === 'pending' && (
+                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          Pending
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[10px] text-white/40">Added {new Date(c.addedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  {c.role === 'owner' ? (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-wider">
+                      <Shield size={12} /> Owner
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={c.role}
+                        onChange={(e) => handleChangeRole(c.id, e.target.value as any)}
+                        className="bg-transparent border border-white/10 hover:border-white/20 rounded-lg py-1.5 px-3 text-[10px] font-black uppercase tracking-wider text-white/70 focus:outline-none cursor-pointer"
+                      >
+                        <option value="editor" className="bg-[#0b132c]">Can Edit</option>
+                        <option value="viewer" className="bg-[#0b132c]">Can View</option>
+                      </select>
+
+                      <button
+                        onClick={() => handleRemove(c.id)}
+                        className="p-1.5 rounded-lg text-white/30 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                        title="Remove Access"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            ))
+          )}
         </div>
       </div>
 
