@@ -6,7 +6,7 @@ import { createPost, deletePost, createCategory } from '@/app/actions/blog';
 import { clonePost } from '@/app/actions/blogStudio';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import MetaData from '@/hooks/useMetaData';
-import { Plus, Search, Calendar, FileText, ArrowRight, Trash2, Clock, Youtube, Sparkles, Copy, BarChart3, MessageSquare, ExternalLink } from 'lucide-react';
+import { Plus, Search, Calendar, FileText, ArrowRight, Trash2, Clock, Youtube, Sparkles, Copy, BarChart3, MessageSquare, ExternalLink, Globe } from 'lucide-react';
 import Link from 'next/link';
 
 interface Post {
@@ -109,7 +109,7 @@ export default function BlogManagementClient({ initialPosts, categories }: BlogA
     <MetaData pageTitle="Blog Creator">
       <Wrapper>
         <div className="flex flex-col min-h-screen bg-[#04091a] text-white">
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 px-6 pt-8 pb-4 border-b border-white/5 bg-[#050b21]/30">
+          <div className="flex flex-col xl:flex-row xl:flex-wrap xl:items-center justify-between gap-6 px-6 pt-8 pb-4 border-b border-white/5 bg-[#050b21]/30">
             <div>
               <h1 className="font-space-grotesk text-3xl font-extrabold tracking-tight text-white uppercase leading-none mb-2">
                 Blog <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Creator</span>
@@ -119,60 +119,71 @@ export default function BlogManagementClient({ initialPosts, categories }: BlogA
               </p>
             </div>
             
-            {/* Action Control Hub Panel */}
-            <div className="bg-[#080f28]/60 border border-white/5 p-2 rounded-xl flex flex-wrap sm:flex-nowrap items-center gap-2 shadow-2xl backdrop-blur-md self-start xl:self-auto w-full sm:w-auto">
-              <button 
-                onClick={() => router.push('/blog/new/ai')} 
-                className="bg-[#0c1535]/80 border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-blue-400 group-hover:animate-pulse" />
-                <span>AI Brief Writer</span>
-              </button>
-              
-              <button 
-                onClick={() => router.push('/blog/new/social')} 
-                className="bg-[#0c1535]/80 border border-white/5 hover:border-primary/30 hover:bg-primary/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-primary group-hover:animate-pulse" />
-                <span>Expander Studio</span>
-              </button>
-              
-              <button 
-                onClick={() => router.push('/blog/new/youtube')} 
-                className="bg-[#0c1535]/80 border border-white/5 hover:border-red-500/30 hover:bg-red-500/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
-              >
-                <Youtube className="w-3.5 h-3.5 text-red-500 group-hover:animate-pulse" />
-                <span>Import YouTube</span>
-              </button>
+            {/* Action Control Hub Panel Container */}
+            <div className="flex flex-wrap items-center gap-3 self-start xl:self-auto w-full sm:w-auto max-w-full">
+              {/* Secondary Actions Panel */}
+              <div className="bg-[#080f28]/60 border border-white/5 p-2 rounded-xl flex flex-wrap items-center gap-2 shadow-2xl backdrop-blur-md w-full sm:w-auto max-w-full">
+                <button 
+                  onClick={() => router.push('/blog/new/ai')} 
+                  className="bg-[#0c1535]/80 border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-400 group-hover:animate-pulse" />
+                  <span>AI Brief Writer</span>
+                </button>
+                
+                <button 
+                  onClick={() => router.push('/blog/new/social')} 
+                  className="bg-[#0c1535]/80 border border-white/5 hover:border-primary/30 hover:bg-primary/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-primary group-hover:animate-pulse" />
+                  <span>Expander Studio</span>
+                </button>
+                
+                <button 
+                  onClick={() => router.push('/blog/new/youtube')} 
+                  className="bg-[#0c1535]/80 border border-white/5 hover:border-red-500/30 hover:bg-red-500/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
+                >
+                  <Youtube className="w-3.5 h-3.5 text-red-500 group-hover:animate-pulse" />
+                  <span>Import YouTube</span>
+                </button>
 
-              <div className="h-6 w-[1px] bg-white/10 hidden sm:block mx-1" />
+                <button 
+                  onClick={() => router.push('/blog/new/web')} 
+                  className="bg-[#0c1535]/80 border border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
+                >
+                  <Globe className="w-3.5 h-3.5 text-emerald-400 group-hover:animate-pulse" />
+                  <span>Import Web Page</span>
+                </button>
 
-              <button 
-                onClick={() => router.push('/blog/analytics')} 
-                className="bg-[#0c1535]/80 border border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
-              >
-                <BarChart3 className="w-3.5 h-3.5 text-emerald-500 group-hover:animate-pulse" />
-                <span>Analytics</span>
-              </button>
+                <div className="h-6 w-[1px] bg-white/10 hidden xl:block mx-1 shrink-0" />
 
-              <button 
-                onClick={() => router.push('/blog/comments')} 
-                className="bg-[#0c1535]/80 border border-white/5 hover:border-purple-500/30 hover:bg-purple-500/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-purple-500 group-hover:animate-pulse" />
-                <span>Moderation</span>
-              </button>
+                <button 
+                  onClick={() => router.push('/blog/analytics')} 
+                  className="bg-[#0c1535]/80 border border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-emerald-500 group-hover:animate-pulse" />
+                  <span>Analytics</span>
+                </button>
 
-              <div className="h-6 w-[1px] bg-white/10 hidden sm:block mx-1" />
+                <button 
+                  onClick={() => router.push('/blog/comments')} 
+                  className="bg-[#0c1535]/80 border border-white/5 hover:border-purple-500/30 hover:bg-purple-500/5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all duration-300 text-white/80 hover:text-white flex items-center gap-1.5 group shrink-0"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-purple-500 group-hover:animate-pulse" />
+                  <span>Moderation</span>
+                </button>
+              </div>
 
+              {/* Primary Action Button */}
               <button 
                 onClick={() => { setShowCreateModal(true); setShowAddCat(false); }} 
-                className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-2 text-xs font-extrabold rounded-lg transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center justify-center gap-1.5 shrink-0 hover:scale-[1.02]"
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-2 text-xs font-extrabold rounded-lg transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center justify-center gap-1.5 shrink-0 hover:scale-[1.02] w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 <span>New Article</span>
               </button>
             </div>
+
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 my-6 border-b border-white/5 pb-4">
@@ -197,6 +208,7 @@ export default function BlogManagementClient({ initialPosts, categories }: BlogA
                   <button onClick={() => router.push('/blog/new/ai')} className="bg-[#0c1535] border border-white/10 hover:bg-white/5 px-5 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-blue-400 fill-current" /> AI Brief Writer</button>
                   <button onClick={() => router.push('/blog/new/social')} className="bg-[#0c1535] border border-white/10 hover:bg-white/5 px-5 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-primary fill-current" /> Expander Studio</button>
                   <button onClick={() => router.push('/blog/new/youtube')} className="bg-[#0c1535] border border-white/10 hover:bg-white/5 px-5 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5"><Youtube className="w-4 h-4 text-red-500 fill-current" /> Convert Video</button>
+                  <button onClick={() => router.push('/blog/new/web')} className="bg-[#0c1535] border border-white/10 hover:bg-white/5 px-5 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5"><Globe className="w-4 h-4 text-emerald-400 fill-current" /> Web Importer</button>
                   <button onClick={() => setShowCreateModal(true)} className="bg-primary hover:bg-blue-600 px-5 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5"><Plus className="w-4 h-4" /> Create First Article</button>
                 </div>
               </div>

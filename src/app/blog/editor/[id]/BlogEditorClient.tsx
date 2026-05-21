@@ -26,6 +26,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
   // Modal states
   const [showImageModal, setShowImageModal] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
+  const [isZenMode, setIsZenMode] = useState(false);
   
   // Image modal state fields
   const [imgFile, setImgFile] = useState<File | null>(null);
@@ -201,66 +202,82 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
       <Wrapper>
         <div className="flex flex-col min-h-screen bg-[#04091a]">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 px-6 py-4 bg-[#080f28]">
-            <div className="flex items-center gap-3">
-              <button onClick={() => router.push('/blog/manage')} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition">
-                <ArrowLeft className="w-4 h-4" />
-              </button>
-              <div>
-                <h1 className="font-space-grotesk text-xl font-bold text-white uppercase tracking-tight">
-                  Post <span className="text-primary">Writer</span>
-                </h1>
-                <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-semibold mt-0.5">
-                  Content Orchestration & SEO Delivery
-                </p>
+          {!isZenMode && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 px-6 py-4 bg-[#080f28]">
+              <div className="flex items-center gap-3">
+                <button onClick={() => router.push('/blog/manage')} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition">
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <div>
+                  <h1 className="font-space-grotesk text-xl font-bold text-white uppercase tracking-tight">
+                    Post <span className="text-primary">Writer</span>
+                  </h1>
+                  <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-semibold mt-0.5">
+                    Content Orchestration & SEO Delivery
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                {saveStatus && (
+                  <span className="text-xs text-white/50 bg-[#0c1535] border border-white/5 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    {saveStatus}
+                  </span>
+                )}
+                
+                <a
+                  href={`/blog/${post.slug}${post.status !== 'published' ? '?preview=1' : ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[#0c1535] border border-white/10 text-white/70 hover:text-white text-xs font-bold px-4 py-2 rounded-lg transition flex items-center gap-2"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  {post.status === 'published' ? 'View Post' : 'Preview Draft'}
+                </a>
+                <button
+                  onClick={handleManualSave}
+                  disabled={isSaving}
+                  className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Save Changes
+                </button>
               </div>
             </div>
-
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-              {saveStatus && (
-                <span className="text-xs text-white/50 bg-[#0c1535] border border-white/5 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  {saveStatus}
-                </span>
-              )}
-              
-              <a
-                href={`/blog/${post.slug}${post.status !== 'published' ? '?preview=1' : ''}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-[#0c1535] border border-white/10 text-white/70 hover:text-white text-xs font-bold px-4 py-2 rounded-lg transition flex items-center gap-2"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                {post.status === 'published' ? 'View Post' : 'Preview Draft'}
-              </a>
-              <button
-                onClick={handleManualSave}
-                disabled={isSaving}
-                className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-2 disabled:opacity-50"
-              >
-                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                Save Changes
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* Main workspace */}
-          <div className="flex-1 flex flex-col lg:flex-row gap-6 p-6 max-w-7xl mx-auto w-full">
+          <div className={`flex-1 flex flex-col lg:flex-row gap-6 p-6 w-full ${isZenMode ? 'max-w-4xl mx-auto' : 'max-w-7xl mx-auto'}`}>
             <div className="flex-1 space-y-4">
-              <input
-                type="text"
-                value={post.title || ''}
-                placeholder="Post Title (e.g. Master the LeadsMind Marketing Suite)"
-                onChange={(e) => handleUpdate({ title: e.target.value })}
-                className="w-full bg-transparent text-white font-space-grotesk font-bold text-2xl outline-none placeholder-white/20 border-b border-white/5 pb-2 focus:border-primary transition"
-              />
-              
-              <div className="text-[11px] text-white/40 font-semibold uppercase flex items-center gap-2">
-                <span>URL Slug:</span>
-                <span className="text-primary tracking-normal font-normal normal-case">
-                  /blog/{post.slug || 'slug-placeholder'}
-                </span>
-              </div>
+              {!isZenMode ? (
+                <>
+                  <input
+                    type="text"
+                    value={post.title || ''}
+                    placeholder="Post Title (e.g. Master the LeadsMind Marketing Suite)"
+                    onChange={(e) => handleUpdate({ title: e.target.value })}
+                    className="w-full bg-transparent text-white font-space-grotesk font-bold text-2xl outline-none placeholder-white/20 border-b border-white/5 pb-2 focus:border-primary transition"
+                  />
+                  
+                  <div className="text-[11px] text-white/40 font-semibold uppercase flex items-center gap-2">
+                    <span>URL Slug:</span>
+                    <span className="text-primary tracking-normal font-normal normal-case">
+                      /blog/{post.slug || 'slug-placeholder'}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="max-w-2xl mx-auto w-full pt-8 pb-4">
+                  <input
+                    type="text"
+                    value={post.title || ''}
+                    placeholder="Untitled Post"
+                    onChange={(e) => handleUpdate({ title: e.target.value })}
+                    className="w-full bg-transparent text-white font-space-grotesk font-bold text-3xl text-center outline-none placeholder-white/10 border-none focus:outline-none transition"
+                  />
+                </div>
+              )}
 
               <BlogEditorContent
                 content={post.body_html}
@@ -268,16 +285,20 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
                 onOpenImageModal={() => setShowImageModal(true)}
                 onOpenEmbedModal={() => setShowEmbedModal(true)}
                 editorRef={editorRef}
+                isZenMode={isZenMode}
+                onToggleZenMode={() => setIsZenMode(!isZenMode)}
               />
             </div>
 
-            <BlogEditorSettings
-              post={post}
-              categories={categories}
-              workspaceId={post.workspace_id}
-              onUpdate={handleUpdate}
-              onCreateCategory={handleCreateCategory}
-            />
+            {!isZenMode && (
+              <BlogEditorSettings
+                post={post}
+                categories={categories}
+                workspaceId={post.workspace_id}
+                onUpdate={handleUpdate}
+                onCreateCategory={handleCreateCategory}
+              />
+            )}
           </div>
 
           {/* MODALS */}

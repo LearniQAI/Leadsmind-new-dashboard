@@ -34,7 +34,9 @@ import {
   Superscript,
   AlertCircle,
   Columns,
-  Sparkles
+  Sparkles,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -45,6 +47,8 @@ interface ToolbarProps {
   onToggleFullscreen: () => void;
   onOpenInlineAIPalette: () => void;
   onOpenLinkModal: () => void;
+  isZenMode: boolean;
+  onToggleZenMode: () => void;
 }
 
 export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
@@ -54,7 +58,9 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
   isFullscreen,
   onToggleFullscreen,
   onOpenInlineAIPalette,
-  onOpenLinkModal
+  onOpenLinkModal,
+  isZenMode,
+  onToggleZenMode
 }) => {
   if (!editor) return null;
 
@@ -332,11 +338,27 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
 
         <span className="w-[1px] h-5 bg-white/10" />
 
+        {/* Zen Mode Trigger */}
+        <button
+          onClick={onToggleZenMode}
+          className={`border px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+            isZenMode
+              ? 'bg-primary border-primary text-white shadow-[0_0_15px_rgba(59,130,246,0.4)]'
+              : 'bg-white/5 border-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+          }`}
+          title="Toggle Zen Focus Mode"
+        >
+          {isZenMode ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+          <span>{isZenMode ? 'Exit Zen' : 'Zen Mode'}</span>
+        </button>
+
+        <span className="w-[1px] h-5 bg-white/10" />
+
         {/* Fullscreen Trigger */}
         <button
           onClick={onToggleFullscreen}
           className="bg-white/5 border border-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg text-xs font-bold text-white/70 hover:text-white transition flex items-center gap-1.5 shrink-0"
-          title="Zen Focus Mode"
+          title="Focus Mode"
         >
           {isFullscreen ? (
             <>

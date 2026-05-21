@@ -13,7 +13,7 @@ export async function getAIChatResponse(messages: { role: 'user' | 'assistant' |
 
  try {
   const response = await openai.chat.completions.create({
-   model: 'gpt-4o',
+   model: 'gpt-4o-mini',
    messages: [
     { 
      role: 'system', 

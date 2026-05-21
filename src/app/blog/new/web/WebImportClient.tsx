@@ -2,29 +2,34 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { initializeYoutubeImportJob } from '@/app/actions/youtubeImport';
+import { importWebPageAction } from '@/app/actions/webImport';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import MetaData from '@/hooks/useMetaData';
-import { Youtube, ArrowLeft, Loader2, Play, Sparkles, CheckCircle2, AlertTriangle, FileText } from 'lucide-react';
+import { Globe, ArrowLeft, Loader2, Sparkles, CheckCircle2, AlertTriangle, FileText } from 'lucide-react';
 
-type StepState = 'idle' | 'fetching' | 'transcribing' | 'generating' | 'completed' | 'failed';
+type StepState = 'idle' | 'fetching' | 'generating' | 'completed' | 'failed';
 
-export default function YoutubeImportClient() {
+export default function WebImportClient() {
   const router = useRouter();
-  const [videoUrl, setVideoUrl] = useState('');
+  const [targetUrl, setTargetUrl] = useState('');
   const [currentStep, setCurrentStep] = useState<StepState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleImportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!videoUrl.trim()) return;
+    if (!targetUrl.trim()) return;
 
     setErrorMessage(null);
     setCurrentStep('fetching');
 
+    // Simulate progress transitions since it's a single server-side invocation
+    const timer = setTimeout(() => {
+      setCurrentStep('generating');
+    }, 4000);
+
     try {
-      // Step 2: Fetching Video Metadata & Initializing Job
-      const res = await initializeYoutubeImportJob(videoUrl.trim());
+      const res = await importWebPageAction(targetUrl.trim());
+      clearTimeout(timer);
       
       if (res.error) {
         setCurrentStep('failed');
@@ -32,7 +37,6 @@ export default function YoutubeImportClient() {
         return;
       }
 
-      // Step 5: Completed
       setCurrentStep('completed');
       
       // Delay routing briefly to let the user see the gorgeous success state!
@@ -45,14 +49,14 @@ export default function YoutubeImportClient() {
       }, 1800);
 
     } catch (err: any) {
+      clearTimeout(timer);
       setCurrentStep('failed');
-      setErrorMessage(err.message || 'The transformation pipeline encountered a critical system error.');
+      setErrorMessage(err.message || 'The web import pipeline encountered a critical system error.');
     }
   };
 
   const steps = [
-    { key: 'fetching', label: 'Video Metadata', desc: 'Fetching details & cover graphic' },
-    { key: 'transcribing', label: 'Closed Captions', desc: 'Stitching timestamped CC text' },
+    { key: 'fetching', label: 'Document Ingestion', desc: 'Fetching page metadata & cleaning tags' },
     { key: 'generating', label: 'AI Restructuring', desc: 'Structuring post via GPT-4o-mini' }
   ];
 
@@ -69,7 +73,7 @@ export default function YoutubeImportClient() {
   };
 
   return (
-    <MetaData pageTitle="YouTube Conversion Machine">
+    <MetaData pageTitle="Cross-Domain Web Importer">
       <Wrapper>
         <div className="flex flex-col min-h-screen bg-[#04091a] text-white font-dm-sans py-12 px-6">
           <div className="max-w-3xl mx-auto w-full space-y-8">
@@ -81,10 +85,10 @@ export default function YoutubeImportClient() {
               </button>
               <div>
                 <h1 className="font-space-grotesk text-2xl font-bold text-white uppercase tracking-tight">
-                  YouTube <span className="text-primary">Import</span>
+                  Web <span className="text-primary">Import</span>
                 </h1>
                 <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-semibold mt-0.5">
-                  Linguistic Translation & Automation Engine
+                  Cross-Domain Document & Web Importer
                 </p>
               </div>
             </div>
@@ -95,21 +99,21 @@ export default function YoutubeImportClient() {
                 
                 <div className="space-y-2">
                   <h3 className="font-space-grotesk text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <Youtube className="w-5 h-5 text-red-500 animate-pulse" /> Conversion Machine
+                    <Globe className="w-5 h-5 text-primary animate-pulse" /> Document & URL Scraper
                   </h3>
                   <p className="text-xs text-white/50 leading-relaxed">
-                    Transform video assets into fully structured SEO insight articles. Our ingestion scanner extracts closed-captions, translates transcripts, and writes draft content within seconds.
+                    Import content from any remote URL or a public Google Docs document link. The ingestion pipeline strips headers, footers, and scripts, leaving clean core prose parsed and structured by AI.
                   </p>
                 </div>
 
                 <form onSubmit={handleImportSubmit} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">YouTube Video Link</label>
+                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Document or Web Page Link</label>
                     <input
                       type="url"
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="https://www.youtube.com/watch?v=..."
+                      value={targetUrl}
+                      onChange={(e) => setTargetUrl(e.target.value)}
+                      placeholder="https://example.com/article or https://docs.google.com/document/d/..."
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition"
                       required
                     />
@@ -117,12 +121,22 @@ export default function YoutubeImportClient() {
 
                   <button
                     type="submit"
-                    disabled={!videoUrl.trim()}
+                    disabled={!targetUrl.trim()}
                     className="w-full bg-primary hover:bg-blue-600 text-white font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
                   >
-                    <Play className="w-4 h-4 fill-current" /> Initialize Conversion Process
+                    <FileText className="w-4 h-4" /> Ingest and Structure Document
                   </button>
                 </form>
+
+                {/* Legal and Compliance Warning Banner */}
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
+                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest block flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Legal Disclaimer
+                  </span>
+                  <p className="text-[10px] text-white/40 leading-relaxed font-semibold uppercase">
+                    Ensure you hold the copyright or reuse permissions for any external URLs or documents imported into the workspace.
+                  </p>
+                </div>
 
                 {/* Info Card */}
                 <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-2">
@@ -140,10 +154,10 @@ export default function YoutubeImportClient() {
                 
                 <div className="text-center space-y-2">
                   <h3 className="font-space-grotesk text-lg font-bold text-white uppercase tracking-wider">
-                    {currentStep === 'completed' ? 'Conversion Successful!' : currentStep === 'failed' ? 'Import Failed' : 'Orchestrating Pipeline'}
+                    {currentStep === 'completed' ? 'Web Ingestion Successful!' : currentStep === 'failed' ? 'Import Failed' : 'Orchestrating Ingestion'}
                   </h3>
                   <p className="text-xs text-white/50 max-w-sm mx-auto leading-relaxed">
-                    {currentStep === 'completed' ? 'Redirecting you to the editor workspace shortly...' : currentStep === 'failed' ? 'The background pipeline failed to complete.' : 'Please keep this browser window open while AI ingestion processes transcript details.'}
+                    {currentStep === 'completed' ? 'Redirecting you to the editor workspace shortly...' : currentStep === 'failed' ? 'The background pipeline failed to complete.' : 'Please keep this browser window open while AI ingestion parses document details.'}
                   </p>
                 </div>
 

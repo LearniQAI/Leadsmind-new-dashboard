@@ -69,6 +69,7 @@
     "dayjs": "^1.11.13",
     "dropzone": "^6.0.0-beta.2",
     "framer-motion": "^11.0.0",
+    "html-to-text": "^10.0.0",
     "jose": "^6.2.3",
     "lucide-react": "^0.454.0",
     "moment": "^2.30.1",

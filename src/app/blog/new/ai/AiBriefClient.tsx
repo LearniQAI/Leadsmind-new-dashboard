@@ -23,7 +23,7 @@ export default function AiBriefClient() {
     'Staging parameters & outline...',
     'Loading workspace brand voice parameters...',
     'Injecting CRM settings & target audience profile...',
-    'Expanding concepts via GPT-4o intelligence...',
+    'Expanding concepts via GPT-4o-mini intelligence...',
     'Formulating H2 structures & SA/UK spellings...',
     'Deploying draft post to database...'
   ];

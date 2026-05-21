@@ -25,6 +25,8 @@ interface EditorContentProps {
   onOpenImageModal: () => void;
   onOpenEmbedModal: () => void;
   editorRef: React.MutableRefObject<any>;
+  isZenMode?: boolean;
+  onToggleZenMode?: () => void;
 }
 
 export const BlogEditorContent: React.FC<EditorContentProps> = ({
@@ -32,7 +34,9 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
   onChange,
   onOpenImageModal,
   onOpenEmbedModal,
-  editorRef
+  editorRef,
+  isZenMode = false,
+  onToggleZenMode
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordCount, setWordCount] = useState(0);
@@ -314,31 +318,37 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
   return (
     <div className={`flex flex-col border border-white/10 rounded-xl bg-[#080f28] overflow-hidden ${
       isFullscreen ? 'fixed inset-0 z-[9999] w-screen h-screen bg-[#04091a] p-4 sm:p-6' : 'min-h-[550px]'
-    } transition-all duration-300`} onMouseMove={handleMouseMove}>
+    } transition-all duration-300 relative`} onMouseMove={handleMouseMove}>
       
-      <BlogEditorToolbar
-        editor={editor}
-        onOpenImageModal={() => setShowImageModal(true)}
-        onOpenEmbedModal={onOpenEmbedModal}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-        onOpenInlineAIPalette={() => {
-          setAiPosition({ x: window.innerWidth / 2 - 200, y: 150 });
-          setShowAiPalette(true);
-        }}
-        onOpenLinkModal={() => {
-          const prev = editor?.getAttributes('link').href || '';
-          setLinkUrl(prev);
-          setShowLinkModal(true);
-        }}
-      />
+      <div className={isZenMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 absolute top-0 left-0 right-0 z-50 bg-[#0a0f26]" : "relative"}>
+        <BlogEditorToolbar
+          editor={editor}
+          onOpenImageModal={() => setShowImageModal(true)}
+          onOpenEmbedModal={onOpenEmbedModal}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+          onOpenInlineAIPalette={() => {
+            setAiPosition({ x: window.innerWidth / 2 - 200, y: 150 });
+            setShowAiPalette(true);
+          }}
+          onOpenLinkModal={() => {
+            const prev = editor?.getAttributes('link').href || '';
+            setLinkUrl(prev);
+            setShowLinkModal(true);
+          }}
+          isZenMode={isZenMode}
+          onToggleZenMode={onToggleZenMode || (() => {})}
+        />
+      </div>
 
       <div className="flex-1 flex overflow-hidden relative">
         
         {/* Editor Scrolling Content Area Container holds absolute aligned layers */}
-        <div ref={editorContainerRef} className="flex-1 overflow-y-auto max-h-[680px] bg-[#04091a]/40 relative">
+        <div ref={editorContainerRef} className={`flex-1 overflow-y-auto max-h-[680px] bg-[#04091a]/40 relative ${isZenMode ? 'pt-16' : ''}`}>
           
-          <EditorContent editor={editor} />
+          <div className={isZenMode ? "max-w-2xl mx-auto w-full" : ""}>
+            <EditorContent editor={editor} />
+          </div>
 
           {/* Notion-style Block Drag Handle Gutter */}
           {hoveredBlock && !isFullscreen && (
@@ -561,23 +571,25 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
       </div>
 
       {/* Glassmorphic Metadata Telemetry Footer */}
-      <div className="bg-[#0c1535] border-t border-white/10 px-4 py-2.5 flex flex-wrap items-center justify-between text-[10px] font-bold text-white/40 tracking-wider gap-3 select-none">
-        <div className="flex items-center gap-4">
-          <span>WORDS: <span className="text-white/80">{wordCount} / 1200</span> {wordCount >= 1000 && <span className="text-emerald-400 font-extrabold ml-1">✓ SWEET SPOT MET</span>}</span>
-          <span>CHARACTERS: <span className="text-white/80">{charCount}</span></span>
-          <span>EST. READING TIME: <span className="text-white/80">{readTime} MIN</span></span>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setShowSeoPanel(!showSeoPanel)} className="bg-white/5 border border-white/5 hover:bg-white/10 px-2.5 py-1 rounded text-[9px] font-extrabold text-white/80 hover:text-white transition flex items-center gap-1 uppercase">
-            <Settings className="w-3 h-3 text-emerald-400" />
-            <span>SEO Audit</span>
-          </button>
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-            <span className="uppercase text-emerald-400 text-[8.5px] font-extrabold tracking-widest">LIVE SYNCHRONIZATION</span>
+      {!isZenMode && (
+        <div className="bg-[#0c1535] border-t border-white/10 px-4 py-2.5 flex flex-wrap items-center justify-between text-[10px] font-bold text-white/40 tracking-wider gap-3 select-none">
+          <div className="flex items-center gap-4">
+            <span>WORDS: <span className="text-white/80">{wordCount} / 1200</span> {wordCount >= 1000 && <span className="text-emerald-400 font-extrabold ml-1">✓ SWEET SPOT MET</span>}</span>
+            <span>CHARACTERS: <span className="text-white/80">{charCount}</span></span>
+            <span>EST. READING TIME: <span className="text-white/80">{readTime} MIN</span></span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowSeoPanel(!showSeoPanel)} className="bg-white/5 border border-white/5 hover:bg-white/10 px-2.5 py-1 rounded text-[9px] font-extrabold text-white/80 hover:text-white transition flex items-center gap-1 uppercase">
+              <Settings className="w-3 h-3 text-emerald-400" />
+              <span>SEO Audit</span>
+            </button>
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+              <span className="uppercase text-emerald-400 text-[8.5px] font-extrabold tracking-widest">LIVE SYNCHRONIZATION</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Custom React Hyperlink Modal Overlay */}
       {showLinkModal && (

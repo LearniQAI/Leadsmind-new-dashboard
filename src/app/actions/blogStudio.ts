@@ -182,7 +182,7 @@ Output MUST be a strict, valid JSON object matching this structure:
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: 'You only output strict JSON based on context.' },
@@ -193,7 +193,7 @@ Output MUST be a strict, valid JSON object matching this structure:
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`GPT-4o brief expansion failed: ${errText}`);
+      throw new Error(`GPT-4o-mini brief expansion failed: ${errText}`);
     }
 
     const result = await response.json();

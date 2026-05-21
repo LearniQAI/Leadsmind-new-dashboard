@@ -19,22 +19,42 @@ export async function POST(req: Request) {
 
     const html = await response.text();
 
-    // Regex tags for flexible property / content sequence matches
+    // Resilient Meta tag scraper
     const getMetaTag = (property: string): string | null => {
-      const match1 = html.match(new RegExp(`<meta[^>]*property=["']${property}["'][^>]*content=["'](.*?)["']`, 'i'));
-      if (match1) return match1[1];
-      const match2 = html.match(new RegExp(`<meta[^>]*content=["'](.*?)["'][^>]*property=["']${property}["']`, 'i'));
-      if (match2) return match2[1];
+      const properties = [
+        property,
+        property.startsWith('og:') ? property.replace('og:', '') : `og:${property}`,
+        property.startsWith('twitter:') ? property.replace('twitter:', '') : `twitter:${property}`
+      ];
       
-      // Fallback to name tags
-      const match3 = html.match(new RegExp(`<meta[^>]*name=["']${property.replace('og:', '')}["'][^>]*content=["'](.*?)["']`, 'i'));
-      if (match3) return match3[1];
+      for (const prop of properties) {
+        const regexes = [
+          new RegExp(`<meta[^>]*property=["']${prop}["'][^>]*content=["'](.*?)["']`, 'i'),
+          new RegExp(`<meta[^>]*content=["'](.*?)["'][^>]*property=["']${prop}["']`, 'i'),
+          new RegExp(`<meta[^>]*name=["']${prop}["'][^>]*content=["'](.*?)["']`, 'i'),
+          new RegExp(`<meta[^>]*content=["'](.*?)["'][^>]*name=["']${prop}["']`, 'i'),
+          new RegExp(`<meta[^>]*itemprop=["']${prop}["'][^>]*content=["'](.*?)["']`, 'i')
+        ];
+        
+        for (const regex of regexes) {
+          const match = html.match(regex);
+          if (match && match[1]) return match[1];
+        }
+      }
       return null;
     };
 
-    const title = getMetaTag('og:title') || html.match(/<title>(.*?)<\/title>/i)?.[1] || '';
-    const description = getMetaTag('og:description') || getMetaTag('description') || '';
-    const image = getMetaTag('og:image') || '';
+    const title = getMetaTag('og:title') || html.match(/<title>(.*?)<\/title>/i)?.[1] || html.match(/<h1>(.*?)<\/h1>/i)?.[1] || '';
+    
+    let description = getMetaTag('og:description') || getMetaTag('description') || '';
+    if (!description) {
+      const pMatch = html.match(/<p[^>]*>(.*?)<\/p>/i);
+      if (pMatch) {
+        description = pMatch[1].replace(/<[^>]*>/g, '');
+      }
+    }
+    
+    const image = getMetaTag('og:image') || getMetaTag('twitter:image') || '';
 
     // HTML Decoders
     const decodeHtml = (str: string) => {

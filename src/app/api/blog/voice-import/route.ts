@@ -2,10 +2,66 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
 
+const execAsync = promisify(exec);
 export const dynamic = 'force-dynamic';
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
+
+async function extractAudioFromVideo(videoFile: File): Promise<File> {
+  const tempDir = path.join(process.cwd(), 'tmp');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  
+  const randomSuffix = Math.floor(Math.random() * 1000000);
+  const ext = path.extname(videoFile.name) || '.mp4';
+  const inputPath = path.join(tempDir, `vid-${randomSuffix}${ext}`);
+  const outputPath = path.join(tempDir, `aud-${randomSuffix}.mp3`);
+
+  // Write video file to temp disk
+  const arrayBuffer = await videoFile.arrayBuffer();
+  fs.writeFileSync(inputPath, Buffer.from(arrayBuffer));
+
+  try {
+    // Run FFmpeg to strip video and convert audio to mp3
+    const command = `ffmpeg -y -i "${inputPath}" -vn -acodec libmp3lame -q:a 4 "${outputPath}"`;
+    console.log(`[FFmpeg Extraction] Executing command: ${command}`);
+    await execAsync(command);
+
+    if (!fs.existsSync(outputPath)) {
+      throw new Error('FFmpeg processing did not output an MP3 file.');
+    }
+
+    // Read the output MP3 file
+    const mp3Buffer = fs.readFileSync(outputPath);
+    const mp3Blob = new Blob([mp3Buffer]);
+    const mp3File = new File([mp3Blob], `${path.basename(videoFile.name, ext)}.mp3`, { type: 'audio/mp3' });
+
+    // Clean up files
+    try { fs.unlinkSync(inputPath); } catch {}
+    try { fs.unlinkSync(outputPath); } catch {}
+
+    return mp3File;
+  } catch (err: any) {
+    console.error('[FFmpeg Extraction Failed]:', err);
+    // Cleanup input if exists
+    try { fs.unlinkSync(inputPath); } catch {}
+    try { fs.unlinkSync(outputPath); } catch {}
+    
+    // Fall back to original file if size is under 25MB
+    if (videoFile.size <= 25 * 1024 * 1024) {
+      console.log('[FFmpeg Fallback] File is under 25MB. Processing video file directly with Whisper.');
+      return videoFile;
+    }
+    
+    throw new Error('Video file exceeds 25MB limit and FFmpeg extraction is unavailable or failed.');
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +78,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No audio file uploaded.' }, { status: 400 });
     }
 
+    const isVideo = file.type.startsWith('video/') || 
+                    /\.(mp4|mov|avi|mkv|webm|3gp)$/i.test(file.name);
+
+    let fileToProcess = file;
+    if (isVideo) {
+      console.log(`[Voice Import] Video file detected: ${file.name} (${file.type}). Extracting audio...`);
+      try {
+        fileToProcess = await extractAudioFromVideo(file);
+      } catch (extractError: any) {
+        console.error('[Voice Import] Video extraction failed:', extractError);
+        return NextResponse.json({ error: extractError.message || 'Failed to extract audio from video.' }, { status: 400 });
+      }
+    }
+
     // 1. Telemetry Log Job Initialisation
     const { data: job, error: jErr } = await supabase.from('blog_social_imports').insert({
       workspace_id: wsId,
@@ -36,7 +106,7 @@ export async function POST(req: Request) {
 
       // 2. Universal Speech Processing (Whisper API Ingestion)
       const whisperFormData = new FormData();
-      whisperFormData.append('file', file);
+      whisperFormData.append('file', fileToProcess);
       whisperFormData.append('model', 'whisper-1');
 
       const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -53,7 +123,7 @@ export async function POST(req: Request) {
       const { text: rawTranscript } = await whisperResponse.json();
       if (!rawTranscript.trim()) throw new Error('Speech processing returned an empty transcript.');
 
-      // 3. Article Generation Core (GPT-4o Purging Spoken Filler Words)
+      // 3. Article Generation Core (GPT-4o-mini Purging Spoken Filler Words)
       const prompt = `You are a professional editor. The following is a raw verbal transcript captured via microphone recording.
 Clean up all spoken filler words (such as "uh", "um", "like", "so", "actually", etc.), correct structural syntax, and transform the spoken ideas into a highly professional, engaging informational article of 800 to 1,200 words.
 
@@ -83,7 +153,7 @@ Verbal Transcript:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini',
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: 'You only output strict JSON based on context.' },
@@ -94,7 +164,7 @@ Verbal Transcript:
 
       if (!gptResponse.ok) {
         const errText = await gptResponse.text();
-        throw new Error(`GPT-4o generation failed: ${errText}`);
+        throw new Error(`GPT-4o-mini generation failed: ${errText}`);
       }
 
       const result = await gptResponse.json();
