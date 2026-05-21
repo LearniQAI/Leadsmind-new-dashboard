@@ -149,6 +149,15 @@ export async function POST(
       if (submissionPhone && !existingContact.phone) updates.phone = submissionPhone;
       if (submissionCompany && !existingContact.company) updates.company = submissionCompany;
       
+      // Merge first-touch attribution if not already set on the contact
+      const firstTouchSource = attribution?.first_touch_source;
+      const firstTouchKeyword = attribution?.first_touch_keyword;
+      const firstTouchPage = attribution?.first_touch_page;
+
+      if (firstTouchSource && !existingContact.first_touch_source) updates.first_touch_source = firstTouchSource;
+      if (firstTouchKeyword && !existingContact.first_touch_keyword) updates.first_touch_keyword = firstTouchKeyword;
+      if (firstTouchPage && !existingContact.first_touch_page) updates.first_touch_page = firstTouchPage;
+
       // Merge attribution
       if (attribution && Object.keys(attribution).length > 0) {
         updates.form_attribution = { ...(existingContact.form_attribution || {}), ...attribution };
@@ -164,6 +173,10 @@ export async function POST(
       }
     } else if (submissionEmail) {
       // Create new contact
+      const firstTouchSource = attribution?.first_touch_source || null;
+      const firstTouchKeyword = attribution?.first_touch_keyword || null;
+      const firstTouchPage = attribution?.first_touch_page || null;
+
       const { data: newContact } = await supabase.from('contacts')
         .insert({
           workspace_id: workspace_id,
@@ -174,7 +187,10 @@ export async function POST(
           company: submissionCompany || null,
           source: 'form_submission',
           metadata: { form_id: id },
-          form_attribution: attribution || {}
+          form_attribution: attribution || {},
+          first_touch_source: firstTouchSource,
+          first_touch_keyword: firstTouchKeyword,
+          first_touch_page: firstTouchPage
         })
         .select('id')
         .single();

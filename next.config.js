@@ -9,6 +9,9 @@ const nextConfig = {
             },
         ],
     },
+    experimental: {
+        serverComponentsExternalPackages: ["puppeteer", "cheerio", "undici"],
+    },
 };
 
 module.exports = nextConfig;

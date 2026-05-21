@@ -32,6 +32,11 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
     let userChannel: any;
 
     async function initNotifications() {
+      // If a channel already exists (e.g., component re‑mounted), remove it before creating a new one
+      if (userChannel) {
+        supabase.removeChannel(userChannel);
+        userChannel = null;
+      }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 

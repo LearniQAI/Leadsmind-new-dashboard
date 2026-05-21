@@ -205,7 +205,7 @@ export async function getContentPipeline() {
   }
 }
 
-export async function updatePipelineStatus(id: string, status: 'Idea' | 'Research' | 'Approved' | 'Outlined' | 'Writing' | 'Review' | 'Scheduled' | 'Published') {
+export async function updatePipelineStatus(id: string, status: 'Idea' | 'Research' | 'Approved' | 'Outlined' | 'Writing' | 'Review' | 'Scheduled' | 'Published' | 'Indexing' | 'ranking_11_50') {
   try {
     const supabase = await createServerClient();
     const { data, error } = await supabase
@@ -224,7 +224,7 @@ export async function updatePipelineStatus(id: string, status: 'Idea' | 'Researc
   }
 }
 
-export async function addPipelineItem(keyword: string, status: 'Idea' | 'Research' | 'Approved' | 'Outlined' | 'Writing' | 'Review' | 'Scheduled' | 'Published' = 'Idea', title?: string, targetDate?: string) {
+export async function addPipelineItem(keyword: string, status: 'Idea' | 'Research' | 'Approved' | 'Outlined' | 'Writing' | 'Review' | 'Scheduled' | 'Published' | 'Indexing' | 'ranking_11_50' = 'Idea', title?: string, targetDate?: string) {
   try {
     const projectRes = await getSeoProject();
     if (projectRes.error) return { error: projectRes.error };
@@ -252,6 +252,72 @@ export async function addPipelineItem(keyword: string, status: 'Idea' | 'Researc
 
     revalidatePath('/settings');
     return { data };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function updatePipelineItemCost(id: string, cost: number) {
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('seo_content_pipeline')
+      .update({ cost })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    revalidatePath('/settings');
+    return { data };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function runPipelineAutomation() {
+  try {
+    const supabase = await createServerClient();
+    const { error } = await supabase.rpc('auto_promote_and_flag_pipeline');
+    if (error) throw error;
+    
+    revalidatePath('/settings');
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function runRevenueRollup() {
+  try {
+    const supabase = await createServerClient();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const { error } = await supabase.rpc('rollup_seo_revenue_attribution_func', { p_date: todayStr });
+    if (error) throw error;
+
+    revalidatePath('/settings');
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function getRevenueAttributionMetrics() {
+  try {
+    const projectRes = await getSeoProject();
+    if (projectRes.error) return { error: projectRes.error };
+    if (!projectRes.data) return { data: [] };
+
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('seo_revenue_attribution_rollup')
+      .select('*')
+      .eq('project_id', projectRes.data.id)
+      .order('date', { ascending: false });
+
+    if (error) throw error;
+    return { data: data || [] };
   } catch (error: any) {
     return { error: error.message };
   }
@@ -717,6 +783,122 @@ export async function getCompetitorGapAnalysis() {
     gaps.sort((a, b) => a.competitor_rank - b.competitor_rank);
 
     return { data: gaps };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+// Phase 4: Technical Onsite Health Crawler Server Actions
+export async function triggerSiteHealthCrawl(projectId: string, domainUrl: string) {
+  try {
+    const supabase = await createServerClient();
+    
+    // Dynamically import crawler module to prevent bundler parser failures on client components
+    const { crawlLocalDomain, fetchPageSpeedMetrics, calculateHealthScore } = await import('@/lib/seo-crawler');
+
+    // 1. Run Onsite Crawler
+    console.log(`Starting Technical Onsite Crawl for domain: ${domainUrl}`);
+    const crawlResult = await crawlLocalDomain(domainUrl, 10);
+    
+    // 2. Fetch Core Web Vitals targets from PageSpeed Insights API
+    console.log(`Fetching weekly Core Web Vitals for domain: ${domainUrl}`);
+    const psMetrics = await fetchPageSpeedMetrics(domainUrl);
+    
+    // 3. Compute Composite Health Score
+    const totalMissingAlts = crawlResult.missingAlts.reduce((acc, curr) => acc + curr.images.length, 0);
+    const healthScore = calculateHealthScore({
+      isHttps: crawlResult.isHttps,
+      hasCrawlFailure: crawlResult.hasCrawlFailure,
+      errorPageCount: crawlResult.pagesWithErrors.length,
+      redirectChainCount: crawlResult.redirectChains.length,
+      missingAltCount: totalMissingAlts
+    });
+
+    // 4. Connect index vulnerabilities to Content Studio (blog_posts) by matching page slugs
+    const { data: blogPosts } = await supabase
+      .from('blog_posts')
+      .select('id, slug, title');
+
+    const blogPostMap = new Map<string, string>();
+    if (blogPosts) {
+      blogPosts.forEach((post: any) => {
+        if (post.slug) {
+          blogPostMap.set(post.slug.toLowerCase().trim(), post.id);
+        }
+      });
+    }
+
+    // Map each item in issuesList to include contentStudioLinkId if possible
+    const itemizedIssues = crawlResult.issuesList.map((issue) => {
+      let contentStudioLinkId: string | null = null;
+      if (issue.pageUrl) {
+        try {
+          const parsed = new URL(issue.pageUrl);
+          const segments = parsed.pathname.split('/').filter(Boolean);
+          const lastSegment = segments[segments.length - 1]?.toLowerCase().trim();
+          if (lastSegment && blogPostMap.has(lastSegment)) {
+            contentStudioLinkId = blogPostMap.get(lastSegment)!;
+          }
+        } catch {}
+      }
+      return {
+        ...issue,
+        contentStudioLinkId
+      };
+    });
+
+    const crawlPayload = {
+      project_id: projectId,
+      health_score: healthScore,
+      pages_crawled: crawlResult.pagesCrawled,
+      is_https: crawlResult.isHttps,
+      has_crawl_failure: crawlResult.hasCrawlFailure,
+      desktop_performance: psMetrics.desktop.score,
+      desktop_fcp: psMetrics.desktop.fcp,
+      desktop_lcp: psMetrics.desktop.lcp,
+      desktop_cls: psMetrics.desktop.cls,
+      desktop_tbt: psMetrics.desktop.tbt,
+      mobile_performance: psMetrics.mobile.score,
+      mobile_fcp: psMetrics.mobile.fcp,
+      mobile_lcp: psMetrics.mobile.lcp,
+      mobile_cls: psMetrics.mobile.cls,
+      mobile_tbt: psMetrics.mobile.tbt,
+      status_codes: crawlResult.statusCodes,
+      redirect_chains: crawlResult.redirectChains,
+      missing_alts: crawlResult.missingAlts,
+      pages_with_errors: crawlResult.pagesWithErrors,
+      issues_list: itemizedIssues
+    };
+
+    const { data, error } = await supabase
+      .from('seo_site_health_crawls')
+      .insert(crawlPayload)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    revalidatePath('/settings');
+    return { data };
+  } catch (error: any) {
+    console.error('triggerSiteHealthCrawl server action failed:', error);
+    return { error: error.message };
+  }
+}
+
+export async function getLatestSiteHealthCrawl(projectId: string) {
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('seo_site_health_crawls')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return { data: data || null };
   } catch (error: any) {
     return { error: error.message };
   }
