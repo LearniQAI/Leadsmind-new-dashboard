@@ -98,7 +98,7 @@ export default function SettingsClient({
     { id: 'team', label: 'Team Node', icon: Users, description: 'Manage access protocols' },
     { id: 'branding', label: 'Branding', icon: Palette, description: 'Interface identity markers' },
     { id: 'seo', label: 'SEO Settings', icon: TrendingUp, description: 'Google Search Console sync' },
-    { id: 'api', label: 'API & Webhooks', icon: Code2, description: 'Neural handshakes' },
+    { id: 'api', label: 'Developer', icon: Code2, description: 'API keys, webhooks & SDK' },
     { id: 'pricing', label: 'Billing', icon: CreditCard, description: 'Resource allocation' },
     { id: 'audit', label: 'Security', icon: ShieldCheck, description: 'Audit logs & integrity' },
     { id: 'appearance', label: 'Appearance', icon: Monitor, description: 'Visual preferences' },

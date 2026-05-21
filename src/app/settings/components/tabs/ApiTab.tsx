@@ -1,6 +1,8 @@
 "use client";
-import React from 'react';
-import { ShieldCheck, Copy, Check, ShieldAlert, Plus, Webhook, Activity, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, Copy, Check, ShieldAlert, Plus, Webhook, Activity, Trash2, Code2, Globe, PlayCircle, CheckCircle2, Terminal } from 'lucide-react';
+import { toast } from 'sonner';
+import { sendDemoLead } from '@/app/actions/demo_actions';
 
 interface ApiTabProps {
   apiKey: string | null;
@@ -25,6 +27,26 @@ export default function ApiTab({
 }: ApiTabProps) {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const webhookUrl = `${origin}/api/webhooks/incoming?workspace_id=${workspaceId}`;
+  const [sendingDemo, setSendingDemo] = useState(false);
+  const [showKey, setShowKey] = useState(false);
+
+  const embedCode = `<script>
+  (function(w,d,s,o,f,js,fjs){
+    w['LeadsmindObj']=o;w[o]=w[o]||function(){(w[o].q=w[o].q||[]).push(arguments)};
+    js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
+    js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
+  }(window,document,'script','lm','${origin}/api/v1/leads/sdk.js'));
+  lm('init', { apiKey: '${apiKey || 'YOUR_API_KEY'}' });
+</script>`;
+
+  const handleSendDemo = async () => {
+    if (!apiKey) { toast.error('Generate an API key first'); return; }
+    setSendingDemo(true);
+    const res = await sendDemoLead(apiKey);
+    setSendingDemo(false);
+    if (res.success) { toast.success('Demo lead captured! Check your Contacts page.'); }
+    else { toast.error(res.error || 'Failed to send demo lead'); }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -43,12 +65,17 @@ export default function ApiTab({
           </button>
         </div>
         <div className="flex gap-2">
-          <input
-            type="password"
-            readOnly
-            value={apiKey || '••••••••••••••••••••••••'}
-            className="flex-1 bg-n900 border border-white/5 rounded-xl px-4 py-4 text-t1 font-mono text-xs outline-none focus:border-accent/30"
-          />
+          <div className="flex-1 flex items-center gap-2 bg-n900 border border-white/5 rounded-xl px-4 py-3">
+            <input
+              type={showKey ? 'text' : 'password'}
+              readOnly
+              value={apiKey || '••••••••••••••••••••••••'}
+              className="flex-1 bg-transparent border-none outline-none text-t1 font-mono text-xs"
+            />
+            <button onClick={() => setShowKey(!showKey)} className="text-[10px] font-bold text-t3 hover:text-t1 uppercase tracking-wider">
+              {showKey ? 'Hide' : 'Show'}
+            </button>
+          </div>
           <button
             onClick={() => onCopy(apiKey || '', 'apikey')}
             className="px-6 bg-white/5 border border-white/5 text-t3 hover:text-t1 rounded-xl transition-all"
@@ -59,33 +86,91 @@ export default function ApiTab({
         <div className="flex items-start gap-2 p-3 bg-red/5 border border-red/10 rounded-xl">
           <ShieldAlert size={14} className="text-red mt-0.5 flex-shrink-0" />
           <p className="text-[10px] font-bold text-red/80 uppercase tracking-widest leading-relaxed">
-            CRITICAL: Never expose this secret in client-side code. Use it for backend neural handshakes only.
+            Never expose this secret in client-side code. Use it for backend integrations only.
           </p>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-[13px] font-black text-t1 uppercase tracking-widest">Incoming Data Stream</h4>
-          <span className="px-2 py-0.5 rounded bg-green/10 text-green text-[9px] font-black uppercase tracking-widest">Active</span>
-        </div>
-        <div className="p-6 bg-n800 border border-white/5 rounded-2xl space-y-4">
-          <p className="text-[12px] text-t3 leading-relaxed">Use this endpoint to automatically ingest data from external platforms (Zapier, Custom CRM, etc).</p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              readOnly
-              value={webhookUrl}
-              className="flex-1 bg-n900 border border-white/5 rounded-xl px-4 py-3 text-accent font-mono text-[11px] outline-none"
-            />
-            <button
-              onClick={() => onCopy(webhookUrl, 'webhook_url')}
-              className="px-4 bg-white/5 border border-white/5 text-t3 hover:text-t1 rounded-xl transition-all"
-            >
-              {copiedId === 'webhook_url' ? <Check size={14} className="text-green" /> : <Copy size={14} />}
-            </button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-[13px] font-black text-t1 uppercase tracking-widest">Incoming Webhook</h4>
+            <span className="px-2 py-0.5 rounded bg-green/10 text-green text-[9px] font-black uppercase tracking-widest">Endpoint</span>
+          </div>
+          <div className="p-6 bg-n800 border border-white/5 rounded-2xl space-y-4">
+            <p className="text-[12px] text-t3 leading-relaxed">Use this endpoint to ingest data from external platforms (Zapier, custom CRM, etc).</p>
+            <div className="flex gap-2">
+              <input
+                type="text" readOnly value={webhookUrl}
+                className="flex-1 bg-n900 border border-white/5 rounded-xl px-4 py-3 text-accent font-mono text-[11px] outline-none"
+              />
+              <button
+                onClick={() => onCopy(webhookUrl, 'webhook_url')}
+                className="px-4 bg-white/5 border border-white/5 text-t3 hover:text-t1 rounded-xl transition-all"
+              >
+                {copiedId === 'webhook_url' ? <Check size={14} className="text-green" /> : <Copy size={14} />}
+              </button>
+            </div>
+            <div className="bg-[#050505] rounded-xl p-4 border border-white/5">
+              <pre className="text-[10px] text-emerald-400 font-mono overflow-x-auto">
+{`fetch('${webhookUrl}', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': '${(apiKey || '').substring(0, 8)}...'
+  },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    first_name: 'John',
+    last_name: 'Doe'
+  })
+});`}
+              </pre>
+            </div>
           </div>
         </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-[13px] font-black text-t1 uppercase tracking-widest">SDK Embed Script</h4>
+            <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 text-[9px] font-black uppercase tracking-widest border border-purple-500/20">ZERO-CODE</span>
+          </div>
+          <div className="p-6 bg-n800 border border-white/5 rounded-2xl space-y-4">
+            <p className="text-[12px] text-t3 leading-relaxed">
+              Paste this script into the <code className="text-white">&lt;head&gt;</code> of any website to track visitors and capture form submissions automatically.
+            </p>
+            <div className="bg-[#050505] rounded-xl p-4 border border-white/5 relative group">
+              <pre className="text-[10px] text-blue-400 font-mono overflow-x-auto whitespace-pre-wrap">{embedCode}</pre>
+              <button
+                onClick={() => { navigator.clipboard.writeText(embedCode); toast.success('SDK Script copied'); }}
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+              >
+                <Copy size={12} />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-purple-500/5 border border-purple-500/10">
+              <CheckCircle2 size={14} className="text-purple-400" />
+              <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Automatic form detection included</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6">
+        <div className="h-14 w-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30 flex-shrink-0">
+          <PlayCircle size={28} />
+        </div>
+        <div className="flex-1 space-y-1 text-center md:text-left">
+          <h4 className="text-[15px] font-space font-bold text-t1 uppercase">Test Your Integration</h4>
+          <p className="text-[12px] text-t3">Send a simulated lead through your API pipeline to verify everything is connected correctly.</p>
+        </div>
+        <button
+          disabled={sendingDemo || !apiKey}
+          onClick={handleSendDemo}
+          className="px-8 py-3.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-n900 font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-emerald-500/20 whitespace-nowrap transition-all"
+        >
+          {sendingDemo ? 'Sending...' : 'Send Test Lead'}
+        </button>
       </div>
 
       <div className="space-y-4">
@@ -120,7 +205,7 @@ export default function ApiTab({
                     </div>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => onDeleteWebhook(hook.id)}
                   className="w-9 h-9 flex items-center justify-center text-t4 hover:text-red transition-all rounded-lg hover:bg-red/10"
                 >

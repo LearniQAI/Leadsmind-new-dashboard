@@ -3,20 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
-  Plus, FileText, Share2, UserCheck, Pencil, Trash2, Globe, X,
-  CheckCircle, Clock, MoreVertical, Copy, Loader2, Search, Code2, Users, ExternalLink, Bell
+  Plus, FileText, Share2, UserCheck, Trash2, X,
+  CheckCircle, Clock, Loader2, Search, Users, ExternalLink, Bell
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
 import { createForm } from '@/app/actions/marketing';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import UniversalAPI from './UniversalAPI';
 import { EmbedModal } from './EmbedModal';
 import { CreateFormDialog, EditFormDialog, DeleteFormDialog } from './FormsModals';
 import { FormCard } from './FormCard';
@@ -235,9 +229,6 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
           <TabsTrigger value="forms" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
             <FileText className="w-4 h-4 mr-2" /> My Forms
           </TabsTrigger>
-          <TabsTrigger value="api" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
-            <Globe className="w-4 h-4 mr-2" /> Universal API & Webhooks
-          </TabsTrigger>
           <TabsTrigger value="collaborations" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
             <Users className="w-4 h-4 mr-2" /> Collaborations
           </TabsTrigger>
@@ -295,10 +286,6 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
               />
             ))}
           </div>
-        </TabsContent>
-
-        <TabsContent value="api" className="focus-visible:outline-none">
-          <UniversalAPI />
         </TabsContent>
 
         <TabsContent value="collaborations" className="space-y-8 focus-visible:outline-none">
