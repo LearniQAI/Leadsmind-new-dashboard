@@ -1,4 +1,4 @@
-export type InviteStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired'
+export type InviteStatus = 'pending' | 'active' | 'accepted' | 'declined' | 'revoked' | 'expired'
 export type FormRole = 'editor' | 'viewer'
 export type WorkspaceRole = 'admin' | 'member' | 'client'
 export type NotificationType = 'message' | 'contact' | 'deal' | 'system' | 'team'
