@@ -50,20 +50,7 @@ export function CollaboratorsManager({
           addedAt: item.created_at
         }));
 
-        // Ensure Owner (oderinwalematthew3@gmail.com) is always listed at the top
-        const hasOwner = mapped.some((c: any) => c.role === 'owner' || c.email === 'oderinwalematthew3@gmail.com');
-        const list: Collaborator[] = hasOwner ? mapped : [
-          {
-            id: 'owner-stub',
-            email: 'oderinwalematthew3@gmail.com',
-            role: 'owner',
-            status: 'active',
-            addedAt: new Date().toISOString()
-          },
-          ...mapped
-        ];
-
-        setCollaborators(list);
+        setCollaborators(mapped);
       }
     } catch (err: any) {
       console.error(err);
@@ -110,7 +97,6 @@ export function CollaboratorsManager({
   };
 
   const handleRemove = async (id: string) => {
-    if (id === 'owner-stub') return;
     try {
       const res = await removeFormCollaborator(id, formId);
       if (res.error) {
@@ -125,7 +111,6 @@ export function CollaboratorsManager({
   };
 
   const handleChangeRole = async (id: string, newRole: 'editor' | 'viewer') => {
-    if (id === 'owner-stub') return;
     try {
       const res = await updateFormCollaboratorRole(id, newRole, formId);
       if (res.error) {
