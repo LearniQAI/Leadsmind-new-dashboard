@@ -3,6 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { sendEmail } from '@/lib/email';
 
 export async function inviteFormCollaborator({
   email,
@@ -78,6 +79,34 @@ export async function inviteFormCollaborator({
     if (notifError) {
       console.error('[inviteFormCollaborator] Notification insert error:', notifError);
       // Don't fail the whole action if only notification failed
+    }
+
+    // 4. Send beautiful HTML email
+    try {
+      const link = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/forms/${formId}/governance`;
+      await sendEmail({
+        to: targetEmail,
+        subject: `You have been invited to collaborate on "${formName}"`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #2563eb; border-radius: 16px; background-color: #04091a; color: #eef2ff;">
+            <h2 style="color: #3b82f6; font-size: 24px;">Form <span style="color: #ffffff;">Collaboration</span></h2>
+            <p style="color: #94a3c8; font-size: 14px;">You have been invited by <strong>${currentUser.email}</strong> to collaborate on the form <strong>"${formName}"</strong>.</p>
+            <div style="margin: 24px 0; padding: 20px; background-color: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+              <p style="margin: 0; font-size: 12px; color: #4a5a82; text-transform: uppercase; letter-spacing: 1px;">Granted Access Role</p>
+              <p style="margin: 8px 0 0; font-size: 16px; font-weight: bold; color: #3b82f6;">${role.toUpperCase()}</p>
+            </div>
+            <p style="color: #94a3c8;">Click the button below to open the form governance dashboard:</p>
+            <div style="margin: 30px 0;">
+              <a href="${link}" 
+                style="display: inline-block; padding: 14px 40px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+                Open Form
+              </a>
+            </div>
+          </div>
+        `
+      });
+    } catch (emailError) {
+      console.error('[inviteFormCollaborator] Email sending failed:', emailError);
     }
 
     revalidatePath('/forms');
