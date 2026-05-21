@@ -5,6 +5,7 @@ import { useFormBuilder } from './FormBuilderContext';
 import { LogicRule } from './LogicEngine';
 import { RuleBuilderModal } from './RuleBuilderModal';
 import { Plus, Trash2, Pencil, Sparkles, ArrowRight, Eye, EyeOff, SkipForward } from 'lucide-react';
+import { toast } from 'sonner';
 
 const ACTION_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
   show_field: { label: 'Show Field', icon: <Eye size={10} /> },
@@ -19,7 +20,10 @@ export function LogicBuilder() {
   const [editingRule, setEditingRule] = useState<LogicRule | null>(null);
 
   const handleOpenNew = () => {
-    if (fields.length === 0) return;
+    if (fields.length === 0) {
+      toast.error('Add at least one field to your form before creating a conditional rule.', { id: 'no-fields-rule' });
+      return;
+    }
     setEditingRule(null);
     setModalOpen(true);
   };
@@ -44,7 +48,10 @@ export function LogicBuilder() {
   };
 
   const handleUseStarter = (triggerLabel: string, action: LogicRule['action']) => {
-    if (fields.length < 2) return;
+    if (fields.length < 2) {
+      toast.error('Add at least two fields to use quick-start examples.', { id: 'no-fields-starter' });
+      return;
+    }
     const triggerField = fields.find(f => f.label.toLowerCase().includes(triggerLabel.toLowerCase())) || fields[0];
     const targetField = fields.find(f => f.id !== triggerField.id) || fields[1];
     const rule: LogicRule = {
@@ -67,8 +74,7 @@ export function LogicBuilder() {
         <p className="builder-section-label" style={{ margin: 0 }}>Conditional Rules</p>
         <button
           onClick={handleOpenNew}
-          disabled={fields.length < 1}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 hover:bg-[#2563eb] hover:border-transparent text-[#60a5fa] hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 hover:bg-[#2563eb] hover:border-transparent text-[#60a5fa] hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
         >
           <Plus size={10} /> Add Rule
         </button>
@@ -81,9 +87,8 @@ export function LogicBuilder() {
               No conditional logic rules yet. Rules let you show, hide, or skip based on user responses.
             </p>
             <button
-              onClick={handleOpenNew}
-              disabled={fields.length < 1}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb] text-[#60a5fa] hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all disabled:opacity-30"
+              onClick={() => { if (fields.length === 0) { toast.error('Add at least one field first.', { id: 'no-fields-first' }); return; } setEditingRule(null); setModalOpen(true); }}
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb] text-[#60a5fa] hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
             >
               <Plus size={10} /> Add Your First Rule
             </button>
