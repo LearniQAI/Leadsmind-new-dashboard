@@ -3,9 +3,16 @@ export interface LogicRule {
   triggerFieldId: string;
   operator: 'equals' | 'not_equals' | 'checked' | 'unchecked' | 'contains' | 'greater_than' | 'less_than';
   value: string;
-  action: 'show_field' | 'hide_field' | 'jump_to_step' | 'set_value';
+  action: 'show_field' | 'hide_field' | 'jump_to_step' | 'set_value' | 'skip_step';
   targetId: string;
   targetValue?: string;
+}
+
+export interface LogicEvalResult {
+  hiddenFieldIds: Set<string>;
+  overriddenValues: Record<string, any>;
+  jumpToStepId: string | null;
+  skipStepIds: Set<string>;
 }
 
 export function evaluateCondition(
@@ -44,29 +51,34 @@ export function evaluateCondition(
 export function evaluateLogicRules(
   rules: LogicRule[],
   values: Record<string, any>
-) {
+): LogicEvalResult {
   const hiddenFieldIds = new Set<string>();
-  const jumpToStepId: string | null = null;
   const overriddenValues: Record<string, any> = {};
+  const skipStepIds = new Set<string>();
+  let jumpToStepId: string | null = null;
 
-  // Track field triggers
   for (const rule of rules) {
     const triggerVal = values[rule.triggerFieldId];
     const isMatched = evaluateCondition(triggerVal, rule.operator, rule.value);
 
     if (isMatched) {
-      if (rule.action === 'hide_field') {
-        hiddenFieldIds.add(rule.targetId);
-      } else if (rule.action === 'show_field') {
-        // Handled below: fields that have show rules will be hidden by default 
-        // unless their show rules match.
-      } else if (rule.action === 'set_value') {
-        overriddenValues[rule.targetId] = rule.targetValue || '';
+      switch (rule.action) {
+        case 'hide_field':
+          hiddenFieldIds.add(rule.targetId);
+          break;
+        case 'show_field':
+          break;
+        case 'set_value':
+          overriddenValues[rule.targetId] = rule.targetValue || '';
+          break;
+        case 'skip_step':
+          skipStepIds.add(rule.targetId);
+          break;
       }
     }
   }
 
-  // Handle default hidden states for fields that have 'show_field' rules
+  // Handle default hidden states for 'show_field' rules
   const fieldsWithShowRules = new Set<string>();
   const matchingShowRules = new Set<string>();
 
@@ -80,21 +92,19 @@ export function evaluateLogicRules(
     }
   }
 
-  // If a field has a 'show_field' rule but NONE are matched, we hide it by default
   for (const fieldId of fieldsWithShowRules) {
     if (!matchingShowRules.has(fieldId)) {
       hiddenFieldIds.add(fieldId);
     }
   }
 
-  // Determine if there is any jump_to_step rule matched
-  let activeJumpStepId: string | null = null;
+  // Determine first matched jump_to_step
   for (const rule of rules) {
     if (rule.action === 'jump_to_step') {
       const triggerVal = values[rule.triggerFieldId];
       if (evaluateCondition(triggerVal, rule.operator, rule.value)) {
-        activeJumpStepId = rule.targetId;
-        break; // First match wins
+        jumpToStepId = rule.targetId;
+        break;
       }
     }
   }
@@ -102,6 +112,7 @@ export function evaluateLogicRules(
   return {
     hiddenFieldIds,
     overriddenValues,
-    jumpToStepId: activeJumpStepId,
+    jumpToStepId,
+    skipStepIds,
   };
 }
