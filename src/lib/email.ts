@@ -38,13 +38,13 @@ export async function sendEmail({ to, subject, react, html, text, config }: Send
   })
 
   if (error) {
-   console.error('Resend error:', error)
-   throw new Error('Failed to send email')
+   console.error('Resend API Error:', error);
+   throw new Error(error.message || 'Failed to send email via Resend');
   }
 
-  return data
- } catch (error) {
-  console.error('Email service error:', error)
-  throw error
+  return data;
+ } catch (error: any) {
+  console.error('Email service exception:', error);
+  throw new Error(error.message || 'Email service error');
  }
 }

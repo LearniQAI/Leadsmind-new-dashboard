@@ -18,6 +18,7 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
+  const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
   const [channel, setChannel] = useState<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isOwner = userEmail.toLowerCase() === 'oderinwalematthew3@gmail.com';
@@ -74,6 +75,31 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
 
     initPresence();
 
+    const fetchAllowed = async () => {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      const { data: form } = await supabase.from('forms').select('user_id').eq('id', formId).single();
+      const { data: owner } = await supabase.from('users').select('email').eq('id', form?.user_id).single();
+      const { data: collabs } = await supabase.from('form_collaborators').select('email').eq('form_id', formId).eq('status', 'active');
+      
+      const emails = (collabs || []).map(c => c.email);
+      if (owner?.email) emails.push(owner.email);
+      setAllowedEmails(emails);
+    };
+    fetchAllowed();
+
+    // Re-fetch when collaborators change
+    let sub: any;
+    const setupRealtime = async () => {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      sub = supabase.channel(`collab_changes_${formId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'form_collaborators', filter: `form_id=eq.${formId}` }, fetchAllowed)
+        .subscribe();
+    };
+    setupRealtime();
+
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
@@ -86,9 +112,14 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
         activeChannel.untrack();
         activeChannel.unsubscribe();
       }
+      if (sub) {
+        sub.unsubscribe();
+      }
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [formId]);
+
+  const visibleActiveUsers = activeUsers.filter(u => allowedEmails.length === 0 || allowedEmails.includes(u.email));
 
   useEffect(() => {
     if (channel) {
@@ -138,7 +169,7 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
           </div>
         </div>
 
-        {activeUsers.map((u, i) => (
+        {visibleActiveUsers.map((u, i) => (
           <div
             key={i}
             className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-[#04081a] bg-purple-500 text-white cursor-pointer relative group`}
@@ -188,7 +219,7 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
             </div>
 
             {/* Other Users */}
-            {activeUsers.map((u, i) => (
+            {visibleActiveUsers.map((u, i) => (
               <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 rounded-full bg-purple-500 text-[8px] font-black flex items-center justify-center text-white">{u.initials}</div>
@@ -211,7 +242,7 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
               </div>
             ))}
 
-            {activeUsers.length === 0 && (
+            {visibleActiveUsers.length === 0 && (
               <div className="p-3 text-center text-[9px] font-bold text-white/30 uppercase tracking-wider">
                 No other users active right now.
               </div>

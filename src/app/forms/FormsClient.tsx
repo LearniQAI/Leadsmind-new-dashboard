@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { createForm } from '@/app/actions/marketing';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmbedModal } from './EmbedModal';
 import { CreateFormDialog, EditFormDialog, DeleteFormDialog } from './FormsModals';
@@ -29,6 +29,10 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function FormsClient({ initialForms }: { initialForms: any[] }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get('tab') === 'collaborations' ? 'collaborations' : 'forms';
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
+
   const [forms, setForms] = useState(initialForms);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');
@@ -232,7 +236,7 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
         </Button>
       </div>
 
-      <Tabs defaultValue="forms" className="space-y-8">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
         <TabsList className="bg-white/5 border border-white/10 p-1 rounded-2xl h-14">
           <TabsTrigger value="forms" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
             <FileText className="w-4 h-4 mr-2" /> My Forms

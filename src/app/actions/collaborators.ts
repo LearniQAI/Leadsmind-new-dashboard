@@ -84,7 +84,7 @@ export async function inviteFormCollaborator({
         type: 'team',
         title: 'Form Collaboration Invite',
         message: `${currentUser.email} invited you to collaborate on "${formName}" as ${role}`,
-        link: `/forms/${formId}/governance?accept=invite`,
+        link: `/forms?tab=collaborations`,
         read: false
       });
 
@@ -93,7 +93,7 @@ export async function inviteFormCollaborator({
     }
 
     try {
-      const link = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/forms/${formId}/governance?accept=${formId}`;
+      const link = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/forms?tab=collaborations`;
       await sendEmail({
         to: targetEmail,
         subject: `You've been invited to collaborate on "${formName}"`,
@@ -219,7 +219,7 @@ export async function resendFormInvitation(collabId: string, formId: string): Pr
 
     const formName = form?.name || 'Untitled Form';
 
-    const link = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/forms/${formId}/governance?accept=${formId}`;
+    const link = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/forms?tab=collaborations`;
     await sendEmail({
       to: collab.email,
       subject: `Reminder: You're invited to collaborate on "${formName}"`,
