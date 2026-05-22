@@ -175,6 +175,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
         </div>
 
       </div>
+      </div>
     </Suspense>
   );
 }
