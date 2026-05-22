@@ -15,7 +15,7 @@ interface SendEmailProps {
 
 export async function sendEmail({ to, subject, react, html, text, config }: SendEmailProps) {
  const apiKey = config?.apiKey || process.env.RESEND_API_KEY
- const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+ const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@leadsmind.io'
  const fromName = config?.fromName || 'LeadsMind'
  
  if (!apiKey || apiKey === 're_123' || apiKey.includes('PLACEHOLDER')) {
