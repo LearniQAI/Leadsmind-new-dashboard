@@ -33,7 +33,7 @@ export function useFormPersistence({
   const [recoverableData, setRecoverableData] = useState<any>(null);
   
   const engineRef = useRef<PersistenceEngine | null>(null);
-  const isInitializedRef = useRef(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // 1. Resolve Session ID (session-scoped UUID)
   useEffect(() => {
@@ -53,7 +53,7 @@ export function useFormPersistence({
 
     const checkRecovery = async () => {
       // Avoid checking multiple times
-      if (isInitializedRef.current) return;
+      if (isInitialized) return;
 
       const searchParams = new URLSearchParams(window.location.search);
       const token = searchParams.get('lm_recovery_token');
@@ -90,7 +90,7 @@ export function useFormPersistence({
         setRecoverableData(targetData);
         setResumeModalOpen(true);
       } else {
-        isInitializedRef.current = true;
+        setIsInitialized(true);
       }
     };
 
@@ -99,7 +99,7 @@ export function useFormPersistence({
 
   // 3. Initialize save engine
   useEffect(() => {
-    if (!formId || !sessionId || !isInitializedRef.current) return;
+    if (!formId || !sessionId || !isInitialized) return;
 
     const engine = new PersistenceEngine({
       formId,
@@ -112,11 +112,11 @@ export function useFormPersistence({
     return () => {
       engine.destroy();
     };
-  }, [formId, sessionId, autoSaveEnabled]);
+  }, [formId, sessionId, autoSaveEnabled, isInitialized]);
 
   // 4. Auto-save triggers on state changes
   useEffect(() => {
-    if (!engineRef.current || !isInitializedRef.current) return;
+    if (!engineRef.current || !isInitialized) return;
 
     // Detect user email for CRM attribution pre-fill
     let userEmail = '';
@@ -143,11 +143,11 @@ export function useFormPersistence({
     // Find target step index
     const targetIdx = steps.findIndex(s => s.id === recoverableData.stepId);
     if (targetIdx !== -1) {
-      setStepIndex(targetIdx);
+    setStepIndex(targetIdx);
     }
     
     setResumeModalOpen(false);
-    isInitializedRef.current = true;
+    setIsInitialized(true);
     toast.success('Your progress has been restored!');
   };
 
@@ -157,7 +157,7 @@ export function useFormPersistence({
       PartialSubmissionStore.deletePartial(formId, sessionId);
     }
     setResumeModalOpen(false);
-    isInitializedRef.current = true;
+    setIsInitialized(true);
     toast.info('Starting a fresh submission.');
   };
 

@@ -141,6 +141,8 @@ export function RuleBuilderModal({
                 <option value="unchecked" className="bg-[#0b132c]">Is Unchecked</option>
                 <option value="greater_than" className="bg-[#0b132c]">&gt; Greater Than</option>
                 <option value="less_than" className="bg-[#0b132c]">&lt; Less Than</option>
+                <option value="length_greater_than" className="bg-[#0b132c]">&gt; Longer Than (characters)</option>
+                <option value="length_less_than" className="bg-[#0b132c]">&lt; Shorter Than (characters)</option>
               </select>
             </div>
             {needsValue && (

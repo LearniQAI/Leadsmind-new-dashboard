@@ -19,6 +19,8 @@ function matchCondition(
     case 'contains': return triggerStr.toLowerCase().includes(expectedVal.toLowerCase());
     case 'greater_than': { const n = parseFloat(triggerStr); const e = parseFloat(expectedVal); return !isNaN(n) && !isNaN(e) && n > e; }
     case 'less_than': { const n = parseFloat(triggerStr); const e = parseFloat(expectedVal); return !isNaN(n) && !isNaN(e) && n < e; }
+    case 'length_greater_than': { const e = parseInt(expectedVal, 10); return !isNaN(e) && triggerStr.length > e; }
+    case 'length_less_than': { const e = parseInt(expectedVal, 10); return !isNaN(e) && triggerStr.length < e; }
     default: return false;
   }
 }

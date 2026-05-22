@@ -1,7 +1,7 @@
 export interface LogicRule {
   id: string;
   triggerFieldId: string;
-  operator: 'equals' | 'not_equals' | 'checked' | 'unchecked' | 'contains' | 'greater_than' | 'less_than';
+  operator: 'equals' | 'not_equals' | 'checked' | 'unchecked' | 'contains' | 'greater_than' | 'less_than' | 'length_greater_than' | 'length_less_than';
   value: string;
   action: 'show_field' | 'hide_field' | 'jump_to_step' | 'set_value' | 'skip_step';
   targetId: string;
@@ -42,6 +42,16 @@ export function evaluateCondition(
       const numTrigger = parseFloat(triggerStr);
       const numExpected = parseFloat(expectedVal);
       return !isNaN(numTrigger) && !isNaN(numExpected) && numTrigger < numExpected;
+    }
+    case 'length_greater_than': {
+      const numExpected = parseInt(expectedVal, 10);
+      return !isNaN(numExpected) && triggerStr.length > numExpected;
+    }
+    case 'length_less_than': {
+      const numExpected = parseInt(expectedVal, 10);
+      // We also verify it has a value, otherwise empty strings might trigger it unintentionally?
+      // standard logic: if length is < 5, an empty string has length 0 which is < 5.
+      return !isNaN(numExpected) && triggerStr.length < numExpected;
     }
     default:
       return false;

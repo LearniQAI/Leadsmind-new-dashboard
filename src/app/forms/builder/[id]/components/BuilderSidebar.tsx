@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useFormBuilder, FieldType } from './FormBuilderContext';
 import { StepManager } from './StepManager';
 import { IntelligenceBuilder } from './IntelligenceBuilder';
-import { CampaignBuilder } from './CampaignBuilder';
 import { Type, Mail, Phone, AlignLeft, ChevronDown, CheckSquare, Search, LayoutGrid, Layers, Settings2, UploadCloud, PenTool, CreditCard } from 'lucide-react';
 
 interface LibraryField {
@@ -163,7 +162,6 @@ export function BuilderSidebar() {
 
       {activeTab === 'config' && (
         <div className="builder-panel__body custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 32 }}>
-          <CampaignBuilder />
           <IntelligenceBuilder />
         </div>
       )}

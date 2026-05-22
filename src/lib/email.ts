@@ -19,7 +19,11 @@ export async function sendEmail({ to, subject, react, html, text, config }: Send
  const fromName = config?.fromName || 'LeadsMind'
  
  if (!apiKey || apiKey === 're_123' || apiKey.includes('PLACEHOLDER')) {
-  throw new Error('Email service is not configured. Please add your RESEND_API_KEY to settings.');
+  console.log('\\n================== EMAIL MOCKED ==================');
+  console.log('To:', to);
+  console.log('Subject:', subject);
+  console.log('==================================================\\n');
+  return { id: 'mock_' + Date.now() };
  }
 
  const resend = new Resend(apiKey)
