@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ArrowLeft, ShieldAlert, GitCommit, History, Globe, BookOpen, Users } from 'lucide-react';
@@ -51,7 +51,7 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <React.Suspense fallback={<div className="min-h-screen bg-[#04081a] p-8 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#2563eb] border-t-transparent rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#04081a] p-8 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#2563eb] border-t-transparent rounded-full animate-spin" /></div>}>
       <div className="min-h-screen bg-[#04081a] text-white p-8 font-dm-sans">
       <div className="max-w-6xl mx-auto flex flex-col gap-6">
         
@@ -175,6 +175,6 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
         </div>
 
       </div>
-    </React.Suspense>
+    </Suspense>
   );
 }
