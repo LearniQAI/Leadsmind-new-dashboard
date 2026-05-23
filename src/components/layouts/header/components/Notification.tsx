@@ -57,7 +57,7 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
 
       // Subscribe to real-time updates for public.notifications table
       userChannel = supabase
-        .channel(`user_db_notifications_${user.id}`)
+        .channel(`user_db_notifications_${user.id}_${Math.random().toString(36).substring(7)}`)
         .on(
           'postgres_changes',
           {
