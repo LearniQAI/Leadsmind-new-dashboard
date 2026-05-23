@@ -78,9 +78,6 @@ export function evaluateLogicRules(
           break;
         case 'show_field':
           break;
-        case 'set_value':
-          overriddenValues[rule.targetId] = rule.targetValue || '';
-          break;
         case 'skip_step':
           skipStepIds.add(rule.targetId);
           break;
@@ -105,17 +102,6 @@ export function evaluateLogicRules(
   for (const fieldId of fieldsWithShowRules) {
     if (!matchingShowRules.has(fieldId)) {
       hiddenFieldIds.add(fieldId);
-    }
-  }
-
-  // Determine first matched jump_to_step
-  for (const rule of rules) {
-    if (rule.action === 'jump_to_step') {
-      const triggerVal = values[rule.triggerFieldId];
-      if (evaluateCondition(triggerVal, rule.operator, rule.value)) {
-        jumpToStepId = rule.targetId;
-        break;
-      }
     }
   }
 

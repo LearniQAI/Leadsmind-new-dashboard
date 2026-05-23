@@ -171,7 +171,7 @@ export function RuleBuilderModal({
                     const nextAction = e.target.value as LogicRule['action'];
                     setAction(nextAction);
                     // Reset target when switching between field/step actions
-                    if (nextAction === 'skip_step' || nextAction === 'jump_to_step') {
+                    if (nextAction === 'skip_step') {
                       setTargetId(steps[0]?.id || '');
                     } else {
                       setTargetId(fields.find(f => f.id !== triggerFieldId)?.id || fields[0]?.id || '');
@@ -202,19 +202,6 @@ export function RuleBuilderModal({
             </div>
           </div>
 
-          {/* Target value override (for set_value action) */}
-          {showTargetValue && (
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Value to Set</span>
-              <input
-                type="text"
-                value={targetValue}
-                onChange={(e) => setTargetValue(e.target.value)}
-                className="w-full h-9 px-3 bg-white/5 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-[#2563eb]/40"
-                placeholder="Autofill value..."
-              />
-            </div>
-          )}
 
           {/* Validation error */}
           {error && (

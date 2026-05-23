@@ -81,7 +81,7 @@ function ActiveRuleIndicatorInner({
             {logicRules.map(rule => {
               const isActive = activeRules.includes(rule);
               const triggerLabel = formState.fields.find(f => f.id === rule.triggerFieldId)?.label || rule.triggerFieldId;
-              const targetLabel = rule.action === 'skip_step' || rule.action === 'jump_to_step'
+              const targetLabel = rule.action === 'skip_step'
                 ? formState.steps.find(s => s.id === rule.targetId)?.title || rule.targetId
                 : formState.fields.find(f => f.id === rule.targetId)?.label || rule.targetId;
 

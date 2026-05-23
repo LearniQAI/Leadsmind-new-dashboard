@@ -35,7 +35,7 @@ export function evaluateRulesSafely(
 
   // Filter out rules with invalid targets
   const validRules = rules.filter(rule => {
-    if (rule.action === 'skip_step' || rule.action === 'jump_to_step') {
+    if (rule.action === 'skip_step') {
       return stepIds.has(rule.targetId);
     }
     return fieldIds.has(rule.targetId) && fieldIds.has(rule.triggerFieldId);
