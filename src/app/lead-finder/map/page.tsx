@@ -2,8 +2,6 @@ import React from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import { getTerritoryMapData } from '@/app/actions/territory-workspace';
 import { OpportunityMapLayer } from '@/components/lead-finder/OpportunityMapLayer';
-import { TerritoryInsightsPanel } from '@/components/lead-finder/TerritoryInsightsPanel';
-import { NetworkRelationshipCard } from '@/components/lead-finder/NetworkRelationshipCard';
 import { Map as MapIcon, Target, Users } from 'lucide-react';
 
 export default async function TerritoryDashboardPage() {
@@ -67,10 +65,8 @@ export default async function TerritoryDashboardPage() {
         {/* Main Map View */}
         <OpportunityMapLayer leads={leads} />
 
-        {/* Intelligence Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <TerritoryInsightsPanel territories={territories} />
-          <NetworkRelationshipCard networks={networks} />
+        {/* Right Sidebar */}
+        <div className="w-80 space-y-6">
         </div>
       </div>
     </Wrapper>

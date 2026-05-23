@@ -1,14 +1,10 @@
 import React from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import { getLeadDetails } from '@/app/actions/lead-workspace';
-import { LeadInsightEngine } from '@/lib/lead-finder/LeadInsightEngine';
 import { LeadQualificationPanel } from '@/components/lead-finder/LeadQualificationPanel';
-import { LeadActivityTimeline } from '@/components/lead-finder/LeadActivityTimeline';
 import { LeadTagManager } from '@/components/lead-finder/LeadTagManager';
 import { LeadCRMConnector } from '@/components/lead-finder/LeadCRMConnector';
 import { ContactDiscoveryPanel } from '@/components/lead-finder/ContactDiscoveryPanel';
-import { OpportunityIntelligencePanel } from '@/components/lead-finder/OpportunityIntelligencePanel';
-import { CompetitorInsightsPanel } from '@/components/lead-finder/CompetitorInsightsPanel';
 import { ArrowLeft, Building2, MapPin, Phone, Globe, Star, Users, Linkedin, Facebook, Activity, Lightbulb } from 'lucide-react';
 import Link from 'next/link';
 
@@ -24,7 +20,6 @@ export default async function LeadWorkspacePage({ params }: { params: { id: stri
   }
 
   const { lead, notes, activities, contacts, opportunity, websiteAnalysis, recommendations, competitors } = data;
-  const insights = LeadInsightEngine.generateInsights(lead);
 
   return (
     <Wrapper>
@@ -116,36 +111,6 @@ export default async function LeadWorkspacePage({ params }: { params: { id: stri
               </div>
             </div>
 
-            {/* AI Insights Engine */}
-            <div className="bg-n800 border border-white/10 rounded-3xl p-6">
-              <h3 className="text-lg font-space font-bold text-white mb-4 flex items-center gap-2">
-                <Lightbulb className="text-amber-400" /> AI Insights
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {insights.map((insight, idx) => (
-                  <div key={idx} className={`p-4 rounded-xl border flex items-start gap-3 ${
-                    insight.type === 'positive' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                    insight.type === 'negative' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
-                    'bg-white/5 border-white/10 text-t3'
-                  }`}>
-                    <div className="mt-0.5">•</div>
-                    <p className="text-sm font-semibold">{insight.message}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Opportunity Intelligence */}
-            <OpportunityIntelligencePanel 
-              leadId={lead.id}
-              opportunity={opportunity}
-              recommendations={recommendations}
-              websiteAnalysis={websiteAnalysis}
-            />
-
-            {/* Competitor Insights */}
-            <CompetitorInsightsPanel competitors={competitors} />
-
             {/* Contact Discovery Panel */}
             <ContactDiscoveryPanel 
               leadId={lead.id} 
@@ -153,9 +118,6 @@ export default async function LeadWorkspacePage({ params }: { params: { id: stri
               website={lead.website} 
               initialContacts={contacts} 
             />
-
-            {/* Activity Timeline */}
-            <LeadActivityTimeline leadId={lead.id} activities={activities} notes={notes} />
 
           </div>
 

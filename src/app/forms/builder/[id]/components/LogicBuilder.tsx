@@ -123,7 +123,7 @@ export function LogicBuilder() {
             const targetField = fieldMap.get(rule.targetId);
             const targetStep = stepMap.get(rule.targetId);
             const actionMeta = ACTION_LABELS[rule.action] || { label: rule.action, icon: null };
-            const isStepAction = rule.action === 'skip_step' || rule.action === 'jump_to_step';
+            const isStepAction = rule.action === 'skip_step';
             const targetLabel = isStepAction
               ? (targetStep?.title || 'Unknown Step')
               : (targetField?.label || 'Unknown Field');

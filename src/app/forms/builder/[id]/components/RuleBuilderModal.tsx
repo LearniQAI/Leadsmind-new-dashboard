@@ -51,8 +51,8 @@ export function RuleBuilderModal({
   }, [editingRule, fields, isOpen]);
 
   const needsValue = operator !== 'checked' && operator !== 'unchecked';
-  const isStepAction = action === 'skip_step' || action === 'jump_to_step';
-  const showTargetValue = action === 'set_value';
+  const isStepAction = action === 'skip_step';
+  const showTargetValue = false;
 
   const filteredTargets = isStepAction
     ? steps.map(s => ({ id: s.id, label: s.title || 'Untitled Step', type: 'step' as const }))
@@ -182,8 +182,6 @@ export function RuleBuilderModal({
                   <option value="show_field" className="bg-[#0b132c]">Show Field</option>
                   <option value="hide_field" className="bg-[#0b132c]">Hide Field</option>
                   <option value="skip_step" className="bg-[#0b132c]">Skip Step</option>
-                  <option value="jump_to_step" className="bg-[#0b132c]">Jump to Step</option>
-                  <option value="set_value" className="bg-[#0b132c]">Set Field Value</option>
                 </select>
               </div>
 

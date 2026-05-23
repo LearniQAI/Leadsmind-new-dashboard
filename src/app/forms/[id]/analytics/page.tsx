@@ -3,9 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { ArrowLeft, Users, MousePointerClick, TrendingUp, AlertTriangle, Filter, Target, Activity } from 'lucide-react';
-
-import { AIAssistantSidebar } from '../ai/components/AIAssistantSidebar';
+import { ArrowLeft, Users, MousePointerClick, TrendingUp, AlertTriangle, Filter, Target } from 'lucide-react';
 
 export default function FormAnalyticsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -67,12 +65,6 @@ export default function FormAnalyticsPage({ params }: { params: { id: string } }
           <div className="flex gap-2">
             <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-black uppercase tracking-wider text-[#94a3c8] transition-colors">
               <Filter size={14} /> Last 30 Days
-            </button>
-            <button 
-              onClick={() => router.push(`/forms/${params.id}/ab-testing`)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] rounded-xl text-xs font-black uppercase tracking-wider text-white transition-colors"
-            >
-              <Activity size={14} /> A/B Testing
             </button>
           </div>
         </div>
@@ -141,7 +133,6 @@ export default function FormAnalyticsPage({ params }: { params: { id: string } }
           
         </div>
       </div>
-      <AIAssistantSidebar formId={params.id} />
     </div>
   );
 }

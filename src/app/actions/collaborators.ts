@@ -253,34 +253,6 @@ export async function resendFormInvitation(collabId: string, formId: string): Pr
   }
 }
 
-export async function revokeFormInvitation(collabId: string, formId: string): Promise<InviteActionResponse> {
-  try {
-    const adminSupabase = createAdminClient();
-
-    const { data: existing } = await adminSupabase
-      .from('form_collaborators')
-      .select('id, status')
-      .eq('id', collabId)
-      .single();
-
-    if (!existing) return { error: 'Invitation not found.' };
-    if (existing.status !== 'pending') return { error: 'Can only revoke pending invitations.' };
-
-    const { error } = await adminSupabase
-      .from('form_collaborators')
-      .update({ status: 'revoked' })
-      .eq('id', collabId);
-
-    if (error) throw error;
-
-    revalidatePath('/forms');
-    revalidatePath(`/forms/${formId}/governance`);
-    return { success: true };
-  } catch (error: any) {
-    console.error('[revokeFormInvitation] Error:', error);
-    return { error: error.message || 'Failed to revoke invitation' };
-  }
-}
 
 export async function getFormCollaborators(formId: string) {
   try {
@@ -302,7 +274,7 @@ export async function removeFormCollaborator(collabId: string, formId: string) {
     const adminSupabase = createAdminClient();
     const { error } = await adminSupabase
       .from('form_collaborators')
-      .delete()
+      .update({ status: 'removed' })
       .eq('id', collabId);
 
     if (error) throw error;

@@ -348,7 +348,7 @@ export async function deleteMember(memberId: string) {
   }
 }
 
-export async function revokeInvitation(invitationId: string) {
+export async function removeInvitation(invitationId: string) {
   try {
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
@@ -378,7 +378,7 @@ export async function revokeInvitation(invitationId: string) {
     if (error) throw error;
 
     revalidatePath('/settings');
-    await logAdminAction('REVOKE_INVITATION', invitationId, { workspaceId });
+    await logAdminAction('REMOVE_INVITATION', invitationId, { workspaceId });
     return { success: true };
   } catch (error: any) {
     return { error: error.message };

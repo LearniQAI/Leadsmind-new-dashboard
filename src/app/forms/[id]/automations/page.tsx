@@ -3,13 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { ArrowLeft, Settings2, Sliders, History, Sparkles } from 'lucide-react';
+import { ArrowLeft, Settings2, Sliders, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { WorkflowList } from './components/WorkflowList';
 import { WorkflowEditor } from './components/WorkflowEditor';
 import { ExecutionLogs } from './components/ExecutionLogs';
-
-import { AIAssistantSidebar } from '../ai/components/AIAssistantSidebar';
 
 export default function AutomationsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -120,49 +118,6 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
     }
   };
 
-  const handleApplyWorkflowSuggestion = async (wf: any) => {
-    if (!form) return undefined;
-    try {
-      const { data: newWf, error: wfErr } = await supabase
-        .from('workflows')
-        .insert({
-          form_id: params.id,
-          workspace_id: form.workspace_id,
-          name: wf.name,
-          trigger_type: wf.trigger_type,
-          trigger_config: {},
-          is_active: false
-        })
-        .select()
-        .single();
-
-      if (wfErr) throw wfErr;
-
-      if (Array.isArray(wf.steps) && wf.steps.length > 0) {
-        const stepRecords = wf.steps.map((step: any, index: number) => ({
-          workflow_id: newWf.id,
-          workspace_id: form.workspace_id,
-          type: step.type,
-          position: index + 1,
-          config: step.config
-        }));
-
-        const { error: stepErr } = await supabase
-          .from('workflow_steps')
-          .insert(stepRecords);
-
-        if (stepErr) throw stepErr;
-      }
-
-      toast.success('Successfully applied AI Recommended Workflow steps!');
-      loadData();
-      return newWf?.id;
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to insert workflow suggestion.');
-      return undefined;
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#04081a] p-8 flex items-center justify-center">
@@ -252,10 +207,6 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
         </div>
 
       </div>
-      <AIAssistantSidebar
-        formId={params.id}
-        onApplyWorkflowSuggestion={handleApplyWorkflowSuggestion}
-      />
     </div>
   );
 }

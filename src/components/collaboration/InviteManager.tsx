@@ -14,7 +14,6 @@ import {
   removeFormCollaborator,
   updateFormCollaboratorRole,
   resendFormInvitation,
-  revokeFormInvitation,
 } from '@/app/actions/collaborators';
 import type { FormCollaborator, InviteStatus } from '@/types/invitation.types';
 
@@ -257,7 +256,6 @@ export function InviteManager({ formId, formName, isOwner = true }: InviteManage
                   status={invite.status}
                   email={invite.email}
                   onResend={resendFormInvitation}
-                  onRevoke={revokeFormInvitation}
                   onRemove={removeFormCollaborator}
                 />
               </div>

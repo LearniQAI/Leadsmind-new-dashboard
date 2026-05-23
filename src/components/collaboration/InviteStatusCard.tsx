@@ -25,21 +25,9 @@ const statusConfig: Record<InviteStatus, {
     label: 'Active', icon: CheckCircle,
     bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20'
   },
-  accepted: {
-    label: 'Accepted', icon: CheckCircle,
-    bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20'
-  },
-  declined: {
-    label: 'Declined', icon: XCircle,
-    bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20'
-  },
-  revoked: {
-    label: 'Revoked', icon: Ban,
+  removed: {
+    label: 'Removed', icon: Ban,
     bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20'
-  },
-  expired: {
-    label: 'Expired', icon: AlertTriangle,
-    bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20'
   }
 };
 

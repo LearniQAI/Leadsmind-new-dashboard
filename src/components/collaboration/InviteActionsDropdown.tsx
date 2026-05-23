@@ -11,12 +11,12 @@ interface InviteActionsDropdownProps {
   status: string
   email?: string
   onResend?: (collabId: string, formId: string) => Promise<{ success?: boolean; error?: string }>
-  onRevoke?: (collabId: string, formId: string) => Promise<{ success?: boolean; error?: string }>
+
   onRemove?: (collabId: string, formId: string) => Promise<{ success?: boolean; error?: string }>
 }
 
 export function InviteActionsDropdown({
-  collabId, formId, status, email, onResend, onRevoke, onRemove
+  collabId, formId, status, email, onResend, onRemove
 }: InviteActionsDropdownProps) {
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<string | null>(null);
@@ -97,16 +97,7 @@ export function InviteActionsDropdown({
             {(status === 'pending' || status === 'active') && (
               <>
                 <div className="border-t border-white/5 my-1" />
-                {status === 'pending' && (
-                  <button
-                    onClick={() => handleAction('Revoke', onRevoke)}
-                    disabled={action !== null}
-                    className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[11px] font-bold text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-50"
-                  >
-                    {action === 'Revoke' ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
-                    Revoke Invitation
-                  </button>
-                )}
+
                 <button
                   onClick={() => handleAction('Remove', onRemove)}
                   disabled={action !== null}

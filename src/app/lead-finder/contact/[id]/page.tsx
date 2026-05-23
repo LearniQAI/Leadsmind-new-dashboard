@@ -1,7 +1,6 @@
 import React from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import { getContactDetails, updateContactStatus } from '@/app/actions/contact-workspace';
-import { OutreachReadinessPanel } from '@/components/lead-finder/OutreachReadinessPanel';
 import { ContactCRMConnector } from '@/components/lead-finder/ContactCRMConnector';
 import { ContactTimeline } from '@/components/lead-finder/ContactTimeline';
 import { ArrowLeft, User, Building2, MapPin, Phone, Mail, Linkedin, Target, ShieldCheck, Shield, ShieldAlert, Lightbulb, Globe } from 'lucide-react';
@@ -150,7 +149,6 @@ export default async function ContactWorkspacePage({ params }: { params: { id: s
 
           {/* Right Sidebar */}
           <div className="space-y-6">
-            <OutreachReadinessPanel contact={contact} />
             <ContactCRMConnector contactId={contact.id} pipelineId={contact.pipeline_id} />
           </div>
 

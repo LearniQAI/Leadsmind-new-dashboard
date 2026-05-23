@@ -3,7 +3,7 @@ export interface LogicRule {
   triggerFieldId: string;
   operator: 'equals' | 'not_equals' | 'checked' | 'unchecked' | 'contains' | 'greater_than' | 'less_than' | 'length_greater_than' | 'length_less_than';
   value: string;
-  action: 'show_field' | 'hide_field' | 'jump_to_step' | 'set_value' | 'skip_step';
+  action: 'show_field' | 'hide_field' | 'skip_step';
   targetId: string;
   targetValue?: string;
 }
