@@ -198,8 +198,8 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
     const contactPayload = {
       workspace_id: workspaceId,
       first_name: lead.business_name,
-      last_name: '',
-      email: '', // Usually not provided by places API easily
+      last_name: null,
+      email: null, // Usually not provided by places API easily
       phone: lead.phone,
       source: 'Lead Finder',
       tags: [...(lead.tags || []), ...tags, 'Lead Finder'],
@@ -214,11 +214,14 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
         .from('lead_finder_results')
         .update({ status: 'added_to_crm' })
         .eq('place_id', lead.place_id);
+    } else {
+      console.error('[LeadFinder] Failed to add contact:', contactError);
+      return { success: false, error: contactError.message };
     }
   }
 
   revalidatePath('/contacts');
-  return { success: true, addedCount };
+  return { success: addedCount > 0, addedCount };
 }
 
 export async function deleteSavedSearch(id: string) {
