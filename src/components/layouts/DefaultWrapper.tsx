@@ -11,6 +11,8 @@ import GlobalSearchModal from "../dashboard/GlobalSearchModal";
 import AccessDenied from "../auth/AccessDenied";
 import LENAChat from "../support/LENAChat";
 import HelpDrawer from "../platform/HelpDrawer";
+import { FeedbackCenter } from "@/components/production/FeedbackCenter";
+import { GlobalCommandPalette } from "@/components/production/GlobalCommandPalette";
 
 interface WrapperProps {
  children: React.ReactNode;
@@ -41,7 +43,6 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
      '/funnels': 'marketing',
      '/campaigns': 'marketing',
      '/automations': 'automation',
-     '/analytics': 'analytics',
      '/settings': 'settings',
    };
 
@@ -82,6 +83,8 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       <GlobalSearchModal />
       <LENAChat />
       <HelpDrawer />
+      <FeedbackCenter />
+      <GlobalCommandPalette />
      </div>
     </div>
    </>

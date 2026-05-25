@@ -18,7 +18,7 @@ import {
   generateWorkspaceApiKey,
   updateWorkspaceLogo,
   updateMemberPermissions,
-  revokeInvitation,
+  removeInvitation,
   deleteMember
 } from '@/app/actions/settings';
 
@@ -320,10 +320,10 @@ export default function SettingsClient({
                 router.refresh();
               }}
               onDeleteInvitation={async (invite) => {
-                if (!confirm(`Revoke invitation for ${invite.email}?`)) return;
-                const res = await revokeInvitation(invite.id);
+                if (!confirm(`Remove access for ${invite.email}?`)) return;
+                const res = await removeInvitation(invite.id);
                 if (res.error) { toast.error(res.error); return; }
-                toast.success('Invitation revoked');
+                toast.success('Access removed');
                 router.refresh();
               }}
             />

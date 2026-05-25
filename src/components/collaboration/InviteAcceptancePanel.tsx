@@ -14,7 +14,7 @@ interface InviteAcceptancePanelProps {
   onComplete?: () => void
 }
 
-type FlowState = 'idle' | 'accepting' | 'accepted' | 'declining' | 'declined' | 'error';
+type FlowState = 'idle' | 'accepting' | 'active' | 'declining' | 'removed' | 'error';
 
 export function InviteAcceptancePanel({
   invitation, onAccept, onDecline, onComplete
@@ -33,7 +33,7 @@ export function InviteAcceptancePanel({
         toast.error(res.error);
         return;
       }
-      setState('accepted');
+      setState('active');
       toast.success('Invitation accepted! You now have access to this form.');
       setTimeout(() => onComplete?.(), 1500);
     } catch {
@@ -53,7 +53,7 @@ export function InviteAcceptancePanel({
         toast.error(res.error);
         return;
       }
-      setState('declined');
+      setState('removed');
       toast.success('Invitation declined.');
       setTimeout(() => onComplete?.(), 1500);
     } catch {
@@ -62,7 +62,7 @@ export function InviteAcceptancePanel({
     }
   };
 
-  if (invitation.status === 'accepted' || state === 'accepted') {
+  if (invitation.status === 'active' || state === 'active') {
     return (
       <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-8 text-center animate-in fade-in zoom-in-95 duration-300">
         <div className="w-16 h-16 rounded-full bg-emerald-500/20 mx-auto mb-4 flex items-center justify-center">
@@ -74,14 +74,14 @@ export function InviteAcceptancePanel({
     );
   }
 
-  if (invitation.status === 'declined' || state === 'declined') {
+  if (invitation.status === 'removed' || state === 'removed') {
     return (
       <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-8 text-center animate-in fade-in zoom-in-95 duration-300">
         <div className="w-16 h-16 rounded-full bg-rose-500/20 mx-auto mb-4 flex items-center justify-center">
           <XCircle size={32} className="text-rose-400" />
         </div>
-        <h3 className="text-lg font-space-grotesk font-bold text-white mb-1">Invitation Declined</h3>
-        <p className="text-sm text-t2">You have declined the invitation to <strong className="text-t1">{invitation.formName}</strong>.</p>
+        <h3 className="text-lg font-space-grotesk font-bold text-white mb-1">Invitation Removed</h3>
+        <p className="text-sm text-t2">You have removed or declined the invitation to <strong className="text-t1">{invitation.formName}</strong>.</p>
       </div>
     );
   }

@@ -8,7 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface CollabNotification {
   id: string
-  type: 'accepted' | 'declined' | 'expired' | 'revoked' | 'resent'
+  type: 'active' | 'removed' | 'resent'
   email: string
   formName: string
   formId?: string
@@ -17,10 +17,8 @@ interface CollabNotification {
 }
 
 const notificationConfig = {
-  accepted: { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Accepted' },
-  declined: { icon: UserX, color: 'text-rose-400', bg: 'bg-rose-500/10', label: 'Declined' },
-  expired: { icon: Clock, color: 'text-orange-400', bg: 'bg-orange-500/10', label: 'Expired' },
-  revoked: { icon: Ban, color: 'text-red-400', bg: 'bg-red-500/10', label: 'Revoked' },
+  active: { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Active' },
+  removed: { icon: UserX, color: 'text-rose-400', bg: 'bg-rose-500/10', label: 'Removed' },
   resent: { icon: Send, color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'Resent' },
 };
 
@@ -123,10 +121,8 @@ export function CollaborationNotifications() {
                 {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />}
               </div>
               <p className="text-[11px] text-t2 leading-relaxed">
-                {n.type === 'accepted' && <><strong className="text-t1">{n.email}</strong> accepted your invitation to <strong className="text-blue-400">{n.formName}</strong></>}
-                {n.type === 'declined' && <><strong className="text-t1">{n.email}</strong> declined your invitation to <strong className="text-blue-400">{n.formName}</strong></>}
-                {n.type === 'expired' && <>Invitation to <strong className="text-t1">{n.email}</strong> for <strong className="text-blue-400">{n.formName}</strong> has expired</>}
-                {n.type === 'revoked' && <>Invitation to <strong className="text-t1">{n.email}</strong> for <strong className="text-blue-400">{n.formName}</strong> was revoked</>}
+                {n.type === 'active' && <><strong className="text-t1">{n.email}</strong> accepted your invitation to <strong className="text-blue-400">{n.formName}</strong></>}
+                {n.type === 'removed' && <>Invitation to <strong className="text-t1">{n.email}</strong> for <strong className="text-blue-400">{n.formName}</strong> was removed</>}
                 {n.type === 'resent' && <>Invitation resent to <strong className="text-t1">{n.email}</strong> for <strong className="text-blue-400">{n.formName}</strong></>}
               </p>
               <p className="text-[9px] text-t4 mt-0.5">{formatTime(n.timestamp)}</p>
@@ -149,12 +145,10 @@ export function CollaborationNotifications() {
 
 function mapNotificationType(n: any): CollabNotification['type'] {
   const msg = (n.message || '').toLowerCase();
-  if (msg.includes('accepted')) return 'accepted';
-  if (msg.includes('declined')) return 'declined';
-  if (msg.includes('expired')) return 'expired';
-  if (msg.includes('revoked') || msg.includes('removed')) return 'revoked';
+  if (msg.includes('accepted')) return 'active';
+  if (msg.includes('removed') || msg.includes('revoked') || msg.includes('declined') || msg.includes('expired')) return 'removed';
   if (msg.includes('resent') || msg.includes('reminder')) return 'resent';
-  return 'accepted';
+  return 'active';
 }
 
 function extractEmail(msg: string): string {

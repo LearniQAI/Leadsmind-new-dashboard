@@ -111,25 +111,6 @@ export function IntelligenceBuilder() {
         </div>
       </div>
 
-      <div style={{ paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-        <p className="builder-section-label" style={{ marginBottom: 12 }}>CRM Intelligence</p>
-        
-        <div className="flex items-center gap-3 p-3 bg-white/2 border border-white/5 rounded-xl">
-          <input type="checkbox" checked={true} readOnly className="accent-primary" />
-          <div>
-            <p className="text-[11px] font-bold text-white mb-0.5 font-dm-sans">Duplicate Detection</p>
-            <p className="text-[9px] text-[#4a5a82] font-dm-sans">Existing contacts will be updated.</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 p-3 bg-white/2 border border-white/5 rounded-xl mt-2">
-          <input type="checkbox" checked={true} readOnly className="accent-primary" />
-          <div>
-            <p className="text-[11px] font-bold text-white mb-0.5 font-dm-sans">Token Prefill</p>
-            <p className="text-[9px] text-[#4a5a82] font-dm-sans">Known contacts automatically prefilled.</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

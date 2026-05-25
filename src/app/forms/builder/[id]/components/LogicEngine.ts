@@ -1,9 +1,9 @@
 export interface LogicRule {
   id: string;
   triggerFieldId: string;
-  operator: 'equals' | 'not_equals' | 'checked' | 'unchecked' | 'contains' | 'greater_than' | 'less_than';
+  operator: 'equals' | 'not_equals' | 'checked' | 'unchecked' | 'contains' | 'greater_than' | 'less_than' | 'length_greater_than' | 'length_less_than';
   value: string;
-  action: 'show_field' | 'hide_field' | 'jump_to_step' | 'set_value' | 'skip_step';
+  action: 'show_field' | 'hide_field' | 'skip_step';
   targetId: string;
   targetValue?: string;
 }
@@ -43,6 +43,16 @@ export function evaluateCondition(
       const numExpected = parseFloat(expectedVal);
       return !isNaN(numTrigger) && !isNaN(numExpected) && numTrigger < numExpected;
     }
+    case 'length_greater_than': {
+      const numExpected = parseInt(expectedVal, 10);
+      return !isNaN(numExpected) && triggerStr.length > numExpected;
+    }
+    case 'length_less_than': {
+      const numExpected = parseInt(expectedVal, 10);
+      // We also verify it has a value, otherwise empty strings might trigger it unintentionally?
+      // standard logic: if length is < 5, an empty string has length 0 which is < 5.
+      return !isNaN(numExpected) && triggerStr.length < numExpected;
+    }
     default:
       return false;
   }
@@ -68,9 +78,6 @@ export function evaluateLogicRules(
           break;
         case 'show_field':
           break;
-        case 'set_value':
-          overriddenValues[rule.targetId] = rule.targetValue || '';
-          break;
         case 'skip_step':
           skipStepIds.add(rule.targetId);
           break;
@@ -95,17 +102,6 @@ export function evaluateLogicRules(
   for (const fieldId of fieldsWithShowRules) {
     if (!matchingShowRules.has(fieldId)) {
       hiddenFieldIds.add(fieldId);
-    }
-  }
-
-  // Determine first matched jump_to_step
-  for (const rule of rules) {
-    if (rule.action === 'jump_to_step') {
-      const triggerVal = values[rule.triggerFieldId];
-      if (evaluateCondition(triggerVal, rule.operator, rule.value)) {
-        jumpToStepId = rule.targetId;
-        break;
-      }
     }
   }
 

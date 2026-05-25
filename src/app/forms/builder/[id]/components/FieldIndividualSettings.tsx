@@ -124,19 +124,28 @@ export function FieldIndividualSettings({ selectedField, steps, dispatch }: Fiel
         </div>
       )}
 
-      {/* Required Switch */}
-      <div className="flex items-center justify-between p-3 bg-white/2 border border-white/5 rounded-xl">
-        <label htmlFor="field-required-toggle" className="text-xs font-bold text-white/80 font-dm-sans cursor-pointer select-none">
+      <div 
+        className="flex items-center justify-between p-3 bg-white/2 border border-white/5 rounded-xl cursor-pointer hover:bg-white/[0.04] transition-colors"
+        onClick={() => handleUpdate({ required: !selectedField.required })}
+      >
+        <span className="text-xs font-bold text-white/80 font-dm-sans select-none">
           Required Input
-        </label>
+        </span>
         <div className="relative flex items-center">
-          <input
-            id="field-required-toggle"
-            type="checkbox"
-            checked={selectedField.required}
-            onChange={(e) => handleUpdate({ required: e.target.checked })}
-            className="w-9 h-5 rounded-full border border-white/10 bg-white/5 checked:bg-[#2563eb] checked:border-transparent focus:outline-none transition-all appearance-none cursor-pointer relative before:content-[''] before:absolute before:w-3.5 before:h-3.5 before:rounded-full before:bg-white/40 before:top-0.5 before:left-0.5 checked:before:left-4.5 checked:before:bg-white before:transition-all"
-          />
+          <button
+            type="button"
+            role="switch"
+            aria-checked={selectedField.required}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              selectedField.required ? 'bg-[#2563eb]' : 'bg-white/10'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
+                selectedField.required ? 'translate-x-4' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
       </div>
 

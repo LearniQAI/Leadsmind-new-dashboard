@@ -53,7 +53,7 @@ export function validateRule(rule: Partial<LogicRule>): string | null {
   }
   if (!rule.action) return 'Please select an action.';
   if (!rule.targetId) return 'Please select a target field or step.';
-  if (rule.triggerFieldId === rule.targetId && rule.action !== 'skip_step' && rule.action !== 'jump_to_step') {
+  if (rule.triggerFieldId === rule.targetId && rule.action !== 'skip_step') {
     return 'Trigger and target fields must be different.';
   }
   return null;

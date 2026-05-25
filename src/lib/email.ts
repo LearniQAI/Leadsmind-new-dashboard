@@ -15,11 +15,15 @@ interface SendEmailProps {
 
 export async function sendEmail({ to, subject, react, html, text, config }: SendEmailProps) {
  const apiKey = config?.apiKey || process.env.RESEND_API_KEY
- const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+ const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@leadsmind.io'
  const fromName = config?.fromName || 'LeadsMind'
  
  if (!apiKey || apiKey === 're_123' || apiKey.includes('PLACEHOLDER')) {
-  throw new Error('Email service is not configured. Please add your RESEND_API_KEY to settings.');
+  console.log('\\n================== EMAIL MOCKED ==================');
+  console.log('To:', to);
+  console.log('Subject:', subject);
+  console.log('==================================================\\n');
+  return { id: 'mock_' + Date.now() };
  }
 
  const resend = new Resend(apiKey)
@@ -34,13 +38,13 @@ export async function sendEmail({ to, subject, react, html, text, config }: Send
   })
 
   if (error) {
-   console.error('Resend error:', error)
-   throw new Error('Failed to send email')
+   console.error('Resend API Error:', error);
+   throw new Error(error.message || 'Failed to send email via Resend');
   }
 
-  return data
- } catch (error) {
-  console.error('Email service error:', error)
-  throw error
+  return data;
+ } catch (error: any) {
+  console.error('Email service exception:', error);
+  throw new Error(error.message || 'Email service error');
  }
 }

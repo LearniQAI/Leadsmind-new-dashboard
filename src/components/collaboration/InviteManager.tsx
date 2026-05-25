@@ -14,18 +14,16 @@ import {
   removeFormCollaborator,
   updateFormCollaboratorRole,
   resendFormInvitation,
-  revokeFormInvitation,
 } from '@/app/actions/collaborators';
 import type { FormCollaborator, InviteStatus } from '@/types/invitation.types';
 
-type FilterTab = 'all' | 'pending' | 'accepted' | 'declined' | 'expired';
+type FilterTab = 'all' | 'pending' | 'active' | 'removed';
 
 const filterTabs: { key: FilterTab; label: string; icon: React.ElementType }[] = [
   { key: 'all', label: 'All', icon: Users },
   { key: 'pending', label: 'Pending', icon: Clock },
-  { key: 'accepted', label: 'Accepted', icon: UserCheck },
-  { key: 'declined', label: 'Declined', icon: Ban },
-  { key: 'expired', label: 'Expired', icon: AlertTriangle },
+  { key: 'active', label: 'Active', icon: UserCheck },
+  { key: 'removed', label: 'Removed', icon: Ban },
 ];
 
 interface InviteManagerProps {
@@ -109,9 +107,8 @@ export function InviteManager({ formId, formName, isOwner = true }: InviteManage
   const counts = {
     all: invites.length,
     pending: invites.filter(i => i.status === 'pending').length,
-    accepted: invites.filter(i => i.status === 'active').length,
-    declined: invites.filter(i => i.status === 'declined').length,
-    expired: invites.filter(i => i.status === 'expired').length,
+    active: invites.filter(i => i.status === 'active').length,
+    removed: invites.filter(i => i.status === 'removed').length,
   };
 
   return (
@@ -257,7 +254,6 @@ export function InviteManager({ formId, formName, isOwner = true }: InviteManage
                   status={invite.status}
                   email={invite.email}
                   onResend={resendFormInvitation}
-                  onRevoke={revokeFormInvitation}
                   onRemove={removeFormCollaborator}
                 />
               </div>
