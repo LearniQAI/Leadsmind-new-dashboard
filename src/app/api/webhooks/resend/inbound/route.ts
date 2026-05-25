@@ -49,13 +49,14 @@ export async function POST(req: NextRequest) {
       }
       const targetPhone = phoneMatch[1];
 
-      // Clean message body
-      const rawText = emailData.text || '';
+      // Clean message body (fallback to subject if body is completely empty)
+      const rawText = emailData.text || emailData.html || emailData.subject || '';
       // Strip signatures and quotes roughly
       const cleanedText = rawText
         .split(/On\s+.*wrote:/i)[0] // English reply quote
         .split(/--- Original Message ---/i)[0]
         .split(/_{10,}/)[0]
+        .replace(/<[^>]*>?/gm, '') // Strip HTML tags if fallback used HTML
         .trim();
 
       if (!cleanedText) {
