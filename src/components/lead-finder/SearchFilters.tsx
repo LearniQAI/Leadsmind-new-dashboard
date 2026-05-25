@@ -17,6 +17,7 @@ export function SearchFilters() {
   const [businessType, setBusinessType] = useState('');
   const [keywords, setKeywords] = useState('');
   const [radius, setRadius] = useState(5000);
+  const [lastSearchTime, setLastSearchTime] = useState(0);
 
   useEffect(() => {
     if (rerunId) {
@@ -39,7 +40,14 @@ export function SearchFilters() {
     e.preventDefault();
     if (!location) return;
     
+    const now = Date.now();
+    if (now - lastSearchTime < 3000) {
+      toast.error('Please wait a moment before searching again.');
+      return;
+    }
+    
     setLoading(true);
+    setLastSearchTime(now);
     try {
       const searchParams = { searchType, location, businessType, keywords, radius };
       

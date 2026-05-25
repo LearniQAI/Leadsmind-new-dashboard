@@ -6,8 +6,6 @@ import { revalidatePath } from 'next/cache';
 
 import { EnrichmentEngine } from '@/lib/lead-finder/EnrichmentEngine';
 
-const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
-
 export async function searchGooglePlaces(params: {
   searchType: string;
   location: string;
@@ -15,38 +13,11 @@ export async function searchGooglePlaces(params: {
   keywords: string;
   radius: number;
 }) {
-  if (!GOOGLE_PLACES_API_KEY) {
-    console.warn('[LeadFinder] Missing Google Places API Key. Returning mock data.');
-    const mockResults = [
-      {
-        place_id: `mock_${Math.random().toString(36).substring(7)}`,
-        business_name: `Premium ${params.keywords || params.businessType || 'Business'} in ${params.location}`,
-        category: params.businessType || 'Enterprise Software',
-        address: `100 Tech Lane, ${params.location}`,
-        phone: '(555) 123-4567',
-        website: 'https://example.com',
-        rating: 4.9,
-        review_count: 342,
-        tags: [params.businessType || 'Software', 'Verified'],
-      },
-      {
-        place_id: `mock_${Math.random().toString(36).substring(7)}`,
-        business_name: `Advanced ${params.keywords || params.businessType || 'Agency'} ${params.location}`,
-        category: params.businessType || 'Marketing Agency',
-        address: `404 Innovation Drive, ${params.location}`,
-        phone: '(555) 987-6543',
-        website: 'https://demo-agency.com',
-        rating: 4.5,
-        review_count: 128,
-        tags: [params.businessType || 'Agency', 'Trending'],
-      }
-    ];
+  const API_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
 
-    const enrichedMockResults = await Promise.all(
-      mockResults.map(async (lead) => await EnrichmentEngine.enrichLead(lead))
-    );
-
-    return { success: true, data: enrichedMockResults };
+  if (!API_KEY) {
+    console.error('[LeadFinder] Missing Google Places API Key.');
+    return { success: false, error: 'Google API key is not configured.' };
   }
 
   try {
@@ -60,7 +31,7 @@ export async function searchGooglePlaces(params: {
     const response = await fetch(
       `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(
         query
-      )}&radius=${params.radius}&key=${GOOGLE_PLACES_API_KEY}`
+      )}&radius=${params.radius}&key=${API_KEY}`
     );
 
     if (!response.ok) {
@@ -69,7 +40,16 @@ export async function searchGooglePlaces(params: {
 
     const data = await response.json();
     
-    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+    if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
+      console.error('[LeadFinder] Google API Error:', data.error_message || data.status);
+      throw new Error(data.error_message || 'API quota exceeded or billing disabled.');
+    }
+
+    if (data.status === 'ZERO_RESULTS') {
+      return { success: true, data: [] };
+    }
+
+    if (data.status !== 'OK') {
       throw new Error(`Google API error: ${data.status}`);
     }
 
@@ -78,7 +58,7 @@ export async function searchGooglePlaces(params: {
     const enrichedResults = await Promise.all(
       results.map(async (place: any) => {
         const detailsResponse = await fetch(
-          `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,types&key=${GOOGLE_PLACES_API_KEY}`
+          `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,types,geometry,business_status&key=${API_KEY}`
         );
         const detailsData = await detailsResponse.json();
         const details = detailsData.result || {};
@@ -92,6 +72,9 @@ export async function searchGooglePlaces(params: {
           website: details.website || '',
           rating: details.rating || place.rating || 0,
           review_count: details.user_ratings_total || place.user_ratings_total || 0,
+          latitude: details.geometry?.location?.lat || place.geometry?.location?.lat,
+          longitude: details.geometry?.location?.lng || place.geometry?.location?.lng,
+          business_status: details.business_status || place.business_status,
           tags: [params.businessType].filter(Boolean),
         };
 

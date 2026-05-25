@@ -16,9 +16,7 @@ export default function LeadFinderPage() {
             </div>
             
             <div className="relative z-10 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold uppercase tracking-widest mb-6">
-                <Zap size={14} /> New Feature MVP
-              </div>
+
               <h1 className="text-4xl md:text-5xl font-space font-black text-white mb-4 leading-tight">
                 Discover <span className="text-accent">High-Intent</span> Leads on Autopilot.
               </h1>
