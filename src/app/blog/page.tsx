@@ -1,5 +1,5 @@
 import React from 'react';
-import { getPublicBlogPosts, getPublicCategories } from '@/app/actions/publicBlog';
+import { getPublicBlogPosts, getPublicCategories, getBlogSettings } from '@/app/actions/publicBlog';
 import PublicBlogClient from './PublicBlogClient';
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +8,10 @@ export default async function PublicBlogHubPage() {
   // Query all published posts and categories in this workspace
   const { data: posts, error: postsError } = await getPublicBlogPosts();
   const { data: categories, error: catError } = await getPublicCategories();
+  
+  // Resolve settings (if we have posts, use workspace_id of the first, otherwise falls back to active workspace)
+  const firstPostWorkspaceId = posts?.[0]?.workspace_id;
+  const { data: settings } = await getBlogSettings(firstPostWorkspaceId || '');
 
   if (postsError || catError) {
     return (
@@ -19,5 +23,5 @@ export default async function PublicBlogHubPage() {
     );
   }
 
-  return <PublicBlogClient posts={posts || []} categories={categories || []} />;
+  return <PublicBlogClient posts={posts || []} categories={categories || []} settings={settings} />;
 }

@@ -22,7 +22,7 @@ export const BlogEditorSettings: React.FC<BlogSettingsProps> = ({
   onUpdate,
   onCreateCategory
 }) => {
-  const [activeTab, setActiveTab] = useState<'config' | 'seo' | 'versions' | 'syndicate'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'layout' | 'seo' | 'versions' | 'syndicate'>('config');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showAddCat, setShowAddCat] = useState(false);
@@ -157,11 +157,12 @@ export const BlogEditorSettings: React.FC<BlogSettingsProps> = ({
 
   return (
     <div className="w-full lg:w-80 bg-[#080f28] border border-white/10 rounded-xl p-5 space-y-5 flex flex-col font-dm-sans">
-      <div className="grid grid-cols-2 gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
-        <button onClick={() => setActiveTab('config')} className={`py-1.5 text-[9px] font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-1 ${activeTab === 'config' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'}`}><Sliders className="w-3 h-3" /> Config</button>
-        <button onClick={() => setActiveTab('seo')} className={`py-1.5 text-[9px] font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-1 ${activeTab === 'seo' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'}`}><Sparkles className="w-3 h-3" /> SEO Core</button>
-        <button onClick={() => { setActiveTab('versions'); loadVersions(); }} className={`py-1.5 text-[9px] font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-1 ${activeTab === 'versions' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'}`}><Clock className="w-3 h-3" /> Versions</button>
-        <button onClick={() => setActiveTab('syndicate')} className={`py-1.5 text-[9px] font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-1 ${activeTab === 'syndicate' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'}`}><Globe className="w-3 h-3" /> Syndicate</button>
+      <div className="grid grid-cols-5 gap-0.5 bg-white/5 p-0.5 rounded-lg border border-white/5">
+        <button onClick={() => setActiveTab('config')} className={`py-1.5 text-[8px] font-bold uppercase tracking-wider rounded transition-all flex flex-col items-center justify-center gap-0.5 ${activeTab === 'config' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'}`} title="Config"><Sliders className="w-3 h-3" /> <span className="hidden sm:inline">Config</span></button>
+        <button onClick={() => setActiveTab('layout')} className={`py-1.5 text-[8px] font-bold uppercase tracking-wider rounded transition-all flex flex-col items-center justify-center gap-0.5 ${activeTab === 'layout' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'}`} title="Layout"><Sliders className="w-3 h-3 text-cyan-400" /> <span className="hidden sm:inline">Layout</span></button>
+        <button onClick={() => setActiveTab('seo')} className={`py-1.5 text-[8px] font-bold uppercase tracking-wider rounded transition-all flex flex-col items-center justify-center gap-0.5 ${activeTab === 'seo' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'}`} title="SEO Core"><Sparkles className="w-3 h-3" /> <span className="hidden sm:inline">SEO</span></button>
+        <button onClick={() => { setActiveTab('versions'); loadVersions(); }} className={`py-1.5 text-[8px] font-bold uppercase tracking-wider rounded transition-all flex flex-col items-center justify-center gap-0.5 ${activeTab === 'versions' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'}`} title="Versions"><Clock className="w-3 h-3" /> <span className="hidden sm:inline">History</span></button>
+        <button onClick={() => setActiveTab('syndicate')} className={`py-1.5 text-[8px] font-bold uppercase tracking-wider rounded transition-all flex flex-col items-center justify-center gap-0.5 ${activeTab === 'syndicate' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'}`} title="Syndicate"><Globe className="w-3 h-3" /> <span className="hidden sm:inline">Syndicate</span></button>
       </div>
 
       {activeTab === 'config' && (
@@ -225,8 +226,239 @@ export const BlogEditorSettings: React.FC<BlogSettingsProps> = ({
         </div>
       )}
 
+      {activeTab === 'layout' && (
+        <div className="space-y-4 animate-fade-in text-xs font-dm-sans">
+          {/* Layout Template Style */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Layout Template Override</label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: 'default', label: 'Default', desc: 'Workspace setting' },
+                { id: 'magazine', label: 'Magazine', desc: 'Bold multi-column grid' },
+                { id: 'minimal', label: 'Minimal Clean', desc: 'Centered typography' },
+                { id: 'editorial', label: 'Editorial', desc: 'Newspaper columns' },
+                { id: 'knowledge', label: 'Knowledge Hub', desc: 'Left category nav menu' },
+                { id: 'video', label: 'Video-First', desc: 'Top media player hero' },
+                { id: 'newsletter', label: 'Newsletter', desc: 'Dashed borders digest' }
+              ].map((opt) => {
+                const isSelected = (opt.id === 'default' && !post.layout_style) || post.layout_style === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onUpdate({ layout_style: opt.id === 'default' ? null : opt.id })}
+                    className={`flex flex-col text-left rounded-xl border p-2 transition-all duration-200 focus:outline-none relative group ${
+                      isSelected
+                        ? 'bg-primary/10 border-primary shadow-[0_0_12px_rgba(59,130,246,0.15)]'
+                        : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/[0.08]'
+                    }`}
+                  >
+                    <div className="w-full h-11 mb-1.5 rounded overflow-hidden select-none">
+                      {opt.id === 'default' && (
+                        <div className="flex flex-col items-center justify-center h-full text-white/30 bg-[#04091a] border border-dashed border-white/10 rounded">
+                          <Sliders className="w-3.5 h-3.5 mb-0.5" />
+                          <span className="text-[7px] uppercase font-bold tracking-wider">Workspace Default</span>
+                        </div>
+                      )}
+                      {opt.id === 'minimal' && (
+                        <div className="flex flex-col items-center justify-between h-full p-1 bg-[#04091a] rounded">
+                          <div className="w-1/2 h-1 bg-white/20 rounded mx-auto mt-0.5" />
+                          <div className="w-3/4 h-2.5 bg-white/10 rounded mx-auto" />
+                          <div className="space-y-0.5 w-full pb-0.5">
+                            <div className="w-2/3 h-[1.5px] bg-white/20 rounded mx-auto" />
+                            <div className="w-5/6 h-[1.5px] bg-white/20 rounded mx-auto" />
+                          </div>
+                        </div>
+                      )}
+                      {opt.id === 'magazine' && (
+                        <div className="flex flex-col h-full gap-0.5 p-1 bg-[#04091a] rounded">
+                          <div className="w-full h-2.5 bg-white/10 rounded flex items-end p-0.5">
+                            <div className="w-1/3 h-0.5 bg-white/20 rounded" />
+                          </div>
+                          <div className="grid grid-cols-12 gap-0.5 flex-1">
+                            <div className="col-span-3 space-y-0.5">
+                              <div className="w-full h-[1.5px] bg-white/25 rounded" />
+                              <div className="w-2/3 h-[1.5px] bg-white/25 rounded" />
+                            </div>
+                            <div className="col-span-6 space-y-0.5">
+                              <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                              <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                            </div>
+                            <div className="col-span-3 space-y-0.5">
+                              <div className="w-full h-[1.5px] bg-white/30 rounded" />
+                              <div className="w-full h-1 bg-purple-500/40 rounded" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {opt.id === 'editorial' && (
+                        <div className="flex flex-col h-full gap-0.5 p-1 bg-[#04091a] border-t border-b border-white/15 rounded">
+                          <div className="text-center">
+                            <div className="w-4/5 h-[1.5px] bg-white/35 rounded mx-auto" />
+                          </div>
+                          <div className="w-full h-2 bg-white/15 rounded" />
+                          <div className="grid grid-cols-12 gap-0.5 flex-1">
+                            <div className="col-span-8 space-y-0.5 border-r border-white/5 pr-0.5">
+                              <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                              <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                            </div>
+                            <div className="col-span-4 space-y-0.5">
+                              <div className="w-full h-[1.5px] bg-white/30 rounded" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {opt.id === 'knowledge' && (
+                        <div className="flex h-full gap-0.5 p-1 bg-[#04091a] rounded">
+                          <div className="w-1/3 bg-white/5 rounded p-0.5 space-y-0.5 flex flex-col justify-start">
+                            <div className="w-full h-[1.5px] bg-primary/40 rounded" />
+                            <div className="w-4/5 h-[1.5px] bg-white/15 rounded" />
+                          </div>
+                          <div className="flex-1 space-y-0.5">
+                            <div className="w-3/4 h-1 bg-white/25 rounded" />
+                            <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                            <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                          </div>
+                        </div>
+                      )}
+                      {opt.id === 'video' && (
+                        <div className="flex flex-col h-full gap-0.5 p-1 bg-[#04091a] rounded">
+                          <div className="w-full h-4 bg-red-950/40 border border-red-500/20 rounded flex items-center justify-center relative">
+                            <div className="w-0 h-0 border-t-[2.5px] border-t-transparent border-b-[2.5px] border-b-transparent border-l-[4px] border-l-red-500 ml-0.5" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <div className="w-3/4 h-[1.5px] bg-white/20 rounded" />
+                            <div className="w-5/6 h-[1.5px] bg-white/20 rounded" />
+                          </div>
+                        </div>
+                      )}
+                      {opt.id === 'newsletter' && (
+                        <div className="flex flex-col h-full items-center justify-between p-1 bg-[#080f28] border border-dashed border-white/25 rounded">
+                          <div className="w-4/5 h-1 bg-white/10 rounded" />
+                          <div className="space-y-0.5 w-full">
+                            <div className="w-5/6 h-[1px] bg-white/20 rounded mx-auto" />
+                          </div>
+                          <div className="w-5/6 h-1 bg-primary/20 border border-primary/30 rounded flex items-center justify-center">
+                            <div className="w-1/2 h-[1px] bg-white/30 rounded" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-white block truncate leading-tight">{opt.label}</span>
+                    <span className="text-[8px] text-white/40 block leading-tight mt-0.5 line-clamp-1">{opt.desc}</span>
+                    {isSelected && (
+                      <span className="absolute top-1 right-1 bg-primary text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[7px] font-black border border-white/10 shadow animate-scale-in">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Header Style Override */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Header Style Override</label>
+            <select
+              value={post.header_style || 'default'}
+              onChange={(e) => onUpdate({ header_style: e.target.value === 'default' ? null : e.target.value })}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-primary transition"
+            >
+              <option value="default" className="bg-[#080f28]">Default (Workspace default)</option>
+              <option value="sticky-slim" className="bg-[#080f28]">Sticky Slim Navbar</option>
+              <option value="transparent-hero" className="bg-[#080f28]">Transparent Hero Overlay</option>
+              <option value="category-bar" className="bg-[#080f28]">Full-Width Category Bar</option>
+              <option value="centred-classic" className="bg-[#080f28]">Centred Classic</option>
+              <option value="split-banner" className="bg-[#080f28]">Split Banner</option>
+            </select>
+          </div>
+
+          {/* Sidebar Style Override */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Sidebar Style Override</label>
+            <select
+              value={post.sidebar_style || 'default'}
+              onChange={(e) => onUpdate({ sidebar_style: e.target.value === 'default' ? null : e.target.value })}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-primary transition"
+            >
+              <option value="default" className="bg-[#080f28]">Default (Workspace default)</option>
+              <option value="standard" className="bg-[#080f28]">Standard (Bio + Share + Form)</option>
+              <option value="compact" className="bg-[#080f28]">Compact</option>
+              <option value="sticky-toc" className="bg-[#080f28]">Sticky TOC</option>
+              <option value="lead-gen" className="bg-[#080f28]">Lead Gen (Highlighted Form)</option>
+              <option value="floating-share" className="bg-[#080f28]">Floating Share Icons Only</option>
+              <option value="none" className="bg-[#080f28]">None (Centred Column)</option>
+            </select>
+          </div>
+
+          {/* Lead Capture Style Override */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Lead Capture Override</label>
+            <select
+              value={post.lead_capture_style || 'default'}
+              onChange={(e) => onUpdate({ lead_capture_style: e.target.value === 'default' ? null : e.target.value })}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-primary transition"
+            >
+              <option value="default" className="bg-[#080f28]">Default (Workspace default)</option>
+              <option value="newsletter" className="bg-[#080f28]">Newsletter Form (Standard)</option>
+              <option value="exit-intent" className="bg-[#080f28]">Exit-Intent Modal</option>
+              <option value="inline" className="bg-[#080f28]">Inline Capture Box</option>
+              <option value="none" className="bg-[#080f28]">None</option>
+            </select>
+          </div>
+
+          {/* SA Local SEO Targets */}
+          <div className="pt-3 border-t border-white/10 space-y-3">
+            <h4 className="text-[10px] font-bold text-[#fbbf24] uppercase tracking-wider">South African Local SEO</h4>
+            
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-bold text-white/50 uppercase tracking-wider block">Target Province</label>
+              <select
+                value={post.sa_province || ''}
+                onChange={(e) => onUpdate({ sa_province: e.target.value || null })}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-[#fbbf24] transition animate-fade-in"
+              >
+                <option value="" className="bg-[#080f28]">None / National Focus</option>
+                <option value="Eastern Cape" className="bg-[#080f28]">Eastern Cape</option>
+                <option value="Free State" className="bg-[#080f28]">Free State</option>
+                <option value="Gauteng" className="bg-[#080f28]">Gauteng</option>
+                <option value="KwaZulu-Natal" className="bg-[#080f28]">KwaZulu-Natal</option>
+                <option value="Limpopo" className="bg-[#080f28]">Limpopo</option>
+                <option value="Mpumalanga" className="bg-[#080f28]">Mpumalanga</option>
+                <option value="North West" className="bg-[#080f28]">North West</option>
+                <option value="Northern Cape" className="bg-[#080f28]">Northern Cape</option>
+                <option value="Western Cape" className="bg-[#080f28]">Western Cape</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-bold text-white/50 uppercase tracking-wider block">Target City</label>
+              <input
+                type="text"
+                value={post.sa_city || ''}
+                placeholder="e.g. Johannesburg"
+                onChange={(e) => onUpdate({ sa_city: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-[#fbbf24] transition placeholder-white/20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-bold text-white/50 uppercase tracking-wider block">Target Suburb / Area</label>
+              <input
+                type="text"
+                value={post.sa_area || ''}
+                placeholder="e.g. Sandton"
+                onChange={(e) => onUpdate({ sa_area: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-[#fbbf24] transition placeholder-white/20"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'seo' && (
-        <div className="space-y-4 animate-fade-in text-xs">
+        <div className="space-y-4 animate-fade-in text-xs font-dm-sans">
           {/* SEO Grades Widget */}
           <div className="bg-[#04091a]/60 border border-white/5 rounded-xl p-3 text-center space-y-1.5">
             <span className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">Real-time SEO Score</span>
@@ -242,6 +474,37 @@ export const BlogEditorSettings: React.FC<BlogSettingsProps> = ({
           <div className="space-y-1.5">
             <label className="text-[9px] font-bold text-white/50 uppercase tracking-wider block">Target Keyword</label>
             <input type="text" value={post.target_keyword || ''} placeholder="e.g. lead nurturing" onChange={e => onUpdate({ target_keyword: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-primary transition placeholder-white/20" />
+          </div>
+
+          {/* SEO Checklist Breakdown */}
+          <div className="border-t border-white/10 pt-3 space-y-2">
+            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">SEO Checklist Breakdown</span>
+            <div className="space-y-1.5 text-[10px]">
+              <div className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                <span className="text-white/60">Keyword in Title (+25)</span>
+                {kwInTitle ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                <span className="text-white/60">Keyword in Summary (+15)</span>
+                {kwInSummary ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                <span className="text-white/60">Keyword density in body (&gt;=3) (+20)</span>
+                {kwInBodyCount >= 3 ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <span className="text-amber-500 font-bold font-mono">{kwInBodyCount}/3 matches</span>}
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                <span className="text-white/60">Article length &gt;= 600 words (+20)</span>
+                {wordCount >= 600 ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <span className="text-amber-500 font-bold font-mono">{wordCount}/600 words</span>}
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                <span className="text-white/60">Cover Image Alt Text (+10)</span>
+                {hasAltText ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                <span className="text-white/60">Keyword in H2 Heading (+10)</span>
+                {hasKwInH2 ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+              </div>
+            </div>
           </div>
 
           {/* Grammar Engine */}

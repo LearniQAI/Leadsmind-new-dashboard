@@ -76,7 +76,14 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
             category_id: post.category_id,
             seo_title: post.seo_title,
             canonical_url: post.canonical_url,
-            target_keyword: post.target_keyword
+            target_keyword: post.target_keyword,
+            layout_style: post.layout_style,
+            header_style: post.header_style,
+            sidebar_style: post.sidebar_style,
+            lead_capture_style: post.lead_capture_style,
+            sa_province: post.sa_province,
+            sa_city: post.sa_city,
+            sa_area: post.sa_area
           };
 
           const res = await updatePost(post.id, updates);

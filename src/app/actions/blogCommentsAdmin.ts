@@ -44,7 +44,18 @@ export async function deleteComment(commentId: string) {
   }
 }
 
-export async function updateBlogSettings(payload: { comments_engine: string; disqus_shortname?: string; analytics_enabled: boolean }) {
+export async function updateBlogSettings(payload: {
+  comments_engine: string;
+  disqus_shortname?: string;
+  analytics_enabled: boolean;
+  layout_style?: string;
+  header_style?: string;
+  sidebar_style?: string;
+  lead_capture_style?: string;
+  sa_province?: string;
+  sa_city?: string;
+  sa_area?: string;
+}) {
   try {
     const supabase = await createServerClient();
     const workspaceId = await getCurrentWorkspaceId();

@@ -115,7 +115,7 @@ export async function getPublicCategories() {
 /**
  * Pipes a newsletter lead straight into the CRM contacts ledger.
  */
-export async function subscribeToNewsletter(email: string, workspaceId?: string) {
+export async function subscribeToNewsletter(email: string, workspaceId?: string, referralCode?: string) {
   try {
     const supabase = await createServerClient();
     let wsId = workspaceId || await getCurrentWorkspaceId();
@@ -125,13 +125,25 @@ export async function subscribeToNewsletter(email: string, workspaceId?: string)
     }
     if (!wsId) return { error: 'Active workspace context could not be resolved.' };
 
-    const { error } = await supabase.from('contacts').insert({
+    const contactPayload: any = {
       workspace_id: wsId,
       email: email.trim().toLowerCase(),
       first_name: 'Newsletter',
       last_name: 'Subscriber',
       source: 'blog_newsletter'
-    });
+    };
+
+    if (referralCode) {
+      contactPayload.first_touch_source = 'whatsapp';
+      contactPayload.first_touch_keyword = `wa_ref_${referralCode}`;
+      contactPayload.form_attribution = {
+        utm_source: 'whatsapp',
+        utm_medium: 'share',
+        referrer: 'whatsapp_referral'
+      };
+    }
+
+    const { error } = await supabase.from('contacts').insert(contactPayload);
 
     if (error) {
       // Check for uniqueness duplicate key code
@@ -223,16 +235,28 @@ export async function getBlogSettings(workspaceId: string) {
   try {
     const supabase = await createServerClient();
     const { data, error } = await supabase.from('blog_settings')
-      .select('comments_engine, disqus_shortname, analytics_enabled')
+      .select('comments_engine, disqus_shortname, analytics_enabled, layout_style, header_style, sidebar_style, lead_capture_style, sa_province, sa_city, sa_area')
       .eq('workspace_id', workspaceId)
       .maybeSingle();
       
     if (error) throw error;
-    // Default fallback if settings aren't created yet
-    return { data: data || { comments_engine: 'native', analytics_enabled: true, disqus_shortname: undefined } };
+    
+    const defaultSettings = {
+      comments_engine: 'native',
+      analytics_enabled: true,
+      layout_style: 'minimal',
+      header_style: 'sticky-slim',
+      sidebar_style: 'standard',
+      lead_capture_style: 'newsletter',
+      sa_province: '',
+      sa_city: '',
+      sa_area: ''
+    };
+
+    return { data: { ...defaultSettings, ...data } };
   } catch (err: any) {
     console.error('[BlogAction getBlogSettings Error]:', err);
-    return { data: { comments_engine: 'native', analytics_enabled: true, disqus_shortname: undefined } };
+    return { data: { comments_engine: 'native', analytics_enabled: true, disqus_shortname: undefined, layout_style: 'minimal', header_style: 'sticky-slim', sidebar_style: 'standard', lead_capture_style: 'newsletter', sa_province: '', sa_city: '', sa_area: '' } };
   }
 }
 

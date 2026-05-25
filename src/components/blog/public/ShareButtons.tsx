@@ -1,17 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Share2, Copy, Check } from 'lucide-react';
 
 interface ShareButtonsProps {
   url: string;
   title: string;
+  vertical?: boolean;
 }
 
-export const ShareButtons: React.FC<ShareButtonsProps> = ({ url, title }) => {
+export const ShareButtons: React.FC<ShareButtonsProps> = ({ url, title, vertical = false }) => {
   const [copied, setCopied] = useState(false);
+  const [visitorId, setVisitorId] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      let vid = localStorage.getItem('lm_visitor_id');
+      if (!vid) {
+        vid = Math.random().toString(36).substring(2, 11);
+        localStorage.setItem('lm_visitor_id', vid);
+      }
+      setVisitorId(vid);
+    }
+  }, []);
+
+  // Append WhatsApp referral tracking parameter
+  const whatsappShareUrl = visitorId ? `${url}?ref=wa_${visitorId}` : url;
 
   const encodedUrl = encodeURIComponent(url);
+  const encodedWhatsappUrl = encodeURIComponent(whatsappShareUrl);
   const encodedTitle = encodeURIComponent(title);
 
   const shareLinks = [
@@ -29,7 +46,7 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ url, title }) => {
     },
     {
       name: 'WhatsApp',
-      url: `https://api.whatsapp.com/send?text=${encodedTitle}%20${encodedUrl}`,
+      url: `https://api.whatsapp.com/send?text=${encodedTitle}%20${encodedWhatsappUrl}`,
       icon: <Share2 className="w-3.5 h-3.5 rotate-90" />,
       color: 'hover:bg-[#25d366]/10 hover:text-[#25d366] hover:border-[#25d366]/30'
     }
@@ -44,6 +61,34 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ url, title }) => {
       console.error(err);
     }
   };
+
+  if (vertical) {
+    return (
+      <div className="flex flex-col gap-2.5 items-center">
+        {shareLinks.map((link) => (
+          <a
+            key={link.name}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`Share on ${link.name}`}
+            className={`w-9 h-9 flex items-center justify-center rounded-xl border border-white/10 bg-[#080f28]/60 text-white/60 transition duration-300 ${link.color}`}
+          >
+            {link.icon}
+          </a>
+        ))}
+        <button
+          onClick={handleCopy}
+          title="Copy Link"
+          className={`w-9 h-9 flex items-center justify-center rounded-xl border border-white/10 bg-[#080f28]/60 transition duration-300 ${
+            copied ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'text-white/60 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2 border-t border-white/5 pt-4">

@@ -33,6 +33,14 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
   const [disqusName, setDisqusName] = useState(settings?.disqus_shortname || '');
   const [analyticsEnabled, setAnalyticsEnabled] = useState(settings?.analytics_enabled ?? true);
 
+  const [layoutStyle, setLayoutStyle] = useState(settings?.layout_style || 'minimal');
+  const [headerStyle, setHeaderStyle] = useState(settings?.header_style || 'sticky-slim');
+  const [sidebarStyle, setSidebarStyle] = useState(settings?.sidebar_style || 'standard');
+  const [leadCaptureStyle, setLeadCaptureStyle] = useState(settings?.lead_capture_style || 'newsletter');
+  const [saProvince, setSaProvince] = useState(settings?.sa_province || '');
+  const [saCity, setSaCity] = useState(settings?.sa_city || '');
+  const [saArea, setSaArea] = useState(settings?.sa_area || '');
+
   const handleStatusChange = async (id: string, newStatus: 'approved' | 'spam' | 'rejected' | 'pending') => {
     const original = [...comments];
     setComments(comments.map(c => c.id === id ? { ...c, status: newStatus } : c));
@@ -56,7 +64,18 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
 
   const handleSaveSettings = async () => {
     setSavingSettings(true);
-    const res = await updateBlogSettings({ comments_engine: engine, disqus_shortname: disqusName, analytics_enabled: analyticsEnabled });
+    const res = await updateBlogSettings({
+      comments_engine: engine,
+      disqus_shortname: disqusName,
+      analytics_enabled: analyticsEnabled,
+      layout_style: layoutStyle,
+      header_style: headerStyle,
+      sidebar_style: sidebarStyle,
+      lead_capture_style: leadCaptureStyle,
+      sa_province: saProvince,
+      sa_city: saCity,
+      sa_area: saArea
+    });
     setSavingSettings(false);
     if (res.error) alert(res.error);
     else { setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 3000); }
@@ -242,6 +261,223 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
                 </p>
               </div>
             )}
+
+            {/* Layout Configuration */}
+            <div className="pt-4 border-t border-white/5 space-y-4">
+              <p className="text-xs text-white/50 font-bold uppercase tracking-wider">Default Layout Config</p>
+              
+              <div className="space-y-2.5">
+                <label className="text-[10px] text-white/40 font-bold uppercase tracking-wider block">Default Blog Layout</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'magazine', label: 'Magazine', desc: 'Bold multi-column grid' },
+                    { id: 'minimal', label: 'Minimal Clean', desc: 'Centered typography' },
+                    { id: 'editorial', label: 'Editorial', desc: 'Newspaper columns' },
+                    { id: 'knowledge', label: 'Knowledge Hub', desc: 'Left category nav menu' },
+                    { id: 'video', label: 'Video-First', desc: 'Top media player hero' },
+                    { id: 'newsletter', label: 'Newsletter', desc: 'Dashed borders digest' }
+                  ].map((opt) => {
+                    const isSelected = layoutStyle === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setLayoutStyle(opt.id)}
+                        className={`flex flex-col text-left rounded-xl border p-2 transition-all duration-200 focus:outline-none relative group ${
+                          isSelected
+                            ? 'bg-primary/10 border-primary shadow-[0_0_12px_rgba(59,130,246,0.15)]'
+                            : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/[0.08]'
+                        }`}
+                      >
+                        <div className="w-full h-11 mb-1.5 rounded overflow-hidden select-none">
+                          {opt.id === 'minimal' && (
+                            <div className="flex flex-col items-center justify-between h-full p-1 bg-[#04091a] rounded">
+                              <div className="w-1/2 h-1 bg-white/20 rounded mx-auto mt-0.5" />
+                              <div className="w-3/4 h-2.5 bg-white/10 rounded mx-auto" />
+                              <div className="space-y-0.5 w-full pb-0.5">
+                                <div className="w-2/3 h-[1.5px] bg-white/20 rounded mx-auto" />
+                                <div className="w-5/6 h-[1.5px] bg-white/20 rounded mx-auto" />
+                              </div>
+                            </div>
+                          )}
+                          {opt.id === 'magazine' && (
+                            <div className="flex flex-col h-full gap-0.5 p-1 bg-[#04091a] rounded">
+                              <div className="w-full h-2.5 bg-white/10 rounded flex items-end p-0.5">
+                                <div className="w-1/3 h-0.5 bg-white/20 rounded" />
+                              </div>
+                              <div className="grid grid-cols-12 gap-0.5 flex-1">
+                                <div className="col-span-3 space-y-0.5">
+                                  <div className="w-full h-[1.5px] bg-white/25 rounded" />
+                                  <div className="w-2/3 h-[1.5px] bg-white/25 rounded" />
+                                </div>
+                                <div className="col-span-6 space-y-0.5">
+                                  <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                                  <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                                </div>
+                                <div className="col-span-3 space-y-0.5">
+                                  <div className="w-full h-[1.5px] bg-white/30 rounded" />
+                                  <div className="w-full h-1 bg-purple-500/40 rounded" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {opt.id === 'editorial' && (
+                            <div className="flex flex-col h-full gap-0.5 p-1 bg-[#04091a] border-t border-b border-white/15 rounded">
+                              <div className="text-center">
+                                <div className="w-4/5 h-[1.5px] bg-white/35 rounded mx-auto" />
+                              </div>
+                              <div className="w-full h-2 bg-white/15 rounded" />
+                              <div className="grid grid-cols-12 gap-0.5 flex-1">
+                                <div className="col-span-8 space-y-0.5 border-r border-white/5 pr-0.5">
+                                  <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                                  <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                                </div>
+                                <div className="col-span-4 space-y-0.5">
+                                  <div className="w-full h-[1.5px] bg-white/30 rounded" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {opt.id === 'knowledge' && (
+                            <div className="flex h-full gap-0.5 p-1 bg-[#04091a] rounded">
+                              <div className="w-1/3 bg-white/5 rounded p-0.5 space-y-0.5 flex flex-col justify-start">
+                                <div className="w-full h-[1.5px] bg-primary/40 rounded" />
+                                <div className="w-4/5 h-[1.5px] bg-white/15 rounded" />
+                              </div>
+                              <div className="flex-1 space-y-0.5">
+                                <div className="w-3/4 h-1 bg-white/25 rounded" />
+                                <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                                <div className="w-full h-[1.5px] bg-white/20 rounded" />
+                              </div>
+                            </div>
+                          )}
+                          {opt.id === 'video' && (
+                            <div className="flex flex-col h-full gap-0.5 p-1 bg-[#04091a] rounded">
+                              <div className="w-full h-4 bg-red-950/40 border border-red-500/20 rounded flex items-center justify-center relative">
+                                <div className="w-0 h-0 border-t-[2.5px] border-t-transparent border-b-[2.5px] border-b-transparent border-l-[4px] border-l-red-500 ml-0.5" />
+                              </div>
+                              <div className="space-y-0.5">
+                                <div className="w-3/4 h-[1.5px] bg-white/20 rounded" />
+                                <div className="w-5/6 h-[1.5px] bg-white/20 rounded" />
+                              </div>
+                            </div>
+                          )}
+                          {opt.id === 'newsletter' && (
+                            <div className="flex flex-col h-full items-center justify-between p-1 bg-[#080f28] border border-dashed border-white/25 rounded">
+                              <div className="w-4/5 h-1 bg-white/10 rounded" />
+                              <div className="space-y-0.5 w-full">
+                                <div className="w-5/6 h-[1px] bg-white/20 rounded mx-auto" />
+                              </div>
+                              <div className="w-5/6 h-1 bg-primary/20 border border-primary/30 rounded flex items-center justify-center">
+                                <div className="w-1/2 h-[1px] bg-white/30 rounded" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold text-white block truncate leading-tight">{opt.label}</span>
+                        <span className="text-[8px] text-white/40 block leading-tight mt-0.5 line-clamp-1">{opt.desc}</span>
+                        {isSelected && (
+                          <span className="absolute top-1 right-1 bg-primary text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[7px] font-black border border-white/10 shadow animate-scale-in">
+                            ✓
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] text-white/40 font-bold uppercase tracking-wider block">Default Header Style</label>
+                <select
+                  value={headerStyle}
+                  onChange={(e) => setHeaderStyle(e.target.value)}
+                  className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 transition appearance-none cursor-pointer"
+                >
+                  <option value="sticky-slim">Sticky Slim Navbar</option>
+                  <option value="transparent-hero">Transparent Hero Overlay</option>
+                  <option value="category-bar">Full-Width Category Bar</option>
+                  <option value="centred-classic">Centred Classic</option>
+                  <option value="split-banner">Split Banner</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] text-white/40 font-bold uppercase tracking-wider block">Default Sidebar Style</label>
+                <select
+                  value={sidebarStyle}
+                  onChange={(e) => setSidebarStyle(e.target.value)}
+                  className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 transition appearance-none cursor-pointer"
+                >
+                  <option value="standard">Standard (Bio + Share + Form)</option>
+                  <option value="compact">Compact</option>
+                  <option value="sticky-toc">Sticky TOC</option>
+                  <option value="lead-gen">Lead Gen (Highlighted Form)</option>
+                  <option value="floating-share">Floating Share Icons Only</option>
+                  <option value="none">None (Centred Column)</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] text-white/40 font-bold uppercase tracking-wider block">Default Lead Capture</label>
+                <select
+                  value={leadCaptureStyle}
+                  onChange={(e) => setLeadCaptureStyle(e.target.value)}
+                  className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 transition appearance-none cursor-pointer"
+                >
+                  <option value="newsletter">Newsletter Form (Standard)</option>
+                  <option value="exit-intent">Exit-Intent Modal</option>
+                  <option value="inline">Inline Capture Box</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+
+              {/* SA SEO Defaults */}
+              <div className="space-y-3 pt-2">
+                <p className="text-[10px] text-[#fbbf24] font-bold uppercase tracking-wider">South African Local SEO defaults</p>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider block">Default Province</label>
+                  <select
+                    value={saProvince}
+                    onChange={(e) => setSaProvince(e.target.value)}
+                    className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-[#fbbf24] transition appearance-none cursor-pointer"
+                  >
+                    <option value="">None / National Focus</option>
+                    <option value="Eastern Cape">Eastern Cape</option>
+                    <option value="Free State">Free State</option>
+                    <option value="Gauteng">Gauteng</option>
+                    <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+                    <option value="Limpopo">Limpopo</option>
+                    <option value="Mpumalanga">Mpumalanga</option>
+                    <option value="North West">North West</option>
+                    <option value="Northern Cape">Northern Cape</option>
+                    <option value="Western Cape">Western Cape</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider block">Default City</label>
+                  <input
+                    type="text"
+                    value={saCity}
+                    placeholder="e.g. Johannesburg"
+                    onChange={(e) => setSaCity(e.target.value)}
+                    className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-[#fbbf24] transition placeholder-white/20"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider block">Default Suburb / Area</label>
+                  <input
+                    type="text"
+                    value={saArea}
+                    placeholder="e.g. Sandton"
+                    onChange={(e) => setSaArea(e.target.value)}
+                    className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-[#fbbf24] transition placeholder-white/20"
+                  />
+                </div>
+              </div>
+            </div>
 
             {/* Analytics toggle */}
             <div className="pt-4 border-t border-white/5 space-y-4">
