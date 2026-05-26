@@ -49,15 +49,42 @@ export async function POST(req: NextRequest) {
       }
       const targetPhone = phoneMatch[1];
 
-      // Clean message body (fallback to subject if body is completely empty)
-      const rawText = emailData.text || emailData.html || emailData.subject || '';
-      // Strip signatures and quotes roughly
+      // 1. Log the inbound payload structure to verify
+      console.log('[Resend Webhook] Inbound Payload Data:', JSON.stringify({
+        subject: emailData.subject,
+        hasText: !!emailData.text,
+        hasHtml: !!emailData.html,
+        textLength: emailData.text?.length || 0,
+        htmlLength: emailData.html?.length || 0
+      }, null, 2));
+
+      // 2. Prioritize body extraction
+      let rawText = '';
+      if (emailData.text && emailData.text.trim().length > 0) {
+        rawText = emailData.text;
+      } else if (emailData.html && emailData.html.trim().length > 0) {
+        rawText = emailData.html;
+      } else if (emailData.subject && emailData.subject.trim().length > 0) {
+        rawText = emailData.subject;
+      }
+
+      console.log('[Extraction Debug] Extracted Subject:', emailData.subject);
+      console.log('[Extraction Debug] Extracted Body (Before Clean):', rawText.substring(0, 200) + (rawText.length > 200 ? '...' : ''));
+
+      // 3. Clean message body
       const cleanedText = rawText
         .split(/On\s+.*wrote:/i)[0] // English reply quote
         .split(/--- Original Message ---/i)[0]
         .split(/_{10,}/)[0]
-        .replace(/<[^>]*>?/gm, '') // Strip HTML tags if fallback used HTML
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // Strip style blocks
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Strip script blocks
+        .replace(/<br\s*\/?>/gi, '\n') // Preserve line breaks
+        .replace(/<\/p>/gi, '\n\n') // Preserve paragraph breaks
+        .replace(/<[^>]*>?/gm, '') // Strip remaining HTML tags
+        .replace(/&nbsp;/g, ' ') // Clean common HTML entities
         .trim();
+
+      console.log('[Extraction Debug] Final SMS Payload:', cleanedText);
 
       if (!cleanedText) {
         console.error('[Resend Webhook] Empty message body after stripping');
