@@ -131,3 +131,45 @@ Social post source text:
     return { error: err.message || 'Social expansion pipeline aborted.' };
   }
 }
+
+export async function getVoiceNoteRecords() {
+  try {
+    const wsId = await getCurrentWorkspaceId();
+    if (!wsId) return { error: 'No active workspace context' };
+    const supabase = await createServerClient();
+
+    const { data, error } = await supabase
+      .from('blog_social_imports')
+      .select(`
+        id,
+        workspace_id,
+        import_type,
+        source_url,
+        original_text,
+        status,
+        error_message,
+        post_id,
+        created_at,
+        updated_at,
+        team_members:users (
+          id,
+          email,
+          first_name,
+          last_name,
+          full_name,
+          profile_photo_url,
+          avatar_preset_id,
+          job_title,
+          phone
+        )
+      `)
+      .eq('workspace_id', wsId)
+      .eq('import_type', 'voice')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { data: data || [] };
+  } catch (err: any) {
+    return { error: err.message || 'Fetch voice notes failed' };
+  }
+}

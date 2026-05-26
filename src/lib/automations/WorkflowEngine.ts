@@ -7,6 +7,7 @@ import { CRMActionHandler } from './CRMActionHandler';
 import { EmailAutomationService } from './EmailAutomationService';
 import { AutomationLogger } from './AutomationLogger';
 import { createAdminClient } from '@/lib/supabase/server';
+import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 
 export interface WorkflowStep {
   id: string;
@@ -192,9 +193,35 @@ export const WorkflowEngine = {
           },
           context.values
         );
-        return emailRes.success
-          ? { success: true }
-          : { success: false, error: emailRes.error };
+
+        if (emailRes.success) {
+          try {
+            const isVoiceEmail = config.templateType === 'voice_note' || config.templateType === 'voice_note_notification';
+            const recipient = config.toEmail
+              ? EmailAutomationService.interpolate(config.toEmail, context.values)
+              : context.values.email || context.values.Email || 'recipient';
+            
+            await UnifiedActivityEngine.logActivity(
+              context.workspaceId,
+              null,
+              'contact',
+              contactId || '',
+              isVoiceEmail ? 'voice_note' : 'email',
+              isVoiceEmail ? `Sent voice note via Email.` : `Sent email: ${config.subject || 'LeadsMind Update'}`,
+              {
+                channel: 'email',
+                audio_url: context.values.audio_url || context.values.audio_hosted_url || '',
+                transcript: context.values.transcript || context.values.original_text || '',
+                destination: recipient
+              }
+            );
+          } catch (actErr) {
+            console.error('[WorkflowEngine] Failed to log email activity:', actErr);
+          }
+          return { success: true };
+        } else {
+          return { success: false, error: emailRes.error };
+        }
       }
 
       // 4. CRM Action nodes

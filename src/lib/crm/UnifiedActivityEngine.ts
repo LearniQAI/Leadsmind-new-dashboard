@@ -38,7 +38,7 @@ export class UnifiedActivityEngine {
     
     const { data, error } = await supabase
       .from('crm_activities')
-      .select('*, auth_user:actor_id(email)')
+      .select('*, auth_user:actor_id(id, email, first_name, last_name, full_name, profile_photo_url, avatar_preset_id, job_title, identity_color)')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false })
       .limit(limit);

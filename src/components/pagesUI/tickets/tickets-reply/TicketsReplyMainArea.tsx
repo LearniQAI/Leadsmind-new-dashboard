@@ -10,7 +10,8 @@ import avatarImg5 from "../../../../../public/assets/images/avatar/avatar5.png";
 import avatarImg6 from "../../../../../public/assets/images/avatar/avatar6.png";
 import avatarImg7 from "../../../../../public/assets/images/avatar/avatar7.png";
 import avatarImg8 from "../../../../../public/assets/images/avatar/avatar2.png";
-import textImage from "../../../../../public/assets/images/message/text.png"
+import textImage from "../../../../../public/assets/images/message/text.png";
+import { VoiceNoteCard } from "@/components/common/VoiceNoteCard";
 
 
 const TicketsReplyMainArea = () => {
@@ -101,13 +102,22 @@ const TicketsReplyMainArea = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="chat__message-item mt-[35px]">
-                    <div className="chat__message-thumb">
-                    <Image src={avatarImg6} style={{width:"100%", height:"auto"}} priority alt="image not found"/>
-                    </div>
-                    <div className="chat__message-title">
-                      <p>Ya. I’ll be adding more team <br/> members to it.</p>
-                    </div>
+                  <div className="chat__message-item mt-[35px] max-w-[85%] w-full">
+                    <VoiceNoteCard
+                      sender={{
+                        first_name: "Habeeb",
+                        last_name: "O.",
+                        full_name: "Habeeb O.",
+                        profile_photo_url: avatarImg6.src,
+                        job_title: "AI Developer",
+                        identity_color: "#10b981"
+                      }}
+                      createdAt="2026-05-26T11:42:00Z"
+                      deliveryChannel="internal"
+                      caption="Please review the core UI layout shifts"
+                      transcript="I've analyzed the interface components and believe we have some minor layout shifts in the chat stream that we should resolve before releasing Sprint 2."
+                      audioUrl=""
+                    />
                   </div>
                   <div className="chat__message-item is-right mt-5">
                     <div className="chat__message-thumb">

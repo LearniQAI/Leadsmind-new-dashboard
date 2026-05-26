@@ -96,7 +96,8 @@ export async function POST(req: Request) {
     const { data: job, error: jErr } = await supabase.from('blog_social_imports').insert({
       workspace_id: wsId,
       import_type: 'voice',
-      status: 'queued'
+      status: 'queued',
+      team_member_id: user.id
     }).select().single();
 
     if (jErr) return NextResponse.json({ error: `Failed to initialize job: ${jErr.message}` }, { status: 500 });

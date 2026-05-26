@@ -4,6 +4,7 @@ import { sendSMS } from "@/lib/sms";
 import { calculateLeadScore } from "../../app/actions/automation";
 import { publishSocialPost } from "../../app/actions/social";
 import { enrollStudent, updateProgress } from "../../app/actions/lms";
+import { UnifiedActivityEngine } from "@/lib/crm/UnifiedActivityEngine";
 
 export const AutomationActions = {
  send_email: async (workspaceId: string, contactId: string, config: any) => {
@@ -288,5 +289,114 @@ export const AutomationActions = {
   } catch (err) {
    console.error("[executor] Webhook failed:", err);
   }
- }
+ },
+
+  send_whatsapp_voice: async (workspaceId: string, contactId: string, config: any) => {
+    const supabase = await createServerClient();
+    
+    // 1. Fetch contact details
+    const { data: contact } = await supabase
+     .from("contacts")
+     .select("phone, first_name")
+     .eq("id", contactId)
+     .single();
+
+    if (!contact?.phone) throw new Error("Contact has no phone number");
+
+    // 2. Fetch workspace settings
+    const { data: workspace } = await supabase
+     .from("workspaces")
+     .select("twilio_sid, twilio_token, twilio_number, name, whatsapp_transcript_enabled")
+     .eq("id", workspaceId)
+     .single();
+
+    // 3. Fetch sender signature
+    let senderName = 'Team Member';
+    let senderJobTitle = 'AI Developer';
+    if (config.senderId) {
+      const { data: sender } = await supabase
+       .from("users")
+       .select("full_name, job_title")
+       .eq("id", config.senderId)
+       .single();
+      if (sender) {
+        senderName = sender.full_name || senderName;
+        senderJobTitle = sender.job_title || senderJobTitle;
+      }
+    }
+
+    const cleanPhone = contact.phone.startsWith('+') ? contact.phone : `+${contact.phone}`;
+    const to = `whatsapp:${cleanPhone}`;
+    const from = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
+
+    // Message 1 (Identity)
+    const workspaceName = workspace?.name || 'LeadsMind';
+    const msg1Text = `Hi ${contact.first_name || 'there'}, this is ${senderName} — ${senderJobTitle} at ${workspaceName}. I have left you a quick voice message below 👇`;
+    
+    await sendSMS({
+      to,
+      message: msg1Text,
+      config: {
+        accountSid: workspace?.twilio_sid,
+        authToken: workspace?.twilio_token,
+        fromNumber: from,
+      }
+    });
+
+    // Small delay to ensure correct chronological sequence timing
+    await new Promise(r => setTimeout(r, 600));
+
+    // Message 2 (Audio Content)
+    const audioUrl = config.audioUrl || config.audio_url || '';
+    await sendSMS({
+      to,
+      message: "",
+      mediaUrl: audioUrl,
+      config: {
+        accountSid: workspace?.twilio_sid,
+        authToken: workspace?.twilio_token,
+        fromNumber: from,
+      }
+    });
+
+    // Message 3 (Transcript Context)
+    const transcript = config.transcript || config.original_text || '';
+    const sendTranscript = config.sendTranscript !== false && workspace?.whatsapp_transcript_enabled !== false;
+    
+    if (sendTranscript && transcript) {
+      await new Promise(r => setTimeout(r, 600));
+      const excerpt = transcript.slice(0, 200);
+      const msg3Text = `📝 Transcript: ${excerpt}${transcript.length > 200 ? '...' : ''}`;
+      
+      await sendSMS({
+        to,
+        message: msg3Text,
+        config: {
+          accountSid: workspace?.twilio_sid,
+          authToken: workspace?.twilio_token,
+          fromNumber: from,
+        }
+      });
+    }
+
+    // Log the activity to the CRM timeline feed
+    try {
+      await UnifiedActivityEngine.logActivity(
+        workspaceId,
+        config.senderId || null,
+        'contact',
+        contactId,
+        'voice_note',
+        `Sent voice note via WhatsApp.`,
+        {
+          channel: 'whatsapp',
+          audio_url: audioUrl,
+          transcript: transcript,
+          destination: cleanPhone
+        }
+      );
+    } catch (actErr) {
+      console.error('[actions_registry] Failed to log WhatsApp voice activity:', actErr);
+    }
+  }
 };

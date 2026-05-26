@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, Send, Clock, UserPlus, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { VoiceNoteCard } from '@/components/common/VoiceNoteCard';
 
 interface ActivityThreadProps {
   activities: any[];
@@ -162,12 +163,18 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
             {/* Timeline Icon/Avatar */}
             <div className="absolute left-0 top-0">
               {item.itemType === 'comment' ? (
-                <Avatar className="w-8 h-8 border-2 border-[#080f28] z-10 shadow-lg">
-                  <AvatarImage src={item.user?.avatar_url} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
-                    {item.user?.first_name?.[0]}{item.user?.last_name?.[0]}
-                  </AvatarFallback>
-                </Avatar>
+                item.audio_url ? (
+                  <div className="w-8 h-8 rounded-full bg-[#0F6E56]/20 flex items-center justify-center border-2 border-[#080f28] z-10">
+                    <i className="fa-solid fa-microphone text-[12px] text-[#0f6e56]"></i>
+                  </div>
+                ) : (
+                  <Avatar className="w-8 h-8 border-2 border-[#080f28] z-10 shadow-lg">
+                    <AvatarImage src={item.user?.avatar_url} />
+                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
+                      {item.user?.first_name?.[0]}{item.user?.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                )
               ) : (
                 <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border-2 border-[#080f28] z-10">
                   {item.type === 'status_change' ? <ArrowRight className="w-3.5 h-3.5 text-amber" /> : 
@@ -178,28 +185,49 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
             </div>
 
             {/* Item Content */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] font-bold text-white/90">
-                  {item.user?.first_name} {item.user?.last_name}
-                </span>
-                <span className="text-[10px] text-white/20 font-medium">
-                  {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
-                </span>
+            {item.itemType === 'comment' && item.audio_url ? (
+              <div className="w-full">
+                <VoiceNoteCard
+                  sender={{
+                    first_name: item.user?.first_name,
+                    last_name: item.user?.last_name,
+                    full_name: `${item.user?.first_name || ''} ${item.user?.last_name || ''}`.trim() || null,
+                    profile_photo_url: item.user?.avatar_url,
+                    avatar_preset_id: item.user?.avatar_preset_id,
+                    job_title: item.user?.job_title || "Team Member",
+                    identity_color: item.user?.identity_color
+                  }}
+                  createdAt={item.created_at}
+                  deliveryChannel={item.delivery_channel || 'internal'}
+                  audioUrl={item.audio_url}
+                  caption={item.content}
+                  transcript={item.transcript || item.original_text}
+                />
               </div>
-
-              {item.itemType === 'comment' ? (
-                <div className="bg-white/[0.03] border border-white/5 p-3 rounded-xl rounded-tl-none shadow-sm group-hover:bg-white/[0.05] transition-all">
-                  <p className="text-[12.5px] text-white/60 leading-relaxed whitespace-pre-wrap font-dm">
-                    {renderContent(item.content)}
-                  </p>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-bold text-white/90">
+                    {item.user?.first_name} {item.user?.last_name}
+                  </span>
+                  <span className="text-[10px] text-white/20 font-medium">
+                    {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                  </span>
                 </div>
-              ) : (
-                <p className="text-[11px] text-white/30 italic font-dm">
-                  {item.description}
-                </p>
-              )}
-            </div>
+
+                {item.itemType === 'comment' ? (
+                  <div className="bg-white/[0.03] border border-white/5 p-3 rounded-xl rounded-tl-none shadow-sm group-hover:bg-white/[0.05] transition-all">
+                    <p className="text-[12.5px] text-white/60 leading-relaxed whitespace-pre-wrap font-dm">
+                      {renderContent(item.content)}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-white/30 italic font-dm">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         ))}
 

@@ -4,6 +4,11 @@ export const profileSchema = z.object({
  firstName: z.string().min(1, 'First name is required'),
  lastName: z.string().optional(),
  avatarUrl: z.string().url().optional().or(z.literal('')),
+ avatarPresetId: z.string().optional().or(z.literal('')),
+ jobTitle: z.string().optional().or(z.literal('')),
+ phone: z.string().optional().or(z.literal('')),
+ profilePhotoUrl: z.string().url().optional().or(z.literal('')),
+ identityColor: z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid hex color').optional(),
 })
 
 export type ProfileFormValues = z.infer<typeof profileSchema>

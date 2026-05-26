@@ -2,6 +2,7 @@
  * CRMActionHandler — implements CRM execution nodes for workflow runs.
  */
 import { createAdminClient } from '@/lib/supabase/server';
+import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 
 export interface CRMActionPayload {
   workspaceId: string;
@@ -49,6 +50,9 @@ export const CRMActionHandler = {
 
         case 'create_reminder':
           return await this.createReminder(supabase, payload.workspaceId, contactId, config);
+
+        case 'send_whatsapp_voice':
+          return await this.sendWhatsAppVoice(supabase, payload.workspaceId, contactId, config);
 
         default:
           return { success: false, error: `Unsupported CRM action type: ${actionType}` };
@@ -223,5 +227,118 @@ export const CRMActionHandler = {
       .single();
 
     return error ? { success: false, error: error.message } : { success: true, data };
+  },
+
+  async sendWhatsAppVoice(supabase: any, workspaceId: string, contactId: string | null, config: any) {
+    if (!contactId) return { success: false, error: 'Contact ID required' };
+    
+    // Fetch contact
+    const { data: contact } = await supabase
+     .from("contacts")
+     .select("phone, first_name")
+     .eq("id", contactId)
+     .single();
+
+    if (!contact?.phone) return { success: false, error: 'Contact has no phone number' };
+
+    // Fetch workspace settings
+    const { data: workspace } = await supabase
+     .from("workspaces")
+     .select("twilio_sid, twilio_token, twilio_number, name, whatsapp_transcript_enabled")
+     .eq("id", workspaceId)
+     .single();
+
+    // Fetch sender
+    let senderName = 'Team Member';
+    let senderJobTitle = 'AI Developer';
+    if (config.senderId) {
+      const { data: sender } = await supabase
+       .from("users")
+       .select("full_name, job_title")
+       .eq("id", config.senderId)
+       .single();
+      if (sender) {
+        senderName = sender.full_name || senderName;
+        senderJobTitle = sender.job_title || senderJobTitle;
+      }
+    }
+
+    const { sendSMS } = await import('@/lib/sms');
+
+    const cleanPhone = contact.phone.startsWith('+') ? contact.phone : `+${contact.phone}`;
+    const to = `whatsapp:${cleanPhone}`;
+    const from = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
+
+    // Message 1: Identity
+    const workspaceName = workspace?.name || 'LeadsMind';
+    const msg1Text = `Hi ${contact.first_name || 'there'}, this is ${senderName} — ${senderJobTitle} at ${workspaceName}. I have left you a quick voice message below 👇`;
+    
+    await sendSMS({
+      to,
+      message: msg1Text,
+      config: {
+        accountSid: workspace?.twilio_sid,
+        authToken: workspace?.twilio_token,
+        fromNumber: from,
+      }
+    });
+
+    // Small delay to ensure correct chronological sequence timing
+    await new Promise(r => setTimeout(r, 600));
+
+    // Message 2: Audio Content
+    const audioUrl = config.audioUrl || config.audio_url || '';
+    await sendSMS({
+      to,
+      message: "",
+      mediaUrl: audioUrl,
+      config: {
+        accountSid: workspace?.twilio_sid,
+        authToken: workspace?.twilio_token,
+        fromNumber: from,
+      }
+    });
+
+    // Message 3: Transcript Context
+    const transcript = config.transcript || config.original_text || '';
+    const sendTranscript = config.sendTranscript !== false && workspace?.whatsapp_transcript_enabled !== false;
+    
+    if (sendTranscript && transcript) {
+      await new Promise(r => setTimeout(r, 600));
+      const excerpt = transcript.slice(0, 200);
+      const msg3Text = `📝 Transcript: ${excerpt}${transcript.length > 200 ? '...' : ''}`;
+      
+      await sendSMS({
+        to,
+        message: msg3Text,
+        config: {
+          accountSid: workspace?.twilio_sid,
+          authToken: workspace?.twilio_token,
+          fromNumber: from,
+        }
+      });
+    }
+
+    // Log the activity to the CRM timeline feed
+    try {
+      await UnifiedActivityEngine.logActivity(
+        workspaceId,
+        config.senderId || null,
+        'contact',
+        contactId,
+        'voice_note',
+        `Sent voice note via WhatsApp.`,
+        {
+          channel: 'whatsapp',
+          audio_url: audioUrl,
+          transcript: transcript,
+          destination: cleanPhone
+        }
+      );
+    } catch (actErr) {
+      console.error('[CRMActionHandler] Failed to log WhatsApp voice activity:', actErr);
+    }
+
+    return { success: true };
   }
 };

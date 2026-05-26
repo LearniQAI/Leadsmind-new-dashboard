@@ -5,6 +5,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { VoiceNoteCard } from '@/components/common/VoiceNoteCard';
 
 interface ConversationThreadProps {
   conversation: any;
@@ -68,14 +69,49 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-8 z-10 common-scrollbar flex flex-col-reverse">
         <div className="flex flex-col space-y-2">
-          {conversation.messages?.slice().reverse().map((msg: any, i: number) => (
-            <MessageBubble 
-              key={i}
-              content={msg.content}
-              direction={msg.direction}
-              sentAt={msg.sent_at}
-            />
-          ))}
+          {conversation.messages?.slice().reverse().map((msg: any, i: number) => {
+            const isVoice = msg.audio_url || msg.import_type === 'voice';
+            if (isVoice) {
+              return (
+                <div key={i} className={cn(
+                  "flex w-full mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300",
+                  msg.direction === 'outbound' ? "justify-end" : "justify-start"
+                )}>
+                  <div className="max-w-[85%] w-full">
+                    <VoiceNoteCard
+                      sender={msg.direction === 'outbound' ? {
+                        first_name: "You",
+                        full_name: "You",
+                        profile_photo_url: null,
+                        job_title: "Workspace Member",
+                        identity_color: "#2563eb"
+                      } : {
+                        first_name: conversation.contacts?.first_name || "Contact",
+                        last_name: conversation.contacts?.last_name || "",
+                        full_name: conversation.contacts ? `${conversation.contacts.first_name} ${conversation.contacts.last_name}` : "Client",
+                        profile_photo_url: conversation.contacts?.profile_photo_url || null,
+                        job_title: "Client / Lead",
+                        identity_color: "#06b6d4"
+                      }}
+                      createdAt={msg.sent_at}
+                      deliveryChannel={msg.delivery_channel || conversation.platform || 'whatsapp'}
+                      audioUrl={msg.audio_url}
+                      caption={msg.content}
+                      transcript={msg.transcript || msg.original_text}
+                    />
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <MessageBubble 
+                key={i}
+                content={msg.content}
+                direction={msg.direction}
+                sentAt={msg.sent_at}
+              />
+            );
+          })}
         </div>
       </div>
 
