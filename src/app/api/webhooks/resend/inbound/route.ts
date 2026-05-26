@@ -68,13 +68,18 @@ export async function POST(req: NextRequest) {
             const fullEmail = await resendResponse.json();
             fetchedText = fullEmail.text || '';
             fetchedHtml = fullEmail.html || '';
-            console.log('[DEBUG-FETCH] Successfully fetched body. Text Length:', fetchedText.length, 'HTML Length:', fetchedHtml.length);
+            console.log('[DEBUG-FETCH] Successfully fetched body. Text Length:', fetchedText?.length, 'HTML Length:', fetchedHtml?.length);
           } else {
-            console.error('[DEBUG-FETCH] Failed to fetch full email:', await resendResponse.text());
+            const errText = await resendResponse.text();
+            console.error('[DEBUG-FETCH] Failed to fetch full email:', errText);
+            fetchedText = `[DEBUG API ERROR]: HTTP ${resendResponse.status} - ${errText}`;
           }
-        } catch (fetchErr) {
+        } catch (fetchErr: any) {
           console.error('[DEBUG-FETCH] Network exception:', fetchErr);
+          fetchedText = `[DEBUG EXCEPTION]: ${fetchErr.message}`;
         }
+      } else {
+        fetchedText = `[DEBUG MISSING] No email_id found in payload`;
       }
 
       // 2. Prioritize body extraction
@@ -98,13 +103,8 @@ export async function POST(req: NextRequest) {
 
       console.log('[DEBUG-2] Raw Extracted Text Before Cleaning:', rawText.substring(0, 100));
 
-      // 3. Clean message body (TEMPORARILY DISABLED AGGRESSIVE STRIPPING)
-      // We only strip basic HTML tags to prevent completely wiping the message accidentally
-      const cleanedText = rawText
-        .replace(/<br\s*\/?>/gi, '\n') // Preserve line breaks
-        .replace(/<\/p>/gi, '\n\n') // Preserve paragraph breaks
-        .replace(/<[^>]*>?/gm, '') // Strip remaining HTML tags
-        .trim();
+      // 3. Clean message body (COMPLETELY DISABLED STRIPPING FOR DEBUG)
+      const cleanedText = rawText.trim();
 
       console.log('[DEBUG-3] Cleaned Text After Stripping:', cleanedText.substring(0, 100));
 
