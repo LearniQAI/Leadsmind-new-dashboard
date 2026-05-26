@@ -52,18 +52,40 @@ export async function POST(req: NextRequest) {
       // 1. Log RAW Payload
       console.log('[DEBUG-0] RAW INBOUND DATA:', JSON.stringify({
         subject: emailData.subject,
-        hasText: !!emailData.text,
-        textType: typeof emailData.text,
-        textSnippet: emailData.text ? (typeof emailData.text === 'string' ? emailData.text.substring(0, 50) : '[NOT STRING]') : null,
-        hasHtml: !!emailData.html,
-        htmlType: typeof emailData.html,
-        htmlSnippet: emailData.html ? (typeof emailData.html === 'string' ? emailData.html.substring(0, 50) : '[NOT STRING]') : null,
         payloadKeys: Object.keys(emailData)
       }, null, 2));
 
+      // 1.5 Fetch the full email body from Resend API
+      let fetchedText = '';
+      let fetchedHtml = '';
+      if (emailData.email_id) {
+        try {
+          console.log(`[DEBUG-FETCH] Fetching full body for email_id: ${emailData.email_id}`);
+          const resendResponse = await fetch(`https://api.resend.com/emails/${emailData.email_id}`, {
+            headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` }
+          });
+          if (resendResponse.ok) {
+            const fullEmail = await resendResponse.json();
+            fetchedText = fullEmail.text || '';
+            fetchedHtml = fullEmail.html || '';
+            console.log('[DEBUG-FETCH] Successfully fetched body. Text Length:', fetchedText.length, 'HTML Length:', fetchedHtml.length);
+          } else {
+            console.error('[DEBUG-FETCH] Failed to fetch full email:', await resendResponse.text());
+          }
+        } catch (fetchErr) {
+          console.error('[DEBUG-FETCH] Network exception:', fetchErr);
+        }
+      }
+
       // 2. Prioritize body extraction
       let rawText = '';
-      if (emailData.text && typeof emailData.text === 'string' && emailData.text.trim().length > 0) {
+      if (fetchedText && fetchedText.trim().length > 0) {
+        console.log('[DEBUG-1] Selected fetchedText as source');
+        rawText = fetchedText;
+      } else if (fetchedHtml && fetchedHtml.trim().length > 0) {
+        console.log('[DEBUG-1] Selected fetchedHtml as source');
+        rawText = fetchedHtml;
+      } else if (emailData.text && typeof emailData.text === 'string' && emailData.text.trim().length > 0) {
         console.log('[DEBUG-1] Selected emailData.text as source');
         rawText = emailData.text;
       } else if (emailData.html && typeof emailData.html === 'string' && emailData.html.trim().length > 0) {
