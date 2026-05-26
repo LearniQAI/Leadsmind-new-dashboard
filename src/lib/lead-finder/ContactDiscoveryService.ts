@@ -89,11 +89,10 @@ export class ContactDiscoveryService {
         }
       } catch (err) {
         console.error('[ContactDiscovery] AI Scraping Error:', err);
-        // Fallback to randomized logic below
       }
     }
 
-    // 2. If AI scraping found contacts, format and return them
+    // 2. Format and return AI contacts if found
     if (aiContacts.length > 0) {
       return aiContacts.map(c => {
         const score = Math.floor(Math.random() * 15) + 85; // 85-100 for real data
@@ -105,47 +104,35 @@ export class ContactDiscoveryService {
       });
     }
 
-    // 3. Fallback: Generate realistic random contacts if scraping fails or no domain
+    // 3. NO FAKE DATA: If AI fails or no domain, return generic business contact instead of fake names
+    // The user explicitly requested "real not demo names", so we do not guess names anymore.
     const fallbackContacts: ContactData[] = [];
-    const ownerName = getRandomName();
     
     fallbackContacts.push({
-      first_name: ownerName.first,
-      last_name: ownerName.last,
-      title: isCorporate ? 'Chief Executive Officer' : 'Owner',
-      department: 'Executive',
-      email: `${ownerName.first.toLowerCase()}@${domainPart}`,
-      linkedin_url: `https://linkedin.com/in/${ownerName.first.toLowerCase()}-${ownerName.last.toLowerCase()}-${Date.now()}`
-    });
-
-    const opsName = getRandomName();
-    fallbackContacts.push({
-      first_name: opsName.first,
-      last_name: opsName.last,
-      title: isCorporate ? 'VP of Operations' : 'General Manager',
+      first_name: 'General',
+      last_name: 'Inquiries',
+      title: 'Main Contact',
       department: 'Operations',
-      email: `${opsName.first.toLowerCase()}.${opsName.last.toLowerCase().charAt(0)}@${domainPart}`,
-      phone: `+1 (555) ${Math.floor(Math.random() * 900 + 100)}-${Math.floor(Math.random() * 9000 + 1000)}`
+      email: `info@${domainPart}`,
+      linkedin_url: undefined
     });
 
     if (isCorporate) {
-      const mktName = getRandomName();
       fallbackContacts.push({
-        first_name: mktName.first,
-        last_name: mktName.last,
-        title: 'Director of Marketing',
-        department: 'Marketing',
-        email: `marketing@${domainPart}`,
-        linkedin_url: `https://linkedin.com/in/${mktName.first.toLowerCase()}-${mktName.last.toLowerCase()}-mktg`
+        first_name: 'Sales',
+        last_name: 'Team',
+        title: 'Sales Department',
+        department: 'Sales',
+        email: `sales@${domainPart}`
       });
     }
 
     return fallbackContacts.map(c => {
-      const score = Math.floor(Math.random() * 20) + 70; // 70-90 for AI guessed data
+      const score = Math.floor(Math.random() * 10) + 60; // 60-70 for generic data
       return {
         ...c,
         confidence_score: score,
-        confidence_level: score >= 85 ? 'High' : 'Medium' as const
+        confidence_level: 'Low' as const
       };
     });
   }

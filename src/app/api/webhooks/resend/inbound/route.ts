@@ -57,35 +57,64 @@ export async function POST(req: NextRequest) {
         payloadKeys: Object.keys(emailData)
       }, null, 2));
 
-      // 2. Prioritize body extraction directly from the webhook payload
-      let rawText = '';
-      if (emailData.text && typeof emailData.text === 'string' && emailData.text.trim().length > 0) {
-        console.log('[DEBUG-1] Selected emailData.text as source');
-        rawText = emailData.text;
-      } else if (emailData.html && typeof emailData.html === 'string' && emailData.html.trim().length > 0) {
-        console.log('[DEBUG-1] Selected emailData.html as source');
-        // Simple HTML stripping
-        rawText = emailData.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      } else if (emailData.subject && typeof emailData.subject === 'string' && emailData.subject.trim().length > 0) {
-        console.log('[DEBUG-1] Selected emailData.subject as source (FALLBACK because body is empty)');
-        rawText = emailData.subject;
+      // 1.5 Fetch the full email body from Resend API
+      // Inbound webhooks do NOT contain the body. We must fetch it using the email_id.
+      // Note: Test events from the Resend Dashboard will return 404 because the fake ID doesn't exist.
+      let fetchedText = '';
+      let fetchedHtml = '';
+      if (emailData.email_id) {
+        try {
+          const resendResponse = await fetch(`https://api.resend.com/emails/${emailData.email_id}`, {
+            headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` }
+          });
+          
+          if (resendResponse.ok) {
+            const fullEmail = await resendResponse.json();
+            fetchedText = fullEmail.text || '';
+            fetchedHtml = fullEmail.html || '';
+            console.log('[DEBUG-FETCH] Successfully fetched full email body');
+          } else {
+            console.error(`[DEBUG-FETCH] Failed to fetch email (Status: ${resendResponse.status}). If 404, this is normal for Dashboard Test events.`);
+          }
+        } catch (err) {
+           console.error('[DEBUG-FETCH] Error fetching email:', err);
+        }
       }
 
-      console.log('[DEBUG-2] Raw Extracted Text Before Cleaning:', rawText.substring(0, 100));
+      // 2. Extract body
+      let bodyText = '';
+      if (fetchedText && fetchedText.trim().length > 0) {
+        bodyText = fetchedText.trim();
+      } else if (fetchedHtml && fetchedHtml.trim().length > 0) {
+        bodyText = fetchedHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      } else if (emailData.text) {
+        bodyText = emailData.text.trim();
+      } else if (emailData.html) {
+        bodyText = emailData.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      }
 
       // 3. Clean message body (strip forwarded quotes and signatures)
-      // Basic stripping for replies
-      let cleanedText = rawText.split(/On\s+.*wrote:/i)[0]; // Gmail style
-      cleanedText = cleanedText.split(/From:/i)[0]; // Outlook style
-      cleanedText = cleanedText.split(/_{10,}/)[0]; // Underscore separators
-      cleanedText = cleanedText.trim();
+      if (bodyText) {
+        bodyText = bodyText.split(/On\s+.*wrote:/i)[0]; // Gmail style
+        bodyText = bodyText.split(/From:/i)[0]; // Outlook style
+        bodyText = bodyText.split(/_{10,}/)[0]; // Underscore separators
+        bodyText = bodyText.trim();
+      }
 
-      console.log('[DEBUG-3] Cleaned Text After Stripping:', cleanedText.substring(0, 100));
+      // 4. Combine Subject and Body
+      let rawText = '';
+      if (emailData.subject && bodyText) {
+        rawText = `Subj: ${emailData.subject}\n\n${bodyText}`;
+      } else if (bodyText) {
+        rawText = bodyText;
+      } else if (emailData.subject) {
+        rawText = `Subj: ${emailData.subject}`;
+      }
 
-      const forcedMessage = cleanedText || '[BODY COMPLETELY EMPTY]';
+      const forcedMessage = rawText || '[BODY COMPLETELY EMPTY]';
       console.log('[DEBUG-4] EXACT SMS PAYLOAD BEING SENT TO TWILIO:', JSON.stringify({ message: forcedMessage }));
 
-      if (!cleanedText && forcedMessage === '[BODY COMPLETELY EMPTY]') {
+      if (!rawText && forcedMessage === '[BODY COMPLETELY EMPTY]') {
         console.error('[Resend Webhook] Empty message body after stripping');
         return NextResponse.json({ error: 'Empty message body' }, { status: 400 });
       }
