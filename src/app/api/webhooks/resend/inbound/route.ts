@@ -49,44 +49,47 @@ export async function POST(req: NextRequest) {
       }
       const targetPhone = phoneMatch[1];
 
-      // 1. Log the inbound payload structure to verify
-      console.log('[Resend Webhook] Inbound Payload Data:', JSON.stringify({
+      // 1. Log RAW Payload
+      console.log('[DEBUG-0] RAW INBOUND DATA:', JSON.stringify({
         subject: emailData.subject,
         hasText: !!emailData.text,
+        textType: typeof emailData.text,
+        textSnippet: emailData.text ? (typeof emailData.text === 'string' ? emailData.text.substring(0, 50) : '[NOT STRING]') : null,
         hasHtml: !!emailData.html,
-        textLength: emailData.text?.length || 0,
-        htmlLength: emailData.html?.length || 0
+        htmlType: typeof emailData.html,
+        htmlSnippet: emailData.html ? (typeof emailData.html === 'string' ? emailData.html.substring(0, 50) : '[NOT STRING]') : null,
+        payloadKeys: Object.keys(emailData)
       }, null, 2));
 
       // 2. Prioritize body extraction
       let rawText = '';
-      if (emailData.text && emailData.text.trim().length > 0) {
+      if (emailData.text && typeof emailData.text === 'string' && emailData.text.trim().length > 0) {
+        console.log('[DEBUG-1] Selected emailData.text as source');
         rawText = emailData.text;
-      } else if (emailData.html && emailData.html.trim().length > 0) {
+      } else if (emailData.html && typeof emailData.html === 'string' && emailData.html.trim().length > 0) {
+        console.log('[DEBUG-1] Selected emailData.html as source');
         rawText = emailData.html;
-      } else if (emailData.subject && emailData.subject.trim().length > 0) {
+      } else if (emailData.subject && typeof emailData.subject === 'string' && emailData.subject.trim().length > 0) {
+        console.log('[DEBUG-1] Selected emailData.subject as source (FALLBACK)');
         rawText = emailData.subject;
       }
 
-      console.log('[Extraction Debug] Extracted Subject:', emailData.subject);
-      console.log('[Extraction Debug] Extracted Body (Before Clean):', rawText.substring(0, 200) + (rawText.length > 200 ? '...' : ''));
+      console.log('[DEBUG-2] Raw Extracted Text Before Cleaning:', rawText.substring(0, 100));
 
-      // 3. Clean message body
+      // 3. Clean message body (TEMPORARILY DISABLED AGGRESSIVE STRIPPING)
+      // We only strip basic HTML tags to prevent completely wiping the message accidentally
       const cleanedText = rawText
-        .split(/On\s+.*wrote:/i)[0] // English reply quote
-        .split(/--- Original Message ---/i)[0]
-        .split(/_{10,}/)[0]
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // Strip style blocks
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Strip script blocks
         .replace(/<br\s*\/?>/gi, '\n') // Preserve line breaks
         .replace(/<\/p>/gi, '\n\n') // Preserve paragraph breaks
         .replace(/<[^>]*>?/gm, '') // Strip remaining HTML tags
-        .replace(/&nbsp;/g, ' ') // Clean common HTML entities
         .trim();
 
-      console.log('[Extraction Debug] Final SMS Payload:', cleanedText);
+      console.log('[DEBUG-3] Cleaned Text After Stripping:', cleanedText.substring(0, 100));
 
-      if (!cleanedText) {
+      const forcedMessage = cleanedText || '[BODY COMPLETELY EMPTY]';
+      console.log('[DEBUG-4] EXACT SMS PAYLOAD BEING SENT TO TWILIO:', JSON.stringify({ message: forcedMessage }));
+
+      if (!cleanedText && forcedMessage === '[BODY COMPLETELY EMPTY]') {
         console.error('[Resend Webhook] Empty message body after stripping');
         return NextResponse.json({ error: 'Empty message body' }, { status: 400 });
       }
@@ -97,7 +100,7 @@ export async function POST(req: NextRequest) {
         console.log(`[Twilio Debug] SID Length: ${process.env.TWILIO_ACCOUNT_SID?.length}, Token Length: ${process.env.TWILIO_AUTH_TOKEN?.length}`);
         console.log(`[Twilio Debug] SID Prefix: ${process.env.TWILIO_ACCOUNT_SID?.substring(0, 4)}`);
         
-        const smsResult = await sendSMS({ to: targetPhone, message: cleanedText });
+        const smsResult = await sendSMS({ to: targetPhone, message: forcedMessage });
         smsSid = smsResult.sid;
       } catch (smsErr: any) {
         console.error('[Resend Webhook] Twilio SMS failed:', smsErr);
