@@ -67,6 +67,9 @@ export async function POST(req: NextRequest) {
       // Send SMS via existing Twilio infrastructure
       let smsSid = '';
       try {
+        console.log(`[Twilio Debug] SID Length: ${process.env.TWILIO_ACCOUNT_SID?.length}, Token Length: ${process.env.TWILIO_AUTH_TOKEN?.length}`);
+        console.log(`[Twilio Debug] SID Prefix: ${process.env.TWILIO_ACCOUNT_SID?.substring(0, 4)}`);
+        
         const smsResult = await sendSMS({ to: targetPhone, message: cleanedText });
         smsSid = smsResult.sid;
       } catch (smsErr: any) {
