@@ -202,7 +202,7 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
       email: null, // Usually not provided by places API easily
       phone: lead.phone,
       source: 'Lead Finder',
-      tags: [...(lead.tags || []), ...tags, 'Lead Finder'],
+      tags: [...(lead.smart_tags || []), ...(lead.tags || []), ...tags, 'Lead Finder'],
     };
 
     const { error: contactError } = await supabase.from('contacts').insert(contactPayload);

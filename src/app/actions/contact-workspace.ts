@@ -129,19 +129,76 @@ export async function assignContactToPipeline(contactId: string) {
   const supabase = await createServerClient();
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData?.user?.id;
-  if (!userId) return { success: false, error: 'Unauthorized' };
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!userId || !workspaceId) return { success: false, error: 'Unauthorized' };
 
+  // 1. Fetch Contact & Lead Data
+  const { data: contact, error: contactError } = await supabase
+    .from('lead_contacts')
+    .select('*, lead_finder_results(*)')
+    .eq('id', contactId)
+    .single();
+
+  if (contactError || !contact) return { success: false, error: 'Contact not found' };
+
+  const lead = contact.lead_finder_results;
+
+  // 2. Fetch or select pipeline stage
+  const { data: stages } = await supabase
+    .from('pipeline_stages')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .order('position', { ascending: true })
+    .limit(1);
+    
+  if (!stages || stages.length === 0) {
+    return { success: false, error: 'No pipeline stages found. Please create a pipeline first.' };
+  }
+  const finalStageId = stages[0].id;
+
+  // 3. Create CRM Contact
+  const { data: crmContact } = await supabase
+    .from('contacts')
+    .insert({
+      workspace_id: workspaceId,
+      first_name: contact.first_name || lead?.business_name || 'Unknown Contact',
+      last_name: contact.last_name || null,
+      email: contact.email || null,
+      phone: lead?.phone || null,
+      source: 'Lead Finder',
+      tags: [...(lead?.smart_tags || []), 'Lead Finder', 'Enriched Contact']
+    })
+    .select('id')
+    .single();
+
+  // 4. Create CRM Opportunity
+  if (crmContact) {
+    await supabase
+      .from('opportunities')
+      .insert({
+        workspace_id: workspaceId,
+        contact_id: crmContact.id,
+        stage_id: finalStageId,
+        title: `${contact.first_name || lead?.business_name || 'Contact'} Opportunity`,
+        value: 0,
+        status: 'open',
+        position: 0
+      });
+  }
+
+  // 5. Update local status
   const { error } = await supabase
     .from('lead_contacts')
     .update({ 
-      pipeline_id: 'default-pipeline', 
       status: 'Qualified' 
     })
     .eq('id', contactId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) console.error('Failed to update lead contact status:', error);
 
-  await logActivity(supabase, contactId, userId, 'crm_push', 'Pushed contact to CRM Opportunity');
+  await logActivity(supabase, contactId, userId, 'crm_push', 'Pushed contact to CRM Pipeline');
   revalidatePath(`/lead-finder/contact/${contactId}`);
+  revalidatePath('/pipelines');
+  revalidatePath('/contacts');
   return { success: true };
 }

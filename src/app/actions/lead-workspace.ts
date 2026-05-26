@@ -150,21 +150,88 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
   const supabase = await createServerClient();
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData?.user?.id;
-  if (!userId) return { success: false, error: 'Unauthorized' };
+  const workspaceId = await getCurrentWorkspaceId();
+  
+  if (!userId || !workspaceId) return { success: false, error: 'Unauthorized' };
 
-  const { error } = await supabase
+  // 1. Fetch the lead details
+  const { data: lead, error: leadError } = await supabase
+    .from('lead_finder_results')
+    .select('*')
+    .eq('id', leadId)
+    .single();
+
+  if (leadError || !lead) return { success: false, error: leadError?.message || 'Lead not found' };
+
+  // 2. Fetch or select pipeline stage
+  let finalStageId = stageId;
+  if (stageId === 'default-stage-id') {
+    const { data: stages } = await supabase
+      .from('pipeline_stages')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .order('position', { ascending: true })
+      .limit(1);
+      
+    if (stages && stages.length > 0) {
+      finalStageId = stages[0].id;
+    } else {
+      return { success: false, error: 'No pipeline stages found in this workspace. Please create a pipeline first.' };
+    }
+  }
+
+  // 3. Create Contact in Legacy CRM
+  const { data: contact, error: contactError } = await supabase
+    .from('contacts')
+    .insert({
+      workspace_id: workspaceId,
+      first_name: lead.business_name || 'Unknown Company',
+      last_name: null,
+      email: null,
+      phone: lead.phone || null,
+      source: 'Lead Finder',
+      tags: [...(lead.smart_tags || []), 'Lead Finder']
+    })
+    .select('id')
+    .single();
+
+  if (contactError) {
+    console.error('Failed to create CRM contact:', contactError);
+    return { success: false, error: 'Failed to create contact in CRM' };
+  }
+
+  // 4. Create Opportunity
+  const { error: oppError } = await supabase
+    .from('opportunities')
+    .insert({
+      workspace_id: workspaceId,
+      contact_id: contact.id,
+      stage_id: finalStageId,
+      title: `${lead.business_name || 'Lead'} Opportunity`,
+      value: 0,
+      status: 'open',
+      position: 0
+    });
+
+  if (oppError) {
+    console.error('Failed to create opportunity:', oppError);
+    return { success: false, error: 'Failed to create opportunity' };
+  }
+
+  // 5. Update the lead_finder_results row to show it's linked
+  const { error: updateError } = await supabase
     .from('lead_finder_results')
     .update({ 
-      pipeline_id: pipelineId, 
-      pipeline_stage_id: stageId,
       status: 'added_to_crm',
-      qualification_status: 'Contacted' 
+      qualification_status: 'Contacted'
     })
     .eq('id', leadId);
 
-  if (error) return { success: false, error: error.message };
+  if (updateError) console.error('Failed to update lead status:', updateError);
 
   await logActivity(supabase, leadId, userId, 'crm_push', 'Pushed lead into CRM Pipeline');
   revalidatePath(`/lead-finder/lead/${leadId}`);
+  revalidatePath('/pipelines');
+  revalidatePath('/contacts');
   return { success: true };
 }
