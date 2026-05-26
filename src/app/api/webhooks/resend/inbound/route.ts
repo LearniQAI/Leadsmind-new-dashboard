@@ -64,30 +64,17 @@ export async function POST(req: NextRequest) {
       let fetchedHtml = '';
       if (emailData.email_id) {
         try {
-          const { Resend } = await import('resend');
-          const resend = new Resend(process.env.RESEND_API_KEY!);
+          const resendResponse = await fetch(`https://api.resend.com/emails/receiving/${emailData.email_id}`, {
+            headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` }
+          });
           
-          // First attempt using official SDK
-          const { data: fullEmail, error: fetchError } = await resend.emails.get(emailData.email_id);
-          
-          if (fullEmail) {
-            fetchedText = fullEmail.text || '';
-            fetchedHtml = fullEmail.html || '';
-            console.log('[DEBUG-FETCH] Successfully fetched body using Resend SDK');
+          if (resendResponse.ok) {
+            const emailJson = await resendResponse.json();
+            fetchedText = emailJson.text || '';
+            fetchedHtml = emailJson.html || '';
+            console.log('[DEBUG-FETCH] Successfully fetched inbound email body');
           } else {
-            console.log('[DEBUG-FETCH] SDK failed, trying manual REST fetch...');
-            const resendResponse = await fetch(`https://api.resend.com/emails/${emailData.email_id}`, {
-              headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` }
-            });
-            
-            if (resendResponse.ok) {
-              const emailJson = await resendResponse.json();
-              fetchedText = emailJson.text || '';
-              fetchedHtml = emailJson.html || '';
-              console.log('[DEBUG-FETCH] Successfully fetched body via REST');
-            } else {
-              console.error(`[DEBUG-FETCH] Failed to fetch email (Status: ${resendResponse.status}). Body is completely empty.`);
-            }
+            console.error(`[DEBUG-FETCH] Failed to fetch email from Receiving API (Status: ${resendResponse.status}). Body will be empty.`);
           }
         } catch (err) {
            console.error('[DEBUG-FETCH] Error fetching email:', err);
