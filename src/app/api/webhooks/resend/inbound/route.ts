@@ -1,0 +1,203 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { Webhook } from 'svix';
+import { createClient } from '@supabase/supabase-js';
+import { sendSMS } from '@/lib/sms';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function POST(req: NextRequest) {
+  try {
+    const payload = await req.text();
+    const headers = {
+      'svix-id': req.headers.get('svix-id') || '',
+      'svix-timestamp': req.headers.get('svix-timestamp') || '',
+      'svix-signature': req.headers.get('svix-signature') || '',
+    };
+
+    const secret = process.env.RESEND_WEBHOOK_SECRET;
+    if (!secret) {
+      console.error('[Resend Webhook] Missing RESEND_WEBHOOK_SECRET');
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+
+    const wh = new Webhook(secret);
+    let event: any;
+
+    try {
+      event = wh.verify(payload, headers);
+    } catch (err: any) {
+      console.error('[Resend Webhook] Verification failed:', err.message);
+      return NextResponse.json({ error: 'Verification failed' }, { status: 401 });
+    }
+
+    if (event.type === 'email.received') {
+      const emailData = event.data;
+      const from = emailData.from;
+      const toArray = Array.isArray(emailData.to) ? emailData.to : [emailData.to];
+      const to = toArray[0] || '';
+      
+      const messageId = emailData.headers?.['Message-ID'] || emailData.id || `resend_${Date.now()}`;
+      
+      // Extract target phone number
+      const phoneMatch = to.match(/(\+?\d+)@sms\.leadsmind\.io/i);
+      if (!phoneMatch) {
+        console.error(`[Resend Webhook] Invalid target address format: ${to}`);
+        return NextResponse.json({ error: 'Invalid target address' }, { status: 400 });
+      }
+      const targetPhone = phoneMatch[1];
+
+      // 1. Log RAW Payload
+      console.log('[DEBUG-0] RAW INBOUND DATA:', JSON.stringify({
+        subject: emailData.subject,
+        payloadKeys: Object.keys(emailData)
+      }, null, 2));
+
+      // 1.5 Fetch the full email body from Resend API
+      let fetchedText = '';
+      let fetchedHtml = '';
+      if (emailData.email_id) {
+        try {
+          console.log(`[DEBUG-FETCH] Fetching full body for email_id: ${emailData.email_id}`);
+          const resendResponse = await fetch(`https://api.resend.com/emails/${emailData.email_id}`, {
+            headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` }
+          });
+          if (resendResponse.ok) {
+            const fullEmail = await resendResponse.json();
+            fetchedText = fullEmail.text || '';
+            fetchedHtml = fullEmail.html || '';
+            console.log('[DEBUG-FETCH] Successfully fetched body. Text Length:', fetchedText.length, 'HTML Length:', fetchedHtml.length);
+          } else {
+            console.error('[DEBUG-FETCH] Failed to fetch full email:', await resendResponse.text());
+          }
+        } catch (fetchErr) {
+          console.error('[DEBUG-FETCH] Network exception:', fetchErr);
+        }
+      }
+
+      // 2. Prioritize body extraction
+      let rawText = '';
+      if (fetchedText && fetchedText.trim().length > 0) {
+        console.log('[DEBUG-1] Selected fetchedText as source');
+        rawText = fetchedText;
+      } else if (fetchedHtml && fetchedHtml.trim().length > 0) {
+        console.log('[DEBUG-1] Selected fetchedHtml as source');
+        rawText = fetchedHtml;
+      } else if (emailData.text && typeof emailData.text === 'string' && emailData.text.trim().length > 0) {
+        console.log('[DEBUG-1] Selected emailData.text as source');
+        rawText = emailData.text;
+      } else if (emailData.html && typeof emailData.html === 'string' && emailData.html.trim().length > 0) {
+        console.log('[DEBUG-1] Selected emailData.html as source');
+        rawText = emailData.html;
+      } else if (emailData.subject && typeof emailData.subject === 'string' && emailData.subject.trim().length > 0) {
+        console.log('[DEBUG-1] Selected emailData.subject as source (FALLBACK)');
+        rawText = emailData.subject;
+      }
+
+      console.log('[DEBUG-2] Raw Extracted Text Before Cleaning:', rawText.substring(0, 100));
+
+      // 3. Clean message body (TEMPORARILY DISABLED AGGRESSIVE STRIPPING)
+      // We only strip basic HTML tags to prevent completely wiping the message accidentally
+      const cleanedText = rawText
+        .replace(/<br\s*\/?>/gi, '\n') // Preserve line breaks
+        .replace(/<\/p>/gi, '\n\n') // Preserve paragraph breaks
+        .replace(/<[^>]*>?/gm, '') // Strip remaining HTML tags
+        .trim();
+
+      console.log('[DEBUG-3] Cleaned Text After Stripping:', cleanedText.substring(0, 100));
+
+      const forcedMessage = cleanedText || '[BODY COMPLETELY EMPTY]';
+      console.log('[DEBUG-4] EXACT SMS PAYLOAD BEING SENT TO TWILIO:', JSON.stringify({ message: forcedMessage }));
+
+      if (!cleanedText && forcedMessage === '[BODY COMPLETELY EMPTY]') {
+        console.error('[Resend Webhook] Empty message body after stripping');
+        return NextResponse.json({ error: 'Empty message body' }, { status: 400 });
+      }
+
+      // Send SMS via existing Twilio infrastructure
+      let smsSid = '';
+      try {
+        console.log(`[Twilio Debug] SID Length: ${process.env.TWILIO_ACCOUNT_SID?.length}, Token Length: ${process.env.TWILIO_AUTH_TOKEN?.length}`);
+        console.log(`[Twilio Debug] SID Prefix: ${process.env.TWILIO_ACCOUNT_SID?.substring(0, 4)}`);
+        
+        const smsResult = await sendSMS({ to: targetPhone, message: forcedMessage });
+        smsSid = smsResult.sid;
+      } catch (smsErr: any) {
+        console.error('[Resend Webhook] Twilio SMS failed:', smsErr);
+        return NextResponse.json({ error: 'Failed to relay SMS' }, { status: 500 });
+      }
+
+      // Resolve CRM contact and log conversation
+      const { data: contact } = await supabaseAdmin
+        .from('contacts')
+        .select('id, workspace_id')
+        .eq('phone', targetPhone)
+        .limit(1)
+        .single();
+
+      if (contact) {
+        let conversationId = null;
+        
+        // Find existing SMS conversation
+        const { data: conv } = await supabaseAdmin
+          .from('conversations')
+          .select('id')
+          .eq('contact_id', contact.id)
+          .eq('platform', 'sms')
+          .limit(1)
+          .single();
+
+        if (conv) {
+          conversationId = conv.id;
+          // Update last_message_at
+          await supabaseAdmin
+            .from('conversations')
+            .update({ last_message_at: new Date().toISOString() })
+            .eq('id', conversationId);
+        } else {
+          // Create new conversation
+          const { data: newConv } = await supabaseAdmin
+            .from('conversations')
+            .insert({
+              workspace_id: contact.workspace_id,
+              contact_id: contact.id,
+              platform: 'sms',
+              title: 'SMS Conversation',
+              last_message_at: new Date().toISOString()
+            })
+            .select('id')
+            .single();
+            
+          if (newConv) conversationId = newConv.id;
+        }
+
+        if (conversationId) {
+          // Log the message into existing messaging table
+          await supabaseAdmin
+            .from('messages')
+            .insert({
+              workspace_id: contact.workspace_id,
+              conversation_id: conversationId,
+              direction: 'outbound',
+              content: cleanedText,
+              status: 'sent',
+              bridge_metadata: {
+                resend_message_id: messageId,
+                twilio_sid: smsSid,
+                sender_email: from
+              }
+            });
+        }
+      } else {
+        console.warn(`[Resend Webhook] Contact not found for phone ${targetPhone}, skipping CRM log`);
+      }
+    }
+
+    return NextResponse.json({ received: true });
+  } catch (error: any) {
+    console.error('[Resend Webhook] Unhandled error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

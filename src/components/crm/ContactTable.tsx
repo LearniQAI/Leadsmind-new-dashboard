@@ -66,16 +66,19 @@ export function ContactTable({
     }),
     columnHelper.accessor('first_name', {
       header: 'Lead Name',
-      cell: (info) => (
+      cell: (info) => {
+        const first = info.row.original.first_name?.[0] || '?';
+        const last = info.row.original.last_name?.[0] || '';
+        return (
         <div className="flex items-center gap-2.5 cursor-pointer group">
-          <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[11px] font-bold text-[#eef2ff] font-space-grotesk">
-            {info.row.original.first_name[0]}{info.row.original.last_name[0]}
+          <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[11px] font-bold text-[#eef2ff] font-space-grotesk uppercase">
+            {first}{last}
           </div>
           <span className="text-[13px] font-semibold text-[#eef2ff] group-hover:text-[#3b82f6] transition-colors font-dm-sans">
-            {info.getValue()} {info.row.original.last_name}
+            {info.row.original.first_name || 'Unknown'} {info.row.original.last_name || ''}
           </span>
         </div>
-      ),
+      )},
     }),
     columnHelper.accessor('email', {
       header: 'Email Address',
