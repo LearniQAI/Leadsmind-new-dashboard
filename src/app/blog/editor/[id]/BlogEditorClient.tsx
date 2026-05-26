@@ -8,7 +8,8 @@ import { BlogEditorSettings } from '@/components/blog/editor/BlogEditorSettings'
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import MetaData from '@/hooks/useMetaData';
 import { uploadBlogMedia } from '@/lib/mediaUpload';
-import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, AlertCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, AlertCircle, ExternalLink, Sparkles } from 'lucide-react';
+import AIAssistantSidebar from '@/components/content-studio/AIAssistantSidebar';
 
 interface BlogEditorClientProps {
   post: any;
@@ -27,6 +28,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
   const [showImageModal, setShowImageModal] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
   
   // Image modal state fields
   const [imgFile, setImgFile] = useState<File | null>(null);
@@ -210,46 +212,61 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
         <div className="flex flex-col min-h-screen bg-[#04091a]">
           {/* Header */}
           {!isZenMode && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 px-6 py-4 bg-[#080f28]">
-              <div className="flex items-center gap-3">
-                <button onClick={() => router.push('/blog/manage')} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition">
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-                <div>
-                  <h1 className="font-space-grotesk text-xl font-bold text-white uppercase tracking-tight">
-                    Post <span className="text-primary">Writer</span>
-                  </h1>
-                  <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-semibold mt-0.5">
-                    Content Orchestration & SEO Delivery
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                {saveStatus && (
-                  <span className="text-xs text-white/50 bg-[#0c1535] border border-white/5 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    {saveStatus}
-                  </span>
-                )}
+            <div className="border-b border-white/10 bg-[#080f28]">
+              <div className="max-w-7xl mx-auto w-full px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 
-                <a
-                  href={`/blog/${post.slug}${post.status !== 'published' ? '?preview=1' : ''}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-[#0c1535] border border-white/10 text-white/70 hover:text-white text-xs font-bold px-4 py-2 rounded-lg transition flex items-center gap-2"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  {post.status === 'published' ? 'View Post' : 'Preview Draft'}
-                </a>
-                <button
-                  onClick={handleManualSave}
-                  disabled={isSaving}
-                  className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  Save Changes
-                </button>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => router.push('/blog/manage')} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition">
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  <div>
+                    <h1 className="font-space-grotesk text-xl font-bold text-white uppercase tracking-tight">
+                      Post <span className="text-primary">Writer</span>
+                    </h1>
+                    <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-semibold mt-0.5">
+                      Content Orchestration & SEO Delivery
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                  {saveStatus && (
+                    <span className="text-xs text-white/50 bg-[#0c1535] border border-white/5 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      {saveStatus}
+                    </span>
+                  )}
+                  
+                  <a
+                    href={`/blog/${post.slug}${post.status !== 'published' ? '?preview=1' : ''}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-[#0c1535] border border-white/10 text-white/70 hover:text-white text-xs font-bold px-4 py-2 rounded-lg transition flex items-center gap-2"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    {post.status === 'published' ? 'View Post' : 'Preview Draft'}
+                  </a>
+                  <button
+                    onClick={() => setShowAiAssistant(!showAiAssistant)}
+                    className={`text-xs font-bold px-4 py-2 rounded-lg transition flex items-center gap-2 ${
+                      showAiAssistant 
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-[0_0_15px_rgba(147,51,234,0.3)]' 
+                        : 'bg-[#0c1535] border border-white/10 text-white/70 hover:text-white'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {showAiAssistant ? 'Hide AI Assistant' : 'AI Assistant'}
+                  </button>
+                  <button
+                    onClick={handleManualSave}
+                    disabled={isSaving}
+                    className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    Save Changes
+                  </button>
+                </div>
+
               </div>
             </div>
           )}
@@ -298,13 +315,25 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
             </div>
 
             {!isZenMode && (
-              <BlogEditorSettings
-                post={post}
-                categories={categories}
-                workspaceId={post.workspace_id}
-                onUpdate={handleUpdate}
-                onCreateCategory={handleCreateCategory}
-              />
+              <div className="w-full lg:w-[350px] shrink-0">
+                {showAiAssistant ? (
+                  <AIAssistantSidebar
+                    editor={editorRef.current}
+                    title={post.title}
+                    workspaceId={post.workspace_id}
+                    docId={post.id}
+                    contentType="blog"
+                  />
+                ) : (
+                  <BlogEditorSettings
+                    post={post}
+                    categories={categories}
+                    workspaceId={post.workspace_id}
+                    onUpdate={handleUpdate}
+                    onCreateCategory={handleCreateCategory}
+                  />
+                )}
+              </div>
             )}
           </div>
 

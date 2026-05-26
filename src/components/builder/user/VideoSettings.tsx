@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Upload, Loader2, Video as VideoIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 export const VideoSettings = () => {
   const { actions: { setProp }, url, provider, autoPlay, controls, loop, muted, borderRadius } = useNode((node) => ({
@@ -50,7 +51,7 @@ export const VideoSettings = () => {
       });
     } catch (error) {
       console.error("Upload failed", error);
-      alert("Failed to upload video. Please try again.");
+      toast.error("Failed to upload video. Please try again.");
     } finally {
       setIsUploading(false);
     }

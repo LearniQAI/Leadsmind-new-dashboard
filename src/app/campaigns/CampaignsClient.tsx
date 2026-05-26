@@ -40,6 +40,21 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
   const [deleteCampaign, setDeleteCampaign] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const prefillSubject = searchParams.get('prefill_subject');
+      const prefillBody = searchParams.get('prefill_body');
+      const prefillName = searchParams.get('prefill_name');
+      
+      if (prefillSubject || prefillBody || prefillName) {
+        setCreateName(prefillName || 'New Campaign from Content Studio');
+        setCreateSubject(prefillSubject || '');
+        setCreateOpen(true);
+      }
+    }
+  }, []);
+
   const handleCreate = async () => {
     if (!createName.trim()) { toast.error('Please enter a campaign name'); return; }
     setCreating(true);
@@ -48,9 +63,33 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
     if (res.error) { toast.error(res.error); }
     else {
       toast.success('Campaign created!');
-      setCampaigns(prev => [res.data, ...prev]);
+      
+      let newCampaign = res.data;
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const prefillBody = searchParams.get('prefill_body');
+        const prefillSubject = searchParams.get('prefill_subject');
+        
+        if (prefillBody || prefillSubject || createSubject) {
+          try {
+            const { updateCampaign } = await import('@/app/actions/marketing');
+            const updateRes = await updateCampaign(newCampaign.id, {
+              subject: prefillSubject || createSubject || newCampaign.subject,
+              body: prefillBody || ''
+            });
+            if (!updateRes.error && updateRes.data) {
+              newCampaign = updateRes.data;
+            }
+          } catch (e) {
+            console.error('Failed to prefill campaign details', e);
+          }
+        }
+      }
+
+      setCampaigns(prev => [newCampaign, ...prev]);
       setCreateName(''); setCreateSubject('');
       setCreateOpen(false);
+      router.replace('/campaigns');
     }
   };
 

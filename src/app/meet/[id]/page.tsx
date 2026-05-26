@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { getAppointmentById } from '@/app/actions/calendar/appointments';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Input } from '@/components/ui/input';
 
 export default function MeetingPage() {
@@ -32,6 +33,13 @@ export default function MeetingPage() {
   const [isJoined, setIsJoined] = useState(false);
   const [appointment, setAppointment] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   useEffect(() => {
     async function loadMeeting() {
@@ -55,9 +63,15 @@ export default function MeetingPage() {
   };
 
   const handleEndCall = () => {
-    if (confirm('Are you sure you want to leave the meeting?')) {
-      router.push('/calendar');
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Leave Meeting?',
+      description: 'Are you sure you want to leave the meeting?',
+      confirmLabel: 'Leave',
+      onConfirm: () => {
+        router.push('/calendar');
+      }
+    });
   };
 
   if (isLoading) {
@@ -295,6 +309,18 @@ export default function MeetingPage() {
           </button>
         </div>
       </div>
+
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
 
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar {

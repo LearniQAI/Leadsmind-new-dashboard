@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ArrowLeft, Settings2, Sliders, History } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { WorkflowList } from './components/WorkflowList';
 import { WorkflowEditor } from './components/WorkflowEditor';
 import { ExecutionLogs } from './components/ExecutionLogs';
@@ -17,6 +18,13 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'editor' | 'logs'>('editor');
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const loadData = async () => {
     try {
@@ -101,21 +109,26 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
   };
 
   const handleDeleteWorkflow = async (id: string) => {
-    const confirm = window.confirm('Are you sure you want to delete this workflow and all its steps?');
-    if (!confirm) return;
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Workflow?',
+      description: 'Are you sure you want to delete this workflow and all its steps?',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from('workflows').delete().eq('id', id);
+          if (error) throw error;
 
-    try {
-      const { error } = await supabase.from('workflows').delete().eq('id', id);
-      if (error) throw error;
-
-      setWorkflows(prev => prev.filter(w => w.id !== id));
-      if (selectedWorkflowId === id) {
-        setSelectedWorkflowId(null);
+          setWorkflows(prev => prev.filter(w => w.id !== id));
+          if (selectedWorkflowId === id) {
+            setSelectedWorkflowId(null);
+          }
+          toast.success('Workflow deleted successfully');
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete workflow');
+        }
       }
-      toast.success('Workflow deleted successfully');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to delete workflow');
-    }
+    });
   };
 
   if (loading) {
@@ -203,10 +216,20 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
           ) : (
             <ExecutionLogs formId={params.id} />
           )}
-
         </div>
 
       </div>
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

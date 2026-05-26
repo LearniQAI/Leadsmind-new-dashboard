@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Users, Tag, Download, CheckSquare, Square, Loader2 } from 'lucide-react';
 import { addLeadsToCRM } from '@/app/actions/lead-finder';
+import { toast } from 'sonner';
 
 interface BulkActionsToolbarProps {
   selectedLeads: any[];
@@ -35,13 +36,13 @@ export function BulkActionsToolbar({
     setLoading(false);
     
     if (success) {
-      alert(`Successfully added ${addedCount} leads to CRM Contacts.`);
+      toast.success(`Successfully added ${addedCount} leads to CRM Contacts.`);
       onClearSelection();
       setShowTags(false);
       setTagInput('');
       onRefresh(); // Refresh statuses
     } else {
-      alert('Failed to add some leads to CRM.');
+      toast.error('Failed to add some leads to CRM.');
     }
   };
 

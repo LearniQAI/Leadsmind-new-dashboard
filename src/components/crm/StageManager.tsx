@@ -7,6 +7,7 @@ import { Plus, Trash2, GripVertical, Check, X } from 'lucide-react';
 import { updatePipelineStages, deleteStage } from '@/app/actions/pipelines';
 import { PipelineStage } from '@/types/crm';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 interface StageManagerProps {
  pipelineId: string;
@@ -16,18 +17,38 @@ interface StageManagerProps {
 export function StageManager({ pipelineId, initialStages }: StageManagerProps) {
  const [stages, setStages] = useState(initialStages.map(s => ({ id: s.id, name: s.name })));
  const [isPending, setIsPending] = useState(false);
+ const [confirmConfig, setConfirmConfig] = useState<{
+  isOpen: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+ } | null>(null);
 
  const addStage = () => {
   setStages([...stages, { id: `new-${Date.now()}`, name: 'New Stage' }]);
  };
 
  const removeStage = async (id: string, index: number) => {
+  const action = async () => {
+   if (!id.startsWith('new-')) {
+    const res = await deleteStage(id);
+    if (!res.success) return toast.error(res.error);
+   }
+   setStages(stages.filter((_, i) => i !== index));
+  };
+
   if (!id.startsWith('new-')) {
-   if (!confirm('Are you sure? This will delete all deals in this stage.')) return;
-   const res = await deleteStage(id);
-   if (!res.success) return toast.error(res.error);
+   setConfirmConfig({
+    isOpen: true,
+    title: 'Delete Stage?',
+    description: 'Are you sure? This will delete all deals in this stage.',
+    confirmLabel: 'Delete',
+    onConfirm: action
+   });
+  } else {
+   action();
   }
-  setStages(stages.filter((_, i) => i !== index));
  };
 
  const updateStageName = (index: number, name: string) => {
@@ -92,6 +113,17 @@ export function StageManager({ pipelineId, initialStages }: StageManagerProps) {
      {isPending ? 'Saving...' : 'Save Changes'}
     </Button>
    </div>
+   {confirmConfig && (
+    <ConfirmDialog
+     isOpen={confirmConfig.isOpen}
+     onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+     onConfirm={confirmConfig.onConfirm}
+     title={confirmConfig.title}
+     description={confirmConfig.description}
+     confirmLabel={confirmConfig.confirmLabel}
+     variant="danger"
+    />
+   )}
   </div>
  );
 }

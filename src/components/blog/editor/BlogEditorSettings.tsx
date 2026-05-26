@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { uploadBlogMedia } from '@/lib/mediaUpload';
 import { createPostVersion, getPostVersions, rollbackPostVersion } from '@/app/actions/blogStudio';
 import { Calendar, Upload, Loader2, AlertCircle, Plus, Sparkles, CheckCircle2, ShieldAlert, Sliders, Globe, Clock, RotateCcw, Copy, Share2, Mail, Check, AlertTriangle } from 'lucide-react';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { toast } from 'sonner';
 
 interface Category { id: string; name: string; slug: string; }
 
@@ -41,6 +43,13 @@ export const BlogEditorSettings: React.FC<BlogSettingsProps> = ({
 
   // Syndication states
   const [syndicationMsg, setSyndicationMsg] = useState<string | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -128,10 +137,21 @@ export const BlogEditorSettings: React.FC<BlogSettingsProps> = ({
   };
 
   const handleRollback = async (versionId: string) => {
-    if (!confirm('Revert the post draft to this previous state?')) return;
-    const res = await rollbackPostVersion(post.id, versionId);
-    if (res.error) alert(res.error);
-    else window.location.reload();
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Rollback Draft?',
+      description: 'Revert the post draft to this previous state?',
+      confirmLabel: 'Revert',
+      onConfirm: async () => {
+        const res = await rollbackPostVersion(post.id, versionId);
+        if (res.error) {
+          toast.error(res.error);
+        } else {
+          toast.success('Draft reverted successfully.');
+          window.location.reload();
+        }
+      }
+    });
   };
 
   const handleOriginalityCheck = () => {
@@ -595,6 +615,18 @@ export const BlogEditorSettings: React.FC<BlogSettingsProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="warning"
+        />
       )}
     </div>
   );

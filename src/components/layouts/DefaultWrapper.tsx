@@ -42,6 +42,7 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
      '/websites': 'marketing',
      '/funnels': 'marketing',
      '/campaigns': 'marketing',
+     '/content-studio': 'marketing',
      '/automations': 'automation',
      '/settings': 'settings',
    };

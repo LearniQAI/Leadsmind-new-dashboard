@@ -36,6 +36,7 @@ const sidebarData: SidebarCategory[] = [
   items: [
    { id: 11, label: "Websites", icon: "fa-light fa-browser", link: "/websites", permission: "marketing" },
    { id: 112, label: "Blogs", icon: "fa-light fa-newspaper", link: "/blog/manage", permission: "marketing" },
+   { id: 113, label: "Content Studio", icon: "fa-light fa-pen-nib", link: "/content-studio", permission: "marketing" },
    { id: 12, label: "Funnels", icon: "fa-light fa-filter", link: "/funnels", permission: "marketing" },
    { id: 13, label: "Campaigns", icon: "fa-light fa-paper-plane", link: "/campaigns", permission: "marketing" },
    { id: 14, label: "Forms", icon: "icon-document", link: "/forms", permission: "marketing" },

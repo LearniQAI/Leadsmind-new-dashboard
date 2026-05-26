@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ArrowLeft, Mail, Link as LinkIcon, RefreshCw, Trash2, Clock, CheckCircle, BarChart3, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { RecoveryTokenHandler } from '@/lib/persistence/RecoveryTokenHandler';
 import { RecoveryManager } from '@/lib/persistence/RecoveryManager';
 
@@ -14,6 +15,13 @@ export default function PartialSubmissionsPage({ params }: { params: { id: strin
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
   const [partials, setPartials] = useState<any[]>([]);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -74,17 +82,22 @@ export default function PartialSubmissionsPage({ params }: { params: { id: strin
   };
 
   const deletePartial = async (id: string) => {
-    const confirm = window.confirm('Are you sure you want to discard this incomplete submission?');
-    if (!confirm) return;
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Discard Submission?',
+      description: 'Are you sure you want to discard this incomplete submission?',
+      confirmLabel: 'Discard',
+      onConfirm: async () => {
+        const { error } = await supabase.from('form_partial_submissions').delete().eq('id', id);
+        if (error) {
+          toast.error('Failed to delete incomplete submission');
+          return;
+        }
 
-    const { error } = await supabase.from('form_partial_submissions').delete().eq('id', id);
-    if (error) {
-      toast.error('Failed to delete incomplete submission');
-      return;
-    }
-
-    setPartials(prev => prev.filter(p => p.id !== id));
-    toast.success('Incomplete submission removed.');
+        setPartials(prev => prev.filter(p => p.id !== id));
+        toast.success('Incomplete submission removed.');
+      }
+    });
   };
 
   if (loading) {
@@ -230,6 +243,18 @@ export default function PartialSubmissionsPage({ params }: { params: { id: strin
           )}
         </div>
       </div>
+
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

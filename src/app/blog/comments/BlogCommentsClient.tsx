@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { MessageSquare, Settings, ShieldCheck, ShieldAlert, Trash2, CheckCircle2, Save, XCircle, ArrowLeft, Clock } from 'lucide-react';
 import { updateCommentStatus, deleteComment, updateBlogSettings } from '@/app/actions/blogCommentsAdmin';
+import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import Link from 'next/link';
 
 interface Comment {
@@ -28,6 +30,13 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('pending');
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const [engine, setEngine] = useState(settings?.comments_engine || 'native');
   const [disqusName, setDisqusName] = useState(settings?.disqus_shortname || '');
@@ -46,20 +55,31 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
     setComments(comments.map(c => c.id === id ? { ...c, status: newStatus } : c));
     const res = await updateCommentStatus(id, newStatus);
     if (res.error) {
-      alert(res.error);
+      toast.error(res.error);
       setComments(original);
+    } else {
+      toast.success(`Comment status updated to ${newStatus}`);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Permanently delete this comment?')) return;
-    const original = [...comments];
-    setComments(comments.filter(c => c.id !== id));
-    const res = await deleteComment(id);
-    if (res.error) {
-      alert(res.error);
-      setComments(original);
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Comment?',
+      description: 'Permanently delete this comment?',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        const original = [...comments];
+        setComments(comments.filter(c => c.id !== id));
+        const res = await deleteComment(id);
+        if (res.error) {
+          toast.error(res.error);
+          setComments(original);
+        } else {
+          toast.success('Comment deleted successfully.');
+        }
+      }
+    });
   };
 
   const handleSaveSettings = async () => {
@@ -77,8 +97,12 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
       sa_area: saArea
     });
     setSavingSettings(false);
-    if (res.error) alert(res.error);
-    else { setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 3000); }
+    if (res.error) toast.error(res.error);
+    else {
+      toast.success('Settings saved successfully.');
+      setSettingsSaved(true);
+      setTimeout(() => setSettingsSaved(false), 3000);
+    }
   };
 
   const filteredComments = comments.filter(c => c.status === activeTab);

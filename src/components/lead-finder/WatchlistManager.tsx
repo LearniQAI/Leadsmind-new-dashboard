@@ -3,11 +3,19 @@
 import React, { useState } from 'react';
 import { createWatchlist, deleteWatchlist, toggleWatchlistStatus } from '@/app/actions/watchlist-workspace';
 import { Eye, Plus, Loader2, Trash2, Pause, Play, MapPin, Building2, Tag, Search } from 'lucide-react';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 export function WatchlistManager({ initialWatchlists }: { initialWatchlists: any[] }) {
   const [watchlists, setWatchlists] = useState(initialWatchlists);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
   
   // Form State
   const [name, setName] = useState('');
@@ -35,9 +43,16 @@ export function WatchlistManager({ initialWatchlists }: { initialWatchlists: any
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this watchlist?')) return;
-    await deleteWatchlist(id);
-    window.location.reload();
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Watchlist?',
+      description: 'Are you sure you want to delete this watchlist?',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        await deleteWatchlist(id);
+        window.location.reload();
+      }
+    });
   };
 
   const getTypeIcon = (t: string) => {
@@ -153,6 +168,17 @@ export function WatchlistManager({ initialWatchlists }: { initialWatchlists: any
           ))
         )}
       </div>
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

@@ -5,10 +5,18 @@ import { getSavedSearches, deleteSavedSearch, toggleSearchAlert } from '@/app/ac
 import { Clock, ArrowRight, Loader2, Trash2, Bell, BellOff, Play } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 export function SavedSearchManager() {
   const [searches, setSearches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const router = useRouter();
 
@@ -26,9 +34,16 @@ export function SavedSearchManager() {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    if (!confirm('Delete this saved search?')) return;
-    await deleteSavedSearch(id);
-    await fetchSearches();
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Saved Search?',
+      description: 'Are you sure you want to delete this saved search?',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        await deleteSavedSearch(id);
+        await fetchSearches();
+      }
+    });
   };
 
   const handleToggleAlert = async (e: React.MouseEvent, id: string, current: boolean) => {
@@ -118,6 +133,17 @@ export function SavedSearchManager() {
           </Link>
         ))}
       </div>
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

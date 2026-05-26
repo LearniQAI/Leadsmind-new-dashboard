@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Loader2, Send, X, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { AIFormGenerator } from '@/lib/ai/AIFormGenerator';
 import { AIInsightEngine } from '@/lib/ai/AIInsightEngine';
 import { AIWorkflowAdvisor } from '@/lib/ai/AIWorkflowAdvisor';
@@ -50,6 +51,13 @@ export function AIAssistantSidebar({
 
   // Human Review Panel state
   const [reviewingProposal, setReviewingProposal] = useState<SuggestionItem | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
   
   // Revert stack scaffolding
   const [appliedPatches, setAppliedPatches] = useState<any[]>([]);
@@ -229,38 +237,43 @@ export function AIAssistantSidebar({
 
   const handleRevertLastPatch = async () => {
     if (appliedPatches.length === 0) return;
-    const confirm = window.confirm('Revert the last approved AI patch suggestion?');
-    if (!confirm) return;
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Revert AI Patch?',
+      description: 'Revert the last approved AI patch suggestion?',
+      confirmLabel: 'Revert',
+      onConfirm: async () => {
+        const reverted = appliedPatches[0];
+        setAppliedPatches(prev => prev.slice(1));
 
-    const reverted = appliedPatches[0];
-    setAppliedPatches(prev => prev.slice(1));
+        try {
+          const payload = reverted.revertPayload;
+          if (!payload) {
+            toast.success(`Removed tracking for: "${reverted.title}"`);
+            return;
+          }
 
-    try {
-      const payload = reverted.revertPayload;
-      if (!payload) {
-        toast.success(`Removed tracking for: "${reverted.title}"`);
-        return;
+          if (payload.type === 'schema' && onRevertFormSchema) {
+            onRevertFormSchema(payload.data);
+            toast.success(`Reverted form layout back to: "${payload.data.name}"`);
+          } else if (payload.type === 'copy_field' && onRevertCopySuggestion) {
+            onRevertCopySuggestion(payload.data);
+            toast.success(`Reverted active field copy changes.`);
+          } else if (payload.type === 'copy_form_name' && onRevertCopySuggestion) {
+            onRevertCopySuggestion({ id: '', label: payload.data.name, placeholder: '', helpText: '' });
+            toast.success(`Reverted form name.`);
+          } else if (payload.type === 'workflow' && onRevertWorkflowSuggestion && payload.data.id) {
+            await onRevertWorkflowSuggestion(payload.data.id);
+            toast.success(`Deleted CRM automation from database.`);
+          } else {
+            toast.success(`Reverted changes from: "${reverted.title}"`);
+          }
+        } catch (err: any) {
+          console.error('Revert failed:', err);
+          toast.error(`Revert failed: ${err.message || err}`);
+        }
       }
-
-      if (payload.type === 'schema' && onRevertFormSchema) {
-        onRevertFormSchema(payload.data);
-        toast.success(`Reverted form layout back to: "${payload.data.name}"`);
-      } else if (payload.type === 'copy_field' && onRevertCopySuggestion) {
-        onRevertCopySuggestion(payload.data);
-        toast.success(`Reverted active field copy changes.`);
-      } else if (payload.type === 'copy_form_name' && onRevertCopySuggestion) {
-        onRevertCopySuggestion({ id: '', label: payload.data.name, placeholder: '', helpText: '' });
-        toast.success(`Reverted form name.`);
-      } else if (payload.type === 'workflow' && onRevertWorkflowSuggestion && payload.data.id) {
-        await onRevertWorkflowSuggestion(payload.data.id);
-        toast.success(`Deleted CRM automation from database.`);
-      } else {
-        toast.success(`Reverted changes from: "${reverted.title}"`);
-      }
-    } catch (err: any) {
-      console.error('Revert failed:', err);
-      toast.error(`Revert failed: ${err.message || err}`);
-    }
+    });
   };
 
   return (
@@ -422,6 +435,17 @@ export function AIAssistantSidebar({
           originalText="Current working draft configurations"
           proposedText={reviewingProposal.recommendation}
           type={reviewingProposal.type}
+        />
+      )}
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
         />
       )}
     </>

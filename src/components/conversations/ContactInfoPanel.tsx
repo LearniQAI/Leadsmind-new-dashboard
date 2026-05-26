@@ -3,12 +3,14 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 interface ContactInfoPanelProps {
   contact: any;
 }
 
 export function ContactInfoPanel({ contact }: ContactInfoPanelProps) {
+  const router = useRouter();
   if (!contact) return null;
 
   return (
@@ -54,6 +56,14 @@ export function ContactInfoPanel({ contact }: ContactInfoPanelProps) {
             Quick Actions
           </h4>
           <div className="space-y-2">
+            <Button 
+              variant="ghost" 
+              onClick={() => router.push(`/content-studio/new?prefill_contact_id=${contact.id}`)}
+              className="w-full justify-start gap-3 h-10 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 text-[12px] font-semibold font-dm-sans rounded-[8px]"
+            >
+              <i className="fa-solid fa-pen-nib text-[13px]"></i>
+              Write Content
+            </Button>
             <Button variant="ghost" className="w-full justify-start gap-3 h-10 bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-semibold font-dm-sans rounded-[8px]">
               <i className="fa-solid fa-file-contract text-[#3b82f6] text-[13px]"></i>
               Send Proposal

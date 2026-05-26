@@ -1,4 +1,5 @@
 import Dropzone from "dropzone";
+import { toast } from "sonner";
 
 /**
  * Initializes a Dropzone instance on a given element ID.
@@ -30,7 +31,7 @@ export const initializeDropzone = (elementId: string, maxFiles: number = 1): Dro
    this.on("addedfile", (file) => {
     if (this.files.length > maxFiles) {
      this.removeFile(file);
-     alert(`You can only upload a maximum of ${maxFiles} files.`);
+     toast.error(`You can only upload a maximum of ${maxFiles} files.`);
     }
    });
   }

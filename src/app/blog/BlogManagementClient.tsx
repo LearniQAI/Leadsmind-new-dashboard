@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createPost, deletePost, createCategory } from '@/app/actions/blog';
 import { clonePost } from '@/app/actions/blogStudio';
+import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import MetaData from '@/hooks/useMetaData';
 import { Plus, Search, Calendar, FileText, ArrowRight, Trash2, Clock, Youtube, Sparkles, Copy, BarChart3, MessageSquare, ExternalLink, Globe } from 'lucide-react';
@@ -49,6 +51,13 @@ export default function BlogManagementClient({ initialPosts, categories }: BlogA
   // Custom delete modal states
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,16 +90,25 @@ export default function BlogManagementClient({ initialPosts, categories }: BlogA
 
   const handleCloneClick = async (postId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Are you sure you want to clone this article as a fresh draft?')) return;
-    try {
-      const res = await clonePost(postId);
-      if (res.error) alert(`Cloning failed: ${res.error}`);
-      else {
-        window.location.reload();
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Clone Article?',
+      description: 'Are you sure you want to clone this article as a fresh draft?',
+      confirmLabel: 'Clone',
+      onConfirm: async () => {
+        try {
+          const res = await clonePost(postId);
+          if (res.error) {
+            toast.error(`Cloning failed: ${res.error}`);
+          } else {
+            toast.success('Article cloned successfully!');
+            window.location.reload();
+          }
+        } catch (err: any) {
+          toast.error(`Error cloning post: ${err.message}`);
+        }
       }
-    } catch (err: any) {
-      alert(`Error cloning post: ${err.message}`);
-    }
+    });
   };
 
   const handleDeleteClick = (id: string, e: React.MouseEvent) => {
@@ -353,6 +371,17 @@ export default function BlogManagementClient({ initialPosts, categories }: BlogA
                 </div>
               </div>
             </div>
+          )}
+          {confirmConfig && (
+            <ConfirmDialog
+              isOpen={confirmConfig.isOpen}
+              onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+              onConfirm={confirmConfig.onConfirm}
+              title={confirmConfig.title}
+              description={confirmConfig.description}
+              confirmLabel={confirmConfig.confirmLabel}
+              variant="info"
+            />
           )}
         </div>
       </Wrapper>

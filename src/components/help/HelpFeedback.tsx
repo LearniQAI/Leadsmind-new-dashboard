@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { ThumbsUp, ThumbsDown, CheckCircle2 } from 'lucide-react';
 import { submitHelpFeedback } from '@/app/actions/help';
+import { toast } from 'sonner';
 
 interface HelpFeedbackProps {
   articleId: string;
@@ -29,7 +30,7 @@ export default function HelpFeedback({ articleId, yesInitial, noInitial }: HelpF
         setNoCount(prev => prev + 1);
       }
     } else {
-      alert(res.error || 'Failed to submit feedback.');
+      toast.error(res.error || 'Failed to submit feedback.');
     }
   };
 

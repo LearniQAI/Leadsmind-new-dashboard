@@ -3,9 +3,17 @@
 import React, { useState } from 'react';
 import { Settings, Plus, Zap, ArrowDown, Trash2, Power, Play } from 'lucide-react';
 import { toggleWorkflowActive, deleteWorkflow } from '@/app/actions/automation-workspace';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 export function WorkflowBuilder({ workflows }: { workflows: any[] }) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const handleToggle = async (id: string, currentState: boolean) => {
     setLoadingId(id);
@@ -14,10 +22,17 @@ export function WorkflowBuilder({ workflows }: { workflows: any[] }) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this workflow?')) return;
-    setLoadingId(id);
-    await deleteWorkflow(id);
-    setLoadingId(null);
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Workflow?',
+      description: 'Are you sure you want to delete this workflow?',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setLoadingId(id);
+        await deleteWorkflow(id);
+        setLoadingId(null);
+      }
+    });
   };
 
   return (
@@ -107,6 +122,17 @@ export function WorkflowBuilder({ workflows }: { workflows: any[] }) {
             </div>
           ))}
         </div>
+      )}
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
       )}
     </div>
   );

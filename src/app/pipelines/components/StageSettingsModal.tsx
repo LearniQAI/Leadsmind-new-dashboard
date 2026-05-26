@@ -12,6 +12,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { updateStageOrder, updateStage, deleteStage, updatePipelineStages } from '@/app/actions/pipelines';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 interface StageSettingsModalProps {
   isOpen: boolean;
@@ -32,6 +33,13 @@ export function StageSettingsModal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [newStageName, setNewStageName] = useState('');
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   useEffect(() => {
     setStages(initialStages);
@@ -75,17 +83,23 @@ export function StageSettingsModal({
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure? All deals in this stage will be permanently detached.')) return;
-
-    setIsProcessing(true);
-    const res = await deleteStage(id);
-    if (res.success) {
-      setStages(prev => prev.filter(s => s.id !== id));
-      toast.success('Stage purged');
-    } else {
-      toast.error('Failed to delete stage');
-    }
-    setIsProcessing(false);
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Stage?',
+      description: 'Are you sure? All deals in this stage will be permanently detached.',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setIsProcessing(true);
+        const res = await deleteStage(id);
+        if (res.success) {
+          setStages(prev => prev.filter(s => s.id !== id));
+          toast.success('Stage purged');
+        } else {
+          toast.error('Failed to delete stage');
+        }
+        setIsProcessing(false);
+      }
+    });
   };
 
   const handleAddStage = async () => {
@@ -222,6 +236,18 @@ export function StageSettingsModal({
           </div>
         </div>
       </DialogContent>
+
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
     </Dialog>
   );
 }

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { createClient } from '@/lib/supabase/client';
 
 import useGlobalContext from "@/hooks/use-context";
@@ -78,6 +79,13 @@ export default function SettingsClient({
   const [editingMember, setEditingMember] = useState<any>(null);
   const [editRole, setEditRole] = useState('member');
   const [editPermissions, setEditPermissions] = useState<string[]>([]);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -204,12 +212,19 @@ export default function SettingsClient({
   };
 
   const handleRegenerateKey = async () => {
-    if (!confirm('Regenerating the API key will break existing integrations. Continue?')) return;
-    const res = await generateWorkspaceApiKey();
-    if (res.data) {
-      setApiKey(res.data);
-      toast.success('API Key regenerated');
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Regenerate API Key?',
+      description: 'Regenerating the API key will break existing integrations. Continue?',
+      confirmLabel: 'Regenerate',
+      onConfirm: async () => {
+        const res = await generateWorkspaceApiKey();
+        if (res.data) {
+          setApiKey(res.data);
+          toast.success('API Key regenerated');
+        }
+      }
+    });
   };
 
   const handleNewWebhook = async () => {
@@ -313,18 +328,32 @@ export default function SettingsClient({
                 setIsEditModalOpen(true);
               }}
               onDeleteMember={async (member) => {
-                if (!confirm(`Remove ${member.user?.email || 'this member'} from the workspace?`)) return;
-                const res = await deleteMember(member.id);
-                if (res.error) { toast.error(res.error); return; }
-                toast.success('Member removed');
-                router.refresh();
+                setConfirmConfig({
+                  isOpen: true,
+                  title: 'Remove Member?',
+                  description: `Remove ${member.user?.email || 'this member'} from the workspace?`,
+                  confirmLabel: 'Remove',
+                  onConfirm: async () => {
+                    const res = await deleteMember(member.id);
+                    if (res.error) { toast.error(res.error); return; }
+                    toast.success('Member removed');
+                    router.refresh();
+                  }
+                });
               }}
               onDeleteInvitation={async (invite) => {
-                if (!confirm(`Remove access for ${invite.email}?`)) return;
-                const res = await removeInvitation(invite.id);
-                if (res.error) { toast.error(res.error); return; }
-                toast.success('Access removed');
-                router.refresh();
+                setConfirmConfig({
+                  isOpen: true,
+                  title: 'Revoke Access?',
+                  description: `Remove access for ${invite.email}?`,
+                  confirmLabel: 'Revoke',
+                  onConfirm: async () => {
+                    const res = await removeInvitation(invite.id);
+                    if (res.error) { toast.error(res.error); return; }
+                    toast.success('Access removed');
+                    router.refresh();
+                  }
+                });
               }}
             />
           )}
@@ -404,6 +433,18 @@ export default function SettingsClient({
         onSave={handleUpdatePermissions}
         permissionModules={PERMISSION_MODULES}
       />
+
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

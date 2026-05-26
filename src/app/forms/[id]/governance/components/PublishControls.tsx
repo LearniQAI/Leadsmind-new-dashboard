@@ -6,6 +6,7 @@ import { Globe, XCircle, AlertTriangle, CheckCircle, Loader2, Send } from 'lucid
 import { toast } from 'sonner';
 import { PublishManager, PublishValidationResult } from '@/lib/governance/PublishManager';
 import { createClient } from '@/lib/supabase/client';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 interface PublishControlsProps {
   formId: string;
@@ -24,6 +25,13 @@ export function PublishControls({
   const [notes, setNotes] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [workflows, setWorkflows] = useState<any[]>([]);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const runValidation = async () => {
     setValidating(true);
@@ -80,16 +88,21 @@ export function PublishControls({
   };
 
   const handleUnpublish = async () => {
-    const confirm = window.confirm('Are you sure you want to pull this form from production?');
-    if (!confirm) return;
-
-    const res = await PublishManager.unpublishForm(formId, 'Alex Cooper');
-    if (res.success) {
-      toast.success('Form pulled from production.');
-      onPublishCompleted();
-    } else {
-      toast.error(res.error || 'Failed to unpublish.');
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Unpublish Form?',
+      description: 'Are you sure you want to pull this form from production?',
+      confirmLabel: 'Unpublish',
+      onConfirm: async () => {
+        const res = await PublishManager.unpublishForm(formId, 'Alex Cooper');
+        if (res.success) {
+          toast.success('Form pulled from production.');
+          onPublishCompleted();
+        } else {
+          toast.error(res.error || 'Failed to unpublish.');
+        }
+      }
+    });
   };
 
   return (
@@ -163,6 +176,17 @@ export function PublishControls({
         {publishing ? <Loader2 className="animate-spin" size={14} /> : <Send size={12} />} Publish Draft Layout
       </button>
 
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

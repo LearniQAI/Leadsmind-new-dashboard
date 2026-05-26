@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Upload, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 export const ImageSettings = () => {
   const { actions: { setProp }, src, alt, borderRadius, objectFit, width, height, shape } = useNode((node) => ({
@@ -47,7 +48,7 @@ export const ImageSettings = () => {
       setProp((props: any) => props.src = publicUrl);
     } catch (error) {
       console.error("Upload failed", error);
-      alert("Failed to upload image. Please try again.");
+      toast.error("Failed to upload image. Please try again.");
     } finally {
       setIsUploading(false);
     }

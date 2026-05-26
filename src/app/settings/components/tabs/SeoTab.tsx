@@ -15,6 +15,7 @@ import {
   triggerSiteHealthCrawl, getLatestSiteHealthCrawl
 } from '@/app/actions/seo';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 export default function SeoTab() {
   // Database States
@@ -48,6 +49,13 @@ export default function SeoTab() {
   const [isSyncingCompetitorKeywords, setIsSyncingCompetitorKeywords] = useState(false);
   const [isRunningRollup, setIsRunningRollup] = useState(false);
   const [isRunningAutomation, setIsRunningAutomation] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   // Load everything on mount
   useEffect(() => {
@@ -177,14 +185,21 @@ export default function SeoTab() {
 
   // Delete keyword
   const handleDeleteKeyword = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this keyword from SERP tracking?')) return;
-    const res = await deleteTrackedKeyword(id);
-    if (res.error) {
-      toast.error(res.error);
-    } else {
-      toast.success('Keyword removed successfully.');
-      loadAllSeoData();
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Keyword?',
+      description: 'Are you sure you want to delete this keyword from SERP tracking?',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        const res = await deleteTrackedKeyword(id);
+        if (res.error) {
+          toast.error(res.error);
+        } else {
+          toast.success('Keyword removed successfully.');
+          loadAllSeoData();
+        }
+      }
+    });
   };
 
   // Add Content Pipeline Item
@@ -229,14 +244,21 @@ export default function SeoTab() {
 
   // Delete Pipeline Item
   const handleDeletePipelineItem = async (id: string) => {
-    if (!confirm('Permanently remove this content card?')) return;
-    const res = await deletePipelineItem(id);
-    if (res.error) {
-      toast.error(res.error);
-    } else {
-      toast.success('Pipeline item deleted.');
-      loadAllSeoData();
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Remove Pipeline Item?',
+      description: 'Permanently remove this content card?',
+      confirmLabel: 'Remove',
+      onConfirm: async () => {
+        const res = await deletePipelineItem(id);
+        if (res.error) {
+          toast.error(res.error);
+        } else {
+          toast.success('Pipeline item deleted.');
+          loadAllSeoData();
+        }
+      }
+    });
   };
 
   // Manual Trigger Cron Sync to backfill/update stats on demand
@@ -1507,7 +1529,17 @@ export default function SeoTab() {
           </div>
         )}
       </div>
-
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

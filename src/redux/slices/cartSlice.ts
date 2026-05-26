@@ -63,12 +63,7 @@ export const cartSlice = createSlice({
   },
 
   clear_cart: (state) => {
-   const confirmMsg = window.confirm(
-    "Are you sure deleted your all cart items ?"
-   );
-   if (confirmMsg) {
-    state.cartProducts = [];
-   }
+   state.cartProducts = [];
   },
 
   decrease_quantity: (state, { payload }: PayloadAction<ProductsType>) => {

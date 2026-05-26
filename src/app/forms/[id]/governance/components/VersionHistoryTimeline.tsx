@@ -5,6 +5,7 @@ import { Clock, RotateCcw, GitCompare, ChevronDown, User, MessageSquare } from '
 import { toast } from 'sonner';
 import { VersionManager, FormVersion } from '@/lib/governance/VersionManager';
 import { DiffViewer } from './DiffViewer';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 interface VersionHistoryTimelineProps {
   formId: string;
@@ -20,6 +21,13 @@ export function VersionHistoryTimeline({
   const [history, setHistory] = useState<FormVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [compareVersion, setCompareVersion] = useState<FormVersion | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const loadHistory = async () => {
     setLoading(true);
@@ -52,19 +60,22 @@ export function VersionHistoryTimeline({
   }, [formId]);
 
   const handleRollback = async (version: FormVersion) => {
-    const confirm = window.confirm(
-      `Are you sure you want to rollback this form to version #${version.version_number}? Unsaved draft changes will be overwritten.`
-    );
-    if (!confirm) return;
-
-    const res = await VersionManager.rollbackToVersion(formId, version.version_number);
-    if (res.success && res.snapshot) {
-      toast.success(`Successfully rolled back to version #${version.version_number}!`);
-      onRollbackApplied(res.snapshot);
-      loadHistory();
-    } else {
-      toast.error(res.error || 'Failed to rollback version.');
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Rollback Version?',
+      description: `Are you sure you want to rollback this form to version #${version.version_number}? Unsaved draft changes will be overwritten.`,
+      confirmLabel: 'Rollback',
+      onConfirm: async () => {
+        const res = await VersionManager.rollbackToVersion(formId, version.version_number);
+        if (res.success && res.snapshot) {
+          toast.success(`Successfully rolled back to version #${version.version_number}!`);
+          onRollbackApplied(res.snapshot);
+          loadHistory();
+        } else {
+          toast.error(res.error || 'Failed to rollback version.');
+        }
+      }
+    });
   };
 
   if (loading) {
@@ -154,6 +165,17 @@ export function VersionHistoryTimeline({
         )}
       </div>
 
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

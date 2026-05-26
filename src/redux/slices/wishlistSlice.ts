@@ -59,12 +59,7 @@ export const wishlistSlice = createSlice({
   },
 
   clear_wishlist: (state) => {
-   const confirmMsg = window.confirm(
-    "Are you sure deleted your all wishlist items ?"
-   );
-   if (confirmMsg) {
-    state.cartProducts = [];
-   }
+   state.cartProducts = [];
   },
   decrease_quantity: (state, { payload }: PayloadAction<ProductsType>) => {
    const cartIndex = state.cartProducts.findIndex(

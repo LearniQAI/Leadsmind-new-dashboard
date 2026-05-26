@@ -6,6 +6,8 @@ import { Trash2, Edit2, Tag as TagIcon, MoreHorizontal } from 'lucide-react';
 import { globalDeleteTag, globalRenameTag } from '@/app/actions/contacts';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface TagData {
  id: string;
@@ -15,36 +17,47 @@ interface TagData {
 
 export default function TagsClient({ initialTags }: { initialTags: TagData[] }) {
  const [isProcessing, setIsProcessing] = useState(false);
+ const [confirmConfig, setConfirmConfig] = useState<{
+  isOpen: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+ } | null>(null);
+
+ const [renameConfig, setRenameConfig] = useState<{
+  isOpen: boolean;
+  oldTag: string;
+  newName: string;
+ } | null>(null);
 
  const handleDelete = async (tag: string) => {
-  if (!confirm(`Are you sure you want to delete the tag "${tag}"? This will remove it from all contacts.`)) return;
-  
-  setIsProcessing(true);
-  try {
-   const res = await globalDeleteTag(tag);
-   if (res.error) throw new Error(res.error);
-   toast.success(`Tag "${tag}" deleted successfully.`);
-  } catch (error: any) {
-   toast.error(error.message || 'Failed to delete tag');
-  } finally {
-   setIsProcessing(false);
-  }
+  setConfirmConfig({
+   isOpen: true,
+   title: 'Delete Tag?',
+   description: `Are you sure you want to delete the tag "${tag}"? This will remove it from all contacts.`,
+   confirmLabel: 'Delete',
+   onConfirm: async () => {
+    setIsProcessing(true);
+    try {
+     const res = await globalDeleteTag(tag);
+     if (res.error) throw new Error(res.error);
+     toast.success(`Tag "${tag}" deleted successfully.`);
+    } catch (error: any) {
+     toast.error(error.message || 'Failed to delete tag');
+    } finally {
+     setIsProcessing(false);
+    }
+   }
+  });
  };
 
- const handleRename = async (oldTag: string) => {
-  const newTag = window.prompt(`Rename tag "${oldTag}" to:`, oldTag);
-  if (!newTag || newTag === oldTag || newTag.trim() === '') return;
-  
-  setIsProcessing(true);
-  try {
-   const res = await globalRenameTag(oldTag, newTag.trim());
-   if (res.error) throw new Error(res.error);
-   toast.success(`Tag renamed to "${newTag.trim()}".`);
-  } catch (error: any) {
-   toast.error(error.message || 'Failed to rename tag');
-  } finally {
-   setIsProcessing(false);
-  }
+ const handleRename = (oldTag: string) => {
+  setRenameConfig({
+   isOpen: true,
+   oldTag,
+   newName: oldTag
+  });
  };
 
  if (initialTags.length === 0) {
@@ -97,6 +110,70 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
      </div>
     </div>
    ))}
+   {confirmConfig && (
+    <ConfirmDialog
+     isOpen={confirmConfig.isOpen}
+     onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+     onConfirm={confirmConfig.onConfirm}
+     title={confirmConfig.title}
+     description={confirmConfig.description}
+     confirmLabel={confirmConfig.confirmLabel}
+     variant="danger"
+    />
+   )}
+
+   {renameConfig && (
+    <Dialog open={renameConfig.isOpen} onOpenChange={(open) => setRenameConfig(prev => prev ? { ...prev, isOpen: open } : null)}>
+     <DialogContent className="bg-[#0b0f1a] border-white/5 text-[#eef2ff] max-w-sm rounded-3xl shadow-2xl p-6 z-[1001]">
+      <DialogHeader>
+       <DialogTitle className="text-lg font-bold font-space text-white uppercase">Rename Tag</DialogTitle>
+       <DialogDescription className="text-xs text-[#4a5a82]">
+        Rename tag "{renameConfig.oldTag}" across all contacts.
+       </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 py-4">
+       <input
+        autoFocus
+        type="text"
+        value={renameConfig.newName}
+        onChange={(e) => setRenameConfig(prev => prev ? { ...prev, newName: e.target.value } : null)}
+        placeholder="Enter new tag name..."
+        className="w-full bg-[#04091a] border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-primary focus:outline-none transition"
+       />
+      </div>
+      <DialogFooter className="flex gap-2">
+       <button
+        type="button"
+        onClick={() => setRenameConfig(null)}
+        className="flex-1 py-2 bg-white/5 border border-white/5 hover:bg-white/10 rounded-lg text-xs font-bold transition"
+       >
+        Cancel
+       </button>
+       <button
+        type="button"
+        disabled={!renameConfig.newName.trim() || renameConfig.newName.trim() === renameConfig.oldTag}
+        onClick={async () => {
+         const targetName = renameConfig.newName.trim();
+         setRenameConfig(null);
+         setIsProcessing(true);
+         try {
+          const res = await globalRenameTag(renameConfig.oldTag, targetName);
+          if (res.error) throw new Error(res.error);
+          toast.success(`Tag renamed to "${targetName}".`);
+         } catch (error: any) {
+          toast.error(error.message || 'Failed to rename tag');
+         } finally {
+          setIsProcessing(false);
+         }
+        }}
+        className="flex-1 py-2 bg-primary hover:bg-blue-600 text-white font-bold text-xs rounded-lg transition disabled:opacity-50"
+       >
+        Rename
+       </button>
+      </DialogFooter>
+     </DialogContent>
+    </Dialog>
+   )}
   </div>
  );
 }

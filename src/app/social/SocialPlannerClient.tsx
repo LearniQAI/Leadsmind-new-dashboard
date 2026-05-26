@@ -10,25 +10,44 @@ import {
  MoreHorizontal,
  Clock,
  CheckCircle2,
- AlertCircle
+ AlertCircle,
+ Sparkles
 } from 'lucide-react';
 import { Instagram, Facebook, Twitter, Linkedin } from '@/components/icons/BrandIcons';
 import { createSocialPost, getMetaAuthUrl, getLinkedInAuthUrl, getTikTokAuthUrl } from '@/app/actions/social';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import AIAssistantSidebar from '@/components/content-studio/AIAssistantSidebar';
 
 export default function SocialPlannerClient({ 
  initialPosts, 
- accounts 
+ accounts,
+ workspaceId
 }: { 
  initialPosts: any[], 
- accounts: any[] 
+ accounts: any[],
+ workspaceId: string
 }) {
  const router = useRouter();
  const [content, setContent] = useState('');
  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [isComposerOpen, setIsComposerOpen] = useState(false);
+ const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+
+ const mockEditor = {
+  getText: () => content,
+  getHTML: () => `<p>${content}</p>`,
+  commands: {
+   setContent: (val: string) => setContent(val)
+  },
+  applyFix: (issue: any, replacement: string) => {
+   const before = content.substring(0, issue.offset);
+   const after = content.substring(issue.offset + issue.length);
+   setContent(before + replacement + after);
+   toast.success(`Applied correction: "${replacement}"`);
+  }
+ };
 
  const handleConnect = async (platform: string) => {
   let url = '';
@@ -46,10 +65,10 @@ export default function SocialPlannerClient({
  };
 
  const platforms = [
-  { id: 'facebook', icon: <Facebook className="w-4 h-4" />, color: 'bg-[#1877F2]' },
-  { id: 'instagram', icon: <Instagram className="w-4 h-4" />, color: 'bg-[#E4405F]' },
-  { id: 'twitter', icon: <Twitter className="w-4 h-4" />, color: 'bg-[#1DA1F2]' },
-  { id: 'linkedin', icon: <Linkedin className="w-4 h-4" />, color: 'bg-[#0A66C2]' },
+  { id: 'facebook', icon: <Facebook className="w-4 h-4 stroke-current" />, color: 'bg-[#1877F2]' },
+  { id: 'instagram', icon: <Instagram className="w-4 h-4 stroke-current" />, color: 'bg-[#E4405F]' },
+  { id: 'twitter', icon: <Twitter className="w-4 h-4 stroke-current" />, color: 'bg-[#1DA1F2]' },
+  { id: 'linkedin', icon: <Linkedin className="w-4 h-4 stroke-current" />, color: 'bg-[#0A66C2]' },
  ];
 
  const togglePlatform = (id: string) => {
@@ -77,6 +96,7 @@ export default function SocialPlannerClient({
    setContent('');
    setSelectedPlatforms([]);
    setIsComposerOpen(false);
+   setIsCopilotOpen(false);
    router.refresh();
   }
   setIsSubmitting(false);
@@ -131,9 +151,28 @@ export default function SocialPlannerClient({
          <div className="flex gap-2">
           <Button variant="ghost" className="text-white/40 hover:text-white hover:bg-white/5 rounded-xl"><ImageIcon className="w-4 h-4 mr-2" /> Media</Button>
           <Button variant="ghost" className="text-white/40 hover:text-white hover:bg-white/5 rounded-xl"><Calendar className="w-4 h-4 mr-2" /> Schedule</Button>
+          <Button
+           type="button"
+           variant="ghost"
+           onClick={() => setIsCopilotOpen(!isCopilotOpen)}
+           className={`text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition ${
+            isCopilotOpen ? 'bg-purple-600/20 text-purple-400 hover:text-purple-300' : ''
+           }`}
+          >
+           <Sparkles className="w-4 h-4 mr-2" /> AI Copilot
+          </Button>
          </div>
          <div className="flex gap-3">
-          <Button variant="ghost" onClick={() => setIsComposerOpen(false)} className="text-white/40 hover:text-white">Cancel</Button>
+          <Button 
+           variant="ghost" 
+           onClick={() => {
+            setIsComposerOpen(false);
+            setIsCopilotOpen(false);
+           }} 
+           className="text-white/40 hover:text-white"
+          >
+           Cancel
+          </Button>
           <Button 
            onClick={handlePost}
            disabled={isSubmitting}
@@ -194,45 +233,59 @@ export default function SocialPlannerClient({
 
     {/* Right Column: Analytics / Status */}
     <div className="lg:col-span-4 space-y-6">
-     <div className="bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-3xl p-6">
-      <h3 className="text-sm font-black uppercase tracking-widest text-white mb-4">Account Health</h3>
-      <div className="space-y-4">
-       {platforms.map(p => {
-        const isConnected = accounts.some(a => a.platform === p.id);
-        return (
-         <div key={p.id} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5">
-          <div className="flex items-center gap-3">
-           <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${p.color}`}>
-            {p.icon}
-           </div>
-           <span className="text-xs font-bold text-white capitalize">{p.id}</span>
-          </div>
-          {isConnected ? (
-           <span className="text-[10px] font-black text-success uppercase tracking-widest">Active</span>
-          ) : (
-           <button 
-            onClick={() => handleConnect(p.id)}
-            className="text-[10px] font-black text-white/20 hover:text-white uppercase tracking-widest transition-colors"
-           >
-            Connect
-           </button>
-          )}
+      {isComposerOpen && isCopilotOpen ? (
+       <AIAssistantSidebar
+        editor={mockEditor}
+        title="Social Post"
+        workspaceId={workspaceId}
+        contentType="social"
+        tabsToShow={['grammar', 'seo']}
+        defaultTab="grammar"
+        onClose={() => setIsCopilotOpen(false)}
+       />
+      ) : (
+       <>
+        <div className="bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-3xl p-6">
+         <h3 className="text-sm font-black uppercase tracking-widest text-white mb-4">Account Health</h3>
+         <div className="space-y-4">
+          {platforms.map(p => {
+           const isConnected = accounts.some(a => a.platform === p.id);
+           return (
+            <div key={p.id} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5">
+             <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${p.color}`}>
+               {p.icon}
+              </div>
+              <span className="text-xs font-bold text-white capitalize">{p.id}</span>
+             </div>
+             {isConnected ? (
+              <span className="text-[10px] font-black text-success uppercase tracking-widest">Active</span>
+             ) : (
+              <button 
+               onClick={() => handleConnect(p.id)}
+               className="text-[10px] font-black text-white/20 hover:text-white uppercase tracking-widest transition-colors"
+              >
+               Connect
+              </button>
+             )}
+            </div>
+           );
+          })}
          </div>
-        );
-       })}
-      </div>
-     </div>
+        </div>
 
-     <div className="bg-white/5 border border-white/5 rounded-3xl p-6">
-      <div className="flex items-center gap-2 mb-4 text-warning">
-       <AlertCircle className="w-4 h-4" />
-       <h3 className="text-xs font-black uppercase tracking-widest">Pro Tip</h3>
-      </div>
-      <p className="text-xs text-white/40 leading-relaxed">
-       Posts with media assets typically receive <span className="text-white font-bold">4.5x more engagement</span>. Use the media composer to upload high-quality images.
-      </p>
+        <div className="bg-white/5 border border-white/5 rounded-3xl p-6">
+         <div className="flex items-center gap-2 mb-4 text-warning">
+          <AlertCircle className="w-4 h-4" />
+          <h3 className="text-xs font-black uppercase tracking-widest">Pro Tip</h3>
+         </div>
+         <p className="text-xs text-white/40 leading-relaxed">
+          Posts with media assets typically receive <span className="text-white font-bold">4.5x more engagement</span>. Use the media composer to upload high-quality images.
+         </p>
+        </div>
+       </>
+      )}
      </div>
-    </div>
    </div>
   </div>
  );
