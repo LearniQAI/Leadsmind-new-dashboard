@@ -52,59 +52,33 @@ export async function POST(req: NextRequest) {
       // 1. Log RAW Payload
       console.log('[DEBUG-0] RAW INBOUND DATA:', JSON.stringify({
         subject: emailData.subject,
+        hasText: !!emailData.text,
+        hasHtml: !!emailData.html,
         payloadKeys: Object.keys(emailData)
       }, null, 2));
 
-      // 1.5 Fetch the full email body from Resend API
-      let fetchedText = '';
-      let fetchedHtml = '';
-      if (emailData.email_id) {
-        try {
-          console.log(`[DEBUG-FETCH] Fetching full body for email_id: ${emailData.email_id}`);
-          const resendResponse = await fetch(`https://api.resend.com/emails/${emailData.email_id}`, {
-            headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` }
-          });
-          if (resendResponse.ok) {
-            const fullEmail = await resendResponse.json();
-            fetchedText = fullEmail.text || '';
-            fetchedHtml = fullEmail.html || '';
-            console.log('[DEBUG-FETCH] Successfully fetched body. Text Length:', fetchedText?.length, 'HTML Length:', fetchedHtml?.length);
-          } else {
-            const errText = await resendResponse.text();
-            console.error('[DEBUG-FETCH] Failed to fetch full email:', errText);
-            fetchedText = `[DEBUG API ERROR]: HTTP ${resendResponse.status} - ${errText}`;
-          }
-        } catch (fetchErr: any) {
-          console.error('[DEBUG-FETCH] Network exception:', fetchErr);
-          fetchedText = `[DEBUG EXCEPTION]: ${fetchErr.message}`;
-        }
-      } else {
-        fetchedText = `[DEBUG MISSING] No email_id found in payload`;
-      }
-
-      // 2. Prioritize body extraction
+      // 2. Prioritize body extraction directly from the webhook payload
       let rawText = '';
-      if (fetchedText && fetchedText.trim().length > 0) {
-        console.log('[DEBUG-1] Selected fetchedText as source');
-        rawText = fetchedText;
-      } else if (fetchedHtml && fetchedHtml.trim().length > 0) {
-        console.log('[DEBUG-1] Selected fetchedHtml as source');
-        rawText = fetchedHtml;
-      } else if (emailData.text && typeof emailData.text === 'string' && emailData.text.trim().length > 0) {
+      if (emailData.text && typeof emailData.text === 'string' && emailData.text.trim().length > 0) {
         console.log('[DEBUG-1] Selected emailData.text as source');
         rawText = emailData.text;
       } else if (emailData.html && typeof emailData.html === 'string' && emailData.html.trim().length > 0) {
         console.log('[DEBUG-1] Selected emailData.html as source');
-        rawText = emailData.html;
+        // Simple HTML stripping
+        rawText = emailData.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       } else if (emailData.subject && typeof emailData.subject === 'string' && emailData.subject.trim().length > 0) {
-        console.log('[DEBUG-1] Selected emailData.subject as source (FALLBACK)');
+        console.log('[DEBUG-1] Selected emailData.subject as source (FALLBACK because body is empty)');
         rawText = emailData.subject;
       }
 
       console.log('[DEBUG-2] Raw Extracted Text Before Cleaning:', rawText.substring(0, 100));
 
-      // 3. Clean message body (COMPLETELY DISABLED STRIPPING FOR DEBUG)
-      const cleanedText = rawText.trim();
+      // 3. Clean message body (strip forwarded quotes and signatures)
+      // Basic stripping for replies
+      let cleanedText = rawText.split(/On\s+.*wrote:/i)[0]; // Gmail style
+      cleanedText = cleanedText.split(/From:/i)[0]; // Outlook style
+      cleanedText = cleanedText.split(/_{10,}/)[0]; // Underscore separators
+      cleanedText = cleanedText.trim();
 
       console.log('[DEBUG-3] Cleaned Text After Stripping:', cleanedText.substring(0, 100));
 
