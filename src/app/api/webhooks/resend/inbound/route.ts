@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
               workspace_id: contact.workspace_id,
               conversation_id: conversationId,
               direction: 'outbound',
-              content: cleanedText,
+              content: rawText || '[BODY COMPLETELY EMPTY]',
               status: 'sent',
               bridge_metadata: {
                 resend_message_id: messageId,
