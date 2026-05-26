@@ -10,7 +10,7 @@ const nextConfig = {
         ],
     },
     experimental: {
-        serverComponentsExternalPackages: ["puppeteer", "cheerio", "undici"],
+        serverComponentsExternalPackages: ["puppeteer", "cheerio", "undici", "@resvg/resvg-js"],
     },
 };
 
