@@ -36,7 +36,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
     <div className="flex-1 flex flex-col bg-[#04091a] relative overflow-hidden">
       {/* Dynamic Background Element */}
       {/* Header */}
-      <div className="h-20 border-b border-white/5 flex items-center justify-between px-8 z-10 bg-[#080f28]/80 backdrop-blur-xl shrink-0">
+      <div className="h-20 border-b border-white/5 flex items-center justify-between px-8 z-10 bg-[#080f28]/80 backdrop-blur-xl shrink-0 overflow-x-auto common-scrollbar gap-8">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 shrink-0 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
             {conversation.platform === 'sms' && <i className="fa-solid fa-comment-dots text-[16px] text-[#10b981]"></i>}
@@ -49,20 +49,20 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
             )}
           </div>
           <div>
-            <h3 className="text-[15px] font-bold text-[#eef2ff] font-space-grotesk tracking-tight">
+            <h3 className="text-[15px] font-bold text-[#eef2ff] font-space-grotesk tracking-tight whitespace-nowrap">
               {conversation.contacts ? `${conversation.contacts.first_name} ${conversation.contacts.last_name}` : conversation.title}
             </h3>
             <div className="flex items-center gap-2 mt-0.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-              <span className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-widest font-dm-sans">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse shrink-0" />
+              <span className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-widest font-dm-sans whitespace-nowrap">
                 Active via {conversation.platform}
               </span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {conversation.platform === 'sms' && (
-            <div className="hidden md:flex items-center gap-2 mr-2">
+            <div className="flex items-center gap-2 mr-2">
                <div className="px-2.5 py-1.5 rounded-lg bg-[#2563eb]/10 border border-[#2563eb]/20 text-[#3b82f6] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
                   <i className="fa-solid fa-link"></i>
                   SMS Bridge Active
