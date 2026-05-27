@@ -89,7 +89,8 @@ export function ConversationList({
       <div className="flex-1 overflow-y-auto common-scrollbar">
         {conversations.map(conv => {
           const isActive = activeId === conv.id;
-          const latestMessage = conv.messages?.[conv.messages.length - 1];
+          const sortedMessages = conv.messages?.slice().sort((a: any, b: any) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
+          const latestMessage = sortedMessages?.[0];
           const unread = conv.unread_count > 0;
 
           return (

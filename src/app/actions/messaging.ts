@@ -78,7 +78,7 @@ export async function sendMessage(conversationId: string, content: string) {
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
-  const { error } = await supabase
+  const { data: msgData, error } = await supabase
    .from('messages')
    .insert({
     workspace_id: workspaceId,
@@ -86,7 +86,9 @@ export async function sendMessage(conversationId: string, content: string) {
     direction: 'outbound',
     content,
     status: 'sending'
-   });
+   })
+   .select()
+   .single();
 
   if (error) throw error;
   
@@ -96,9 +98,12 @@ export async function sendMessage(conversationId: string, content: string) {
   // If it's an email platform, send the actual email via Resend
   const { data: conv } = await supabase
    .from('conversations')
-   .select('platform, contacts(email)')
+   .select('platform, contacts(email, phone)')
    .eq('id', conversationId)
    .single();
+
+  let messageFailed = false;
+  let errorMessage = '';
 
   if (conv?.platform === 'email') {
    const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
@@ -109,10 +114,39 @@ export async function sendMessage(conversationId: string, content: string) {
       subject: 'New message from LeadsMind Support',
       text: content,
      });
-    } catch (emailErr) {
+     await supabase.from('messages').update({ status: 'delivered' }).eq('id', msgData.id);
+    } catch (emailErr: any) {
      console.error('[messaging] Failed to send actual email:', emailErr);
+     messageFailed = true;
+     errorMessage = emailErr.message || 'Failed to send email';
     }
+   } else {
+     messageFailed = true;
+     errorMessage = 'No email address for contact';
    }
+  } else if (conv?.platform === 'sms') {
+   const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
+   if (contact?.phone) {
+    try {
+     const { sendSMS } = await import('@/lib/sms');
+     await sendSMS({ to: contact.phone, message: content });
+     await supabase.from('messages').update({ status: 'delivered' }).eq('id', msgData.id);
+    } catch (smsErr: any) {
+     console.error('[messaging] Failed to send SMS:', smsErr);
+     messageFailed = true;
+     errorMessage = smsErr.message || 'Failed to send SMS';
+    }
+   } else {
+     messageFailed = true;
+     errorMessage = 'No phone number for contact';
+   }
+  } else {
+      // Just mark as sent for other platforms for now
+      await supabase.from('messages').update({ status: 'delivered' }).eq('id', msgData.id);
+  }
+
+  if (messageFailed && msgData) {
+      await supabase.from('messages').update({ status: 'failed', error_message: errorMessage }).eq('id', msgData.id);
   }
 
   return { success: true };
