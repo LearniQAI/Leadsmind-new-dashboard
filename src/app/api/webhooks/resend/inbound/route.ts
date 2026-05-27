@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
         smsSid = smsResult.sid;
       } catch (smsErr: any) {
         console.error('[Resend Webhook] Twilio SMS failed:', smsErr);
-        return NextResponse.json({ error: 'Failed to relay SMS' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to relay SMS', details: smsErr.message, code: smsErr.code }, { status: 500 });
       }
 
       // Resolve CRM contact and log conversation
