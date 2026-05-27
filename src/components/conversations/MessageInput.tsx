@@ -48,19 +48,7 @@ export function MessageInput({ onSend, placeholder, disabled }: MessageInputProp
           }}
         />
         
-        <div className="flex items-center justify-between px-2 pb-1">
-          <div className="flex items-center gap-1">
-            <button className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 transition-all" title="Attach Files">
-              <i className="fa-solid fa-paperclip text-[13px]"></i>
-            </button>
-            <button className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 transition-all" title="Message Templates">
-              <i className="fa-solid fa-note-sticky text-[13px]"></i>
-            </button>
-            <button className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 transition-all" title="AI Assist">
-              <i className="fa-solid fa-wand-magic-sparkles text-[13px]"></i>
-            </button>
-          </div>
-          
+        <div className="flex items-center justify-end px-2 pb-1">
           <button 
             onClick={handleSend}
             disabled={!text.trim()}

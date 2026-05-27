@@ -15,9 +15,9 @@ interface ConversationListProps {
 }
 
 const CHANNELS = [
-  { id: 'all', icon: 'fa-layer-group', label: 'All', color: '#2563eb' },
-  { id: 'sms', icon: 'fa-comment-sms', label: 'SMS', color: '#10b981' },
-  { id: 'email', icon: 'fa-envelope', label: 'Email', color: '#3b82f6' },
+  { id: 'all', icon: 'fa-solid fa-layer-group', label: 'All', color: '#2563eb' },
+  { id: 'sms', icon: 'fa-solid fa-comment-dots', label: 'SMS', color: '#10b981' },
+  { id: 'email', icon: 'fa-solid fa-envelope', label: 'Email', color: '#3b82f6' },
   { id: 'facebook', icon: 'fa-brands fa-facebook-messenger', label: 'Facebook', color: '#3b82f6' },
   { id: 'instagram', icon: 'fa-brands fa-instagram', label: 'Instagram', color: '#ec4899' },
   { id: 'whatsapp', icon: 'fa-brands fa-whatsapp', label: 'WhatsApp', color: '#25d366' },
@@ -51,7 +51,7 @@ export function ConversationList({
           </span>
         </div>
 
-        <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex gap-1 overflow-x-auto common-scrollbar pb-2">
           {CHANNELS.map(c => (
             <button
               key={c.id}
