@@ -27,7 +27,7 @@ export function ContactInfoPanel({ contact }: ContactInfoPanelProps) {
         <h3 className="text-[15px] font-bold text-[#eef2ff] font-space-grotesk mb-1">
           {contact.first_name} {contact.last_name}
         </h3>
-        <p className="text-[12px] text-[#4a5a82] font-dm-sans mb-4">{contact.email || 'No email provided'}</p>
+        <p className="text-[12px] text-[#4a5a82] font-dm-sans mb-4 break-all px-2">{contact.email || 'No email provided'}</p>
         
         <div className="flex flex-wrap justify-center gap-1.5">
           <div className="bg-[#2563eb]/15 text-[#3b82f6] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest font-dm-sans">
@@ -65,7 +65,7 @@ export function ContactInfoPanel({ contact }: ContactInfoPanelProps) {
             {contact.email && (
               <div className="flex items-center gap-3">
                 <i className="fa-solid fa-envelope text-[#4a5a82] text-[12px]"></i>
-                <span className="text-[12.5px] text-[#94a3c8] font-dm-sans">{contact.email}</span>
+                <span className="text-[12.5px] text-[#94a3c8] font-dm-sans break-all">{contact.email}</span>
               </div>
             )}
             {contact.city && (
