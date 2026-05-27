@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ interface ConversationThreadProps {
 }
 
 export function ConversationThread({ conversation, onSendMessage, isSending }: ConversationThreadProps) {
+  const [isCopied, setIsCopied] = useState(false);
+
   if (!conversation) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-[#04091a]">
@@ -38,8 +40,15 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
       {/* Header */}
       <div className="h-20 border-b border-white/5 flex items-center justify-between px-8 z-10 bg-[#080f28]/80 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 text-[#3b82f6]">
-            <i className={cn("fa-solid", conversation.platform === 'email' ? 'fa-envelope' : 'fa-comment')}></i>
+          <div className="w-10 h-10 shrink-0 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+            {conversation.platform === 'sms' && <i className="fa-solid fa-comment-sms text-[16px] text-[#10b981]"></i>}
+            {conversation.platform === 'email' && <i className="fa-solid fa-envelope text-[16px] text-[#3b82f6]"></i>}
+            {conversation.platform === 'whatsapp' && <i className="fa-brands fa-whatsapp text-[18px] text-[#25d366]"></i>}
+            {conversation.platform === 'instagram' && <i className="fa-brands fa-instagram text-[18px] text-[#ec4899]"></i>}
+            {conversation.platform === 'facebook' && <i className="fa-brands fa-facebook-messenger text-[18px] text-[#3b82f6]"></i>}
+            {!['sms', 'email', 'whatsapp', 'instagram', 'facebook'].includes(conversation.platform) && (
+              <i className="fa-solid fa-comment text-[16px] text-[#3b82f6]"></i>
+            )}
           </div>
           <div>
             <h3 className="text-[15px] font-bold text-[#eef2ff] font-space-grotesk tracking-tight">
@@ -55,21 +64,26 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
         </div>
         <div className="flex items-center gap-2">
           {conversation.platform === 'sms' && (
-            <div className="flex items-center gap-2 mr-2">
-               <div className="px-2 py-1 rounded-md bg-[#2563eb]/10 border border-[#2563eb]/20 text-[#3b82f6] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <div className="hidden md:flex items-center gap-2 mr-2">
+               <div className="px-2.5 py-1.5 rounded-lg bg-[#2563eb]/10 border border-[#2563eb]/20 text-[#3b82f6] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
                   <i className="fa-solid fa-link"></i>
                   SMS Bridge Active
                </div>
                <Button 
                  variant="ghost" 
                  size="sm"
-                 className="h-6 text-[10px] font-bold text-[#eef2ff] bg-white/5 border border-white/10 hover:bg-white/10"
+                 className="h-[28px] px-3 text-[10px] font-bold text-[#eef2ff] bg-white/5 border border-white/10 hover:bg-white/10 whitespace-nowrap"
                  onClick={() => {
                    navigator.clipboard.writeText(`${conversation.contacts?.phone?.replace('+', '')}@sms.leadsmind.io`);
+                   setIsCopied(true);
+                   setTimeout(() => setIsCopied(false), 2000);
                  }}
                >
-                 <i className="fa-regular fa-copy mr-1.5"></i>
-                 Copy Bridge Address
+                 {isCopied ? (
+                   <><i className="fa-solid fa-check mr-1.5 text-[#10b981]"></i> Copied!</>
+                 ) : (
+                   <><i className="fa-regular fa-copy mr-1.5"></i> Copy Bridge Address</>
+                 )}
                </Button>
             </div>
           )}
