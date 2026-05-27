@@ -10,6 +10,7 @@ import { useDashboardContext } from "./DashboardProvider";
 import GlobalSearchModal from "../dashboard/GlobalSearchModal";
 import AccessDenied from "../auth/AccessDenied";
 import LENAChat from "../support/LENAChat";
+import LENAContextualSidebar from "../support/LENAContextualSidebar";
 import HelpDrawer from "../platform/HelpDrawer";
 import { FeedbackCenter } from "@/components/production/FeedbackCenter";
 import { GlobalCommandPalette } from "@/components/production/GlobalCommandPalette";
@@ -83,6 +84,7 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       {/* Global Modals */}
       <GlobalSearchModal />
       <LENAChat />
+      <LENAContextualSidebar />
       <HelpDrawer />
       <FeedbackCenter />
       <GlobalCommandPalette />

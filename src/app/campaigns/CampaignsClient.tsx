@@ -191,8 +191,11 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-xl rounded-xl min-w-[160px]">
+                    <DropdownMenuItem onClick={() => router.push(`/campaigns/${campaign.id}/builder`)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg mx-1 px-3 py-2">
+                      <Pencil size={14} /> Design Layout
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => openEdit(campaign)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg mx-1 px-3 py-2">
-                      <Pencil size={14} /> Edit Campaign
+                      <Pencil size={14} /> Edit Settings
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handlePublish(campaign)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg mx-1 px-3 py-2">
                       {campaign.status === 'sent' ? <><Clock size={14} /> Move to Draft</> : <><Send size={14} /> Mark as Sent</>}
@@ -224,9 +227,14 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
                 <Calendar className="w-3.5 h-3.5" />
                 {campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Not sent'}
               </div>
-              <Button onClick={() => openEdit(campaign)} variant="outline" className="h-9 px-4 rounded-xl border-gray-200 text-[9px] font-black uppercase text-gray-600 hover:text-primary hover:border-primary hover:bg-primary/5 transition-all flex items-center gap-2">
-                <Pencil size={12} /> Edit
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => openEdit(campaign)} variant="outline" className="h-9 px-3 rounded-xl border-gray-200 text-[9px] font-black uppercase text-gray-600 hover:text-primary hover:border-primary hover:bg-primary/5 transition-all">
+                  Settings
+                </Button>
+                <Button onClick={() => router.push(`/campaigns/${campaign.id}/builder`)} className="btn-primary h-9 px-3 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-md shadow-primary/10">
+                  Design
+                </Button>
+              </div>
             </div>
           </div>
         ))}

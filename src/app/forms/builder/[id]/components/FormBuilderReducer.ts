@@ -193,5 +193,7 @@ export function normalizeFields(dbFields: any[], defaultStepId: string): FormFie
     helpText: f.helpText || '',
     options: Array.isArray(f.options) ? f.options : [],
     stepId: f.stepId || defaultStepId,
+    // POPIA Compliance: Checkboxes must never be pre-checked by default
+    ...(f.type === 'checkbox' ? { defaultValue: false, checked: false, defaultChecked: false } : {}),
   }));
 }

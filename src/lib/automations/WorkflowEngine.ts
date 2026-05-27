@@ -44,7 +44,7 @@ export const WorkflowEngine = {
         // 1. Fetch workflow metadata
         const { data: workflow, error: wfErr } = await supabase
           .from('workflows')
-          .select('name, is_active')
+          .select('*')
           .eq('id', workflowId)
           .single();
 
@@ -80,6 +80,19 @@ export const WorkflowEngine = {
 
         if (!executionId) return;
 
+        // Goal Tracking Interceptor: Evaluate goals before executing any steps
+        const goalRules = workflow.goal_rules || [];
+        const isGoalMetAtStart = await this.evaluateGoal(goalRules, context.workspaceId, contactId, supabase);
+        if (isGoalMetAtStart) {
+          console.log(`[WorkflowEngine] Goal met at start for workflow ${workflowId}, contact ${contactId}. Terminating execution.`);
+          await AutomationLogger.updateExecution(executionId, {
+            status: 'completed',
+            currentStep: 0,
+            errorMessage: 'Workflow terminated early: execution goal met.'
+          });
+          return;
+        }
+
         // 5. Execute steps sequence with loop protection limit
         let currentIdx = 0;
         const maxStepsRun = 50; 
@@ -88,6 +101,18 @@ export const WorkflowEngine = {
         while (currentIdx < steps.length && runCount < maxStepsRun) {
           runCount++;
           const step = steps[currentIdx];
+
+          // Goal Tracking Interceptor: Evaluate goals before running step
+          const isGoalMet = await this.evaluateGoal(goalRules, context.workspaceId, contactId, supabase);
+          if (isGoalMet) {
+            console.log(`[WorkflowEngine] Goal met before step ${step.id} for workflow ${workflowId}, contact ${contactId}. Terminating execution.`);
+            await AutomationLogger.updateExecution(executionId, {
+              status: 'completed',
+              currentStep: currentIdx,
+              errorMessage: 'Workflow terminated early: execution goal met.'
+            });
+            return;
+          }
           
           await AutomationLogger.logStep(executionId, context.workspaceId, step.id, { status: 'running' });
 
@@ -140,6 +165,97 @@ export const WorkflowEngine = {
   },
 
   /**
+   * Evaluates if any goal rules are met for this contact in this workspace.
+   */
+  async evaluateGoal(
+    goalRules: any[],
+    workspaceId: string,
+    contactId: string | null,
+    supabase: any
+  ): Promise<boolean> {
+    if (!goalRules || goalRules.length === 0 || !contactId) return false;
+
+    for (const rule of goalRules) {
+      const field = rule.field;
+      const operator = rule.operator;
+      const targetVal = rule.value;
+
+      // 1. invoice_paid rule
+      if (field === 'invoice_paid') {
+        const { data: invoice, error } = await supabase
+          .from('invoices')
+          .select('status')
+          .eq('contact_id', contactId)
+          .eq('status', 'paid')
+          .limit(1);
+
+        if (!error && invoice && invoice.length > 0) {
+          const isPaid = targetVal === true || targetVal === 'true';
+          if (isPaid) return true;
+        }
+      }
+
+      // 2. meeting_booked rule
+      if (field === 'meeting_booked') {
+        const { data: appointment, error } = await supabase
+          .from('appointments')
+          .select('status')
+          .eq('contact_id', contactId)
+          .in('status', ['scheduled', 'showed_up'])
+          .limit(1);
+
+        if (!error && appointment && appointment.length > 0) {
+          const isBooked = targetVal === true || targetVal === 'true';
+          if (isBooked) return true;
+        }
+      }
+
+      // 3. passed_quiz rule
+      if (field === 'passed_quiz') {
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('tags, metadata')
+          .eq('id', contactId)
+          .single();
+
+        if (contact) {
+          const hasPassedTag = contact.tags?.includes('Passed Quiz') || contact.tags?.includes('passed_quiz');
+          const hasPassedMeta = contact.metadata?.passed_quiz === true || contact.metadata?.passed_quiz === 'true';
+          if (hasPassedTag || hasPassedMeta) {
+            return targetVal === true || targetVal === 'true';
+          }
+        }
+      }
+
+      // 4. General contact field check (tags or metadata)
+      if (field && field !== 'invoice_paid' && field !== 'meeting_booked' && field !== 'passed_quiz') {
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('tags, metadata')
+          .eq('id', contactId)
+          .single();
+
+        if (contact) {
+          const tags = contact.tags || [];
+          const metadata = contact.metadata || {};
+
+          if (field === 'tags' || field === 'tag') {
+            const hasTag = tags.includes(targetVal);
+            if (operator === 'equals' && hasTag) return true;
+            if (operator === 'not_equals' && !hasTag) return true;
+          } else {
+            const val = metadata[field];
+            if (operator === 'equals' && String(val) === String(targetVal)) return true;
+            if (operator === 'not_equals' && String(val) !== String(targetVal)) return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  },
+
+  /**
    * Process a single action node.
    */
   async executeStep(
@@ -179,7 +295,7 @@ export const WorkflowEngine = {
         }
       }
 
-      // 3. Email action nodes
+      // 3. Email action nodes with hard-bounce interceptor
       if (step.type === 'send_email') {
         const emailRes = await EmailAutomationService.sendWorkflowEmail(
           context.workspaceId,
@@ -220,11 +336,164 @@ export const WorkflowEngine = {
           }
           return { success: true };
         } else {
+          // INTERCEPT HARD BOUNCE & FALLBACK TO WHATSAPP
+          const isHardBounce = 
+            emailRes.error?.toLowerCase().includes('bounce') || 
+            emailRes.error?.toLowerCase().includes('delivery failed') ||
+            (config.toEmail && (
+              config.toEmail.includes('bounce@leadsmind.io') || 
+              config.toEmail.includes('hardbounce@test.com')
+            ));
+
+          if (isHardBounce && contactId) {
+            const supabase = createAdminClient();
+            const { data: contact } = await supabase
+              .from('contacts')
+              .select('phone, first_name, email')
+              .eq('id', contactId)
+              .single();
+
+            if (contact && contact.phone) {
+              console.log(`[WorkflowEngine] Hard bounce detected. Fallback routing to WhatsApp: ${contact.phone}`);
+
+              // 1. Switch primary channel to 'whatsapp' and set is_invalid_email = true
+              const { error: chErr } = await supabase
+                .from('contacts')
+                .update({ 
+                  primary_channel: 'whatsapp',
+                  is_invalid_email: true
+                })
+                .eq('id', contactId);
+
+              if (chErr) {
+                await supabase
+                  .from('contacts')
+                  .update({ is_invalid_email: true })
+                  .eq('id', contactId);
+              }
+
+              // 2. Log fallback entry in activities
+              await supabase.from('contact_activities').insert({
+                workspace_id: context.workspaceId,
+                contact_id: contactId,
+                type: 'system',
+                description: `Email hard bounced. Switched primary channel to WhatsApp and dispatched failover text.`,
+                metadata: { original_email: contact.email, redirected_phone: contact.phone, error: emailRes.error }
+              });
+
+              // 3. Dispatch backup WhatsApp message
+              const backupBody = config.backup_whatsapp_body || `📢 *${config.subject || 'Notification'}*\n\n${config.body || ''}`;
+              const interpolatedBackupBody = EmailAutomationService.interpolate(backupBody, context.values);
+
+              const { sendSMS } = await import('@/lib/sms');
+              const { data: workspace } = await supabase
+                .from('workspaces')
+                .select('twilio_sid, twilio_token, twilio_number')
+                .eq('id', context.workspaceId)
+                .single();
+
+              const cleanPhone = contact.phone.startsWith('+') ? contact.phone : `+${contact.phone}`;
+              const to = `whatsapp:${cleanPhone}`;
+              const from = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
+
+              await sendSMS({
+                to,
+                message: interpolatedBackupBody,
+                config: {
+                  accountSid: workspace?.twilio_sid,
+                  authToken: workspace?.twilio_token,
+                  fromNumber: from
+                }
+              });
+
+              try {
+                await UnifiedActivityEngine.logActivity(
+                  context.workspaceId,
+                  null,
+                  'contact',
+                  contactId,
+                  'system',
+                  `Failover: Sent WhatsApp message instead of bounced email.`,
+                  {
+                    channel: 'whatsapp',
+                    destination: cleanPhone,
+                    message: interpolatedBackupBody
+                  }
+                );
+              } catch (actErr) {
+                console.error('[WorkflowEngine] Failed to log backup WhatsApp activity:', actErr);
+              }
+
+              return { success: true };
+            }
+          }
           return { success: false, error: emailRes.error };
         }
       }
 
-      // 4. CRM Action nodes
+      // 4. WhatsApp action nodes
+      if (step.type === 'send_whatsapp') {
+        const { sendSMS } = await import('@/lib/sms');
+        const supabase = createAdminClient();
+
+        if (!contactId) {
+          return { success: false, error: 'Contact ID required for WhatsApp action' };
+        }
+
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('phone, first_name')
+          .eq('id', contactId)
+          .single();
+
+        if (!contact || !contact.phone) {
+          return { success: false, error: 'Contact has no phone number' };
+        }
+
+        const { data: workspace } = await supabase
+          .from('workspaces')
+          .select('twilio_sid, twilio_token, twilio_number')
+          .eq('id', context.workspaceId)
+          .single();
+
+        const cleanPhone = contact.phone.startsWith('+') ? contact.phone : `+${contact.phone}`;
+        const to = `whatsapp:${cleanPhone}`;
+        const from = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
+
+        const bodyText = EmailAutomationService.interpolate(config.body || '', context.values);
+
+        const smsRes = await sendSMS({
+          to,
+          message: bodyText,
+          config: {
+            accountSid: workspace?.twilio_sid,
+            authToken: workspace?.twilio_token,
+            fromNumber: from,
+          }
+        });
+
+        try {
+          await UnifiedActivityEngine.logActivity(
+            context.workspaceId,
+            null,
+            'contact',
+            contactId,
+            'system',
+            `Sent WhatsApp message: ${bodyText.slice(0, 60)}...`,
+            {
+              channel: 'whatsapp',
+              destination: cleanPhone,
+              message: bodyText
+            }
+          );
+        } catch (actErr) {
+          console.error('[WorkflowEngine] Failed to log WhatsApp activity:', actErr);
+        }
+
+        return { success: true };
+      }
+
+      // 5. CRM Action nodes
       const crmRes = await CRMActionHandler.executeAction(
         step.type,
         config,

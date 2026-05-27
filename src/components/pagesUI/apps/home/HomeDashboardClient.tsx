@@ -28,6 +28,11 @@ interface HomeDashboardClientProps {
   recentActivities: any[];
   topOpportunities: any[];
   overdueTasks?: any[];
+  attributionMetrics?: {
+    totalRandRevenue: number;
+    ctor: number;
+    stepRevenue: Record<string, { step_id: string; workflow_name: string; step_type: string; revenue: number }>;
+  };
 }
 
 const HomeDashboardClient = ({
@@ -35,6 +40,7 @@ const HomeDashboardClient = ({
   recentActivities,
   topOpportunities,
   overdueTasks = [],
+  attributionMetrics,
 }: HomeDashboardClientProps) => {
   const { user } = useDashboardContext();
   const conversionRate =
@@ -181,6 +187,76 @@ const HomeDashboardClient = ({
               </div>
             ))}
           </div>
+
+          {/* Revenue Attribution & ROI Insights */}
+          {attributionMetrics && (
+            <div className="col-span-12">
+              <div className="card__wrapper !p-6 border border-white/5 bg-[#080f28]/60 backdrop-blur-xl rounded-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-amber"></div>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b border-white/5 pb-4">
+                  <div>
+                    <h5 className="text-[14px] font-bold text-t1 flex items-center gap-2 uppercase tracking-tight font-space">
+                      <TrendingUp size={16} className="text-amber" /> ROI & REVENUE <span className="text-amber">ATTRIBUTION</span>
+                    </h5>
+                    <p className="text-[10px] text-t3 uppercase font-black tracking-widest mt-0.5">
+                      Paid Invoice Tracking & Conversion Mapping (Last 30 Days Lookback)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs font-bold text-t2 font-space">
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#10b981]" /> PayFast & Platform Processors Active</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Total Rand Value Gains */}
+                  <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[9px] font-black uppercase text-t3 tracking-widest block mb-1">Total ZAR Value Gains</span>
+                      <span className="text-2xl font-black text-white font-space">
+                        R{attributionMetrics.totalRandRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-medium text-[#10b981] mt-2 block uppercase tracking-tight">
+                      <i className="fa-solid fa-circle-check mr-1" /> Native Rand ROI
+                    </span>
+                  </div>
+
+                  {/* CTOR */}
+                  <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[9px] font-black uppercase text-t3 tracking-widest block mb-1">Click-Through-Open-Rate (CTOR)</span>
+                      <span className="text-2xl font-black text-white font-space">
+                        {attributionMetrics.ctor}%
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-medium text-accent2 mt-2 block uppercase tracking-tight">
+                      <i className="fa-solid fa-arrow-pointer mr-1" /> Dynamic Email Engagement
+                    </span>
+                  </div>
+
+                  {/* Sequence Revenue Contributions */}
+                  <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col">
+                    <span className="text-[9px] font-black uppercase text-t3 tracking-widest block mb-3">Sequence Revenue Generations</span>
+                    <div className="space-y-2 overflow-y-auto max-h-[80px] common-scrollbar pr-1">
+                      {Object.values(attributionMetrics.stepRevenue).length === 0 ? (
+                        <span className="text-xs text-t3 font-medium block italic uppercase tracking-wider">No sequence step attribution recorded yet</span>
+                      ) : (
+                        Object.values(attributionMetrics.stepRevenue).map((step, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-xs">
+                            <div className="min-w-0 flex-1 pr-2">
+                              <span className="font-bold text-white truncate block uppercase tracking-tight">{step.workflow_name}</span>
+                              <span className="text-[10px] text-t3 block uppercase font-medium">{step.step_type === 'send_email' ? 'Email step' : step.step_type}</span>
+                            </div>
+                            <span className="font-black text-amber font-space shrink-0">R{step.revenue.toLocaleString()}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Activity Feed & Top Opportunities */}
           <div className="col-span-12 xxl:col-span-7">

@@ -226,16 +226,31 @@ export async function deleteInvoice(id: string) {
 }
 
 export async function updateInvoiceStatus(id: string, status: string) {
- const supabase = await createServerClient();
- const { data, error } = await supabase
-  .from('invoices')
-  .update({ status, updated_at: new Date().toISOString() })
-  .eq('id', id)
-  .select()
-  .single();
- if (error) return { success: false, error: error.message };
- revalidatePath('/invoices');
- return { success: true, data };
+  if (status === 'paid') {
+    try {
+      const { AttributionEngine } = await import('@/lib/analytics/AttributionEngine');
+      const res = await AttributionEngine.trackInvoicePayment(id);
+      if (res.success && res.data) {
+        revalidatePath('/invoices');
+        return { success: true, data: res.data };
+      } else {
+        console.error('[finance] Attribution Engine failed, falling back to simple update:', res.error);
+      }
+    } catch (err) {
+      console.error('[finance] Failed to load AttributionEngine:', err);
+    }
+  }
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('invoices')
+   .update({ status, updated_at: new Date().toISOString() })
+   .eq('id', id)
+   .select()
+   .single();
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/invoices');
+  return { success: true, data };
 }
 
 export async function deleteQuote(id: string) {

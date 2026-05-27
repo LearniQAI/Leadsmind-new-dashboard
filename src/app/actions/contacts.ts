@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { headers } from 'next/headers';
 
 export async function getContact(id: string) {
  const workspaceId = await getCurrentWorkspaceId();
@@ -199,7 +200,7 @@ export async function createContact(values: any) {
 
   const supabase = await createServerClient();
   
-  const payload = {
+  const payload: any = {
     workspace_id: workspaceId,
     first_name: values.firstName,
     last_name: values.lastName,
@@ -209,6 +210,22 @@ export async function createContact(values: any) {
     owner_id: values.ownerId || null,
     tags: values.tags || [],
   };
+
+  if (values.consentTimestamp) {
+    payload.consent_timestamp = values.consentTimestamp;
+    if (values.consentIp) {
+      payload.consent_ip = values.consentIp;
+    } else {
+      try {
+        const reqHeaders = headers();
+        payload.consent_ip = reqHeaders.get('x-forwarded-for')?.split(',')[0] || reqHeaders.get('x-real-ip') || 'unknown';
+      } catch (e) {
+        payload.consent_ip = 'unknown';
+      }
+    }
+  }
+  if (values.consentFormId) payload.consent_form_id = values.consentFormId;
+  if (values.processingPurposeScope) payload.processing_purpose_scope = values.processingPurposeScope;
 
   const { data, error } = await supabase
     .from('contacts')
@@ -224,7 +241,7 @@ export async function createContact(values: any) {
     contact_id: data.id,
     type: 'edit',
     description: `Contact created manually`,
-    metadata: { source: 'form' }
+    metadata: { source: values.source || 'form' }
   });
 
   revalidatePath('/contacts');

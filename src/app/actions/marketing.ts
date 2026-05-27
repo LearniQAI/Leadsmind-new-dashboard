@@ -246,6 +246,53 @@ export async function deleteFunnelAction(id: string) {
 export async function updateCampaign(id: string, updates: any) {
  try {
   const supabase = await createServerClient();
+  
+  // If moving status to sent or scheduled, enforce Domain Verification rules
+  if (updates.status === 'sent' || updates.status === 'scheduled') {
+   const { data: campaign, error: campaignError } = await supabase
+    .from('email_campaigns')
+    .select('from_email, workspace_id')
+    .eq('id', id)
+    .single();
+
+   if (campaignError || !campaign) {
+    throw new Error('Email campaign not found.');
+   }
+
+   const fromEmail = updates.from_email || campaign.from_email;
+   const workspaceId = campaign.workspace_id;
+
+   if (!fromEmail) {
+    throw new Error('Campaign "From Email" is not set. Please configure a sending email address.');
+   }
+
+   const emailParts = fromEmail.split('@');
+   if (emailParts.length < 2) {
+    throw new Error('Invalid "From Email" address format.');
+   }
+   const domainName = emailParts[1].toLowerCase().trim();
+
+   // Skip checks for the sandbox domain if desired, but throw warning otherwise
+   const isDefaultSandbox = domainName === 'resend.dev' || domainName === 'leadsmind.io';
+
+   if (!isDefaultSandbox) {
+    const { data: domainRecord, error: domainError } = await supabase
+     .from('sender_domains')
+     .select('spf_status, dkim_status')
+     .eq('workspace_id', workspaceId)
+     .eq('domain_name', domainName)
+     .single();
+
+    if (domainError || !domainRecord) {
+     throw new Error(`Hard Block: Domain '${domainName}' is not registered. Please register and authenticate this domain in Settings > Domains first.`);
+    }
+
+    if (!domainRecord.spf_status || !domainRecord.dkim_status) {
+     throw new Error(`Hard Block: Domain '${domainName}' has unverified SPF/DKIM records. You must complete verification in Settings > Domains before scheduling or sending campaigns.`);
+    }
+   }
+  }
+
   const { data, error } = await supabase.from('email_campaigns').update(updates).eq('id', id).select().single();
   if (error) throw error;
   return { data };
@@ -270,7 +317,24 @@ export async function updateForm(id: string, updates: any) {
 
   if (updates.name !== undefined) payload.name = updates.name;
   if (updates.status !== undefined) payload.status = updates.status;
-  if (updates.fields !== undefined) payload.fields = updates.fields;
+  if (updates.fields !== undefined) {
+    if (Array.isArray(updates.fields)) {
+      for (const field of updates.fields) {
+        if (field.type === 'checkbox') {
+          if (
+            field.defaultValue === true ||
+            field.checked === true ||
+            field.defaultChecked === true ||
+            field.preChecked === true ||
+            field.value === true
+          ) {
+            throw new Error(`POPIA Compliance Error: Checkbox "${field.label}" cannot be pre-checked by default.`);
+          }
+        }
+      }
+    }
+    payload.fields = updates.fields;
+  }
   if (updates.config !== undefined) payload.config = updates.config;
   if (updates.settings !== undefined) payload.settings = updates.settings;
 

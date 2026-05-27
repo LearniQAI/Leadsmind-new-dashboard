@@ -8,6 +8,9 @@ interface MessageInputProps {
   onSend: (text: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  availablePlatforms?: any[];
+  selectedPlatform?: string;
+  onPlatformChange?: (platform: string) => void;
 }
 
 const TEMPLATES = [
@@ -17,7 +20,14 @@ const TEMPLATES = [
   { title: "Check-in", body: "Hi! Just checking in to see how things are going on your end. Let me know if you need anything." }
 ];
 
-export function MessageInput({ onSend, placeholder, disabled }: MessageInputProps) {
+export function MessageInput({ 
+  onSend, 
+  placeholder, 
+  disabled,
+  availablePlatforms,
+  selectedPlatform,
+  onPlatformChange
+}: MessageInputProps) {
   const [text, setText] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -68,37 +78,65 @@ export function MessageInput({ onSend, placeholder, disabled }: MessageInputProp
         />
         
         <div className="flex items-center justify-between px-2 pb-1 relative">
-          <div className="relative" ref={dropdownRef}>
-            <button 
-              onClick={() => setShowTemplates(!showTemplates)}
-              className={cn(
-                "h-8 px-3 rounded-lg flex items-center justify-center gap-2 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 transition-all text-[12px] font-bold font-dm-sans",
-                showTemplates && "bg-white/5 text-[#eef2ff]"
-              )}
-            >
-              <i className="fa-solid fa-note-sticky text-[13px]"></i>
-              Templates
-            </button>
-            
-            {showTemplates && (
-              <div className="absolute bottom-full left-0 mb-2 w-72 bg-[#080f28] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1 animate-in fade-in zoom-in duration-200">
-                <div className="px-2 py-1.5 mb-1 border-b border-white/5">
-                  <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest font-dm-sans">Select Template</span>
+          <div className="flex items-center gap-3 relative">
+            <div className="relative" ref={dropdownRef}>
+              <button 
+                onClick={() => setShowTemplates(!showTemplates)}
+                className={cn(
+                  "h-8 px-3 rounded-lg flex items-center justify-center gap-2 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 transition-all text-[12px] font-bold font-dm-sans",
+                  showTemplates && "bg-white/5 text-[#eef2ff]"
+                )}
+              >
+                <i className="fa-solid fa-note-sticky text-[13px]"></i>
+                Templates
+              </button>
+              
+              {showTemplates && (
+                <div className="absolute bottom-full left-0 mb-2 w-72 bg-[#080f28] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1 animate-in fade-in zoom-in duration-200">
+                  <div className="px-2 py-1.5 mb-1 border-b border-white/5">
+                    <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest font-dm-sans">Select Template</span>
+                  </div>
+                  {TEMPLATES.map((tmpl, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setText(tmpl.body);
+                        setShowTemplates(false);
+                        textareaRef.current?.focus();
+                      }}
+                      className="flex flex-col items-start px-3 py-2 rounded-lg hover:bg-white/[0.03] text-left transition-all group"
+                    >
+                      <span className="text-[12px] font-bold text-[#eef2ff] group-hover:text-[#3b82f6] transition-colors font-space-grotesk">{tmpl.title}</span>
+                      <span className="text-[11px] text-[#4a5a82] line-clamp-1 mt-0.5 font-dm-sans">{tmpl.body}</span>
+                    </button>
+                  ))}
                 </div>
-                {TEMPLATES.map((tmpl, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setText(tmpl.body);
-                      setShowTemplates(false);
-                      textareaRef.current?.focus();
-                    }}
-                    className="flex flex-col items-start px-3 py-2 rounded-lg hover:bg-white/[0.03] text-left transition-all group"
-                  >
-                    <span className="text-[12px] font-bold text-[#eef2ff] group-hover:text-[#3b82f6] transition-colors font-space-grotesk">{tmpl.title}</span>
-                    <span className="text-[11px] text-[#4a5a82] line-clamp-1 mt-0.5 font-dm-sans">{tmpl.body}</span>
-                  </button>
-                ))}
+              )}
+            </div>
+
+            {/* Platform Selector Tabs */}
+            {availablePlatforms && availablePlatforms.length > 1 && (
+              <div className="flex items-center bg-white/5 rounded-lg p-0.5 border border-white/5">
+                {availablePlatforms.map((p: any) => {
+                  const isActive = selectedPlatform === p.platform;
+                  return (
+                    <button
+                      key={p.platform}
+                      onClick={() => onPlatformChange && onPlatformChange(p.platform)}
+                      className={cn(
+                        "px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md transition-all flex items-center gap-1.5",
+                        isActive 
+                          ? "bg-[#2563eb] text-white" 
+                          : "text-[#4a5a82] hover:text-[#eef2ff]"
+                      )}
+                    >
+                      {p.platform === 'email' && <i className="fa-solid fa-envelope"></i>}
+                      {p.platform === 'whatsapp' && <i className="fa-brands fa-whatsapp"></i>}
+                      {p.platform === 'sms' && <i className="fa-solid fa-comment-dots"></i>}
+                      {p.platform}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

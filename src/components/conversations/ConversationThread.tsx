@@ -9,12 +9,32 @@ import { VoiceNoteCard } from '@/components/common/VoiceNoteCard';
 
 interface ConversationThreadProps {
   conversation: any;
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, targetConvId: string) => void;
   isSending: boolean;
 }
 
 export function ConversationThread({ conversation, onSendMessage, isSending }: ConversationThreadProps) {
   const [isCopied, setIsCopied] = useState(false);
+  const availablePlatforms = conversation?.availablePlatforms || [];
+  
+  // Default reply platform: the platform of the latest message, or the first available platform
+  const latestMsgPlatform = conversation?.messages?.[conversation.messages.length - 1]?.platform;
+  const initialPlatform = availablePlatforms.some((p: any) => p.platform === latestMsgPlatform)
+    ? latestMsgPlatform
+    : (availablePlatforms[0]?.platform || conversation?.platform || 'email');
+
+  const [selectedPlatform, setSelectedPlatform] = useState<string>(initialPlatform);
+
+  // Sync selected platform on conversation shift
+  React.useEffect(() => {
+    if (conversation) {
+      const latest = conversation.messages?.[conversation.messages.length - 1]?.platform;
+      const initial = conversation.availablePlatforms?.some((p: any) => p.platform === latest)
+        ? latest
+        : (conversation.availablePlatforms?.[0]?.platform || conversation.platform || 'email');
+      setSelectedPlatform(initial);
+    }
+  }, [conversation]);
 
   if (!conversation) {
     return (
@@ -34,17 +54,16 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
 
   return (
     <div className="flex-1 flex flex-col bg-[#04091a] relative overflow-hidden">
-      {/* Dynamic Background Element */}
       {/* Header */}
       <div className="h-20 border-b border-white/5 flex items-center justify-between px-8 z-10 bg-[#080f28]/80 backdrop-blur-xl shrink-0 overflow-x-auto common-scrollbar gap-8">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 shrink-0 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
-            {conversation.platform === 'sms' && <i className="fa-solid fa-comment-dots text-[16px] text-[#10b981]"></i>}
-            {conversation.platform === 'email' && <i className="fa-solid fa-envelope text-[16px] text-[#3b82f6]"></i>}
-            {conversation.platform === 'whatsapp' && <i className="fa-brands fa-whatsapp text-[18px] text-[#25d366]"></i>}
-            {conversation.platform === 'instagram' && <i className="fa-brands fa-instagram text-[18px] text-[#ec4899]"></i>}
-            {conversation.platform === 'facebook' && <i className="fa-brands fa-facebook-messenger text-[18px] text-[#3b82f6]"></i>}
-            {!['sms', 'email', 'whatsapp', 'instagram', 'facebook'].includes(conversation.platform) && (
+            {selectedPlatform === 'sms' && <i className="fa-solid fa-comment-dots text-[16px] text-[#10b981]"></i>}
+            {selectedPlatform === 'email' && <i className="fa-solid fa-envelope text-[16px] text-[#3b82f6]"></i>}
+            {selectedPlatform === 'whatsapp' && <i className="fa-brands fa-whatsapp text-[18px] text-[#25d366]"></i>}
+            {selectedPlatform === 'instagram' && <i className="fa-brands fa-instagram text-[18px] text-[#ec4899]"></i>}
+            {selectedPlatform === 'facebook' && <i className="fa-brands fa-facebook-messenger text-[18px] text-[#3b82f6]"></i>}
+            {!['sms', 'email', 'whatsapp', 'instagram', 'facebook'].includes(selectedPlatform) && (
               <i className="fa-solid fa-comment text-[16px] text-[#3b82f6]"></i>
             )}
           </div>
@@ -55,13 +74,13 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
             <div className="flex items-center gap-2 mt-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse shrink-0" />
               <span className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-widest font-dm-sans whitespace-nowrap">
-                Active via {conversation.platform}
+                Active via {availablePlatforms.map((p: any) => p.platform.toUpperCase()).join(' & ')}
               </span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {conversation.platform === 'sms' && (
+          {selectedPlatform === 'sms' && (
             <div className="flex items-center gap-2 mr-2">
                <div className="px-2.5 py-1.5 rounded-lg bg-[#2563eb]/10 border border-[#2563eb]/20 text-[#3b82f6] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
                   <i className="fa-solid fa-link"></i>
@@ -83,7 +102,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
                    <><i className="fa-regular fa-copy mr-1.5"></i> Copy Bridge Address</>
                  )}
                </Button>
-            </div>
+             </div>
           )}
         </div>
       </div>
@@ -92,6 +111,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
       <div className="flex-1 overflow-y-auto p-8 z-10 common-scrollbar flex flex-col-reverse gap-4">
           {conversation.messages?.slice().sort((a: any, b: any) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()).map((msg: any, i: number) => {
             const isVoice = msg.audio_url || msg.import_type === 'voice';
+            const msgPlatform = msg.platform || conversation.platform;
             if (isVoice) {
               return (
                 <div key={i} className={cn(
@@ -115,7 +135,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
                         identity_color: "#06b6d4"
                       }}
                       createdAt={msg.sent_at}
-                      deliveryChannel={msg.delivery_channel || conversation.platform || 'whatsapp'}
+                      deliveryChannel={msg.delivery_channel || msgPlatform || 'whatsapp'}
                       audioUrl={msg.audio_url}
                       caption={msg.content}
                       transcript={msg.transcript || msg.original_text}
@@ -132,6 +152,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
                 sentAt={msg.sent_at}
                 status={msg.status}
                 errorMessage={msg.error_message}
+                platform={msgPlatform}
               />
             );
           })}
@@ -139,9 +160,15 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
 
       {/* Input Area */}
       <MessageInput 
-        onSend={onSendMessage}
+        onSend={(text) => {
+          const target = availablePlatforms.find((p: any) => p.platform === selectedPlatform) || availablePlatforms[0];
+          onSendMessage(text, target?.conversationId);
+        }}
         disabled={isSending}
-        placeholder={conversation.platform === 'sms' ? "Reply via SMS Bridge..." : `Type your reply to ${conversation.contacts?.first_name || 'them'}...`}
+        placeholder={selectedPlatform === 'sms' ? "Reply via SMS Bridge..." : `Type your reply via ${selectedPlatform.toUpperCase()}...`}
+        availablePlatforms={availablePlatforms}
+        selectedPlatform={selectedPlatform}
+        onPlatformChange={setSelectedPlatform}
       />
     </div>
   );

@@ -163,6 +163,12 @@ export async function POST(
         updates.form_attribution = { ...(existingContact.form_attribution || {}), ...attribution };
       }
 
+      // POPIA consent parameter logging on update
+      updates.consent_timestamp = new Date().toISOString();
+      updates.consent_ip = ip;
+      updates.consent_form_id = id;
+      updates.processing_purpose_scope = form.name || 'Lead Submission';
+
       if (Object.keys(updates).length > 0) {
         const { data: updatedContact } = await supabase.from('contacts')
           .update(updates)
@@ -190,7 +196,12 @@ export async function POST(
           form_attribution: attribution || {},
           first_touch_source: firstTouchSource,
           first_touch_keyword: firstTouchKeyword,
-          first_touch_page: firstTouchPage
+          first_touch_page: firstTouchPage,
+          // POPIA consent parameter logging on creation
+          consent_timestamp: new Date().toISOString(),
+          consent_ip: ip,
+          consent_form_id: id,
+          processing_purpose_scope: form.name || 'Lead Submission'
         })
         .select('id')
         .single();

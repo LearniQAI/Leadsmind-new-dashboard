@@ -7,6 +7,8 @@ import { getCurrentWorkspaceId, requireAuth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import HomeDashboardClient from "@/components/pagesUI/apps/home/HomeDashboardClient";
 
+import { AttributionEngine } from '@/lib/analytics/AttributionEngine';
+
 const Home = async () => {
   const user = await requireAuth();
   const workspaceId = await getCurrentWorkspaceId();
@@ -27,7 +29,8 @@ const Home = async () => {
     supabase.from('invoices').select('total_amount').eq('workspace_id', workspaceId).eq('status', 'paid'),
     supabase.from('contact_activities').select('*, contacts(id, first_name, last_name)').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(8),
     supabase.from('opportunities').select('*, contacts(id, first_name, last_name)').eq('workspace_id', workspaceId).eq('status', 'open').order('value', { ascending: false }).limit(5),
-    supabase.from('tasks').select('id, title, due_date').eq('workspace_id', workspaceId).eq('priority', 'high').neq('status', 'done').lt('due_date', new Date().toISOString())
+    supabase.from('tasks').select('id, title, due_date').eq('workspace_id', workspaceId).eq('priority', 'high').neq('status', 'done').lt('due_date', new Date().toISOString()),
+    AttributionEngine.getAttributionMetrics(workspaceId)
   ]);
 
   const contactCount = results[0].count || 0;
@@ -39,6 +42,7 @@ const Home = async () => {
   const recentActivities = results[6].data || [];
   const topOpportunities = results[7].data || [];
   const overdueTasks = results[8].data || [];
+  const attributionMetrics = results[9] as any;
 
   const totalRevenue = revenueData?.reduce((acc: any, curr: any) => acc + (Number(curr.total_amount) || 0), 0) || 0;
 
@@ -58,6 +62,7 @@ const Home = async () => {
             recentActivities={recentActivities || []}
             topOpportunities={topOpportunities || []}
             overdueTasks={overdueTasks || []}
+            attributionMetrics={attributionMetrics}
           />
         </Wrapper>
       </MetaData>

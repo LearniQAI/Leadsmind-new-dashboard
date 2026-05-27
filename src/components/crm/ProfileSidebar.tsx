@@ -1,15 +1,54 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Contact } from '@/types/crm';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { invokeRightToErasure, ErasureReceipt } from '@/app/actions/popia';
+import { ErasureReceiptModal } from '@/components/crm/ErasureReceiptModal';
+import { toast } from 'sonner';
 
 interface ProfileSidebarProps {
   contact: Contact;
 }
 
 export function ProfileSidebar({ contact }: ProfileSidebarProps) {
+  const [loading, setLoading] = useState(false);
+  const [receipt, setReceipt] = useState<ErasureReceipt | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+
+  const handleErasure = async () => {
+    const email = contact.email || 'this contact';
+    const confirmed = window.confirm(
+      `WARNING: You are executing a POPIA Right-to-Erasure request for ${email}.\n\n` +
+      `This will:\n` +
+      `- Cancel all running sequence executions.\n` +
+      `- Remove the contact from enrollment queues.\n` +
+      `- Add their email to the workspace global suppression block list.\n` +
+      `- Permanently anonymize CRM fields.\n\n` +
+      `Are you sure you want to proceed? This is irreversible.`
+    );
+
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const res = await invokeRightToErasure(contact.id);
+      if (res.success && res.data) {
+        setReceipt(res.data);
+        setShowReceipt(true);
+        toast.success('POPIA Erasure request successfully executed.');
+      } else {
+        toast.error(res.error || 'Failed to process erasure request.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error('An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="w-[280px] shrink-0 space-y-6">
       {/* Identity Card */}
@@ -18,10 +57,10 @@ export function ProfileSidebar({ contact }: ProfileSidebarProps) {
         
         <div className="flex flex-col items-center text-center mb-6">
           <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[#eef2ff] font-bold text-2xl mb-4 font-space-grotesk overflow-hidden shadow-2xl relative z-10">
-            {contact.first_name[0]}{contact.last_name[0]}
+            {contact.first_name[0] || '?'}{contact.last_name ? contact.last_name[0] : ''}
           </div>
           <h2 className="text-[18px] font-bold text-[#eef2ff] font-space-grotesk tracking-tight relative z-10">
-            {contact.first_name} {contact.last_name}
+            {contact.first_name} {contact.last_name || ''}
           </h2>
           <p className="text-[12px] text-[#4a5a82] font-dm-sans relative z-10">{contact.email || 'No email provided'}</p>
         </div>
@@ -29,7 +68,14 @@ export function ProfileSidebar({ contact }: ProfileSidebarProps) {
         <div className="space-y-4 relative z-10">
           <div className="flex items-center justify-between py-2 border-b border-white/5">
             <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest font-dm-sans">Status</span>
-            <span className="bg-[#10b981]/15 text-[#10b981] text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border border-[#10b981]/20">Active</span>
+            <span className={cn(
+              "text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border",
+              contact.first_name === 'ANONYMIZED'
+                ? "bg-red-500/15 text-red-400 border-red-500/20"
+                : "bg-[#10b981]/15 text-[#10b981] border-[#10b981]/20"
+            )}>
+              {contact.first_name === 'ANONYMIZED' ? 'Erased (POPIA)' : 'Active'}
+            </span>
           </div>
           <div className="flex items-center justify-between py-2 border-b border-white/5">
             <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest font-dm-sans">Source</span>
@@ -77,6 +123,40 @@ export function ProfileSidebar({ contact }: ProfileSidebarProps) {
           )}
         </div>
       </div>
+
+      {/* Operations & Compliance */}
+      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl space-y-3">
+        <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans">Compliance Gateways</h4>
+        <button
+          type="button"
+          onClick={handleErasure}
+          disabled={loading || contact.first_name === 'ANONYMIZED'}
+          className="w-full h-9 rounded-[8px] bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all"
+        >
+          {loading ? (
+            <>
+              <i className="fa-solid fa-spinner animate-spin text-[10px]"></i>
+              Erasing...
+            </>
+          ) : contact.first_name === 'ANONYMIZED' ? (
+            <>
+              <i className="fa-solid fa-user-slash text-[10px]"></i>
+              POPIA Erased
+            </>
+          ) : (
+            <>
+              <i className="fa-solid fa-user-slash text-[10px]"></i>
+              Right to Erasure (POPIA)
+            </>
+          )}
+        </button>
+      </div>
+
+      <ErasureReceiptModal
+        isOpen={showReceipt}
+        onOpenChange={setShowReceipt}
+        receipt={receipt}
+      />
     </div>
   );
 }

@@ -11,9 +11,10 @@ interface MessageBubbleProps {
   sentAt: string;
   status?: string;
   errorMessage?: string;
+  platform?: string;
 }
 
-export function MessageBubble({ content, direction, sentAt, status = 'sent', errorMessage }: MessageBubbleProps) {
+export function MessageBubble({ content, direction, sentAt, status = 'sent', errorMessage, platform }: MessageBubbleProps) {
   const isOutbound = direction === 'outbound';
 
   return (
@@ -31,12 +32,20 @@ export function MessageBubble({ content, direction, sentAt, status = 'sent', err
           {content}
         </p>
         <div className={cn(
-          "flex items-center gap-1.5 mt-2",
+          "flex items-center gap-2.5 mt-2",
           isOutbound ? "justify-end" : "justify-start"
         )}>
           <span className="text-[10px] font-medium text-[#4a5a82] uppercase tracking-[0.5px] font-space-grotesk">
             {format(new Date(sentAt), 'hh:mm a')}
           </span>
+          {platform && (
+            <span className="text-[9px] font-bold text-accent2 uppercase flex items-center gap-1 shrink-0 select-none">
+              {platform === 'email' && <i className="fa-solid fa-envelope text-[9px] text-[#3b82f6]"></i>}
+              {platform === 'whatsapp' && <i className="fa-brands fa-whatsapp text-[10px] text-[#25d366]"></i>}
+              {platform === 'sms' && <i className="fa-solid fa-comment-dots text-[9px] text-[#10b981]"></i>}
+              {platform}
+            </span>
+          )}
           {isOutbound && status === 'pending' && (
             <div className="flex items-center text-[#4a5a82]">
                <i className="fa-regular fa-clock text-[10px]"></i>

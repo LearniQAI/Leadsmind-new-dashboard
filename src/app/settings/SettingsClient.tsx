@@ -33,6 +33,7 @@ import ApiTab from './components/tabs/ApiTab';
 import BillingTab from './components/tabs/BillingTab';
 import SecurityTab from './components/tabs/SecurityTab';
 import AppearanceTab from './components/tabs/AppearanceTab';
+import DomainsTab from './components/tabs/DomainsTab';
 
 // Modals
 import InviteModal from './components/modals/InviteModal';
@@ -105,6 +106,7 @@ export default function SettingsClient({
     { id: 'workspace', label: 'Workspace', icon: Globe, description: 'Neural configuration & identity' },
     { id: 'team', label: 'Team Node', icon: Users, description: 'Manage access protocols' },
     { id: 'branding', label: 'Branding', icon: Palette, description: 'Interface identity markers' },
+    { id: 'domains', label: 'Domains', icon: ShieldCheck, description: 'Email verification & security' },
     { id: 'seo', label: 'SEO Settings', icon: TrendingUp, description: 'Google Search Console sync' },
     { id: 'api', label: 'Developer', icon: Code2, description: 'API keys, webhooks & SDK' },
     { id: 'pricing', label: 'Billing', icon: CreditCard, description: 'Resource allocation' },
@@ -388,6 +390,8 @@ export default function SettingsClient({
           {activeTab === 'pricing' && <BillingTab memberCount={members.length} />}
 
           {activeTab === 'audit' && <SecurityTab auditData={auditData} />}
+
+          {activeTab === 'domains' && <DomainsTab />}
 
           {activeTab === 'appearance' && (
             <AppearanceTab

@@ -4,6 +4,7 @@
  */
 import { sendEmail } from '@/lib/email';
 import { createAdminClient } from '@/lib/supabase/server';
+import { SpamValidator } from '@/lib/intelligence/SpamValidator';
 
 export interface EmailActionConfig {
   templateType: 'confirmation' | 'notification' | 'recovery' | 'welcome' | 'custom_followup' | 'voice_note' | 'voice_note_notification';
@@ -49,8 +50,91 @@ export const EmailAutomationService = {
       return { success: false, error: 'Recipient email address not found in payload.' };
     }
 
+    const emailTrimmed = recipient.trim();
     const subject = this.interpolate(config.subject, variables);
     const bodyText = this.interpolate(config.body, variables);
+
+    // Spam Check: Gate outbound delivery if score < 50
+    const spamResult = SpamValidator.validateEmailContent(subject, bodyText);
+    if (!spamResult.passed) {
+      console.warn(`[EmailAutomation] Outbound email blocked by Spam Validator. Score: ${spamResult.score}. Triggers: ${spamResult.triggers.join(', ')}`);
+      
+      // Log blocked activity in contact activities
+      const cId = variables.contactId || variables.contact_id || variables.id;
+      if (cId) {
+        await supabase.from('contact_activities').insert({
+          workspace_id: workspaceId,
+          contact_id: cId,
+          type: 'system',
+          description: `Outbound email blocked by Spam Validator. Score: ${spamResult.score}. Triggers: ${spamResult.triggers.join(', ')}`,
+          metadata: { subject, score: spamResult.score, triggers: spamResult.triggers }
+        });
+      }
+      
+      return { 
+        success: false, 
+        error: `Outbound email blocked by Spam Validator (Score: ${spamResult.score}/100). Triggers: ${spamResult.triggers.join(', ')}` 
+      };
+    }
+
+    // POPIA Check: Intercept invalid email addresses and redirect to WhatsApp
+    const { data: dbContact } = await supabase
+      .from('contacts')
+      .select('id, phone, is_invalid_email')
+      .eq('workspace_id', workspaceId)
+      .eq('email', emailTrimmed)
+      .maybeSingle();
+
+    if (dbContact && dbContact.is_invalid_email) {
+      if (dbContact.phone) {
+        console.log(`[EmailAutomation] Email ${emailTrimmed} is invalid. Redirecting to WhatsApp for phone ${dbContact.phone}`);
+
+        // Log redirect in activities
+        await supabase.from('contact_activities').insert({
+          workspace_id: workspaceId,
+          contact_id: dbContact.id,
+          type: 'system',
+          description: `Email alert redirected to WhatsApp (Twilio) due to invalid/bounced email destination. Template: ${config.templateType}`,
+          metadata: { original_email: emailTrimmed, redirected_phone: dbContact.phone }
+        });
+
+        if (config.templateType === 'voice_note' || config.templateType === 'voice_note_notification') {
+          const { CRMActionHandler } = await import('@/lib/automations/CRMActionHandler');
+          return await CRMActionHandler.sendWhatsAppVoice(supabase, workspaceId, dbContact.id, {
+            senderId: variables.senderId || variables.sender_id || null,
+            audioUrl: variables.audio_hosted_url || variables.audio_url || '',
+            transcript: variables.transcript || variables.original_text || ''
+          });
+        } else {
+          const { sendSMS } = await import('@/lib/sms');
+          
+          const { data: workspace } = await supabase
+            .from('workspaces')
+            .select('twilio_sid, twilio_token, twilio_number')
+            .eq('id', workspaceId)
+            .single();
+
+          const cleanPhone = dbContact.phone.startsWith('+') ? dbContact.phone : `+${dbContact.phone}`;
+          const to = `whatsapp:${cleanPhone}`;
+          const from = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
+          
+          const formattedMessage = `📢 *${subject}*\n\n${bodyText}`;
+
+          const smsRes = await sendSMS({
+            to,
+            message: formattedMessage,
+            config: {
+              accountSid: workspace?.twilio_sid,
+              authToken: workspace?.twilio_token,
+              fromNumber: from
+            }
+          });
+          return { success: true, data: smsRes };
+        }
+      } else {
+        return { success: false, error: `Recipient email ${emailTrimmed} is flagged invalid and no backup phone number is available for WhatsApp routing.` };
+      }
+    }
 
     // 3. Render HTML using structured navy branding template
     const htmlContent = this.compileHtmlTemplate(config.templateType, subject, bodyText, variables);

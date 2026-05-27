@@ -10,6 +10,8 @@ interface SendEmailProps {
   apiKey?: string | null
   fromEmail?: string | null
   fromName?: string | null
+  tags?: { name: string; value: string }[]
+  headers?: Record<string, string>
  }
 }
 
@@ -19,10 +21,11 @@ export async function sendEmail({ to, subject, react, html, text, config }: Send
  const fromName = config?.fromName || 'LeadsMind'
  
  if (!apiKey || apiKey === 're_123' || apiKey.includes('PLACEHOLDER')) {
-  console.log('\\n================== EMAIL MOCKED ==================');
+  console.log('\n================== EMAIL MOCKED ==================');
   console.log('To:', to);
   console.log('Subject:', subject);
-  console.log('==================================================\\n');
+  console.log('Tags:', config?.tags);
+  console.log('==================================================\n');
   return { id: 'mock_' + Date.now() };
  }
 
@@ -35,6 +38,8 @@ export async function sendEmail({ to, subject, react, html, text, config }: Send
    react: react as any,
    html: html || undefined,
    text: text || '',
+   tags: config?.tags,
+   headers: config?.headers,
   })
 
   if (error) {
