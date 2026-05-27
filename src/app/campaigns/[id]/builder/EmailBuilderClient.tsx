@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   ArrowLeft, Plus, MoveUp, MoveDown, Trash2, Eye, ShieldCheck,
-  CheckCircle, AlertTriangle, Monitor, Smartphone, Moon, Sun, Save, RefreshCw
+  CheckCircle, AlertTriangle, Monitor, Smartphone, Moon, Sun, Save, RefreshCw, Sparkles
 } from 'lucide-react';
+import AISparkDrawer from '@/components/common/AISparkDrawer';
 import { updateCampaign } from '@/app/actions/marketing';
 import { renderEmailLayout, EmailBlock, BrandKit } from '@/lib/builder/emailRenderer';
 
@@ -20,6 +21,7 @@ interface EmailBuilderClientProps {
 export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: initialBrandKit }: EmailBuilderClientProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
 
   // Layout blocks array
   const [blocks, setBlocks] = useState<EmailBlock[]>(() => {
@@ -591,6 +593,14 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                           onChange={(e) => updateBlockContent({ body: e.target.value })}
                           className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2.5 text-[11.5px] text-white focus:outline-none focus:border-[#2563eb] min-h-[140px] font-sans leading-normal"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setIsAiDrawerOpen(true)}
+                          className="w-full mt-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 border border-violet-500/30 py-2 rounded-xl text-xs font-bold text-white shadow-[0_0_12px_rgba(124,58,237,0.25)] transition flex items-center justify-center gap-1.5"
+                        >
+                          <Sparkles size={12} className="animate-pulse" />
+                          Write with LeadsMind AI
+                        </button>
                         <div className="text-[9px] text-[#4a5a82] mt-1.5 leading-normal">
                           Tip: Use placeholders like <strong className="text-gray-400 font-mono">{"{{first_name}}"}</strong>, <strong className="text-gray-400 font-mono">{"{{company}}"}</strong>, or <strong className="text-gray-400 font-mono">{"{{invoice_amount_zar}}"}</strong> to personalize ZAR pricing.
                         </div>
@@ -905,6 +915,16 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
         </div>
 
       </div>
+
+      <AISparkDrawer
+        isOpen={isAiDrawerOpen}
+        onClose={() => setIsAiDrawerOpen(false)}
+        contextType="email_campaign"
+        workspaceId={initialCampaign.workspace_id}
+        onInsert={(content) => {
+          updateBlockContent({ body: content });
+        }}
+      />
 
     </div>
   );

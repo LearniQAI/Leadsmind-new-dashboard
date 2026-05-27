@@ -13,6 +13,7 @@ import Underline from '@tiptap/extension-underline';
 import { IframeEmbed } from './IframeEmbed';
 import { BlogEditorToolbar } from './BlogEditorToolbar';
 import { inlineAiEdit } from '@/app/actions/blogStudio';
+import AISparkDrawer from '@/components/common/AISparkDrawer';
 import {
   Sparkles, Bold, Italic, Underline as UnderlineIcon, Link2, Trash2,
   ArrowUp, ArrowDown, Copy, Check, Info, AlertTriangle, AlertCircle,
@@ -27,6 +28,7 @@ interface EditorContentProps {
   editorRef: React.MutableRefObject<any>;
   isZenMode?: boolean;
   onToggleZenMode?: () => void;
+  workspaceId: string;
 }
 
 export const BlogEditorContent: React.FC<EditorContentProps> = ({
@@ -36,7 +38,8 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
   onOpenEmbedModal,
   editorRef,
   isZenMode = false,
-  onToggleZenMode
+  onToggleZenMode,
+  workspaceId
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordCount, setWordCount] = useState(0);
@@ -81,6 +84,8 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
   const [comments, setComments] = useState<{ id: string; blockId: string; text: string }[]>([]);
   const [newComment, setNewComment] = useState('');
   const [activeCommentBlockId, setActiveCommentBlockId] = useState<string | null>(null);
+
+  const [isSparkDrawerOpen, setIsSparkDrawerOpen] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -328,8 +333,7 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
           onOpenInlineAIPalette={() => {
-            setAiPosition({ x: window.innerWidth / 2 - 200, y: 150 });
-            setShowAiPalette(true);
+            setIsSparkDrawerOpen(true);
           }}
           onOpenLinkModal={() => {
             const prev = editor?.getAttributes('link').href || '';
@@ -712,6 +716,16 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
           </div>
         </div>
       )}
+      {/* AI Spark Drawer Inline Panel */}
+      <AISparkDrawer
+        isOpen={isSparkDrawerOpen}
+        onClose={() => setIsSparkDrawerOpen(false)}
+        contextType="blog_post"
+        workspaceId={workspaceId}
+        onInsert={(content) => {
+          editor?.chain().focus().insertContent(content).run();
+        }}
+      />
 
     </div>
   );

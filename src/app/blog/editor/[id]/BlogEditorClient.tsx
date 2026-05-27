@@ -311,6 +311,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
                 editorRef={editorRef}
                 isZenMode={isZenMode}
                 onToggleZenMode={() => setIsZenMode(!isZenMode)}
+                workspaceId={post.workspace_id}
               />
             </div>
 

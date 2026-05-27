@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Globe, Users, Palette, Code2, CreditCard, ShieldCheck, Monitor, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon
+  Globe, Users, Palette, Code2, CreditCard, ShieldCheck, Monitor, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -34,6 +34,8 @@ import BillingTab from './components/tabs/BillingTab';
 import SecurityTab from './components/tabs/SecurityTab';
 import AppearanceTab from './components/tabs/AppearanceTab';
 import DomainsTab from './components/tabs/DomainsTab';
+import AiTab from './components/tabs/AiTab';
+import AiCreditsTab from './components/tabs/AiCreditsTab';
 
 // Modals
 import InviteModal from './components/modals/InviteModal';
@@ -106,6 +108,8 @@ export default function SettingsClient({
     { id: 'workspace', label: 'Workspace', icon: Globe, description: 'Neural configuration & identity' },
     { id: 'team', label: 'Team Node', icon: Users, description: 'Manage access protocols' },
     { id: 'branding', label: 'Branding', icon: Palette, description: 'Interface identity markers' },
+    { id: 'ai', label: 'AI Voice Profile', icon: Sparkles, description: 'Neural voice & templates' },
+    { id: 'ai-credits', label: 'AI Credit Ledger', icon: Brain, description: 'Token balance & consumption' },
     { id: 'domains', label: 'Domains', icon: ShieldCheck, description: 'Email verification & security' },
     { id: 'seo', label: 'SEO Settings', icon: TrendingUp, description: 'Google Search Console sync' },
     { id: 'api', label: 'Developer', icon: Code2, description: 'API keys, webhooks & SDK' },
@@ -373,6 +377,8 @@ export default function SettingsClient({
           )}
 
           {activeTab === 'seo' && <SeoTab />}
+          {activeTab === 'ai' && <AiTab workspaceId={branding?.workspace_id} />}
+          {activeTab === 'ai-credits' && <AiCreditsTab workspaceId={branding?.workspace_id} />}
 
           {activeTab === 'api' && (
             <ApiTab

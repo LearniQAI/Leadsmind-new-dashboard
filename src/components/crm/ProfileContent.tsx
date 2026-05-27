@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { ContactTimeline } from './ContactTimeline';
 import { NotesManager } from './NotesManager';
 import { TasksManager } from './TasksManager';
+import IntelligenceTab from './tabs/IntelligenceTab';
+
 interface ProfileContentProps {
   contact: Contact;
   activities: ContactActivity[];
@@ -14,12 +16,13 @@ interface ProfileContentProps {
 }
 
 export function ProfileContent({ contact, activities, notes, tasks }: ProfileContentProps) {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'notes' | 'tasks'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'notes' | 'tasks' | 'intelligence'>('timeline');
 
   const tabs = [
     { id: 'timeline', label: 'Timeline', icon: 'fa-clock-rotate-left' },
     { id: 'notes', label: 'Notes', icon: 'fa-note-sticky' },
     { id: 'tasks', label: 'Tasks', icon: 'fa-list-check' },
+    { id: 'intelligence', label: 'AI Insights', icon: 'fa-brain' },
   ];
 
   return (
@@ -58,6 +61,14 @@ export function ProfileContent({ contact, activities, notes, tasks }: ProfileCon
 
         {activeTab === 'tasks' && (
           <TasksManager contactId={contact.id} tasks={tasks} />
+        )}
+
+        {activeTab === 'intelligence' && (
+          <IntelligenceTab 
+            contactId={contact.id} 
+            workspaceId={contact.workspace_id} 
+            companyDomain={(contact as any).metadata?.company_domain || 'zafrologistics.co.za'}
+          />
         )}
       </div>
     </div>

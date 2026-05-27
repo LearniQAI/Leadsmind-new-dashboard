@@ -18,22 +18,24 @@ import { createSocialPost, getMetaAuthUrl, getLinkedInAuthUrl, getTikTokAuthUrl 
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import AIAssistantSidebar from '@/components/content-studio/AIAssistantSidebar';
+import AISparkDrawer from '@/components/common/AISparkDrawer';
 
 export default function SocialPlannerClient({ 
- initialPosts, 
- accounts,
- workspaceId
+  initialPosts, 
+  accounts,
+  workspaceId
 }: { 
- initialPosts: any[], 
- accounts: any[],
- workspaceId: string
+  initialPosts: any[], 
+  accounts: any[],
+  workspaceId: string
 }) {
- const router = useRouter();
- const [content, setContent] = useState('');
- const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
- const [isSubmitting, setIsSubmitting] = useState(false);
- const [isComposerOpen, setIsComposerOpen] = useState(false);
- const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const router = useRouter();
+  const [content, setContent] = useState('');
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
 
  const mockEditor = {
   getText: () => content,
@@ -161,6 +163,14 @@ export default function SocialPlannerClient({
           >
            <Sparkles className="w-4 h-4 mr-2" /> AI Copilot
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setIsAiDrawerOpen(true)}
+            className="text-[#a78bfa] hover:text-[#c084fc] hover:bg-[#8b5cf6]/10 rounded-xl transition border border-[#8b5cf6]/20 bg-[#8b5cf6]/5"
+          >
+           <Sparkles className="w-4 h-4 mr-2 animate-pulse" /> Write with AI
+          </Button>
          </div>
          <div className="flex gap-3">
           <Button 
@@ -286,6 +296,15 @@ export default function SocialPlannerClient({
        </>
       )}
      </div>
+    <AISparkDrawer
+      isOpen={isAiDrawerOpen}
+      onClose={() => setIsAiDrawerOpen(false)}
+      contextType="social_post"
+      workspaceId={workspaceId}
+      onInsert={(text) => {
+        setContent(text);
+      }}
+    />
    </div>
   </div>
  );
