@@ -128,13 +128,20 @@ export async function sendMessage(conversationId: string, content: string) {
    const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
    if (contact?.phone) {
     try {
-     const { sendSMS } = await import('@/lib/sms');
-     await sendSMS({ to: contact.phone, message: content });
+     const bridgeAddress = `${contact.phone || ''}@sms.leadsmind.io`;
+     
+     // Route the SMS reply through the Resend Email Bridge
+     await sendEmail({
+      to: bridgeAddress,
+      subject: 'New SMS Reply from CRM',
+      text: content,
+     });
+     
      await supabase.from('messages').update({ status: 'delivered' }).eq('id', msgData.id);
-    } catch (smsErr: any) {
-     console.error('[messaging] Failed to send SMS:', smsErr);
+    } catch (bridgeErr: any) {
+     console.error('[messaging] Failed to send to SMS Bridge:', bridgeErr);
      messageFailed = true;
-     errorMessage = smsErr.message || 'Failed to send SMS';
+     errorMessage = bridgeErr.message || 'Failed to route via SMS Bridge';
     }
    } else {
      messageFailed = true;
