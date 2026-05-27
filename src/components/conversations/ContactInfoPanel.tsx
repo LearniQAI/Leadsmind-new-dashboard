@@ -41,43 +41,17 @@ export function ContactInfoPanel({ contact }: ContactInfoPanelProps) {
 
       {/* Strategic Info */}
       <div className="p-6 space-y-6">
-        <div>
-          <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-3 font-dm-sans">
-            Pipeline Stage
-          </h4>
-          <div className="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-[12px] p-3">
-            <div className="w-2 h-2 rounded-full bg-[#3b82f6]" />
-            <span className="text-[13px] font-semibold text-[#eef2ff] font-dm-sans">Proposal Stage</span>
+        {contact.pipeline_stage && (
+          <div>
+            <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-3 font-dm-sans">
+              Pipeline Stage
+            </h4>
+            <div className="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-[12px] p-3">
+              <div className="w-2 h-2 rounded-full bg-[#3b82f6]" />
+              <span className="text-[13px] font-semibold text-[#eef2ff] font-dm-sans">{contact.pipeline_stage}</span>
+            </div>
           </div>
-        </div>
-
-        <div>
-          <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-3 font-dm-sans">
-            Quick Actions
-          </h4>
-          <div className="space-y-2">
-            <Button 
-              variant="ghost" 
-              onClick={() => router.push(`/content-studio/new?prefill_contact_id=${contact.id}`)}
-              className="w-full justify-start gap-3 h-10 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 text-[12px] font-semibold font-dm-sans rounded-[8px]"
-            >
-              <i className="fa-solid fa-pen-nib text-[13px]"></i>
-              Write Content
-            </Button>
-            <Button variant="ghost" className="w-full justify-start gap-3 h-10 bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-semibold font-dm-sans rounded-[8px]">
-              <i className="fa-solid fa-file-contract text-[#3b82f6] text-[13px]"></i>
-              Send Proposal
-            </Button>
-            <Button variant="ghost" className="w-full justify-start gap-3 h-10 bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-semibold font-dm-sans rounded-[8px]">
-              <i className="fa-solid fa-calendar-check text-[#3b82f6] text-[13px]"></i>
-              Book Meeting
-            </Button>
-            <Button variant="ghost" className="w-full justify-start gap-3 h-10 bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-semibold font-dm-sans rounded-[8px]">
-              <i className="fa-solid fa-circle-plus text-[#3b82f6] text-[13px]"></i>
-              Add Task
-            </Button>
-          </div>
-        </div>
+        )}
 
         <div>
           <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-3 font-dm-sans">
@@ -86,12 +60,20 @@ export function ContactInfoPanel({ contact }: ContactInfoPanelProps) {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <i className="fa-solid fa-phone text-[#4a5a82] text-[12px]"></i>
-              <span className="text-[12.5px] text-[#94a3c8] font-dm-sans">{contact.phone || 'N/A'}</span>
+              <span className="text-[12.5px] text-[#94a3c8] font-dm-sans">{contact.phone || 'No phone provided'}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <i className="fa-solid fa-location-dot text-[#4a5a82] text-[12px]"></i>
-              <span className="text-[12.5px] text-[#94a3c8] font-dm-sans">Dubai, UAE</span>
-            </div>
+            {contact.email && (
+              <div className="flex items-center gap-3">
+                <i className="fa-solid fa-envelope text-[#4a5a82] text-[12px]"></i>
+                <span className="text-[12.5px] text-[#94a3c8] font-dm-sans">{contact.email}</span>
+              </div>
+            )}
+            {contact.city && (
+              <div className="flex items-center gap-3">
+                <i className="fa-solid fa-location-dot text-[#4a5a82] text-[12px]"></i>
+                <span className="text-[12.5px] text-[#94a3c8] font-dm-sans">{contact.city}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -35,13 +35,11 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
   return (
     <div className="flex-1 flex flex-col bg-[#04091a] relative overflow-hidden">
       {/* Dynamic Background Element */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#2563eb]/5 rounded-full blur-[150px] pointer-events-none" />
-      
       {/* Header */}
       <div className="h-20 border-b border-white/5 flex items-center justify-between px-8 z-10 bg-[#080f28]/80 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 shrink-0 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
-            {conversation.platform === 'sms' && <i className="fa-solid fa-comment-sms text-[16px] text-[#10b981]"></i>}
+            {conversation.platform === 'sms' && <i className="fa-solid fa-comment-dots text-[16px] text-[#10b981]"></i>}
             {conversation.platform === 'email' && <i className="fa-solid fa-envelope text-[16px] text-[#3b82f6]"></i>}
             {conversation.platform === 'whatsapp' && <i className="fa-brands fa-whatsapp text-[18px] text-[#25d366]"></i>}
             {conversation.platform === 'instagram' && <i className="fa-brands fa-instagram text-[18px] text-[#ec4899]"></i>}
@@ -87,12 +85,6 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
                </Button>
             </div>
           )}
-          <Button variant="ghost" className="w-10 h-10 p-0 rounded-xl bg-white/5 border border-white/5 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/10 transition-all">
-            <i className="fa-solid fa-phone text-[14px]"></i>
-          </Button>
-          <Button variant="ghost" className="w-10 h-10 p-0 rounded-xl bg-white/5 border border-white/5 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/10 transition-all">
-            <i className="fa-solid fa-video text-[14px]"></i>
-          </Button>
           <Button variant="ghost" className="w-10 h-10 p-0 rounded-xl bg-white/5 border border-white/5 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/10 transition-all">
             <i className="fa-solid fa-ellipsis-vertical text-[14px]"></i>
           </Button>

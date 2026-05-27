@@ -57,7 +57,7 @@ export async function getConversations() {
     title,
     last_message_at,
     contact_id,
-    contacts (first_name, last_name, avatar_url),
+    contacts (id, first_name, last_name, avatar_url, phone, email),
     messages (content, direction, sent_at, status)
    `)
    .eq('workspace_id', workspaceId)
