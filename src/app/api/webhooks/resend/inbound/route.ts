@@ -122,9 +122,13 @@ export async function POST(req: NextRequest) {
       // Send SMS via existing Twilio infrastructure
       let smsSid = '';
       try {
-        console.log(`[Twilio Debug] SID Length: ${process.env.TWILIO_ACCOUNT_SID?.length}, Token Length: ${process.env.TWILIO_AUTH_TOKEN?.length}`);
+        console.log(`[Twilio Debug] SID Length: ${process.env.TWILIO_ACCOUNT_SID?.length}, Token Length: ${process.env.TWILIO_AUTH_TOKEN?.length}, Phone Length: ${process.env.TWILIO_PHONE_NUMBER?.length}`);
         console.log(`[Twilio Debug] SID Prefix: ${process.env.TWILIO_ACCOUNT_SID?.substring(0, 4)}`);
         
+        if (!process.env.TWILIO_PHONE_NUMBER) {
+           console.error('[Resend Webhook] CRITICAL: TWILIO_PHONE_NUMBER is missing from Vercel Environment Variables! Falling back to sandbox mode will prevent SMS delivery.');
+        }
+
         const smsResult = await sendSMS({ to: targetPhone, message: forcedMessage });
         smsSid = smsResult.sid;
       } catch (smsErr: any) {
