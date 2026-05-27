@@ -2,6 +2,7 @@ import MetaData from '@/hooks/useMetaData';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import ConversationsClient from './ConversationsClient';
 import { getConversations } from '../actions/messaging';
+import Link from 'next/link';
 
 export default async function ConversationsPage() {
   const { data: conversations, error } = await getConversations();
@@ -22,10 +23,12 @@ export default async function ConversationsPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="h-9 px-4 rounded-[8px] bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[13px] font-semibold font-dm-sans flex items-center gap-2 transition-all">
-                <i className="fa-solid fa-gear text-[13px] text-[#4a5a82]"></i>
-                Settings
-              </button>
+              <Link href="/settings">
+                <button className="h-9 px-4 rounded-[8px] bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[13px] font-semibold font-dm-sans flex items-center gap-2 transition-all">
+                  <i className="fa-solid fa-gear text-[13px] text-[#4a5a82]"></i>
+                  Settings
+                </button>
+              </Link>
             </div>
           </div>
 
