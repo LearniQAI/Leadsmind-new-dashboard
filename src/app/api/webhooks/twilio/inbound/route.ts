@@ -22,6 +22,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Duplicate Webhook Protection
+    const { data: existingMsg } = await supabaseAdmin
+      .from('messages')
+      .select('id')
+      .eq('bridge_metadata->>twilio_message_sid', messageSid)
+      .limit(1)
+      .single();
+
+    if (existingMsg) {
+      console.warn(`[Twilio Inbound] Duplicate message skipped: ${messageSid}`);
+      return new NextResponse('<Response></Response>', { status: 200, headers: { 'Content-Type': 'text/xml' } });
+    }
+
     // 1. Find the contact by phone
     const { data: contact } = await supabaseAdmin
       .from('contacts')

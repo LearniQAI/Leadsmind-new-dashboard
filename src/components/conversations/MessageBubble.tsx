@@ -9,9 +9,11 @@ interface MessageBubbleProps {
   content: string;
   direction: 'inbound' | 'outbound';
   sentAt: string;
+  status?: string;
+  errorMessage?: string;
 }
 
-export function MessageBubble({ content, direction, sentAt }: MessageBubbleProps) {
+export function MessageBubble({ content, direction, sentAt, status = 'sent', errorMessage }: MessageBubbleProps) {
   const isOutbound = direction === 'outbound';
 
   return (
@@ -35,13 +37,33 @@ export function MessageBubble({ content, direction, sentAt }: MessageBubbleProps
           <span className="text-[10px] font-medium text-[#4a5a82] uppercase tracking-[0.5px] font-space-grotesk">
             {format(new Date(sentAt), 'hh:mm a')}
           </span>
-          {isOutbound && (
+          {isOutbound && status === 'pending' && (
+            <div className="flex items-center text-[#4a5a82]">
+               <i className="fa-regular fa-clock text-[10px]"></i>
+            </div>
+          )}
+          {isOutbound && status === 'sent' && (
             <div className="flex items-center text-[#2563eb]">
+              <Check className="w-2.5 h-2.5" />
+            </div>
+          )}
+          {isOutbound && status === 'delivered' && (
+            <div className="flex items-center text-[#10b981]">
               <Check className="w-2.5 h-2.5" />
               <Check className="w-2.5 h-2.5 -ml-1.5" />
             </div>
           )}
+          {isOutbound && status === 'failed' && (
+            <div className="flex items-center text-red-500">
+               <i className="fa-solid fa-circle-exclamation text-[10px]"></i>
+            </div>
+          )}
         </div>
+        {isOutbound && status === 'failed' && errorMessage && (
+           <div className="mt-2 text-[10px] text-red-400 bg-red-500/10 p-1.5 rounded border border-red-500/20 font-space-grotesk">
+              Error: {errorMessage}
+           </div>
+        )}
       </div>
     </div>
   );

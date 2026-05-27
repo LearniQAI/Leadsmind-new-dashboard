@@ -49,15 +49,18 @@ export async function POST(req: NextRequest) {
       }
       const targetPhone = phoneMatch[1];
 
-      // 1. Log RAW Payload
-      console.log('[DEBUG-0] RAW INBOUND DATA:', JSON.stringify({
-        subject: emailData.subject,
-        hasText: !!emailData.text,
-        hasHtml: !!emailData.html,
-        payloadKeys: Object.keys(emailData)
-      }, null, 2));
-
-      // 1.5 Fetch the full email body from Resend API
+      // Duplicate Webhook Protection
+      const { data: existingMsg } = await supabaseAdmin
+        .from('messages')
+        .select('id')
+        .eq('bridge_metadata->>resend_message_id', messageId)
+        .limit(1)
+        .single();
+        
+      if (existingMsg) {
+        console.warn(`[Resend Webhook] Duplicate message skipped: ${messageId}`);
+        return NextResponse.json({ received: true, duplicate: true });
+      }
       // Inbound webhooks do NOT contain the body. We must fetch it using the email_id.
       // Note: Test events from the Resend Dashboard will return 404 because the fake ID doesn't exist.
       let fetchedText = '';
@@ -72,12 +75,11 @@ export async function POST(req: NextRequest) {
             const emailJson = await resendResponse.json();
             fetchedText = emailJson.text || '';
             fetchedHtml = emailJson.html || '';
-            console.log('[DEBUG-FETCH] Successfully fetched inbound email body via REST');
           } else {
-            console.error(`[DEBUG-FETCH] Failed to fetch email from Receiving API (Status: ${resendResponse.status}). Body will be empty.`);
+            console.error(`[Resend Webhook] Failed to fetch from Receiving API (Status: ${resendResponse.status})`);
           }
         } catch (err) {
-           console.error('[DEBUG-FETCH] Error fetching email via REST:', err);
+           console.error('[Resend Webhook] Error fetching email via REST:', err);
         }
       }
 
@@ -112,28 +114,27 @@ export async function POST(req: NextRequest) {
       }
 
       const forcedMessage = rawText || '[BODY COMPLETELY EMPTY]';
-      console.log('[DEBUG-4] EXACT SMS PAYLOAD BEING SENT TO TWILIO:', JSON.stringify({ message: forcedMessage }));
 
       if (!rawText && forcedMessage === '[BODY COMPLETELY EMPTY]') {
         console.error('[Resend Webhook] Empty message body after stripping');
         return NextResponse.json({ error: 'Empty message body' }, { status: 400 });
       }
 
-      // Send SMS via existing Twilio infrastructure
       let smsSid = '';
+      let smsStatus = 'sent';
+      let smsError = null;
+
       try {
-        console.log(`[Twilio Debug] SID Length: ${process.env.TWILIO_ACCOUNT_SID?.length}, Token Length: ${process.env.TWILIO_AUTH_TOKEN?.length}, Phone Length: ${process.env.TWILIO_PHONE_NUMBER?.length}`);
-        console.log(`[Twilio Debug] SID Prefix: ${process.env.TWILIO_ACCOUNT_SID?.substring(0, 4)}`);
-        
         if (!process.env.TWILIO_PHONE_NUMBER) {
-           console.error('[Resend Webhook] CRITICAL: TWILIO_PHONE_NUMBER is missing from Vercel Environment Variables! Falling back to sandbox mode will prevent SMS delivery.');
+           throw new Error('TWILIO_PHONE_NUMBER is missing from Vercel Environment Variables');
         }
 
         const smsResult = await sendSMS({ to: targetPhone, message: forcedMessage });
         smsSid = smsResult.sid;
       } catch (smsErr: any) {
-        console.error('[Resend Webhook] Twilio SMS failed:', smsErr);
-        return NextResponse.json({ error: 'Failed to relay SMS', details: smsErr.message, code: smsErr.code }, { status: 500 });
+        console.error('[Resend Webhook] Twilio SMS failed:', smsErr.message);
+        smsStatus = 'failed';
+        smsError = smsErr.message;
       }
 
       // Resolve CRM contact and log conversation
@@ -189,7 +190,8 @@ export async function POST(req: NextRequest) {
               conversation_id: conversationId,
               direction: 'outbound',
               content: rawText || '[BODY COMPLETELY EMPTY]',
-              status: 'sent',
+              status: smsStatus,
+              error_message: smsError,
               bridge_metadata: {
                 resend_message_id: messageId,
                 twilio_sid: smsSid,
@@ -199,6 +201,10 @@ export async function POST(req: NextRequest) {
         }
       } else {
         console.warn(`[Resend Webhook] Contact not found for phone ${targetPhone}, skipping CRM log`);
+      }
+
+      if (smsStatus === 'failed') {
+         return NextResponse.json({ error: 'Failed to relay SMS', details: smsError }, { status: 500 });
       }
     }
 

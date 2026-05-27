@@ -54,6 +54,25 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {conversation.platform === 'sms' && (
+            <div className="flex items-center gap-2 mr-2">
+               <div className="px-2 py-1 rounded-md bg-[#2563eb]/10 border border-[#2563eb]/20 text-[#3b82f6] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <i className="fa-solid fa-link"></i>
+                  SMS Bridge Active
+               </div>
+               <Button 
+                 variant="ghost" 
+                 size="sm"
+                 className="h-6 text-[10px] font-bold text-[#eef2ff] bg-white/5 border border-white/10 hover:bg-white/10"
+                 onClick={() => {
+                   navigator.clipboard.writeText(`${conversation.contacts?.phone?.replace('+', '')}@sms.leadsmind.io`);
+                 }}
+               >
+                 <i className="fa-regular fa-copy mr-1.5"></i>
+                 Copy Bridge Address
+               </Button>
+            </div>
+          )}
           <Button variant="ghost" className="w-10 h-10 p-0 rounded-xl bg-white/5 border border-white/5 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/10 transition-all">
             <i className="fa-solid fa-phone text-[14px]"></i>
           </Button>
@@ -109,6 +128,8 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
                 content={msg.content}
                 direction={msg.direction}
                 sentAt={msg.sent_at}
+                status={msg.status}
+                errorMessage={msg.error_message}
               />
             );
           })}
@@ -119,7 +140,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
       <MessageInput 
         onSend={onSendMessage}
         disabled={isSending}
-        placeholder={`Type your reply to ${conversation.contacts?.first_name || 'them'}...`}
+        placeholder={conversation.platform === 'sms' ? "Reply via SMS Bridge..." : `Type your reply to ${conversation.contacts?.first_name || 'them'}...`}
       />
     </div>
   );
