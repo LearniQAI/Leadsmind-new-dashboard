@@ -89,8 +89,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
       </div>
 
       {/* Messages List */}
-      <div className="flex-1 overflow-y-auto p-8 z-10 common-scrollbar flex flex-col-reverse">
-        <div className="flex flex-col space-y-2">
+      <div className="flex-1 overflow-y-auto p-8 z-10 common-scrollbar flex flex-col-reverse gap-4">
           {conversation.messages?.slice().sort((a: any, b: any) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()).map((msg: any, i: number) => {
             const isVoice = msg.audio_url || msg.import_type === 'voice';
             if (isVoice) {
@@ -136,7 +135,6 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
               />
             );
           })}
-        </div>
       </div>
 
       {/* Input Area */}
