@@ -7,7 +7,7 @@ const sidebarData: SidebarCategory[] = [
   items: [
    { id: 1, label: "Dashboard", icon: "icon-house", link: "/dashboard", permission: "dashboard" },
    { id: 2, label: "Tasks", icon: "fa-light fa-circle-check", link: "/tasks", permission: "dashboard" },
-   { id: 3, label: "Inbox", icon: "fa-light fa-inbox", link: "/conversations", permission: "contacts" },
+   { id: 3, label: "Chat", icon: "fa-light fa-comments", link: "/conversations", permission: "contacts" },
   ],
  },
  {
