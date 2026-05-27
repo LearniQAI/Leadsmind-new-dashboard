@@ -64,20 +64,20 @@ export async function POST(req: NextRequest) {
       let fetchedHtml = '';
       if (emailData.email_id) {
         try {
-          const resendResponse = await fetch(`https://api.resend.com/emails/receiving/${emailData.email_id}`, {
-            headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` }
-          });
+          const { Resend } = await import('resend');
+          const resend = new Resend(process.env.RESEND_API_KEY!);
           
-          if (resendResponse.ok) {
-            const emailJson = await resendResponse.json();
-            fetchedText = emailJson.text || '';
-            fetchedHtml = emailJson.html || '';
+          const { data: fullEmail, error: fetchError } = await resend.emails.get(emailData.email_id);
+          
+          if (fullEmail) {
+            fetchedText = fullEmail.text || '';
+            fetchedHtml = fullEmail.html || '';
             console.log('[DEBUG-FETCH] Successfully fetched inbound email body');
           } else {
-            console.error(`[DEBUG-FETCH] Failed to fetch email from Receiving API (Status: ${resendResponse.status}). Body will be empty.`);
+            console.error(`[DEBUG-FETCH] Failed to fetch email. Body will be empty. Error:`, fetchError);
           }
         } catch (err) {
-           console.error('[DEBUG-FETCH] Error fetching email:', err);
+           console.error('[DEBUG-FETCH] Error fetching email via SDK:', err);
         }
       }
 
