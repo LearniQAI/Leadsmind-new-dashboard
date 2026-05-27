@@ -72,7 +72,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
                  size="sm"
                  className="h-[28px] px-3 text-[10px] font-bold text-[#eef2ff] bg-white/5 border border-white/10 hover:bg-white/10 whitespace-nowrap"
                  onClick={() => {
-                   navigator.clipboard.writeText(`${conversation.contacts?.phone?.replace('+', '')}@sms.leadsmind.io`);
+                   navigator.clipboard.writeText(`${conversation.contacts?.phone || ''}@sms.leadsmind.io`);
                    setIsCopied(true);
                    setTimeout(() => setIsCopied(false), 2000);
                  }}
@@ -85,9 +85,6 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
                </Button>
             </div>
           )}
-          <Button variant="ghost" className="w-10 h-10 p-0 rounded-xl bg-white/5 border border-white/5 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/10 transition-all">
-            <i className="fa-solid fa-ellipsis-vertical text-[14px]"></i>
-          </Button>
         </div>
       </div>
 
