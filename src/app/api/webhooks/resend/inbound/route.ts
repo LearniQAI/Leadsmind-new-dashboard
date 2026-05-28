@@ -3,6 +3,8 @@ import { Webhook } from 'svix';
 import { createClient } from '@supabase/supabase-js';
 import { sendSMS } from '@/lib/sms';
 
+export const runtime = 'nodejs';
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -30,24 +32,56 @@ export async function POST(req: NextRequest) {
       event = wh.verify(payload, headers);
     } catch (err: any) {
       console.error('[Resend Webhook] Verification failed:', err.message);
-      return NextResponse.json({ error: 'Verification failed' }, { status: 401 });
+      try {
+        await supabaseAdmin.from('webhook_dead_letters').insert({
+           provider: 'resend', payload: { headers, body: payload }, error: err.message, error_type: 'verification_failed', retry_state: 'dropped'
+        });
+      } catch (dbErr: any) {
+        console.error(JSON.stringify({ level: 'CRITICAL', message: 'DB dead-letter insert failed', provider: 'resend', originalError: err.message, dbError: dbErr.message }));
+      }
+      return NextResponse.json({ error: 'Verification failed' }, { status: 200 }); // Return 200 to drop
     }
 
     if (event.type === 'email.received') {
       const emailData = event.data;
       const from = emailData.from;
-      const toArray = Array.isArray(emailData.to) ? emailData.to : [emailData.to];
-      const to = toArray[0] || '';
+      const toArray = Array.isArray(emailData.to) ? emailData.to : (emailData.to ? [emailData.to] : []);
+      const toAddresses = [...toArray];
       
-      const messageId = emailData.headers?.['Message-ID'] || emailData.id || `resend_${Date.now()}`;
+      if (emailData.headers?.['Delivered-To']) toAddresses.push(emailData.headers['Delivered-To']);
+      if (emailData.headers?.['X-Forwarded-To']) toAddresses.push(emailData.headers['X-Forwarded-To']);
       
-      // Extract target phone number
-      const phoneMatch = to.match(/(\+?\d+)@sms\.leadsmind\.io/i);
-      if (!phoneMatch) {
-        console.error(`[Resend Webhook] Invalid target address format: ${to}`);
-        return NextResponse.json({ error: 'Invalid target address' }, { status: 400 });
+      let messageId = String(emailData.headers?.['Message-ID'] || emailData.id || '').trim();
+      if (!messageId) {
+        console.error('[Resend Webhook] Missing Message-ID. Cannot guarantee idempotency.');
+        try {
+          await supabaseAdmin.from('webhook_dead_letters').insert({
+             provider: 'resend', payload: emailData, error: 'Missing Message-ID', error_type: 'validation_failed', retry_state: 'dropped'
+          });
+        } catch (dbErr: any) {
+          console.error(JSON.stringify({ level: 'CRITICAL', message: 'DB dead-letter insert failed', provider: 'resend', originalError: 'Missing Message-ID' }));
+        }
+        return NextResponse.json({ received: true, error: 'Missing Message-ID ignored' }, { status: 200 });
       }
-      const targetPhone = phoneMatch[1];
+      
+      // Extract target phone number robustly
+      let targetPhone = '';
+      for (const address of toAddresses) {
+        if (!address) continue;
+        const phoneMatch = String(address).match(/(\+?\d+)@sms\.leadsmind\.io/i);
+        if (phoneMatch) {
+          targetPhone = phoneMatch[1];
+          break;
+        }
+      }
+
+      if (!targetPhone) {
+        console.error(`[Resend Webhook] Invalid target address format in: ${JSON.stringify(toAddresses)}`);
+        await supabaseAdmin.from('webhook_dead_letters').insert({
+           provider: 'resend', payload: emailData, error: 'Invalid target address format', error_type: 'validation_failed', retry_state: 'dropped'
+        });
+        return NextResponse.json({ received: true, error: 'Invalid target address ignored' }, { status: 200 });
+      }
 
       // Duplicate Webhook Protection
       const { data: existingMsg } = await supabaseAdmin
@@ -117,33 +151,21 @@ export async function POST(req: NextRequest) {
 
       if (!rawText && forcedMessage === '[BODY COMPLETELY EMPTY]') {
         console.error('[Resend Webhook] Empty message body after stripping');
-        return NextResponse.json({ error: 'Empty message body' }, { status: 400 });
+        await supabaseAdmin.from('webhook_dead_letters').insert({
+           provider: 'resend', payload: emailData, error: 'Empty body after strip', error_type: 'validation_failed', retry_state: 'dropped'
+        });
+        return NextResponse.json({ received: true, error: 'Empty message body ignored' }, { status: 200 });
       }
 
-      let smsSid = '';
-      let smsStatus = 'sent';
-      let smsError = null;
-
-      try {
-        if (!process.env.TWILIO_PHONE_NUMBER) {
-           throw new Error('TWILIO_PHONE_NUMBER is missing from Vercel Environment Variables');
-        }
-
-        const smsResult = await sendSMS({ to: targetPhone, message: forcedMessage });
-        smsSid = smsResult.sid;
-      } catch (smsErr: any) {
-        console.error('[Resend Webhook] Twilio SMS failed:', smsErr.message);
-        smsStatus = 'failed';
-        smsError = smsErr.message;
-      }
-
-      // Resolve CRM contact and log conversation
+      // 5. Pre-dispatch persistence: Find contact, conversation, and insert message
       const { data: contact } = await supabaseAdmin
         .from('contacts')
         .select('id, workspace_id')
         .eq('phone', targetPhone)
         .limit(1)
         .single();
+
+      let dbMessageId = null;
 
       if (contact) {
         let conversationId = null;
@@ -159,7 +181,6 @@ export async function POST(req: NextRequest) {
 
         if (conv) {
           conversationId = conv.id;
-          // Update last_message_at
           await supabaseAdmin
             .from('conversations')
             .update({ last_message_at: new Date().toISOString() })
@@ -182,35 +203,77 @@ export async function POST(req: NextRequest) {
         }
 
         if (conversationId) {
-          // Log the message into existing messaging table
-          await supabaseAdmin
+          // INSERT BEFORE DISPATCH
+          const { data: insertedMsg, error: insertErr } = await supabaseAdmin
             .from('messages')
             .insert({
               workspace_id: contact.workspace_id,
               conversation_id: conversationId,
               direction: 'outbound',
-              content: rawText || '[BODY COMPLETELY EMPTY]',
-              status: smsStatus,
-              error_message: smsError,
+              content: forcedMessage,
+              status: 'sending',
               bridge_metadata: {
                 resend_message_id: messageId,
-                twilio_sid: smsSid,
                 sender_email: from
               }
-            });
+            }).select('id').single();
+            
+          if (insertErr) {
+             console.error('[Resend Webhook] Pre-dispatch persistence failed:', insertErr);
+             throw insertErr; // Will trigger 500 infra retry
+          }
+          if (insertedMsg) dbMessageId = insertedMsg.id;
         }
       } else {
-        console.warn(`[Resend Webhook] Contact not found for phone ${targetPhone}, skipping CRM log`);
+         console.warn(`[Resend Webhook] Contact not found for phone ${targetPhone}, skipping CRM log`);
+      }
+
+      // 6. Dispatch SMS
+      let smsSid = '';
+      let smsStatus = 'sent';
+      let smsError = null;
+
+      try {
+        if (!process.env.TWILIO_PHONE_NUMBER) {
+           throw new Error('TWILIO_PHONE_NUMBER is missing from Vercel Environment Variables');
+        }
+        const smsResult = await sendSMS({ to: targetPhone, message: forcedMessage });
+        smsSid = smsResult.sid;
+      } catch (smsErr: any) {
+        console.error('[Resend Webhook] Twilio SMS failed:', smsErr.message);
+        smsStatus = 'failed';
+        smsError = smsErr.message;
+      }
+
+      // 7. Update post-dispatch state
+      if (dbMessageId) {
+         await supabaseAdmin.from('messages').update({
+            status: smsStatus,
+            error_message: smsError,
+            bridge_metadata: {
+                resend_message_id: messageId,
+                sender_email: from,
+                twilio_sid: smsSid || undefined
+            }
+         }).eq('id', dbMessageId);
       }
 
       if (smsStatus === 'failed') {
-         return NextResponse.json({ error: 'Failed to relay SMS', details: smsError }, { status: 500 });
+         console.error('[Resend Webhook] SMS relay failed, logged to DB, returning 200 to clear queue. Details:', smsError);
+         try {
+           await supabaseAdmin.from('webhook_dead_letters').insert({
+              provider: 'twilio_outbound', payload: { to: targetPhone, message: forcedMessage }, error: String(smsError), error_type: 'operational_failure', retry_state: 'dropped'
+           });
+         } catch(dbErr: any) {
+           console.error(JSON.stringify({ level: 'CRITICAL', message: 'DB dead-letter insert failed', provider: 'twilio_outbound', originalError: String(smsError), dbError: dbErr.message }));
+         }
       }
     }
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.error('[Resend Webhook] Unhandled error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[Resend Webhook] Unhandled infrastructure error:', error);
+    // Transient infrastructure failure (e.g. DB down) -> return 500 to invoke Resend's backoff retry
+    return NextResponse.json({ error: 'Infrastructure failure' }, { status: 500 });
   }
 }

@@ -95,3 +95,4 @@ BEGIN
         ALTER TABLE public.contacts ADD CONSTRAINT unique_workspace_contact UNIQUE (workspace_id, email);
     END IF;
 END $$;
+                                                                                                                                           

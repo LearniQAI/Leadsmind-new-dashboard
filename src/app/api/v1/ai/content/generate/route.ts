@@ -82,14 +82,14 @@ export async function POST(req: Request) {
       wordsToAvoid: voiceRecord.words_to_avoid || [],
       primaryLanguage: voiceRecord.primary_language || 'en'
     } : {
-      name: 'Cape Tax Pros',
-      industry: 'Financial Advisory',
-      servicesDescription: 'SME VAT Submissions',
-      targetAudience: 'Local business owners',
-      brandPersonality: toneOverride || 'Professional yet conversational',
-      toneAdjectives: ['clear', 'compliant'],
-      wordsToUse: ['SARS', 'E-Filing'],
-      wordsToAvoid: ['synergy'],
+      name: 'The Company',
+      industry: 'General Business',
+      servicesDescription: 'Professional Services',
+      targetAudience: 'General Audience',
+      brandPersonality: toneOverride || 'Professional and clear',
+      toneAdjectives: ['clear', 'concise'],
+      wordsToUse: [],
+      wordsToAvoid: [],
       primaryLanguage: 'en'
     };
 
