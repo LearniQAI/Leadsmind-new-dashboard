@@ -87,7 +87,6 @@ export function renderEmailLayout(
   additionalVars?: Record<string, any>
 ): string {
   const primaryColor = brandKit.brandColorPrimary || '#2563eb';
-  const secondaryColor = brandKit.brandColorSecondary || '#080f28';
   const defaultFont = brandKit.brandFontDefault || 'Inter, Arial, sans-serif';
   const logoUrl = brandKit.logoUrl || '';
 
@@ -317,7 +316,7 @@ export function renderEmailLayout(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LeadsMind Broadcast</title>
 </head>
-<body style="font-family: ${defaultFont}; background-color: ${secondaryColor}; margin: 0; padding: 40px 20px;">
+<body style="font-family: ${defaultFont}; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 40px 20px;">
   <table border="0" cellpadding="0" cellspacing="0" width="100%">
     <tr>
       <td align="center">

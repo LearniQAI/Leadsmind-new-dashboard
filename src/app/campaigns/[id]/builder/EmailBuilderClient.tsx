@@ -962,25 +962,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Secondary Dark Color</label>
-                  <div className="flex gap-2 items-center">
-                    <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-white/10 shrink-0 cursor-pointer shadow-inner" style={{ backgroundColor: brandKit.brandColorSecondary || '#080f28' }}>
-                      <input
-                        type="color"
-                        value={brandKit.brandColorSecondary || '#080f28'}
-                        onChange={(e) => setBrandKit({ ...brandKit, brandColorSecondary: e.target.value })}
-                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      value={brandKit.brandColorSecondary || '#080f28'}
-                      onChange={(e) => setBrandKit({ ...brandKit, brandColorSecondary: e.target.value })}
-                      className="flex-1 bg-[#04091a] border border-white/5 rounded-lg p-2 text-[11px] text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
+
                 <div>
                   <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Default Typography Font</label>
                   <select
