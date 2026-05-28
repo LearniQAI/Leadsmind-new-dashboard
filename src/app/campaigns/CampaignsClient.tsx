@@ -264,18 +264,18 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-md p-8 shadow-2xl text-white">
+        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-sm p-6 shadow-2xl text-white">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-white">New <span className="text-primary">Campaign</span></DialogTitle>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-white">New <span className="text-primary">Campaign</span></DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Campaign Name</Label>
-              <Input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="e.g. Welcome Sequence" className="h-12 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6]" />
+              <Input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="e.g. Welcome Sequence" className="h-10 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Email Subject</Label>
-              <Input value={createSubject} onChange={e => setCreateSubject(e.target.value)} placeholder="e.g. Welcome to LeadsMind!" className="h-12 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6]" />
+              <Input value={createSubject} onChange={e => setCreateSubject(e.target.value)} placeholder="e.g. Welcome to LeadsMind!" className="h-10 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
             </div>
           </div>
           <DialogFooter className="gap-3">
@@ -287,27 +287,27 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-lg p-8 shadow-2xl text-white">
+        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-md p-6 shadow-2xl text-white">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-white">Edit <span className="text-primary">Campaign</span></DialogTitle>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-white">Edit <span className="text-primary">Campaign</span></DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Name</Label>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-12 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6]" />
+              <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-10 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Subject</Label>
-              <Input value={editSubject} onChange={e => setEditSubject(e.target.value)} className="h-12 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6]" />
+              <Input value={editSubject} onChange={e => setEditSubject(e.target.value)} className="h-10 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Target Audience Tags (Comma Separated)</Label>
-              <Input value={editTags} onChange={e => setEditTags(e.target.value)} placeholder="e.g. VIP, Newsletter, Leads" className="h-12 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6]" />
+              <Input value={editTags} onChange={e => setEditTags(e.target.value)} placeholder="e.g. VIP, Newsletter, Leads" className="h-10 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
               <p className="text-[9px] text-[#4a5a82] font-medium">Leave blank to send to all contacts.</p>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Email Body / plain text preview</Label>
-              <Textarea value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Write your email content..." className="min-h-[150px] border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6]" />
+              <Textarea value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Write your email content..." className="min-h-[100px] border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
             </div>
           </div>
           <DialogFooter className="gap-3">
@@ -319,11 +319,11 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
 
       {/* Delete Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-sm p-8 shadow-2xl text-white">
+        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-sm p-6 shadow-2xl text-white">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase tracking-tight text-white">Delete Campaign?</DialogTitle>
           </DialogHeader>
-          <p className="text-[#94a3c8] text-sm py-4">This will permanently delete <strong className="text-white">{deleteCampaign?.name}</strong>. This cannot be undone.</p>
+          <p className="text-[#94a3c8] text-sm py-2">This will permanently delete <strong className="text-white">{deleteCampaign?.name}</strong>. This cannot be undone.</p>
           <DialogFooter className="gap-3">
             <Button variant="outline" onClick={() => setDeleteOpen(false)} className="border-white/5 text-[#94a3c8] hover:text-white bg-transparent rounded-xl text-xs font-bold uppercase tracking-wider">Cancel</Button>
             <Button onClick={handleDelete} disabled={deleting} className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black uppercase text-xs px-8 shadow-lg shadow-rose-600/20">{deleting ? 'Deleting...' : 'Delete'}</Button>
