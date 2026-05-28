@@ -259,11 +259,13 @@ export async function updateCampaign(id: string, updates: any) {
     throw new Error('Email campaign not found.');
    }
 
-   const fromEmail = updates.from_email || campaign.from_email;
+   let fromEmail = updates.from_email || campaign.from_email;
    const workspaceId = campaign.workspace_id;
-
+   
+   // Default to Leadsmind address if not set
    if (!fromEmail) {
-    throw new Error('Campaign "From Email" is not set. Please configure a sending email address.');
+    fromEmail = 'hello@leadsmind.io';
+    updates.from_email = fromEmail;
    }
 
    const emailParts = fromEmail.split('@');
