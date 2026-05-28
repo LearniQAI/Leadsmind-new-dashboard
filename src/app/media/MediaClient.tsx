@@ -25,6 +25,7 @@ import { createClient } from '@/lib/supabase/client';
 export default function MediaClient({ initialFiles, workspaceId }: { initialFiles: any[], workspaceId: string }) {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [files, setFiles] = useState(initialFiles);
+  const supabase = createClient();
 
   const getFileIcon = (type: string) => {
     if (type.includes('image')) return <ImageIcon className="text-blue-400" />;
@@ -36,7 +37,6 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
     const file = e.target.files?.[0];
     if (!file || !workspaceId) return;
     
-    const supabase = createClient();
     const filePath = `${workspaceId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
     toast.promise(
@@ -147,7 +147,7 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
               {view === 'grid' ? (
                 <div className="aspect-square bg-white/5 flex items-center justify-center relative overflow-hidden">
                   {(file.mime_type || '').includes('image') && file.path ? (
-                    <img src={file.path.startsWith('http') ? file.path : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${file.path}`} alt={file.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <img src={file.path.startsWith('http') ? file.path : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl} alt={file.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                   ) : (
                     <div className="p-8">
                       {getFileIcon(file.mime_type || '')}
@@ -156,7 +156,7 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <button 
                       onClick={() => {
-                        const url = file.path.startsWith('http') ? file.path : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${file.path}`;
+                        const url = file.path.startsWith('http') ? file.path : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl;
                         navigator.clipboard.writeText(url);
                         toast.success('Asset URL copied to clipboard!');
                       }}

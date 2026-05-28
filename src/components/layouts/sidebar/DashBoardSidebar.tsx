@@ -121,7 +121,7 @@ const DashBoardSidebar = () => {
                         >
                           {isActive && !isCollapse && <div className="absolute left-[-4px] top-3 bottom-3 w-[4px] bg-accent rounded-r-full shadow-[2px_0_10px_rgba(37,99,235,0.4)]"></div>}
                           <div className={`flex-shrink-0 w-6 flex items-center justify-center ${isActive ? "text-accent2" : "text-t3 group-hover:text-t2"}`}>
-                            <i className={`fa-solid ${item.icon} text-[15px]`}></i>
+                            <i className={`${item.icon} text-[15px]`}></i>
                           </div>
                           {(!isCollapse || sideMenuOpen) && (
                             <>
