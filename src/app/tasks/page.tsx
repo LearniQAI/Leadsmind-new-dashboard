@@ -1,7 +1,7 @@
 import React from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import { getTaskDashboardData } from '@/app/actions/task-workspace';
-import { TaskKanban } from '@/components/tasks/TaskKanban';
+import { TasksBoard } from '@/components/kanban/TasksBoard';
 import { EscalationPanel } from '@/components/tasks/EscalationPanel';
 import { CheckSquare, Plus, LayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
@@ -17,7 +17,7 @@ export default async function TasksPage() {
     );
   }
 
-  const { tasks, escalations } = data;
+  const { escalations } = data;
 
   return (
     <Wrapper>
@@ -36,17 +36,14 @@ export default async function TasksPage() {
             <Link href="/tasks/dashboard" className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2">
               <LayoutDashboard size={14} /> Analytics
             </Link>
-            <button className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2">
-              <Plus size={14} /> New Task
-            </button>
           </div>
         </div>
 
         {/* Escalation Handling */}
         <EscalationPanel escalations={escalations} />
 
-        {/* Task Board */}
-        <TaskKanban tasks={tasks} />
+        {/* Full Task Board (Kanban, List, Calendar) */}
+        <TasksBoard />
         
       </div>
     </Wrapper>
