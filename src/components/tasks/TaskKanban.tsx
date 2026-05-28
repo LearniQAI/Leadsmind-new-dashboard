@@ -27,20 +27,20 @@ export function TaskKanban({ tasks }: { tasks: any[] }) {
   };
 
   return (
-    <div className="flex gap-6 overflow-x-auto pb-8 custom-scrollbar h-[calc(100vh-250px)]">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 pb-8 h-[calc(100vh-250px)]">
       {COLUMNS.map(column => {
         const columnTasks = tasks.filter(t => t.status === column.id);
 
         return (
-          <div key={column.id} className="min-w-[320px] w-[320px] flex flex-col h-full bg-n800/50 border border-white/5 rounded-3xl p-4">
+          <div key={column.id} className="flex flex-col h-full bg-[#080f28] border border-white/5 shadow-lg shadow-black/20 rounded-3xl p-5">
             <div className={`mb-4 pb-4 border-b border-white/5 flex items-center justify-between`}>
               <h3 className={`font-space font-bold text-sm uppercase tracking-wider ${column.color}`}>{column.title}</h3>
-              <span className="text-xs font-bold text-t4 bg-n900 px-2 py-0.5 rounded">{columnTasks.length}</span>
+              <span className="text-[10px] font-bold text-t4 bg-[#04091a] border border-white/5 px-2 py-1 rounded-md">{columnTasks.length}</span>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
               {columnTasks.map(task => (
-                <div key={task.id} className="bg-n900 border border-white/10 rounded-2xl p-4 hover:border-accent/40 transition-colors group">
+                <div key={task.id} className="bg-[#04091a] border border-white/[0.03] shadow-md rounded-2xl p-4 hover:border-accent/40 transition-colors group">
                   <div className="flex items-start justify-between mb-3 gap-2">
                     <button 
                       onClick={() => handleStatusChange(task.id, task.status === 'Completed' ? 'Pending' : 'Completed')}

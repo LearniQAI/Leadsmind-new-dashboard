@@ -138,24 +138,28 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
         // Create local audio payload URL
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         if (audioBlob.size > 0 && activeTicketId) {
-          const audioUrl = URL.createObjectURL(audioBlob);
-          const newReply: Reply = {
-            id: `reply-${Math.random().toString(36).substr(2, 9)}`,
-            type: 'voice_note',
-            direction: 'outbound',
-            content: 'Voice Response',
-            transcript: transcriptRef.current || 'Voice reply submitted via recording.',
-            audioUrl,
-            duration: recordingSeconds,
-            created_at: new Date().toISOString()
-          };
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = () => {
+            const base64data = reader.result as string;
+            const newReply: Reply = {
+              id: `reply-${Math.random().toString(36).substr(2, 9)}`,
+              type: 'voice_note',
+              direction: 'outbound',
+              content: 'Voice Response',
+              transcript: transcriptRef.current || 'Voice reply submitted via recording.',
+              audioUrl: base64data,
+              duration: recordingSeconds,
+              created_at: new Date().toISOString()
+            };
 
-          setReplies(prev => {
-            const ticketReplies = prev[activeTicketId] || [];
-            const updated = { ...prev, [activeTicketId]: [...ticketReplies, newReply] };
-            localStorage.setItem('leadsmind_ticket_replies', JSON.stringify(updated));
-            return updated;
-          });
+            setReplies(prev => {
+              const ticketReplies = prev[activeTicketId] || [];
+              const updated = { ...prev, [activeTicketId]: [...ticketReplies, newReply] };
+              localStorage.setItem('leadsmind_ticket_replies', JSON.stringify(updated));
+              return updated;
+            });
+          };
         }
       };
 
