@@ -38,12 +38,10 @@ export default async function ContactBriefPage({ params }: PageProps) {
 
   return (
     <MetaData pageTitle="Prospect Intelligence Report">
-      <Wrapper>
-        <ContactBriefClient 
-          workspaceId={workspaceId} 
-          report={report} 
-        />
-      </Wrapper>
+      <ContactBriefClient 
+        workspaceId={workspaceId} 
+        report={report} 
+      />
     </MetaData>
   );
 }
