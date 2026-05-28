@@ -809,7 +809,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                             type="color"
                             value={selectedBlock.content.backgroundColor || '#2563eb'}
                             onChange={(e) => updateBlockContent({ backgroundColor: e.target.value })}
-                            className="w-8 h-8 rounded border-none bg-transparent cursor-pointer"
+                            className="w-8 h-8 rounded-lg cursor-pointer bg-[#04091a] border border-white/5 p-0.5"
                           />
                           <input
                             type="text"
@@ -948,7 +948,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                       type="color"
                       value={brandKit.brandColorPrimary || '#2563eb'}
                       onChange={(e) => setBrandKit({ ...brandKit, brandColorPrimary: e.target.value })}
-                      className="w-8 h-8 rounded border-none bg-transparent cursor-pointer"
+                      className="w-8 h-8 rounded-lg cursor-pointer bg-[#04091a] border border-white/5 p-0.5"
                     />
                     <input
                       type="text"
@@ -965,7 +965,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                       type="color"
                       value={brandKit.brandColorSecondary || '#080f28'}
                       onChange={(e) => setBrandKit({ ...brandKit, brandColorSecondary: e.target.value })}
-                      className="w-8 h-8 rounded border-none bg-transparent cursor-pointer"
+                      className="w-8 h-8 rounded-lg cursor-pointer bg-[#04091a] border border-white/5 p-0.5"
                     />
                     <input
                       type="text"
