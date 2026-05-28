@@ -17,7 +17,8 @@ export async function verifyAICreditBalance(req: Request, res: Response, next: N
       workspace_id: workspaceId,
       plan_monthly_credits: 500,
       credits_used_this_period: 0,
-      credits_purchased_addon: 0
+      credits_purchased_addon: 0,
+      billing_cycle_start: new Date().toISOString()
     });
     usageRecord = await db('ai_usage_credits').where({ workspace_id: workspaceId }).first();
     

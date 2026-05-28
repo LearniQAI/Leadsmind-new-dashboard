@@ -76,6 +76,44 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
     );
   };
 
+  const handleDelete = async (fileId: string, path: string) => {
+    if (!confirm('Are you sure you want to delete this file?')) return;
+    toast.promise(
+      async () => {
+        if (!path.startsWith('http')) {
+          await supabase.storage.from('media').remove([path]);
+        }
+        await supabase.from('media_files').delete().eq('id', fileId);
+        setFiles(prev => prev.filter(f => f.id !== fileId));
+      },
+      {
+        loading: 'Deleting file...',
+        success: 'File deleted successfully',
+        error: 'Failed to delete file'
+      }
+    );
+  };
+
+  const handleDownload = async (path: string, name: string) => {
+    try {
+      const url = path.startsWith('http') ? path : supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+      // Fetch as blob to force download instead of opening in new tab
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Network error');
+      const blob = await res.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      toast.error('Failed to download file');
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -165,10 +203,10 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
                     >
                       <Copy size={16} />
                     </button>
-                    <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-primary transition-colors text-white" title="Download">
+                    <button onClick={() => handleDownload(file.path, file.name)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-primary transition-colors text-white" title="Download">
                       <Download size={16} />
                     </button>
-                    <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-rose-500 transition-colors text-white" title="Delete">
+                    <button onClick={() => handleDelete(file.id, file.path)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-rose-500 transition-colors text-white" title="Delete">
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -197,7 +235,7 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => {
-                      const url = file.path.startsWith('http') ? file.path : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${file.path}`;
+                      const url = file.path.startsWith('http') ? file.path : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl;
                       navigator.clipboard.writeText(url);
                       toast.success('Asset URL copied to clipboard!');
                     }}
@@ -206,10 +244,10 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
                   >
                     <Copy size={18} />
                   </button>
-                  <button className="p-2 text-white/20 hover:text-white transition-colors" title="Download">
+                  <button onClick={() => handleDownload(file.path, file.name)} className="p-2 text-white/20 hover:text-white transition-colors" title="Download">
                     <Download size={18} />
                   </button>
-                  <button className="p-2 text-white/20 hover:text-rose-500 transition-colors" title="Delete">
+                  <button onClick={() => handleDelete(file.id, file.path)} className="p-2 text-white/20 hover:text-rose-500 transition-colors" title="Delete">
                     <Trash2 size={18} />
                   </button>
                 </div>

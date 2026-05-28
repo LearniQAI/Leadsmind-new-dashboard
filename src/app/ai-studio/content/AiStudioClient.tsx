@@ -138,7 +138,7 @@ export default function AiStudioClient() {
       <div className="h-14 bg-[#080f28] border-b border-white/5 flex items-center justify-between px-6 sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => router.push('/dashboard')} 
+            onClick={() => router.push('/ai-studio')} 
             className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-[#4a5a82] hover:text-white hover:bg-white/10 transition-all"
           >
             <ArrowLeft size={16} />
