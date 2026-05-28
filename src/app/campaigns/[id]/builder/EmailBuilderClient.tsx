@@ -373,6 +373,8 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       if (!workspaceId) {
         toast.error('Workspace context missing for upload.');
         return;
+      }
+
       const toastId = toast.loading('Uploading pasted image to Media Center...');
       try {
         const { createClient } = await import('@/lib/supabase/client');
