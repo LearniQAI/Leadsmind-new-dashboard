@@ -117,7 +117,7 @@ export async function POST(req: Request) {
 
     // 7. Log Generation Analytics Audit
     await db('ai_generations').insert({
-      workspace_id: workspaceId,
+      workspace_id: realWorkspaceId,
       team_member_id: teamMemberId,
       generation_type: contextType || 'sms',
       user_brief: userBrief,
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
 
     // 8. Deduct Credit Ledger Balance
     await db('ai_usage_credits')
-      .where({ workspace_id: workspaceId })
+      .where({ workspace_id: realWorkspaceId })
       .increment('credits_used_this_period', 1);
 
     // 9. Return JSON payload

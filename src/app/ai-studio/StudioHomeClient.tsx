@@ -84,26 +84,26 @@ export default function StudioHomeClient({
         </span>
       </div>
 
-      {/* Grid: 1/3 Credits speedometer, 2/3 Quick launch portals */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Flattened Layout */}
+      <div className="space-y-6">
         
-        {/* Credits usage card */}
-        <div className="bg-[#080f28] border border-white/5 rounded-3xl p-6 space-y-6 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1.5 h-full bg-[#3b82f6]" />
-          
-          <div className="flex items-center justify-between">
-            <h5 className="text-[11px] font-bold text-t3 uppercase tracking-wider">Workspace AI Credit Ledger</h5>
-            <Zap size={14} className="text-accent2" />
+        {/* Credits usage top bar */}
+        <div className="bg-[#080f28] border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
+              <Zap size={24} />
+            </div>
+            <div>
+              <h5 className="text-[10px] font-bold text-t3 uppercase tracking-widest mb-1">AI Credit Ledger</h5>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-space font-black text-white">{usedCredits}</span>
+                <span className="text-xs font-semibold text-t4">/ {totalAllocated} credits used</span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-space font-black text-t1">{usedCredits}</span>
-            <span className="text-sm font-semibold text-t4">/ {totalAllocated} credits used</span>
-          </div>
-
-          {/* Progress Speedometer bar */}
-          <div className="space-y-2">
-            <div className="h-2.5 w-full bg-[#04091a] rounded-full overflow-hidden border border-white/[0.02]">
+          <div className="flex-1 w-full max-w-md space-y-2">
+            <div className="h-2.5 w-full bg-[#04091a] rounded-full overflow-hidden border border-white/[0.05]">
               <div 
                 style={{ width: `${percentageUsed}%` }}
                 className={`h-full rounded-full transition-all duration-500 ${
@@ -111,42 +111,42 @@ export default function StudioHomeClient({
                 }`}
               />
             </div>
-            <div className="flex justify-between items-center text-[10px] text-t4">
-              <span>{percentageUsed}% Expended</span>
-              <span>Billing Cycle End: {billingCycleEnd}</span>
+            <div className="flex justify-between items-center text-[10px] text-t4 font-bold uppercase tracking-widest">
+              <span>{percentageUsed}% Used</span>
+              <span>Resets: {billingCycleEnd}</span>
             </div>
           </div>
 
           <button
             onClick={() => router.push('/settings?tab=ai-credits')}
-            className="w-full py-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 text-t2 font-bold text-xs uppercase tracking-wide transition-all"
+            className="w-full md:w-auto px-6 py-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wide transition-all"
           >
-            Manage AI Balance & Limits
+            Manage Limits
           </button>
         </div>
 
-        {/* Portals (2/3 columns) */}
-        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Portals */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
           {/* Content Writer Studio Card */}
           <div 
             onClick={() => router.push('/ai-studio/content')}
-            className="bg-[#080f28] border border-white/5 rounded-3xl p-6 flex flex-col justify-between hover:border-accent/30 hover:bg-[#0c1535]/40 transition-all cursor-pointer group relative overflow-hidden"
+            className="bg-[#080f28] border border-white/5 rounded-3xl p-6 flex flex-col justify-between hover:border-accent/30 hover:bg-[#0c1535]/40 transition-all cursor-pointer group relative overflow-hidden h-[180px]"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#3b82f6]/5 rounded-full blur-2xl group-hover:bg-[#3b82f6]/10 transition-all" />
-            <div className="space-y-4">
-              <div className="w-10 h-10 rounded-xl bg-accentg/10 text-accent2 flex items-center justify-center">
-                <Sparkles size={20} />
-              </div>
-              <div>
+            <div className="space-y-4 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accentg/10 text-accent2 flex items-center justify-center">
+                  <Sparkles size={20} />
+                </div>
                 <h4 className="text-[15px] font-space font-bold uppercase text-t1 group-hover:text-accent2 transition-all">AI Content Writing Studio</h4>
-                <p className="text-xs text-t3 leading-relaxed mt-1">
-                  Generate SEO-optimized blog drafts, high-converting subject lines, sales sequences, and platform variations in South African tones.
-                </p>
               </div>
+              <p className="text-xs text-t3 leading-relaxed">
+                Generate SEO-optimized blog drafts, sales sequences, and platform variations.
+              </p>
             </div>
 
-            <div className="flex items-center gap-1.5 text-xs font-bold text-accent2 uppercase tracking-wider pt-6">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-accent2 uppercase tracking-wider relative z-10">
               Launch Writing Studio
               <ArrowRight size={13} className="transform group-hover:translate-x-1 transition-transform" />
             </div>
@@ -155,22 +155,22 @@ export default function StudioHomeClient({
           {/* Research Agent Portal Card */}
           <div 
             onClick={() => router.push('/ai-studio/research')}
-            className="bg-[#080f28] border border-white/5 rounded-3xl p-6 flex flex-col justify-between hover:border-[#8b5cf6]/30 hover:bg-[#0c1535]/40 transition-all cursor-pointer group relative overflow-hidden"
+            className="bg-[#080f28] border border-white/5 rounded-3xl p-6 flex flex-col justify-between hover:border-[#8b5cf6]/30 hover:bg-[#0c1535]/40 transition-all cursor-pointer group relative overflow-hidden h-[180px]"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#8b5cf6]/5 rounded-full blur-2xl group-hover:bg-[#8b5cf6]/10 transition-all" />
-            <div className="space-y-4">
-              <div className="w-10 h-10 rounded-xl bg-[#8b5cf6]/10 text-[#a78bfa] flex items-center justify-center">
-                <Brain size={20} />
-              </div>
-              <div>
+            <div className="space-y-4 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#8b5cf6]/10 text-[#a78bfa] flex items-center justify-center">
+                  <Brain size={20} />
+                </div>
                 <h4 className="text-[15px] font-space font-bold uppercase text-t1 group-hover:text-[#a78bfa] transition-all">Customer Research Agent</h4>
-                <p className="text-xs text-t3 leading-relaxed mt-1">
-                  Scans target websites, news updates, hiring flags, and tech stacks to build structured company snapshots and pre-meeting assessments.
-                </p>
               </div>
+              <p className="text-xs text-t3 leading-relaxed">
+                Build structured company snapshots and pre-meeting assessments autonomously.
+              </p>
             </div>
 
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#a78bfa] uppercase tracking-wider pt-6">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#a78bfa] uppercase tracking-wider relative z-10">
               Launch Research Portal
               <ArrowRight size={13} className="transform group-hover:translate-x-1 transition-transform" />
             </div>
