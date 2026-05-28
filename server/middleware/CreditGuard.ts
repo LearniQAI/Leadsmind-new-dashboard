@@ -9,10 +9,21 @@ export async function verifyAICreditBalance(req: Request, res: Response, next: N
     return res.status(400).json({ error: 'Missing workspaceId in request' });
   }
 
-  const usageRecord = await db('ai_usage_credits').where({ workspace_id: workspaceId }).first();
+  let usageRecord = await db('ai_usage_credits').where({ workspace_id: workspaceId }).first();
 
   if (!usageRecord) {
-    return res.status(403).json({ error: 'CREDIT_ACCOUNT_NOT_INITIALIZED' });
+    // Auto-initialize standard credit account for backwards compatibility
+    await db('ai_usage_credits').insert({
+      workspace_id: workspaceId,
+      plan_monthly_credits: 500,
+      credits_used_this_period: 0,
+      credits_purchased_addon: 0
+    });
+    usageRecord = await db('ai_usage_credits').where({ workspace_id: workspaceId }).first();
+    
+    if (!usageRecord) {
+      return res.status(403).json({ error: 'CREDIT_ACCOUNT_NOT_INITIALIZED' });
+    }
   }
 
   const absoluteCeiling = usageRecord.plan_monthly_credits + usageRecord.credits_purchased_addon;

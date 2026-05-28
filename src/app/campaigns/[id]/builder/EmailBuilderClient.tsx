@@ -6,11 +6,14 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   ArrowLeft, Plus, MoveUp, MoveDown, Trash2, Eye, ShieldCheck,
-  CheckCircle, AlertTriangle, Monitor, Smartphone, Moon, Sun, Save, RefreshCw, Sparkles
+  CheckCircle, AlertTriangle, Monitor, Smartphone, Moon, Sun, Save, RefreshCw, Sparkles, Upload
 } from 'lucide-react';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
 import { updateCampaign } from '@/app/actions/marketing';
 import { renderEmailLayout, EmailBlock, BrandKit } from '@/lib/builder/emailRenderer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface EmailBuilderClientProps {
   campaignId: string;
@@ -42,6 +45,23 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [darkModeSim, setDarkModeSim] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'add' | 'inspector' | 'brand' | 'warnings'>('add');
+
+  // Deploy / Automate State
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployTags, setDeployTags] = useState(() => {
+    try {
+      if (initialCampaign.segment && Array.isArray(initialCampaign.segment.tags)) {
+        return initialCampaign.segment.tags.join(', ');
+      }
+    } catch(e){}
+    return '';
+  });
+  const [isAutomated, setIsAutomated] = useState(() => {
+    try {
+      return !!initialCampaign.segment?.is_automated;
+    } catch(e){}
+    return false;
+  });
 
   // Selected block
   const selectedBlock = selectedBlockIndex !== null ? blocks[selectedBlockIndex] : null;
@@ -189,6 +209,43 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
     }
   };
 
+  // Launch / Automate Action
+  const handleDeploy = async () => {
+    setSaving(true);
+    try {
+      // compile HTML
+      const compiledHtml = renderEmailLayout(blocks, brandKit);
+      const textBlock = blocks.find(b => b.type === 'text');
+      const plainTextPreview = textBlock?.content.body?.slice(0, 100) || 'Your LeadsMind Email Broadcast';
+
+      const tagsArray = deployTags.split(',').map(t => t.trim()).filter(Boolean);
+      const segmentData = {
+        tags: tagsArray,
+        is_automated: isAutomated
+      };
+
+      const result = await updateCampaign(campaignId, {
+        builder_json: blocks,
+        body_html: compiledHtml,
+        preview_text: plainTextPreview.replace(/\{\{[^}]+\}\}/g, '').trim(),
+        segment: segmentData,
+        status: 'scheduled'
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(isAutomated ? 'Automated Campaign Activated!' : 'Broadcast Campaign Scheduled!');
+        setDeployModalOpen(false);
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error('Failed to deploy campaign.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Accessibility audit checker
   const accessibilityWarnings = useMemo(() => {
     const warnings: string[] = [];
@@ -232,6 +289,163 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
 
     return html;
   }, [blocks, brandKit, darkModeSim]);
+
+  // Direct image upload helper
+  const handleDirectUpload = async (field: 'imageUrl' | 'avatarUrl') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const workspaceId = initialCampaign.workspace_id;
+      if (!workspaceId) {
+        toast.error('Workspace context missing for upload.');
+        return;
+      }
+
+      toast.promise(
+        async () => {
+          const { createClient } = await import('@/lib/supabase/client');
+          const supabase = createClient();
+          const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'uploaded_image.png';
+          const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
+
+          const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
+          if (uploadError) throw uploadError;
+
+          const { error: dbError } = await supabase
+            .from('media_files')
+            .insert({
+              workspace_id: workspaceId,
+              name: safeName,
+              path: filePath,
+              type: 'file',
+              mime_type: file.type,
+              size: file.size
+            });
+
+          if (dbError) throw dbError;
+
+          const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${filePath}`;
+          updateBlockContent({ [field]: publicUrl });
+          return publicUrl;
+        },
+        {
+          loading: 'Uploading asset to Media Center...',
+          success: 'Asset uploaded successfully!',
+          error: 'Failed to upload asset.',
+        }
+      );
+    };
+    input.click();
+  };
+
+  // Global Image Paste Handler
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      // Don't intercept if they are actively typing text in an input
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        const inputType = (document.activeElement as HTMLInputElement).type;
+        // Exception: allow pasting on standard text inputs if it's an image
+        if (inputType !== 'text' && document.activeElement?.tagName !== 'TEXTAREA') {
+          return;
+        }
+      }
+
+      const file = Array.from(e.clipboardData?.files || []).find(f => f.type.startsWith('image/'));
+      if (!file) return;
+
+      e.preventDefault();
+
+      const workspaceId = initialCampaign.workspace_id;
+      if (!workspaceId) {
+        toast.error('Workspace context missing for upload.');
+        return;
+      }
+
+      toast.promise(
+        async () => {
+          const { createClient } = await import('@/lib/supabase/client');
+          const supabase = createClient();
+          const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'pasted_image.png';
+          const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
+
+          // Upload to bucket
+          const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
+          if (uploadError) throw uploadError;
+
+          // Register in media_files
+          const { data: dbData, error: dbError } = await supabase
+            .from('media_files')
+            .insert({
+              workspace_id: workspaceId,
+              name: safeName,
+              path: filePath,
+              type: 'file',
+              mime_type: file.type,
+              size: file.size
+            })
+            .select()
+            .single();
+
+          if (dbError) throw dbError;
+
+          // Construct public URL
+          const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${filePath}`;
+
+          // Apply to the active block or create a new hero block
+          if (selectedBlockIndex !== null) {
+            const currentBlock = blocks[selectedBlockIndex];
+            if (currentBlock.type === 'hero') {
+              updateBlockContent({ imageUrl: publicUrl });
+            } else if (currentBlock.type === 'testimonial') {
+              updateBlockContent({ avatarUrl: publicUrl });
+            } else {
+              // Add a new hero block at the end
+              addBlock('hero');
+              setTimeout(() => {
+                setBlocks(prev => {
+                  const lastIndex = prev.length - 1;
+                  const newBlocks = [...prev];
+                  newBlocks[lastIndex] = {
+                    ...newBlocks[lastIndex],
+                    content: { ...newBlocks[lastIndex].content, imageUrl: publicUrl }
+                  };
+                  return newBlocks;
+                });
+              }, 100);
+            }
+          } else {
+            // Append a new hero block automatically
+            addBlock('hero');
+            setTimeout(() => {
+              setBlocks(prev => {
+                const lastIndex = prev.length - 1;
+                const newBlocks = [...prev];
+                newBlocks[lastIndex] = {
+                  ...newBlocks[lastIndex],
+                  content: { ...newBlocks[lastIndex].content, imageUrl: publicUrl }
+                };
+                return newBlocks;
+              });
+            }, 100);
+          }
+          
+          return dbData;
+        },
+        {
+          loading: 'Uploading pasted image to Media Center...',
+          success: 'Image uploaded and applied to layout!',
+          error: 'Failed to upload image.',
+        }
+      );
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [blocks, selectedBlockIndex, initialCampaign.workspace_id]);
 
   return (
     <div className="min-h-screen bg-[#04091a] text-white flex flex-col font-dm-sans">
@@ -284,6 +498,14 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
               </>
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setDeployModalOpen(true)}
+            className="h-9 px-5 rounded-lg bg-[#10b981] hover:bg-[#10b981]/90 text-white text-[12px] font-bold flex items-center gap-2 transition-all shadow-lg shadow-[#10b981]/20"
+          >
+            Send
+          </button>
         </div>
       </header>
 
@@ -296,9 +518,9 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
           <div className="flex border-b border-white/5 p-1 bg-[#04091a]">
             {[
               { id: 'add', label: 'Add', icon: Plus },
-              { id: 'inspector', label: 'Inspect', icon: Eye },
+              { id: 'inspector', label: 'Settings', icon: Eye },
               { id: 'brand', label: 'Brand', icon: ShieldCheck },
-              { id: 'warnings', label: `Warnings (${accessibilityWarnings.length})`, icon: AlertTriangle }
+              { id: 'warnings', label: `Issues (${accessibilityWarnings.length})`, icon: AlertTriangle }
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -375,9 +597,14 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
 
                   {/* Component specific properties */}
                   {selectedBlock.type === 'hero' && (
-                    <div className="space-y-3">
+                      <div className="space-y-3">
                       <div>
-                        <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Hero Image URL</label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider">Hero Image URL</label>
+                          <button type="button" onClick={() => handleDirectUpload('imageUrl')} className="text-[9px] font-bold text-[#3b82f6] hover:text-[#2563eb] flex items-center gap-1">
+                            <Upload size={10} /> Upload
+                          </button>
+                        </div>
                         <input
                           type="text"
                           value={selectedBlock.content.imageUrl || ''}
@@ -386,7 +613,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Image Alt Attribute (SEO/Access) *</label>
+                        <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Image Description (Alt Text)</label>
                         <input
                           type="text"
                           value={selectedBlock.content.imageAlt || ''}
@@ -488,7 +715,12 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Avatar Image URL</label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider">Avatar Image URL</label>
+                          <button type="button" onClick={() => handleDirectUpload('avatarUrl')} className="text-[9px] font-bold text-[#3b82f6] hover:text-[#2563eb] flex items-center gap-1">
+                            <Upload size={10} /> Upload
+                          </button>
+                        </div>
                         <input
                           type="text"
                           value={selectedBlock.content.avatarUrl || ''}
@@ -650,12 +882,51 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                   Workspace Template Branding
                 </div>
                 <div>
-                  <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Header Brand Logo URL</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider">Header Brand Logo</label>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = async (e: any) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const workspaceId = initialCampaign.workspace_id;
+                          if (!workspaceId) return toast.error('Workspace context missing.');
+                          
+                          toast.promise(
+                            async () => {
+                              const { createClient } = await import('@/lib/supabase/client');
+                              const supabase = createClient();
+                              const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'brand_logo.png';
+                              const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
+                              const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
+                              if (uploadError) throw uploadError;
+                              const { error: dbError } = await supabase.from('media_files').insert({
+                                workspace_id: workspaceId, name: safeName, path: filePath, type: 'file', mime_type: file.type, size: file.size
+                              });
+                              if (dbError) throw dbError;
+                              const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${filePath}`;
+                              setBrandKit({ ...brandKit, logoUrl: publicUrl });
+                            },
+                            { loading: 'Uploading Logo...', success: 'Logo updated!', error: 'Upload failed.' }
+                          );
+                        };
+                        input.click();
+                      }} 
+                      className="text-[9px] font-bold text-[#3b82f6] hover:text-[#2563eb] flex items-center gap-1"
+                    >
+                      <Upload size={10} /> Upload
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={brandKit.logoUrl || ''}
                     onChange={(e) => setBrandKit({ ...brandKit, logoUrl: e.target.value })}
                     className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2 text-[11px] text-white focus:outline-none focus:border-[#2563eb]"
+                    placeholder="Enter URL or upload a logo"
                   />
                 </div>
                 <div>
@@ -913,7 +1184,6 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
             </div>
           </div>
         </div>
-
       </div>
 
       <AISparkDrawer
@@ -926,6 +1196,60 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
         }}
       />
 
+      {/* Send / Automate Modal */}
+      <Dialog open={deployModalOpen} onOpenChange={setDeployModalOpen}>
+        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-md p-8 text-white shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-white">Send <span className="text-[#3b82f6]">Campaign</span></DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Who should receive this? (Enter Tags)</Label>
+              <Input 
+                value={deployTags} 
+                onChange={e => setDeployTags(e.target.value)} 
+                placeholder="e.g. VIP, Newsletter, Welcome" 
+                className="h-12 border-white/5 bg-[#04091a] text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#3b82f6]" 
+              />
+              <p className="text-[9px] text-[#4a5a82] font-semibold mt-1">Only contacts with these tags will receive this email.</p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-[#3b82f6]/20 bg-[#3b82f6]/5">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <div className="mt-0.5">
+                  <input 
+                    type="checkbox" 
+                    checked={isAutomated}
+                    onChange={(e) => setIsAutomated(e.target.checked)}
+                    className="w-4 h-4 rounded border-white/20 bg-transparent text-[#3b82f6] focus:ring-[#3b82f6] focus:ring-offset-[#080f28]"
+                  />
+                </div>
+                <div>
+                  <div className="text-[12px] font-bold text-white tracking-wide uppercase">Send Automatically</div>
+                  <div className="text-[10px] text-[#94a3c8] mt-1 leading-relaxed">
+                    Leave this checked to automatically send this email to any new contacts who get these tags in the future.
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+          <DialogFooter className="gap-3">
+            <button 
+              onClick={() => setDeployModalOpen(false)} 
+              className="px-6 h-10 rounded-xl border border-white/5 text-[#94a3c8] hover:text-white text-[11px] font-bold uppercase tracking-wider transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleDeploy} 
+              disabled={saving} 
+              className="px-6 h-10 rounded-xl bg-[#10b981] hover:bg-[#10b981]/90 disabled:opacity-50 text-white text-[11px] font-bold uppercase tracking-wider shadow-lg transition-all"
+            >
+              {saving ? 'Sending...' : isAutomated ? 'Start Automation' : 'Send Now'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

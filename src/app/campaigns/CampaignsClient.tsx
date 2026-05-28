@@ -34,6 +34,7 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
   const [editName, setEditName] = useState('');
   const [editSubject, setEditSubject] = useState('');
   const [editBody, setEditBody] = useState('');
+  const [editTags, setEditTags] = useState('');
   const [saving, setSaving] = useState(false);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -75,7 +76,8 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
             const { updateCampaign } = await import('@/app/actions/marketing');
             const updateRes = await updateCampaign(newCampaign.id, {
               subject: prefillSubject || createSubject || newCampaign.subject,
-              body: prefillBody || ''
+              body_plain: prefillBody || '',
+              body_html: prefillBody || ''
             });
             if (!updateRes.error && updateRes.data) {
               newCampaign = updateRes.data;
@@ -97,7 +99,18 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
     setEditCampaign(campaign);
     setEditName(campaign.name);
     setEditSubject(campaign.subject || '');
-    setEditBody(campaign.body || '');
+    setEditBody(campaign.body_plain || '');
+    
+    // Extract tags from segment JSONB if available
+    let tags = '';
+    try {
+      if (campaign.segment && typeof campaign.segment === 'object') {
+        if (Array.isArray(campaign.segment.tags)) {
+          tags = campaign.segment.tags.join(', ');
+        }
+      }
+    } catch (e) {}
+    setEditTags(tags);
     setEditOpen(true);
   };
 
@@ -106,7 +119,16 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
     setSaving(true);
     try {
       const { updateCampaign } = await import('@/app/actions/marketing');
-      const res = await updateCampaign(editCampaign.id, { name: editName, subject: editSubject, body: editBody });
+      const tagsArray = editTags.split(',').map(t => t.trim()).filter(Boolean);
+      const segmentData = tagsArray.length > 0 ? { tags: tagsArray } : null;
+      
+      const res = await updateCampaign(editCampaign.id, { 
+        name: editName, 
+        subject: editSubject, 
+        body_plain: editBody, 
+        body_html: editBody,
+        segment: segmentData
+      });
       if (res.error) { toast.error(res.error); }
       else {
         toast.success('Campaign updated!');
@@ -215,9 +237,9 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
 
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[['Opens', campaign.open_rate ? `${campaign.open_rate}%` : '—'], ['Clicks', campaign.click_rate ? `${campaign.click_rate}%` : '—'], ['Bounced', '0%']].map(([label, val]) => (
-                <div key={label} className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                  <span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">{label}</span>
-                  <span className="text-sm font-black text-gray-700">{val}</span>
+                <div key={label} className="p-3 bg-white rounded-xl border border-gray-200 text-center shadow-sm">
+                  <span className="block text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{label}</span>
+                  <span className="text-base font-black text-gray-900">{val}</span>
                 </div>
               ))}
             </div>
@@ -249,11 +271,11 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Campaign Name</Label>
-              <Input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="e.g. Welcome Sequence" className="h-12 border-gray-200 rounded-xl" />
+              <Input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="e.g. Welcome Sequence" className="h-12 border-gray-200 rounded-xl text-gray-900 bg-white placeholder:text-gray-400" />
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Email Subject</Label>
-              <Input value={createSubject} onChange={e => setCreateSubject(e.target.value)} placeholder="e.g. Welcome to LeadsMind!" className="h-12 border-gray-200 rounded-xl" />
+              <Input value={createSubject} onChange={e => setCreateSubject(e.target.value)} placeholder="e.g. Welcome to LeadsMind!" className="h-12 border-gray-200 rounded-xl text-gray-900 bg-white placeholder:text-gray-400" />
             </div>
           </div>
           <DialogFooter className="gap-3">
@@ -272,15 +294,20 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Name</Label>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-12 border-gray-200 rounded-xl" />
+              <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-12 border-gray-200 rounded-xl text-gray-900 bg-white" />
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Subject</Label>
-              <Input value={editSubject} onChange={e => setEditSubject(e.target.value)} className="h-12 border-gray-200 rounded-xl" />
+              <Input value={editSubject} onChange={e => setEditSubject(e.target.value)} className="h-12 border-gray-200 rounded-xl text-gray-900 bg-white" />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Email Body</Label>
-              <Textarea value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Write your email content..." className="min-h-[150px] border-gray-200 rounded-xl" />
+              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Target Audience Tags (Comma Separated)</Label>
+              <Input value={editTags} onChange={e => setEditTags(e.target.value)} placeholder="e.g. VIP, Newsletter, Leads" className="h-12 border-gray-200 rounded-xl text-gray-900 bg-white" />
+              <p className="text-[9px] text-gray-400 font-medium">Leave blank to send to all contacts.</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Email Body / plain text preview</Label>
+              <Textarea value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Write your email content..." className="min-h-[150px] border-gray-200 rounded-xl text-gray-900 bg-white placeholder:text-gray-400" />
             </div>
           </div>
           <DialogFooter className="gap-3">

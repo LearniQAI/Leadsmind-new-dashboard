@@ -89,10 +89,16 @@ export async function GET(req: Request) {
       const CHUNK_SIZE = 1000; // Batch insert 1000 queue jobs at a time
       const currentOffset = segmentObj.current_offset || 0;
       
-      const { data: pagedData, error: contactErr } = await supabaseAdmin
+      let contactQuery = supabaseAdmin
          .from('contacts')
          .select('id')
-         .eq('workspace_id', campaign.workspace_id)
+         .eq('workspace_id', campaign.workspace_id);
+         
+      if (segmentObj.tags && Array.isArray(segmentObj.tags) && segmentObj.tags.length > 0) {
+         contactQuery = contactQuery.overlaps('tags', segmentObj.tags);
+      }
+      
+      const { data: pagedData, error: contactErr } = await contactQuery
          .order('id', { ascending: true })
          .range(currentOffset, currentOffset + CHUNK_SIZE - 1);
          
@@ -103,27 +109,42 @@ export async function GET(req: Request) {
       const contacts = pagedData || [];
 
       if (contacts.length === 0) {
-         // Finished building queue. Mark campaign as fully queued.
+         // Finished building queue. 
+         // If this is an automated evergreen campaign, leave it as 'scheduled' so it keeps polling.
+         const nextStatus = segmentObj.is_automated ? 'scheduled' : 'queued';
          await supabaseAdmin.from('email_campaigns').update({
-             status: 'queued',
+             status: nextStatus,
+             segment: { ...segmentObj, current_offset: 0 }, // Reset offset for the next automated sweep
              updated_at: now.toISOString()
          }).eq('id', campaign.id);
          continue;
       }
 
-      // Generate queue records for this chunk
-      const queueRecords = contacts.map(c => ({
-         campaign_id: campaign.id,
-         workspace_id: campaign.workspace_id,
-         contact_id: c.id,
-         status: 'pending',
-         scheduled_for: campaign.scheduled_at || now.toISOString()
-      }));
+      // Filter out contacts that are already in the queue or sent for this campaign
+      const { data: existingJobs } = await supabaseAdmin
+         .from('campaign_dispatch_queue')
+         .select('contact_id')
+         .eq('campaign_id', campaign.id)
+         .in('contact_id', contacts.map(c => c.id));
+         
+      const existingContactIds = new Set(existingJobs?.map(j => j.contact_id) || []);
+      const newContacts = contacts.filter(c => !existingContactIds.has(c.id));
 
-      const { error: insertErr } = await supabaseAdmin.from('campaign_dispatch_queue').insert(queueRecords);
-      if (insertErr) {
-         console.error('[Campaign Cron] Failed to enqueue chunk:', insertErr.message);
-         continue;
+      if (newContacts.length > 0) {
+        // Generate queue records for this chunk
+        const queueRecords = newContacts.map(c => ({
+           campaign_id: campaign.id,
+           workspace_id: campaign.workspace_id,
+           contact_id: c.id,
+           status: 'pending',
+           scheduled_for: campaign.scheduled_at || now.toISOString()
+        }));
+
+        const { error: insertErr } = await supabaseAdmin.from('campaign_dispatch_queue').insert(queueRecords);
+        if (insertErr) {
+           console.error('[Campaign Cron] Failed to enqueue chunk:', insertErr.message);
+           continue;
+        }
       }
 
       // Advance cursor

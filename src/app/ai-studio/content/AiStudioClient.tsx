@@ -52,7 +52,10 @@ export default function AiStudioClient() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Generation failed');
+      if (!response.ok) {
+        const errorMsg = typeof data.error === 'object' ? JSON.stringify(data.error) : data.error;
+        throw new Error(errorMsg || 'Generation failed');
+      }
 
       // Split generated content into blocks by double newlines to make it interactive
       const rawText = data.content || '';
@@ -84,12 +87,15 @@ export default function AiStudioClient() {
         body: JSON.stringify({
           targetText: targetBlock.text,
           operationType: operation,
-          regionalLanguageTarget: operation === 'translate' ? (language === 'en' ? 'Zulu' : 'English') : undefined
+          regionalLanguageTarget: operation === 'translate' ? (language === 'en' ? 'English' : language === 'zu' ? 'Zulu' : 'Xhosa') : undefined
         })
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Improvement failed');
+      if (!response.ok) {
+        const errorMsg = typeof data.error === 'object' ? JSON.stringify(data.error) : data.error;
+        throw new Error(errorMsg || 'Improvement failed');
+      }
 
       setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, text: data.improvedContent } : b));
       toast.success(`Block updated successfully via ${operation}!`);
@@ -103,10 +109,22 @@ export default function AiStudioClient() {
 
   const handleSaveDocument = async () => {
     setSaving(true);
-    setTimeout(() => {
+    try {
+      const { saveTextDraftToMedia } = await import('@/app/actions/operations');
+      const compiledContent = blocks.map(b => b.text).join('\n\n');
+      const docName = `AI Draft - ${new Date().toLocaleDateString()}`;
+      
+      const res = await saveTextDraftToMedia(docName, compiledContent);
+      if (res.error) {
+        toast.error(`Save failed: ${res.error}`);
+      } else {
+        toast.success('Document drafted and saved to Media Center successfully.');
+      }
+    } catch (err: any) {
+      toast.error('An error occurred while saving.');
+    } finally {
       setSaving(false);
-      toast.success('Document asset saved successfully in Media Library.');
-    }, 1000);
+    }
   };
 
   const updateBlockText = (id: string, text: string) => {
