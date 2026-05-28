@@ -10,6 +10,7 @@ const supabaseAdmin = createClient(
 );
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
   try {
@@ -25,10 +26,13 @@ export async function GET(req: Request) {
     const nowStr = now.toISOString();
 
     // 1. Fetch campaigns that are scheduled and ready to send, or currently in progress ("sending")
+    // Added stale recovery: limit to 5 per tick, process oldest updated first.
     const { data: campaigns, error: fetchErr } = await supabaseAdmin
       .from('email_campaigns')
       .select('*')
-      .or(`status.eq.sending,and(status.eq.scheduled,scheduled_at.lte.${nowStr})`);
+      .or(`status.eq.sending,and(status.eq.scheduled,scheduled_at.lte.${nowStr})`)
+      .order('updated_at', { ascending: true })
+      .limit(5);
 
     if (fetchErr) {
       throw fetchErr;
@@ -74,96 +78,81 @@ export async function GET(req: Request) {
       const apiKey = workspace?.resend_api_key || process.env.RESEND_API_KEY;
       const fromEmail = campaign.from_email || workspace?.email_from_address || 'onboarding@resend.dev';
 
-      // 4. Fetch contacts (recipients) in the workspace using select('*') to handle arbitrary columns safely
-      const { data: contacts, error: contactErr } = await supabaseAdmin
-        .from('contacts')
-        .select('*')
-        .eq('workspace_id', campaign.workspace_id);
+      // Retrieve build progress
+      let segmentObj: any = {};
+      try {
+         segmentObj = (typeof campaign.segment === 'object' && campaign.segment !== null) ? campaign.segment : {};
+      } catch (e) {
+         console.error('[Campaign Cron] Segment payload corruption detected.');
+      }
+      
+      const CHUNK_SIZE = 1000; // Batch insert 1000 queue jobs at a time
+      const currentOffset = segmentObj.current_offset || 0;
+      
+      let contactQuery = supabaseAdmin
+         .from('contacts')
+         .select('id')
+         .eq('workspace_id', campaign.workspace_id);
+         
+      if (segmentObj.tags && Array.isArray(segmentObj.tags) && segmentObj.tags.length > 0) {
+         contactQuery = contactQuery.overlaps('tags', segmentObj.tags);
+      }
+      
+      const { data: pagedData, error: contactErr } = await contactQuery
+         .order('id', { ascending: true })
+         .range(currentOffset, currentOffset + CHUNK_SIZE - 1);
+         
+      if (contactErr) {
+         console.error('[Campaign Cron] DB pagination error:', contactErr.message);
+         continue;
+      }
+      const contacts = pagedData || [];
 
-      if (contactErr || !contacts || contacts.length === 0) {
-        console.warn(`[Campaign Cron] No contacts found for campaign ${campaign.id} in workspace ${campaign.workspace_id}`);
-        await supabaseAdmin
-          .from('email_campaigns')
-          .update({ status: 'sent', sent_at: now.toISOString(), total_sent: 0 })
-          .eq('id', campaign.id);
-        processedCount++;
-        continue;
+      if (contacts.length === 0) {
+         // Finished building queue. 
+         // If this is an automated evergreen campaign, leave it as 'scheduled' so it keeps polling.
+         const nextStatus = segmentObj.is_automated ? 'scheduled' : 'queued';
+         await supabaseAdmin.from('email_campaigns').update({
+             status: nextStatus,
+             segment: { ...segmentObj, current_offset: 0 }, // Reset offset for the next automated sweep
+             updated_at: now.toISOString()
+         }).eq('id', campaign.id);
+         continue;
       }
 
-      // Retrieve progress lists from campaign's segment JSONB
-      const segmentObj = (campaign.segment || {}) as any;
-      const sentContactIds: string[] = Array.isArray(segmentObj.sent_contact_ids) ? segmentObj.sent_contact_ids : [];
-      let campaignSentCount = campaign.total_sent || 0;
-      let hasRemainingContacts = false;
-      const newSentIds = [...sentContactIds];
+      // Filter out contacts that are already in the queue or sent for this campaign
+      const { data: existingJobs } = await supabaseAdmin
+         .from('campaign_dispatch_queue')
+         .select('contact_id')
+         .eq('campaign_id', campaign.id)
+         .in('contact_id', contacts.map(c => c.id));
+         
+      const existingContactIds = new Set(existingJobs?.map(j => j.contact_id) || []);
+      const newContacts = contacts.filter(c => !existingContactIds.has(c.id));
 
-      // 5. Process send loops with EskomSePush + optimal time checks
-      for (const contact of contacts) {
-        if (!contact.email) continue;
-        if (sentContactIds.includes(contact.id)) continue; // Skip already sent contacts
+      if (newContacts.length > 0) {
+        // Generate queue records for this chunk
+        const queueRecords = newContacts.map(c => ({
+           campaign_id: campaign.id,
+           workspace_id: campaign.workspace_id,
+           contact_id: c.id,
+           status: 'pending',
+           scheduled_for: campaign.scheduled_at || now.toISOString()
+        }));
 
-        // Resolve optimized send time for this contact
-        const baseDate = campaign.scheduled_at ? new Date(campaign.scheduled_at) : now;
-        const optimizedTime = await PredictiveIntelligence.getOptimizedSendTime(contact, baseDate);
-
-        if (optimizedTime.getTime() > now.getTime()) {
-          // Scheduled for a future time slot (e.g. because of load-shedding shift or later optimal open hour)
-          hasRemainingContacts = true;
-          continue;
+        const { error: insertErr } = await supabaseAdmin.from('campaign_dispatch_queue').insert(queueRecords);
+        if (insertErr) {
+           console.error('[Campaign Cron] Failed to enqueue chunk:', insertErr.message);
+           continue;
         }
-
-        try {
-          await sendEmail({
-            to: contact.email,
-            subject: campaign.subject,
-            html: campaign.body_html || '<p>No content provided</p>',
-            config: {
-              apiKey,
-              fromEmail,
-              fromName: campaign.from_name || 'LeadsMind',
-              // Attach tags so Resend returns them in webhook events
-              tags: [
-                { name: 'campaign_id', value: campaign.id },
-                { name: 'contact_id', value: contact.id }
-              ]
-            }
-          });
-          campaignSentCount++;
-          newSentIds.push(contact.id);
-        } catch (sendErr: any) {
-          console.error(`[Campaign Cron] Failed sending to ${contact.email}:`, sendErr.message);
-          // Mark as processed anyway to prevent infinite retry loops in future cron runs
-          newSentIds.push(contact.id);
-        }
       }
 
-      // 6. Update campaign progress
-      const updatedSegment = {
-        ...segmentObj,
-        sent_contact_ids: newSentIds
-      };
-
-      if (hasRemainingContacts) {
-        // Keep status as "sending" to continue processing in the next cron sweep
-        await supabaseAdmin
-          .from('email_campaigns')
-          .update({
-            segment: updatedSegment,
-            total_sent: campaignSentCount
-          })
-          .eq('id', campaign.id);
-      } else {
-        // All contacts fully processed, mark campaign as "sent"
-        await supabaseAdmin
-          .from('email_campaigns')
-          .update({
-            status: 'sent',
-            sent_at: now.toISOString(),
-            segment: updatedSegment,
-            total_sent: campaignSentCount
-          })
-          .eq('id', campaign.id);
-      }
+      // Advance cursor
+      const newOffset = currentOffset + contacts.length;
+      await supabaseAdmin.from('email_campaigns').update({
+         segment: { ...segmentObj, current_offset: newOffset },
+         updated_at: now.toISOString()
+      }).eq('id', campaign.id);
 
       processedCount++;
     }

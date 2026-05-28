@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       shorten: 'Condense the provided text by 40% to 50%, removing filler and passive phrasing while keeping all core facts intact.',
       lengthen: 'Expand on the concepts in the provided text by adding illustrative details and clear structural logic flows without adding generic fluff.',
       readability: 'Simplify sentence structure and clear out dense corporate jargon to ensure the copy is easy to read and understand.',
-      persuade: 'Rewrite the content using a strict Problem-Agitation-Solution copy framework to emphasize value propositions and strengthen call-to-action hooks.'
+      persuade: 'Rewrite the content using a strict Problem-Agitation-Solution copy framework to emphasize value propositions and strengthen call-to-action hooks. Format the output with clear spacing: use double newlines between the Problem, Agitation, and Solution paragraphs. Do not use bold labels like **Problem:**, just write natural persuasive paragraphs.'
     };
 
     let systemMessage = operationalDirectives[operationType] || 'Refine and optimize this text for professional use.';

@@ -216,3 +216,37 @@ export async function getMediaFiles() {
   return { error: error.message };
  }
 }
+
+export async function saveTextDraftToMedia(name: string, content: string) {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const supabase = await createServerClient();
+    
+    // We store the text draft inside the metadata of the media_files table
+    // with type 'file' and mime_type 'text/plain'.
+    // We use a pseudo-path 'draft://...' to differentiate from storage objects
+    const { data, error } = await supabase
+      .from('media_files')
+      .insert({
+        workspace_id: workspaceId,
+        name: name,
+        path: `draft://${Date.now()}`,
+        type: 'file',
+        mime_type: 'text/plain',
+        size: Buffer.byteLength(content, 'utf8'),
+        metadata: {
+          content: content,
+          isDraft: true
+        }
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}

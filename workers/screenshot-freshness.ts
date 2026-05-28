@@ -18,7 +18,7 @@ export async function runFreshnessCheck() {
     // 1. Fetch screenshot metadata targets
     const { data: screenshots, error } = await supabase
       .from('help_screenshots')
-      .select('id, route_path, selector, stored_hash')
+                                                             .select('id, route_path, selector, stored_hash')
       .not('route_path', 'is', null)
       .not('selector', 'is', null);
 
@@ -128,4 +128,4 @@ export async function runFreshnessCheck() {
 // Support CLI direct script runner trigger
 if (typeof require !== 'undefined' && require.main === module) {
   runFreshnessCheck();
-}
+}

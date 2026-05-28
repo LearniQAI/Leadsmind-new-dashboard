@@ -259,11 +259,13 @@ export async function updateCampaign(id: string, updates: any) {
     throw new Error('Email campaign not found.');
    }
 
-   const fromEmail = updates.from_email || campaign.from_email;
+   let fromEmail = updates.from_email || campaign.from_email;
    const workspaceId = campaign.workspace_id;
-
+   
+   // Default to Leadsmind address if not set
    if (!fromEmail) {
-    throw new Error('Campaign "From Email" is not set. Please configure a sending email address.');
+    fromEmail = 'hello@leadsmind.io';
+    updates.from_email = fromEmail;
    }
 
    const emailParts = fromEmail.split('@');
@@ -295,7 +297,37 @@ export async function updateCampaign(id: string, updates: any) {
 
   const { data, error } = await supabase.from('email_campaigns').update(updates).eq('id', id).select().single();
   if (error) throw error;
-  return { data };
+  
+  // Count matching contacts for the user's peace of mind
+  let matchedContactsCount = 0;
+  if (updates.status === 'scheduled') {
+   if (updates.segment?.tags?.length > 0 && data.workspace_id) {
+    const { count, error: countError } = await supabase
+     .from('contacts')
+     .select('id', { count: 'exact', head: true })
+     .eq('workspace_id', data.workspace_id)
+     .contains('tags', updates.segment.tags);
+    if (!countError) matchedContactsCount = count || 0;
+   }
+
+   // If specific emails were provided, instantly dispatch to them!
+   if (updates.segment?.emails?.length > 0 && updates.body_html) {
+    const { sendEmail } = await import('@/lib/email');
+    for (const email of updates.segment.emails) {
+     await sendEmail({
+      to: email,
+      subject: updates.subject || data.subject || 'LeadsMind Campaign',
+      html: updates.body_html,
+      config: {
+       fromEmail: updates.from_email || data.from_email || 'hello@leadsmind.io',
+       fromName: data.from_name || 'LeadsMind'
+      }
+     });
+    }
+   }
+  }
+
+  return { data, matchedContactsCount };
  } catch (error: any) { return { error: error.message }; }
 }
 
@@ -443,6 +475,38 @@ export async function getWorkspaceApiKey() {
 
   if (error) throw error;
   return { apiKey: data.api_key };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function sendTestEmailAction(campaignId: string, testEmail: string, compiledHtml: string) {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data: campaign, error } = await supabase
+   .from('email_campaigns')
+   .select('subject, from_name, from_email')
+   .eq('id', campaignId)
+   .single();
+
+  if (error || !campaign) throw new Error('Campaign not found');
+
+  const { sendEmail } = await import('@/lib/email');
+  
+  await sendEmail({
+   to: testEmail,
+   subject: `[TEST] ${campaign.subject || 'Test Campaign'}`,
+   html: compiledHtml,
+   config: {
+    fromEmail: campaign.from_email || 'hello@leadsmind.io',
+    fromName: campaign.from_name || 'LeadsMind Test'
+   }
+  });
+
+  return { success: true };
  } catch (error: any) {
   return { error: error.message };
  }

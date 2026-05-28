@@ -87,7 +87,6 @@ export function renderEmailLayout(
   additionalVars?: Record<string, any>
 ): string {
   const primaryColor = brandKit.brandColorPrimary || '#2563eb';
-  const secondaryColor = brandKit.brandColorSecondary || '#080f28';
   const defaultFont = brandKit.brandFontDefault || 'Inter, Arial, sans-serif';
   const logoUrl = brandKit.logoUrl || '';
 
@@ -123,10 +122,10 @@ export function renderEmailLayout(
             ` : ''}
             <tr>
               <td align="center" style="padding: 10px 0;">
-                <h1 style="font-family: ${defaultFont}; font-size: 24px; font-weight: 800; color: #eef2ff; margin: 0 0 10px 0; text-align: center; text-transform: uppercase;">
+                <h1 style="font-family: ${defaultFont}; font-size: 24px; font-weight: 800; color: #0f172a; margin: 0 0 10px 0; text-align: center; text-transform: uppercase;">
                   ${headline}
                 </h1>
-                <p style="font-family: ${defaultFont}; font-size: 14px; line-height: 1.6; color: #94a3c8; margin: 0 0 20px 0; text-align: center;">
+                <p style="font-family: ${defaultFont}; font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 20px 0; text-align: center;">
                   ${subheadline}
                 </p>
                 ${buttonText ? `
@@ -151,10 +150,10 @@ export function renderEmailLayout(
         const columns = Array.isArray(block.content.columns) ? block.content.columns : [];
         const colsHtml = columns.map((col: any) => `
           <td valign="top" style="padding: 10px; width: ${100 / Math.max(1, columns.length)}%;">
-            <h3 style="font-family: ${defaultFont}; font-size: 15px; font-weight: bold; color: #3b82f6; margin: 0 0 8px 0;">
+            <h3 style="font-family: ${defaultFont}; font-size: 15px; font-weight: bold; color: ${primaryColor}; margin: 0 0 8px 0;">
               ${col.title || 'Feature Title'}
             </h3>
-            <p style="font-family: ${defaultFont}; font-size: 12px; line-height: 1.5; color: #94a3c8; margin: 0;">
+            <p style="font-family: ${defaultFont}; font-size: 12px; line-height: 1.5; color: #475569; margin: 0;">
               ${col.description || 'Feature description.'}
             </p>
           </td>
@@ -179,10 +178,10 @@ export function renderEmailLayout(
 
         blockContentHtml = `
           <!-- TESTIMONIAL BLOCK -->
-          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; margin-bottom: 24px;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin-bottom: 24px;">
             <tr>
               <td style="padding: 24px;">
-                <p style="font-family: ${defaultFont}; font-size: 13.5px; line-height: 1.6; color: #eef2ff; font-style: italic; margin: 0 0 16px 0; text-align: center;">
+                <p style="font-family: ${defaultFont}; font-size: 13.5px; line-height: 1.6; color: #334155; font-style: italic; margin: 0 0 16px 0; text-align: center;">
                   "${quote}"
                 </p>
                 <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
@@ -227,7 +226,7 @@ export function renderEmailLayout(
           <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px; text-align: center;">
             <tr>
               <td>
-                <div style="font-family: ${defaultFont}; font-size: 10.5px; font-weight: bold; color: #3b82f6; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">
+                <div style="font-family: ${defaultFont}; font-size: 10.5px; font-weight: bold; color: ${primaryColor}; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">
                   ${label}
                 </div>
                 <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
@@ -239,11 +238,11 @@ export function renderEmailLayout(
                       { value: seconds, label: 'Secs' }
                     ].map(item => `
                       <td style="padding: 0 4px;">
-                        <table border="0" cellpadding="0" cellspacing="0" style="background-color: #04091a; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; width: 50px; height: 50px;">
+                        <table border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; width: 50px; height: 50px;">
                           <tr>
-                            <td align="center" style="font-family: ${defaultFont}; font-size: 16px; font-weight: 800; color: #eef2ff; line-height: 1;">
+                            <td align="center" style="font-family: ${defaultFont}; font-size: 16px; font-weight: 800; color: #0f172a; line-height: 1;">
                               ${item.value}
-                              <div style="font-size: 8px; font-weight: normal; color: #4a5a82; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.5px;">
+                              <div style="font-size: 8px; font-weight: normal; color: #64748b; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.5px;">
                                 ${item.label}
                               </div>
                             </td>
@@ -295,7 +294,7 @@ export function renderEmailLayout(
           <!-- TEXT BLOCK -->
           <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
             <tr>
-              <td style="font-family: ${defaultFont}; font-size: 14px; line-height: 1.6; color: #94a3c8;">
+              <td style="font-family: ${defaultFont}; font-size: 14px; line-height: 1.6; color: #475569;">
                 ${bodyText.replace(/\n/g, '<br />')}
               </td>
             </tr>
@@ -317,11 +316,11 @@ export function renderEmailLayout(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LeadsMind Broadcast</title>
 </head>
-<body style="font-family: ${defaultFont}; background-color: #04091a; color: #eef2ff; margin: 0; padding: 40px 20px;">
+<body style="font-family: ${defaultFont}; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 40px 20px;">
   <table border="0" cellpadding="0" cellspacing="0" width="100%">
     <tr>
       <td align="center">
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #080f28; border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 24px; padding: 40px; box-sizing: border-box;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 40px; box-sizing: border-box; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
           
           <!-- Logo Header -->
           ${logoUrl ? `
@@ -342,10 +341,10 @@ export function renderEmailLayout(
 
           <!-- Footer -->
           <tr>
-            <td align="center" style="font-family: ${defaultFont}; font-size: 11px; color: #4a5a82; line-height: 1.6; padding-top: 30px; border-top: 1px solid rgba(255, 255, 255, 0.05); margin-top: 30px;">
+            <td align="center" style="font-family: ${defaultFont}; font-size: 11px; color: #94a3c8; line-height: 1.6; padding-top: 30px; border-top: 1px solid #e2e8f0; margin-top: 30px;">
               Sent automatically by LeadsMind Campaign Engine.<br />
               © ${new Date().getFullYear()} LeadsMind Inc. All rights reserved.<br />
-              <a href="{{unsubscribe_link}}" style="color: #3b82f6; text-decoration: none;">Unsubscribe</a> from future campaigns.
+              <a href="{{unsubscribe_link}}" style="color: ${primaryColor}; text-decoration: none;">Unsubscribe</a> from future campaigns.
             </td>
           </tr>
 
