@@ -23,12 +23,10 @@ export default async function ResearchPortalPage() {
 
   return (
     <MetaData pageTitle="AI Customer Research Agent">
-      <Wrapper>
-        <ResearchPortalClient 
-          workspaceId={workspaceId} 
-          initialReports={reports || []} 
-        />
-      </Wrapper>
+      <ResearchPortalClient 
+        workspaceId={workspaceId} 
+        initialReports={reports || []} 
+      />
     </MetaData>
   );
 }

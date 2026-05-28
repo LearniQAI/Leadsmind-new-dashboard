@@ -6,9 +6,7 @@ import AiStudioClient from './AiStudioClient';
 export default function AiStudioPage() {
   return (
     <MetaData pageTitle="AI Production Studio">
-      <Wrapper>
-        <AiStudioClient />
-      </Wrapper>
+      <AiStudioClient />
     </MetaData>
   );
 }
