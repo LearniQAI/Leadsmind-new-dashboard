@@ -300,11 +300,11 @@ export async function updateCampaign(id: string, updates: any) {
   
   // Count matching contacts for the user's peace of mind
   let matchedContactsCount = 0;
-  if (updates.status === 'scheduled' && updates.segment?.tags?.length > 0 && workspaceId) {
+  if (updates.status === 'scheduled' && updates.segment?.tags?.length > 0 && data.workspace_id) {
    const { count, error: countError } = await supabase
     .from('contacts')
     .select('id', { count: 'exact', head: true })
-    .eq('workspace_id', workspaceId)
+    .eq('workspace_id', data.workspace_id)
     .contains('tags', updates.segment.tags);
    if (!countError) matchedContactsCount = count || 0;
   }
