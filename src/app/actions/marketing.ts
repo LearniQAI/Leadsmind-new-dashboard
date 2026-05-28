@@ -300,13 +300,31 @@ export async function updateCampaign(id: string, updates: any) {
   
   // Count matching contacts for the user's peace of mind
   let matchedContactsCount = 0;
-  if (updates.status === 'scheduled' && updates.segment?.tags?.length > 0 && data.workspace_id) {
-   const { count, error: countError } = await supabase
-    .from('contacts')
-    .select('id', { count: 'exact', head: true })
-    .eq('workspace_id', data.workspace_id)
-    .contains('tags', updates.segment.tags);
-   if (!countError) matchedContactsCount = count || 0;
+  if (updates.status === 'scheduled') {
+   if (updates.segment?.tags?.length > 0 && data.workspace_id) {
+    const { count, error: countError } = await supabase
+     .from('contacts')
+     .select('id', { count: 'exact', head: true })
+     .eq('workspace_id', data.workspace_id)
+     .contains('tags', updates.segment.tags);
+    if (!countError) matchedContactsCount = count || 0;
+   }
+
+   // If specific emails were provided, instantly dispatch to them!
+   if (updates.segment?.emails?.length > 0 && updates.body_html) {
+    const { sendEmail } = await import('@/lib/email');
+    for (const email of updates.segment.emails) {
+     await sendEmail({
+      to: email,
+      subject: updates.subject || data.subject || 'LeadsMind Campaign',
+      html: updates.body_html,
+      config: {
+       fromEmail: updates.from_email || data.from_email || 'hello@leadsmind.io',
+       fromName: data.from_name || 'LeadsMind'
+      }
+     });
+    }
+   }
   }
 
   return { data, matchedContactsCount };

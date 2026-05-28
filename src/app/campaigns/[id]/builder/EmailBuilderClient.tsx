@@ -9,7 +9,7 @@ import {
   CheckCircle, AlertTriangle, Monitor, Smartphone, Moon, Sun, Save, RefreshCw, Sparkles, Upload
 } from 'lucide-react';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
-import { updateCampaign, sendTestEmailAction } from '@/app/actions/marketing';
+import { updateCampaign } from '@/app/actions/marketing';
 import { renderEmailLayout, EmailBlock, BrandKit } from '@/lib/builder/emailRenderer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -63,8 +63,6 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
     } catch(e){}
     return false;
   });
-  const [testEmail, setTestEmail] = useState('');
-  const [sendingTest, setSendingTest] = useState(false);
 
   // Selected block
   const selectedBlock = selectedBlockIndex !== null ? blocks[selectedBlockIndex] : null;
@@ -221,9 +219,13 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       const textBlock = blocks.find(b => b.type === 'text');
       const plainTextPreview = textBlock?.content.body?.slice(0, 100) || 'Your LeadsMind Email Broadcast';
 
-      const tagsArray = deployTags.split(',').map(t => t.trim()).filter(Boolean);
+      const tokens = deployTags.split(',').map(t => t.trim()).filter(Boolean);
+      const emailTokens = tokens.filter(t => t.includes('@'));
+      const tagTokens = tokens.filter(t => !t.includes('@'));
+
       const segmentData = {
-        tags: tagsArray,
+        tags: tagTokens,
+        emails: emailTokens,
         is_automated: isAutomated
       };
 
@@ -253,28 +255,6 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       toast.error('Failed to deploy campaign.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  // Send Test Email
-  const handleTestSend = async () => {
-    if (!testEmail) {
-      toast.error('Please enter a test email address.');
-      return;
-    }
-    setSendingTest(true);
-    try {
-      const compiledHtml = renderEmailLayout(blocks, brandKit);
-      const result = await sendTestEmailAction(campaignId, testEmail, compiledHtml);
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(`Test email sent to ${testEmail}`);
-      }
-    } catch (err: any) {
-      toast.error('Failed to send test email.');
-    } finally {
-      setSendingTest(false);
     }
   };
 
@@ -1232,42 +1212,21 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
 
       {/* Send / Automate Modal */}
       <Dialog open={deployModalOpen} onOpenChange={setDeployModalOpen}>
-        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-md p-8 text-white shadow-2xl">
+        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-md p-6 text-white shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-white">Send <span className="text-[#3b82f6]">Campaign</span></DialogTitle>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-white">Send <span className="text-[#3b82f6]">Campaign</span></DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
+          <div className="space-y-6 py-2">
             
-            {/* Test Email Section */}
-            <div className="space-y-2 pb-5 border-b border-white/10">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#10b981]">Send a Test Email</Label>
-              <div className="flex gap-2">
-                <Input 
-                  value={testEmail} 
-                  onChange={e => setTestEmail(e.target.value)} 
-                  placeholder="e.g. you@company.com" 
-                  className="h-10 border-white/5 bg-[#04091a] text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#10b981] flex-1 text-sm" 
-                />
-                <button 
-                  onClick={handleTestSend} 
-                  disabled={sendingTest} 
-                  className="px-4 h-10 rounded-xl bg-[#10b981]/10 hover:bg-[#10b981]/20 border border-[#10b981]/30 text-[#10b981] disabled:opacity-50 text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap"
-                >
-                  {sendingTest ? 'Sending...' : 'Send Test'}
-                </button>
-              </div>
-              <p className="text-[9px] text-[#4a5a82] font-semibold mt-1">Send a one-off preview to yourself before broadcasting.</p>
-            </div>
-
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Who should receive this? (Enter Tags)</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Who should receive this? (Enter Tags or Emails)</Label>
               <Input 
                 value={deployTags} 
                 onChange={e => setDeployTags(e.target.value)} 
-                placeholder="e.g. VIP, Newsletter, Welcome" 
+                placeholder="e.g. VIP, Newsletter, john@example.com" 
                 className="h-10 border-white/5 bg-[#04091a] text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" 
               />
-              <p className="text-[9px] text-[#4a5a82] font-semibold mt-1">Only contacts with these tags will receive this email.</p>
+              <p className="text-[9px] text-[#4a5a82] font-semibold mt-1">Contacts with these tags, or the direct emails provided, will receive this broadcast.</p>
             </div>
 
             <div className="p-4 rounded-xl border border-[#3b82f6]/20 bg-[#3b82f6]/5">
