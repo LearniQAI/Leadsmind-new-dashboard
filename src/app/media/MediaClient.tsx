@@ -33,6 +33,14 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
     return <File className="text-gray-400" />;
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !workspaceId) return;
@@ -241,7 +249,7 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
                 </h4>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black text-white/20 uppercase tracking-widest italic-none">
-                    {((file.size || 0) / 1024 / 1024).toFixed(2)} MB
+                    {formatFileSize(file.size || 0)}
                   </span>
                   <Badge className="bg-white/5 text-white/40 border-none text-[8px] font-black uppercase tracking-[0.2em]">
                     {(file.mime_type || '').split('/')[1] || 'FILE'}
