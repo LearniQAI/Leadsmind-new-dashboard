@@ -80,7 +80,7 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
     if (!confirm('Are you sure you want to delete this file?')) return;
     toast.promise(
       async () => {
-        if (!path.startsWith('http')) {
+        if (!path.startsWith('http') && !path.startsWith('draft://')) {
           await supabase.storage.from('media').remove([path]);
         }
         await supabase.from('media_files').delete().eq('id', fileId);
@@ -94,9 +94,23 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
     );
   };
 
-  const handleDownload = async (path: string, name: string) => {
+  const handleDownload = async (file: any) => {
     try {
-      const url = path.startsWith('http') ? path : supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+      if (file.path.startsWith('draft://')) {
+        const content = file.metadata?.content || '';
+        const blob = new Blob([content], { type: 'text/plain' });
+        const objectUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = file.name.endsWith('.txt') ? file.name : `${file.name}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(objectUrl);
+        return;
+      }
+
+      const url = file.path.startsWith('http') ? file.path : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl;
       // Fetch as blob to force download instead of opening in new tab
       const res = await fetch(url);
       if (!res.ok) throw new Error('Network error');
@@ -184,8 +198,8 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
             >
               {view === 'grid' ? (
                 <div className="aspect-square bg-white/5 flex items-center justify-center relative overflow-hidden">
-                  {(file.mime_type || '').includes('image') && file.path ? (
-                    <img src={file.path.startsWith('http') ? file.path : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl} alt={file.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  {(file.mime_type || '').includes('image') ? (
+                    <img src={file.path.startsWith('http') ? file.path : (file.path.startsWith('draft://') ? '' : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl)} alt={file.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                   ) : (
                     <div className="p-8">
                       {getFileIcon(file.mime_type || '')}
@@ -194,6 +208,10 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <button 
                       onClick={() => {
+                        if (file.path.startsWith('draft://')) {
+                          toast.error('Drafts do not have a public URL');
+                          return;
+                        }
                         const url = file.path.startsWith('http') ? file.path : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl;
                         navigator.clipboard.writeText(url);
                         toast.success('Asset URL copied to clipboard!');
@@ -203,7 +221,7 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
                     >
                       <Copy size={16} />
                     </button>
-                    <button onClick={() => handleDownload(file.path, file.name)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-primary transition-colors text-white" title="Download">
+                    <button onClick={() => handleDownload(file)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-primary transition-colors text-white" title="Download">
                       <Download size={16} />
                     </button>
                     <button onClick={() => handleDelete(file.id, file.path)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-rose-500 transition-colors text-white" title="Delete">
@@ -235,6 +253,10 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => {
+                      if (file.path.startsWith('draft://')) {
+                        toast.error('Drafts do not have a public URL');
+                        return;
+                      }
                       const url = file.path.startsWith('http') ? file.path : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl;
                       navigator.clipboard.writeText(url);
                       toast.success('Asset URL copied to clipboard!');
@@ -244,7 +266,7 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
                   >
                     <Copy size={18} />
                   </button>
-                  <button onClick={() => handleDownload(file.path, file.name)} className="p-2 text-white/20 hover:text-white transition-colors" title="Download">
+                  <button onClick={() => handleDownload(file)} className="p-2 text-white/20 hover:text-white transition-colors" title="Download">
                     <Download size={18} />
                   </button>
                   <button onClick={() => handleDelete(file.id, file.path)} className="p-2 text-white/20 hover:text-rose-500 transition-colors" title="Delete">
