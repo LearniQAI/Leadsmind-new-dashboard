@@ -236,9 +236,8 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       if (result.error) {
         toast.error(result.error);
       } else {
-        const countMsg = result.matchedContactsCount !== undefined
-          ? `(Targeting ${result.matchedContactsCount} contacts)`
-          : '';
+        const totalRecipients = (result.matchedContactsCount || 0) + emailTokens.length;
+        const countMsg = `(Targeting ${totalRecipients} recipients)`;
         toast.success(
           isAutomated 
             ? `Automated Campaign Activated! ${countMsg}` 
@@ -262,9 +261,6 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
         // Skip alt check if image URL is empty
       } else if (block.type === 'hero' && !block.content.imageAlt?.trim()) {
         warnings.push(`Block #${index + 1} (Hero Image) is missing descriptive alternative text.`);
-      }
-      if (block.type === 'testimonial' && block.content.avatarUrl && !block.content.avatarAlt?.trim()) {
-        warnings.push(`Block #${index + 1} (Testimonial Avatar) is missing alternative text.`);
       }
     });
     return warnings;
