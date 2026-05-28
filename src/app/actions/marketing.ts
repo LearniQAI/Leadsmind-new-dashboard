@@ -461,3 +461,35 @@ export async function getWorkspaceApiKey() {
   return { error: error.message };
  }
 }
+
+export async function sendTestEmailAction(campaignId: string, testEmail: string, compiledHtml: string) {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data: campaign, error } = await supabase
+   .from('email_campaigns')
+   .select('subject, from_name, from_email')
+   .eq('id', campaignId)
+   .single();
+
+  if (error || !campaign) throw new Error('Campaign not found');
+
+  const { sendEmail } = await import('@/lib/email');
+  
+  await sendEmail({
+   to: testEmail,
+   subject: `[TEST] ${campaign.subject || 'Test Campaign'}`,
+   html: compiledHtml,
+   config: {
+    fromEmail: campaign.from_email || 'hello@leadsmind.io',
+    fromName: campaign.from_name || 'LeadsMind Test'
+   }
+  });
+
+  return { success: true };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
