@@ -317,40 +317,37 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
         return;
       }
 
-      toast.promise(
-        async () => {
-          const supabase = createClient();
-          const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'uploaded_image.png';
-          const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
+      const toastId = toast.loading('Uploading asset to Media Center...');
+      try {
+        const supabase = createClient();
+        const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'uploaded_image.png';
+        const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
 
-          const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
-          if (uploadError) throw uploadError;
+        const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
+        if (uploadError) throw new Error(uploadError.message || 'Upload failed');
 
-          const { error: dbError } = await supabase
-            .from('media_files')
-            .insert({
-              workspace_id: workspaceId,
-              name: safeName,
-              path: filePath,
-              type: 'file',
-              mime_type: file.type,
-              size: file.size
-            });
+        const { error: dbError } = await supabase
+          .from('media_files')
+          .insert({
+            workspace_id: workspaceId,
+            name: safeName,
+            path: filePath,
+            type: 'file',
+            mime_type: file.type,
+            size: file.size
+          });
 
-          if (dbError) throw dbError;
+        if (dbError) throw new Error(dbError.message || 'Database insert failed');
 
-          const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
-          const publicUrl = publicUrlData.publicUrl;
-          
-          updateBlockContent({ [field]: publicUrl });
-          return publicUrl;
-        },
-        {
-          loading: 'Uploading asset to Media Center...',
-          success: 'Asset uploaded successfully!',
-          error: (err: any) => `Failed to upload: ${err.message}`,
-        }
-      );
+        const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
+        const publicUrl = publicUrlData.publicUrl;
+        
+        updateBlockContent({ [field]: publicUrl });
+        toast.success('Asset uploaded successfully!', { id: toastId });
+      } catch (err: any) {
+        console.error('Upload error:', err);
+        toast.error(`Failed to upload: ${err.message || 'Unknown error'}`, { id: toastId });
+      }
     };
     input.click();
   };
@@ -376,63 +373,44 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       if (!workspaceId) {
         toast.error('Workspace context missing for upload.');
         return;
-      }
+      const toastId = toast.loading('Uploading pasted image to Media Center...');
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'pasted_image.png';
+        const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
 
-      toast.promise(
-        async () => {
-          const { createClient } = await import('@/lib/supabase/client');
-          const supabase = createClient();
-          const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'pasted_image.png';
-          const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
+        // Upload to bucket
+        const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
+        if (uploadError) throw new Error(uploadError.message || 'Upload failed');
 
-          // Upload to bucket
-          const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
-          if (uploadError) throw uploadError;
+        // Register in media_files
+        const { error: dbError } = await supabase
+          .from('media_files')
+          .insert({
+            workspace_id: workspaceId,
+            name: safeName,
+            path: filePath,
+            type: 'file',
+            mime_type: file.type,
+            size: file.size
+          });
 
-          // Register in media_files
-          const { data: dbData, error: dbError } = await supabase
-            .from('media_files')
-            .insert({
-              workspace_id: workspaceId,
-              name: safeName,
-              path: filePath,
-              type: 'file',
-              mime_type: file.type,
-              size: file.size
-            })
-            .select()
-            .single();
+        if (dbError) throw new Error(dbError.message || 'Database insert failed');
 
-          if (dbError) throw dbError;
+        // Construct public URL
+        const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
+        const publicUrl = publicUrlData.publicUrl;
 
-          // Construct public URL
-          const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
-          const publicUrl = publicUrlData.publicUrl;
-
-          // Apply to the active block or create a new hero block
-          if (selectedBlockIndex !== null) {
-            const currentBlock = blocks[selectedBlockIndex];
-            if (currentBlock.type === 'hero') {
-              updateBlockContent({ imageUrl: publicUrl });
-            } else if (currentBlock.type === 'testimonial') {
-              updateBlockContent({ avatarUrl: publicUrl });
-            } else {
-              // Add a new hero block at the end
-              addBlock('hero');
-              setTimeout(() => {
-                setBlocks(prev => {
-                  const lastIndex = prev.length - 1;
-                  const newBlocks = [...prev];
-                  newBlocks[lastIndex] = {
-                    ...newBlocks[lastIndex],
-                    content: { ...newBlocks[lastIndex].content, imageUrl: publicUrl }
-                  };
-                  return newBlocks;
-                });
-              }, 100);
-            }
+        // Apply to the active block or create a new hero block
+        if (selectedBlockIndex !== null) {
+          const currentBlock = blocks[selectedBlockIndex];
+          if (currentBlock.type === 'hero') {
+            updateBlockContent({ imageUrl: publicUrl });
+          } else if (currentBlock.type === 'testimonial') {
+            updateBlockContent({ avatarUrl: publicUrl });
           } else {
-            // Append a new hero block automatically
+            // Add a new hero block at the end
             addBlock('hero');
             setTimeout(() => {
               setBlocks(prev => {
@@ -446,15 +424,27 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
               });
             }, 100);
           }
-          
-          return dbData;
-        },
-        {
-          loading: 'Uploading pasted image to Media Center...',
-          success: 'Image uploaded and applied to layout!',
-          error: (err: any) => `Failed to upload: ${err.message}`,
+        } else {
+          // Append a new hero block automatically
+          addBlock('hero');
+          setTimeout(() => {
+            setBlocks(prev => {
+              const lastIndex = prev.length - 1;
+              const newBlocks = [...prev];
+              newBlocks[lastIndex] = {
+                ...newBlocks[lastIndex],
+                content: { ...newBlocks[lastIndex].content, imageUrl: publicUrl }
+              };
+              return newBlocks;
+            });
+          }, 100);
         }
-      );
+        
+        toast.success('Image uploaded and applied to layout!', { id: toastId });
+      } catch (err: any) {
+        console.error('Paste upload error:', err);
+        toast.error(`Failed to upload: ${err.message || 'Unknown error'}`, { id: toastId });
+      }
     };
 
     window.addEventListener('paste', handlePaste);
@@ -910,23 +900,29 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                           const workspaceId = initialCampaign.workspace_id;
                           if (!workspaceId) return toast.error('Workspace context missing.');
                           
-                          toast.promise(
-                            async () => {
-                              const supabase = createClient();
-                              const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'brand_logo.png';
-                              const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
-                              const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
-                              if (uploadError) throw uploadError;
-                              const { error: dbError } = await supabase.from('media_files').insert({
-                                workspace_id: workspaceId, name: safeName, path: filePath, type: 'file', mime_type: file.type, size: file.size
-                              });
-                              if (dbError) throw dbError;
-                              const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
-                              const publicUrl = publicUrlData.publicUrl;
-                              setBrandKit({ ...brandKit, logoUrl: publicUrl });
-                            },
-                            { loading: 'Uploading Logo...', success: 'Logo updated!', error: (err: any) => `Failed to upload: ${err.message}` }
-                          );
+                          const toastId = toast.loading('Uploading Logo...');
+                          try {
+                            const supabase = createClient();
+                            const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'brand_logo.png';
+                            const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
+                            
+                            const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
+                            if (uploadError) throw new Error(uploadError.message || 'Upload failed');
+                            
+                            const { error: dbError } = await supabase.from('media_files').insert({
+                              workspace_id: workspaceId, name: safeName, path: filePath, type: 'file', mime_type: file.type, size: file.size
+                            });
+                            if (dbError) throw new Error(dbError.message || 'Database insert failed');
+                            
+                            const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
+                            const publicUrl = publicUrlData.publicUrl;
+                            
+                            setBrandKit({ ...brandKit, logoUrl: publicUrl });
+                            toast.success('Logo updated!', { id: toastId });
+                          } catch (err: any) {
+                            console.error('Logo upload error:', err);
+                            toast.error(`Failed to upload: ${err.message || 'Unknown error'}`, { id: toastId });
+                          }
                         };
                         input.click();
                       }} 
