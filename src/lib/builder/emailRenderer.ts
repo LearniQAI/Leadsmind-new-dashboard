@@ -317,11 +317,11 @@ export function renderEmailLayout(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LeadsMind Broadcast</title>
 </head>
-<body style="font-family: ${defaultFont}; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 40px 20px;">
+<body style="font-family: ${defaultFont}; background-color: ${secondaryColor}; margin: 0; padding: 40px 20px;">
   <table border="0" cellpadding="0" cellspacing="0" width="100%">
     <tr>
       <td align="center">
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 40px; box-sizing: border-box;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 40px; box-sizing: border-box; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
           
           <!-- Logo Header -->
           ${logoUrl ? `

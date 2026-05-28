@@ -804,13 +804,15 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                       </div>
                       <div>
                         <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Button Color</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="color"
-                            value={selectedBlock.content.backgroundColor || '#2563eb'}
-                            onChange={(e) => updateBlockContent({ backgroundColor: e.target.value })}
-                            className="w-8 h-8 rounded-lg cursor-pointer bg-[#04091a] border border-white/5 p-0.5"
-                          />
+                        <div className="flex gap-2 items-center">
+                          <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-white/10 shrink-0 cursor-pointer shadow-inner" style={{ backgroundColor: selectedBlock.content.backgroundColor || '#2563eb' }}>
+                            <input
+                              type="color"
+                              value={selectedBlock.content.backgroundColor || '#2563eb'}
+                              onChange={(e) => updateBlockContent({ backgroundColor: e.target.value })}
+                              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                            />
+                          </div>
                           <input
                             type="text"
                             value={selectedBlock.content.backgroundColor || '#2563eb'}
@@ -943,13 +945,15 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                 </div>
                 <div>
                   <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Primary Brand Color</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={brandKit.brandColorPrimary || '#2563eb'}
-                      onChange={(e) => setBrandKit({ ...brandKit, brandColorPrimary: e.target.value })}
-                      className="w-8 h-8 rounded-lg cursor-pointer bg-[#04091a] border border-white/5 p-0.5"
-                    />
+                  <div className="flex gap-2 items-center">
+                    <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-white/10 shrink-0 cursor-pointer shadow-inner" style={{ backgroundColor: brandKit.brandColorPrimary || '#2563eb' }}>
+                      <input
+                        type="color"
+                        value={brandKit.brandColorPrimary || '#2563eb'}
+                        onChange={(e) => setBrandKit({ ...brandKit, brandColorPrimary: e.target.value })}
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      />
+                    </div>
                     <input
                       type="text"
                       value={brandKit.brandColorPrimary || '#2563eb'}
@@ -960,13 +964,15 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                 </div>
                 <div>
                   <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Secondary Dark Color</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={brandKit.brandColorSecondary || '#080f28'}
-                      onChange={(e) => setBrandKit({ ...brandKit, brandColorSecondary: e.target.value })}
-                      className="w-8 h-8 rounded-lg cursor-pointer bg-[#04091a] border border-white/5 p-0.5"
-                    />
+                  <div className="flex gap-2 items-center">
+                    <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-white/10 shrink-0 cursor-pointer shadow-inner" style={{ backgroundColor: brandKit.brandColorSecondary || '#080f28' }}>
+                      <input
+                        type="color"
+                        value={brandKit.brandColorSecondary || '#080f28'}
+                        onChange={(e) => setBrandKit({ ...brandKit, brandColorSecondary: e.target.value })}
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      />
+                    </div>
                     <input
                       type="text"
                       value={brandKit.brandColorSecondary || '#080f28'}
@@ -977,12 +983,19 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                 </div>
                 <div>
                   <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Default Typography Font</label>
-                  <input
-                    type="text"
+                  <select
                     value={brandKit.brandFontDefault || 'Inter'}
                     onChange={(e) => setBrandKit({ ...brandKit, brandFontDefault: e.target.value })}
-                    className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2 text-[11px] text-white focus:outline-none focus:border-[#2563eb]"
-                  />
+                    className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2.5 text-[11px] text-white focus:outline-none focus:border-[#2563eb]"
+                  >
+                    <option value="Inter">Inter (Sans Serif)</option>
+                    <option value="Roboto">Roboto (Sans Serif)</option>
+                    <option value="Open Sans">Open Sans (Sans Serif)</option>
+                    <option value="Montserrat">Montserrat (Sans Serif)</option>
+                    <option value="Playfair Display">Playfair Display (Serif)</option>
+                    <option value="Georgia">Georgia (Serif)</option>
+                    <option value="Space Grotesk">Space Grotesk (Modern)</option>
+                  </select>
                 </div>
               </div>
             )}
