@@ -80,20 +80,17 @@ export default function SubmitTicketModal() {
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Priority Level</label>
-            <Select 
-              value={formData.priority} 
-              onValueChange={(val) => setFormData({...formData, priority: val})}
+            <select
+              value={formData.priority}
+              onChange={(e) => setFormData({...formData, priority: e.target.value})}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 h-12 text-white font-bold focus:border-primary/50 transition-all outline-none text-sm appearance-none"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1em' }}
             >
-              <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12 text-white font-bold focus:border-primary/50">
-                <SelectValue placeholder="Select Priority" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#0b0b1a] border-white/10 text-white">
-                <SelectItem value="low">Low - General Inquiry</SelectItem>
-                <SelectItem value="normal">Normal - Functional Issue</SelectItem>
-                <SelectItem value="high">High - System Blocker</SelectItem>
-                <SelectItem value="urgent">Urgent - Data Security / Loss</SelectItem>
-              </SelectContent>
-            </Select>
+              <option value="low" className="bg-[#0b0b1a]">Low - General Inquiry</option>
+              <option value="normal" className="bg-[#0b0b1a]">Normal - Functional Issue</option>
+              <option value="high" className="bg-[#0b0b1a]">High - System Blocker</option>
+              <option value="urgent" className="bg-[#0b0b1a]">Urgent - Data Security / Loss</option>
+            </select>
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Detailed Message</label>
