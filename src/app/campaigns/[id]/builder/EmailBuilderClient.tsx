@@ -14,6 +14,7 @@ import { renderEmailLayout, EmailBlock, BrandKit } from '@/lib/builder/emailRend
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { createClient } from '@/lib/supabase/client';
 
 interface EmailBuilderClientProps {
   campaignId: string;
@@ -235,7 +236,14 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success(isAutomated ? 'Automated Campaign Activated!' : 'Broadcast Campaign Scheduled!');
+        const countMsg = result.matchedContactsCount !== undefined
+          ? `(Targeting ${result.matchedContactsCount} contacts)`
+          : '';
+        toast.success(
+          isAutomated 
+            ? `Automated Campaign Activated! ${countMsg}` 
+            : `Broadcast Campaign Scheduled! ${countMsg}`
+        );
         setDeployModalOpen(false);
         router.refresh();
       }
@@ -307,7 +315,6 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
 
       toast.promise(
         async () => {
-          const { createClient } = await import('@/lib/supabase/client');
           const supabase = createClient();
           const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'uploaded_image.png';
           const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
@@ -328,14 +335,16 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
 
           if (dbError) throw dbError;
 
-          const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${filePath}`;
+          const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
+          const publicUrl = publicUrlData.publicUrl;
+          
           updateBlockContent({ [field]: publicUrl });
           return publicUrl;
         },
         {
           loading: 'Uploading asset to Media Center...',
           success: 'Asset uploaded successfully!',
-          error: 'Failed to upload asset.',
+          error: (err: any) => `Failed to upload: ${err.message}`,
         }
       );
     };
@@ -393,7 +402,8 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
           if (dbError) throw dbError;
 
           // Construct public URL
-          const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${filePath}`;
+          const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
+          const publicUrl = publicUrlData.publicUrl;
 
           // Apply to the active block or create a new hero block
           if (selectedBlockIndex !== null) {
@@ -438,7 +448,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
         {
           loading: 'Uploading pasted image to Media Center...',
           success: 'Image uploaded and applied to layout!',
-          error: 'Failed to upload image.',
+          error: (err: any) => `Failed to upload: ${err.message}`,
         }
       );
     };
@@ -898,7 +908,6 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                           
                           toast.promise(
                             async () => {
-                              const { createClient } = await import('@/lib/supabase/client');
                               const supabase = createClient();
                               const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'brand_logo.png';
                               const filePath = `${workspaceId}/${Date.now()}_${safeName}`;
@@ -908,10 +917,11 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                                 workspace_id: workspaceId, name: safeName, path: filePath, type: 'file', mime_type: file.type, size: file.size
                               });
                               if (dbError) throw dbError;
-                              const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${filePath}`;
+                              const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
+                              const publicUrl = publicUrlData.publicUrl;
                               setBrandKit({ ...brandKit, logoUrl: publicUrl });
                             },
-                            { loading: 'Uploading Logo...', success: 'Logo updated!', error: 'Upload failed.' }
+                            { loading: 'Uploading Logo...', success: 'Logo updated!', error: (err: any) => `Failed to upload: ${err.message}` }
                           );
                         };
                         input.click();

@@ -297,7 +297,19 @@ export async function updateCampaign(id: string, updates: any) {
 
   const { data, error } = await supabase.from('email_campaigns').update(updates).eq('id', id).select().single();
   if (error) throw error;
-  return { data };
+  
+  // Count matching contacts for the user's peace of mind
+  let matchedContactsCount = 0;
+  if (updates.status === 'scheduled' && updates.segment?.tags?.length > 0 && workspaceId) {
+   const { count, error: countError } = await supabase
+    .from('contacts')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId)
+    .contains('tags', updates.segment.tags);
+   if (!countError) matchedContactsCount = count || 0;
+  }
+
+  return { data, matchedContactsCount };
  } catch (error: any) { return { error: error.message }; }
 }
 
