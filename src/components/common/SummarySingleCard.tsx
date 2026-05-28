@@ -23,7 +23,7 @@ const SummarySingleCard: React.FC<CardProps> = ({
   <div className="stat-card" style={{ '--card-accent': color } as React.CSSProperties}>
    <div className="flex justify-between items-start mb-4">
     <div className="stat-icon" style={{ backgroundColor: `${color}15`, color: color }}>
-     <i className={`fa-solid ${iconClass}`}></i>
+     <i className={iconClass.includes('fa-') ? iconClass : `fa-solid ${iconClass}`}></i>
     </div>
     {percentageChange && (
      <div className={`stat-trend ${isIncrease ? 'up' : 'down'}`}>

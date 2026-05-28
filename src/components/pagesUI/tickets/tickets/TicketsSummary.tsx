@@ -18,6 +18,7 @@ const TicketsSummary = ({ tickets }: { tickets: any[] }) => {
       description="Than Last Week"
       percentageChange="+11.54%"
       isIncrease={true}
+      color="var(--accent2)"
      />
     </div>
     <div className="col-span-12 sm:col-span-6 xxl:col-span-3">
@@ -28,6 +29,7 @@ const TicketsSummary = ({ tickets }: { tickets: any[] }) => {
       description="Than Last Week"
       percentageChange="+35.15%"
       isIncrease={true}
+      color="var(--green)"
      />
     </div>
     <div className="col-span-12 sm:col-span-6 xxl:col-span-3">
@@ -38,6 +40,7 @@ const TicketsSummary = ({ tickets }: { tickets: any[] }) => {
       description="Than Last Week"
       percentageChange="+22.15%"
       isIncrease={true}
+      color="var(--amber)"
      />
     </div>
     <div className="col-span-12 sm:col-span-6 xxl:col-span-3">
@@ -48,6 +51,7 @@ const TicketsSummary = ({ tickets }: { tickets: any[] }) => {
       description="Than Last Week"
       percentageChange="+15.95%"
       isIncrease={false}
+      color="var(--red)"
      />
     </div>
    </>

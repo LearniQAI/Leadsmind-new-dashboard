@@ -202,6 +202,7 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
                   audioUrl={item.audio_url}
                   caption={item.content}
                   transcript={item.transcript || item.original_text}
+                  theme="dark"
                 />
               </div>
             ) : (

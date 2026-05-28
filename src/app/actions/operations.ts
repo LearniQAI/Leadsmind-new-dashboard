@@ -149,7 +149,7 @@ export async function createSupportTicket(formData: { subject: string, message: 
     workspace_id: workspaceId,
     title: formData.subject,
     description: formData.message,
-    priority: formData.priority,
+    priority: formData.priority?.toLowerCase() || 'normal',
     status: 'open'
    })
    .select()

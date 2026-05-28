@@ -94,7 +94,7 @@ export default async function GlobalActivityPage() {
                       <div className="bg-n900 border border-white/5 rounded-2xl p-5 group-hover:border-white/10 transition-colors">
                         {isVoice ? (
                           <div className="w-full max-w-full">
-                            <VoiceNotePlayer audioUrl={item.metadata?.audio_url || item.source_url || ""} />
+                            <VoiceNotePlayer audioUrl={item.metadata?.audio_url || item.source_url || ""} theme="dark" />
                             {item.content && (
                               <p className="text-sm text-t2 mt-3 font-dm-sans italic">
                                 "{item.content}"

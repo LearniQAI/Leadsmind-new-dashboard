@@ -29,7 +29,7 @@ export default function SubmitTicketModal() {
   const [formData, setFormData] = useState({
     subject: '',
     message: '',
-    priority: 'medium'
+    priority: 'normal'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +46,7 @@ export default function SubmitTicketModal() {
       
       toast.success('Ticket submitted successfully to LeadsMind');
       setOpen(false);
-      setFormData({ subject: '', message: '', priority: 'medium' });
+      setFormData({ subject: '', message: '', priority: 'normal' });
       // Optionally refresh the tickets list
     } catch (err: any) {
       toast.error(err.message || 'Failed to submit ticket');
@@ -89,7 +89,7 @@ export default function SubmitTicketModal() {
               </SelectTrigger>
               <SelectContent className="bg-[#0b0b1a] border-white/10 text-white">
                 <SelectItem value="low">Low - General Inquiry</SelectItem>
-                <SelectItem value="medium">Medium - Functional Issue</SelectItem>
+                <SelectItem value="normal">Normal - Functional Issue</SelectItem>
                 <SelectItem value="high">High - System Blocker</SelectItem>
                 <SelectItem value="urgent">Urgent - Data Security / Loss</SelectItem>
               </SelectContent>

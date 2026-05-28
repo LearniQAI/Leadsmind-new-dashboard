@@ -139,6 +139,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
                       audioUrl={msg.audio_url}
                       caption={msg.content}
                       transcript={msg.transcript || msg.original_text}
+                      theme="dark"
                     />
                   </div>
                 </div>

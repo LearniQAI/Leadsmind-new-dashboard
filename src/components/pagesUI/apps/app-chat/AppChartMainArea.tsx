@@ -258,6 +258,7 @@ const AppChartMainArea = () => {
                caption="Please review the core UI layout shifts"
                transcript="I've analyzed the interface components and believe we have some minor layout shifts in the chat stream that we should resolve before releasing Sprint 2."
                audioUrl=""
+               theme="dark"
              />
             </div>
            <div className="chat__message-item is-right mt-5">

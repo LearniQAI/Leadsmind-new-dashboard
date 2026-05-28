@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 
 interface VoiceNotePlayerProps {
   audioUrl?: string;
+  duration?: number; // optional pre-calculated duration in seconds
+  theme?: 'light' | 'dark'; // 'light' uses standard styles; 'dark' integrates with LeadsMind theme
   className?: string;
 }
 
@@ -15,13 +17,15 @@ const WAVEFORM_BARS = [
   32, 24, 16, 20, 28, 36, 30, 22, 14, 18, 24, 38, 44, 30, 20, 16, 12
 ];
 
-export function VoiceNotePlayer({ audioUrl, className }: VoiceNotePlayerProps) {
+export function VoiceNotePlayer({ audioUrl, duration: initialDuration, theme = 'dark', className }: VoiceNotePlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(initialDuration && isFinite(initialDuration) ? initialDuration : 0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  const isDark = theme === 'dark';
 
   // Sync state with HTML5 audio events
   useEffect(() => {
@@ -30,12 +34,32 @@ export function VoiceNotePlayer({ audioUrl, className }: VoiceNotePlayerProps) {
 
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const onLoadedMetadata = () => {
-      if (audio.duration && !isNaN(audio.duration)) {
+    
+    const onTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      // Capture live duration updates if browser eventually resolves it
+      if (audio.duration && isFinite(audio.duration) && duration !== audio.duration) {
         setDuration(audio.duration);
       }
     };
+    
+    const onLoadedMetadata = () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      } else if (audio.duration === Infinity) {
+        // Chrome WebM blob duration fix: seek to end, read duration, seek back
+        audio.currentTime = 1e101;
+        const getDuration = () => {
+          if (audio.duration && isFinite(audio.duration)) {
+            setDuration(audio.duration);
+          }
+          audio.currentTime = 0;
+          audio.removeEventListener('timeupdate', getDuration);
+        };
+        audio.addEventListener('timeupdate', getDuration);
+      }
+    };
+
     const onEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
@@ -48,8 +72,10 @@ export function VoiceNotePlayer({ audioUrl, className }: VoiceNotePlayerProps) {
     audio.addEventListener('ended', onEnded);
 
     // If audio is already loaded/cached
-    if (audio.duration && !isNaN(audio.duration)) {
+    if (audio.duration && isFinite(audio.duration)) {
       setDuration(audio.duration);
+    } else if (initialDuration && isFinite(initialDuration)) {
+      setDuration(initialDuration);
     }
 
     return () => {
@@ -59,7 +85,7 @@ export function VoiceNotePlayer({ audioUrl, className }: VoiceNotePlayerProps) {
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [audioUrl]);
+  }, [audioUrl, initialDuration, duration]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -94,19 +120,25 @@ export function VoiceNotePlayer({ audioUrl, className }: VoiceNotePlayerProps) {
 
   // Helper to format seconds to mm:ss
   const formatTime = (time: number) => {
-    if (isNaN(time)) return '0:00';
+    if (isNaN(time) || !isFinite(time)) return '0:00';
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Safe fallback if duration is still loading
-  const displayDuration = duration || 30; // fallback mock duration of 30s
+  // Safe fallback if duration is still loading or infinite
+  const displayDuration = (duration && isFinite(duration)) ? duration : 30;
   const progressRatio = currentTime / displayDuration;
+
+  // Determine dynamic container style classes
+  const containerClass = isDark
+    ? "bg-white/[0.02] border border-white/5 shadow-inner"
+    : "bg-[#f1f5f9] border border-slate-200/60 shadow-inner";
 
   return (
     <div className={cn(
-      "flex items-center gap-4 bg-[#f1f5f9] border border-slate-200/60 rounded-xl px-4 py-3 shadow-inner w-full min-w-[280px] max-w-full transition-all duration-300 hover:border-slate-300/80 hover:shadow-sm",
+      "flex items-center gap-4 rounded-xl px-4 py-3 w-full min-w-[280px] max-w-full transition-all duration-300",
+      containerClass,
       className
     )}>
       {/* Hidden HTML5 Audio */}
@@ -156,10 +188,10 @@ export function VoiceNotePlayer({ audioUrl, className }: VoiceNotePlayerProps) {
                 style={{
                   height: `${barHeight}%`,
                   backgroundColor: isActive
-                    ? '#0F6E56' // completed audio color (teal matchingbadge)
+                    ? '#0F6E56' // completed audio color
                     : isHovered 
                     ? '#3b82f6' // hovered audio seek color
-                    : '#cbd5e1', // inactive color
+                    : isDark ? 'rgba(255, 255, 255, 0.1)' : '#cbd5e1', // inactive color
                 }}
               />
             );
@@ -167,16 +199,24 @@ export function VoiceNotePlayer({ audioUrl, className }: VoiceNotePlayerProps) {
         </div>
 
         {/* Time Tracking & Volume Controls */}
-        <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 font-dm-sans px-0.5">
+        <div className={cn(
+          "flex items-center justify-between text-[11px] font-medium font-dm-sans px-0.5",
+          isDark ? "text-t3" : "text-slate-500"
+        )}>
           <div className="flex items-center gap-1.5">
-            <span className="text-[#1A1A1A] font-semibold">{formatTime(currentTime)}</span>
-            <span className="text-slate-400">/</span>
+            <span className={cn("font-semibold", isDark ? "text-t1" : "text-[#1A1A1A]")}>
+              {formatTime(currentTime)}
+            </span>
+            <span className={isDark ? "text-white/20" : "text-slate-400"}>/</span>
             <span>{formatTime(displayDuration)}</span>
           </div>
 
           <button 
             onClick={toggleMute}
-            className="text-slate-400 hover:text-slate-600 transition-colors p-0.5"
+            className={cn(
+              "transition-colors p-0.5",
+              isMuted ? "text-rose-500" : isDark ? "text-t3 hover:text-t1" : "text-slate-400 hover:text-slate-600"
+            )}
             aria-label={isMuted ? "Unmute" : "Mute"}
           >
             {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-500" /> : <Volume2 className="w-3.5 h-3.5" />}

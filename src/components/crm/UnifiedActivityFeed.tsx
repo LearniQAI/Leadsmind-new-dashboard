@@ -87,7 +87,7 @@ export function UnifiedActivityFeed({
                   
                   {isVoice ? (
                     <div className="mt-2 w-full max-w-full">
-                      <VoiceNotePlayer audioUrl={item.metadata?.audio_url || item.source_url || ""} />
+                      <VoiceNotePlayer audioUrl={item.metadata?.audio_url || item.source_url || ""} theme="dark" />
                       {item.content && (
                         <p className="text-sm text-t2 mt-2 font-dm-sans italic">
                           "{item.content}"

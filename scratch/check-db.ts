@@ -4,32 +4,36 @@ dotenv.config({ path: '.env.local' });
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim();
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
 
-async function checkTable(tableName: string) {
-  const url = `${supabaseUrl}/rest/v1/${tableName}?limit=1`;
+async function run() {
+  // Query pg_constraint for check constraints on support_tickets table
+  const query = `
+    SELECT 
+      conname, 
+      pg_get_constraintdef(oid) as condef 
+    FROM pg_constraint 
+    WHERE conrelid = 'public.support_tickets'::regclass;
+  `;
+  const url = `${supabaseUrl}/rest/v1/rpc/check_constraints`; // We might not have this RPC, so let's try direct table queries first
+  
+  // Let's query support_tickets table to see a sample record and its priority value
+  const sampleUrl = `${supabaseUrl}/rest/v1/support_tickets?limit=5`;
+  
   try {
-    const res = await fetch(url, {
+    const res = await fetch(sampleUrl, {
       headers: {
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`
       }
     });
     if (!res.ok) {
-      const errText = await res.text();
-      console.error(`Error querying ${tableName}:`, res.status, errText);
+      console.error('Error querying support_tickets:', res.status, await res.text());
     } else {
       const data = await res.json();
-      console.log(`${tableName} columns/sample:`, data);
+      console.log('support_tickets sample data:', data);
     }
   } catch (err: any) {
-    console.error(`Fetch failed for ${tableName}:`, err.message);
+    console.error('Fetch failed:', err.message);
   }
-}
-
-async function run() {
-  await checkTable('content_studio_documents');
-  await checkTable('content_grammar_checks');
-  await checkTable('content_plagiarism_checks');
-  await checkTable('content_seo_checks');
 }
 
 run();
