@@ -172,11 +172,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
     }));
   };
 
-  // Sync brand kit action
-  const handleSyncBrandKit = () => {
-    setBrandKit(initialBrandKit);
-    toast.success('Workspace Brand Kit preferences synchronized successfully.');
-  };
+
 
   // Save campaign action
   const handleSave = async () => {
@@ -477,17 +473,6 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
 
         <div className="flex items-center gap-3">
           <button
-            type="button"
-            onClick={handleSyncBrandKit}
-            className="h-9 px-3.5 rounded-lg border border-white/5 bg-white/5 text-[#94a3c8] hover:text-white hover:bg-white/10 text-[12px] font-semibold flex items-center gap-1.5 transition-all"
-            title="Sync Core brand kit colors and defaults"
-          >
-            <RefreshCw size={12} className="text-[#4a5a82]" />
-            Sync Brand Kit
-          </button>
-          
-          <button
-            type="button"
             onClick={handleSave}
             disabled={saving}
             className="h-9 px-5 rounded-lg bg-[#2563eb] hover:bg-[#2563eb]/90 disabled:opacity-50 text-white text-[12px] font-bold flex items-center gap-2 transition-all shadow-lg shadow-[#2563eb]/20"
@@ -734,16 +719,6 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                           className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2 text-[11px] text-white focus:outline-none focus:border-[#2563eb]"
                         />
                       </div>
-                      <div>
-                        <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Avatar Alt Attribute *</label>
-                        <input
-                          type="text"
-                          value={selectedBlock.content.avatarAlt || ''}
-                          onChange={(e) => updateBlockContent({ avatarAlt: e.target.value })}
-                          placeholder="e.g. Portrait photo"
-                          className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2 text-[11px] text-white focus:outline-none focus:border-[#2563eb]"
-                        />
-                      </div>
                     </div>
                   )}
 
@@ -848,33 +823,6 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                     </div>
                   )}
 
-                  {/* Visibility Conditions configuration */}
-                  <div className="border-t border-white/5 pt-3 mt-4 space-y-3">
-                    <div className="text-[10px] font-bold text-[#eef2ff] uppercase tracking-wider">
-                      Conditional Visibility Gateway
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Required Contact Tag</label>
-                      <input
-                        type="text"
-                        value={selectedBlock.conditions?.tag || ''}
-                        onChange={(e) => updateBlockConditions({ tag: e.target.value })}
-                        placeholder="e.g. Existing Client"
-                        className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2 text-[11px] text-white focus:outline-none focus:border-[#2563eb]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Condition Behavior</label>
-                      <select
-                        value={selectedBlock.conditions?.visibility || 'show'}
-                        onChange={(e) => updateBlockConditions({ visibility: e.target.value })}
-                        className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2.5 text-[11px] text-white focus:outline-none"
-                      >
-                        <option value="show">Show Block if Contact Has Tag</option>
-                        <option value="hide">Hide Block if Contact Has Tag</option>
-                      </select>
-                    </div>
-                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8 text-[#4a5a82] text-[12px] italic">
@@ -1212,14 +1160,19 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
           <div className="space-y-6 py-2">
             
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Who should receive this? (Enter Tags or Emails)</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Target Recipients (Emails or Tags)</Label>
+                <button type="button" onClick={() => alert('Please navigate to the Contacts tab in your dashboard to import CSV files. You can type tags or direct emails here.')} className="text-[9px] font-bold text-[#3b82f6] hover:text-[#2563eb] flex items-center gap-1">
+                  Import CSV
+                </button>
+              </div>
               <Input 
                 value={deployTags} 
                 onChange={e => setDeployTags(e.target.value)} 
                 placeholder="e.g. VIP, Newsletter, john@example.com" 
                 className="h-10 border-white/5 bg-[#04091a] text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" 
               />
-              <p className="text-[9px] text-[#4a5a82] font-semibold mt-1">Contacts with these tags, or the direct emails provided, will receive this broadcast.</p>
+              <p className="text-[9px] text-[#4a5a82] font-semibold mt-1">Type CRM tags or direct comma-separated emails. The system handles both automatically.</p>
             </div>
 
             <div className="p-4 rounded-xl border border-[#3b82f6]/20 bg-[#3b82f6]/5">
@@ -1233,9 +1186,9 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                   />
                 </div>
                 <div>
-                  <div className="text-[12px] font-bold text-white tracking-wide uppercase">Send Automatically</div>
+                  <div className="text-[12px] font-bold text-white tracking-wide uppercase">Enable Auto-Sender</div>
                   <div className="text-[10px] text-[#94a3c8] mt-1 leading-relaxed">
-                    Leave this checked to automatically send this email to any new contacts who get these tags in the future.
+                    When enabled, this campaign becomes a live automation. Any future CRM contact that receives one of the tags above will automatically be sent this email.
                   </div>
                 </div>
               </label>
@@ -1253,7 +1206,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
               disabled={saving} 
               className="px-6 h-10 rounded-xl bg-[#3b82f6] hover:bg-[#3b82f6]/90 disabled:opacity-50 text-white text-[11px] font-bold uppercase tracking-wider shadow-lg transition-all"
             >
-              {saving ? 'Processing...' : isAutomated ? 'Start Automation' : 'Broadcast Now'}
+              {saving ? 'Processing...' : isAutomated ? 'Save & Enable Auto-Sender' : 'Broadcast Now'}
             </button>
           </DialogFooter>
         </DialogContent>
