@@ -19,27 +19,27 @@ ALTER TABLE public.support_ticket_messages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view messages in their workspace"
     ON public.support_ticket_messages FOR SELECT
     USING (workspace_id IN (
-        SELECT workspace_id FROM user_workspaces WHERE user_id = auth.uid()
+        SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
     ));
 
 CREATE POLICY "Users can insert messages in their workspace"
     ON public.support_ticket_messages FOR INSERT
     WITH CHECK (workspace_id IN (
-        SELECT workspace_id FROM user_workspaces WHERE user_id = auth.uid()
+        SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
     ));
 
 CREATE POLICY "Users can update their own messages"
     ON public.support_ticket_messages FOR UPDATE
     USING (
         sender_id = auth.uid() AND 
-        workspace_id IN (SELECT workspace_id FROM user_workspaces WHERE user_id = auth.uid())
+        workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())
     );
 
 CREATE POLICY "Users can delete their own messages"
     ON public.support_ticket_messages FOR DELETE
     USING (
         sender_id = auth.uid() AND 
-        workspace_id IN (SELECT workspace_id FROM user_workspaces WHERE user_id = auth.uid())
+        workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())
     );
 
 -- Trigger for updated_at
