@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 export async function getWorkspaceNotificationRecipients(
   workspaceId: string,
   assignedToId?: string | null
-): Promise<{ emails: string[], uids: string[] }> {
+): Promise<{ emails: string[], phones: string[], uids: string[] }> {
   try {
     const uids = new Set<string>();
 
@@ -42,19 +42,20 @@ export async function getWorkspaceNotificationRecipients(
     }
 
     const uidList = Array.from(uids);
-    if (uidList.length === 0) return { emails: [], uids: [] };
+    if (uidList.length === 0) return { emails: [], phones: [], uids: [] };
 
-    // 4. Query public.users for their emails
+    // 4. Query public.users for their emails and phones
     const { data: users } = await supabaseAdmin
       .from('users')
-      .select('id, email')
+      .select('id, email, phone')
       .in('id', uidList);
 
     const emails = users?.map((u: any) => u.email).filter(Boolean) || [];
-    return { emails, uids: uidList };
+    const phones = users?.map((u: any) => u.phone).filter(Boolean) || [];
+    return { emails, phones, uids: uidList };
   } catch (err) {
     console.error('Error in getWorkspaceNotificationRecipients:', err);
-    return { emails: [], uids: [] };
+    return { emails: [], phones: [], uids: [] };
   }
 }
 

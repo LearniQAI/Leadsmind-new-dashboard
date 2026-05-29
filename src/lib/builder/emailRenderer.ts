@@ -121,7 +121,7 @@ export function renderEmailLayout(
             ${imageUrl ? `
               <tr>
                 <td align="center" style="padding-bottom: 20px;">
-                  <img src="${imageUrl}" alt="${imageAlt}" width="540" style="width: 100%; max-width: 540px; display: block; border-radius: 12px; border: 0; height: auto;" />
+                  <img src="${imageUrl}" alt="${imageAlt}" width="100%" style="width: 100%; max-width: 600px; display: block; border-radius: 12px; border: 0; height: auto;" />
                 </td>
               </tr>
             ` : ''}
@@ -136,8 +136,14 @@ export function renderEmailLayout(
                 ${buttonText ? `
                   <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;">
                     <tr>
-                      <td align="center" bgcolor="${primaryColor}" style="border-radius: 8px;">
-                        <a href="${buttonUrl}" target="_blank" style="font-family: ${defaultFont}; font-size: 13px; font-weight: bold; color: #ffffff; text-decoration: none; display: inline-block; padding: 12px 28px; border: 1px solid ${primaryColor}; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                      <td align="center">
+                        <!--[if mso]>
+                        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${buttonUrl}" style="height:44px;v-text-anchor:middle;width:180px;" arcsize="14%" stroke="f" fillcolor="${primaryColor}">
+                          <w:anchorlock/>
+                          <center style="color:#ffffff;font-family:${defaultFont};font-size:13px;font-weight:700;text-transform:uppercase;">${buttonText}</center>
+                        </v:roundrect>
+                        <![endif]-->
+                        <a href="${buttonUrl}" target="_blank" style="background:${primaryColor};padding:12px 28px;color:#ffffff;font-family:${defaultFont};font-size:13px;font-weight:700;border-radius:6px;display:inline-block;text-decoration:none;text-transform:uppercase;letter-spacing:0.5px;mso-hide:all">
                           ${buttonText}
                         </a>
                       </td>
@@ -189,7 +195,7 @@ export function renderEmailLayout(
                 <p style="font-family: ${defaultFont}; font-size: 13.5px; line-height: 1.6; color: #334155; font-style: italic; margin: 0 0 16px 0; text-align: center;">
                   "${quote}"
                 </p>
-                <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;">
                   <tr>
                     ${avatarUrl ? `
                       <td style="padding-right: 10px;">
@@ -234,7 +240,7 @@ export function renderEmailLayout(
                 <div style="font-family: ${defaultFont}; font-size: 10.5px; font-weight: bold; color: ${primaryColor}; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">
                   ${label}
                 </div>
-                <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;">
                   <tr>
                     ${[
                       { value: days, label: 'Days' },
@@ -243,7 +249,7 @@ export function renderEmailLayout(
                       { value: seconds, label: 'Secs' }
                     ].map(item => `
                       <td style="padding: 0 4px;">
-                        <table border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; width: 50px; height: 50px;">
+                        <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; width: 50px; height: 50px;">
                           <tr>
                             <td align="center" style="font-family: ${defaultFont}; font-size: 16px; font-weight: 800; color: #0f172a; line-height: 1;">
                               ${item.value}
@@ -276,15 +282,15 @@ export function renderEmailLayout(
           <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
             <tr>
               <td align="${align}">
-                <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="display: inline-block;">
-                  <tr>
-                    <td bgcolor="${bg}" style="border-radius: 8px;">
-                      <a href="${url}" target="_blank" style="font-family: ${defaultFont}; font-size: 13px; font-weight: bold; color: ${fg}; text-decoration: none; display: inline-block; padding: 12px 28px; border: 1px solid ${bg}; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
-                        ${text}
-                      </a>
-                    </td>
-                  </tr>
-                </table>
+                <!--[if mso]>
+                <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:44px;v-text-anchor:middle;width:180px;" arcsize="14%" stroke="f" fillcolor="${bg}">
+                  <w:anchorlock/>
+                  <center style="color:${fg};font-family:${defaultFont};font-size:13px;font-weight:700;text-transform:uppercase;">${text}</center>
+                </v:roundrect>
+                <![endif]-->
+                <a href="${url}" target="_blank" style="background:${bg};padding:12px 28px;color:${fg};font-family:${defaultFont};font-size:13px;font-weight:700;border-radius:6px;display:inline-block;text-decoration:none;text-transform:uppercase;letter-spacing:0.5px;mso-hide:all">
+                  ${text}
+                </a>
               </td>
             </tr>
           </table>

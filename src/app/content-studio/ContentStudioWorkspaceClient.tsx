@@ -296,6 +296,27 @@ function findProseMirrorPos(doc: any, targetOffset: number): number {
   return resolvedPos;
 }
 
+function useDebouncedCallback<T extends (...args: any[]) => any>(
+  callback: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  const timeoutRef = useRef<NodeJS.Timeout>();
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
+
+  return React.useCallback(
+    (...args: Parameters<T>) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        callbackRef.current(...args);
+      }, delay);
+    },
+    [delay]
+  );
+}
+
 export default function ContentStudioWorkspaceClient({
   initialDocument,
   initialVersions
@@ -340,6 +361,23 @@ export default function ContentStudioWorkspaceClient({
   });
   const [isChecking, setIsChecking] = useState(false);
   const checkTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedGrammarCheck = useDebouncedCallback((text: string) => {
+    runGrammarCheck(text);
+  }, 800);
+
+  const runPlagiarismScanWithConfirm = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Scan Originality?',
+      description: 'Web plagiarism scanning uses Serper.dev Google search queries. Running this scan will deduct 5 AI credits from your balance. Would you like to proceed?',
+      confirmLabel: 'Confirm Scan',
+      onConfirm: () => {
+        setConfirmConfig(null);
+        runPlagiarismScan();
+      }
+    });
+  };
 
   // Plagiarism States
   const [plagiarismMatches, setPlagiarismMatches] = useState<PlagiarismMatch[]>([]);
@@ -667,14 +705,17 @@ export default function ContentStudioWorkspaceClient({
   const runGrammarCheck = async (textToCheck?: string) => {
     if (!editor) return;
     const text = textToCheck !== undefined ? textToCheck : editor.getText();
-    if (!text.trim()) {
-      setIssues([]);
-      setMetrics({
-        overallScore: 100,
-        tone: 'Conversational',
-        readabilityGrade: 'Elementary',
-        gradeLevel: 1.0
-      });
+    const trimmed = text.trim();
+    if (trimmed.length < 10) {
+      if (trimmed.length === 0) {
+        setIssues([]);
+        setMetrics({
+          overallScore: 100,
+          tone: 'Conversational',
+          readabilityGrade: 'Elementary',
+          gradeLevel: 1.0
+        });
+      }
       return;
     }
     setIsChecking(true);
@@ -718,13 +759,8 @@ export default function ContentStudioWorkspaceClient({
       setCharCount(plain.length);
       setReadTime(Math.max(1, Math.ceil(words / 225)));
 
-      // Debounce grammar checker by 1.5 seconds
-      if (checkTimerRef.current) {
-        clearTimeout(checkTimerRef.current);
-      }
-      checkTimerRef.current = setTimeout(() => {
-        runGrammarCheck(plain);
-      }, 1500);
+      // Debounce grammar checker by 800ms
+      debouncedGrammarCheck(plain);
     },
     editorProps: {
       attributes: {
@@ -834,12 +870,7 @@ export default function ContentStudioWorkspaceClient({
 
     setIssues(prev => prev.filter(i => i.id !== issue.id));
 
-    if (checkTimerRef.current) {
-      clearTimeout(checkTimerRef.current);
-    }
-    checkTimerRef.current = setTimeout(() => {
-      runGrammarCheck();
-    }, 500);
+    debouncedGrammarCheck(editor.getText());
   };
 
   const handleDismissIssue = (issueId: string) => {
@@ -1857,7 +1888,7 @@ export default function ContentStudioWorkspaceClient({
                         ) : (
                           <div className="space-y-2">
                             <button
-                              onClick={runPlagiarismScan}
+                              onClick={runPlagiarismScanWithConfirm}
                               className="w-full bg-primary hover:bg-blue-600 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(59,130,246,0.15)]"
                             >
                               <BookOpen className="w-3.5 h-3.5" />

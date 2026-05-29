@@ -292,14 +292,10 @@ export async function checkGrammarAndStyle(documentId: string, text: string) {
 
     // 1. Call LanguageTool Check API
     try {
-      const params = new URLSearchParams();
-      params.append('text', text);
-      params.append('language', 'en-ZA');
-
-      const ltResponse = await fetch('https://api.languagetool.org/v2/check', {
+      const ltResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/content-studio/grammar`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString()
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language: 'en-ZA' })
       });
 
       if (ltResponse.ok) {

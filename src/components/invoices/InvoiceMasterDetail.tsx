@@ -365,14 +365,19 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {(selectedInvoice.items || []).map((item: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-white/[0.01] transition-colors">
-                          <td className="py-6 px-6 font-semibold text-sm text-white">{item.description}</td>
-                          <td className="py-6 px-6 text-right text-sm text-white/60 font-bold">{item.quantity || 0}</td>
-                          <td className="py-6 px-6 text-right text-sm text-white/60 font-bold">${(Number(item.rate) || 0).toLocaleString()}</td>
-                          <td className="py-6 px-6 text-right font-black font-space text-base text-white">${((Number(item.quantity) || 0) * (Number(item.rate) || 0)).toLocaleString()}</td>
-                        </tr>
-                      ))}
+                      {(selectedInvoice.items || []).map((item: any, idx: number) => {
+                        const rate = Number(item.unit_amount ?? item.rate ?? 0);
+                        const quantity = Number(item.quantity ?? 0);
+                        const amount = quantity * rate;
+                        return (
+                          <tr key={idx} className="hover:bg-white/[0.01] transition-colors">
+                            <td className="py-6 px-6 font-semibold text-sm text-white">{item.description}</td>
+                            <td className="py-6 px-6 text-right text-sm text-white/60 font-bold">{quantity}</td>
+                            <td className="py-6 px-6 text-right text-sm text-white/60 font-bold">${rate.toLocaleString()}</td>
+                            <td className="py-6 px-6 text-right font-black font-space text-base text-white">${amount.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

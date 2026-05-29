@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
 import { revalidatePath } from 'next/cache';
 
@@ -356,3 +356,50 @@ export async function writeOffInvoice(invoiceId: string, workspaceId: string, am
   revalidatePath('/invoices');
   return { success: true };
 }
+
+export async function createInvoiceCheckoutSession(invoiceId: string) {
+  try {
+    const supabase = createAdminClient(); // Bypasses auth so public guest portal visitors can execute checkout
+    const { data: invoice, error } = await supabase
+      .from('invoices')
+      .select('*, contact:contacts(*)')
+      .eq('id', invoiceId)
+      .single();
+
+    if (error || !invoice) {
+      return { error: 'Invoice not found or could not be loaded' };
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: (invoice.items || []).map((item: any) => {
+        const rate = Number(item.unit_amount ?? item.rate ?? 0);
+        const quantity = Number(item.quantity ?? 1);
+        return {
+          price_data: {
+            currency: invoice.currency?.toLowerCase() || 'usd',
+            product_data: {
+              name: item.description || 'Service/Product Item',
+            },
+            unit_amount: Math.round(rate * 100),
+          },
+          quantity,
+        };
+      }),
+      metadata: {
+        invoiceId: invoice.id,
+        workspaceId: invoice.workspace_id,
+      },
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/portal/invoices/${invoice.id}?payment=success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/portal/invoices/${invoice.id}?payment=canceled`,
+      customer_email: invoice.contact?.email || undefined,
+    });
+
+    return { url: session.url };
+  } catch (err: any) {
+    console.error('[finance] stripe checkout error:', err);
+    return { error: err.message || 'Failed to create checkout session' };
+  }
+}
+

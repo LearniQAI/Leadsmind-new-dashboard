@@ -12,6 +12,14 @@ const nextConfig = {
     experimental: {
         serverComponentsExternalPackages: ["puppeteer", "cheerio", "undici", "@resvg/resvg-js"],
     },
+    async rewrites() {
+        return [
+            {
+                source: '/widget/ticket.js',
+                destination: '/api/widget/ticket',
+            },
+        ];
+    },
 };
 
 module.exports = nextConfig;

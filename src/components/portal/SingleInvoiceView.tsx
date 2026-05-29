@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Download, FileText, Calendar, ShieldCheck, 
   CreditCard, Package, ExternalLink, Printer 
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface SingleInvoiceViewProps {
   invoice: any;
@@ -17,7 +18,26 @@ const SingleInvoiceView: React.FC<SingleInvoiceViewProps> = ({
   invoice,
   attachments = [],
 }) => {
+  const [paying, setPaying] = useState(false);
   const handlePrint = () => window.print();
+
+  const handlePayNow = async () => {
+    setPaying(true);
+    try {
+      const { createInvoiceCheckoutSession } = await import('@/app/actions/finance');
+      const res = await createInvoiceCheckoutSession(invoice.id);
+      if (res.error) {
+        toast.error(res.error);
+      } else if (res.url) {
+        toast.loading('Redirecting to secure Stripe checkout...');
+        window.location.href = res.url;
+      }
+    } catch {
+      toast.error('Failed to initiate secure checkout session');
+    } finally {
+      setPaying(false);
+    }
+  };
 
   if (!invoice) return null;
 
@@ -66,7 +86,7 @@ const SingleInvoiceView: React.FC<SingleInvoiceViewProps> = ({
                           "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
                           invoice.status === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"
                        )}>
-                         {invoice.status}
+                          {invoice.status}
                        </span>
                     </div>
                  </div>
@@ -102,14 +122,19 @@ const SingleInvoiceView: React.FC<SingleInvoiceViewProps> = ({
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-gray-50">
-                    {(invoice.items || []).map((item: any, idx: number) => (
-                       <tr key={idx}>
-                          <td className="py-6 font-bold text-sm">{item.description}</td>
-                          <td className="py-6 text-right text-sm text-gray-500 font-bold">{item.quantity || 0}</td>
-                          <td className="py-6 text-right text-sm text-gray-500 font-bold">${(Number(item.rate) || 0).toLocaleString()}</td>
-                          <td className="py-6 text-right font-black text-base">${((Number(item.quantity) || 0) * (Number(item.rate) || 0)).toLocaleString()}</td>
-                       </tr>
-                    ))}
+                    {(invoice.items || []).map((item: any, idx: number) => {
+                      const rate = Number(item.unit_amount ?? item.rate ?? 0);
+                      const quantity = Number(item.quantity ?? 1);
+                      const amount = rate * quantity;
+                      return (
+                        <tr key={idx}>
+                           <td className="py-6 font-bold text-sm">{item.description}</td>
+                           <td className="py-6 text-right text-sm text-gray-500 font-bold">{quantity}</td>
+                           <td className="py-6 text-right text-sm text-gray-500 font-bold">${rate.toLocaleString()}</td>
+                           <td className="py-6 text-right font-black text-base">${amount.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
                  </tbody>
               </table>
 
@@ -149,9 +174,19 @@ const SingleInvoiceView: React.FC<SingleInvoiceViewProps> = ({
                  <CreditCard size={14} /> Settlement Options
               </h3>
               <div className="space-y-4">
-                 <button className="w-full btn-primary !h-14 rounded-[var(--r16)] text-xs uppercase font-black tracking-widest">
-                    Pay Now — ${(Number(invoice.total_amount) || 0).toLocaleString()}
-                 </button>
+                 {invoice.status === 'paid' ? (
+                   <div className="w-full text-center py-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black uppercase rounded-[var(--r16)] text-xs tracking-widest select-none">
+                     Invoice Fully Settled
+                   </div>
+                 ) : (
+                   <button 
+                     onClick={handlePayNow}
+                     disabled={paying}
+                     className="w-full btn-primary !h-14 rounded-[var(--r16)] text-xs uppercase font-black tracking-widest transition-all duration-300 active:scale-[0.98]"
+                   >
+                     {paying ? 'Redirecting...' : `Pay Now — $${(Number(invoice.total_amount) || 0).toLocaleString()}`}
+                   </button>
+                 )}
                  <p className="text-[10px] text-[var(--t4)] text-center font-medium">
                     Secure 256-bit encrypted transaction
                  </p>

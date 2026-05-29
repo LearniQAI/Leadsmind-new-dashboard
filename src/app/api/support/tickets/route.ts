@@ -40,10 +40,12 @@ export async function POST(req: Request) {
     }
 
     const supabase = await createServerClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const clientDb = session?.user ? supabase : supabaseAdmin;
 
     // Try to find a contact by email in this workspace
     let contactId = null;
-    const { data: contacts } = await supabase
+    const { data: contacts } = await clientDb
       .from('contacts')
       .select('id')
       .eq('workspace_id', workspaceId)
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
       contactId = contacts[0].id;
     } else {
       // Create contact if not found
-      const { data: newContact, error: contactError } = await supabase
+      const { data: newContact, error: contactError } = await clientDb
         .from('contacts')
         .insert({
           workspace_id: workspaceId,
@@ -70,15 +72,26 @@ export async function POST(req: Request) {
       }
     }
 
+    // Map and normalize priority values to lowercase ENUM ('low', 'normal', 'high', 'urgent')
+    const allowedPriorities = ['low', 'normal', 'high', 'urgent'];
+    let mappedPriority = 'normal';
+    if (priority) {
+      const p = priority.toLowerCase().trim();
+      if (p === 'critical' || p === 'urgent') mappedPriority = 'urgent';
+      else if (p === 'high') mappedPriority = 'high';
+      else if (p === 'medium' || p === 'normal') mappedPriority = 'normal';
+      else if (p === 'low') mappedPriority = 'low';
+    }
+
     // Insert Ticket
-    const { data: ticket, error: ticketError } = await supabase
+    const { data: ticket, error: ticketError } = await clientDb
       .from('support_tickets')
       .insert({
         workspace_id: workspaceId,
         contact_id: contactId,
         title: subject,
         description: description,
-        priority: priority || 'normal',
+        priority: mappedPriority,
         status: 'open'
       })
       .select()
@@ -89,7 +102,7 @@ export async function POST(req: Request) {
     }
 
     // Insert Initial Message
-    const { error: msgError } = await supabase
+    const { error: msgError } = await clientDb
       .from('support_ticket_messages')
       .insert({
         ticket_id: ticket.id,
@@ -101,9 +114,9 @@ export async function POST(req: Request) {
 
     if (msgError) console.error('Failed to insert initial ticket message:', msgError);
 
-    // Send notification
+    // Send notifications (emails and WhatsApp alerts)
     try {
-        await resend.emails.send({
+      await resend.emails.send({
         from: 'Support Desk <support@leadsmind.io>',
         to: email,
         replyTo: `ticket+${ticket.id}@support.leadsmind.io`,
@@ -111,19 +124,19 @@ export async function POST(req: Request) {
         headers: {
           'Message-ID': `<ticket-${ticket.id}@support.leadsmind.io>`
         },
-        html: `<p>Hi ${name || 'there'},</p><p>We have received your support request regarding "<strong>${subject}</strong>". Our team will be in touch shortly.</p><p>Best,<br/>The Support Team</p>`
+        html: `<p>Hi ${name || 'there'},</p><p>We have received your support request regarding "<strong>${subject}</strong>".</p><p>You can view your ticket thread and updates online: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/support/public-thread?id=${ticket.id}">View Ticket Thread</a></p><p>Best,<br/>The Support Team</p>`
       });
 
       // Notify Workspace Admins and Owner (and Assigned Agent if any)
       const { getWorkspaceNotificationRecipients, createInAppNotification } = await import('@/lib/support-helper');
-      const { emails: recipients, uids } = await getWorkspaceNotificationRecipients(workspaceId, ticket.assigned_to);
+      const { emails: recipients, phones, uids } = await getWorkspaceNotificationRecipients(workspaceId, ticket.assigned_to);
       
       if (recipients.length > 0) {
         await resend.emails.send({
           from: 'Support Desk <support@leadsmind.io>',
           to: recipients,
           subject: `[New Ticket] ${subject}`,
-          html: `<p>A new support ticket has been created in your workspace.</p><p><strong>From:</strong> ${email}</p><p><strong>Subject:</strong> ${subject}</p><p><a href="${process.env.NEXT_PUBLIC_APP_URL}/support/tickets?id=${ticket.id}">View Ticket Thread</a></p>`
+          html: `<p>A new support ticket has been created in your workspace.</p><p><strong>From:</strong> ${email}</p><p><strong>Subject:</strong> ${subject}</p><p><a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/support/tickets?id=${ticket.id}">View Ticket Thread</a></p>`
         });
       }
 
@@ -138,8 +151,41 @@ export async function POST(req: Request) {
           )
         ));
       }
+
+      // Send WhatsApp notifications via Twilio API
+      if (phones && phones.length > 0) {
+        const { data: workspace } = await supabaseAdmin
+          .from('workspaces')
+          .select('name, twilio_number, twilio_sid, twilio_token')
+          .eq('id', workspaceId)
+          .single();
+
+        const fromNumber = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
+        const configTwilio = {
+          accountSid: workspace?.twilio_sid,
+          authToken: workspace?.twilio_token,
+          fromNumber
+        };
+
+        const { sendSMS } = await import('@/lib/sms');
+        for (const phone of phones) {
+          try {
+            const cleanPhone = phone.startsWith('+') ? phone : `+${phone}`;
+            const to = `whatsapp:${cleanPhone}`;
+            const wsName = workspace?.name || 'LeadsMind';
+            const messageText = `🔔 *New Support Ticket logged for ${wsName}*\n\n*From:* ${name || email}\n*Subject:* ${subject}\n*Priority:* ${mappedPriority.toUpperCase()}\n\nReply directly from your dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/support/tickets?id=${ticket.id}`;
+            await sendSMS({
+              to,
+              message: messageText,
+              config: configTwilio
+            });
+          } catch (whatsappErr) {
+            console.error('Failed to dispatch WhatsApp notification to', phone, whatsappErr);
+          }
+        }
+      }
     } catch (e) {
-      console.error('Failed to send resend email:', e);
+      console.error('Failed to send notifications:', e);
     }
 
     return NextResponse.json({ success: true, ticket });
