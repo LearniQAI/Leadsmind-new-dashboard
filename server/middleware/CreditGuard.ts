@@ -12,13 +12,17 @@ export async function verifyAICreditBalance(req: Request, res: Response, next: N
   let usageRecord = await db('ai_usage_credits').where({ workspace_id: workspaceId }).first();
 
   if (!usageRecord) {
-    // Auto-initialize standard credit account for backwards compatibility
+    const now = new Date();
+    const nextMonth = new Date();
+    nextMonth.setMonth(now.getMonth() + 1);
+
     await db('ai_usage_credits').insert({
       workspace_id: workspaceId,
       plan_monthly_credits: 500,
       credits_used_this_period: 0,
       credits_purchased_addon: 0,
-      billing_cycle_start: new Date().toISOString()
+      billing_cycle_start: now.toISOString().split('T')[0],
+      billing_cycle_end: nextMonth.toISOString().split('T')[0]
     });
     usageRecord = await db('ai_usage_credits').where({ workspace_id: workspaceId }).first();
     

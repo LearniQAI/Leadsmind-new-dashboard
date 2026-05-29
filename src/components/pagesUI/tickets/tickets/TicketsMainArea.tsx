@@ -2,8 +2,9 @@ import React from "react";
 import TicketsSummary from "./TicketsSummary";
 import TicketsTable from "./TicketsTable";
 import SubmitTicketModal from "./SubmitTicketModal";
+import SupportWidgetEmbedModal from "./SupportWidgetEmbedModal";
 
-const TicketsMainArea = ({ initialTickets }: { initialTickets: any[] }) => {
+const TicketsMainArea = ({ initialTickets, workspaceId }: { initialTickets: any[]; workspaceId: string }) => {
  return (
   <>
    {/* Page Header */}
@@ -17,6 +18,7 @@ const TicketsMainArea = ({ initialTickets }: { initialTickets: any[] }) => {
      </p>
     </div>
     <div className="flex items-center gap-2">
+     <SupportWidgetEmbedModal workspaceId={workspaceId} />
      <SubmitTicketModal />
     </div>
    </div>
