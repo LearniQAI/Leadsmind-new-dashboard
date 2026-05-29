@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       if (user) {
         teamMemberId = user.id;
         // Fetch user's real workspace
-        const { data: tm } = await supabaseServer.from('team_members').select('workspace_id').eq('user_id', user.id).single();
+        const { data: tm } = await supabaseServer.from('workspace_members').select('workspace_id').eq('user_id', user.id).single();
         if (tm) realWorkspaceId = tm.workspace_id;
       }
     } catch (authErr) {
