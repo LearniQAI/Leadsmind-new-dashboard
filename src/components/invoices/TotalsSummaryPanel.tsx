@@ -75,7 +75,7 @@ const TotalsSummaryPanel: React.FC<TotalsSummaryPanelProps> = ({
       {/* Grand Total Row */}
       <div className="flex justify-between items-center">
         <span className="text-base font-semibold font-dm-sans text-[var(--t1)]">Grand Total</span>
-        <span className="text-2xl font-bold font-space text-[var(--amber)]">
+        <span className="text-2xl font-bold font-space text-[var(--accent2)]">
           {formatCurrency(grandTotal)}
         </span>
       </div>

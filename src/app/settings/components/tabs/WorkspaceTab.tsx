@@ -48,10 +48,10 @@ export default function WorkspaceTab({
               <label className="text-[11px] font-black uppercase tracking-widest text-t3">Permanent Slug</label>
               <div className="flex gap-2">
                 <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-xl px-4 py-3 text-t3 font-mono text-[11px] flex items-center">
-                  leadsmind.ai/w/{branding?.workspace_id || 'neural-node-01'}
+                  leadsmind.io/w/{branding?.workspace_id || 'neural-node-01'}
                 </div>
                 <button
-                  onClick={() => onCopy(`leadsmind.ai/w/${branding?.workspace_id}`, 'slug')}
+                  onClick={() => onCopy(`leadsmind.io/w/${branding?.workspace_id}`, 'slug')}
                   className="px-4 bg-white/5 border border-white/5 text-t3 hover:text-t1 rounded-xl transition-colors"
                 >
                   {copiedId === 'slug' ? <Check size={14} className="text-green" /> : <Copy size={14} />}

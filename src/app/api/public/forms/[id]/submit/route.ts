@@ -4,9 +4,25 @@ import { corsResponse, corsError, getAdminSupabase } from '../../_lib/cors';
 // Simple in-memory rate limit scaffold (per IP, per form, per minute)
 // In production this would be backed by Redis or Upstash
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const duplicateSubmissionMap = new Map<string, number>();
 
 function checkRateLimit(key: string, limit = 5, windowMs = 60_000): boolean {
   const now = Date.now();
+  
+  // Cleanup maps if they get too large to prevent memory leaks
+  if (rateLimitMap.size > 1000) {
+    for (const [k, v] of rateLimitMap.entries()) {
+      if (now > v.resetAt) rateLimitMap.delete(k);
+    }
+  }
+  
+  if (duplicateSubmissionMap.size > 1000) {
+    const fiveSecAgo = now - 5000;
+    for (const [k, v] of duplicateSubmissionMap.entries()) {
+      if (v < fiveSecAgo) duplicateSubmissionMap.delete(k);
+    }
+  }
+
   const entry = rateLimitMap.get(key);
 
   if (!entry || now > entry.resetAt) {
@@ -75,7 +91,88 @@ export async function POST(
     const userAgent = req.headers.get('user-agent') || '';
     const sourceUrl = req.headers.get('referer') || '';
 
-    // 2. Identify Contact (Duplicate Detection Engine)
+    // Honeypot spam check
+    const honeypot = formData.lm_hp_field;
+    if (honeypot) {
+      console.warn('[Spam Blocked] Honeypot field was filled');
+      // Silently succeed to fool the spam bot
+      return corsResponse({
+        success: true,
+        submission_id: 'spam_blocked',
+        message: 'Form submitted successfully',
+      });
+    }
+
+    // Duplicate submission protection (check exact payload hash from same IP within 5s)
+    const dataString = JSON.stringify(formData);
+    const duplicateKey = `${ip}:${id}:${dataString}`;
+    const lastSubmissionTime = duplicateSubmissionMap.get(duplicateKey);
+    const now = Date.now();
+    
+    if (lastSubmissionTime && (now - lastSubmissionTime) < 5000) {
+      return corsError('Duplicate submission detected. Please wait.', 400);
+    }
+    duplicateSubmissionMap.set(duplicateKey, now);
+
+    // 2. Extract and Validate configured contact fields
+    const formFields = (form.fields as any[]) || [];
+    const emailField = formFields.find((f: any) => f.type === 'email');
+    const phoneField = formFields.find((f: any) => f.type === 'phone');
+
+    // Find name fields dynamically
+    const firstNameField = formFields.find((f: any) => 
+      f.type === 'text' && f.label?.toLowerCase().includes('first name')
+    );
+    const lastNameField = formFields.find((f: any) => 
+      f.type === 'text' && f.label?.toLowerCase().includes('last name')
+    );
+    const fullNameField = formFields.find((f: any) => 
+      f.type === 'text' && 
+      f.label?.toLowerCase().includes('name') && 
+      !f.label?.toLowerCase().includes('first') && 
+      !f.label?.toLowerCase().includes('last') && 
+      !f.label?.toLowerCase().includes('company')
+    );
+    const companyField = formFields.find((f: any) => 
+      f.type === 'text' && f.label?.toLowerCase().includes('company')
+    );
+
+    const submissionEmail = emailField && formData[emailField.id] ? String(formData[emailField.id]).trim() : null;
+    const submissionPhone = phoneField && formData[phoneField.id] ? String(formData[phoneField.id]).trim() : null;
+    const submissionCompany = companyField && formData[companyField.id] ? String(formData[companyField.id]).trim() : null;
+
+    let firstName = firstNameField && formData[firstNameField.id] ? String(formData[firstNameField.id]).trim() : null;
+    let lastName = lastNameField && formData[lastNameField.id] ? String(formData[lastNameField.id]).trim() : null;
+
+    if (!firstName && fullNameField && formData[fullNameField.id]) {
+      const parts = String(formData[fullNameField.id]).trim().split(/\s+/);
+      firstName = parts[0] || null;
+      lastName = parts.slice(1).join(' ') || null;
+    }
+
+    // Run backend validations for Email field if present
+    if (emailField) {
+      if (!submissionEmail) {
+        return corsError(`${emailField.label || 'Email Address'} is required`, 400);
+      }
+      const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRx.test(submissionEmail)) {
+        return corsError('Please enter a valid email address', 400);
+      }
+    }
+
+    // Run backend validations for Phone field if present
+    if (phoneField) {
+      if (!submissionPhone) {
+        return corsError(`${phoneField.label || 'Phone Number'} is required`, 400);
+      }
+      const phoneRx = /^\+?[0-9\s\-()]{7,15}$/;
+      if (!phoneRx.test(submissionPhone)) {
+        return corsError('Please enter a valid phone number', 400);
+      }
+    }
+
+    // 3. Identify or create CRM Contact (Duplicate Detection Engine)
     let contactId: string | null = null;
     let existingContact: any = null;
 
@@ -90,32 +187,28 @@ export async function POST(
       }
     }
 
-    // Extract common fields for matching/updating
-    const emailField = (form.fields as any[]).find((f: any) => f.type === 'email');
-    const phoneField = (form.fields as any[]).find((f: any) => f.type === 'phone');
-    const nameField = (form.fields as any[]).find((f: any) => f.type === 'text' && f.label?.toLowerCase().includes('name') && !f.label?.toLowerCase().includes('company'));
-    const companyField = (form.fields as any[]).find((f: any) => f.type === 'text' && f.label?.toLowerCase().includes('company'));
-
-    const submissionEmail = emailField ? formData[emailField.id] : null;
-    const submissionPhone = phoneField ? formData[phoneField.id] : null;
-    const submissionName = nameField ? formData[nameField.id] : null;
-    const submissionCompany = companyField ? formData[companyField.id] : null;
-
-    let firstName = null;
-    let lastName = null;
-    if (submissionName) {
-      const parts = submissionName.trim().split(' ');
-      firstName = parts[0];
-      lastName = parts.slice(1).join(' ') || null;
-    }
-
     // If no token, fallback to email match
     if (!existingContact && submissionEmail) {
       const { data: c } = await supabase.from('contacts')
         .select('*')
         .eq('workspace_id', workspace_id)
         .eq('email', submissionEmail)
-        .single();
+        .limit(1)
+        .maybeSingle();
+      if (c) {
+        existingContact = c;
+        contactId = c.id;
+      }
+    }
+
+    // If still no contact, fallback to phone match
+    if (!existingContact && submissionPhone) {
+      const { data: c } = await supabase.from('contacts')
+        .select('*')
+        .eq('workspace_id', workspace_id)
+        .eq('phone', submissionPhone)
+        .limit(1)
+        .maybeSingle();
       if (c) {
         existingContact = c;
         contactId = c.id;
@@ -140,13 +233,14 @@ export async function POST(
       }
     }
 
-    // 3. Merge or Create CRM Contact
+    // 4. Merge or Create CRM Contact
     if (existingContact) {
       // Safe merge: update only if new data is provided
       const updates: any = {};
       if (firstName && !existingContact.first_name) updates.first_name = firstName;
       if (lastName && !existingContact.last_name) updates.last_name = lastName;
       if (submissionPhone && !existingContact.phone) updates.phone = submissionPhone;
+      if (submissionEmail && !existingContact.email) updates.email = submissionEmail;
       if (submissionCompany && !existingContact.company) updates.company = submissionCompany;
       
       // Merge first-touch attribution if not already set on the contact
@@ -177,8 +271,8 @@ export async function POST(
           .single();
         contactId = updatedContact?.id || contactId;
       }
-    } else if (submissionEmail) {
-      // Create new contact
+    } else if (submissionEmail || submissionPhone) {
+      // Create new contact dynamically
       const firstTouchSource = attribution?.first_touch_source || null;
       const firstTouchKeyword = attribution?.first_touch_keyword || null;
       const firstTouchPage = attribution?.first_touch_page || null;
@@ -186,10 +280,10 @@ export async function POST(
       const { data: newContact } = await supabase.from('contacts')
         .insert({
           workspace_id: workspace_id,
-          email: submissionEmail,
+          email: submissionEmail || null,
           phone: submissionPhone || null,
-          first_name: firstName,
-          last_name: lastName,
+          first_name: firstName || 'Anonymous',
+          last_name: lastName || '',
           company: submissionCompany || null,
           source: 'form_submission',
           metadata: { form_id: id },
@@ -206,6 +300,26 @@ export async function POST(
         .select('id')
         .single();
       if (newContact) contactId = newContact.id;
+    }
+
+    // 5. Append form submission activity to CRM contact if available
+    if (contactId) {
+      try {
+        await supabase.from('contact_activities').insert({
+          workspace_id: workspace_id,
+          contact_id: contactId,
+          type: 'system',
+          description: `Submitted Form: ${form.name || 'Form'}`,
+          metadata: {
+            form_id: id,
+            form_name: form.name,
+            source_url: sourceUrl,
+            submitted_at: new Date().toISOString()
+          }
+        });
+      } catch (err) {
+        console.error('Failed to append CRM form submission activity:', err);
+      }
     }
 
     // 4. Insert the form submission record with tracking metadata

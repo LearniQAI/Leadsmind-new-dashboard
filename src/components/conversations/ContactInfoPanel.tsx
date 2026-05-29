@@ -17,8 +17,8 @@ export function ContactInfoPanel({ contact }: ContactInfoPanelProps) {
   React.useEffect(() => {
     if (contact?.id) {
       // Fetch tickets
-      import('@supabase/auth-helpers-nextjs').then(({ createClientComponentClient }) => {
-        const supabase = createClientComponentClient();
+      import('@supabase/supabase-js').then(({ createClient }) => {
+        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
         supabase.from('support_tickets').select('*').eq('contact_id', contact.id)
           .then(({ data }) => setTickets(data || []));
       });

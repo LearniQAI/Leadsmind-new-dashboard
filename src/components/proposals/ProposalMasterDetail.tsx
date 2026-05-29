@@ -190,7 +190,7 @@ export function ProposalMasterDetail({ proposals: initialProposals }: ProposalMa
                     <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 space-y-1">
                       <p>Boutique Service Proposal</p>
                       <p>Silicon Valley, CA 94043</p>
-                      <p>contact@leadsmind.ai</p>
+                      <p>contact@leadsmind.io</p>
                     </div>
                   </div>
                   <div className="text-left md:text-right">

@@ -27,7 +27,9 @@ const SingleInvoiceView: React.FC<SingleInvoiceViewProps> = ({
       <nav className="border-b border-[var(--bdr)] bg-[rgba(11,17,33,0.8)] backdrop-blur-md sticky top-0 z-50 no-print">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="text-xl font-black tracking-tighter text-[var(--accent2)]">LEADSMIND</div>
+            <div className="text-xl font-black tracking-tighter text-[var(--accent2)]">
+              {invoice.workspace?.name || 'LEADSMIND'}
+            </div>
             <span className="h-4 w-px bg-[var(--bdr)] mx-2" />
             <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--t3)]">Secure Portal</span>
           </div>
@@ -48,11 +50,12 @@ const SingleInvoiceView: React.FC<SingleInvoiceViewProps> = ({
            <div className="bg-white text-[#04091a] p-12 md:p-16 rounded-[var(--r24)] shadow-2xl printable-area">
               <div className="flex justify-between items-start mb-16">
                  <div>
-                    <div className="text-2xl font-black tracking-tighter mb-4 text-[var(--accent)]">LEADSMIND</div>
+                    <div className="text-2xl font-black tracking-tighter mb-4 text-[var(--accent)]">
+                      {invoice.workspace?.name || 'LEADSMIND'}
+                    </div>
                     <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 space-y-1">
-                       <p>123 Enterprise Avenue</p>
-                       <p>Silicon Valley, CA 94043</p>
-                       <p>billing@leadsmind.ai</p>
+                       <p>{invoice.workspace?.invoice_settings?.company_address || invoice.workspace?.registered_address || '123 Enterprise Avenue'}</p>
+                       <p>{invoice.workspace?.invoice_settings?.company_email || 'billing@leadsmind.io'}</p>
                     </div>
                  </div>
                  <div className="text-right">

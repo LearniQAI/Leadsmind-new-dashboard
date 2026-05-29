@@ -126,6 +126,16 @@ export function PublicRuntimeRenderer({ schema, workspaceId, formId, isEmbedFram
 
         {/* Field grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, opacity: loadingPrefill ? 0.5 : 1, transition: 'opacity 0.3s ease' }}>
+          {/* Honeypot field for spam prevention */}
+          <input 
+            type="text" 
+            name="lm_hp_field" 
+            autoComplete="off"
+            tabIndex={-1}
+            style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }}
+            value={values['lm_hp_field'] || ''}
+            onChange={(e) => updateValue('lm_hp_field', e.target.value)}
+          />
           {stepFields.filter(f => !hiddenFieldIds.has(f.id)).map(field => (
             <div key={field.id} style={{ 
               gridColumn: field.width === 'half' ? 'span 1' : 'span 2',

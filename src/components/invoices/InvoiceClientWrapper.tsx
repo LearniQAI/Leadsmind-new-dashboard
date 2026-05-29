@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CalendarClock } from 'lucide-react';
 import InvoiceFormContainer from './InvoiceFormContainer';
-import { saveInvoice } from '@/app/actions/finance';
+import { saveInvoice, updateInvoice } from '@/app/actions/finance';
 import SchedulingModal, { SchedulingConfig } from './SchedulingModal';
 
 interface InvoiceClientWrapperProps {
@@ -28,13 +28,18 @@ const InvoiceClientWrapper: React.FC<InvoiceClientWrapperProps> = ({
   const handleSave = async (data: any) => {
     setIsSaving(true);
     try {
-      const res = await saveInvoice({
-        ...data,
-        workspace_id: workspaceId,
-      });
+      const res = initialData?.id
+        ? await updateInvoice(initialData.id, {
+            ...data,
+            workspace_id: workspaceId,
+          })
+        : await saveInvoice({
+            ...data,
+            workspace_id: workspaceId,
+          });
 
       if (res.success) {
-        toast.success('Invoice saved successfully');
+        toast.success(initialData?.id ? 'Invoice updated successfully' : 'Invoice saved successfully');
         router.push('/invoices');
         router.refresh();
       } else {

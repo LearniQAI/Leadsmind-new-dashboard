@@ -13,8 +13,10 @@ export function validateField(
 ): string | null {
   const valStr = value === undefined || value === null ? '' : String(value).trim();
 
-  // 1. Required Check
-  if (field.required) {
+  const isImplicitlyRequired = field.type === 'email' || field.type === 'phone';
+  const isRequired = field.required || isImplicitlyRequired;
+
+  if (isRequired) {
     if (field.type === 'checkbox' && !value) {
       return 'You must accept this field';
     }

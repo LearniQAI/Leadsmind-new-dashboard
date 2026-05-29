@@ -19,7 +19,10 @@ export function validatePublicField(
 ): string | null {
   const strVal = value === null || value === undefined ? '' : String(value).trim();
 
-  if (field.required) {
+  const isImplicitlyRequired = field.type === 'email' || field.type === 'phone';
+  const isRequired = field.required || isImplicitlyRequired;
+
+  if (isRequired) {
     if (field.type === 'checkbox' && !value) {
       return `Please accept "${field.label}"`;
     }

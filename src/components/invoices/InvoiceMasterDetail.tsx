@@ -303,7 +303,7 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                     <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/40 space-y-2 leading-relaxed">
                       <p>123 Enterprise Avenue</p>
                       <p>Silicon Valley, CA 94043</p>
-                      <p>billing@leadsmind.ai</p>
+                      <p>billing@leadsmind.io</p>
                     </div>
                   </div>
                   <div className="text-right flex flex-col items-end">

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -12,7 +11,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     
     if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
 
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createServerClient();
     
     // Auth Check
     const { data: { session } } = await supabase.auth.getSession();
@@ -60,9 +59,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         // Send email to customer
         try {
           await resend.emails.send({
-            from: 'Support Desk <support@leadsmind.ai>',
+            from: 'Support Desk <support@leadsmind.io>',
             to: ticket.contact.email,
+            replyTo: `ticket+${ticket.id}@support.leadsmind.io`,
             subject: `Re: ${ticket.title}`,
+            headers: {
+              'In-Reply-To': `<ticket-${ticket.id}@support.leadsmind.io>`,
+              'References': `<ticket-${ticket.id}@support.leadsmind.io>`
+            },
             html: `<p>Hi ${ticket.contact.first_name || 'there'},</p><p>An agent has replied to your ticket:</p><blockquote style="border-left: 4px solid #ddd; padding-left: 1rem; color: #555;">${message}</blockquote><p>Best,<br/>The Support Team</p>`
           });
         } catch (e) {

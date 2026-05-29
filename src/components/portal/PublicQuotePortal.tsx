@@ -28,7 +28,9 @@ const PublicQuotePortal: React.FC<PublicQuotePortalProps> = ({ quote }) => {
       <nav className="border-b border-[var(--bdr)] bg-[rgba(11,17,33,0.8)] backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="text-xl font-black tracking-tighter text-[var(--accent2)]">LEADSMIND</div>
+            <div className="text-xl font-black tracking-tighter text-[var(--accent2)]">
+              {quote.workspace?.name || 'LEADSMIND'}
+            </div>
             <span className="h-4 w-px bg-[var(--bdr)] mx-2" />
             <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--t3)]">Proposal Portal</span>
           </div>
@@ -54,10 +56,12 @@ const PublicQuotePortal: React.FC<PublicQuotePortalProps> = ({ quote }) => {
                 <p className="text-xs font-black text-blue-600 uppercase tracking-[0.2em]">{quote.quote_number}</p>
              </div>
              <div className="text-right">
-                <div className="text-xl font-black tracking-tighter mb-4 text-gray-900">LEADSMIND</div>
+                <div className="text-xl font-black tracking-tighter mb-4 text-gray-900">
+                   {quote.workspace?.name || 'LEADSMIND'}
+                </div>
                 <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 space-y-1">
-                   <p>123 Enterprise Avenue</p>
-                   <p>Silicon Valley, CA 94043</p>
+                   <p>{quote.workspace?.invoice_settings?.company_address || quote.workspace?.registered_address || '123 Enterprise Avenue'}</p>
+                   <p>{quote.workspace?.invoice_settings?.company_email || 'billing@leadsmind.io'}</p>
                 </div>
              </div>
           </div>

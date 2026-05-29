@@ -42,6 +42,15 @@ CREATE POLICY "Users can delete their own messages"
         workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())
     );
 
+-- Function for updated_at
+CREATE OR REPLACE FUNCTION update_modified_column()
+RETURNS TRIGGER AS $$
+BEGIN
+   NEW.updated_at = now();
+   RETURN NEW;
+END;
+$$ language 'plpgsql';
+
 -- Trigger for updated_at
 CREATE TRIGGER update_support_ticket_messages_updated_at
     BEFORE UPDATE ON public.support_ticket_messages

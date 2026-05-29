@@ -480,7 +480,7 @@ export default function WebsiteManager() {
                     </h4>
                     <div className="flex items-center gap-1.5 overflow-hidden">
                       <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-wider shrink-0">Domain:</span>
-                      <span className="text-[11px] font-medium text-[#3b82f6]/70 lowercase truncate">{site.subdomain}.leadsmind.ai</span>
+                      <span className="text-[11px] font-medium text-[#3b82f6]/70 lowercase truncate">{site.subdomain}.leadsmind.io</span>
                     </div>
                   </div>
 
@@ -554,7 +554,7 @@ export default function WebsiteManager() {
                     </div>
                     <div>
                       <h4 className="text-[13px] font-bold text-[#eef2ff] leading-tight">{site.name}</h4>
-                      <p className="text-[10px] text-[#4a5a82] font-medium">{site.subdomain}.leadsmind.ai</p>
+                      <p className="text-[10px] text-[#4a5a82] font-medium">{site.subdomain}.leadsmind.io</p>
                     </div>
                   </div>
                   <div>

@@ -26,9 +26,15 @@ const FIELD_LIBRARY: LibraryField[] = [
 ];
 
 export function BuilderSidebar() {
-  const { addField } = useFormBuilder();
+  const { addField, state } = useFormBuilder();
   const [activeTab, setActiveTab] = useState<'fields' | 'steps' | 'config'>('fields');
   const [search, setSearch] = useState('');
+
+  const fields = state.fields || [];
+  const hasFirstName = fields.some(f => f.type === 'text' && f.label?.toLowerCase().includes('first name'));
+  const hasLastName = fields.some(f => f.type === 'text' && f.label?.toLowerCase().includes('last name'));
+  const hasEmail = fields.some(f => f.type === 'email');
+  const hasPhone = fields.some(f => f.type === 'phone');
 
   const filteredFields = FIELD_LIBRARY.filter(f =>
     f.label.toLowerCase().includes(search.toLowerCase()) ||
@@ -118,6 +124,38 @@ export function BuilderSidebar() {
           </div>
 
           <div className="builder-panel__body custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '8px 20px 20px' }}>
+            {/* CRM Contact Checklist */}
+            <div style={{ 
+              marginBottom: 20, 
+              padding: 14, 
+              background: 'rgba(12,21,53,0.6)', 
+              border: '1px solid rgba(255,255,255,0.06)', 
+              borderRadius: 14,
+            }}>
+              <p className="builder-section-label" style={{ marginBottom: 8, fontSize: 10, letterSpacing: '0.08em' }}>CRM Sync Checklist</p>
+              <p style={{ fontSize: 11, color: '#94a3c8', marginBottom: 10, lineHeight: 1.4 }}>
+                Include these fields to automatically link submissions to CRM contacts.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                  <span style={{ color: hasFirstName ? '#10b981' : '#f43f5e' }}>{hasFirstName ? '✓' : '○'}</span>
+                  <span style={{ color: hasFirstName ? '#eef2ff' : '#94a3c8' }}>First Name</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                  <span style={{ color: hasLastName ? '#10b981' : '#f43f5e' }}>{hasLastName ? '✓' : '○'}</span>
+                  <span style={{ color: hasLastName ? '#eef2ff' : '#94a3c8' }}>Last Name</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                  <span style={{ color: hasEmail ? '#10b981' : '#f43f5e' }}>{hasEmail ? '✓' : '○'}</span>
+                  <span style={{ color: hasEmail ? '#eef2ff' : '#94a3c8' }}>Email Address</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                  <span style={{ color: hasPhone ? '#10b981' : '#f43f5e' }}>{hasPhone ? '✓' : '○'}</span>
+                  <span style={{ color: hasPhone ? '#eef2ff' : '#94a3c8' }}>Phone Number</span>
+                </div>
+              </div>
+            </div>
+
             {standardFields.length > 0 && (
               <div style={{ marginBottom: 24 }}>
                 <p className="builder-section-label" style={{ marginBottom: 12 }}>Standard Input Fields</p>

@@ -47,7 +47,7 @@ const LineItemBuilder: React.FC<LineItemBuilderProps> = ({ items, onItemsChange 
         {items.map((item) => (
           <div
             key={item.id}
-            className="grid grid-cols-[1fr_100px_120px_100px_120px_40px] gap-4 items-center group"
+            className="grid grid-cols-[1fr_100px_120px_100px_120px_40px] gap-4 items-center group px-4 py-1"
           >
             <PremiumInput
               placeholder="Item description..."
@@ -81,7 +81,7 @@ const LineItemBuilder: React.FC<LineItemBuilderProps> = ({ items, onItemsChange 
             </div>
             <button
               onClick={() => removeItem(item.id)}
-              className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--red)]/10 text-[var(--red)] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--red)]/20"
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/20"
             >
               <Trash2 size={14} />
             </button>
