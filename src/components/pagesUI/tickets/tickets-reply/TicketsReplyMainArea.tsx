@@ -72,19 +72,34 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
       if (queryId) {
         const found = tickets.find(t => t.id === queryId || t.id.startsWith(queryId));
         if (found) setActiveTicketId(found.id);
-      }
-
-      // 2. Load Local Replies
-      const stored = localStorage.getItem('leadsmind_ticket_replies');
-      if (stored) {
-        try {
-          setReplies(JSON.parse(stored));
-        } catch (e) {
-          console.error('[Ticket Replies] Failed to parse replies:', e);
-        }
-      }
     }
   }, [tickets]);
+
+  // Load Ticket Messages from Supabase API
+  useEffect(() => {
+    if (activeTicketId) {
+      fetch(`/api/support/tickets/${activeTicketId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.messages) {
+            // Transform to local format
+            const transformed = data.messages.map((m: any) => ({
+              id: m.id,
+              type: m.attachments?.find((a:any) => a.type === 'audio') ? 'voice_note' : 'text',
+              direction: m.sender_type === 'customer' ? 'inbound' : 'outbound',
+              content: m.message,
+              transcript: m.message,
+              audioUrl: m.attachments?.find((a:any) => a.type === 'audio')?.url,
+              duration: m.attachments?.find((a:any) => a.type === 'audio')?.duration,
+              created_at: m.created_at
+            }));
+            
+            setReplies(prev => ({ ...prev, [activeTicketId]: transformed }));
+          }
+        })
+        .catch(console.error);
+    }
+  }, [activeTicketId]);
 
   // Cleanup timers and recording contexts on unmount
   useEffect(() => {
@@ -142,23 +157,25 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
           reader.readAsDataURL(audioBlob);
           reader.onloadend = () => {
             const base64data = reader.result as string;
-            const newReply: Reply = {
-              id: `reply-${Math.random().toString(36).substr(2, 9)}`,
-              type: 'voice_note',
-              direction: 'outbound',
-              content: 'Voice Response',
-              transcript: transcriptRef.current || 'Voice reply submitted via recording.',
+            const newReply = {
+              message: transcriptRef.current || 'Voice reply submitted via recording.',
+              sender_type: 'agent',
               audioUrl: base64data,
-              duration: recordingSeconds,
-              created_at: new Date().toISOString()
+              duration: recordingSeconds
             };
 
-            setReplies(prev => {
-              const ticketReplies = prev[activeTicketId] || [];
-              const updated = { ...prev, [activeTicketId]: [...ticketReplies, newReply] };
-              localStorage.setItem('leadsmind_ticket_replies', JSON.stringify(updated));
-              return updated;
-            });
+            fetch(`/api/support/tickets/${activeTicketId}/reply`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newReply)
+            }).then(res => res.json()).then(data => {
+              if (data.reply) {
+                setReplies(prev => ({
+                  ...prev,
+                  [activeTicketId]: [...(prev[activeTicketId] || []), data.reply]
+                }));
+              }
+            }).catch(console.error);
           };
         }
       };
@@ -246,27 +263,30 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
     audioChunksRef.current = [];
   };
 
-  // Submit Text Message Reply
-  const handleSendText = (e: React.FormEvent) => {
+  const handleSendText = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || !activeTicketId) return;
 
-    const newReply: Reply = {
-      id: `reply-${Math.random().toString(36).substr(2, 9)}`,
-      type: 'text',
-      direction: 'outbound',
-      content: inputText.trim(),
-      created_at: new Date().toISOString()
-    };
+    const content = inputText.trim();
+    setInputText(""); // Optimistic clear
 
-    setReplies(prev => {
-      const ticketReplies = prev[activeTicketId] || [];
-      const updated = { ...prev, [activeTicketId]: [...ticketReplies, newReply] };
-      localStorage.setItem('leadsmind_ticket_replies', JSON.stringify(updated));
-      return updated;
-    });
-
-    setInputText("");
+    try {
+      const res = await fetch(`/api/support/tickets/${activeTicketId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: content, sender_type: 'agent' })
+      });
+      const data = await res.json();
+      if (data.reply) {
+        setReplies(prev => ({
+          ...prev,
+          [activeTicketId]: [...(prev[activeTicketId] || []), data.reply]
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to send text reply:', err);
+      // Optional: restore text if failed
+    }
   };
 
   // Resolve Ticket Info
