@@ -80,15 +80,20 @@ export function parsePersonalTokens(html: string, contact?: any, additionalVars?
 /**
  * Compiles a list of layout blocks into a responsive HTML email.
  */
+/**
+ * Compiles a list of layout blocks into a responsive HTML email.
+ */
 export function renderEmailLayout(
   blocks: EmailBlock[],
   brandKit: BrandKit,
   contact?: any,
-  additionalVars?: Record<string, any>
+  additionalVars?: Record<string, any>,
+  preheaderText?: string
 ): string {
   const primaryColor = brandKit.brandColorPrimary || '#2563eb';
   const defaultFont = brandKit.brandFontDefault || 'Inter, Arial, sans-serif';
   const logoUrl = brandKit.logoUrl || '';
+  const hiddenPreheader = preheaderText || '';
 
   // Render individual blocks
   let blocksHtml = '';
@@ -116,7 +121,7 @@ export function renderEmailLayout(
             ${imageUrl ? `
               <tr>
                 <td align="center" style="padding-bottom: 20px;">
-                  <img src="${imageUrl}" alt="${imageAlt}" width="100%" style="max-width: 540px; display: block; border-radius: 12px; border: 0;" />
+                  <img src="${imageUrl}" alt="${imageAlt}" width="540" style="width: 100%; max-width: 540px; display: block; border-radius: 12px; border: 0; height: auto;" />
                 </td>
               </tr>
             ` : ''}
@@ -129,10 +134,10 @@ export function renderEmailLayout(
                   ${subheadline}
                 </p>
                 ${buttonText ? `
-                  <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                  <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;">
                     <tr>
                       <td align="center" bgcolor="${primaryColor}" style="border-radius: 8px;">
-                        <a href="${buttonUrl}" target="_blank" style="font-family: ${defaultFont}; font-size: 13px; font-weight: bold; color: #ffffff; text-decoration: none; padding: 12px 28px; display: inline-block; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <a href="${buttonUrl}" target="_blank" style="font-family: ${defaultFont}; font-size: 13px; font-weight: bold; color: #ffffff; text-decoration: none; display: inline-block; padding: 12px 28px; border: 1px solid ${primaryColor}; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
                           ${buttonText}
                         </a>
                       </td>
@@ -149,7 +154,7 @@ export function renderEmailLayout(
       case 'features': {
         const columns = Array.isArray(block.content.columns) ? block.content.columns : [];
         const colsHtml = columns.map((col: any) => `
-          <td valign="top" style="padding: 10px; width: ${100 / Math.max(1, columns.length)}%;">
+          <td class="stack-column" valign="top" style="padding: 10px; width: ${100 / Math.max(1, columns.length)}%; box-sizing: border-box;">
             <h3 style="font-family: ${defaultFont}; font-size: 15px; font-weight: bold; color: ${primaryColor}; margin: 0 0 8px 0;">
               ${col.title || 'Feature Title'}
             </h3>
@@ -271,10 +276,10 @@ export function renderEmailLayout(
           <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
             <tr>
               <td align="${align}">
-                <table border="0" cellpadding="0" cellspacing="0" style="display: inline-block;">
+                <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="display: inline-block;">
                   <tr>
                     <td bgcolor="${bg}" style="border-radius: 8px;">
-                      <a href="${url}" target="_blank" style="font-family: ${defaultFont}; font-size: 13px; font-weight: bold; color: ${fg}; text-decoration: none; padding: 12px 28px; display: inline-block; text-transform: uppercase; letter-spacing: 0.5px;">
+                      <a href="${url}" target="_blank" style="font-family: ${defaultFont}; font-size: 13px; font-weight: bold; color: ${fg}; text-decoration: none; display: inline-block; padding: 12px 28px; border: 1px solid ${bg}; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
                         ${text}
                       </a>
                     </td>
@@ -310,16 +315,44 @@ export function renderEmailLayout(
   // 2. Wrap HTML inside standard dark-navy email responsive container
   const fullHtml = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
   <title>LeadsMind Broadcast</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style>
+    @media only screen and (max-width: 600px) {
+      .stack-column {
+        display: block !important;
+        width: 100% !important;
+        padding-bottom: 20px !important;
+      }
+      .responsive-container {
+        padding: 20px 10px !important;
+      }
+    }
+  </style>
 </head>
-<body style="font-family: ${defaultFont}; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 40px 20px;">
+<body style="font-family: ${defaultFont}; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 0;">
+  ${hiddenPreheader ? `
+  <div style="display: none; max-height: 0px; overflow: hidden;">
+    ${hiddenPreheader}
+    &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+  </div>
+  ` : ''}
   <table border="0" cellpadding="0" cellspacing="0" width="100%">
     <tr>
-      <td align="center">
+      <td align="center" class="responsive-container" style="padding: 40px 20px;">
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 40px; box-sizing: border-box; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
           
           <!-- Logo Header -->
@@ -343,7 +376,7 @@ export function renderEmailLayout(
           <tr>
             <td align="center" style="font-family: ${defaultFont}; font-size: 11px; color: #94a3c8; line-height: 1.6; padding-top: 30px; border-top: 1px solid #e2e8f0; margin-top: 30px;">
               Sent automatically by LeadsMind Campaign Engine.<br />
-              © ${new Date().getFullYear()} LeadsMind Inc. All rights reserved.<br />
+              &copy; ${new Date().getFullYear()} LeadsMind Inc. All rights reserved.<br />
               <a href="{{unsubscribe_link}}" style="color: ${primaryColor}; text-decoration: none;">Unsubscribe</a> from future campaigns.
             </td>
           </tr>

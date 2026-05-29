@@ -63,6 +63,8 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
     } catch(e){}
     return false;
   });
+  
+  const [preheaderText, setPreheaderText] = useState(initialCampaign.preview_text || '');
 
   // Selected block
   const selectedBlock = selectedBlockIndex !== null ? blocks[selectedBlockIndex] : null;
@@ -179,7 +181,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
     setSaving(true);
     try {
       // 1. Compile final HTML output
-      const compiledHtml = renderEmailLayout(blocks, brandKit);
+      const compiledHtml = renderEmailLayout(blocks, brandKit, {}, {}, preheaderText);
       
       // 2. Generate preview text from text blocks or defaults
       const textBlock = blocks.find(b => b.type === 'text');
@@ -189,7 +191,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       const result = await updateCampaign(campaignId, {
         builder_json: blocks,
         body_html: compiledHtml,
-        preview_text: plainTextPreview.replace(/\{\{[^}]+\}\}/g, '').trim()
+        preview_text: preheaderText || plainTextPreview.replace(/\{\{[^}]+\}\}/g, '').trim()
       });
 
       if (result.error) {
@@ -210,8 +212,8 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
   const handleDeploy = async () => {
     setSaving(true);
     try {
-      // compile HTML
-      const compiledHtml = renderEmailLayout(blocks, brandKit);
+      // 1. Compile final HTML
+      const compiledHtml = renderEmailLayout(blocks, brandKit, {}, {}, preheaderText);
       const textBlock = blocks.find(b => b.type === 'text');
       const plainTextPreview = textBlock?.content.body?.slice(0, 100) || 'Your LeadsMind Email Broadcast';
 
@@ -885,6 +887,15 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                     onChange={(e) => setBrandKit({ ...brandKit, logoUrl: e.target.value })}
                     className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2 text-[11px] text-white focus:outline-none focus:border-[#2563eb]"
                     placeholder="Enter URL or upload a logo"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider mb-1">Preheader / Preview Text</label>
+                  <textarea
+                    value={preheaderText}
+                    onChange={(e) => setPreheaderText(e.target.value)}
+                    className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2.5 text-[11px] text-white focus:outline-none focus:border-[#2563eb] min-h-[60px]"
+                    placeholder="Short summary hidden in email body but visible in inbox preview"
                   />
                 </div>
                 <div>
