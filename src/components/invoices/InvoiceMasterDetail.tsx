@@ -30,11 +30,27 @@ const INVOICE_STATUSES = ['draft', 'sent', 'paid', 'void', 'written_off'];
 
 function StatusBadge({ status }: { status: string }) {
   const statusLower = status?.toLowerCase();
-  if (statusLower === 'paid') return <span className="badge bg-[rgba(16,185,129,0.15)] text-[#34d399] capitalize">● Paid</span>;
-  if (statusLower === 'sent') return <span className="badge bg-[rgba(37,99,235,0.15)] text-[#60a5fa] capitalize">● Sent</span>;
-  if (statusLower === 'void') return <span className="badge bg-[rgba(239,68,68,0.15)] text-[#f87171] capitalize">● Void</span>;
-  if (statusLower === 'written_off') return <span className="badge bg-[rgba(239,68,68,0.15)] text-[#f87171] capitalize">● Written Off</span>;
-  return <span className="badge bg-[rgba(245,158,11,0.15)] text-[#fbbf24] capitalize">● {status || 'Draft'}</span>;
+  
+  if (statusLower === 'paid') {
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.2)] text-[10px] font-black uppercase tracking-widest text-[#34d399] shadow-[0_0_10px_rgba(16,185,129,0.1)]"><CheckCircle2 size={10} /> Paid</span>;
+  }
+  if (statusLower === 'sent') {
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[rgba(37,99,235,0.1)] border border-[rgba(37,99,235,0.2)] text-[10px] font-black uppercase tracking-widest text-[#60a5fa] shadow-[0_0_10px_rgba(37,99,235,0.1)]"><Send size={10} /> Sent</span>;
+  }
+  if (statusLower === 'viewed') {
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.2)] text-[10px] font-black uppercase tracking-widest text-[#a78bfa] shadow-[0_0_10px_rgba(139,92,246,0.1)]"><Clock size={10} /> Viewed</span>;
+  }
+  if (statusLower === 'overdue') {
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[10px] font-black uppercase tracking-widest text-[#f87171] shadow-[0_0_10px_rgba(239,68,68,0.1)]"><AlertTriangle size={10} /> Overdue</span>;
+  }
+  if (statusLower === 'void') {
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/50"><XCircle size={10} /> Void</span>;
+  }
+  if (statusLower === 'written_off') {
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/50"><Eraser size={10} /> Written Off</span>;
+  }
+  
+  return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)] text-[10px] font-black uppercase tracking-widest text-[#fbbf24] shadow-[0_0_10px_rgba(245,158,11,0.1)]"><Clock size={10} /> {status || 'Draft'}</span>;
 }
 
 export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMasterDetailProps) {
@@ -122,9 +138,9 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
   const handlePrint = () => window.print();
 
   return (
-    <div className="flex">
-      {/* LEFT PANEL: 300px List */}
-      <div className="w-[300px] flex flex-col border-r border-[var(--bdr)] bg-[var(--n800)]">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-120px)] w-full">
+      {/* LEFT PANEL: List */}
+      <div className="w-full md:w-[340px] flex-shrink-0 flex flex-col border-r border-[var(--bdr)] bg-[var(--n800)] h-[400px] md:h-full">
         <div className="p-4 border-b border-[var(--bdr)]">
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--t3)]" />
@@ -224,7 +240,7 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
         {selectedInvoice ? (
           <>
             {/* Header / Actions */}
-            <div className="p-4 border-b border-[var(--bdr)] flex items-center justify-between bg-[var(--n800)]/50">
+            <div className="p-4 border-b border-[var(--bdr)] flex flex-wrap items-center justify-between gap-4 bg-[var(--n800)]/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-[var(--r12)] bg-[var(--accentg)] flex items-center justify-center border border-[var(--accent)]/20">
                   <FileText className="h-5 w-5 text-[var(--accent2)]" />
@@ -270,84 +286,114 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
             </div>
 
             {/* Document Preview */}
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-[rgba(0,0,0,0.2)]">
-              <div className="max-w-[800px] mx-auto bg-white text-[#04091a] p-12 md:p-16 rounded-[var(--r16)] shadow-2xl printable-area min-h-[1000px]">
-                {/* Internal Invoice Content (Keep white background for print compatibility) */}
-                <div className="flex justify-between items-start mb-20 relative">
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-[var(--n900)] relative">
+              <div className="max-w-[850px] mx-auto bg-[var(--n800)] border border-[var(--bdr)] text-white p-12 md:p-16 rounded-[var(--r24)] shadow-[0_0_60px_rgba(0,0,0,0.5)] printable-area min-h-[1000px] relative overflow-hidden">
+                
+                {/* Background ambient glow */}
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[var(--accent)]/5 blur-[120px] rounded-full pointer-events-none" />
+
+                <div className="flex justify-between items-start mb-16 relative z-10">
                   <div>
-                    <div className="text-3xl font-black tracking-tight mb-4 text-black/70">LEADSMIND</div>
-                    <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-black/70 space-y-1.5 leading-relaxed">
+                    <div className="text-3xl font-black font-space text-white uppercase tracking-tight mb-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-[var(--r12)] bg-[var(--accent)] flex items-center justify-center">
+                        <ShieldCheck className="h-5 w-5 text-white" />
+                      </div>
+                      LEADSMIND <span className="text-[var(--accent2)]">HQ</span>
+                    </div>
+                    <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/40 space-y-2 leading-relaxed">
                       <p>123 Enterprise Avenue</p>
                       <p>Silicon Valley, CA 94043</p>
                       <p>billing@leadsmind.ai</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <h1 className="text-7xl font-black uppercase tracking-tighter text-slate-100 absolute -top-8 -right-4 select-none pointer-events-none">Invoice</h1>
-                    <div className="relative z-10">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Document No.</p>
-                      <p className="text-lg font-black text-blue-800 uppercase tracking-tight">{selectedInvoice.invoice_number}</p>
+                  <div className="text-right flex flex-col items-end">
+                    <h1 className="text-5xl font-black uppercase tracking-tighter text-white/5 select-none pointer-events-none mb-4">Invoice</h1>
+                    <div className="bg-white/[0.02] border border-white/5 rounded-[var(--r12)] p-5 text-left w-64 backdrop-blur-md">
+                      <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-1">Document No.</p>
+                      <p className="text-xl font-black text-primary uppercase tracking-tight mb-4">{selectedInvoice.invoice_number}</p>
+                      <div className="pt-3 border-t border-white/5">
+                        <StatusBadge status={selectedInvoice.status} />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-16 mb-20">
-                  <div className="bg-slate-50 p-8 rounded-3xl border border-slate-100">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-4">Billed To</span>
-                    <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 mb-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16 relative z-10">
+                  <div className="bg-white/[0.01] p-8 rounded-[var(--r16)] border border-white/5">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-4 flex items-center gap-2">
+                      <ShieldCheck size={12} className="text-primary" /> Billed To
+                    </span>
+                    <h2 className="text-2xl font-black uppercase font-space tracking-tight text-white mb-2">
                       {selectedInvoice.contact?.first_name} {selectedInvoice.contact?.last_name}
                     </h2>
-                    <p className="text-sm font-bold text-slate-600">{selectedInvoice.contact?.email}</p>
+                    <p className="text-sm font-semibold text-white/60 mb-5">{selectedInvoice.contact?.email}</p>
                     {selectedInvoice.contact?.vat_number && (
-                      <p className="text-[10px] font-black text-blue-600 uppercase mt-4 tracking-widest">VAT: {selectedInvoice.contact.vat_number}</p>
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/[0.03] border border-white/5">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-white/40">VAT:</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white">{selectedInvoice.contact.vat_number}</span>
+                      </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Issue Date</span>
-                      <span className="text-sm font-black text-slate-900">{format(new Date(selectedInvoice.created_at), 'dd MMM yyyy')}</span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Due Date</span>
-                      <span className="text-sm font-black text-rose-600">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), 'dd MMM yyyy') : 'On Receipt'}</span>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="bg-white/[0.01] p-6 rounded-[var(--r16)] border border-white/5 flex flex-col justify-center gap-6">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 flex items-center gap-2">
+                          <Calendar size={12} className="text-primary"/> Issue Date
+                        </span>
+                        <span className="text-sm font-black font-space text-white">{format(new Date(selectedInvoice.created_at), 'dd MMM yyyy')}</span>
+                      </div>
+                      <div className="w-full h-px bg-white/5" />
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 flex items-center gap-2">
+                          <Clock size={12} className="text-rose-500"/> Due Date
+                        </span>
+                        <span className="text-sm font-black font-space text-rose-500">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), 'dd MMM yyyy') : 'On Receipt'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <table className="w-full mb-16">
-                  <thead>
-                    <tr className="border-b-2 border-gray-200">
-                      <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-500 text-left">Description</th>
-                      <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-500 text-right">Qty</th>
-                      <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-500 text-right">Rate</th>
-                      <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-500 text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {(selectedInvoice.items || []).map((item: any, idx: number) => (
-                      <tr key={idx}>
-                        <td className="py-6 font-bold text-sm text-[#1a1a1a]">{item.description}</td>
-                        <td className="py-6 text-right text-sm text-gray-700 font-bold">{item.quantity || 0}</td>
-                        <td className="py-6 text-right text-sm text-gray-700 font-bold">${(Number(item.rate) || 0).toLocaleString()}</td>
-                        <td className="py-6 text-right font-black text-base text-[#1a1a1a]">${((Number(item.quantity) || 0) * (Number(item.rate) || 0)).toLocaleString()}</td>
+                <div className="bg-white/[0.02] rounded-[var(--r16)] border border-white/5 overflow-x-auto mb-16 relative z-10 custom-scrollbar">
+                  <table className="w-full min-w-[500px]">
+                    <thead>
+                      <tr className="border-b border-white/5 bg-white/[0.02]">
+                        <th className="py-5 px-6 text-[9px] font-black uppercase tracking-widest text-white/40 text-left">Description</th>
+                        <th className="py-5 px-6 text-[9px] font-black uppercase tracking-widest text-white/40 text-right">Qty</th>
+                        <th className="py-5 px-6 text-[9px] font-black uppercase tracking-widest text-white/40 text-right">Rate</th>
+                        <th className="py-5 px-6 text-[9px] font-black uppercase tracking-widest text-white/40 text-right">Amount</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {(selectedInvoice.items || []).map((item: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-white/[0.01] transition-colors">
+                          <td className="py-6 px-6 font-semibold text-sm text-white">{item.description}</td>
+                          <td className="py-6 px-6 text-right text-sm text-white/60 font-bold">{item.quantity || 0}</td>
+                          <td className="py-6 px-6 text-right text-sm text-white/60 font-bold">${(Number(item.rate) || 0).toLocaleString()}</td>
+                          <td className="py-6 px-6 text-right font-black font-space text-base text-white">${((Number(item.quantity) || 0) * (Number(item.rate) || 0)).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-                <div className="flex justify-end pt-8 border-t-2 border-gray-200">
-                  <div className="w-64 space-y-3">
-                    <div className="flex justify-between text-gray-700 text-xs font-bold">
-                      <span>Subtotal</span>
+                <div className="flex justify-end pt-2 relative z-10">
+                  <div className="w-[380px] space-y-4">
+                    <div className="flex justify-between items-center text-white/60 text-xs font-bold px-6">
+                      <span className="uppercase tracking-widest text-[10px]">Subtotal</span>
                       <span>${(Number(selectedInvoice.subtotal || selectedInvoice.total_amount) || 0).toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-gray-700 text-xs font-bold pb-3 border-b border-gray-100">
-                      <span>Tax</span>
+                    <div className="flex justify-between items-center text-white/60 text-xs font-bold pb-5 border-b border-white/5 px-6">
+                      <span className="uppercase tracking-widest text-[10px]">Tax</span>
                       <span>${(Number(selectedInvoice.tax_total) || 0).toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between items-end pt-2">
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)]">Grand Total</span>
-                      <span className="text-3xl font-black font-space text-[#1a1a1a]">${(Number(selectedInvoice.total_amount) || 0).toLocaleString()}</span>
+                    <div className="flex justify-between items-center pt-2 mt-4 bg-[var(--accentg)] border border-primary/30 rounded-[var(--r16)] p-8 shadow-[0_0_40px_rgba(37,99,235,0.15)] relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />
+                      <div className="flex flex-col gap-1.5 relative z-10">
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Grand Total</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">USD</span>
+                      </div>
+                      <span className="text-4xl font-black font-space text-white tracking-tighter relative z-10">${(Number(selectedInvoice.total_amount) || 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
