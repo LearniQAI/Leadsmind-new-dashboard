@@ -72,6 +72,7 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
       if (queryId) {
         const found = tickets.find(t => t.id === queryId || t.id.startsWith(queryId));
         if (found) setActiveTicketId(found.id);
+      }
     }
   }, [tickets]);
 
