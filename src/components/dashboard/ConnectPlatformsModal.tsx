@@ -2,7 +2,19 @@
 
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { getConnectedPlatforms, disconnectPlatform, getMetaAuthUrl, connectPlatformManually } from '@/app/actions/messaging';
+import { 
+  getConnectedPlatforms, 
+  disconnectPlatform, 
+  getMetaAuthUrl, 
+  connectPlatformManually,
+  getMetaOauthToken,
+  fetchMetaBusinesses,
+  fetchMetaPages,
+  fetchMetaInstagramAccounts,
+  fetchMetaWhatsAppAccounts,
+  fetchWhatsAppPhoneNumbers,
+  saveMetaConnections
+} from '@/app/actions/messaging';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -16,7 +28,25 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
   const [connections, setConnections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [metaUrl, setMetaUrl] = useState('');
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [activeManualPlatform, setActiveManualPlatform] = useState<string | null>(null);
+  
+  // Wizard state variables
+  const [isOauthWizard, setIsOauthWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [wizardLoading, setWizardLoading] = useState(false);
+  const [businesses, setBusinesses] = useState<any[]>([]);
+  const [pages, setPages] = useState<any[]>([]);
+  const [igAccounts, setIgAccounts] = useState<any[]>([]);
+  const [waAccounts, setWaAccounts] = useState<any[]>([]);
+  const [phoneNumbers, setPhoneNumbers] = useState<any[]>([]);
+
+  const [selectedBusiness, setSelectedBusiness] = useState<string>('');
+  const [selectedPage, setSelectedPage] = useState<any>(null);
+  const [selectedInstagram, setSelectedInstagram] = useState<any>(null);
+  const [selectedWaba, setSelectedWaba] = useState<any>(null);
+  const [selectedPhone, setSelectedPhone] = useState<any>(null);
+
   const [formData, setFormData] = useState({
     pageId: '',
     pageName: '',
@@ -61,9 +91,33 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
     setIsLoading(true);
     try {
       const data = await getConnectedPlatforms();
-      setConnections(data);
+      // Only include fully connected platforms in active list (exclude pending)
+      const connectedData = data.filter((c: any) => c.status === 'connected');
+      setConnections(connectedData);
+      
       const url = await getMetaAuthUrl();
       setMetaUrl(url);
+
+      // Check if there is a pending OAuth session to trigger Wizard onboarding
+      const oauthSession = await getMetaOauthToken();
+      if (oauthSession && oauthSession.status === 'pending') {
+        setIsOauthWizard(true);
+        setWizardStep(1);
+        setWizardLoading(true);
+        try {
+          const bizList = await fetchMetaBusinesses();
+          setBusinesses(bizList);
+          if (bizList.length > 0) {
+            setSelectedBusiness(bizList[0].id);
+          }
+        } catch (bizErr: any) {
+          toast.error(bizErr.message || 'Failed to fetch Meta Businesses');
+        } finally {
+          setWizardLoading(false);
+        }
+      } else {
+        setIsOauthWizard(false);
+      }
     } catch (e: any) {
       toast.error('Failed to load connections');
     } finally {
@@ -87,340 +141,847 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
     }
   };
 
+  const handleExitWizard = async () => {
+    setWizardLoading(true);
+    try {
+      await disconnectPlatform('facebook');
+      setIsOauthWizard(false);
+      loadConnections();
+      toast.info('Onboarding wizard cancelled.');
+    } catch (e) {
+      toast.error('Failed to cancel onboarding');
+    } finally {
+      setWizardLoading(false);
+    }
+  };
+
+  const handleBusinessSelect = async (bizId: string) => {
+    setSelectedBusiness(bizId);
+  };
+
+  const handleStep1Next = async () => {
+    if (!selectedBusiness) return;
+    setWizardLoading(true);
+    try {
+      const pageList = await fetchMetaPages(selectedBusiness);
+      setPages(pageList);
+      if (pageList.length > 0) {
+        setSelectedPage(pageList[0]);
+      } else {
+        setSelectedPage(null);
+      }
+      setWizardStep(2);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to load Pages');
+    } finally {
+      setWizardLoading(false);
+    }
+  };
+
+  const handleStep2Next = async () => {
+    if (!selectedPage) {
+      toast.error('Please select a Facebook Page');
+      return;
+    }
+    setWizardLoading(true);
+    try {
+      const igList = await fetchMetaInstagramAccounts(selectedPage.id, selectedPage.access_token);
+      setIgAccounts(igList);
+      if (igList.length > 0) {
+        setSelectedInstagram(igList[0]);
+      } else {
+        setSelectedInstagram(null);
+      }
+      setWizardStep(3);
+    } catch (e: any) {
+      console.error(e);
+      setSelectedInstagram(null);
+      setWizardStep(3);
+    } finally {
+      setWizardLoading(false);
+    }
+  };
+
+  const handleStep3Next = async () => {
+    setWizardLoading(true);
+    try {
+      const wabaList = await fetchMetaWhatsAppAccounts(selectedBusiness);
+      setWaAccounts(wabaList);
+      if (wabaList.length > 0) {
+        setSelectedWaba(wabaList[0]);
+        const phoneList = await fetchWhatsAppPhoneNumbers(wabaList[0].id);
+        setPhoneNumbers(phoneList);
+        if (phoneList.length > 0) {
+          setSelectedPhone(phoneList[0]);
+        } else {
+          setSelectedPhone(null);
+        }
+      } else {
+        setSelectedWaba(null);
+        setPhoneNumbers([]);
+        setSelectedPhone(null);
+      }
+      setWizardStep(4);
+    } catch (e: any) {
+      console.error(e);
+      setSelectedWaba(null);
+      setPhoneNumbers([]);
+      setSelectedPhone(null);
+      setWizardStep(4);
+    } finally {
+      setWizardLoading(false);
+    }
+  };
+
+  const handleWabaChange = async (wabaId: string) => {
+    if (wabaId === 'skip') {
+      setSelectedWaba(null);
+      setPhoneNumbers([]);
+      setSelectedPhone(null);
+      return;
+    }
+    const waba = waAccounts.find(w => w.id === wabaId);
+    setSelectedWaba(waba || null);
+    if (wabaId) {
+      setWizardLoading(true);
+      try {
+        const phoneList = await fetchWhatsAppPhoneNumbers(wabaId);
+        setPhoneNumbers(phoneList);
+        if (phoneList.length > 0) {
+          setSelectedPhone(phoneList[0]);
+        } else {
+          setSelectedPhone(null);
+        }
+      } catch (e: any) {
+        toast.error('Failed to load WhatsApp Phone Numbers');
+      } finally {
+        setWizardLoading(false);
+      }
+    }
+  };
+
+  const handleSaveWizard = async () => {
+    if (!selectedPage) {
+      toast.error('Please complete the setup');
+      return;
+    }
+    setWizardLoading(true);
+    try {
+      const res = await saveMetaConnections({
+        pageId: selectedPage.id,
+        pageName: selectedPage.name,
+        pageAccessToken: selectedPage.access_token,
+        instagramBusinessAccountId: selectedInstagram?.id || null,
+        instagramUsername: selectedInstagram?.username || null,
+        whatsappBusinessAccountId: selectedWaba?.id || null,
+        whatsappBusinessName: selectedWaba?.name || null,
+        phoneNumberId: selectedPhone?.id || null,
+        whatsappPhoneNumber: selectedPhone?.display_phone_number || null
+      });
+
+      if (res.success) {
+        toast.success('Meta connections configured successfully!');
+        setIsOauthWizard(false);
+        loadConnections();
+      } else {
+        toast.error(res.error || 'Failed to save Meta connections');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'An error occurred during save');
+    } finally {
+      setWizardLoading(false);
+    }
+  };
+
   // Find connections
   const fbConn = connections.find(c => c.platform === 'facebook');
   const igConn = connections.find(c => c.platform === 'instagram');
   const waConn = connections.find(c => c.platform === 'whatsapp');
+  const isAnyConnected = fbConn || igConn || waConn;
+
+  const getHealthBadge = (healthStatus: string, dbStatus: string) => {
+    if (dbStatus === 'error') {
+      return { 
+        label: 'Reconnect Required', 
+        color: 'text-red-400 border-red-500/20 bg-red-500/5', 
+        icon: 'fa-solid fa-circle-exclamation' 
+      };
+    }
+    
+    switch (healthStatus) {
+      case 'token_expiring':
+        return { 
+          label: 'Token Expiring', 
+          color: 'text-amber-400 border-amber-500/20 bg-amber-500/5', 
+          icon: 'fa-solid fa-triangle-exclamation' 
+        };
+      case 'token_expired':
+        return { 
+          label: 'Token Expired', 
+          color: 'text-red-400 border-red-500/20 bg-red-500/5', 
+          icon: 'fa-solid fa-circle-xmark' 
+        };
+      case 'reconnect_required':
+        return { 
+          label: 'Reconnect Required', 
+          color: 'text-red-400 border-red-500/20 bg-red-500/5', 
+          icon: 'fa-solid fa-circle-exclamation' 
+        };
+      case 'connected':
+      default:
+        return { 
+          label: 'Connected', 
+          color: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5', 
+          icon: 'fa-solid fa-circle-check' 
+        };
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] bg-[#080f28]/95 border border-white/10 backdrop-blur-2xl text-white rounded-2xl shadow-2xl">
+      <DialogContent className="sm:max-w-[520px] bg-[#080f28]/95 border border-white/10 backdrop-blur-2xl text-white rounded-2xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold tracking-tight font-space-grotesk text-[#eef2ff]">
-            Manage Messaging Connections
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-xl font-bold tracking-tight font-space-grotesk text-[#eef2ff]">
+              {isOauthWizard 
+                ? `Meta Onboarding (Step ${wizardStep}/4)` 
+                : isAdvancedMode 
+                  ? 'Advanced Connections' 
+                  : 'Meta Connections'}
+            </DialogTitle>
+            {!isOauthWizard && (
+              <button
+                onClick={() => {
+                  setIsAdvancedMode(!isAdvancedMode);
+                  setActiveManualPlatform(null);
+                }}
+                className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 border border-indigo-500/20 px-2 py-1 rounded bg-indigo-500/5"
+              >
+                <i className="fa-solid fa-gear"></i>
+                {isAdvancedMode ? 'Back to OAuth' : 'Advanced Setup'}
+              </button>
+            )}
+          </div>
           <DialogDescription className="text-xs text-[#4a5a82] font-dm-sans leading-relaxed">
-            Link and manage Facebook Pages, Instagram DMs, and WhatsApp lines integrated with the Unified Inbox.
+            {isOauthWizard
+              ? 'Select your Facebook Page, Instagram Account, and WhatsApp Line to finalize the integration.'
+              : isAdvancedMode 
+                ? 'Manually configure connection parameters and access tokens for customized integrations.' 
+                : 'Link and manage connected Pages, Instagram accounts, and WhatsApp lines integrated with the Unified Inbox.'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-6 flex flex-col gap-5">
+        <div className="py-4 flex flex-col gap-4">
           {isLoading ? (
             <div className="flex flex-col gap-4 py-8 items-center justify-center">
               <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
               <span className="text-xs text-[#4a5a82]">Loading connection details...</span>
             </div>
-          ) : activeManualPlatform ? (
-            <form onSubmit={handleManualSubmit} className="flex flex-col gap-4">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-1">
-                <h4 className="text-sm font-bold text-white font-space-grotesk capitalize">
-                  Connect {activeManualPlatform === 'whatsapp' ? 'WhatsApp' : activeManualPlatform} Manually
-                </h4>
-                <Button 
-                  type="button" 
-                  onClick={() => setActiveManualPlatform(null)} 
-                  variant="ghost" 
-                  className="h-7 px-2.5 text-[10px] text-[#4a5a82] hover:text-white"
-                >
-                  Back
-                </Button>
+          ) : isOauthWizard ? (
+            /* OAUTH-FIRST WIZARD STEP-BY-STEP UI */
+            <div className="flex flex-col gap-4">
+              {/* Step Progress Bar */}
+              <div className="flex items-center justify-between gap-1 mb-2">
+                {[1, 2, 3, 4].map((step) => (
+                  <div key={step} className="flex-1 flex flex-col gap-1.5">
+                    <div className={`h-1 rounded-full transition-all duration-300 ${
+                      step <= wizardStep ? 'bg-indigo-500' : 'bg-white/10'
+                    }`} />
+                    <span className={`text-[8.5px] text-center font-bold tracking-wider uppercase ${
+                      step === wizardStep ? 'text-indigo-400' : 'text-[#4a5a82]'
+                    }`}>
+                      {step === 1 ? 'Business' : step === 2 ? 'Page' : step === 3 ? 'Instagram' : 'WhatsApp'}
+                    </span>
+                  </div>
+                ))}
               </div>
 
-              {activeManualPlatform === 'facebook' && (
-                <>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-[#4a5a82] font-semibold">Page ID</label>
-                    <input 
-                      type="text" 
-                      value={formData.pageId} 
-                      onChange={(e) => setFormData({ ...formData, pageId: e.target.value })}
-                      placeholder="e.g. 10928374656172"
-                      required
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-[#4a5a82] font-semibold">Page Name (Display Name)</label>
-                    <input 
-                      type="text" 
-                      value={formData.pageName} 
-                      onChange={(e) => setFormData({ ...formData, pageName: e.target.value })}
-                      placeholder="e.g. My Facebook Page"
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-[#4a5a82] font-semibold">Page Access Token</label>
-                    <input 
-                      type="password" 
-                      value={formData.pageAccessToken} 
-                      onChange={(e) => setFormData({ ...formData, pageAccessToken: e.target.value })}
-                      placeholder="EAAG..."
-                      required
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                </>
-              )}
+              {wizardLoading ? (
+                <div className="flex flex-col gap-4 py-8 items-center justify-center">
+                  <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
+                  <span className="text-xs text-[#4a5a82]">Syncing asset metadata...</span>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {/* STEP 1: SELECT BUSINESS */}
+                  {wizardStep === 1 && (
+                    <div className="flex flex-col gap-3">
+                      <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
+                        <span className="text-[11.5px] font-bold text-white block mb-1">Select Meta Business Account</span>
+                        <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                          Choose the Business Manager portfolio containing your Facebook Pages and WhatsApp lines.
+                        </p>
+                      </div>
 
-              {activeManualPlatform === 'instagram' && (
-                <>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-[#4a5a82] font-semibold">Instagram Business Account ID</label>
-                    <input 
-                      type="text" 
-                      value={formData.instagramBusinessAccountId} 
-                      onChange={(e) => setFormData({ ...formData, instagramBusinessAccountId: e.target.value })}
-                      placeholder="e.g. 17841400000000000"
-                      required
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ec4899]"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-[#4a5a82] font-semibold">Facebook Page ID</label>
-                    <input 
-                      type="text" 
-                      value={formData.pageId} 
-                      onChange={(e) => setFormData({ ...formData, pageId: e.target.value })}
-                      placeholder="e.g. 10928374656172"
-                      required
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ec4899]"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-[#4a5a82] font-semibold">Page Access Token</label>
-                    <input 
-                      type="password" 
-                      value={formData.pageAccessToken} 
-                      onChange={(e) => setFormData({ ...formData, pageAccessToken: e.target.value })}
-                      placeholder="EAAG..."
-                      required
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ec4899]"
-                    />
-                  </div>
-                </>
-              )}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">Meta Business Portfolio</label>
+                        <select
+                          value={selectedBusiness}
+                          onChange={(e) => handleBusinessSelect(e.target.value)}
+                          className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                        >
+                          {businesses.length === 0 ? (
+                            <option value="">No Business Portfolios Found</option>
+                          ) : (
+                            businesses.map((biz) => (
+                              <option key={biz.id} value={biz.id}>{biz.name}</option>
+                            ))
+                          )}
+                        </select>
+                      </div>
 
-              {activeManualPlatform === 'whatsapp' && (
-                <>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-[#4a5a82] font-semibold">Phone Number ID</label>
-                    <input 
-                      type="text" 
-                      value={formData.phoneNumberId} 
-                      onChange={(e) => setFormData({ ...formData, phoneNumberId: e.target.value })}
-                      placeholder="e.g. 104857293847586"
-                      required
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#25d366]"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-[#4a5a82] font-semibold">WhatsApp Business Account ID (WABA ID)</label>
-                    <input 
-                      type="text" 
-                      value={formData.whatsappBusinessAccountId} 
-                      onChange={(e) => setFormData({ ...formData, whatsappBusinessAccountId: e.target.value })}
-                      placeholder="e.g. 10928374656172"
-                      required
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#25d366]"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-[#4a5a82] font-semibold">System User Access Token</label>
-                    <input 
-                      type="password" 
-                      value={formData.systemUserAccessToken} 
-                      onChange={(e) => setFormData({ ...formData, systemUserAccessToken: e.target.value })}
-                      placeholder="EAAG..."
-                      required
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#25d366]"
-                    />
-                  </div>
-                </>
-              )}
+                      <div className="flex items-center gap-3 mt-4">
+                        <Button 
+                          type="button" 
+                          onClick={handleExitWizard} 
+                          variant="ghost" 
+                          className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                        >
+                          Cancel Setup
+                        </Button>
+                        <Button 
+                          type="button" 
+                          onClick={handleStep1Next}
+                          disabled={!selectedBusiness}
+                          className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                        >
+                          Continue
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
-              <div className="flex items-center gap-3 mt-3">
-                <Button 
-                  type="button" 
-                  onClick={() => setActiveManualPlatform(null)} 
-                  variant="ghost" 
-                  className="flex-1 text-xs text-[#4a5a82] hover:text-white"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  className={`flex-1 text-xs text-white font-semibold ${
-                    activeManualPlatform === 'facebook' ? 'bg-[#3b82f6] hover:bg-[#2563eb]' :
-                    activeManualPlatform === 'instagram' ? 'bg-[#ec4899] hover:bg-[#db2777]' :
-                    'bg-[#25d366] hover:bg-[#22c55e]'
-                  }`}
-                >
-                  Save Connection
-                </Button>
-              </div>
+                  {/* STEP 2: SELECT FACEBOOK PAGE */}
+                  {wizardStep === 2 && (
+                    <div className="flex flex-col gap-3">
+                      <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
+                        <span className="text-[11.5px] font-bold text-white block mb-1">Select Facebook Page</span>
+                        <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                          Select the page you wish to bind. This page's token will route both Messenger DMs and linked Instagram Direct messages.
+                        </p>
+                      </div>
 
-              {metaUrl && (
-                <div className="text-center mt-2 border-t border-white/5 pt-3">
-                  <a href={metaUrl} className="text-[10px] text-[#4a5a82] hover:text-[#3b82f6] hover:underline">
-                    Or click here to connect automatically via Facebook Login
-                  </a>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">Facebook Page</label>
+                        <select
+                          value={selectedPage?.id || ''}
+                          onChange={(e) => {
+                            const pg = pages.find(p => p.id === e.target.value);
+                            setSelectedPage(pg || null);
+                          }}
+                          className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                        >
+                          {pages.length === 0 ? (
+                            <option value="">No Facebook Pages Found</option>
+                          ) : (
+                            pages.map((p) => (
+                              <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-3 mt-4">
+                        <Button 
+                          type="button" 
+                          onClick={() => setWizardStep(1)} 
+                          variant="ghost" 
+                          className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                        >
+                          Back
+                        </Button>
+                        <Button 
+                          type="button" 
+                          onClick={handleStep2Next}
+                          disabled={!selectedPage}
+                          className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                        >
+                          Continue
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3: SELECT INSTAGRAM ACCOUNT */}
+                  {wizardStep === 3 && (
+                    <div className="flex flex-col gap-3">
+                      <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
+                        <span className="text-[11.5px] font-bold text-white block mb-1">Link Instagram Direct</span>
+                        <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                          Choose whether to automatically link the Instagram Business Account connected to your selected Facebook page.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {igAccounts.length === 0 ? (
+                          <div className="p-3 rounded-lg border border-dashed border-white/10 text-center text-[11px] text-[#4a5a82]">
+                            No linked Instagram Business Account detected for <strong>{selectedPage?.name}</strong>.
+                          </div>
+                        ) : (
+                          igAccounts.map((ig) => (
+                            <label 
+                              key={ig.id} 
+                              className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
+                                selectedInstagram?.id === ig.id 
+                                  ? 'bg-[#ec4899]/5 border-[#ec4899]/30' 
+                                  : 'bg-white/5 border-white/5 hover:border-white/10'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <input 
+                                  type="radio" 
+                                  name="instagram_select" 
+                                  checked={selectedInstagram?.id === ig.id}
+                                  onChange={() => setSelectedInstagram(ig)}
+                                  className="accent-[#ec4899]"
+                                />
+                                <div className="flex flex-col">
+                                  <span className="text-[12px] font-bold text-white">@{ig.username}</span>
+                                  <span className="text-[9px] text-[#4a5a82] mt-0.5">ID: {ig.id}</span>
+                                </div>
+                              </div>
+                              <i className="fa-brands fa-instagram text-[#ec4899] text-base"></i>
+                            </label>
+                          ))
+                        )}
+
+                        <label 
+                          className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
+                            !selectedInstagram 
+                              ? 'bg-white/5 border-indigo-500/30' 
+                              : 'bg-white/5 border-white/5 hover:border-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input 
+                              type="radio" 
+                              name="instagram_select" 
+                              checked={!selectedInstagram}
+                              onChange={() => setSelectedInstagram(null)}
+                              className="accent-indigo-500"
+                            />
+                            <div className="flex flex-col">
+                              <span className="text-[12px] font-bold text-white">Skip Instagram Link</span>
+                              <span className="text-[9px] text-[#4a5a82] mt-0.5">Do not connect Instagram messages.</span>
+                            </div>
+                          </div>
+                          <i className="fa-solid fa-ban text-[#4a5a82] text-sm"></i>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center gap-3 mt-4">
+                        <Button 
+                          type="button" 
+                          onClick={() => setWizardStep(2)} 
+                          variant="ghost" 
+                          className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                        >
+                          Back
+                        </Button>
+                        <Button 
+                          type="button" 
+                          onClick={handleStep3Next}
+                          className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                        >
+                          Continue
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 4: SELECT WHATSAPP BUSINESS & PHONE */}
+                  {wizardStep === 4 && (
+                    <div className="flex flex-col gap-3">
+                      <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
+                        <span className="text-[11.5px] font-bold text-white block mb-1">Link WhatsApp Cloud API</span>
+                        <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                          Select the WhatsApp Business Account (WABA) and specific phone number you wish to link.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-[#4a5a82] font-semibold">WhatsApp Business Account (WABA)</label>
+                          <select
+                            value={selectedWaba?.id || 'skip'}
+                            onChange={(e) => handleWabaChange(e.target.value)}
+                            className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                          >
+                            <option value="skip">Do not connect WhatsApp (Skip)</option>
+                            {waAccounts.map((wa) => (
+                              <option key={wa.id} value={wa.id}>{wa.name} ({wa.id})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {selectedWaba && (
+                          <div className="flex flex-col gap-1 mt-1 animate-fadeIn">
+                            <label className="text-[10px] text-[#4a5a82] font-semibold">Phone Number / Line</label>
+                            <select
+                              value={selectedPhone?.id || ''}
+                              onChange={(e) => {
+                                const phone = phoneNumbers.find(p => p.id === e.target.value);
+                                setSelectedPhone(phone || null);
+                              }}
+                              className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                            >
+                              {phoneNumbers.length === 0 ? (
+                                <option value="">No WhatsApp Phone Numbers Found</option>
+                              ) : (
+                                phoneNumbers.map((phone) => (
+                                  <option key={phone.id} value={phone.id}>
+                                    {phone.verified_name} ({phone.display_phone_number})
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 mt-6">
+                        <Button 
+                          type="button" 
+                          onClick={() => setWizardStep(3)} 
+                          variant="ghost" 
+                          className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                        >
+                          Back
+                        </Button>
+                        <Button 
+                          type="button" 
+                          onClick={handleSaveWizard}
+                          disabled={selectedWaba && !selectedPhone}
+                          className="flex-1 text-xs text-white bg-emerald-600 hover:bg-emerald-700 font-semibold"
+                        >
+                          Save Connection
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-            </form>
+            </div>
+          ) : isAdvancedMode ? (
+            /* ADVANCED MODE (MANUAL FORMS) */
+            <div className="flex flex-col gap-4">
+              <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl flex gap-3 text-xs text-amber-300">
+                <i className="fa-solid fa-triangle-exclamation mt-0.5 text-base"></i>
+                <div>
+                  <h6 className="font-bold text-[#eef2ff] mb-0.5 font-space-grotesk">For advanced users and custom integrations only.</h6>
+                  <p className="text-amber-300/70 text-[10px] leading-relaxed">Manual credential input bypasses official OAuth discovery. Verify access and tokens carefully.</p>
+                </div>
+              </div>
+
+              {activeManualPlatform ? (
+                <form onSubmit={handleManualSubmit} className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-1">
+                    <h5 className="text-xs font-bold text-white font-space-grotesk capitalize">
+                      Configure {activeManualPlatform === 'whatsapp' ? 'WhatsApp' : activeManualPlatform}
+                    </h5>
+                    <Button 
+                      type="button" 
+                      onClick={() => setActiveManualPlatform(null)} 
+                      variant="ghost" 
+                      className="h-6 px-2 text-[10px] text-[#4a5a82] hover:text-white"
+                    >
+                      Cancel Setup
+                    </Button>
+                  </div>
+
+                  {activeManualPlatform === 'facebook' && (
+                    <>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">Page ID</label>
+                        <input 
+                          type="text" 
+                          value={formData.pageId} 
+                          onChange={(e) => setFormData({ ...formData, pageId: e.target.value })}
+                          placeholder="e.g. 10928374656172"
+                          required
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">Page Name (Display Name)</label>
+                        <input 
+                          type="text" 
+                          value={formData.pageName} 
+                          onChange={(e) => setFormData({ ...formData, pageName: e.target.value })}
+                          placeholder="e.g. My Facebook Page"
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">Page Access Token</label>
+                        <input 
+                          type="password" 
+                          value={formData.pageAccessToken} 
+                          onChange={(e) => setFormData({ ...formData, pageAccessToken: e.target.value })}
+                          placeholder="EAAG..."
+                          required
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {activeManualPlatform === 'instagram' && (
+                    <>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">Instagram Business Account ID</label>
+                        <input 
+                          type="text" 
+                          value={formData.instagramBusinessAccountId} 
+                          onChange={(e) => setFormData({ ...formData, instagramBusinessAccountId: e.target.value })}
+                          placeholder="e.g. 17841400000000000"
+                          required
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ec4899]"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">Facebook Page ID</label>
+                        <input 
+                          type="text" 
+                          value={formData.pageId} 
+                          onChange={(e) => setFormData({ ...formData, pageId: e.target.value })}
+                          placeholder="e.g. 10928374656172"
+                          required
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ec4899]"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">Page Access Token</label>
+                        <input 
+                          type="password" 
+                          value={formData.pageAccessToken} 
+                          onChange={(e) => setFormData({ ...formData, pageAccessToken: e.target.value })}
+                          placeholder="EAAG..."
+                          required
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ec4899]"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {activeManualPlatform === 'whatsapp' && (
+                    <>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">Phone Number ID</label>
+                        <input 
+                          type="text" 
+                          value={formData.phoneNumberId} 
+                          onChange={(e) => setFormData({ ...formData, phoneNumberId: e.target.value })}
+                          placeholder="e.g. 104928374656172"
+                          required
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#25d366]"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">WhatsApp Business Account ID (WABA)</label>
+                        <input 
+                          type="text" 
+                          value={formData.whatsappBusinessAccountId} 
+                          onChange={(e) => setFormData({ ...formData, whatsappBusinessAccountId: e.target.value })}
+                          placeholder="e.g. 293847561029384"
+                          required
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#25d366]"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#4a5a82] font-semibold">System User Access Token</label>
+                        <input 
+                          type="password" 
+                          value={formData.systemUserAccessToken} 
+                          onChange={(e) => setFormData({ ...formData, systemUserAccessToken: e.target.value })}
+                          placeholder="EAAG..."
+                          required
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#25d366]"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <Button 
+                    type="submit" 
+                    className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl mt-2"
+                  >
+                    Save Advanced Connection
+                  </Button>
+                </form>
+              ) : (
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={() => setActiveManualPlatform('facebook')}
+                    className="p-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 text-center text-xs font-bold text-white transition-all"
+                  >
+                    <i className="fa-brands fa-facebook-messenger text-xl text-[#3b82f6]"></i>
+                    Messenger
+                  </button>
+                  <button
+                    onClick={() => setActiveManualPlatform('instagram')}
+                    className="p-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 text-center text-xs font-bold text-white transition-all"
+                  >
+                    <i className="fa-brands fa-instagram text-xl text-[#ec4899]"></i>
+                    Instagram
+                  </button>
+                  <button
+                    onClick={() => setActiveManualPlatform('whatsapp')}
+                    className="p-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 text-center text-xs font-bold text-white transition-all"
+                  >
+                    <i className="fa-brands fa-whatsapp text-xl text-[#25d366]"></i>
+                    WhatsApp
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
-            <>
-              {/* Facebook Messenger */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-lg bg-[#3b82f6]/10 flex items-center justify-center border border-[#3b82f6]/20">
-                    <i className="fa-brands fa-facebook-messenger text-lg text-[#3b82f6]"></i>
+            /* STANDARD OAUTH-FIRST MODE */
+            <div className="flex flex-col gap-4">
+              {!isAnyConnected ? (
+                /* Empty state, connect main button */
+                <div className="py-6 flex flex-col items-center justify-center text-center px-4">
+                  <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
+                    <i className="fa-brands fa-meta text-2xl text-indigo-400"></i>
                   </div>
-                  <div>
-                    <h6 className="text-[13.5px] font-bold text-white font-space-grotesk">Facebook Messenger</h6>
-                    {fbConn ? (
-                      <p className="text-[11px] text-[#10b981] font-medium mt-0.5 flex items-center gap-1">
-                        <i className="fa-solid fa-circle text-[6px]"></i> Connected as {fbConn.credentials?.page_name || 'Connected Page'}
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-[#4a5a82] mt-0.5">Not connected</p>
-                    )}
+                  <h5 className="text-base font-bold text-[#eef2ff] mb-1 font-space-grotesk">OAuth-First Meta Onboarding</h5>
+                  <p className="text-[11.5px] text-[#4a5a82] max-w-sm mb-6 leading-relaxed">
+                    Connect your Meta Business Account once to automatically discover and integrate Facebook Pages, Instagram DM endpoints, and WhatsApp Cloud APIs.
+                  </p>
+                  <Button
+                    asChild
+                    className="w-full max-w-xs h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-center gap-2 rounded-xl"
+                  >
+                    <a href={metaUrl}>
+                      <i className="fa-brands fa-facebook text-lg"></i>
+                      Connect Meta Account
+                    </a>
+                  </Button>
+                </div>
+              ) : (
+                /* Connected Assets Display */
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <h5 className="text-[12px] font-bold uppercase tracking-wider text-indigo-400 font-space-grotesk">Connected Assets</h5>
+                    <Button
+                      asChild
+                      className="h-7 px-2.5 text-[10px] bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-600/20"
+                    >
+                      <a href={metaUrl}>
+                        <i className="fa-solid fa-arrows-rotate me-1.5"></i>
+                        Reconnect Account
+                      </a>
+                    </Button>
                   </div>
-                </div>
-                <div>
-                  {fbConn ? (
-                    <Button 
-                      onClick={() => handleDisconnect('facebook')}
-                      className="h-8 px-3.5 text-[11px] font-bold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400"
-                    >
-                      Disconnect
-                    </Button>
-                  ) : (
-                    <Button 
-                      onClick={() => {
-                        setFormData({
-                          pageId: '',
-                          pageName: '',
-                          pageAccessToken: '',
-                          instagramBusinessAccountId: '',
-                          phoneNumberId: '',
-                          whatsappBusinessAccountId: '',
-                          systemUserAccessToken: ''
-                        });
-                        setActiveManualPlatform('facebook');
-                      }}
-                      className="h-8 px-3.5 text-[11px] font-bold bg-[#3b82f6] hover:bg-[#2563eb] text-white"
-                    >
-                      Connect
-                    </Button>
-                  )}
-                </div>
-              </div>
 
-              {/* Instagram Direct */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-lg bg-[#ec4899]/10 flex items-center justify-center border border-[#ec4899]/20">
-                    <i className="fa-brands fa-instagram text-lg text-[#ec4899]"></i>
-                  </div>
-                  <div>
-                    <h6 className="text-[13.5px] font-bold text-white font-space-grotesk">Instagram DM</h6>
-                    {igConn ? (
-                      <p className="text-[11px] text-[#10b981] font-medium mt-0.5 flex items-center gap-1">
-                        <i className="fa-solid fa-circle text-[6px]"></i> Connected as @{igConn.credentials?.instagram_username || 'IG Account'}
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-[#4a5a82] mt-0.5">Not connected</p>
+                  {/* Facebook Asset */}
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <i className="fa-brands fa-facebook-messenger text-sm text-[#3b82f6]"></i>
+                        <span className="text-[11.5px] font-bold text-white">Facebook Messenger</span>
+                      </div>
+                      {fbConn ? (
+                        <div className={`px-2 py-0.5 rounded text-[9px] font-bold border flex items-center gap-1.5 ${getHealthBadge(fbConn.credentials?.health_status, fbConn.status).color}`}>
+                          <i className={getHealthBadge(fbConn.credentials?.health_status, fbConn.status).icon}></i>
+                          {getHealthBadge(fbConn.credentials?.health_status, fbConn.status).label}
+                        </div>
+                      ) : (
+                        <span className="text-[9px] text-[#4a5a82] font-semibold">Not Linked</span>
+                      )}
+                    </div>
+                    {fbConn && (
+                      <div className="flex items-center justify-between mt-1 pl-6">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] text-white/90 font-bold">{fbConn.credentials?.page_name || 'Facebook Page'}</span>
+                          <span className="text-[9px] text-[#4a5a82] mt-0.5">ID: {fbConn.credentials?.page_id || 'N/A'}</span>
+                        </div>
+                        <Button
+                          onClick={() => handleDisconnect('facebook')}
+                          className="h-6 px-2 text-[9px] font-bold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400"
+                        >
+                          Disconnect
+                        </Button>
+                      </div>
                     )}
                   </div>
-                </div>
-                <div>
-                  {igConn ? (
-                    <Button 
-                      onClick={() => handleDisconnect('instagram')}
-                      className="h-8 px-3.5 text-[11px] font-bold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400"
-                    >
-                      Disconnect
-                    </Button>
-                  ) : (
-                    <Button 
-                      onClick={() => {
-                        setFormData({
-                          pageId: '',
-                          pageName: '',
-                          pageAccessToken: '',
-                          instagramBusinessAccountId: '',
-                          phoneNumberId: '',
-                          whatsappBusinessAccountId: '',
-                          systemUserAccessToken: ''
-                        });
-                        setActiveManualPlatform('instagram');
-                      }}
-                      className="h-8 px-3.5 text-[11px] font-bold bg-[#ec4899] hover:bg-[#db2777] text-white"
-                    >
-                      Connect
-                    </Button>
-                  )}
-                </div>
-              </div>
 
-              {/* WhatsApp Business */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-lg bg-[#25d366]/10 flex items-center justify-center border border-[#25d366]/20">
-                    <i className="fa-brands fa-whatsapp text-lg text-[#25d366]"></i>
+                  {/* Instagram Asset */}
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <i className="fa-brands fa-instagram text-sm text-[#ec4899]"></i>
+                        <span className="text-[11.5px] font-bold text-white">Instagram Direct</span>
+                      </div>
+                      {igConn ? (
+                        <div className={`px-2 py-0.5 rounded text-[9px] font-bold border flex items-center gap-1.5 ${getHealthBadge(igConn.credentials?.health_status, igConn.status).color}`}>
+                          <i className={getHealthBadge(igConn.credentials?.health_status, igConn.status).icon}></i>
+                          {getHealthBadge(igConn.credentials?.health_status, igConn.status).label}
+                        </div>
+                      ) : (
+                        <span className="text-[9px] text-[#4a5a82] font-semibold">Not Linked</span>
+                      )}
+                    </div>
+                    {igConn && (
+                      <div className="flex items-center justify-between mt-1 pl-6">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] text-white/90 font-bold">@{igConn.credentials?.instagram_username || 'ig_account'}</span>
+                          <span className="text-[9px] text-[#4a5a82] mt-0.5">ID: {igConn.credentials?.instagram_business_account_id || 'N/A'}</span>
+                        </div>
+                        <Button
+                          onClick={() => handleDisconnect('instagram')}
+                          className="h-6 px-2 text-[9px] font-bold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400"
+                        >
+                          Disconnect
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <h6 className="text-[13.5px] font-bold text-white font-space-grotesk">WhatsApp Cloud API</h6>
-                    {waConn ? (
-                      <p className="text-[11px] text-[#10b981] font-medium mt-0.5 flex items-center gap-1">
-                        <i className="fa-solid fa-circle text-[6px]"></i> Connected WABA Line
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-[#4a5a82] mt-0.5">Not connected</p>
+
+                  {/* WhatsApp Asset */}
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <i className="fa-brands fa-whatsapp text-sm text-[#25d366]"></i>
+                        <span className="text-[11.5px] font-bold text-white">WhatsApp Cloud API</span>
+                      </div>
+                      {waConn ? (
+                        <div className={`px-2 py-0.5 rounded text-[9px] font-bold border flex items-center gap-1.5 ${getHealthBadge(waConn.credentials?.health_status, waConn.status).color}`}>
+                          <i className={getHealthBadge(waConn.credentials?.health_status, waConn.status).icon}></i>
+                          {getHealthBadge(waConn.credentials?.health_status, waConn.status).label}
+                        </div>
+                      ) : (
+                        <span className="text-[9px] text-[#4a5a82] font-semibold">Not Linked</span>
+                      )}
+                    </div>
+                    {waConn && (
+                      <div className="flex items-center justify-between mt-1 pl-6">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] text-white/90 font-bold">{waConn.credentials?.whatsapp_business_name || 'WhatsApp Line'}</span>
+                          <span className="text-[9px] text-[#4a5a82] mt-0.5">Num: {waConn.credentials?.whatsapp_phone_number || 'N/A'}</span>
+                        </div>
+                        <Button
+                          onClick={() => handleDisconnect('whatsapp')}
+                          className="h-6 px-2 text-[9px] font-bold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400"
+                        >
+                          Disconnect
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
-                <div>
-                  {waConn ? (
-                    <Button 
-                      onClick={() => handleDisconnect('whatsapp')}
-                      className="h-8 px-3.5 text-[11px] font-bold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400"
-                    >
-                      Disconnect
-                    </Button>
-                  ) : (
-                    <Button 
-                      onClick={() => {
-                        setFormData({
-                          pageId: '',
-                          pageName: '',
-                          pageAccessToken: '',
-                          instagramBusinessAccountId: '',
-                          phoneNumberId: '',
-                          whatsappBusinessAccountId: '',
-                          systemUserAccessToken: ''
-                        });
-                        setActiveManualPlatform('whatsapp');
-                      }}
-                      className="h-8 px-3.5 text-[11px] font-bold bg-[#25d366] hover:bg-[#22c55e] text-white"
-                    >
-                      Connect
-                    </Button>
-                  )}
-                </div>
-              </div>
+              )}
 
               {/* General details / Last sync */}
               <div className="mt-2 p-3 rounded-lg bg-white/5 text-[10px] text-[#4a5a82] font-medium flex items-center justify-between">
-                <span>Last Sync State</span>
+                <span>Asset Synced State</span>
                 <span className="text-[#eef2ff]">
                   {connections.length > 0 && connections[0].last_sync_at
                     ? format(new Date(connections[0].last_sync_at), 'MMM dd, yyyy hh:mm a')
                     : 'Never synced'}
                 </span>
               </div>
-            </>
+            </div>
           )}
         </div>
       </DialogContent>

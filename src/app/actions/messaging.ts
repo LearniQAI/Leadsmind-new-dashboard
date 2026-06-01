@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
-import { encrypt } from '@/lib/encryption';
+import { encrypt, decrypt } from '@/lib/encryption';
 
 const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
 
@@ -14,7 +14,7 @@ export async function getMetaAuthUrl() {
 	const redirectBase = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 	const metaRedirectUri = `${redirectBase}/api/auth/meta/callback`;
 
-	if (!appId || appId === 'placeholder') {
+	if (!appId || appId === 'placeholder' || !process.env.META_APP_ID) {
 		return `${metaRedirectUri}?code=mock_code&state=${workspaceId}`;
 	}
 
@@ -22,10 +22,65 @@ export async function getMetaAuthUrl() {
 	return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${workspaceId}`;
 }
 
+async function validateMetaPlatformCredentials(platform: string, data: any) {
+  const token = platform === 'whatsapp' ? data.systemUserAccessToken : data.pageAccessToken;
+  const id = platform === 'facebook' ? data.pageId : 
+             platform === 'instagram' ? data.instagramBusinessAccountId : 
+             data.phoneNumberId;
+
+  if (!token || !id) {
+    throw new Error('Required configuration fields are missing.');
+  }
+
+  // If it's a mock token or mock ID, skip validation and return mock values
+  if (token.startsWith('mock_') || id.startsWith('mock_')) {
+    console.log(`[Validation] Skipping validation for mock connection on ${platform}`);
+    return {
+      name: platform === 'facebook' ? (data.pageName || 'LeadsMind Page') :
+            platform === 'instagram' ? 'ig_leadsmind' : 'LeadsMind WhatsApp Business',
+      extra: platform === 'whatsapp' ? '+1 (555) 019-2834' : undefined
+    };
+  }
+
+  try {
+    if (platform === 'facebook') {
+      const response = await fetch(`https://graph.facebook.com/v18.0/${id}?fields=name&access_token=${token}`);
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.error?.message || 'Page validation failed.');
+      }
+      return { name: resData.name };
+    } else if (platform === 'instagram') {
+      const response = await fetch(`https://graph.facebook.com/v18.0/${id}?fields=username&access_token=${token}`);
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.error?.message || 'Instagram validation failed.');
+      }
+      return { name: resData.username };
+    } else if (platform === 'whatsapp') {
+      const response = await fetch(`https://graph.facebook.com/v18.0/${id}?fields=verified_name,display_phone_number&access_token=${token}`);
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.error?.message || 'WhatsApp validation failed.');
+      }
+      return { 
+        name: resData.verified_name || 'WhatsApp Business Line',
+        extra: resData.display_phone_number
+      };
+    }
+    throw new Error('Unsupported platform validation');
+  } catch (err: any) {
+    throw new Error(`Meta API Validation Failed: ${err.message}`);
+  }
+}
+
 export async function connectPlatformManually(platform: string, data: any) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
+
+    // 1. Validate credentials against Meta Graph API
+    const validation = await validateMetaPlatformCredentials(platform, data);
 
     const supabase = await createServerClient();
     let credentials: any = {};
@@ -33,21 +88,27 @@ export async function connectPlatformManually(platform: string, data: any) {
     if (platform === 'facebook') {
       credentials = {
         page_id: data.pageId,
-        page_name: data.pageName || 'LeadsMind Page',
+        page_name: validation.name || data.pageName || 'LeadsMind Page',
         page_access_token_encrypted: encrypt(data.pageAccessToken),
-        user_access_token_encrypted: encrypt(data.userAccessToken || data.pageAccessToken)
+        user_access_token_encrypted: encrypt(data.userAccessToken || data.pageAccessToken),
+        health_status: 'connected'
       };
     } else if (platform === 'instagram') {
       credentials = {
         instagram_business_account_id: data.instagramBusinessAccountId,
+        instagram_username: validation.name || 'IG Account',
         page_id: data.pageId,
-        page_access_token_encrypted: encrypt(data.pageAccessToken)
+        page_access_token_encrypted: encrypt(data.pageAccessToken),
+        health_status: 'connected'
       };
     } else if (platform === 'whatsapp') {
       credentials = {
         phone_number_id: data.phoneNumberId,
         whatsapp_business_account_id: data.whatsappBusinessAccountId,
-        system_user_access_token_encrypted: encrypt(data.systemUserAccessToken)
+        whatsapp_business_name: validation.name || 'WhatsApp Business Line',
+        whatsapp_phone_number: validation.extra || 'WhatsApp Number',
+        system_user_access_token_encrypted: encrypt(data.systemUserAccessToken),
+        health_status: 'connected'
       };
     } else {
       return { error: 'Invalid platform' };
@@ -496,4 +557,325 @@ export async function updateContactConsent(contactId: string, optedIn: boolean, 
  } catch (error: any) {
   return { error: error.message };
  }
+}
+
+export async function getMetaOauthToken() {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return null;
+
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('platform_connections')
+      .select('credentials, status')
+      .eq('workspace_id', workspaceId)
+      .eq('platform', 'facebook')
+      .maybeSingle();
+
+    if (error || !data) {
+      return null;
+    }
+
+    const creds = data.credentials as any;
+    if (!creds || (!creds.user_access_token_encrypted && !creds.is_mock)) {
+      return null;
+    }
+
+    const isMock = !!creds.is_mock;
+    const token = creds.user_access_token_encrypted ? decrypt(creds.user_access_token_encrypted) : '';
+
+    return {
+      token,
+      isMock,
+      status: data.status
+    };
+  } catch (err) {
+    console.error('[messaging actions] getMetaOauthToken error:', err);
+    return null;
+  }
+}
+
+export async function fetchMetaBusinesses() {
+  const oauth = await getMetaOauthToken();
+  if (!oauth) throw new Error('Meta account not linked or session expired');
+
+  if (oauth.isMock) {
+    return [
+      { id: 'mock_biz_1', name: 'LeadsMind Corporate Business' },
+      { id: 'mock_biz_2', name: 'LeadsMind Retail Business' }
+    ];
+  }
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v18.0/me/businesses?access_token=${oauth.token}`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Failed to fetch businesses');
+    }
+    const list = data.data || [];
+    return [
+      { id: 'personal', name: 'Personal Profile (No Business)' },
+      ...list
+    ];
+  } catch (err: any) {
+    console.error('[Meta API] Error fetching businesses:', err);
+    return [{ id: 'personal', name: 'Personal Profile (No Business)' }];
+  }
+}
+
+export async function fetchMetaPages(businessId: string) {
+  const oauth = await getMetaOauthToken();
+  if (!oauth) throw new Error('Meta account not linked or session expired');
+
+  if (oauth.isMock) {
+    if (businessId === 'mock_biz_1') {
+      return [
+        { id: 'mock_page_1', name: 'LeadsMind Main Page', access_token: 'mock_fb_page_token_1' },
+        { id: 'mock_page_2', name: 'LeadsMind Support Page', access_token: 'mock_fb_page_token_2' }
+      ];
+    } else if (businessId === 'mock_biz_2') {
+      return [
+        { id: 'mock_page_3', name: 'LeadsMind Retail Page', access_token: 'mock_fb_page_token_3' }
+      ];
+    } else {
+      return [
+        { id: 'mock_page_4', name: 'Personal Blog Page', access_token: 'mock_fb_page_token_4' }
+      ];
+    }
+  }
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v18.0/me/accounts?access_token=${oauth.token}&limit=100`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Failed to fetch Facebook pages');
+    }
+    const list = data.data || [];
+    return list.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      access_token: p.access_token
+    }));
+  } catch (err: any) {
+    console.error('[Meta API] Error fetching pages:', err);
+    throw err;
+  }
+}
+
+export async function fetchMetaInstagramAccounts(pageId: string, pageAccessToken: string) {
+  const oauth = await getMetaOauthToken();
+  if (!oauth) throw new Error('Meta account not linked or session expired');
+
+  if (oauth.isMock) {
+    const mockAccounts: Record<string, { id: string, username: string }[]> = {
+      'mock_page_1': [{ id: 'mock_ig_1', username: 'leadsmind_main' }],
+      'mock_page_2': [{ id: 'mock_ig_2', username: 'leadsmind_support' }],
+      'mock_page_3': [{ id: 'mock_ig_3', username: 'leadsmind_retail' }]
+    };
+    return mockAccounts[pageId] || [{ id: 'mock_ig_4', username: 'personal_blog_ig' }];
+  }
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v18.0/${pageId}?fields=instagram_business_account&access_token=${pageAccessToken}`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Failed to fetch Instagram account details');
+    }
+    
+    const igId = data.instagram_business_account?.id;
+    if (!igId) return [];
+
+    const usernameRes = await fetch(`https://graph.facebook.com/v18.0/${igId}?fields=username&access_token=${pageAccessToken}`);
+    const usernameData = await usernameRes.json();
+    const username = usernameData.username || 'Instagram Business Account';
+
+    return [{ id: igId, username }];
+  } catch (err: any) {
+    console.error('[Meta API] Error fetching Instagram accounts:', err);
+    return [];
+  }
+}
+
+export async function fetchMetaWhatsAppAccounts(businessId: string) {
+  const oauth = await getMetaOauthToken();
+  if (!oauth) throw new Error('Meta account not linked or session expired');
+
+  if (oauth.isMock) {
+    if (businessId === 'mock_biz_1') {
+      return [{ id: 'mock_waba_1', name: 'LeadsMind Corporate WhatsApp' }];
+    } else if (businessId === 'mock_biz_2') {
+      return [{ id: 'mock_waba_2', name: 'LeadsMind Retail WhatsApp' }];
+    } else {
+      return [{ id: 'mock_waba_3', name: 'Personal Profile WABA' }];
+    }
+  }
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v18.0/me/whatsapp_business_accounts?access_token=${oauth.token}`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Failed to fetch WhatsApp Business Accounts');
+    }
+    return (data.data || []).map((w: any) => ({
+      id: w.id,
+      name: w.name
+    }));
+  } catch (err: any) {
+    console.error('[Meta API] Error fetching WhatsApp Business Accounts:', err);
+    return [];
+  }
+}
+
+export async function fetchWhatsAppPhoneNumbers(wabaId: string) {
+  const oauth = await getMetaOauthToken();
+  if (!oauth) throw new Error('Meta account not linked or session expired');
+
+  if (oauth.isMock) {
+    if (wabaId === 'mock_waba_1') {
+      return [{ id: 'mock_phone_1', display_phone_number: '+1 (555) 019-2834', verified_name: 'LeadsMind Corporate WhatsApp Line' }];
+    } else if (wabaId === 'mock_waba_2') {
+      return [{ id: 'mock_phone_2', display_phone_number: '+1 (555) 019-9999', verified_name: 'LeadsMind Retail WhatsApp Line' }];
+    } else {
+      return [{ id: 'mock_phone_3', display_phone_number: '+1 (555) 019-1111', verified_name: 'Personal WhatsApp Line' }];
+    }
+  }
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v18.0/${wabaId}/phone_numbers?access_token=${oauth.token}`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Failed to fetch WhatsApp Phone Numbers');
+    }
+    return (data.data || []).map((p: any) => ({
+      id: p.id,
+      display_phone_number: p.display_phone_number,
+      verified_name: p.verified_name || 'WhatsApp Business Line'
+    }));
+  } catch (err: any) {
+    console.error('[Meta API] Error fetching WhatsApp Phone Numbers:', err);
+    return [];
+  }
+}
+
+export async function saveMetaConnections(data: {
+  pageId: string;
+  pageName: string;
+  pageAccessToken: string;
+  instagramBusinessAccountId?: string | null;
+  instagramUsername?: string | null;
+  whatsappBusinessAccountId?: string | null;
+  whatsappBusinessName?: string | null;
+  phoneNumberId?: string | null;
+  whatsappPhoneNumber?: string | null;
+}) {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const oauth = await getMetaOauthToken();
+    if (!oauth) return { error: 'OAuth session not found. Please reconnect.' };
+
+    const supabase = await createServerClient();
+
+    // 1. Validate Facebook Page access before persisting
+    if (!oauth.isMock) {
+      try {
+        const pageRes = await fetch(`https://graph.facebook.com/v18.0/${data.pageId}?fields=name&access_token=${data.pageAccessToken}`);
+        if (!pageRes.ok) {
+          const errData = await pageRes.json();
+          throw new Error(errData.error?.message || 'Invalid Facebook Page access');
+        }
+      } catch (err: any) {
+        return { error: `Facebook Page Validation Failed: ${err.message}` };
+      }
+    }
+
+    // 2. Validate Instagram access (if selected) before persisting
+    if (data.instagramBusinessAccountId && !oauth.isMock) {
+      try {
+        const igRes = await fetch(`https://graph.facebook.com/v18.0/${data.instagramBusinessAccountId}?fields=username&access_token=${data.pageAccessToken}`);
+        if (!igRes.ok) {
+          const errData = await igRes.json();
+          throw new Error(errData.error?.message || 'Invalid Instagram account access');
+        }
+      } catch (err: any) {
+        return { error: `Instagram Validation Failed: ${err.message}` };
+      }
+    }
+
+    // 3. Validate WhatsApp access (if selected) before persisting
+    if (data.phoneNumberId && !oauth.isMock) {
+      try {
+        const waRes = await fetch(`https://graph.facebook.com/v18.0/${data.phoneNumberId}?fields=verified_name,display_phone_number&access_token=${oauth.token}`);
+        if (!waRes.ok) {
+          const errData = await waRes.json();
+          throw new Error(errData.error?.message || 'Invalid WhatsApp Phone Number access');
+        }
+      } catch (err: any) {
+        return { error: `WhatsApp Validation Failed: ${err.message}` };
+      }
+    }
+
+    // Persist connections!
+    // A. Facebook Connection
+    const { error: fbErr } = await supabase.from('platform_connections').upsert({
+      workspace_id: workspaceId,
+      platform: 'facebook',
+      credentials: {
+        page_id: data.pageId,
+        page_name: data.pageName,
+        page_access_token_encrypted: encrypt(data.pageAccessToken),
+        user_access_token_encrypted: encrypt(oauth.token),
+        health_status: 'connected'
+      },
+      status: 'connected',
+      last_sync_at: new Date().toISOString()
+    }, { onConflict: 'workspace_id,platform' });
+    if (fbErr) throw fbErr;
+
+    // B. Instagram Connection
+    if (data.instagramBusinessAccountId) {
+      const { error: igErr } = await supabase.from('platform_connections').upsert({
+        workspace_id: workspaceId,
+        platform: 'instagram',
+        credentials: {
+          instagram_business_account_id: data.instagramBusinessAccountId,
+          instagram_username: data.instagramUsername || 'IG Account',
+          page_id: data.pageId,
+          page_access_token_encrypted: encrypt(data.pageAccessToken),
+          health_status: 'connected'
+        },
+        status: 'connected',
+        last_sync_at: new Date().toISOString()
+      }, { onConflict: 'workspace_id,platform' });
+      if (igErr) throw igErr;
+    } else {
+      await supabase.from('platform_connections').delete().eq('workspace_id', workspaceId).eq('platform', 'instagram');
+    }
+
+    // C. WhatsApp Connection
+    if (data.phoneNumberId && data.whatsappBusinessAccountId) {
+      const { error: waErr } = await supabase.from('platform_connections').upsert({
+        workspace_id: workspaceId,
+        platform: 'whatsapp',
+        credentials: {
+          phone_number_id: data.phoneNumberId,
+          whatsapp_business_account_id: data.whatsappBusinessAccountId,
+          whatsapp_business_name: data.whatsappBusinessName || 'WhatsApp Business Line',
+          whatsapp_phone_number: data.whatsappPhoneNumber || 'WhatsApp Number',
+          system_user_access_token_encrypted: encrypt(oauth.token),
+          health_status: 'connected'
+        },
+        status: 'connected',
+        last_sync_at: new Date().toISOString()
+      }, { onConflict: 'workspace_id,platform' });
+      if (waErr) throw waErr;
+    } else {
+      await supabase.from('platform_connections').delete().eq('workspace_id', workspaceId).eq('platform', 'whatsapp');
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to save Meta connections' };
+  }
 }

@@ -25,12 +25,24 @@ export function IntegrationsList() {
   fetchPlatforms();
  }, [isOpen]);
 
+ useEffect(() => {
+  if (typeof window !== 'undefined') {
+   const params = new URLSearchParams(window.location.search);
+   if (params.get('meta_oauth') === '1') {
+    setIsOpen(true);
+    // Clean up URL parameter to avoid reopening on refresh
+    const newUrl = window.location.pathname + '?tab=integrations';
+    window.history.replaceState({}, '', newUrl);
+   }
+  }
+ }, []);
+
  return (
   <>
    <div className="card__wrapper bg-black border-white/10">
     <div className="card__title-wrap flex flex-col sm:flex-row items-start sm:items-center justify-between mb-[20px] gap-4">
      <div>
-      <h5 className="card__heading-title text-white">Platform Integrations</h5>
+      <h5 className="card__heading-title text-white">Messaging Connections</h5>
       <p className="text-white/50 small mb-0">Connect external messaging platforms to route messages into your CRM.</p>
      </div>
      <button 

@@ -110,7 +110,7 @@ export default function SettingsClient({
     { id: 'workspace', label: 'Workspace', icon: Globe, description: 'Neural configuration & identity' },
     { id: 'team', label: 'Team Node', icon: Users, description: 'Manage access protocols' },
     { id: 'branding', label: 'Branding', icon: Palette, description: 'Interface identity markers' },
-    { id: 'integrations', label: 'Integrations', icon: Zap, description: 'Connect Meta & platform channels' },
+    { id: 'integrations', label: 'Messaging Connections', icon: Zap, description: 'Connect Meta & platform channels' },
     { id: 'ai', label: 'AI Voice Profile', icon: Sparkles, description: 'Neural voice & templates' },
     { id: 'ai-credits', label: 'AI Credit Ledger', icon: Brain, description: 'Token balance & consumption' },
     { id: 'domains', label: 'Domains', icon: ShieldCheck, description: 'Email verification & security' },
