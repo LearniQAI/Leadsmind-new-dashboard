@@ -23,7 +23,7 @@ export default async function ConversationsPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <Link href="/settings">
+              <Link href="/settings?tab=integrations">
                 <button className="h-9 px-4 rounded-[8px] bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[13px] font-semibold font-dm-sans flex items-center gap-2 transition-all">
                   <i className="fa-solid fa-gear text-[13px] text-[#4a5a82]"></i>
                   Settings

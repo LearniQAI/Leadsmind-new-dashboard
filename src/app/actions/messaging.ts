@@ -64,6 +64,19 @@ export async function disconnectPlatform(platform: string) {
 }
 
 
+async function resolveConversationIds(conversationId: string): Promise<string[]> {
+  if (!conversationId.startsWith('contact:')) {
+    return [conversationId];
+  }
+  const contactId = conversationId.split(':')[1];
+  const supabase = await createServerClient();
+  const { data } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('contact_id', contactId);
+  return data?.map(c => c.id) || [];
+}
+
 export async function getConversations() {
  try {
   const workspaceId = await getCurrentWorkspaceId();
@@ -98,6 +111,9 @@ export async function getConversations() {
 }
 
 export async function sendMessage(conversationId: string, content: string) {
+  const ids = await resolveConversationIds(conversationId);
+  const targetConvId = ids[0] || conversationId;
+
  try {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
@@ -107,7 +123,7 @@ export async function sendMessage(conversationId: string, content: string) {
    .from('messages')
    .insert({
     workspace_id: workspaceId,
-    conversation_id: conversationId,
+    conversation_id: targetConvId,
     direction: 'outbound',
     content,
     status: 'sending'
@@ -118,13 +134,13 @@ export async function sendMessage(conversationId: string, content: string) {
   if (error) throw error;
   
   // Update conversation last_message_at
-  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
+  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids);
 
   // If it's an email platform, send the actual email via Resend
   const { data: conv } = await supabase
    .from('conversations')
    .select('platform, external_thread_id, contacts(email, phone)')
-   .eq('id', conversationId)
+   .eq('id', targetConvId)
    .single();
 
   let messageFailed = false;
@@ -269,6 +285,8 @@ export async function sendMessage(conversationId: string, content: string) {
 }
 
 export async function sendInternalNote(conversationId: string, content: string, senderHandle = 'Agent') {
+  const ids = await resolveConversationIds(conversationId);
+  const targetConvId = ids[0] || conversationId;
  try {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
@@ -278,7 +296,7 @@ export async function sendInternalNote(conversationId: string, content: string, 
    .from('messages')
    .insert({
     workspace_id: workspaceId,
-    conversation_id: conversationId,
+    conversation_id: targetConvId,
     direction: 'note',
     content,
     status: 'sent',
@@ -290,7 +308,7 @@ export async function sendInternalNote(conversationId: string, content: string, 
   if (error) throw error;
 
   // Update conversation last_message_at
-  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
+  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids);
 
   return { success: true, data: msgData };
  } catch (error: any) {
@@ -299,12 +317,14 @@ export async function sendInternalNote(conversationId: string, content: string, 
 }
 
 export async function updateConversationAssignment(conversationId: string, assignedTo: string | null) {
+  const ids = await resolveConversationIds(conversationId);
+  if (ids.length === 0) return { error: 'No conversations found' };
  try {
   const supabase = await createServerClient();
   const { error } = await supabase
    .from('conversations')
    .update({ assigned_to: assignedTo })
-   .eq('id', conversationId);
+   .in('id', ids);
 
   if (error) throw error;
   return { success: true };
@@ -314,12 +334,14 @@ export async function updateConversationAssignment(conversationId: string, assig
 }
 
 export async function updateConversationStatus(conversationId: string, status: string) {
+  const ids = await resolveConversationIds(conversationId);
+  if (ids.length === 0) return { error: 'No conversations found' };
  try {
   const supabase = await createServerClient();
   const { error } = await supabase
    .from('conversations')
    .update({ status })
-   .eq('id', conversationId);
+   .in('id', ids);
 
   if (error) throw error;
   return { success: true };
@@ -329,12 +351,14 @@ export async function updateConversationStatus(conversationId: string, status: s
 }
 
 export async function updateConversationTags(conversationId: string, tags: string[]) {
+  const ids = await resolveConversationIds(conversationId);
+  if (ids.length === 0) return { error: 'No conversations found' };
  try {
   const supabase = await createServerClient();
   const { error } = await supabase
    .from('conversations')
    .update({ tags })
-   .eq('id', conversationId);
+   .in('id', ids);
 
   if (error) throw error;
   return { success: true };
