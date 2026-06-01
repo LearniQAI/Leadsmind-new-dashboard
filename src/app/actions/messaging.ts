@@ -8,10 +8,20 @@ import { MetaAdapter } from '@/lib/meta/MetaAdapter';
 const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
 
 export async function getMetaAuthUrl() {
- const appId = process.env.META_APP_ID;
- const scope = 'pages_messaging,pages_manage_metadata,instagram_manage_messages';
- return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${REDIRECT_URI}&scope=${scope}&response_type=code`;
+	const workspaceId = await getCurrentWorkspaceId();
+	const appId = process.env.META_APP_ID;
+	const redirectBase = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+	const metaRedirectUri = `${redirectBase}/api/auth/meta/callback`;
+
+	if (!appId || appId === 'placeholder') {
+		return `${metaRedirectUri}?code=mock_code&state=${workspaceId}`;
+	}
+
+	const scope = 'pages_messaging,pages_manage_metadata,instagram_manage_messages,whatsapp_business_management,whatsapp_business_messaging';
+	return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${workspaceId}`;
 }
+
+
 
 export async function getLinkedInAuthUrl() {
  const clientId = process.env.LINKEDIN_CLIENT_ID;
