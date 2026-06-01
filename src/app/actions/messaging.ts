@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
+import { MetaAdapter } from '@/lib/meta/MetaAdapter';
 
 const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
 
@@ -32,7 +33,7 @@ export async function getConnectedPlatforms() {
   const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('platform_connections')
-   .select('platform, status, last_sync_at')
+   .select('platform, status, last_sync_at, credentials')
    .eq('workspace_id', workspaceId);
 
   if (error) throw error;
@@ -42,6 +43,26 @@ export async function getConnectedPlatforms() {
   return [];
  }
 }
+
+export async function disconnectPlatform(platform: string) {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { error } = await supabase
+   .from('platform_connections')
+   .delete()
+   .eq('workspace_id', workspaceId)
+   .eq('platform', platform);
+
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  return { error: error.message || 'Failed to disconnect platform' };
+ }
+}
+
 
 export async function getConversations() {
  try {
@@ -57,8 +78,12 @@ export async function getConversations() {
     title,
     last_message_at,
     contact_id,
-    contacts (id, first_name, last_name, avatar_url, phone, email),
-    messages (content, direction, sent_at, status)
+    assigned_to,
+    status,
+    tags,
+    last_customer_message_at,
+    contacts (id, first_name, last_name, avatar_url, phone, email, opted_in, opted_out, opt_out_date),
+    messages (content, direction, sent_at, status, metadata, sender_handle)
    `)
    .eq('workspace_id', workspaceId)
    .order('last_message_at', { ascending: false });
@@ -98,7 +123,7 @@ export async function sendMessage(conversationId: string, content: string) {
   // If it's an email platform, send the actual email via Resend
   const { data: conv } = await supabase
    .from('conversations')
-   .select('platform, contacts(email, phone)')
+   .select('platform, external_thread_id, contacts(email, phone)')
    .eq('id', conversationId)
    .single();
 
@@ -147,17 +172,249 @@ export async function sendMessage(conversationId: string, content: string) {
      messageFailed = true;
      errorMessage = 'No phone number for contact';
    }
+  } else if (conv?.platform === 'facebook') {
+   // Fetch Facebook Credentials
+   const { data: conn } = await supabase
+    .from('platform_connections')
+    .select('credentials')
+    .eq('workspace_id', workspaceId)
+    .eq('platform', 'facebook')
+    .maybeSingle();
+
+   if (conn?.credentials) {
+    const creds = conn.credentials as any;
+    const res = await MetaAdapter.sendFacebook(
+     creds.page_id,
+     creds.page_access_token_encrypted,
+     conv.external_thread_id || '',
+     content
+    );
+    if (res.success) {
+     await supabase.from('messages').update({ status: 'delivered', external_id: res.externalId }).eq('id', msgData.id);
+    } else {
+     messageFailed = true;
+     errorMessage = res.error || 'Failed to dispatch via MetaAdapter';
+    }
+   } else {
+    messageFailed = true;
+    errorMessage = 'Facebook page connection not configured';
+   }
+  } else if (conv?.platform === 'instagram') {
+   // Fetch Instagram Credentials
+   const { data: conn } = await supabase
+    .from('platform_connections')
+    .select('credentials')
+    .eq('workspace_id', workspaceId)
+    .eq('platform', 'instagram')
+    .maybeSingle();
+
+   if (conn?.credentials) {
+    const creds = conn.credentials as any;
+    const res = await MetaAdapter.sendInstagram(
+     creds.instagram_business_account_id,
+     creds.page_access_token_encrypted,
+     conv.external_thread_id || '',
+     content
+    );
+    if (res.success) {
+     await supabase.from('messages').update({ status: 'delivered', external_id: res.externalId }).eq('id', msgData.id);
+    } else {
+     messageFailed = true;
+     errorMessage = res.error || 'Failed to dispatch via MetaAdapter';
+    }
+   } else {
+    messageFailed = true;
+    errorMessage = 'Instagram connection not configured';
+   }
+  } else if (conv?.platform === 'whatsapp') {
+   // Fetch WhatsApp Credentials
+   const { data: conn } = await supabase
+    .from('platform_connections')
+    .select('credentials')
+    .eq('workspace_id', workspaceId)
+    .eq('platform', 'whatsapp')
+    .maybeSingle();
+
+   if (conn?.credentials) {
+    const creds = conn.credentials as any;
+    const res = await MetaAdapter.sendWhatsApp(
+     creds.phone_number_id,
+     creds.system_user_access_token_encrypted,
+     conv.external_thread_id || '',
+     content
+    );
+    if (res.success) {
+     await supabase.from('messages').update({ status: 'delivered', external_id: res.externalId }).eq('id', msgData.id);
+    } else {
+     messageFailed = true;
+     errorMessage = res.error || 'Failed to dispatch via MetaAdapter';
+    }
+   } else {
+    messageFailed = true;
+    errorMessage = 'WhatsApp connection not configured';
+   }
   } else {
-      // Just mark as sent for other platforms for now
-      await supabase.from('messages').update({ status: 'delivered' }).eq('id', msgData.id);
+    // Just mark as sent for other platforms for now
+    await supabase.from('messages').update({ status: 'delivered' }).eq('id', msgData.id);
   }
 
   if (messageFailed && msgData) {
-      await supabase.from('messages').update({ status: 'failed', error_message: errorMessage }).eq('id', msgData.id);
+    await supabase.from('messages').update({ status: 'failed', metadata: { error_message: errorMessage } }).eq('id', msgData.id);
   }
 
   return { success: true };
  } catch (error: any) {
   return { error: error.message || 'Failed to send message' };
+ }
+}
+
+export async function sendInternalNote(conversationId: string, content: string, senderHandle = 'Agent') {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data: msgData, error } = await supabase
+   .from('messages')
+   .insert({
+    workspace_id: workspaceId,
+    conversation_id: conversationId,
+    direction: 'note',
+    content,
+    status: 'sent',
+    sender_handle: senderHandle
+   })
+   .select()
+   .single();
+
+  if (error) throw error;
+
+  // Update conversation last_message_at
+  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
+
+  return { success: true, data: msgData };
+ } catch (error: any) {
+  return { error: error.message || 'Failed to save note' };
+ }
+}
+
+export async function updateConversationAssignment(conversationId: string, assignedTo: string | null) {
+ try {
+  const supabase = await createServerClient();
+  const { error } = await supabase
+   .from('conversations')
+   .update({ assigned_to: assignedTo })
+   .eq('id', conversationId);
+
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function updateConversationStatus(conversationId: string, status: string) {
+ try {
+  const supabase = await createServerClient();
+  const { error } = await supabase
+   .from('conversations')
+   .update({ status })
+   .eq('id', conversationId);
+
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function updateConversationTags(conversationId: string, tags: string[]) {
+ try {
+  const supabase = await createServerClient();
+  const { error } = await supabase
+   .from('conversations')
+   .update({ tags })
+   .eq('id', conversationId);
+
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function getQuickReplies() {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('quick_replies')
+   .select('*')
+   .eq('workspace_id', workspaceId)
+   .order('shortcut', { ascending: true });
+
+  if (error) throw error;
+  return { data };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function createQuickReply(shortcut: string, message: string) {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('quick_replies')
+   .insert({
+    workspace_id: workspaceId,
+    shortcut,
+    message
+   })
+   .select()
+   .single();
+
+  if (error) throw error;
+  return { success: true, data };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function deleteQuickReply(id: string) {
+ try {
+  const supabase = await createServerClient();
+  const { error } = await supabase
+   .from('quick_replies')
+   .delete()
+   .eq('id', id);
+
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function updateContactConsent(contactId: string, optedIn: boolean, optedOut: boolean) {
+ try {
+  const supabase = await createServerClient();
+  const { error } = await supabase
+   .from('contacts')
+   .update({
+     opted_in: optedIn,
+     opted_out: optedOut,
+     opt_out_date: optedOut ? new Date().toISOString() : null
+   })
+   .eq('id', contactId);
+
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  return { error: error.message };
  }
 }
