@@ -8,18 +8,19 @@ import { encrypt, decrypt } from '@/lib/encryption';
 
 const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
 
-export async function getMetaAuthUrl() {
+export async function getMetaAuthUrl(targetPlatform?: string) {
 	const workspaceId = await getCurrentWorkspaceId();
 	const appId = process.env.META_APP_ID;
 	const redirectBase = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 	const metaRedirectUri = `${redirectBase}/api/auth/meta/callback`;
+	const stateStr = targetPlatform ? `${workspaceId}:${targetPlatform}` : `${workspaceId}`;
 
 	if (!appId || appId === 'placeholder' || !process.env.META_APP_ID) {
-		return `${metaRedirectUri}?code=mock_code&state=${workspaceId}`;
+		return `${metaRedirectUri}?code=mock_code&state=${stateStr}`;
 	}
 
 	const scope = 'pages_messaging,pages_manage_metadata,instagram_manage_messages,whatsapp_business_management,whatsapp_business_messaging';
-	return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${workspaceId}`;
+	return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${stateStr}`;
 }
 
 async function validateMetaPlatformCredentials(platform: string, data: any) {
@@ -767,7 +768,7 @@ export async function saveMetaConnections(data: {
   whatsappBusinessName?: string | null;
   phoneNumberId?: string | null;
   whatsappPhoneNumber?: string | null;
-}) {
+}, targetPlatform?: 'facebook' | 'instagram' | 'whatsapp' | null) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
@@ -778,7 +779,7 @@ export async function saveMetaConnections(data: {
     const supabase = await createServerClient();
 
     // 1. Validate Facebook Page access before persisting
-    if (!oauth.isMock) {
+    if ((targetPlatform === 'facebook' || !targetPlatform) && !oauth.isMock) {
       try {
         const pageRes = await fetch(`https://graph.facebook.com/v18.0/${data.pageId}?fields=name&access_token=${data.pageAccessToken}`);
         if (!pageRes.ok) {
@@ -791,7 +792,7 @@ export async function saveMetaConnections(data: {
     }
 
     // 2. Validate Instagram access (if selected) before persisting
-    if (data.instagramBusinessAccountId && !oauth.isMock) {
+    if ((targetPlatform === 'instagram' || (!targetPlatform && data.instagramBusinessAccountId)) && !oauth.isMock) {
       try {
         const igRes = await fetch(`https://graph.facebook.com/v18.0/${data.instagramBusinessAccountId}?fields=username&access_token=${data.pageAccessToken}`);
         if (!igRes.ok) {
@@ -804,7 +805,7 @@ export async function saveMetaConnections(data: {
     }
 
     // 3. Validate WhatsApp access (if selected) before persisting
-    if (data.phoneNumberId && !oauth.isMock) {
+    if ((targetPlatform === 'whatsapp' || (!targetPlatform && data.phoneNumberId)) && !oauth.isMock) {
       try {
         const waRes = await fetch(`https://graph.facebook.com/v18.0/${data.phoneNumberId}?fields=verified_name,display_phone_number&access_token=${oauth.token}`);
         if (!waRes.ok) {
@@ -817,24 +818,22 @@ export async function saveMetaConnections(data: {
     }
 
     // Persist connections!
-    // A. Facebook Connection
-    const { error: fbErr } = await supabase.from('platform_connections').upsert({
-      workspace_id: workspaceId,
-      platform: 'facebook',
-      credentials: {
-        page_id: data.pageId,
-        page_name: data.pageName,
-        page_access_token_encrypted: encrypt(data.pageAccessToken),
-        user_access_token_encrypted: encrypt(oauth.token),
-        health_status: 'connected'
-      },
-      status: 'connected',
-      last_sync_at: new Date().toISOString()
-    }, { onConflict: 'workspace_id,platform' });
-    if (fbErr) throw fbErr;
-
-    // B. Instagram Connection
-    if (data.instagramBusinessAccountId) {
+    if (targetPlatform === 'facebook') {
+      const { error: fbErr } = await supabase.from('platform_connections').upsert({
+        workspace_id: workspaceId,
+        platform: 'facebook',
+        credentials: {
+          page_id: data.pageId,
+          page_name: data.pageName,
+          page_access_token_encrypted: encrypt(data.pageAccessToken),
+          user_access_token_encrypted: encrypt(oauth.token),
+          health_status: 'connected'
+        },
+        status: 'connected',
+        last_sync_at: new Date().toISOString()
+      }, { onConflict: 'workspace_id,platform' });
+      if (fbErr) throw fbErr;
+    } else if (targetPlatform === 'instagram') {
       const { error: igErr } = await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
         platform: 'instagram',
@@ -849,12 +848,7 @@ export async function saveMetaConnections(data: {
         last_sync_at: new Date().toISOString()
       }, { onConflict: 'workspace_id,platform' });
       if (igErr) throw igErr;
-    } else {
-      await supabase.from('platform_connections').delete().eq('workspace_id', workspaceId).eq('platform', 'instagram');
-    }
-
-    // C. WhatsApp Connection
-    if (data.phoneNumberId && data.whatsappBusinessAccountId) {
+    } else if (targetPlatform === 'whatsapp') {
       const { error: waErr } = await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
         platform: 'whatsapp',
@@ -871,7 +865,63 @@ export async function saveMetaConnections(data: {
       }, { onConflict: 'workspace_id,platform' });
       if (waErr) throw waErr;
     } else {
-      await supabase.from('platform_connections').delete().eq('workspace_id', workspaceId).eq('platform', 'whatsapp');
+      // Legacy behavior (all-in-one setup)
+      // A. Facebook Connection
+      const { error: fbErr } = await supabase.from('platform_connections').upsert({
+        workspace_id: workspaceId,
+        platform: 'facebook',
+        credentials: {
+          page_id: data.pageId,
+          page_name: data.pageName,
+          page_access_token_encrypted: encrypt(data.pageAccessToken),
+          user_access_token_encrypted: encrypt(oauth.token),
+          health_status: 'connected'
+        },
+        status: 'connected',
+        last_sync_at: new Date().toISOString()
+      }, { onConflict: 'workspace_id,platform' });
+      if (fbErr) throw fbErr;
+
+      // B. Instagram Connection
+      if (data.instagramBusinessAccountId) {
+        const { error: igErr } = await supabase.from('platform_connections').upsert({
+          workspace_id: workspaceId,
+          platform: 'instagram',
+          credentials: {
+            instagram_business_account_id: data.instagramBusinessAccountId,
+            instagram_username: data.instagramUsername || 'IG Account',
+            page_id: data.pageId,
+            page_access_token_encrypted: encrypt(data.pageAccessToken),
+            health_status: 'connected'
+          },
+          status: 'connected',
+          last_sync_at: new Date().toISOString()
+        }, { onConflict: 'workspace_id,platform' });
+        if (igErr) throw igErr;
+      } else {
+        await supabase.from('platform_connections').delete().eq('workspace_id', workspaceId).eq('platform', 'instagram');
+      }
+
+      // C. WhatsApp Connection
+      if (data.phoneNumberId && data.whatsappBusinessAccountId) {
+        const { error: waErr } = await supabase.from('platform_connections').upsert({
+          workspace_id: workspaceId,
+          platform: 'whatsapp',
+          credentials: {
+            phone_number_id: data.phoneNumberId,
+            whatsapp_business_account_id: data.whatsappBusinessAccountId,
+            whatsapp_business_name: data.whatsappBusinessName || 'WhatsApp Business Line',
+            whatsapp_phone_number: data.whatsappPhoneNumber || 'WhatsApp Number',
+            system_user_access_token_encrypted: encrypt(oauth.token),
+            health_status: 'connected'
+          },
+          status: 'connected',
+          last_sync_at: new Date().toISOString()
+        }, { onConflict: 'workspace_id,platform' });
+        if (waErr) throw waErr;
+      } else {
+        await supabase.from('platform_connections').delete().eq('workspace_id', workspaceId).eq('platform', 'whatsapp');
+      }
     }
 
     return { success: true };

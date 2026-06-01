@@ -22,9 +22,10 @@ import { toast } from 'sonner';
 interface ConnectPlatformsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  targetPlatform?: 'facebook' | 'instagram' | 'whatsapp' | null;
 }
 
-export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsModalProps) {
+export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = null }: ConnectPlatformsModalProps) {
   const [connections, setConnections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [metaUrl, setMetaUrl] = useState('');
@@ -56,6 +57,20 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
     whatsappBusinessAccountId: '',
     systemUserAccessToken: ''
   });
+
+  const getSteps = () => {
+    if (targetPlatform === 'facebook') {
+      return ['Business', 'Page'];
+    } else if (targetPlatform === 'instagram') {
+      return ['Business', 'Page', 'Instagram'];
+    } else if (targetPlatform === 'whatsapp') {
+      return ['Business', 'WABA', 'Phone Line'];
+    }
+    return ['Business', 'Page', 'Instagram', 'WhatsApp'];
+  };
+
+  const stepsList = getSteps();
+  const totalSteps = stepsList.length;
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +110,7 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
       const connectedData = data.filter((c: any) => c.status === 'connected');
       setConnections(connectedData);
       
-      const url = await getMetaAuthUrl();
+      const url = await getMetaAuthUrl(targetPlatform || undefined);
       setMetaUrl(url);
 
       // Check if there is a pending OAuth session to trigger Wizard onboarding
@@ -163,73 +178,109 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
     if (!selectedBusiness) return;
     setWizardLoading(true);
     try {
-      const pageList = await fetchMetaPages(selectedBusiness);
-      setPages(pageList);
-      if (pageList.length > 0) {
-        setSelectedPage(pageList[0]);
+      if (targetPlatform === 'whatsapp') {
+        const wabaList = await fetchMetaWhatsAppAccounts(selectedBusiness);
+        setWaAccounts(wabaList);
+        if (wabaList.length > 0) {
+          setSelectedWaba(wabaList[0]);
+          const phoneList = await fetchWhatsAppPhoneNumbers(wabaList[0].id);
+          setPhoneNumbers(phoneList);
+          if (phoneList.length > 0) {
+            setSelectedPhone(phoneList[0]);
+          } else {
+            setSelectedPhone(null);
+          }
+        } else {
+          setSelectedWaba(null);
+          setPhoneNumbers([]);
+          setSelectedPhone(null);
+        }
       } else {
-        setSelectedPage(null);
+        const pageList = await fetchMetaPages(selectedBusiness);
+        setPages(pageList);
+        if (pageList.length > 0) {
+          setSelectedPage(pageList[0]);
+        } else {
+          setSelectedPage(null);
+        }
       }
       setWizardStep(2);
     } catch (e: any) {
-      toast.error(e.message || 'Failed to load Pages');
+      toast.error(e.message || 'Failed to load assets');
     } finally {
       setWizardLoading(false);
     }
   };
 
   const handleStep2Next = async () => {
-    if (!selectedPage) {
-      toast.error('Please select a Facebook Page');
-      return;
-    }
-    setWizardLoading(true);
-    try {
-      const igList = await fetchMetaInstagramAccounts(selectedPage.id, selectedPage.access_token);
-      setIgAccounts(igList);
-      if (igList.length > 0) {
-        setSelectedInstagram(igList[0]);
-      } else {
-        setSelectedInstagram(null);
+    if (targetPlatform === 'whatsapp') {
+      if (!selectedWaba) {
+        toast.error('Please select a WhatsApp Business Account');
+        return;
       }
       setWizardStep(3);
-    } catch (e: any) {
-      console.error(e);
-      setSelectedInstagram(null);
-      setWizardStep(3);
-    } finally {
-      setWizardLoading(false);
+    } else {
+      if (!selectedPage) {
+        toast.error('Please select a Facebook Page');
+        return;
+      }
+      if (targetPlatform === 'facebook') {
+        await handleSaveWizard();
+      } else {
+        setWizardLoading(true);
+        try {
+          const igList = await fetchMetaInstagramAccounts(selectedPage.id, selectedPage.access_token);
+          setIgAccounts(igList);
+          if (igList.length > 0) {
+            setSelectedInstagram(igList[0]);
+          } else {
+            setSelectedInstagram(null);
+          }
+          setWizardStep(3);
+        } catch (e: any) {
+          setSelectedInstagram(null);
+          setWizardStep(3);
+        } finally {
+          setWizardLoading(false);
+        }
+      }
     }
   };
 
   const handleStep3Next = async () => {
-    setWizardLoading(true);
-    try {
-      const wabaList = await fetchMetaWhatsAppAccounts(selectedBusiness);
-      setWaAccounts(wabaList);
-      if (wabaList.length > 0) {
-        setSelectedWaba(wabaList[0]);
-        const phoneList = await fetchWhatsAppPhoneNumbers(wabaList[0].id);
-        setPhoneNumbers(phoneList);
-        if (phoneList.length > 0) {
-          setSelectedPhone(phoneList[0]);
+    if (targetPlatform === 'instagram') {
+      await handleSaveWizard();
+    } else if (targetPlatform === 'whatsapp') {
+      await handleSaveWizard();
+    } else {
+      // Legacy fallback behavior
+      setWizardLoading(true);
+      try {
+        const wabaList = await fetchMetaWhatsAppAccounts(selectedBusiness);
+        setWaAccounts(wabaList);
+        if (wabaList.length > 0) {
+          setSelectedWaba(wabaList[0]);
+          const phoneList = await fetchWhatsAppPhoneNumbers(wabaList[0].id);
+          setPhoneNumbers(phoneList);
+          if (phoneList.length > 0) {
+            setSelectedPhone(phoneList[0]);
+          } else {
+            setSelectedPhone(null);
+          }
         } else {
+          setSelectedWaba(null);
+          setPhoneNumbers([]);
           setSelectedPhone(null);
         }
-      } else {
+        setWizardStep(4);
+      } catch (e: any) {
         setSelectedWaba(null);
         setPhoneNumbers([]);
         setSelectedPhone(null);
+        setWizardStep(4);
+      } finally {
+        setWizardLoading(false);
       }
-      setWizardStep(4);
-    } catch (e: any) {
-      console.error(e);
-      setSelectedWaba(null);
-      setPhoneNumbers([]);
-      setSelectedPhone(null);
-      setWizardStep(4);
-    } finally {
-      setWizardLoading(false);
     }
   };
 
@@ -261,30 +312,59 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
   };
 
   const handleSaveWizard = async () => {
-    if (!selectedPage) {
-      toast.error('Please complete the setup');
-      return;
-    }
     setWizardLoading(true);
     try {
-      const res = await saveMetaConnections({
-        pageId: selectedPage.id,
-        pageName: selectedPage.name,
-        pageAccessToken: selectedPage.access_token,
-        instagramBusinessAccountId: selectedInstagram?.id || null,
-        instagramUsername: selectedInstagram?.username || null,
-        whatsappBusinessAccountId: selectedWaba?.id || null,
-        whatsappBusinessName: selectedWaba?.name || null,
-        phoneNumberId: selectedPhone?.id || null,
-        whatsappPhoneNumber: selectedPhone?.display_phone_number || null
-      });
+      let dataToSave: any = {};
+      if (targetPlatform === 'facebook') {
+        if (!selectedPage) throw new Error('Please select a Facebook Page');
+        dataToSave = {
+          pageId: selectedPage.id,
+          pageName: selectedPage.name,
+          pageAccessToken: selectedPage.access_token
+        };
+      } else if (targetPlatform === 'instagram') {
+        if (!selectedPage) throw new Error('Please select a Facebook Page');
+        dataToSave = {
+          pageId: selectedPage.id,
+          pageName: selectedPage.name,
+          pageAccessToken: selectedPage.access_token,
+          instagramBusinessAccountId: selectedInstagram?.id || null,
+          instagramUsername: selectedInstagram?.username || null
+        };
+      } else if (targetPlatform === 'whatsapp') {
+        if (!selectedWaba || !selectedPhone) throw new Error('Please select a WhatsApp Business Account and Line');
+        dataToSave = {
+          pageId: 'whatsapp_placeholder',
+          pageName: 'whatsapp_placeholder',
+          pageAccessToken: 'whatsapp_placeholder',
+          whatsappBusinessAccountId: selectedWaba.id,
+          whatsappBusinessName: selectedWaba.name,
+          phoneNumberId: selectedPhone.id,
+          whatsappPhoneNumber: selectedPhone.display_phone_number
+        };
+      } else {
+        if (!selectedPage) throw new Error('Please complete the setup');
+        dataToSave = {
+          pageId: selectedPage.id,
+          pageName: selectedPage.name,
+          pageAccessToken: selectedPage.access_token,
+          instagramBusinessAccountId: selectedInstagram?.id || null,
+          instagramUsername: selectedInstagram?.username || null,
+          whatsappBusinessAccountId: selectedWaba?.id || null,
+          whatsappBusinessName: selectedWaba?.name || null,
+          phoneNumberId: selectedPhone?.id || null,
+          whatsappPhoneNumber: selectedPhone?.display_phone_number || null
+        };
+      }
+
+      const res = await saveMetaConnections(dataToSave, targetPlatform);
 
       if (res.success) {
-        toast.success('Meta connections configured successfully!');
+        toast.success(`${targetPlatform ? targetPlatform.charAt(0).toUpperCase() + targetPlatform.slice(1) : 'Meta'} connection configured successfully!`);
         setIsOauthWizard(false);
-        loadConnections();
+        onOpenChange(false);
       } else {
-        toast.error(res.error || 'Failed to save Meta connections');
+        toast.error(res.error || 'Failed to save connection');
       }
     } catch (e: any) {
       toast.error(e.message || 'An error occurred during save');
@@ -344,13 +424,13 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold tracking-tight font-space-grotesk text-[#eef2ff]">
               {isOauthWizard 
-                ? `Meta Onboarding (Step ${wizardStep}/4)` 
+                ? `${targetPlatform ? targetPlatform.charAt(0).toUpperCase() + targetPlatform.slice(1) : 'Meta'} Onboarding (Step ${wizardStep}/${totalSteps})` 
                 : 'Meta Connections'}
             </DialogTitle>
           </div>
           <DialogDescription className="text-xs text-[#4a5a82] font-dm-sans leading-relaxed">
             {isOauthWizard
-              ? 'Select your Facebook Page, Instagram Account, and WhatsApp Line to finalize the integration.'
+              ? `Select your ${targetPlatform === 'whatsapp' ? 'WhatsApp Business Account and Phone Line' : targetPlatform === 'instagram' ? 'Facebook Page and Instagram Account' : 'Facebook Page'} to finalize the integration.`
               : 'Link and manage connected Pages, Instagram accounts, and WhatsApp lines integrated with the Unified Inbox.'}
           </DialogDescription>
         </DialogHeader>
@@ -366,18 +446,21 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
             <div className="flex flex-col gap-4">
               {/* Step Progress Bar */}
               <div className="flex items-center justify-between gap-1 mb-2">
-                {[1, 2, 3, 4].map((step) => (
-                  <div key={step} className="flex-1 flex flex-col gap-1.5">
-                    <div className={`h-1 rounded-full transition-all duration-300 ${
-                      step <= wizardStep ? 'bg-indigo-500' : 'bg-white/10'
-                    }`} />
-                    <span className={`text-[8.5px] text-center font-bold tracking-wider uppercase ${
-                      step === wizardStep ? 'text-indigo-400' : 'text-[#4a5a82]'
-                    }`}>
-                      {step === 1 ? 'Business' : step === 2 ? 'Page' : step === 3 ? 'Instagram' : 'WhatsApp'}
-                    </span>
-                  </div>
-                ))}
+                {stepsList.map((stepName, index) => {
+                  const stepNum = index + 1;
+                  return (
+                    <div key={stepName} className="flex-1 flex flex-col gap-1.5">
+                      <div className={`h-1 rounded-full transition-all duration-300 ${
+                        stepNum <= wizardStep ? 'bg-indigo-500' : 'bg-white/10'
+                      }`} />
+                      <span className={`text-[8.5px] text-center font-bold tracking-wider uppercase ${
+                        stepNum === wizardStep ? 'text-indigo-400' : 'text-[#4a5a82]'
+                      }`}>
+                        {stepName}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
 
               {wizardLoading ? (
@@ -435,146 +518,223 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
                     </div>
                   )}
 
-                  {/* STEP 2: SELECT FACEBOOK PAGE */}
+                  {/* STEP 2: SELECT FACEBOOK PAGE OR WHATSAPP BUSINESS */}
                   {wizardStep === 2 && (
-                    <div className="flex flex-col gap-3">
-                      <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
-                        <span className="text-[11.5px] font-bold text-white block mb-1">Select Facebook Page</span>
-                        <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
-                          Select the page you wish to bind. This page's token will route both Messenger DMs and linked Instagram Direct messages.
-                        </p>
-                      </div>
+                    targetPlatform === 'whatsapp' ? (
+                      <div className="flex flex-col gap-3">
+                        <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
+                          <span className="text-[11.5px] font-bold text-white block mb-1">Select WhatsApp Business Account</span>
+                          <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                            Select the WhatsApp Business Account (WABA) containing the phone lines you wish to link.
+                          </p>
+                        </div>
 
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-[#4a5a82] font-semibold">Facebook Page</label>
-                        <select
-                          value={selectedPage?.id || ''}
-                          onChange={(e) => {
-                            const pg = pages.find(p => p.id === e.target.value);
-                            setSelectedPage(pg || null);
-                          }}
-                          className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
-                        >
-                          {pages.length === 0 ? (
-                            <option value="">No Facebook Pages Found</option>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-[#4a5a82] font-semibold">WhatsApp Business Account (WABA)</label>
+                          <select
+                            value={selectedWaba?.id || ''}
+                            onChange={(e) => handleWabaChange(e.target.value)}
+                            className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                          >
+                            {waAccounts.length === 0 ? (
+                              <option value="">No WhatsApp Business Accounts Found</option>
+                            ) : (
+                              waAccounts.map((wa) => (
+                                <option key={wa.id} value={wa.id}>{wa.name} ({wa.id})</option>
+                              ))
+                            )}
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-3 mt-4">
+                          <Button 
+                            type="button" 
+                            onClick={() => setWizardStep(1)} 
+                            variant="ghost" 
+                            className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                          >
+                            Back
+                          </Button>
+                          <Button 
+                            type="button" 
+                            onClick={handleStep2Next}
+                            disabled={!selectedWaba}
+                            className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                          >
+                            Continue
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
+                          <span className="text-[11.5px] font-bold text-white block mb-1">Select Facebook Page</span>
+                          <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                            Select the Facebook Page you wish to link for routing messages.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-[#4a5a82] font-semibold">Facebook Page</label>
+                          <select
+                            value={selectedPage?.id || ''}
+                            onChange={(e) => {
+                              const pg = pages.find(p => p.id === e.target.value);
+                              setSelectedPage(pg || null);
+                            }}
+                            className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                          >
+                            {pages.length === 0 ? (
+                              <option value="">No Facebook Pages Found</option>
+                            ) : (
+                              pages.map((p) => (
+                                <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                              ))
+                            )}
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-3 mt-4">
+                          <Button 
+                            type="button" 
+                            onClick={() => setWizardStep(1)} 
+                            variant="ghost" 
+                            className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                          >
+                            Back
+                          </Button>
+                          <Button 
+                            type="button" 
+                            onClick={handleStep2Next}
+                            disabled={!selectedPage}
+                            className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                          >
+                            {targetPlatform === 'facebook' ? 'Save Connection' : 'Continue'}
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {/* STEP 3: LINK INSTAGRAM OR WHATSAPP PHONE */}
+                  {wizardStep === 3 && (
+                    targetPlatform === 'whatsapp' ? (
+                      <div className="flex flex-col gap-3">
+                        <div className="p-3 bg-[#25d366]/5 border border-[#25d366]/10 rounded-xl">
+                          <span className="text-[11.5px] font-bold text-white block mb-1">Select WhatsApp Phone Line</span>
+                          <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                            Select the specific phone number line to link for customer chats.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-[#4a5a82] font-semibold">Phone Number / Line</label>
+                          <select
+                            value={selectedPhone?.id || ''}
+                            onChange={(e) => {
+                              const phone = phoneNumbers.find(p => p.id === e.target.value);
+                              setSelectedPhone(phone || null);
+                            }}
+                            className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                          >
+                            {phoneNumbers.length === 0 ? (
+                              <option value="">No WhatsApp Phone Numbers Found</option>
+                            ) : (
+                              phoneNumbers.map((phone) => (
+                                <option key={phone.id} value={phone.id}>
+                                  {phone.verified_name} ({phone.display_phone_number})
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-3 mt-4">
+                          <Button 
+                            type="button" 
+                            onClick={() => setWizardStep(2)} 
+                            variant="ghost" 
+                            className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                          >
+                            Back
+                          </Button>
+                          <Button 
+                            type="button" 
+                            onClick={handleSaveWizard}
+                            disabled={!selectedPhone}
+                            className="flex-1 text-xs text-white bg-emerald-600 hover:bg-emerald-700 font-semibold"
+                          >
+                            Save Connection
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <div className="p-3 bg-[#ec4899]/5 border border-[#ec4899]/10 rounded-xl">
+                          <span className="text-[11.5px] font-bold text-white block mb-1">Link Instagram Direct</span>
+                          <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                            Choose the Instagram Business Account connected to your selected Facebook page.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          {igAccounts.length === 0 ? (
+                            <div className="p-3 rounded-lg border border-dashed border-white/10 text-center text-[11px] text-[#4a5a82]">
+                              No linked Instagram Business Account detected for <strong>{selectedPage?.name}</strong>.
+                            </div>
                           ) : (
-                            pages.map((p) => (
-                              <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                            igAccounts.map((ig) => (
+                              <label 
+                                key={ig.id} 
+                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
+                                  selectedInstagram?.id === ig.id 
+                                    ? 'bg-[#ec4899]/5 border-[#ec4899]/30' 
+                                    : 'bg-white/5 border-white/5 hover:border-white/10'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <input 
+                                    type="radio" 
+                                    name="instagram_select" 
+                                    checked={selectedInstagram?.id === ig.id}
+                                    onChange={() => setSelectedInstagram(ig)}
+                                    className="accent-[#ec4899]"
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="text-[12px] font-bold text-white">@{ig.username}</span>
+                                    <span className="text-[9px] text-[#4a5a82] mt-0.5">ID: {ig.id}</span>
+                                  </div>
+                                </div>
+                                <i className="fa-brands fa-instagram text-[#ec4899] text-base"></i>
+                              </label>
                             ))
                           )}
-                        </select>
-                      </div>
+                        </div>
 
-                      <div className="flex items-center gap-3 mt-4">
-                        <Button 
-                          type="button" 
-                          onClick={() => setWizardStep(1)} 
-                          variant="ghost" 
-                          className="flex-1 text-xs text-[#4a5a82] hover:text-white"
-                        >
-                          Back
-                        </Button>
-                        <Button 
-                          type="button" 
-                          onClick={handleStep2Next}
-                          disabled={!selectedPage}
-                          className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
-                        >
-                          Continue
-                        </Button>
+                        <div className="flex items-center gap-3 mt-4">
+                          <Button 
+                            type="button" 
+                            onClick={() => setWizardStep(2)} 
+                            variant="ghost" 
+                            className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                          >
+                            Back
+                          </Button>
+                          <Button 
+                            type="button" 
+                            onClick={handleSaveWizard}
+                            disabled={igAccounts.length > 0 && !selectedInstagram}
+                            className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                          >
+                            Save Connection
+                          </Button>
+                        </div>
                       </div>
-                    </div>
+                    )
                   )}
 
-                  {/* STEP 3: SELECT INSTAGRAM ACCOUNT */}
-                  {wizardStep === 3 && (
-                    <div className="flex flex-col gap-3">
-                      <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
-                        <span className="text-[11.5px] font-bold text-white block mb-1">Link Instagram Direct</span>
-                        <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
-                          Choose whether to automatically link the Instagram Business Account connected to your selected Facebook page.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col gap-2">
-                        {igAccounts.length === 0 ? (
-                          <div className="p-3 rounded-lg border border-dashed border-white/10 text-center text-[11px] text-[#4a5a82]">
-                            No linked Instagram Business Account detected for <strong>{selectedPage?.name}</strong>.
-                          </div>
-                        ) : (
-                          igAccounts.map((ig) => (
-                            <label 
-                              key={ig.id} 
-                              className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                selectedInstagram?.id === ig.id 
-                                  ? 'bg-[#ec4899]/5 border-[#ec4899]/30' 
-                                  : 'bg-white/5 border-white/5 hover:border-white/10'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <input 
-                                  type="radio" 
-                                  name="instagram_select" 
-                                  checked={selectedInstagram?.id === ig.id}
-                                  onChange={() => setSelectedInstagram(ig)}
-                                  className="accent-[#ec4899]"
-                                />
-                                <div className="flex flex-col">
-                                  <span className="text-[12px] font-bold text-white">@{ig.username}</span>
-                                  <span className="text-[9px] text-[#4a5a82] mt-0.5">ID: {ig.id}</span>
-                                </div>
-                              </div>
-                              <i className="fa-brands fa-instagram text-[#ec4899] text-base"></i>
-                            </label>
-                          ))
-                        )}
-
-                        <label 
-                          className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
-                            !selectedInstagram 
-                              ? 'bg-white/5 border-indigo-500/30' 
-                              : 'bg-white/5 border-white/5 hover:border-white/10'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <input 
-                              type="radio" 
-                              name="instagram_select" 
-                              checked={!selectedInstagram}
-                              onChange={() => setSelectedInstagram(null)}
-                              className="accent-indigo-500"
-                            />
-                            <div className="flex flex-col">
-                              <span className="text-[12px] font-bold text-white">Skip Instagram Link</span>
-                              <span className="text-[9px] text-[#4a5a82] mt-0.5">Do not connect Instagram messages.</span>
-                            </div>
-                          </div>
-                          <i className="fa-solid fa-ban text-[#4a5a82] text-sm"></i>
-                        </label>
-                      </div>
-
-                      <div className="flex items-center gap-3 mt-4">
-                        <Button 
-                          type="button" 
-                          onClick={() => setWizardStep(2)} 
-                          variant="ghost" 
-                          className="flex-1 text-xs text-[#4a5a82] hover:text-white"
-                        >
-                          Back
-                        </Button>
-                        <Button 
-                          type="button" 
-                          onClick={handleStep3Next}
-                          className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
-                        >
-                          Continue
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* STEP 4: SELECT WHATSAPP BUSINESS & PHONE */}
-                  {wizardStep === 4 && (
+                  {/* STEP 4: LEGACY FALLBACK FOR WHATSAPP */}
+                  {wizardStep === 4 && !targetPlatform && (
                     <div className="flex flex-col gap-3">
                       <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
                         <span className="text-[11.5px] font-bold text-white block mb-1">Link WhatsApp Cloud API</span>
@@ -647,7 +807,7 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
               )}
             </div>
           ) : (
-            /* STANDARD OAUTH-FIRST MODE */
+            /* STANDARD OAUTH-FIRST MODE (FALLBACK IF NO WIZARD) */
             <div className="flex flex-col gap-4">
               {!isAnyConnected ? (
                 /* Empty state, connect main button */

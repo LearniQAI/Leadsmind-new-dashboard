@@ -10,7 +10,8 @@ const supabase = createClient(
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
-  const workspaceId = searchParams.get('state');
+  const stateStr = searchParams.get('state') || '';
+  const [workspaceId, targetPlatform] = stateStr.split(':');
 
   const redirectBase = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
@@ -35,7 +36,8 @@ export async function GET(req: Request) {
         last_sync_at: new Date().toISOString()
       }, { onConflict: 'workspace_id,platform' });
 
-      return NextResponse.redirect(`${redirectBase}/settings?tab=integrations&meta_oauth=1`);
+      const platformParam = targetPlatform ? `&platform=${targetPlatform}` : '';
+      return NextResponse.redirect(`${redirectBase}/settings?tab=integrations&meta_oauth=1${platformParam}`);
     } catch (e: any) {
       console.error('[Meta Callback] Mock connection upsert error:', e.message);
       return NextResponse.redirect(`${redirectBase}/settings?tab=integrations&error=auth_failed`);
@@ -77,7 +79,8 @@ export async function GET(req: Request) {
       last_sync_at: new Date().toISOString()
     }, { onConflict: 'workspace_id,platform' });
 
-    return NextResponse.redirect(`${redirectBase}/settings?tab=integrations&meta_oauth=1`);
+    const platformParam = targetPlatform ? `&platform=${targetPlatform}` : '';
+    return NextResponse.redirect(`${redirectBase}/settings?tab=integrations&meta_oauth=1${platformParam}`);
   } catch (error: any) {
     console.error('[Meta Callback] OAuth Error:', error.message);
     return NextResponse.redirect(`${redirectBase}/settings?tab=integrations&error=auth_failed&message=${encodeURIComponent(error.message)}`);
