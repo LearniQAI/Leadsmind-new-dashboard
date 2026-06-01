@@ -67,15 +67,6 @@ export function ConnectPlatformsModal({
   onClose,
   onComplete,
 }: ConnectPlatformsModalProps) {
-  if (!open) return null;
-
-  const stepsList =
-    platform === 'facebook' ? ['Business', 'Page'] :
-    platform === 'instagram' ? ['Business', 'Page', 'Instagram'] :
-    platform === 'whatsapp' ? ['Business', 'WhatsApp', 'Phone Line'] :
-    ['Business', 'Page', 'Instagram', 'WhatsApp'];
-
-  const totalSteps = stepsList.length;
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -100,6 +91,16 @@ export function ConnectPlatformsModal({
     }, 600);
     return () => clearTimeout(timer);
   }, [currentStep, business]);
+
+  if (!open) return null;
+
+  const stepsList =
+    platform === 'facebook' ? ['Business', 'Page'] :
+    platform === 'instagram' ? ['Business', 'Page', 'Instagram'] :
+    platform === 'whatsapp' ? ['Business', 'WhatsApp', 'Phone Line'] :
+    ['Business', 'Page', 'Instagram', 'WhatsApp'];
+
+  const totalSteps = stepsList.length;
 
   const handleContinue = () => {
     if (currentStep < totalSteps) {
