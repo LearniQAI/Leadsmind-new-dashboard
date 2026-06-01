@@ -337,6 +337,10 @@ export async function handlePageFormSubmission(pageId: string, workspaceId: stri
         description: `Submitted form on page: ${pageId}`,
         metadata: { ...payload, page_id: pageId, type: 'form_submission' }
       });
+
+      // Trigger automation event
+      const { publishEvent } = await import('@/lib/events/EventBus');
+      await publishEvent(workspaceId, 'funnel_subscribed', contactId, { pageId, payload });
     }
 
     return { success: true };

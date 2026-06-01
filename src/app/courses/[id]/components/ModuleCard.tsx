@@ -138,6 +138,12 @@ export default function ModuleCard({
                   <Lock size={10} /> Required
                 </Badge>
               )}
+
+              {module.is_active === false && (
+                <Badge className="bg-white/10 text-white/50 border border-white/20 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <EyeOff size={10} /> Inactive
+                </Badge>
+              )}
             </div>
 
             <div className="flex items-center gap-3 text-[11px] text-white/40 font-mono">
@@ -238,11 +244,7 @@ export default function ModuleCard({
                     <Edit size={12} />
                   </button>
                   <button
-                    onClick={() => {
-                      if (window.confirm(`Are you sure you want to delete lesson "${lesson.title}"?`)) {
-                        onDeleteLesson(lesson.id);
-                      }
-                    }}
+                    onClick={() => onDeleteLesson(lesson.id)}
                     className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 hover:bg-red-500/20 transition-colors"
                     title="Delete Lesson"
                   >

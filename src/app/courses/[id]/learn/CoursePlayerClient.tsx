@@ -41,7 +41,9 @@ export default function CoursePlayerClient({
   const moduleStatusMap: Record<string, { isLocked: boolean; reason?: "completion" | "coming_soon" }> = {};
   let previousRequiredIncomplete = false;
 
-  const sortedModules = [...modules].sort((a, b) => a.order_index - b.order_index);
+  const sortedModules = [...modules]
+    .filter((mod) => mod.is_active !== false)
+    .sort((a, b) => a.order_index - b.order_index);
 
   sortedModules.forEach((mod) => {
     if (mod.publish_status === "Coming Soon") {

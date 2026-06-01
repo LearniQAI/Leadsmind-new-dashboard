@@ -4,17 +4,21 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { 
   Loader2, X, ArrowLeft, BookOpen, PlayCircle, 
   CheckSquare, FileEdit, FileText, Headphones, 
-  Video, Layers, Code, Archive, Plus, Trash2 
+  Video, Layers, Code, Archive, Plus, Trash2,
+  AlertTriangle, Settings
 } from "lucide-react";
+import { getLessonQuiz, upsertQuiz } from "@/app/actions/quizzes";
 
 interface LessonCreatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (lessonData: any) => Promise<void>;
   moduleId: string;
+  courseId: string;
   editingLesson?: any;
 }
 
@@ -36,8 +40,10 @@ export default function LessonCreatorModal({
   onClose,
   onSave,
   moduleId,
+  courseId,
   editingLesson
 }: LessonCreatorModalProps) {
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [type, setType] = useState("Text");
   const [title, setTitle] = useState("");
@@ -51,6 +57,36 @@ export default function LessonCreatorModal({
   const [starterCode, setStarterCode] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
+  const [quizId, setQuizId] = useState<string | null>(null);
+  const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
+
+  const fetchOrCreateQuiz = async (lesId: string, lesTitle: string) => {
+    setIsLoadingQuiz(true);
+    const res = await getLessonQuiz(lesId);
+    if (res.error) {
+      console.error("Quiz lookup failed:", res.error);
+      toast.error(`Quiz lookup failed: ${res.error}`);
+    }
+    if (res.data) {
+      setQuizId(res.data.id);
+    } else {
+      const quizRes = await upsertQuiz({
+        lesson_id: lesId,
+        title: lesTitle || "Lesson Quiz",
+        passing_score: 80,
+        course_id: courseId,
+        module_id: moduleId
+      });
+      if (quizRes.error) {
+        console.error("Quiz creation failed:", quizRes.error);
+        toast.error(`Failed to initialize quiz: ${quizRes.error}`);
+      }
+      if (quizRes.data) {
+        setQuizId(quizRes.data.id);
+      }
+    }
+    setIsLoadingQuiz(false);
+  };
 
   useEffect(() => {
     if (editingLesson) {
@@ -65,6 +101,10 @@ export default function LessonCreatorModal({
       setCodeLanguage(meta.codeLanguage || "javascript");
       setStarterCode(meta.starterCode || "");
       
+      if (editingLesson.type === "Quiz") {
+        fetchOrCreateQuiz(editingLesson.id, editingLesson.title || "");
+      }
+      
       setStep(2); // Directly go to editor form when editing
     } else {
       setTitle("");
@@ -75,6 +115,7 @@ export default function LessonCreatorModal({
       setFlashcards([]);
       setCodeLanguage("javascript");
       setStarterCode("");
+      setQuizId(null);
       setStep(1); // Selection wizard first
     }
   }, [editingLesson, isOpen]);
@@ -320,6 +361,47 @@ export default function LessonCreatorModal({
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Interactive Quiz Builder */}
+            {type === "Quiz" && (
+              <div className="bg-[#111d47]/20 border border-white/5 rounded-xl p-4 space-y-4">
+                <span className="text-[10px] font-black uppercase text-accent2 tracking-widest block">Quiz Questions Workbench</span>
+                {editingLesson ? (
+                  isLoadingQuiz ? (
+                    <div className="py-6 text-center text-xs text-white/30 flex items-center justify-center gap-2">
+                      <Loader2 className="animate-spin" size={14} /> Loading Quiz Workbench...
+                    </div>
+                  ) : quizId ? (
+                    <div className="py-6 px-4 text-center bg-[#111d47]/30 border border-dashed border-white/10 rounded-xl space-y-4">
+                      <div className="space-y-1.5">
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">Quiz Ready to Configure</h4>
+                        <p className="text-[10px] text-white/40 max-w-sm mx-auto leading-relaxed">
+                          Build evaluation questions, configure passing scores, time limits, and write LENA AI explanation rationales in the dedicated Quiz Workbench.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          router.push(`/courses/${courseId}/quiz/${quizId}`);
+                        }}
+                        className="bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-10 px-5 shadow-lg shadow-primary/20 flex items-center gap-1.5 mx-auto"
+                      >
+                        <Settings size={12} /> Open Quiz Workbench
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center text-xs text-white/30 flex items-center justify-center gap-1.5 bg-[#111d47]/30 border border-dashed border-white/5 rounded-xl text-red-400">
+                      Failed to initialize Quiz database record.
+                    </div>
+                  )
+                ) : (
+                  <div className="py-6 text-center text-xs text-white/30 flex items-center justify-center gap-1.5 bg-[#111d47]/30 border border-dashed border-white/5 rounded-xl">
+                    <AlertTriangle size={14} className="text-amber" /> Please save the lesson first before building quiz questions.
                   </div>
                 )}
               </div>

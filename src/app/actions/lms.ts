@@ -93,6 +93,19 @@ export async function enrollStudent(courseId: string, contactId: string) {
    .upsert({ course_id: courseId, contact_id: contactId, status: 'active' });
 
   if (error) throw error;
+
+  // Fetch workspace_id of the course to trigger automation event
+  const { data: course } = await supabase
+   .from('courses')
+   .select('workspace_id')
+   .eq('id', courseId)
+   .single();
+  
+  if (course?.workspace_id) {
+   const { publishEvent } = await import('@/lib/events/EventBus');
+   await publishEvent(course.workspace_id, 'student_enrolled_course', contactId, { courseId });
+  }
+
   return { success: true };
  } catch (error: any) {
   return { error: error.message };
@@ -128,7 +141,7 @@ export async function getModules(courseId: string) {
   // Fetch modules
   const { data: modules, error: modulesErr } = await supabase
    .from('modules')
-   .select('*, lessons:lessons(id, title, order_index, is_free:is_preview, video_url, content)')
+   .select('*, lessons:lessons(id, title, order_index, is_free:is_preview, video_url, content, type, metadata)')
    .eq('course_id', courseId)
    .order('order_index', { ascending: true });
 
@@ -140,13 +153,14 @@ export async function getModules(courseId: string) {
 }
 
 export async function createModule(
- courseId: string,
+ colorId: string, // CourseId parameter, let's keep the parameter name as courseId
  name: string,
  description: string,
  iconEmoji: string | null,
  publishStatus: 'Draft' | 'Published' | 'Coming Soon',
  nqfLevel: string,
- isRequiredForCompletion: boolean
+ isRequiredForCompletion: boolean,
+ isActive: boolean = true
 ) {
  try {
   const workspaceId = await getCurrentWorkspaceId();
@@ -162,7 +176,7 @@ export async function createModule(
   const { data: course, error: courseErr } = await supabase
    .from('courses')
    .select('id')
-   .eq('id', courseId)
+   .eq('id', colorId)
    .eq('workspace_id', workspaceId)
    .single();
 
@@ -172,20 +186,21 @@ export async function createModule(
   const { count } = await supabase
    .from('modules')
    .select('id', { count: 'exact', head: true })
-   .eq('course_id', courseId);
+   .eq('course_id', colorId);
 
   const nextOrderIndex = (count || 0) + 1;
 
   const { data: module, error } = await supabase
    .from('modules')
    .insert({
-    course_id: courseId,
+    course_id: colorId,
     name,
     description,
     icon_emoji: iconEmoji,
     publish_status: publishStatus,
     nqf_level: nqfLevel,
     is_required_for_completion: isRequiredForCompletion,
+    is_active: isActive,
     order_index: nextOrderIndex
    })
    .select()
@@ -205,7 +220,8 @@ export async function updateModule(
  iconEmoji: string | null,
  publishStatus: 'Draft' | 'Published' | 'Coming Soon',
  nqfLevel: string,
- isRequiredForCompletion: boolean
+ isRequiredForCompletion: boolean,
+ isActive?: boolean
 ) {
  try {
   const workspaceId = await getCurrentWorkspaceId();
@@ -231,16 +247,21 @@ export async function updateModule(
    return { error: 'Unauthorized workspace access' };
   }
 
+  const updatePayload: any = {
+   name,
+   description,
+   icon_emoji: iconEmoji,
+   publish_status: publishStatus,
+   nqf_level: nqfLevel,
+   is_required_for_completion: isRequiredForCompletion
+  };
+  if (isActive !== undefined) {
+   updatePayload.is_active = isActive;
+  }
+
   const { data: updatedModule, error } = await supabase
    .from('modules')
-   .update({
-    name,
-    description,
-    icon_emoji: iconEmoji,
-    publish_status: publishStatus,
-    nqf_level: nqfLevel,
-    is_required_for_completion: isRequiredForCompletion
-   })
+   .update(updatePayload)
    .eq('id', moduleId)
    .select()
    .single();
@@ -504,6 +525,78 @@ export async function completeLessonAction(lessonId: string) {
    }, { onConflict: 'contact_id,lesson_id' });
 
   if (error) throw error;
+
+  // 1. Fetch lesson, module and course context details
+  const { data: lessonObj } = await supabase
+    .from('lessons')
+    .select('id, module_id, modules!inner(course_id, courses!inner(workspace_id))')
+    .eq('id', lessonId)
+    .single();
+
+  if (lessonObj) {
+    const moduleId = lessonObj.module_id;
+    const courseId = (lessonObj.modules as any)?.course_id;
+    const workspaceId = (lessonObj.modules as any)?.courses?.workspace_id;
+
+    if (workspaceId && courseId) {
+      const { publishEvent } = await import('@/lib/events/EventBus');
+      
+      // A. Publish lesson_completed
+      await publishEvent(workspaceId, 'lesson_completed', contact.id, { lessonId, moduleId, courseId });
+
+      // B. Evaluate Module Completed
+      // Fetch all lessons in this module
+      const { data: moduleLessons } = await supabase
+        .from('lessons')
+        .select('id')
+        .eq('module_id', moduleId);
+
+      if (moduleLessons && moduleLessons.length > 0) {
+        const lessonIds = moduleLessons.map((l: any) => l.id);
+        const { data: completedInModule } = await supabase
+          .from('lesson_progress')
+          .select('lesson_id')
+          .eq('contact_id', contact.id)
+          .eq('completed', true)
+          .in('lesson_id', lessonIds);
+        
+        if (completedInModule && completedInModule.length === lessonIds.length) {
+          await publishEvent(workspaceId, 'module_completed', contact.id, { moduleId, courseId });
+        }
+      }
+
+      // C. Evaluate Course Completed
+      // Fetch all modules in this course that are required
+      const { data: courseModules } = await supabase
+        .from('modules')
+        .select('id')
+        .eq('course_id', courseId)
+        .eq('is_required_for_completion', true);
+
+      if (courseModules && courseModules.length > 0) {
+        const moduleIds = courseModules.map((m: any) => m.id);
+        const { data: courseLessons } = await supabase
+          .from('lessons')
+          .select('id')
+          .in('module_id', moduleIds);
+
+        if (courseLessons && courseLessons.length > 0) {
+          const courseLessonIds = courseLessons.map((l: any) => l.id);
+          const { data: completedInCourse } = await supabase
+            .from('lesson_progress')
+            .select('lesson_id')
+            .eq('contact_id', contact.id)
+            .eq('completed', true)
+            .in('lesson_id', courseLessonIds);
+
+          if (completedInCourse && completedInCourse.length === courseLessonIds.length) {
+            await publishEvent(workspaceId, 'course_completed', contact.id, { courseId });
+          }
+        }
+      }
+    }
+  }
+
   return { success: true };
  } catch (error: any) {
   return { error: error.message };

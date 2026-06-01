@@ -1,8 +1,7 @@
 import React from 'react';
-import Wrapper from '@/components/layouts/DefaultWrapper';
-import CoursePlayerClient from './CoursePlayerClient';
 import { getCourse, getModules, getStudentCourseProgress } from '@/app/actions/lms';
 import { notFound } from 'next/navigation';
+import CoursePlayerClient from './CoursePlayerClient';
 
 interface PageProps {
   params: {
@@ -28,14 +27,14 @@ export default async function StudentClassroomPage({ params }: PageProps) {
   const progressList = progressRes.data || [];
 
   return (
-    <Wrapper>
-      <div className="p-4 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)] text-white">
-        <CoursePlayerClient 
-          course={course} 
-          modules={modules} 
-          initialProgress={progressList} 
+    <div className="min-h-screen bg-n900 text-t1 overflow-x-hidden p-6 md:p-10 font-body">
+      <div className="max-w-7xl mx-auto text-white">
+        <CoursePlayerClient
+          course={course}
+          modules={modules}
+          initialProgress={progressList}
         />
       </div>
-    </Wrapper>
+    </div>
   );
 }

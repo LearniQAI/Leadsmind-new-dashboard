@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     // Retrieve modules with nested lessons
     const { data: modules, error: modulesErr } = await supabase
       .from('modules')
-      .select('*, lessons:lessons(id, title, order_index, is_free:is_preview, video_url, content)')
+      .select('*, lessons:lessons(id, title, order_index, is_free:is_preview, video_url, content, type, metadata)')
       .eq('course_id', courseId)
       .order('order_index', { ascending: true });
 

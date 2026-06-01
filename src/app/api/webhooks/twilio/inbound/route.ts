@@ -64,6 +64,96 @@ export async function POST(req: NextRequest) {
       return new NextResponse('<Response></Response>', { status: 200, headers: { 'Content-Type': 'text/xml' } });
     }
 
+    // Intercept "ENROL" command for WhatsApp AI self-service registration
+    if (body.trim().toUpperCase().startsWith('ENROL')) {
+      const { data: courses } = await supabaseAdmin
+        .from('courses')
+        .select('id, title')
+        .eq('workspace_id', contact.workspace_id);
+
+      if (courses && courses.length > 0) {
+        let matchedCourseId = null;
+        let matchedCourseTitle = '';
+
+        const openAiKey = process.env.OPENAI_API_KEY;
+        if (openAiKey && !openAiKey.startsWith('sk_mock_key') && !openAiKey.includes('PLACEHOLDER') && !openAiKey.startsWith('sk-proj-O15jtbs')) {
+          try {
+            const prompt = `You are LENA AI. Identify which course the user wants to enroll in.
+User Message: "${body}"
+Available Courses:
+${courses.map(c => `- ID: ${c.id}, Title: ${c.title}`).join('\n')}
+
+Reply with ONLY the matching course UUID. If there is no clear match, reply with "NONE".`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${openAiKey}`
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.1
+              })
+            });
+
+            if (response.ok) {
+              const resData = await response.json();
+              const matchedText = resData.choices?.[0]?.message?.content?.trim() || '';
+              if (matchedText && matchedText !== 'NONE') {
+                const found = courses.find(c => c.id === matchedText);
+                if (found) {
+                  matchedCourseId = found.id;
+                  matchedCourseTitle = found.title;
+                }
+              }
+            }
+          } catch (err) {
+            console.error('[Twilio Inbound] OpenAI course resolution failed:', err);
+          }
+        }
+
+        // Fallback: substring matching
+        if (!matchedCourseId) {
+          const cleanQuery = body.replace(/ENROL/i, '').trim().toLowerCase();
+          const found = courses.find(c => c.title.toLowerCase().includes(cleanQuery) || cleanQuery.includes(c.title.toLowerCase()));
+          if (found) {
+            matchedCourseId = found.id;
+            matchedCourseTitle = found.title;
+          }
+        }
+
+        if (matchedCourseId) {
+          await supabaseAdmin
+            .from('enrollments')
+            .upsert({
+              course_id: matchedCourseId,
+              contact_id: contact.id,
+              status: 'active',
+              access_type: 'full',
+              metadata: { enrolled_via: 'whatsapp_ai' }
+            }, { onConflict: 'course_id,contact_id' });
+
+          const { publishEvent } = await import('@/lib/events/EventBus');
+          await publishEvent(contact.workspace_id, 'student_enrolled_course', contact.id, {
+            courseId: matchedCourseId,
+            via: 'whatsapp_ai'
+          });
+
+          return new NextResponse(
+            `<Response><Message>🤖 *LENA AI*: Welcome! You have been successfully enrolled in *${matchedCourseTitle}*. Start learning today! 🚀</Message></Response>`,
+            { status: 200, headers: { 'Content-Type': 'text/xml' } }
+          );
+        }
+      }
+
+      return new NextResponse(
+        `<Response><Message>🤖 *LENA AI*: Sorry, I couldn't match that to any available course. Please reply with "ENROL <course name>" with the exact course title.</Message></Response>`,
+        { status: 200, headers: { 'Content-Type': 'text/xml' } }
+      );
+    }
+
     // 2. Find the active SMS conversation
     const { data: conv } = await supabaseAdmin
       .from('conversations')

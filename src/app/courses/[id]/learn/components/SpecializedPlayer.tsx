@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Editor from "@monaco-editor/react";
+import QuizPlayer from "./QuizPlayer";
 import { Button } from "@/components/ui/button";
 import { 
   PlayCircle, BookOpen, Headphones, FileText, 
@@ -9,6 +10,27 @@ import {
   ChevronRight, RefreshCw, AlertCircle 
 } from "lucide-react";
 import { toast } from "sonner";
+
+// Helper function to convert YouTube and Vimeo URLs to embed URLs
+function getEmbedUrl(url: string): string {
+  if (!url) return "";
+
+  // YouTube RegExp
+  const ytRegExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&\?]*).*/;
+  const ytMatch = url.match(ytRegExp);
+  if (ytMatch && ytMatch[2].length === 11) {
+    return `https://www.youtube.com/embed/${ytMatch[2]}`;
+  }
+
+  // Vimeo RegExp
+  const vimeoRegExp = /vimeo\.com\/(?:video\/)?([0-9]+)/;
+  const vimeoMatch = url.match(vimeoRegExp);
+  if (vimeoMatch && vimeoMatch[1]) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  }
+
+  return url;
+}
 
 interface SpecializedPlayerProps {
   lesson: any;
@@ -68,7 +90,7 @@ export default function SpecializedPlayer({
           <div className="space-y-4">
             <div className="relative aspect-video rounded-2xl bg-black overflow-hidden border border-white/5 shadow-2xl">
               <iframe
-                src={video_url}
+                src={getEmbedUrl(video_url)}
                 className="absolute inset-0 w-full h-full border-none"
                 allowFullScreen
                 allow="autoplay; encrypted-media"
@@ -232,44 +254,11 @@ export default function SpecializedPlayer({
 
       case "Quiz":
         return (
-          <div className="bg-[#111d47]/20 border border-white/5 rounded-2xl p-6 max-w-xl mx-auto space-y-6">
-            <div className="space-y-1">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-accent2 font-mono">Question Node</span>
-              <p className="text-sm font-bold text-white">{content || "Read the question below and select the correct outcome."}</p>
-            </div>
-
-            <div className="space-y-3">
-              {["Option A: Correct assessment state", "Option B: Mismatched criteria", "Option C: Null pointer evaluation"].map((opt, i) => (
-                <div
-                  key={i}
-                  onClick={() => !checked && setSelectedAnswer(i)}
-                  className={`border p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between ${
-                    selectedAnswer === i 
-                      ? "bg-accent/10 border-accent text-white" 
-                      : "bg-[#111d47]/30 border-white/5 text-white/60 hover:border-white/10"
-                  } ${checked && i === 0 ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : ""}`}
-                >
-                  <span className="text-xs font-semibold">{opt}</span>
-                  {checked && i === 0 && <CheckCircle size={14} className="text-emerald-400" />}
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-2 flex items-center justify-between">
-              <Button
-                onClick={handleQuizSubmit}
-                disabled={selectedAnswer === null || checked}
-                className="bg-accent hover:bg-accent/90 text-white font-black text-[10px] uppercase tracking-widest h-10 px-5 rounded-xl"
-              >
-                Check Answer
-              </Button>
-              {checked && (
-                <span className="text-xs font-semibold flex items-center gap-1 text-white/50 font-mono">
-                  {selectedAnswer === 0 ? "✓ 100% Score" : "✗ Retry lesson"}
-                </span>
-              )}
-            </div>
-          </div>
+          <QuizPlayer 
+            lesson={lesson} 
+            onComplete={onComplete} 
+            isCompleting={isCompleting} 
+          />
         );
 
       case "Assignment":

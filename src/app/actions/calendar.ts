@@ -110,6 +110,13 @@ export async function createBooking(payload: {
    .single();
 
   if (error) throw error;
+  if (data && payload.contactId) {
+   const { publishEvent } = await import('@/lib/events/EventBus');
+   await publishEvent(workspaceId, 'live_session_booked', payload.contactId, {
+    appointmentId: data.id,
+    calendarId: payload.calendarId
+   });
+  }
   return data;
  });
 }

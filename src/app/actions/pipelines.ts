@@ -121,6 +121,12 @@ export async function getPipelineOpportunities(pipelineId: string) {
 
 export async function updateDealStage(dealId: string, stageId: string, position: number) {
   const supabase = await createServerClient();
+  const { data: dealBefore } = await supabase
+    .from('opportunities')
+    .select('workspace_id, contact_id, status')
+    .eq('id', dealId)
+    .single();
+
   const { error } = await supabase
     .from('opportunities')
     .update({ 
@@ -132,6 +138,21 @@ export async function updateDealStage(dealId: string, stageId: string, position:
     .eq('id', dealId);
 
   if (error) return { success: false, error: error.message };
+
+  const { data: stage } = await supabase
+    .from('pipeline_stages')
+    .select('name')
+    .eq('id', stageId)
+    .single();
+
+  if (stage?.name?.toLowerCase() === 'won' && dealBefore?.contact_id) {
+    const { publishEvent } = await import('@/lib/events/EventBus');
+    await publishEvent(dealBefore.workspace_id, 'opportunity_stage_changed', dealBefore.contact_id, {
+      dealId,
+      stageId,
+      status: 'won'
+    });
+  }
   
   revalidatePath('/pipelines');
   return { success: true };
@@ -165,6 +186,24 @@ export async function updateOpportunity(id: string, values: any) {
   if (error) {
     console.error(`>>> [CRITICAL DEBUG] Supabase Error:`, error);
     return { success: false, error: error.message };
+  }
+
+  // Check if status is updated to 'won' OR if stage has been updated to 'won'
+  if (data) {
+    const { data: stage } = await supabase
+      .from('pipeline_stages')
+      .select('name')
+      .eq('id', data.stage_id)
+      .single();
+
+    if ((data.status === 'won' || stage?.name?.toLowerCase() === 'won') && data.contact_id) {
+      const { publishEvent } = await import('@/lib/events/EventBus');
+      await publishEvent(data.workspace_id, 'opportunity_stage_changed', data.contact_id, {
+        dealId: id,
+        stageId: data.stage_id,
+        status: data.status
+      });
+    }
   }
   
   console.log(`>>> [CRITICAL DEBUG] Supabase Success! Returned data:`, JSON.stringify(data, null, 2));

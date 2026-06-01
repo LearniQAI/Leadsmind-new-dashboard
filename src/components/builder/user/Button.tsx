@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useNode } from '@craftjs/core';
+import { useNode, useEditor } from '@craftjs/core';
 import { Button as ShadcnButton } from '@/components/ui/button';
 import * as LucideIcons from 'lucide-react';
 import { resolveLink } from '@/lib/builder/utils';
@@ -38,7 +38,9 @@ export const UserButton = (allProps: ButtonProps & any) => {
     ...props 
   } = allProps;
  const { connectors: { connect, drag } } = useNode();
+ const { enabled } = useEditor((state) => ({ enabled: state.options.enabled }));
  const { websiteData } = useBuilder();
+ const [loading, setLoading] = React.useState(false);
  
  const basePath = (websiteData?.workspaceSlug && websiteData?.subdomain) 
   ? `/p/${websiteData.workspaceSlug}/${websiteData.subdomain}` 
@@ -59,6 +61,70 @@ export const UserButton = (allProps: ButtonProps & any) => {
   return undefined;
  };
 
+ const handleClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+   if (enabled) {
+     e.preventDefault();
+     return;
+   }
+
+   const actionValue = getAction();
+   if (!actionValue) return;
+
+   if (
+     actionValue.startsWith('enroll_course:') ||
+     actionValue.startsWith('enroll_bundle:') ||
+     actionValue.startsWith('open_player:') ||
+     actionValue.startsWith('deep_link:') ||
+     actionValue.startsWith('start_trial:') ||
+     actionValue.startsWith('book_lesson') ||
+     actionValue.startsWith('go_checkout:')
+   ) {
+     e.preventDefault();
+     setLoading(true);
+
+     const parts = actionValue.split(':');
+     const actionType = parts[0];
+     const courseId = parts[1] || '';
+     const bundleId = parts[1] || '';
+     const lessonId = parts[2] || '';
+
+     try {
+       const workspaceId = websiteData?.workspace_id || '';
+       if (!workspaceId) {
+         console.error('[Button Action] Missing workspaceId');
+         setLoading(false);
+         return;
+       }
+
+       const res = await fetch('/api/automation/button-action', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           action: actionType,
+           courseId,
+           bundleId,
+           workspaceId,
+           lessonId
+         })
+       });
+
+       const data = await res.json();
+       if (data.error) {
+         alert(`Error: ${data.error}`);
+       } else {
+         if (data.redirectUrl) {
+           window.location.href = data.redirectUrl;
+         }
+       }
+     } catch (err: any) {
+       console.error('[Button Action] Execution error:', err);
+       alert(`Error executing action: ${err.message}`);
+     } finally {
+       setLoading(false);
+     }
+   }
+ };
+
  return (
   <div
    {...props}
@@ -77,9 +143,11 @@ export const UserButton = (allProps: ButtonProps & any) => {
    <a 
     href={resolveLink(link, { basePath })} 
     data-action={getAction()}
+    onClick={handleClick}
     className="block no-underline"
    >
     <ShadcnButton
+      disabled={loading}
       className={`w-full transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group ${sizeClasses[(size || 'md') as keyof typeof sizeClasses]}`}
       style={{
         borderRadius: `${borderRadius}px`,
@@ -88,9 +156,18 @@ export const UserButton = (allProps: ButtonProps & any) => {
         border: variant === 'outline' ? `2px solid ${color}` : undefined,
       }}
     >
-      {icon && iconPosition === 'left' && <IconComponent size={size === 'xl' ? 24 : 18} />}
-      {text}
-      {icon && iconPosition === 'right' && <IconComponent size={size === 'xl' ? 24 : 18} className="group-hover:translate-x-1 transition-transform" />}
+      {loading ? (
+        <span className="flex items-center gap-2">
+          <LucideIcons.Loader2 className="animate-spin h-4 w-4" />
+          Processing...
+        </span>
+      ) : (
+        <>
+          {icon && iconPosition === 'left' && <IconComponent size={size === 'xl' ? 24 : 18} />}
+          {text}
+          {icon && iconPosition === 'right' && <IconComponent size={size === 'xl' ? 24 : 18} className="group-hover:translate-x-1 transition-transform" />}
+        </>
+      )}
     </ShadcnButton>
    </a>
   </div>

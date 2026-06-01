@@ -17,6 +17,7 @@ import {
 import ModuleCard from "./components/ModuleCard";
 import ModuleCreatorModal from "./components/ModuleCreatorModal";
 import LessonCreatorModal from "./components/LessonCreatorModal";
+import ConfirmationModal from "@/components/calendar/modals/ConfirmationModal";
 
 interface CourseWorkspaceClientProps {
   course: any;
@@ -39,6 +40,10 @@ export default function CourseWorkspaceClient({
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [activeModuleIdForLesson, setActiveModuleIdForLesson] = useState<string>("");
   const [editingLesson, setEditingLesson] = useState<any | undefined>(undefined);
+  
+  // Lesson Delete Modal State
+  const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [isPending, startTransition] = useTransition();
 
@@ -60,7 +65,8 @@ export default function CourseWorkspaceClient({
         moduleData.icon_emoji,
         moduleData.publish_status,
         moduleData.nqf_level,
-        moduleData.is_required_for_completion
+        moduleData.is_required_for_completion,
+        moduleData.is_active
       );
     } else {
       res = await createModule(
@@ -70,7 +76,8 @@ export default function CourseWorkspaceClient({
         moduleData.icon_emoji,
         moduleData.publish_status,
         moduleData.nqf_level,
-        moduleData.is_required_for_completion
+        moduleData.is_required_for_completion,
+        moduleData.is_active
       );
     }
 
@@ -134,12 +141,20 @@ export default function CourseWorkspaceClient({
     }
   };
 
-  const handleDeleteLesson = async (lessonId: string) => {
-    const res = await deleteLesson(lessonId);
+  const handleDeleteLesson = (lessonId: string) => {
+    setDeletingLessonId(lessonId);
+  };
+
+  const confirmDeleteLesson = async () => {
+    if (!deletingLessonId) return;
+    setIsDeleting(true);
+    const res = await deleteLesson(deletingLessonId);
+    setIsDeleting(false);
     if (res.error) {
       toast.error(res.error);
     } else {
       toast.success("Lesson node removed.");
+      setDeletingLessonId(null);
       startTransition(async () => {
         await refreshWorkspace();
         router.refresh();
@@ -156,6 +171,10 @@ export default function CourseWorkspaceClient({
     
     return matchesSearch && matchesFilter;
   });
+
+  const deletingLesson = deletingLessonId
+    ? modules.flatMap((m) => m.lessons || []).find((l) => l.id === deletingLessonId)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -313,7 +332,19 @@ export default function CourseWorkspaceClient({
         }}
         onSave={handleSaveLesson}
         moduleId={activeModuleIdForLesson}
+        courseId={course.id}
         editingLesson={editingLesson}
+      />
+
+      <ConfirmationModal
+        isOpen={deletingLessonId !== null}
+        onClose={() => setDeletingLessonId(null)}
+        onConfirm={confirmDeleteLesson}
+        title="Remove Lesson Node"
+        description={`Are you sure you want to delete lesson "${deletingLesson?.title || ''}"? This action cannot be undone.`}
+        confirmText="Delete"
+        isDestructive={true}
+        isLoading={isDeleting}
       />
     </div>
   );

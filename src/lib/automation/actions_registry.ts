@@ -163,11 +163,30 @@ export const AutomationActions = {
   }
  },
 
- lms_enroll: async (workspaceId: string, contactId: string, config: any) => {
-  const { courseId } = config;
-  if (!courseId) return;
-  await enrollStudent(courseId, contactId);
- },
+  lms_enroll: async (workspaceId: string, contactId: string, config: any) => {
+   const { lms_enroll } = await import("./lms_actions");
+   await lms_enroll(workspaceId, contactId, config);
+  },
+
+  lms_enroll_bundle: async (workspaceId: string, contactId: string, config: any) => {
+   const { lms_enroll_bundle } = await import("./lms_actions");
+   await lms_enroll_bundle(workspaceId, contactId, config);
+  },
+
+  lms_revoke_access: async (workspaceId: string, contactId: string, config: any) => {
+   const { lms_revoke_access } = await import("./lms_actions");
+   await lms_revoke_access(workspaceId, contactId, config);
+  },
+
+  update_community_privilege: async (workspaceId: string, contactId: string, config: any) => {
+   const { update_community_privilege } = await import("./lms_actions");
+   await update_community_privilege(workspaceId, contactId, config);
+  },
+
+  send_whatsapp_template: async (workspaceId: string, contactId: string, config: any) => {
+   const { send_whatsapp_template } = await import("./lms_actions");
+   await send_whatsapp_template(workspaceId, contactId, config);
+  },
 
  lms_update_progress: async (workspaceId: string, contactId: string, config: any) => {
   const { lessonId, completed } = config;

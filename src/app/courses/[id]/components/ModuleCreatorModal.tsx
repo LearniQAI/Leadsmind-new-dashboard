@@ -58,6 +58,7 @@ export default function ModuleCreatorModal({
   const [publishStatus, setPublishStatus] = useState<"Draft" | "Published" | "Coming Soon">("Draft");
   const [nqfLevel, setNqfLevel] = useState("Not Specified");
   const [isRequired, setIsRequired] = useState(false);
+  const [isActive, setIsActive] = useState(true);
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -70,6 +71,7 @@ export default function ModuleCreatorModal({
       setPublishStatus(editingModule.publish_status || "Draft");
       setNqfLevel(editingModule.nqf_level || "Not Specified");
       setIsRequired(editingModule.is_required_for_completion || false);
+      setIsActive(editingModule.is_active !== false);
     } else {
       setName("");
       setDescription("");
@@ -77,6 +79,7 @@ export default function ModuleCreatorModal({
       setPublishStatus("Draft");
       setNqfLevel("Not Specified");
       setIsRequired(false);
+      setIsActive(true);
     }
   }, [editingModule, isOpen]);
 
@@ -144,7 +147,8 @@ export default function ModuleCreatorModal({
         icon_emoji: iconEmoji,
         publish_status: publishStatus,
         nqf_level: nqfLevel,
-        is_required_for_completion: isRequired
+        is_required_for_completion: isRequired,
+        is_active: isActive
       });
       onClose();
     } catch (err: any) {
@@ -261,6 +265,19 @@ export default function ModuleCreatorModal({
             <Switch
               checked={isRequired}
               onCheckedChange={setIsRequired}
+              className="data-[state=checked]:bg-primary"
+            />
+          </div>
+
+          {/* Active Status Switch */}
+          <div className="flex items-center justify-between bg-[#111d47]/30 border border-white/5 rounded-xl p-4">
+            <div>
+              <span className="text-xs font-bold text-white block">Active Status</span>
+              <span className="text-[10px] text-white/40 block mt-0.5">Deactivate to hide this module entirely from students</span>
+            </div>
+            <Switch
+              checked={isActive}
+              onCheckedChange={setIsActive}
               className="data-[state=checked]:bg-primary"
             />
           </div>
