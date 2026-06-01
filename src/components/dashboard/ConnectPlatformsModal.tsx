@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { getConnectedPlatforms, disconnectPlatform, getMetaAuthUrl } from '@/app/actions/messaging';
+import { getConnectedPlatforms, disconnectPlatform, getMetaAuthUrl, connectPlatformManually } from '@/app/actions/messaging';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -16,6 +16,46 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
   const [connections, setConnections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [metaUrl, setMetaUrl] = useState('');
+  const [activeManualPlatform, setActiveManualPlatform] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    pageId: '',
+    pageName: '',
+    pageAccessToken: '',
+    instagramBusinessAccountId: '',
+    phoneNumberId: '',
+    whatsappBusinessAccountId: '',
+    systemUserAccessToken: ''
+  });
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeManualPlatform) return;
+    
+    setIsLoading(true);
+    try {
+      const res = await connectPlatformManually(activeManualPlatform, formData);
+      if (res.success) {
+        toast.success(`${activeManualPlatform.toUpperCase()} connected successfully!`);
+        setActiveManualPlatform(null);
+        setFormData({
+          pageId: '',
+          pageName: '',
+          pageAccessToken: '',
+          instagramBusinessAccountId: '',
+          phoneNumberId: '',
+          whatsappBusinessAccountId: '',
+          systemUserAccessToken: ''
+        });
+        loadConnections();
+      } else {
+        toast.error(res.error || 'Failed to save connection');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'An error occurred while saving connection');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadConnections = async () => {
     setIsLoading(true);
@@ -70,6 +110,164 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
               <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
               <span className="text-xs text-[#4a5a82]">Loading connection details...</span>
             </div>
+          ) : activeManualPlatform ? (
+            <form onSubmit={handleManualSubmit} className="flex flex-col gap-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-1">
+                <h4 className="text-sm font-bold text-white font-space-grotesk capitalize">
+                  Connect {activeManualPlatform === 'whatsapp' ? 'WhatsApp' : activeManualPlatform} Manually
+                </h4>
+                <Button 
+                  type="button" 
+                  onClick={() => setActiveManualPlatform(null)} 
+                  variant="ghost" 
+                  className="h-7 px-2.5 text-[10px] text-[#4a5a82] hover:text-white"
+                >
+                  Back
+                </Button>
+              </div>
+
+              {activeManualPlatform === 'facebook' && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-[#4a5a82] font-semibold">Page ID</label>
+                    <input 
+                      type="text" 
+                      value={formData.pageId} 
+                      onChange={(e) => setFormData({ ...formData, pageId: e.target.value })}
+                      placeholder="e.g. 10928374656172"
+                      required
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-[#4a5a82] font-semibold">Page Name (Display Name)</label>
+                    <input 
+                      type="text" 
+                      value={formData.pageName} 
+                      onChange={(e) => setFormData({ ...formData, pageName: e.target.value })}
+                      placeholder="e.g. My Facebook Page"
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-[#4a5a82] font-semibold">Page Access Token</label>
+                    <input 
+                      type="password" 
+                      value={formData.pageAccessToken} 
+                      onChange={(e) => setFormData({ ...formData, pageAccessToken: e.target.value })}
+                      placeholder="EAAG..."
+                      required
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </>
+              )}
+
+              {activeManualPlatform === 'instagram' && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-[#4a5a82] font-semibold">Instagram Business Account ID</label>
+                    <input 
+                      type="text" 
+                      value={formData.instagramBusinessAccountId} 
+                      onChange={(e) => setFormData({ ...formData, instagramBusinessAccountId: e.target.value })}
+                      placeholder="e.g. 17841400000000000"
+                      required
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ec4899]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-[#4a5a82] font-semibold">Facebook Page ID</label>
+                    <input 
+                      type="text" 
+                      value={formData.pageId} 
+                      onChange={(e) => setFormData({ ...formData, pageId: e.target.value })}
+                      placeholder="e.g. 10928374656172"
+                      required
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ec4899]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-[#4a5a82] font-semibold">Page Access Token</label>
+                    <input 
+                      type="password" 
+                      value={formData.pageAccessToken} 
+                      onChange={(e) => setFormData({ ...formData, pageAccessToken: e.target.value })}
+                      placeholder="EAAG..."
+                      required
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ec4899]"
+                    />
+                  </div>
+                </>
+              )}
+
+              {activeManualPlatform === 'whatsapp' && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-[#4a5a82] font-semibold">Phone Number ID</label>
+                    <input 
+                      type="text" 
+                      value={formData.phoneNumberId} 
+                      onChange={(e) => setFormData({ ...formData, phoneNumberId: e.target.value })}
+                      placeholder="e.g. 104857293847586"
+                      required
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#25d366]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-[#4a5a82] font-semibold">WhatsApp Business Account ID (WABA ID)</label>
+                    <input 
+                      type="text" 
+                      value={formData.whatsappBusinessAccountId} 
+                      onChange={(e) => setFormData({ ...formData, whatsappBusinessAccountId: e.target.value })}
+                      placeholder="e.g. 10928374656172"
+                      required
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#25d366]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-[#4a5a82] font-semibold">System User Access Token</label>
+                    <input 
+                      type="password" 
+                      value={formData.systemUserAccessToken} 
+                      onChange={(e) => setFormData({ ...formData, systemUserAccessToken: e.target.value })}
+                      placeholder="EAAG..."
+                      required
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#25d366]"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center gap-3 mt-3">
+                <Button 
+                  type="button" 
+                  onClick={() => setActiveManualPlatform(null)} 
+                  variant="ghost" 
+                  className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  className={`flex-1 text-xs text-white font-semibold ${
+                    activeManualPlatform === 'facebook' ? 'bg-[#3b82f6] hover:bg-[#2563eb]' :
+                    activeManualPlatform === 'instagram' ? 'bg-[#ec4899] hover:bg-[#db2777]' :
+                    'bg-[#25d366] hover:bg-[#22c55e]'
+                  }`}
+                >
+                  Save Connection
+                </Button>
+              </div>
+
+              {metaUrl && (
+                <div className="text-center mt-2 border-t border-white/5 pt-3">
+                  <a href={metaUrl} className="text-[10px] text-[#4a5a82] hover:text-[#3b82f6] hover:underline">
+                    Or click here to connect automatically via Facebook Login
+                  </a>
+                </div>
+              )}
+            </form>
           ) : (
             <>
               {/* Facebook Messenger */}
@@ -99,10 +297,21 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
                     </Button>
                   ) : (
                     <Button 
-                      asChild
+                      onClick={() => {
+                        setFormData({
+                          pageId: '',
+                          pageName: '',
+                          pageAccessToken: '',
+                          instagramBusinessAccountId: '',
+                          phoneNumberId: '',
+                          whatsappBusinessAccountId: '',
+                          systemUserAccessToken: ''
+                        });
+                        setActiveManualPlatform('facebook');
+                      }}
                       className="h-8 px-3.5 text-[11px] font-bold bg-[#3b82f6] hover:bg-[#2563eb] text-white"
                     >
-                      <a href={metaUrl}>Connect</a>
+                      Connect
                     </Button>
                   )}
                 </div>
@@ -135,10 +344,21 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
                     </Button>
                   ) : (
                     <Button 
-                      asChild
+                      onClick={() => {
+                        setFormData({
+                          pageId: '',
+                          pageName: '',
+                          pageAccessToken: '',
+                          instagramBusinessAccountId: '',
+                          phoneNumberId: '',
+                          whatsappBusinessAccountId: '',
+                          systemUserAccessToken: ''
+                        });
+                        setActiveManualPlatform('instagram');
+                      }}
                       className="h-8 px-3.5 text-[11px] font-bold bg-[#ec4899] hover:bg-[#db2777] text-white"
                     >
-                      <a href={metaUrl}>Connect</a>
+                      Connect
                     </Button>
                   )}
                 </div>
@@ -171,10 +391,21 @@ export function ConnectPlatformsModal({ open, onOpenChange }: ConnectPlatformsMo
                     </Button>
                   ) : (
                     <Button 
-                      asChild
+                      onClick={() => {
+                        setFormData({
+                          pageId: '',
+                          pageName: '',
+                          pageAccessToken: '',
+                          instagramBusinessAccountId: '',
+                          phoneNumberId: '',
+                          whatsappBusinessAccountId: '',
+                          systemUserAccessToken: ''
+                        });
+                        setActiveManualPlatform('whatsapp');
+                      }}
                       className="h-8 px-3.5 text-[11px] font-bold bg-[#25d366] hover:bg-[#22c55e] text-white"
                     >
-                      <a href={metaUrl}>Connect</a>
+                      Connect
                     </Button>
                   )}
                 </div>

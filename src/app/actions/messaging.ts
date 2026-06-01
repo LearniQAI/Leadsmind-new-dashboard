@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
+import { encrypt } from '@/lib/encryption';
 
 const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
 
@@ -21,7 +22,51 @@ export async function getMetaAuthUrl() {
 	return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${workspaceId}`;
 }
 
+export async function connectPlatformManually(platform: string, data: any) {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
 
+    const supabase = await createServerClient();
+    let credentials: any = {};
+
+    if (platform === 'facebook') {
+      credentials = {
+        page_id: data.pageId,
+        page_name: data.pageName || 'LeadsMind Page',
+        page_access_token_encrypted: encrypt(data.pageAccessToken),
+        user_access_token_encrypted: encrypt(data.userAccessToken || data.pageAccessToken)
+      };
+    } else if (platform === 'instagram') {
+      credentials = {
+        instagram_business_account_id: data.instagramBusinessAccountId,
+        page_id: data.pageId,
+        page_access_token_encrypted: encrypt(data.pageAccessToken)
+      };
+    } else if (platform === 'whatsapp') {
+      credentials = {
+        phone_number_id: data.phoneNumberId,
+        whatsapp_business_account_id: data.whatsappBusinessAccountId,
+        system_user_access_token_encrypted: encrypt(data.systemUserAccessToken)
+      };
+    } else {
+      return { error: 'Invalid platform' };
+    }
+
+    const { error } = await supabase.from('platform_connections').upsert({
+      workspace_id: workspaceId,
+      platform,
+      credentials,
+      status: 'connected',
+      last_sync_at: new Date().toISOString()
+    }, { onConflict: 'workspace_id,platform' });
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message || 'Failed to save connection' };
+  }
+}
 
 export async function getLinkedInAuthUrl() {
  const clientId = process.env.LINKEDIN_CLIENT_ID;
