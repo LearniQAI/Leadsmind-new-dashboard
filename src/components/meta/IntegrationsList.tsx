@@ -166,96 +166,98 @@ export function IntegrationsList({
   };
 
   return (
-    <div className="flex flex-col gap-6 text-[#eef2ff]">
-      {/* Section Header */}
-      <div>
-        <h2 className="text-[22px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-          Meta <span className="text-[#3b82f6]">Connections</span>
-        </h2>
-        <p className="text-[11.5px] uppercase tracking-wider font-semibold text-[#4a5a82] mt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-          Link your Facebook Pages, Instagram accounts, and WhatsApp lines to the Unified Inbox.
-        </p>
-      </div>
+    <div className="flex flex-col items-center w-full px-6 py-6 text-[#eef2ff]">
+      <div className="w-full max-w-2xl flex flex-col gap-6">
+        {/* Section Header */}
+        <div>
+          <h2 className="text-[22px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            Meta <span className="text-[#3b82f6]">Connections</span>
+          </h2>
+          <p className="text-[11.5px] uppercase tracking-wider font-semibold text-[#4a5a82] mt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            Link your Facebook Pages, Instagram accounts, and WhatsApp lines to the Unified Inbox.
+          </p>
+        </div>
 
-      {/* Platforms Grid/List */}
-      <div className="flex flex-col gap-4">
-        {activeConnections.map((conn) => {
-          const details = getPlatformDetails(conn);
-          const hasWarning = showConfigWarning[conn.platform] && !(isMetaConfigured() || isServerMetaConfigured);
+        {/* Platforms Grid/List */}
+        <div className="flex flex-col gap-4 w-full">
+          {activeConnections.map((conn) => {
+            const details = getPlatformDetails(conn);
+            const hasWarning = showConfigWarning[conn.platform] && !(isMetaConfigured() || isServerMetaConfigured);
 
-          return (
-            <div
-              key={conn.platform}
-              className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] hover:border-[rgba(255,255,255,0.13)] rounded-xl p-5 transition-all duration-200"
-            >
-              <div className="flex flex-row items-center justify-between gap-4">
-                {/* Left side: Platform icon + name + status badge */}
-                <div className="flex items-center gap-4 min-w-0">
-                  <div
-                    className="w-10 h-10 rounded-xl bg-white/[0.04] border-t-2 flex items-center justify-center flex-shrink-0"
-                    style={{ borderTopColor: details.color }}
-                  >
-                    {details.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[14px] font-semibold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                        {details.name}
-                      </span>
-                      {conn.connected ? (
-                        <span className="bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.2)] text-[#10b981] text-[10.5px] font-semibold rounded-full px-2.5 py-0.5 flex-shrink-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                          ● Connected
-                        </span>
-                      ) : (
-                        <span className="bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.07)] text-[#4a5a82] text-[10.5px] font-semibold rounded-full px-2.5 py-0.5 flex-shrink-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                          ○ Not connected
-                        </span>
-                      )}
+            return (
+              <div
+                key={conn.platform}
+                className="w-full bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] hover:border-[rgba(255,255,255,0.13)] rounded-xl p-5 transition-all duration-200"
+              >
+                <div className="flex flex-row items-center justify-between gap-4">
+                  {/* Left side: Platform icon + name + status badge */}
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div
+                      className="w-10 h-10 rounded-xl bg-white/[0.04] border-t-2 flex items-center justify-center flex-shrink-0"
+                      style={{ borderTopColor: details.color }}
+                    >
+                      {details.icon}
                     </div>
-                    
-                    <p className="text-[#94a3c8] text-[11.5px] mt-0.5 leading-snug" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                      {conn.connected ? (
-                        `${conn.accountName || 'LeadsMind Account'} (${details.subline})`
-                      ) : (
-                        details.description
-                      )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[14px] font-semibold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                          {details.name}
+                        </span>
+                        {conn.connected ? (
+                          <span className="bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.2)] text-[#10b981] text-[10.5px] font-semibold rounded-full px-2.5 py-0.5 flex-shrink-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                            ● Connected
+                          </span>
+                        ) : (
+                          <span className="bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.07)] text-[#4a5a82] text-[10.5px] font-semibold rounded-full px-2.5 py-0.5 flex-shrink-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                            ○ Not connected
+                          </span>
+                        )}
+                      </div>
+                      
+                      <p className="text-[#94a3c8] text-[11.5px] mt-0.5 leading-snug" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                        {conn.connected ? (
+                          `${conn.accountName || 'LeadsMind Account'} (${details.subline})`
+                        ) : (
+                          details.description
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right side: Action Button */}
+                  <div className="flex-shrink-0">
+                    {conn.connected ? (
+                      <button
+                        onClick={() => handleDisconnectClick(conn.platform)}
+                        className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] rounded-lg px-4 py-2 text-[12px] font-semibold transition-colors hover:bg-[rgba(239,68,68,0.15)]"
+                        style={{ fontFamily: "'DM Sans', sans-serif" }}
+                      >
+                        Disconnect
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleConnectClick(conn.platform)}
+                        className="text-white font-semibold rounded-lg px-5 py-2 text-[12px] transition-opacity hover:opacity-90"
+                        style={{ backgroundColor: details.color, fontFamily: "'DM Sans', sans-serif" }}
+                      >
+                        Connect {conn.platform.charAt(0).toUpperCase() + conn.platform.slice(1)}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Inline warning message if clicked when not configured */}
+                {hasWarning && (
+                  <div className="bg-[rgba(245,158,11,0.06)] border-l-2 border-[#f59e0b] rounded-r-lg px-3 py-2 mt-3">
+                    <p className="text-[#94a3c8] text-[12px] leading-relaxed" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      Meta credentials are being configured. The connect button will work automatically once setup is complete.
                     </p>
                   </div>
-                </div>
-
-                {/* Right side: Action Button */}
-                <div className="flex-shrink-0">
-                  {conn.connected ? (
-                    <button
-                      onClick={() => handleDisconnectClick(conn.platform)}
-                      className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] rounded-lg px-4 py-2 text-[12px] font-semibold transition-colors hover:bg-[rgba(239,68,68,0.15)]"
-                      style={{ fontFamily: "'DM Sans', sans-serif" }}
-                    >
-                      Disconnect
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleConnectClick(conn.platform)}
-                      className="text-white font-semibold rounded-lg px-5 py-2 text-[12px] transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: details.color, fontFamily: "'DM Sans', sans-serif" }}
-                    >
-                      Connect {conn.platform.charAt(0).toUpperCase() + conn.platform.slice(1)}
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
-
-              {/* Inline warning message if clicked when not configured */}
-              {hasWarning && (
-                <div className="bg-[rgba(245,158,11,0.06)] border-l-2 border-[#f59e0b] rounded-r-lg px-3 py-2 mt-3">
-                  <p className="text-[#94a3c8] text-[12px] leading-relaxed" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                    Meta credentials are being configured. The connect button will work automatically once setup is complete.
-                  </p>
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

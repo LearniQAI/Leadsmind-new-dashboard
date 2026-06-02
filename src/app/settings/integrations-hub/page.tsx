@@ -1,10 +1,11 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from "@/components/layouts/DashboardProvider"
 import { useWorkspaceIntegrations } from '@/hooks/useWorkspaceIntegrations'
 import ConnectionCard from '@/components/settings/ConnectionCard'
+import ConnectProviderModal from '@/components/settings/ConnectProviderModal'
 
 export default function IntegrationsHubPage() {
   const { workspace } = useDashboardContext()
@@ -12,6 +13,11 @@ export default function IntegrationsHubPage() {
 
   const { isConnected, getLabel, connect, disconnect, loading, error } =
     useWorkspaceIntegrations(workspaceId)
+
+  const [connectingProvider, setConnectingProvider] = useState<{
+    provider: string
+    category: string
+  } | null>(null)
 
   return (
     <Wrapper>
@@ -62,7 +68,7 @@ export default function IntegrationsHubPage() {
                   color={item.color} description={item.desc}
                   connected={isConnected(item.name)}
                   accountLabel={getLabel(item.name)}
-                  onConnect={() => connect(item.name, 'email_calendar')}
+                  onConnect={() => setConnectingProvider({ provider: item.name, category: 'email_calendar' })}
                   onDisconnect={() => disconnect(item.name)} />
               ))}
             </div>
@@ -88,7 +94,7 @@ export default function IntegrationsHubPage() {
                   color={item.color} description={item.desc}
                   connected={isConnected(item.name)}
                   accountLabel={getLabel(item.name)}
-                  onConnect={() => connect(item.name, 'communication')}
+                  onConnect={() => setConnectingProvider({ provider: item.name, category: 'communication' })}
                   onDisconnect={() => disconnect(item.name)} />
               ))}
             </div>
@@ -114,7 +120,7 @@ export default function IntegrationsHubPage() {
                   color={item.color} description={item.desc}
                   connected={isConnected(item.name)}
                   accountLabel={getLabel(item.name)}
-                  onConnect={() => connect(item.name, 'automation')}
+                  onConnect={() => setConnectingProvider({ provider: item.name, category: 'automation' })}
                   onDisconnect={() => disconnect(item.name)} />
               ))}
             </div>
@@ -138,7 +144,7 @@ export default function IntegrationsHubPage() {
                   color={item.color} description={item.desc}
                   connected={isConnected(item.name)}
                   accountLabel={getLabel(item.name)}
-                  onConnect={() => connect(item.name, 'ecommerce')}
+                  onConnect={() => setConnectingProvider({ provider: item.name, category: 'ecommerce' })}
                   onDisconnect={() => disconnect(item.name)} />
               ))}
             </div>
@@ -166,7 +172,7 @@ export default function IntegrationsHubPage() {
                   color={item.color} description={item.desc}
                   connected={isConnected(item.name)}
                   accountLabel={getLabel(item.name)}
-                  onConnect={() => connect(item.name, 'marketing')}
+                  onConnect={() => setConnectingProvider({ provider: item.name, category: 'marketing' })}
                   onDisconnect={() => disconnect(item.name)} />
               ))}
             </div>
@@ -192,7 +198,7 @@ export default function IntegrationsHubPage() {
                   color={item.color} description={item.desc}
                   connected={isConnected(item.name)}
                   accountLabel={getLabel(item.name)}
-                  onConnect={() => connect(item.name, 'analytics')}
+                  onConnect={() => setConnectingProvider({ provider: item.name, category: 'analytics' })}
                   onDisconnect={() => disconnect(item.name)} />
               ))}
             </div>
@@ -216,13 +222,26 @@ export default function IntegrationsHubPage() {
                   color={item.color} description={item.desc}
                   connected={isConnected(item.name)}
                   accountLabel={getLabel(item.name)}
-                  onConnect={() => connect(item.name, 'courier')}
+                  onConnect={() => setConnectingProvider({ provider: item.name, category: 'courier' })}
                   onDisconnect={() => disconnect(item.name)} />
               ))}
             </div>
           </>
         )}
       </div>
+
+      {connectingProvider && (
+        <ConnectProviderModal
+          provider={connectingProvider.provider}
+          category={connectingProvider.category}
+          open={true}
+          onClose={() => setConnectingProvider(null)}
+          onConnected={(label) => {
+            connect(connectingProvider.provider, connectingProvider.category, label)
+            setConnectingProvider(null)
+          }}
+        />
+      )}
     </Wrapper>
   )
 }

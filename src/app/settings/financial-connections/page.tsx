@@ -1,10 +1,11 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from "@/components/layouts/DashboardProvider"
 import { useWorkspaceIntegrations } from '@/hooks/useWorkspaceIntegrations'
 import ConnectionCard from '@/components/settings/ConnectionCard'
+import ConnectProviderModal from '@/components/settings/ConnectProviderModal'
 
 export default function FinancialConnectionsPage() {
   const { workspace } = useDashboardContext()
@@ -12,6 +13,11 @@ export default function FinancialConnectionsPage() {
 
   const { isConnected, getLabel, connect, disconnect, loading, error } =
     useWorkspaceIntegrations(workspaceId)
+
+  const [connectingProvider, setConnectingProvider] = useState<{
+    provider: string
+    category: string
+  } | null>(null)
 
   return (
     <Wrapper>
@@ -69,7 +75,7 @@ export default function FinancialConnectionsPage() {
                   color={b.color} description={b.desc}
                   connected={isConnected(b.name)}
                   accountLabel={getLabel(b.name)}
-                  onConnect={() => connect(b.name, 'bank')}
+                  onConnect={() => setConnectingProvider({ provider: b.name, category: 'bank' })}
                   onDisconnect={() => disconnect(b.name)} />
               ))}
             </div>
@@ -96,7 +102,7 @@ export default function FinancialConnectionsPage() {
                   color={g.color} description={g.desc}
                   connected={isConnected(g.name)}
                   accountLabel={getLabel(g.name)}
-                  onConnect={() => connect(g.name, 'payment_gateway')}
+                  onConnect={() => setConnectingProvider({ provider: g.name, category: 'payment_gateway' })}
                   onDisconnect={() => disconnect(g.name)} />
               ))}
             </div>
@@ -117,13 +123,26 @@ export default function FinancialConnectionsPage() {
                   color={t.color} description={t.desc}
                   connected={isConnected(t.name)}
                   accountLabel={getLabel(t.name)}
-                  onConnect={() => connect(t.name, 'tax_government')}
+                  onConnect={() => setConnectingProvider({ provider: t.name, category: 'tax_government' })}
                   onDisconnect={() => disconnect(t.name)} />
               ))}
             </div>
           </>
         )}
       </div>
+
+      {connectingProvider && (
+        <ConnectProviderModal
+          provider={connectingProvider.provider}
+          category={connectingProvider.category}
+          open={true}
+          onClose={() => setConnectingProvider(null)}
+          onConnected={(label) => {
+            connect(connectingProvider.provider, connectingProvider.category, label)
+            setConnectingProvider(null)
+          }}
+        />
+      )}
     </Wrapper>
   )
 }

@@ -1,10 +1,11 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from "@/components/layouts/DashboardProvider"
 import { useWorkspaceIntegrations } from '@/hooks/useWorkspaceIntegrations'
 import ConnectionCard from '@/components/settings/ConnectionCard'
+import ConnectProviderModal from '@/components/settings/ConnectProviderModal'
 
 export default function KycIdentityPage() {
   const { workspace } = useDashboardContext()
@@ -12,6 +13,11 @@ export default function KycIdentityPage() {
 
   const { isConnected, getLabel, connect, disconnect, loading, error } =
     useWorkspaceIntegrations(workspaceId)
+
+  const [connectingProvider, setConnectingProvider] = useState<{
+    provider: string
+    category: string
+  } | null>(null)
 
   const steps = [
     "Open any contact record in your CRM",
@@ -69,7 +75,7 @@ export default function KycIdentityPage() {
                   color={item.color} description={item.desc}
                   connected={isConnected(item.name)}
                   accountLabel={getLabel(item.name)}
-                  onConnect={() => connect(item.name, 'identity_verification')}
+                  onConnect={() => setConnectingProvider({ provider: item.name, category: 'identity_verification' })}
                   onDisconnect={() => disconnect(item.name)} />
               ))}
             </div>
@@ -93,7 +99,7 @@ export default function KycIdentityPage() {
                   color={item.color} description={item.desc}
                   connected={isConnected(item.name)}
                   accountLabel={getLabel(item.name)}
-                  onConnect={() => connect(item.name, 'credit_bureau')}
+                  onConnect={() => setConnectingProvider({ provider: item.name, category: 'credit_bureau' })}
                   onDisconnect={() => disconnect(item.name)} />
               ))}
             </div>
@@ -115,7 +121,7 @@ export default function KycIdentityPage() {
                   color={item.color} description={item.desc}
                   connected={isConnected(item.name)}
                   accountLabel={getLabel(item.name)}
-                  onConnect={() => connect(item.name, 'fraud_screening')}
+                  onConnect={() => setConnectingProvider({ provider: item.name, category: 'fraud_screening' })}
                   onDisconnect={() => disconnect(item.name)} />
               ))}
             </div>
@@ -165,6 +171,19 @@ export default function KycIdentityPage() {
           </>
         )}
       </div>
+
+      {connectingProvider && (
+        <ConnectProviderModal
+          provider={connectingProvider.provider}
+          category={connectingProvider.category}
+          open={true}
+          onClose={() => setConnectingProvider(null)}
+          onConnected={(label) => {
+            connect(connectingProvider.provider, connectingProvider.category, label)
+            setConnectingProvider(null)
+          }}
+        />
+      )}
     </Wrapper>
   )
 }

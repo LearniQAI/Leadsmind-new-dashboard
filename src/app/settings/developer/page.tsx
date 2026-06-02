@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
+import { ChevronDown, ChevronUp, Copy, Check, Trash2 } from 'lucide-react';
 
 interface ApiKey {
   id: string;
@@ -39,6 +40,9 @@ export default function DeveloperPage() {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookLabel, setWebhookLabel] = useState('');
   const [addingWebhook, setAddingWebhook] = useState(false);
+  const [explainerExpanded, setExplainerExpanded] = useState(true);
+  const [copiedWebhookId, setCopiedWebhookId] = useState<string | null>(null);
+  const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
 
   // General error messages
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -150,18 +154,32 @@ export default function DeveloperPage() {
   // Add webhook
   const handleAddWebhook = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUrlValidationError(null);
+    setErrorMsg(null);
+
     if (!workspaceId || !webhookUrl) return;
+
     if (!webhookUrl.startsWith('https://')) {
-      alert('Webhook URLs must begin with https:// for security.');
+      setUrlValidationError("Please enter a valid https:// URL");
       return;
     }
+
     setAddingWebhook(true);
-    setErrorMsg(null);
+
+    let finalLabel = webhookLabel;
+    if (!finalLabel.trim()) {
+      try {
+        finalLabel = new URL(webhookUrl).hostname;
+      } catch {
+        finalLabel = 'Webhook';
+      }
+    }
+
     try {
       const res = await fetch('/api/settings/webhooks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspaceId, url: webhookUrl, label: webhookLabel })
+        body: JSON.stringify({ workspaceId, url: webhookUrl, label: finalLabel })
       });
       const data = await res.json();
       if (res.ok) {
@@ -382,84 +400,165 @@ export default function DeveloperPage() {
         >
           WEBHOOKS
         </h3>
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 mb-6">
-          <h4
-            className="text-[14px] font-semibold text-[#eef2ff]"
-            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            Get notified when things happen in LeadsMind
-          </h4>
-          <p
-            className="text-[12px] text-[#94a3c8] leading-relaxed mt-1 mb-6"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
-          >
-            A webhook is a web address you give us. When something happens in LeadsMind — like an invoice being paid or a form being submitted — we instantly send the details to that address.
-          </p>
 
-          <form onSubmit={handleAddWebhook} className="flex flex-col gap-3 mb-6">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                placeholder="Webhook Name (e.g. Zapier hook)"
-                value={webhookLabel}
-                onChange={(e) => setWebhookLabel(e.target.value)}
-                className="flex-1 bg-white/[0.04] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#3b82f6]"
-              />
-              <input
-                type="text"
-                placeholder="https://yourdomain.com/webhook"
-                value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
-                className="flex-[2] bg-white/[0.04] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#3b82f6]"
-              />
+        {/* What is a webhook explainer */}
+        <div className="bg-[rgba(37,99,235,0.06)] border border-[rgba(37,99,235,0.12)] rounded-xl p-4 mb-4">
+          <button 
+            type="button"
+            onClick={() => setExplainerExpanded(!explainerExpanded)}
+            className="flex items-center justify-between w-full text-left"
+          >
+            <span className="text-[#eef2ff] text-[13px] font-semibold font-space-grotesk" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+              What is a webhook?
+            </span>
+            {explainerExpanded ? (
+              <ChevronUp className="w-4 h-4 text-[#94a3c8]" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-[#94a3c8]" />
+            )}
+          </button>
+          {explainerExpanded && (
+            <p className="text-[#94a3c8] text-[12px] leading-relaxed mt-2 font-dm-sans" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+              A webhook is a web address that LeadsMind sends data to automatically
+              when something happens — like when a payment is received, a form is
+              submitted, or a deal is won.
+              <br /><br />
+              Example: You connect Zapier. Zapier gives you a webhook URL.
+              You paste it here. Every time an invoice is paid in LeadsMind,
+              Zapier receives the details automatically and can trigger any
+              workflow you've built — no manual work needed.
+            </p>
+          )}
+        </div>
+
+        {/* Add Webhook Form */}
+        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 mb-4">
+          <form onSubmit={handleAddWebhook} className="space-y-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 flex flex-col">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                  Label (e.g. Zapier, Make.com)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Give this webhook a name"
+                  value={webhookLabel}
+                  onChange={(e) => setWebhookLabel(e.target.value)}
+                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] focus:outline-none focus:border-[#2563eb] placeholder-[#4a5a82] font-dm-sans w-full"
+                />
+              </div>
+
+              <div className="flex-1 flex flex-col">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                  Your Webhook URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://hooks.zapier.com/hooks/catch/..."
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] focus:outline-none focus:border-[#2563eb] placeholder-[#4a5a82] font-dm-sans w-full"
+                />
+              </div>
             </div>
-            <button
-              type="submit"
-              disabled={addingWebhook}
-              className="bg-[#3b82f6] text-white text-[13px] font-semibold rounded-lg px-4 py-2 hover:bg-[#2563eb] disabled:opacity-50 transition-colors self-end"
-            >
-              {addingWebhook ? 'Adding...' : 'Add Webhook'}
-            </button>
-          </form>
 
+            {urlValidationError && (
+              <p className="text-rose-400 text-[11px] font-dm-sans">
+                {urlValidationError}
+              </p>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={addingWebhook}
+                className="bg-[#2563eb] text-white text-[12px] font-semibold rounded-lg px-5 py-2 hover:bg-[#1d4ed8] transition-colors disabled:opacity-50 font-dm-sans"
+              >
+                {addingWebhook ? 'Adding...' : 'Add Webhook'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Webhook List */}
+        <div className="space-y-3 mb-6">
           {webhooksLoading ? (
-            <div className="h-20 bg-white/[0.02] animate-pulse rounded-lg" />
+            <div className="h-16 bg-white/[0.02] animate-pulse rounded-xl" />
           ) : webhooks.length === 0 ? (
-            <p className="text-[12px] text-[#4a5a82] italic text-center py-4">
-              No webhooks configured.
+            <p className="text-[12px] text-[#4a5a82] text-center py-4 font-dm-sans">
+              No webhooks added yet. Add your first one above.
             </p>
           ) : (
-            <div className="flex flex-col gap-3">
-              {webhooks.map((hook) => (
-                <div
-                  key={hook.id}
-                  className="flex items-center justify-between gap-4 p-3.5 bg-white/[0.02] border border-white/[0.04] rounded-lg text-[13px]"
-                >
-                  <div className="min-w-0">
-                    <span className="text-[#eef2ff] font-semibold block truncate">
+            webhooks.map((hook) => (
+              <div
+                key={hook.id}
+                className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl px-5 py-3 flex items-center justify-between gap-4"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#eef2ff] text-[13px] font-medium font-dm-sans">
                       {hook.label || 'No Label'}
                     </span>
-                    <span className="font-mono text-[11.5px] text-[#4a5a82] block truncate">
-                      {hook.url}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 flex-shrink-0">
                     {hook.active && (
-                      <span className="bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.2)] text-[#10b981] text-[10px] font-semibold rounded-full px-2 py-0.5">
+                      <span className="bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.2)] text-[#10b981] text-[10px] font-semibold rounded-full px-2 py-0.5 font-dm-sans">
                         Active
                       </span>
                     )}
-                    <button
-                      onClick={() => handleDeleteWebhook(hook.id)}
-                      className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-semibold rounded-lg px-2.5 py-1.5 transition-colors"
-                    >
-                      Delete
-                    </button>
                   </div>
+                  <span className="text-[#4a5a82] text-[11px] font-mono truncate block max-w-[300px] mt-0.5">
+                    {hook.url}
+                  </span>
                 </div>
-              ))}
-            </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(hook.url);
+                      setCopiedWebhookId(hook.id);
+                      setTimeout(() => setCopiedWebhookId(null), 2000);
+                    }}
+                    className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-[#4a5a82] hover:text-[#eef2ff] transition-all relative flex items-center justify-center"
+                    title="Copy URL"
+                  >
+                    {copiedWebhookId === hook.id ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteWebhook(hook.id)}
+                    className="p-1.5 rounded bg-white/5 hover:bg-rose-500/10 text-[rgba(239,68,68,0.6)] hover:text-[#ef4444] transition-all flex items-center justify-center"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))
           )}
+        </div>
+
+        {/* Common Webhook Events */}
+        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 mb-6">
+          <h4 className="text-[#eef2ff] text-[13px] font-semibold font-space-grotesk mb-3" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            Events LeadsMind sends to your webhooks
+          </h4>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              'invoice.paid', 'invoice.created', 'contact.created',
+              'deal.won', 'form.submitted', 'payment.received',
+              'booking.confirmed', 'course.completed', 'review.received',
+              'email.opened', 'whatsapp.received', 'task.completed'
+            ].map(evt => (
+              <div 
+                key={evt}
+                className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-[#94a3c8] text-[11px] font-dm-sans"
+              >
+                {evt}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Section 4: API QUICK REFERENCE */}
