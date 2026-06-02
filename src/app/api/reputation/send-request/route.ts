@@ -97,9 +97,8 @@ export async function POST(req: NextRequest) {
 
           if (conn?.credentials) {
             const creds = conn.credentials as any
-            const waRes = await MetaAdapter.sendWhatsApp(
-              creds.phone_number_id,
-              creds.system_user_access_token_encrypted,
+            const adapter = new MetaAdapter(creds)
+            const waRes = await adapter.sendWhatsApp(
               contactPhone,
               replacedBody
             )
@@ -108,9 +107,8 @@ export async function POST(req: NextRequest) {
             }
           } else {
             // Mock dispatch fallback
-            await MetaAdapter.sendWhatsApp(
-              'mock_number_id',
-              '',
+            const adapter = new MetaAdapter({ phone_number_id: 'mock_number_id', access_token_encrypted: '' })
+            await adapter.sendWhatsApp(
               contactPhone,
               replacedBody
             )

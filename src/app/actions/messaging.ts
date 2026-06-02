@@ -305,94 +305,45 @@ export async function sendMessage(conversationId: string, content: string) {
      messageFailed = true;
      errorMessage = 'No phone number for contact';
    }
-  } else if (conv?.platform === 'facebook') {
-   // Fetch Facebook Credentials
+  } else if (['facebook', 'instagram', 'whatsapp'].includes(conv?.platform || '')) {
    const { data: conn } = await supabase
     .from('platform_connections')
     .select('credentials')
     .eq('workspace_id', workspaceId)
-    .eq('platform', 'facebook')
+    .eq('platform', conv!.platform)
     .maybeSingle();
 
    if (conn?.credentials) {
-    const creds = conn.credentials as any;
-    const res = await MetaAdapter.sendFacebook(
-     creds.page_id,
-     creds.page_access_token_encrypted,
-     conv.external_thread_id || '',
-     content
-    );
-    if (res.success) {
-     await supabase.from('messages').update({ status: 'delivered', external_id: res.externalId }).eq('id', msgData.id);
-    } else {
-     messageFailed = true;
-     errorMessage = res.error || 'Failed to dispatch via MetaAdapter';
+    const adapter = new MetaAdapter(conn.credentials);
+    let res;
+    if (conv!.platform === 'facebook') {
+      res = await adapter.sendFacebook(conv!.external_thread_id || '', content);
+    } else if (conv!.platform === 'instagram') {
+      res = await adapter.sendInstagram(conv!.external_thread_id || '', content);
+    } else if (conv!.platform === 'whatsapp') {
+      res = await adapter.sendWhatsApp(conv!.external_thread_id || '', content);
     }
-   } else {
-    messageFailed = true;
-    errorMessage = 'Facebook page connection not configured';
-   }
-  } else if (conv?.platform === 'instagram') {
-   // Fetch Instagram Credentials
-   const { data: conn } = await supabase
-    .from('platform_connections')
-    .select('credentials')
-    .eq('workspace_id', workspaceId)
-    .eq('platform', 'instagram')
-    .maybeSingle();
 
-   if (conn?.credentials) {
-    const creds = conn.credentials as any;
-    const res = await MetaAdapter.sendInstagram(
-     creds.instagram_business_account_id,
-     creds.page_access_token_encrypted,
-     conv.external_thread_id || '',
-     content
-    );
-    if (res.success) {
-     await supabase.from('messages').update({ status: 'delivered', external_id: res.externalId }).eq('id', msgData.id);
+    if (res && res.success) {
+      await supabase.from('messages').update({ status: 'sent', external_id: res.externalId }).eq('id', msgData.id);
     } else {
-     messageFailed = true;
-     errorMessage = res.error || 'Failed to dispatch via MetaAdapter';
+      messageFailed = true;
+      errorMessage = res?.error || 'Failed to dispatch via MetaAdapter';
     }
    } else {
     messageFailed = true;
-    errorMessage = 'Instagram connection not configured';
-   }
-  } else if (conv?.platform === 'whatsapp') {
-   // Fetch WhatsApp Credentials
-   const { data: conn } = await supabase
-    .from('platform_connections')
-    .select('credentials')
-    .eq('workspace_id', workspaceId)
-    .eq('platform', 'whatsapp')
-    .maybeSingle();
-
-   if (conn?.credentials) {
-    const creds = conn.credentials as any;
-    const res = await MetaAdapter.sendWhatsApp(
-     creds.phone_number_id,
-     creds.system_user_access_token_encrypted,
-     conv.external_thread_id || '',
-     content
-    );
-    if (res.success) {
-     await supabase.from('messages').update({ status: 'delivered', external_id: res.externalId }).eq('id', msgData.id);
-    } else {
-     messageFailed = true;
-     errorMessage = res.error || 'Failed to dispatch via MetaAdapter';
-    }
-   } else {
-    messageFailed = true;
-    errorMessage = 'WhatsApp connection not configured';
+    errorMessage = `${conv?.platform} connection not configured`;
    }
   } else {
     // Just mark as sent for other platforms for now
     await supabase.from('messages').update({ status: 'delivered' }).eq('id', msgData.id);
   }
 
-  if (messageFailed && msgData) {
-    await supabase.from('messages').update({ status: 'failed', metadata: { error_message: errorMessage } }).eq('id', msgData.id);
+  if (messageFailed) {
+    if (msgData) {
+      await supabase.from('messages').update({ status: 'failed', metadata: { error_message: errorMessage } }).eq('id', msgData.id);
+    }
+    return { error: errorMessage };
   }
 
   return { success: true };

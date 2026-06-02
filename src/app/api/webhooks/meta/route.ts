@@ -9,16 +9,14 @@ const supabase = createClient(
 
 // GET Handler for Webhook Verification Challenge
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const mode = searchParams.get('hub.mode');
-  const token = searchParams.get('hub.verify_token');
-  const challenge = searchParams.get('hub.challenge');
+  const url = new URL(req.url);
+  const mode = url.searchParams.get('hub.mode');
+  const token = url.searchParams.get('hub.verify_token');
+  const challenge = url.searchParams.get('hub.challenge');
 
-  const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN || 'leadsmind_meta_verify_token_fallback';
-
-  if (mode === 'subscribe' && token === verifyToken) {
+  if (mode === 'subscribe' && token === process.env.META_WEBHOOK_VERIFY_TOKEN) {
     console.log('[Meta Webhook] Verification successful.');
-    return new Response(challenge, { status: 200 });
+    return new Response(challenge || '', { status: 200 });
   }
 
   console.error('[Meta Webhook] Verification failed. Token mismatch.');
@@ -165,8 +163,9 @@ export async function POST(req: Request) {
             }
 
             // Process inbound messages
+            const webhookContacts = val?.contacts || [];
             for (const message of messages) {
-              await handleWhatsAppMessage(message, metadata);
+              await handleWhatsAppMessage(message, metadata, webhookContacts);
             }
           }
         }
@@ -310,7 +309,7 @@ async function handleFacebookMessengerMessage(messagingEvent: any) {
       .from('contacts')
       .insert({
         workspace_id: workspaceId,
-        first_name: 'FB User',
+        first_name: 'Facebook User',
         last_name: senderId.substring(0, 8),
         source: 'facebook'
       })
@@ -392,17 +391,17 @@ async function handleInstagramDMMessage(messagingEvent: any) {
   const messageId = messagingEvent.message.mid;
   const attachments = messagingEvent.message.attachments || [];
 
-  // 1. Resolve workspace by checking platform_connections credentials instagram_business_account_id
+  // 1. Resolve workspace by checking platform_connections credentials instagram_id
   const { data: connection } = await supabase
     .from('platform_connections')
     .select('workspace_id')
     .eq('platform', 'instagram')
-    .filter('credentials->>instagram_business_account_id', 'eq', recipientId)
+    .filter('credentials->>instagram_id', 'eq', recipientId)
     .limit(1)
     .maybeSingle();
 
   if (!connection) {
-    console.error(`[Meta Webhook] No Instagram connection found for page_id: ${recipientId}`);
+    console.error(`[Meta Webhook] No Instagram connection found for instagram_id: ${recipientId}`);
     return;
   }
 
@@ -447,7 +446,7 @@ async function handleInstagramDMMessage(messagingEvent: any) {
       .from('contacts')
       .insert({
         workspace_id: workspaceId,
-        first_name: 'IG User',
+        first_name: 'Instagram User',
         last_name: senderId.substring(0, 8),
         source: 'instagram'
       })
@@ -522,10 +521,9 @@ async function handleInstagramDMMessage(messagingEvent: any) {
 }
 
 // Handler helper for WhatsApp Cloud API
-async function handleWhatsAppMessage(message: any, metadata: any) {
+async function handleWhatsAppMessage(message: any, metadata: any, webhookContacts: any[] = []) {
   const fromNumber = message.from; // Sender Phone (e.g. "27721234567")
   const recipientPhoneId = metadata?.phone_number_id; // Recipient WhatsApp Phone Number ID
-  const messageText = message.text?.body || '[Attachment/Media]';
   const messageId = message.id;
 
   // 1. Resolve workspace by checking platform_connections credentials phone_number_id
@@ -576,13 +574,17 @@ async function handleWhatsAppMessage(message: any, metadata: any) {
     contactId = existingContact.id;
     contactName = `${existingContact.first_name || ''} ${existingContact.last_name || ''}`.trim();
   } else {
+    // Get WhatsApp Profile Name
+    const contactObj = webhookContacts.find((c: any) => c.wa_id === fromNumber);
+    const profileName = contactObj?.profile?.name || 'WhatsApp User';
+
     // Create new contact record
     const { data: newContact, error: contactError } = await supabase
       .from('contacts')
       .insert({
         workspace_id: workspaceId,
-        first_name: 'WA User',
-        last_name: cleanPhone,
+        first_name: profileName,
+        last_name: 'User',
         phone: cleanPhone,
         source: 'whatsapp'
       })
@@ -633,12 +635,19 @@ async function handleWhatsAppMessage(message: any, metadata: any) {
   }
 
   // 6. WhatsApp Media Processing (retrieve source URL from WABA API)
+  let messageText = '';
   let msgMetadata: any = { provider_message_id: messageId };
   const messageType = message.type;
-  if (messageType && messageType !== 'text') {
+
+  if (messageType === 'text') {
+    messageText = message.text?.body || '';
+  } else {
+    messageText = '[Media received]';
     const mediaObj = message[messageType];
     if (mediaObj && mediaObj.id) {
-      msgMetadata.media_type = mediaObj.mime_type || `${messageType}/unknown`;
+      msgMetadata.media_id = mediaObj.id;
+      msgMetadata.mime_type = mediaObj.mime_type || `${messageType}/unknown`;
+      msgMetadata.caption = mediaObj.caption || null;
       
       // Attempt live Graph API media resolution or fallback to sandbox mock asset URLs
       const credentials = connection.credentials as any;
