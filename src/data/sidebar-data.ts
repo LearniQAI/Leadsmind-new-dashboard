@@ -92,6 +92,7 @@ const sidebarData: SidebarCategory[] = [
    { id: 29, label: "Settings", icon: "fa-light fa-gear", link: "/settings", permission: "settings" },
    { id: 32, label: "Integrations", icon: "fa-light fa-plug", link: "/settings/integrations-hub", permission: "settings" },
    { id: 33, label: "Developer & API", icon: "fa-light fa-code", link: "/settings/developer", permission: "settings" },
+   { id: 34, label: "LENA Chat", icon: "fa-light fa-robot", link: "/settings/lena-chat", permission: "settings" },
   ],
  },
 ];

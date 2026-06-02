@@ -11,7 +11,7 @@ import { fetchBranding } from "@/lib/branding";
 import { DashboardProvider } from "@/components/layouts/DashboardProvider";
 import { BrandingProvider } from "@/components/branding/BrandingProvider";
 import { WorkspaceSync } from "@/components/auth/WorkspaceSync";
-import AIChatbot from "@/components/common/AIChatbot";
+// import AIChatbot from "@/components/common/AIChatbot";
 
 export default async function RootLayout({
  children,
@@ -94,7 +94,7 @@ export default async function RootLayout({
           platformName={branding?.platform_name ?? undefined}
          >
           {children}
-          <AIChatbot />
+          {/* <AIChatbot /> */}
          </BrandingProvider>
         </DashboardProvider>
        </DirectionProvider>

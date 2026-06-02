@@ -9,8 +9,9 @@ import useGlobalContext from "@/hooks/use-context";
 import { useDashboardContext } from "./DashboardProvider";
 import GlobalSearchModal from "../dashboard/GlobalSearchModal";
 import AccessDenied from "../auth/AccessDenied";
-import LENAChat from "../support/LENAChat";
-import LENAContextualSidebar from "../support/LENAContextualSidebar";
+// import LENAChat from "../support/LENAChat";
+// import LENAContextualSidebar from "../support/LENAContextualSidebar";
+import LenaVisitorChat from "../support/LenaVisitorChat";
 import HelpDrawer from "../platform/HelpDrawer";
 import { FeedbackCenter } from "@/components/production/FeedbackCenter";
 import { GlobalCommandPalette } from "@/components/production/GlobalCommandPalette";
@@ -21,7 +22,8 @@ interface WrapperProps {
 
 const Wrapper: React.FC<WrapperProps> = ({ children }) => {
  const { isCollapse } = useGlobalContext();
- const { role, permissions } = useDashboardContext() as any;
+ const { role, permissions, workspace } = useDashboardContext() as any;
+ const workspaceId = workspace?.id || null;
  const pathName = usePathname();
  const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -83,8 +85,9 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       
       {/* Global Modals */}
       <GlobalSearchModal />
-      <LENAChat />
-      <LENAContextualSidebar />
+      {/* <LENAChat /> */}
+      {/* <LENAContextualSidebar /> */}
+      <LenaVisitorChat workspaceId={workspaceId} />
       <HelpDrawer />
       <FeedbackCenter />
       <GlobalCommandPalette />

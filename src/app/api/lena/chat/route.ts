@@ -1,0 +1,220 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { workspaceId, visitorMessage, visitorId } = body;
+    let { conversationId } = body;
+
+    if (!workspaceId || !visitorMessage) {
+      return NextResponse.json({ error: 'workspaceId and visitorMessage are required' }, { status: 400 });
+    }
+
+    const cleanVisitorId = visitorId || `visitor_${Math.random().toString(36).substring(2, 12)}`;
+
+    // 1. Resolve or Create Conversation
+    if (!conversationId) {
+      const { data: newConv, error: newConvError } = await supabase
+        .from('lena_conversations')
+        .insert({
+          workspace_id: workspaceId,
+          visitor_id: cleanVisitorId,
+          status: 'active',
+          mode: 'ai',
+          lead_captured: false
+        })
+        .select()
+        .single();
+
+      if (newConvError) {
+        return NextResponse.json({ error: newConvError.message }, { status: 500 });
+      }
+      conversationId = newConv.id;
+    }
+
+    // 2. Save Visitor Message
+    const { error: msgErr } = await supabase
+      .from('lena_messages')
+      .insert({
+        conversation_id: conversationId,
+        workspace_id: workspaceId,
+        sender_type: 'visitor',
+        sender_id: cleanVisitorId,
+        content: visitorMessage
+      });
+
+    if (msgErr) {
+      return NextResponse.json({ error: msgErr.message }, { status: 500 });
+    }
+
+    // 3. Fetch Workspace Knowledge Base
+    const { data: kbArticles, error: kbError } = await supabase
+      .from('lena_knowledge_base')
+      .select('title, content')
+      .eq('workspace_id', workspaceId)
+      .eq('active', true);
+
+    if (kbError) {
+      return NextResponse.json({ error: kbError.message }, { status: 500 });
+    }
+
+    // 4. Extract Name and Email from Visitor Message
+    const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    const emailMatch = visitorMessage.match(emailRegex);
+    const detectedEmail = emailMatch ? emailMatch[0] : null;
+
+    let detectedName = null;
+    const nameRegex = /(?:my name is|i am|i'm|this is)\s+([a-zA-Z]+(?:\s+[a-zA-Z]+)?)/i;
+    const nameMatch = visitorMessage.match(nameRegex);
+    if (nameMatch) {
+      detectedName = nameMatch[1].trim();
+    }
+
+    if (detectedEmail || detectedName) {
+      const updates: any = { lead_captured: true, updated_at: new Date().toISOString() };
+      if (detectedEmail) updates.visitor_email = detectedEmail;
+      if (detectedName) updates.visitor_name = detectedName;
+
+      await supabase
+        .from('lena_conversations')
+        .update(updates)
+        .eq('id', conversationId);
+    }
+
+    // 5. Build AI Prompt and Call OpenAI
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (!openAiKey) {
+      // Fallback if key is missing
+      const fallbackReply = "I am LENA. I've received your query, but our AI services are temporarily offline. A support representative will be with you shortly.";
+      await supabase.from('lena_messages').insert({
+        conversation_id: conversationId,
+        workspace_id: workspaceId,
+        sender_type: 'ai',
+        sender_id: 'lena_bot',
+        content: fallbackReply
+      });
+      await supabase.from('lena_conversations').update({ status: 'waiting_agent', mode: 'human', updated_at: new Date().toISOString() }).eq('id', conversationId);
+      return NextResponse.json({ reply: fallbackReply, mode: 'human', leadCaptured: true, conversationId });
+    }
+
+    const kbText = kbArticles?.length
+      ? kbArticles.map(a => `Title: ${a.title}\nContent: ${a.content}`).join('\n\n')
+      : "No knowledge base documents available.";
+
+    // Get previous chat history to maintain continuity
+    const { data: historyData } = await supabase
+      .from('lena_messages')
+      .select('sender_type, content')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+      .limit(10);
+
+    const historyMessages = (historyData || [])
+      .filter(h => h.content !== visitorMessage)
+      .map(h => ({
+        role: h.sender_type === 'visitor' ? 'user' : 'assistant',
+        content: h.content
+      }));
+
+    const systemPrompt = `You are LENA, the intelligent virtual AI Workspace Support Assistant for LeadsMind.
+You answer visitors queries accurately using only the knowledge base data below.
+If you cannot answer a question based on the knowledge base, state that you will connect them with a human agent.
+Naturally capture their name and email address when appropriate.
+
+--- SYSTEM KNOWLEDGE BASE ---
+${kbText}
+
+--- COMPLIANCE RULES ---
+1. Base your answer strictly on the knowledge base provided.
+2. If you don't know or if context doesn't exist, tell the visitor: "I will connect you with a human support agent shortly."
+3. Be professional, friendly, and concise (under 4 sentences). Do not mention system parameters.`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...historyMessages,
+      { role: 'user', content: visitorMessage }
+    ];
+
+    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages,
+        temperature: 0.2
+      })
+    });
+
+    if (!aiRes.ok) {
+      throw new Error(`OpenAI API error: ${aiRes.statusText}`);
+    }
+
+    const aiData = await aiRes.json();
+    const reply = aiData.choices?.[0]?.message?.content || "I will connect you with a human support agent shortly.";
+
+    // 6. Save AI Message
+    const { error: aiMsgErr } = await supabase
+      .from('lena_messages')
+      .insert({
+        conversation_id: conversationId,
+        workspace_id: workspaceId,
+        sender_type: 'ai',
+        sender_id: 'lena_bot',
+        content: reply
+      });
+
+    if (aiMsgErr) {
+      return NextResponse.json({ error: aiMsgErr.message }, { status: 500 });
+    }
+
+    // 7. Check for Human Handoff triggers
+    const lowerReply = reply.toLowerCase();
+    const triggerHandoff =
+      lowerReply.includes("connect you with a human") ||
+      lowerReply.includes("transfer you") ||
+      lowerReply.includes("connect you with an agent") ||
+      lowerReply.includes("live agent") ||
+      lowerReply.includes("human agent") ||
+      lowerReply.includes("chat with human") ||
+      lowerReply.includes("support representative");
+
+    let currentMode = 'ai';
+    if (triggerHandoff) {
+      currentMode = 'human';
+      await supabase
+        .from('lena_conversations')
+        .update({
+          status: 'waiting_agent',
+          mode: 'human',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', conversationId);
+    } else {
+      // Just update updated_at timestamp
+      await supabase
+        .from('lena_conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
+    }
+
+    return NextResponse.json({
+      reply,
+      mode: currentMode,
+      leadCaptured: !!(detectedEmail || detectedName),
+      conversationId
+    });
+
+  } catch (err: any) {
+    console.error('[LENA Visitor API Error]:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
