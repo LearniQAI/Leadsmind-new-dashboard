@@ -99,10 +99,12 @@ export default function ModuleCard({
   onDeleteLesson
 }: ModuleCardProps) {
   const getPublishStatusBadge = (status: string) => {
-    switch (status) {
-      case "Published":
+    const s = (status || "").toLowerCase();
+    switch (s) {
+      case "published":
         return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-      case "Coming Soon":
+      case "coming soon":
+      case "coming_soon":
         return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
       default:
         return "bg-purple-500/10 text-purple-400 border border-purple-500/20";
@@ -126,7 +128,7 @@ export default function ModuleCard({
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1.5">
               <h3 className="text-lg font-space-grotesk font-black text-white uppercase tracking-tight">
-                {module.name}
+                {module.title || module.name}
               </h3>
               
               <Badge className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${getPublishStatusBadge(module.publish_status)}`}>
@@ -165,7 +167,7 @@ export default function ModuleCard({
           </button>
           <button
             onClick={() => {
-              if (window.confirm(`Are you sure you want to delete module "${module.name}"?`)) {
+              if (window.confirm(`Are you sure you want to delete module "${module.title || module.name}"?`)) {
                 onDeleteModule(module.id);
               }
             }}

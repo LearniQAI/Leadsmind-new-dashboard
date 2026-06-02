@@ -16,17 +16,45 @@ export default async function QuizWorkbenchPage({ params }: PageProps) {
   const courseId = params.id;
   const quizId = params.quizId;
 
+  // Try fetching course and quiz from legacy tables
   const [courseRes, quizRes] = await Promise.all([
     getCourse(courseId),
     getQuizById(quizId)
   ]);
 
-  if (courseRes.error || !courseRes.data || quizRes.error || !quizRes.data) {
+  if (courseRes.error || !courseRes.data) {
     notFound();
   }
 
   const course = courseRes.data;
-  const quiz = quizRes.data;
+  let quiz = quizRes.data || null;
+
+  if (!quiz) {
+    // Backward compatibility: Check if it's a new course_lessons node representing a quiz
+    const { createServerClient } = await import('@/lib/supabase/server');
+    const supabase = await createServerClient();
+    const { data: lesson } = await supabase
+      .from('course_lessons')
+      .select('*')
+      .eq('id', quizId)
+      .single();
+
+    if (lesson) {
+      quiz = {
+        id: lesson.id,
+        title: lesson.title,
+        lesson_id: lesson.id,
+        course_id: lesson.course_id,
+        module_id: lesson.module_id,
+        description: lesson.content?.text || '',
+        content: lesson.content || {}
+      };
+    }
+  }
+
+  if (!quiz) {
+    notFound();
+  }
 
   return (
     <Wrapper>

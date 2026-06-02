@@ -16,6 +16,7 @@ import {
 } from "@/app/actions/quizzes";
 import Editor from "@monaco-editor/react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import QuizAnalyticsConsole from "./QuizAnalyticsConsole";
 
 interface QuizWorkbenchClientProps {
@@ -49,6 +50,10 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
   // Questions state
   const [questions, setQuestions] = useState<any[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<any | null>(null);
+  const [questionToDelete, setQuestionToDelete] = useState<any | null>(null);
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   
   // Question form state
   const [type, setType] = useState<string>("multiple_choice");
@@ -77,25 +82,52 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+
   useEffect(() => {
     loadQuestions();
+    loadSettings();
   }, [quiz.id]);
 
-  const loadQuestions = async () => {
-    const res = await getQuizQuestions(quiz.id);
-    if (res.data) {
-      setQuestions(res.data);
-      if (res.data.length > 0) {
-        selectQuestion(res.data[0]);
-      } else {
-        handleNewQuestion();
+  const loadSettings = async () => {
+    try {
+      const res = await fetch(`/api/lms/quiz/settings?lessonId=${quiz.id}`);
+      const dataJson = await res.json();
+      if (dataJson.data) {
+        const s = dataJson.data;
+        setTimeLimit(s.time_limit_minutes ?? 0);
+        setMaxRetakes(s.max_attempts ?? 3);
+        setPassingScore(s.pass_percentage ?? 70);
+        if (s.show_answers_after) {
+          setFeedbackTrigger(s.show_answers_after === 'submission' ? 'post-submission' : 'hidden');
+        }
+        setShuffleQuestions(!!s.randomize_questions);
       }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const loadQuestions = async () => {
+    try {
+      const res = await fetch(`/api/lms/quiz/questions?lessonId=${quiz.id}`);
+      const dataJson = await res.json();
+      if (dataJson.data) {
+        setQuestions(dataJson.data);
+        if (dataJson.data.length > 0) {
+          selectQuestion(dataJson.data[0]);
+        } else {
+          handleNewQuestion();
+        }
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const selectQuestion = (q: any) => {
     setActiveQuestion(q);
-    setType(q.type);
+    setType(q.question_type === 'mcq' ? 'multiple_choice' : q.question_type === 'true_false' ? 'true_false' : q.question_type === 'short_answer' ? 'short_answer' : q.question_type === 'matching' ? 'matching' : q.question_type === 'ordering' ? 'ordering' : q.question_type === 'fill_blank' ? 'fill_in_blank' : q.question_type === 'code' ? 'code_challenge' : 'file_upload');
     setQuestionText(q.question_text);
     setPoints(q.points || 1);
     setPosition(q.position || 0);
@@ -104,21 +136,21 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
     const meta = q.metadata || {};
     const correct = q.correct_answer || {};
 
-    if (q.type === "multiple_choice" || q.type === "true_false") {
+    if (q.question_type === "mcq" || q.question_type === "true_false") {
       setOptionsList(q.options || []);
-    } else if (q.type === "short_answer") {
+    } else if (q.question_type === "short_answer") {
       setSynonyms((correct.synonyms || []).join(", "));
       setCaseSensitive(meta.case_sensitive || false);
-    } else if (q.type === "matching") {
+    } else if (q.question_type === "matching") {
       setMatchingPairs(meta.pairs || [{ left: "", right: "" }]);
-    } else if (q.type === "ordering") {
+    } else if (q.question_type === "ordering") {
       setOrderingItems(meta.items || ["", ""]);
-    } else if (q.type === "fill_in_blank") {
+    } else if (q.question_type === "fill_blank") {
       setBlankText(meta.text_with_blanks || "");
-    } else if (q.type === "code_challenge") {
+    } else if (q.question_type === "code") {
       setStarterCode(meta.starter_template || "");
       setCodeAssertions(meta.assertions || [{ input: "", expected: "" }]);
-    } else if (q.type === "file_upload") {
+    } else if (q.question_type === "file_upload") {
       setRubrics(meta.rubric_criteria || [{ criteria: "Correctness", max_points: 5 }]);
     }
   };
@@ -209,37 +241,65 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
       metadata.rubric_criteria = rubrics;
     }
 
-    startTransition(async () => {
-      const res = await upsertQuestion({
-        id: activeQuestion?.id,
-        quiz_id: quiz.id,
-        type,
-        question_text: questionText,
-        points,
-        options: type === "multiple_choice" || type === "true_false" ? optionsList : null,
-        correct_answer,
-        metadata,
-        explanation,
-        position
-      });
+    const qTypeMap: Record<string, string> = {
+      multiple_choice: 'mcq',
+      true_false: 'true_false',
+      short_answer: 'short_answer',
+      matching: 'matching',
+      ordering: 'ordering',
+      fill_in_blank: 'fill_blank',
+      code_challenge: 'code',
+      file_upload: 'file_upload'
+    };
 
-      if (res.error) {
-        toast.error(res.error);
-      } else {
-        toast.success("Question saved successfully!");
-        loadQuestions();
+    startTransition(async () => {
+      try {
+        const url = activeQuestion?.id ? `/api/lms/quiz/questions?id=${activeQuestion.id}` : '/api/lms/quiz/questions';
+        const method = activeQuestion?.id ? 'PATCH' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lesson_id: quiz.id,
+            workspace_id: course.workspace_id || quiz.workspace_id,
+            question_type: qTypeMap[type] || 'mcq',
+            question_text: questionText,
+            options: type === "multiple_choice" || type === "true_false" ? optionsList : [],
+            correct_answer: type === "multiple_choice" || type === "true_false" ? { correct_option_index: optionsList.findIndex(o => o.is_correct) } : correct_answer,
+            metadata,
+            explanation,
+            points,
+            position
+          })
+        });
+
+        const resData = await res.json();
+        if (resData.error) {
+          toast.error(resData.error);
+        } else {
+          toast.success("Question saved successfully!");
+          loadQuestions();
+        }
+      } catch {
+        toast.error("Failed to save question");
       }
     });
   };
 
   const handleDeleteQuestion = async (qId: string) => {
-    if (window.confirm("Are you sure you want to delete this question?")) {
-      const res = await deleteQuestion(qId);
-      if (res.error) toast.error(res.error);
+    try {
+      const res = await fetch(`/api/lms/quiz/questions?id=${qId}`, {
+        method: 'DELETE'
+      });
+      const resData = await res.json();
+      if (resData.error) toast.error(resData.error);
       else {
         toast.success("Question deleted.");
         loadQuestions();
       }
+    } catch {
+      toast.error("Failed to delete question");
     }
   };
 
@@ -249,33 +309,92 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
       return;
     }
     setIsSavingSettings(true);
-    const res = await upsertQuiz({
-      id: quiz.id,
-      title: quizTitle,
-      description: quizDesc,
-      passing_score: passingScore,
-      time_limit_minutes: timeLimit,
-      max_retakes: maxRetakes,
-      is_required: isRequired,
-      course_id: course.id,
-      module_id: quiz.module_id,
-      lesson_id: quiz.lesson_id,
-      settings: {
-        exceeded_behavior: exceededBehavior,
-        feedback_trigger: feedbackTrigger,
-        shuffle_options: shuffleOptions,
-        shuffle_questions: shuffleQuestions,
-        pool_count: poolCount,
-        require_pass_to_unlock: requirePass
-      }
-    });
-    setIsSavingSettings(false);
+    try {
+      // 1. Update course_lessons title and description
+      const lessonRes = await fetch(`/api/lms/lessons?id=${quiz.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: quizTitle,
+          content: {
+            ...(quiz.content || {}),
+            text: quizDesc
+          }
+        })
+      });
+      const lessonJson = await lessonRes.json();
+      if (lessonJson.error) throw new Error(lessonJson.error);
 
-    if (res.error) {
-      toast.error(res.error);
-    } else {
+      // 2. Update/insert lms_quizzes using the upsertQuiz server action
+      const upsertRes = await upsertQuiz({
+        id: quiz.id,
+        course_id: course.id,
+        module_id: quiz.module_id,
+        title: quizTitle,
+        description: quizDesc,
+        passing_score: passingScore,
+        time_limit_minutes: timeLimit,
+        max_retakes: maxRetakes,
+        is_required: isRequired,
+        settings: {
+          exceeded_behavior: exceededBehavior,
+          feedback_trigger: feedbackTrigger,
+          shuffle_options: shuffleOptions,
+          shuffle_questions: shuffleQuestions,
+          pool_count: poolCount,
+          require_pass_to_unlock: requirePass
+        }
+      });
+      if (upsertRes.error) throw new Error(upsertRes.error);
+
+      // 3. Update quiz_settings via POST
+      const settingsRes = await fetch('/api/lms/quiz/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lesson_id: quiz.id,
+          time_limit_minutes: timeLimit,
+          max_attempts: maxRetakes,
+          pass_percentage: passingScore,
+          show_answers_after: feedbackTrigger === 'post-submission' ? 'submission' : 'never',
+          randomize_questions: shuffleQuestions,
+          publish_status: 'active'
+        })
+      });
+      const settingsJson = await settingsRes.json();
+      if (settingsJson.error) throw new Error(settingsJson.error);
+
       toast.success("Quiz settings saved successfully!");
       router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save settings");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleGenerateAiQuestions = async () => {
+    setIsGeneratingQuestions(true);
+    try {
+      const res = await fetch("/api/ai/generate-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lesson_id: quiz.id,
+          workspace_id: course.workspace_id || quiz.workspace_id
+        })
+      });
+      const dataJson = await res.json();
+      if (dataJson.error) {
+        toast.error(dataJson.error);
+      } else {
+        toast.success("Successfully generated 5 MCQ questions!");
+        loadQuestions();
+      }
+    } catch {
+      toast.error("Failed to generate questions");
+    } finally {
+      setIsGeneratingQuestions(false);
     }
   };
 
@@ -345,35 +464,110 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
           <div className="bg-[#080f28] border border-white/5 p-4 rounded-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <span className="text-[10px] font-bold text-white uppercase tracking-wider">Question List</span>
-              <button 
-                onClick={handleNewQuestion}
-                className="text-[10px] font-bold text-primary hover:text-primary-light flex items-center gap-0.5 uppercase tracking-wider"
-              >
-                <Plus size={12} /> Add
-              </button>
+              <div className="flex items-center gap-3">
+                {questions.length > 0 && (
+                  <button 
+                    onClick={() => {
+                      setIsBulkSelectMode(!isBulkSelectMode);
+                      setSelectedQuestionIds([]);
+                    }}
+                    className="text-[10px] font-bold text-white/50 hover:text-white uppercase tracking-wider"
+                  >
+                    {isBulkSelectMode ? "Cancel" : "Select"}
+                  </button>
+                )}
+                <button 
+                  onClick={handleNewQuestion}
+                  className="text-[10px] font-bold text-primary hover:text-primary-light flex items-center gap-0.5 uppercase tracking-wider"
+                >
+                  <Plus size={12} /> Add
+                </button>
+              </div>
             </div>
+
+            {isBulkSelectMode && questions.length > 0 && (
+              <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 p-2 rounded-xl text-[10.5px]">
+                <label className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-white select-none font-medium">
+                  <input
+                    type="checkbox"
+                    checked={selectedQuestionIds.length === questions.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedQuestionIds(questions.map(q => q.id));
+                      } else {
+                        setSelectedQuestionIds([]);
+                      }
+                    }}
+                    className="accent-primary h-3.5 w-3.5 rounded"
+                  />
+                  Select All ({questions.length})
+                </label>
+                {selectedQuestionIds.length > 0 && (
+                  <button
+                    onClick={() => setIsBulkDeleteConfirmOpen(true)}
+                    className="text-red-400 hover:text-red-300 font-black uppercase tracking-wider text-[9px] bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-lg"
+                  >
+                    Delete ({selectedQuestionIds.length})
+                  </button>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleGenerateAiQuestions}
+              disabled={isGeneratingQuestions}
+              className="w-full bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb]/20 text-[#3b82f6] rounded-xl py-2 px-3 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-all disabled:opacity-50"
+            >
+              {isGeneratingQuestions ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              🤖 Generate with AI
+            </button>
 
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
               {questions.map((q, idx) => (
                 <div 
                   key={q.id}
-                  onClick={() => selectQuestion(q)}
+                  onClick={() => {
+                    if (isBulkSelectMode) {
+                      if (selectedQuestionIds.includes(q.id)) {
+                        setSelectedQuestionIds(selectedQuestionIds.filter(id => id !== q.id));
+                      } else {
+                        setSelectedQuestionIds([...selectedQuestionIds, q.id]);
+                      }
+                    } else {
+                      selectQuestion(q);
+                    }
+                  }}
                   className={`p-3.5 rounded-xl text-xs cursor-pointer select-none border transition-all flex items-center justify-between gap-3 ${
-                    activeQuestion?.id === q.id 
+                    !isBulkSelectMode && activeQuestion?.id === q.id 
                       ? "bg-accent/10 border-accent text-white" 
-                      : "bg-white/[0.02] border-transparent text-white/50 hover:bg-white/5 hover:text-white"
+                      : isBulkSelectMode && selectedQuestionIds.includes(q.id)
+                        ? "bg-primary/10 border-primary text-white"
+                        : "bg-white/[0.02] border-transparent text-white/50 hover:bg-white/5 hover:text-white"
                   }`}
                 >
-                  <span className="truncate pr-2 font-medium">Q{idx + 1}: {q.question_text || "Untitled question"}</span>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteQuestion(q.id);
-                    }}
-                    className="text-red-400 hover:text-red-300 p-0.5 shrink-0"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  <div className="flex items-center gap-2 truncate flex-1">
+                    {isBulkSelectMode && (
+                      <input
+                        type="checkbox"
+                        checked={selectedQuestionIds.includes(q.id)}
+                        onChange={() => {}} // toggled on container div click
+                        className="accent-primary h-3.5 w-3.5 rounded shrink-0"
+                      />
+                    )}
+                    <span className="truncate pr-2 font-medium">Q{idx + 1}: {q.question_text || "Untitled question"}</span>
+                  </div>
+                  {!isBulkSelectMode && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setQuestionToDelete(q);
+                      }}
+                      className="text-red-400 hover:text-red-300 p-0.5 shrink-0"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
               ))}
               {questions.length === 0 && (
@@ -996,6 +1190,90 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Delete Question Confirmation Dialog */}
+      <Dialog open={!!questionToDelete} onOpenChange={(open) => !open && setQuestionToDelete(null)}>
+        <DialogContent className="bg-[#080f28] border border-white/5 text-white max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-space-grotesk font-black uppercase text-white tracking-wider flex items-center gap-2">
+              <AlertTriangle className="text-red-500" size={20} /> Confirm Deletion
+            </DialogTitle>
+            <DialogDescription className="text-xs text-white/60 mt-2">
+              Are you sure you want to delete the question:
+              <strong className="block text-white mt-1.5 italic font-normal text-sm bg-white/5 p-3 rounded-xl border border-white/5">
+                "{questionToDelete?.question_text || "Untitled question"}"?
+              </strong>
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 gap-2 sm:gap-0 flex justify-end">
+            <Button
+              onClick={() => setQuestionToDelete(null)}
+              className="bg-white/5 border border-white/5 text-white hover:bg-white/10 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider h-11"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (questionToDelete) {
+                  handleDeleteQuestion(questionToDelete.id);
+                  setQuestionToDelete(null);
+                }
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider h-11"
+            >
+              Delete Question
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Questions Confirmation Dialog */}
+      <Dialog open={isBulkDeleteConfirmOpen} onOpenChange={setIsBulkDeleteConfirmOpen}>
+        <DialogContent className="bg-[#080f28] border border-white/5 text-white max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-space-grotesk font-black uppercase text-white tracking-wider flex items-center gap-2">
+              <AlertTriangle className="text-red-500" size={20} /> Confirm Bulk Deletion
+            </DialogTitle>
+            <DialogDescription className="text-xs text-white/60 mt-2">
+              Are you sure you want to delete the <strong className="text-white">{selectedQuestionIds.length}</strong> selected questions?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 gap-2 sm:gap-0 flex justify-end">
+            <Button
+              onClick={() => setIsBulkDeleteConfirmOpen(false)}
+              className="bg-white/5 border border-white/5 text-white hover:bg-white/10 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider h-11"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                setIsBulkDeleteConfirmOpen(false);
+                try {
+                  const ids = selectedQuestionIds.join(',');
+                  const res = await fetch(`/api/lms/quiz/questions?id=${ids}`, {
+                    method: 'DELETE'
+                  });
+                  const resData = await res.json();
+                  if (resData.error) toast.error(resData.error);
+                  else {
+                    toast.success(`${selectedQuestionIds.length} questions deleted.`);
+                    setSelectedQuestionIds([]);
+                    setIsBulkSelectMode(false);
+                    loadQuestions();
+                  }
+                } catch {
+                  toast.error("Failed to delete selected questions");
+                }
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider h-11"
+            >
+              Delete Questions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

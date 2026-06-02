@@ -50,20 +50,36 @@ export async function upsertQuiz(quizData: any) {
     if (!workspaceId) return { error: 'No workspace active' };
 
     const supabase = await createServerClient();
+    const { module_id, ...cleanQuizData } = quizData;
     const payload = {
-      ...quizData,
+      ...cleanQuizData,
+      module_id: null,
       workspace_id: workspaceId,
       updated_at: new Date().toISOString()
     };
 
     let result;
     if (quizData.id) {
-      result = await supabase
+      const { data: existing } = await supabase
         .from('lms_quizzes')
-        .update(payload)
+        .select('id')
         .eq('id', quizData.id)
-        .select()
-        .single();
+        .maybeSingle();
+
+      if (existing) {
+        result = await supabase
+          .from('lms_quizzes')
+          .update(payload)
+          .eq('id', quizData.id)
+          .select()
+          .single();
+      } else {
+        result = await supabase
+          .from('lms_quizzes')
+          .insert({ ...payload, created_at: new Date().toISOString() })
+          .select()
+          .single();
+      }
     } else {
       result = await supabase
         .from('lms_quizzes')
