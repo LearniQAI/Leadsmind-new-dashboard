@@ -13,7 +13,7 @@ export async function respondToReview(reviewId: string, response: string) {
 
    const supabase = await createServerClient();
    const { data, error } = await supabase
-    .from('reviews')
+    .from('reputation_reviews')
     .update({
      reply_text: response,
      replied: true,
@@ -39,7 +39,7 @@ export async function deleteReview(reviewId: string) {
 
    const supabase = await createServerClient();
    const { error } = await supabase
-    .from('reviews')
+    .from('reputation_reviews')
     .delete()
     .eq('id', reviewId)
     .eq('workspace_id', workspaceId);
@@ -161,20 +161,16 @@ export async function submitPrivateFeedback(workspaceId: string, reviewerName: s
   try {
     const supabase = createAdminClient(); // Bypasses RLS since client visitors aren't logged in
     
-    const feedbackId = `internal_${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`;
-    
     const { data, error } = await supabase
-      .from('reviews')
+      .from('reputation_reviews')
       .insert({
         workspace_id: workspaceId,
-        platform: null, // Indicates private internal review
-        external_review_id: feedbackId,
+        platform: 'custom', // Indicates private internal review / custom form
         reviewer_name: reviewerName || 'Anonymous Customer',
         rating,
-        body,
+        review_text: body,
         replied: false,
-        review_date: new Date().toISOString(),
-        fetched_at: new Date().toISOString()
+        published_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -261,12 +257,15 @@ export async function sendReviewRequest(contactId: string, channel: 'email' | 's
     const workspaceName = branding?.platform_name || workspace?.name || 'our business';
     const feedbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/feedback?workspaceId=${workspaceId}&contactId=${contactId}`;
 
-    // Create log in review_requests table
+    // Create log in reputation_requests table
     const { error: logError } = await supabase
-      .from('review_requests')
+      .from('reputation_requests')
       .insert({
         workspace_id: workspaceId,
         contact_id: contactId,
+        contact_email: contact.email || null,
+        contact_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || null,
+        contact_phone: contact.phone || null,
         channel,
         status: 'sent',
         sent_at: new Date().toISOString()

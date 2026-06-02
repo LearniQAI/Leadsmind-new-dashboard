@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import useGlobalContext from "@/hooks/use-context";
 import sidebarData from "@/data/sidebar-data";
 import { usePathname } from "next/navigation";
@@ -12,6 +12,7 @@ const DashBoardSidebar = () => {
   const { enrichedWorkspace, role, permissions } = useDashboardContext() as any;
   const [linkId, setlinkId] = useState<number | null>(null);
   const pathName = usePathname();
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   const handleClick = (id: number) => {
     setlinkId(linkId === id ? null : id);
@@ -41,6 +42,13 @@ const DashBoardSidebar = () => {
       setSideMenuOpen(false);
     }
   }, [pathName, setSideMenuOpen]);
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem('sidebar-scroll');
+    if (saved && sidebarRef.current) {
+      sidebarRef.current.scrollTop = parseInt(saved);
+    }
+  }, []);
 
   // Force full width on mobile
   const sidebarWidth = sideMenuOpen ? "w-[280px]" : (isCollapse ? "w-[80px]" : "w-[280px]");
@@ -80,7 +88,13 @@ const DashBoardSidebar = () => {
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto no-scrollbar py-6 px-4 space-y-8">
+        <div
+          ref={sidebarRef}
+          onScroll={(e) => {
+            sessionStorage.setItem('sidebar-scroll', String((e.target as HTMLDivElement).scrollTop));
+          }}
+          className="flex-1 overflow-y-auto no-scrollbar py-6 px-4 space-y-8"
+        >
           {sidebarData.map((category) => {
             // Filter items in category based on permissions
             const filteredItems = category.items.filter(item => {

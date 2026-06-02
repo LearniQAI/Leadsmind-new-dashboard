@@ -12,6 +12,21 @@ import { ContactInfoPanel } from '@/components/conversations/ContactInfoPanel';
 export default function ConversationsClient({ initialConversations }: { initialConversations: any[] }) {
   const router = useRouter();
   const supabase = createClient();
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [filter, setFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch current user on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        setCurrentUser(data.user);
+      }
+    });
+  }, [supabase]);
 
   // Consolidate conversations by contact_id
   const consolidatedConversations = React.useMemo(() => {
@@ -32,7 +47,10 @@ export default function ConversationsClient({ initialConversations }: { initialC
             ...m,
             platform: conv.platform,
             conversationId: conv.id
-          }))
+          })),
+          tags: conv.tags || [],
+          status: conv.status || 'open',
+          assigned_to: conv.assigned_to
         });
         return;
       }
@@ -48,7 +66,11 @@ export default function ConversationsClient({ initialConversations }: { initialC
           isConsolidated: true,
           unread_count: 0,
           availablePlatforms: [],
-          messages: []
+          messages: [],
+          tags: conv.tags || [],
+          status: conv.status || 'open',
+          assigned_to: conv.assigned_to,
+          last_customer_message_at: conv.last_customer_message_at
         };
       }
 
@@ -57,9 +79,20 @@ export default function ConversationsClient({ initialConversations }: { initialC
         entry.last_message_at = conv.last_message_at;
         entry.platform = conv.platform;
         entry.title = conv.title;
+        entry.status = conv.status || entry.status;
+        entry.assigned_to = conv.assigned_to || entry.assigned_to;
+        if (conv.last_customer_message_at) {
+          entry.last_customer_message_at = conv.last_customer_message_at;
+        }
       }
       entry.unread_count += (conv.unread_count || 0);
       
+      // Merge tags
+      if (conv.tags && Array.isArray(conv.tags)) {
+        const merged = new Set([...entry.tags, ...conv.tags]);
+        entry.tags = Array.from(merged);
+      }
+
       // Prevent duplicate platform connections
       if (!entry.availablePlatforms.some((p: any) => p.platform === conv.platform)) {
         entry.availablePlatforms.push({ platform: conv.platform, conversationId: conv.id });
@@ -83,17 +116,11 @@ export default function ConversationsClient({ initialConversations }: { initialC
     return allConsolidated.sort((a: any, b: any) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
   }, [initialConversations]);
 
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
-
   useEffect(() => {
     if (consolidatedConversations.length > 0 && !activeConvId) {
       setActiveConvId(consolidatedConversations[0].id);
     }
   }, [consolidatedConversations, activeConvId]);
-
-  const [isSending, setIsSending] = useState(false);
-  const [filter, setFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Realtime Subscription
   useEffect(() => {
@@ -101,7 +128,14 @@ export default function ConversationsClient({ initialConversations }: { initialC
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
+        { event: '*', schema: 'public', table: 'messages' },
+        () => {
+          router.refresh();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations' },
         () => {
           router.refresh();
         }
@@ -119,7 +153,15 @@ export default function ConversationsClient({ initialConversations }: { initialC
       c.contacts?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.contacts?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.title?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+
+    let matchesAssignment = true;
+    if (assigneeFilter === 'me') {
+      matchesAssignment = c.assigned_to === currentUser?.id;
+    } else if (assigneeFilter === 'unassigned') {
+      matchesAssignment = !c.assigned_to;
+    }
+
+    return matchesFilter && matchesSearch && matchesAssignment;
   });
 
   const activeConv = consolidatedConversations.find(c => c.id === activeConvId);
@@ -148,6 +190,8 @@ export default function ConversationsClient({ initialConversations }: { initialC
         onFilterChange={setFilter}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        assigneeFilter={assigneeFilter}
+        onAssigneeFilterChange={setAssigneeFilter}
       />
 
       {/* 2. Main Thread (flex: 1) */}
@@ -159,7 +203,7 @@ export default function ConversationsClient({ initialConversations }: { initialC
 
       {/* 3. Contact Info Panel (240px) */}
       {activeConv && activeConv.contacts && (
-        <ContactInfoPanel contact={activeConv.contacts} />
+        <ContactInfoPanel contact={activeConv.contacts} conversation={activeConv} />
       )}
     </div>
   );

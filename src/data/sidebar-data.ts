@@ -74,10 +74,14 @@ const sidebarData: SidebarCategory[] = [
   category: "Account",
   items: [
    { id: 29, label: "Settings", icon: "fa-light fa-gear", link: "/settings", permission: "settings" },
-
+   { id: 30, label: "Bank & Payments", icon: "fa-light fa-building-columns", link: "/settings/financial-connections", permission: "settings" },
+   { id: 31, label: "KYC & Identity", icon: "fa-light fa-id-card", link: "/settings/kyc-identity", permission: "settings" },
+   { id: 32, label: "Integrations", icon: "fa-light fa-plug", link: "/settings/integrations-hub", permission: "settings" },
+   { id: 33, label: "Developer & API", icon: "fa-light fa-code", link: "/settings/developer", permission: "settings" },
   ],
  },
 ];
 
 export default sidebarData;
+
 

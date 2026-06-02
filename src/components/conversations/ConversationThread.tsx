@@ -6,6 +6,9 @@ import { MessageInput } from './MessageInput';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { VoiceNoteCard } from '@/components/common/VoiceNoteCard';
+import { sendInternalNote } from '@/app/actions/messaging';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface ConversationThreadProps {
   conversation: any;
@@ -14,7 +17,9 @@ interface ConversationThreadProps {
 }
 
 export function ConversationThread({ conversation, onSendMessage, isSending }: ConversationThreadProps) {
+  const router = useRouter();
   const [isCopied, setIsCopied] = useState(false);
+  const [isNoteSending, setIsNoteSending] = useState(false);
   const availablePlatforms = conversation?.availablePlatforms || [];
   
   // Default reply platform: the platform of the latest message, or the first available platform
@@ -52,6 +57,51 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
     );
   }
 
+  // Compute WhatsApp 24-Hour window closed status
+  const customerMsgs = conversation.messages?.filter((m: any) => m.direction === 'inbound') || [];
+  const lastCustomerMsg = customerMsgs[customerMsgs.length - 1];
+  const lastCustomerMsgAt = conversation.last_customer_message_at || lastCustomerMsg?.sent_at;
+  
+  let isWhatsAppWindowClosed = false;
+  let windowTimeRemainingText = '';
+  if (selectedPlatform === 'whatsapp') {
+    if (lastCustomerMsgAt) {
+      const diffMs = Date.now() - new Date(lastCustomerMsgAt).getTime();
+      const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+      isWhatsAppWindowClosed = diffMs > twentyFourHoursMs;
+      if (!isWhatsAppWindowClosed) {
+        const remainingMs = twentyFourHoursMs - diffMs;
+        const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+        const remainingMins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+        windowTimeRemainingText = `${remainingHours}h ${remainingMins}m left`;
+      }
+    } else {
+      isWhatsAppWindowClosed = true;
+    }
+  }
+
+  // Compute SLA status (15 minutes breach threshold for inbound messages)
+  const sortedMsgsForSLA = conversation.messages?.slice().sort((a: any, b: any) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()) || [];
+  const latestMsgForSLA = sortedMsgsForSLA[sortedMsgsForSLA.length - 1];
+  
+  let slaStatus: 'inactive' | 'met' | 'breached' | 'pending' = 'inactive';
+  let slaText = '';
+  if (latestMsgForSLA) {
+    if (latestMsgForSLA.direction === 'inbound') {
+      const diffMins = Math.floor((Date.now() - new Date(latestMsgForSLA.sent_at).getTime()) / (1000 * 60));
+      if (diffMins > 15) {
+        slaStatus = 'breached';
+        slaText = `Breached by ${diffMins - 15}m`;
+      } else {
+        slaStatus = 'pending';
+        slaText = `${15 - diffMins}m left`;
+      }
+    } else {
+      slaStatus = 'met';
+      slaText = 'Met';
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col bg-[#04091a] relative overflow-hidden">
       {/* Header */}
@@ -79,9 +129,48 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        
+        {/* Compliance and SLA Badges */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* WhatsApp compliance status */}
+          {selectedPlatform === 'whatsapp' && (
+            <>
+              {!isWhatsAppWindowClosed ? (
+                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                  <i className="fa-solid fa-circle text-[6px]"></i>
+                  24h Window Open ({windowTimeRemainingText})
+                </span>
+              ) : (
+                <span className="px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                  <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                  24h Window Closed
+                </span>
+              )}
+            </>
+          )}
+
+          {/* SLA display */}
+          {slaStatus === 'breached' && (
+            <span className="px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 animate-pulse">
+              <i className="fa-solid fa-circle-exclamation text-[10px]"></i>
+              SLA Overdue ({slaText})
+            </span>
+          )}
+          {slaStatus === 'pending' && (
+            <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+              <i className="fa-regular fa-clock text-[10px]"></i>
+              SLA Due ({slaText})
+            </span>
+          )}
+          {slaStatus === 'met' && (
+            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+              <i className="fa-solid fa-check text-[10px]"></i>
+              SLA Met
+            </span>
+          )}
+
           {selectedPlatform === 'sms' && (
-            <div className="flex items-center gap-2 mr-2">
+            <div className="flex items-center gap-2">
                <div className="px-2.5 py-1.5 rounded-lg bg-[#2563eb]/10 border border-[#2563eb]/20 text-[#3b82f6] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
                   <i className="fa-solid fa-link"></i>
                   SMS Bridge Active
@@ -152,8 +241,9 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
                 direction={msg.direction}
                 sentAt={msg.sent_at}
                 status={msg.status}
-                errorMessage={msg.error_message}
+                errorMessage={msg.metadata?.error_message || msg.error_message}
                 platform={msgPlatform}
+                metadata={msg.metadata}
               />
             );
           })}
@@ -161,15 +251,28 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
 
       {/* Input Area */}
       <MessageInput 
-        onSend={(text) => {
-          const target = availablePlatforms.find((p: any) => p.platform === selectedPlatform) || availablePlatforms[0];
-          onSendMessage(text, target?.conversationId);
+        onSend={async (text, isNote) => {
+          if (isNote) {
+            setIsNoteSending(true);
+            const res = await sendInternalNote(conversation.id, text, 'Agent');
+            if (res.error) {
+              toast.error(res.error);
+            } else {
+              toast.success('Internal note saved.');
+              router.refresh();
+            }
+            setIsNoteSending(false);
+          } else {
+            const target = availablePlatforms.find((p: any) => p.platform === selectedPlatform) || availablePlatforms[0];
+            onSendMessage(text, target?.conversationId || conversation.id);
+          }
         }}
-        disabled={isSending}
+        disabled={isSending || isNoteSending}
         placeholder={selectedPlatform === 'sms' ? "Reply via SMS Bridge..." : `Type your reply via ${selectedPlatform.toUpperCase()}...`}
         availablePlatforms={availablePlatforms}
         selectedPlatform={selectedPlatform}
         onPlatformChange={setSelectedPlatform}
+        isWhatsAppWindowClosed={isWhatsAppWindowClosed}
       />
     </div>
   );

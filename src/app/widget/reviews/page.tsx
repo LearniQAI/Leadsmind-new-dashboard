@@ -18,17 +18,26 @@ export default async function ReviewsWidgetPage({ searchParams }: Props) {
 
   const supabase = createAdminClient();
   const { data: reviews, error } = await supabase
-    .from('reviews')
+    .from('reputation_reviews')
     .select('*')
     .eq('workspace_id', workspaceId)
     .gte('rating', 4)
-    .order('review_date', { ascending: false });
+    .order('created_at', { ascending: false });
 
   if (error) {
     notFound();
   }
 
+  const mappedReviews = reviews?.map(r => ({
+    id: r.id,
+    reviewer_name: r.reviewer_name,
+    rating: r.rating,
+    body: r.review_text,
+    platform: r.platform,
+    review_date: r.published_at || r.created_at
+  })) || [];
+
   return (
-    <ReviewsWidgetClient reviews={reviews || []} />
+    <ReviewsWidgetClient reviews={mappedReviews} />
   );
 }
