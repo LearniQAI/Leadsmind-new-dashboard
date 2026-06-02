@@ -59,11 +59,13 @@ export async function updateSession(request: NextRequest) {
  const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
  
  // Define what should be public (landing pages, etc. if any)
- // For now, only /auth is public. Everything else is protected.
+ // For now, only /auth, /privacy-policy, and /terms are public. Everything else is protected.
  const isPublicPage = isAuthPage || 
             request.nextUrl.pathname.startsWith('/_next') || 
             request.nextUrl.pathname.startsWith('/api') ||
-            request.nextUrl.pathname === '/favicon.ico'
+            request.nextUrl.pathname === '/favicon.ico' ||
+            request.nextUrl.pathname === '/privacy-policy' ||
+            request.nextUrl.pathname === '/terms'
 
  // 1. If user is logged in and tries to access auth pages, redirect to root
  if (user && isAuthPage) {

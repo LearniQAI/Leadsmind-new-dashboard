@@ -51,7 +51,22 @@ const sidebarData: SidebarCategory[] = [
   items: [
    { id: 18, label: "Products", icon: "fa-light fa-box", link: "/products", permission: "commerce" },
    { id: 19, label: "Orders", icon: "fa-light fa-bag-shopping", link: "/orders", permission: "commerce" },
-   { id: 20, label: "Expenses", icon: "fa-light fa-receipt", link: "/finance/expenses", permission: "commerce" },
+   {
+    id: 20,
+    label: "Finance",
+    icon: "fa-light fa-chart-line",
+    link: "/finance",
+    permission: "commerce",
+    subItems: [
+     { label: "Overview", link: "/finance" },
+     { label: "Transactions", link: "/finance/transactions" },
+     { label: "Reconciliation", link: "/finance/reconciliation" },
+     { label: "Connected Accounts", link: "/finance/connected-accounts" },
+     { label: "Payment Gateways", link: "/finance/payment-gateways" },
+     { label: "Reports", link: "/finance/reports" },
+     { label: "Expenses", link: "/finance/expenses" },
+    ],
+   },
   ],
  },
  {
@@ -75,8 +90,6 @@ const sidebarData: SidebarCategory[] = [
   category: "Account",
   items: [
    { id: 29, label: "Settings", icon: "fa-light fa-gear", link: "/settings", permission: "settings" },
-   { id: 30, label: "Bank & Payments", icon: "fa-light fa-building-columns", link: "/settings/financial-connections", permission: "settings" },
-   { id: 31, label: "KYC & Identity", icon: "fa-light fa-id-card", link: "/settings/kyc-identity", permission: "settings" },
    { id: 32, label: "Integrations", icon: "fa-light fa-plug", link: "/settings/integrations-hub", permission: "settings" },
    { id: 33, label: "Developer & API", icon: "fa-light fa-code", link: "/settings/developer", permission: "settings" },
   ],
@@ -84,5 +97,3 @@ const sidebarData: SidebarCategory[] = [
 ];
 
 export default sidebarData;
-
-
