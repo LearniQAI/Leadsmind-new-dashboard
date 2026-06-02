@@ -72,62 +72,57 @@ export default function IntegrationsHubPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] text-[#eef2ff] py-8 px-6">
-        <div className="max-w-4xl mx-auto flex flex-col">
-          
-          {/* Page Title */}
-          <div>
-            <h1
-              className="text-[22px] font-bold leading-tight"
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              Integrations <span className="text-[#3b82f6]">Hub</span>
-            </h1>
-            <p
-              className="text-[11.5px] uppercase tracking-[0.8px] font-medium mt-1 text-[#4a5a82]"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
-              Connect LeadsMind to the tools your business already uses.
-            </p>
-          </div>
-
-          {/* Amber Banner */}
-          <div className="bg-[rgba(245,158,11,0.06)] border border-[rgba(245,158,11,0.15)] rounded-xl p-4 mt-6 flex items-start gap-3">
-            <span className="text-[#f59e0b] text-base leading-none select-none">⚠</span>
-            <p
-              className="text-[12px] text-[#94a3c8] leading-normal"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
-              These integrations are coming soon. You will be notified when each one is ready to connect.
-            </p>
-          </div>
-
-          {/* Render Sections */}
-          {sections.map((section, sIndex) => (
-            <div key={sIndex} className="flex flex-col">
-              <h3
-                className="text-[10px] font-semibold uppercase tracking-[1.2px] text-[#4a5a82] mb-3 mt-8"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                {section.title}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {section.items.map((item) => (
-                  <ConnectionCard
-                    key={item.name}
-                    name={item.name}
-                    shortName={item.shortName}
-                    color={item.color}
-                    description={item.description}
-                    comingSoon={true}
-                    connected={false}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-
+      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-3xl">
+        {/* Page Title */}
+        <div>
+          <h1
+            className="text-[22px] font-bold leading-tight"
+            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            Integrations <span className="text-[#3b82f6]">Hub</span>
+          </h1>
+          <p
+            className="text-[11.5px] uppercase tracking-[0.8px] font-medium mt-1 text-[#4a5a82]"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            Connect LeadsMind to the tools your business already uses.
+          </p>
         </div>
+
+        {/* Amber Banner */}
+        <div className="bg-[rgba(245,158,11,0.06)] border border-[rgba(245,158,11,0.15)] rounded-xl p-4 mt-6 flex items-start gap-3">
+          <span className="text-[#f59e0b] text-base leading-none select-none">⚠</span>
+          <p
+            className="text-[12px] text-[#94a3c8] leading-normal"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            These integrations are coming soon. You will be notified when each one is ready to connect.
+          </p>
+        </div>
+
+        {/* Render Sections */}
+        {sections.map((section, sIndex) => (
+          <div key={sIndex} className="flex flex-col">
+            <h3
+              className="text-[10px] font-semibold uppercase tracking-[1.2px] text-[#4a5a82] mb-3 mt-8"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              {section.title}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {section.items.map((item) => (
+                <ConnectionCard
+                  key={item.name}
+                  name={item.name}
+                  shortName={item.shortName}
+                  color={item.color}
+                  description={item.description}
+                  connected={false}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </Wrapper>
   );

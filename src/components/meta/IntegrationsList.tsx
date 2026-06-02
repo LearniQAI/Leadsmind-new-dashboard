@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Space_Grotesk, DM_Sans } from 'next/font/google';
+import { getMetaOAuthURL } from '@/lib/meta/config';
+import { toast } from 'sonner';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -66,7 +68,54 @@ export function IntegrationsList({
   onDisconnect,
   onReconnect,
 }: IntegrationsListProps) {
-  const isAnyConnected = connections.some((c) => c.connected);
+  const [dbConnections, setDbConnections] = useState<MetaConnection[] | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [isServerMetaConfigured, setIsServerMetaConfigured] = useState(false);
+
+  useEffect(() => {
+    async function fetchConnections() {
+      try {
+        const res = await fetch('/api/meta/connections');
+        if (res.ok) {
+          const data = await res.json();
+          setDbConnections(data.connections);
+          setWorkspaceId(data.workspaceId);
+          setIsServerMetaConfigured(data.isMetaConfigured);
+        }
+      } catch (err) {
+        console.error('[IntegrationsList] Failed to load connections:', err);
+      }
+    }
+    fetchConnections();
+  }, []);
+
+  // Parse search params for redirect feedback
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const successPlatform = params.get('success');
+      const errorMsg = params.get('error');
+
+      if (successPlatform) {
+        toast.success(`Successfully connected to ${successPlatform.charAt(0).toUpperCase() + successPlatform.slice(1)}!`);
+        // Clean URL parameters
+        const url = new URL(window.location.href);
+        url.searchParams.delete('success');
+        window.history.replaceState({}, '', url.pathname + url.search);
+      }
+
+      if (errorMsg) {
+        toast.error(`Connection failed: ${errorMsg}`);
+        // Clean URL parameters
+        const url = new URL(window.location.href);
+        url.searchParams.delete('error');
+        window.history.replaceState({}, '', url.pathname + url.search);
+      }
+    }
+  }, []);
+
+  const activeConnections = dbConnections || connections;
+  const isAnyConnected = activeConnections.some((c) => c.connected);
 
   const getPlatformDetails = (conn: MetaConnection) => {
     switch (conn.platform) {
@@ -93,6 +142,48 @@ export function IntegrationsList({
         };
       default:
         return { name: '', icon: null, accent: '', subline: '' };
+    }
+  };
+
+  const handleConnectClick = (platform: 'facebook' | 'instagram' | 'whatsapp') => {
+    if (isServerMetaConfigured && workspaceId) {
+      const url = getMetaOAuthURL(platform, workspaceId);
+      window.location.href = url;
+    } else {
+      onConnect(platform);
+    }
+  };
+
+  const handleDisconnectClick = async (platform: 'facebook' | 'instagram' | 'whatsapp') => {
+    if (dbConnections && workspaceId) {
+      try {
+        const res = await fetch(`/api/meta/connections?platform=${platform}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          setDbConnections(prev =>
+            prev ? prev.map(c => c.platform === platform ? { platform, connected: false } : c) : null
+          );
+          toast.success(`Successfully disconnected ${platform.charAt(0).toUpperCase() + platform.slice(1)}`);
+        } else {
+          const data = await res.json();
+          toast.error(data.error || 'Failed to disconnect');
+        }
+      } catch (err: any) {
+        toast.error(err.message || 'Error disconnecting platform');
+      }
+    }
+    onDisconnect(platform);
+  };
+
+  const handleReconnectClick = () => {
+    const disconnected = activeConnections.find(c => !c.connected);
+    const platformToReconnect = disconnected?.platform || 'facebook';
+    if (isServerMetaConfigured && workspaceId) {
+      const url = getMetaOAuthURL(platformToReconnect, workspaceId);
+      window.location.href = url;
+    } else {
+      onReconnect();
     }
   };
 
@@ -131,7 +222,7 @@ export function IntegrationsList({
 
       {/* Platforms Grid/List */}
       <div className="flex flex-col gap-4">
-        {connections.map((conn) => {
+        {activeConnections.map((conn) => {
           const details = getPlatformDetails(conn);
           return (
             <div
@@ -175,7 +266,7 @@ export function IntegrationsList({
                       </span>
                     </div>
                     <button
-                      onClick={onReconnect}
+                      onClick={handleReconnectClick}
                       className="text-[#3b82f6] hover:underline text-[11.5px] font-semibold font-dm-sans shrink-0"
                     >
                       Reconnect
@@ -200,14 +291,14 @@ export function IntegrationsList({
                 {/* Action button */}
                 {conn.connected ? (
                   <button
-                    onClick={() => onDisconnect(conn.platform)}
+                    onClick={() => handleDisconnectClick(conn.platform)}
                     className="h-8 px-3 rounded-[8px] bg-[rgba(239,68,68,0.1)] text-[#ef4444] border border-[rgba(239,68,68,0.2)] hover:bg-[rgba(239,68,68,0.15)] text-[12px] font-semibold font-dm-sans transition-colors"
                   >
                     Disconnect
                   </button>
                 ) : (
                   <button
-                    onClick={() => onConnect(conn.platform)}
+                    onClick={() => handleConnectClick(conn.platform)}
                     className="h-8 px-3 rounded-[8px] bg-[#2563eb] text-white hover:bg-[#1d4ed8] text-[12px] font-semibold font-dm-sans transition-colors"
                   >
                     Connect {conn.platform.charAt(0).toUpperCase() + conn.platform.slice(1)}

@@ -16,7 +16,6 @@ export default function ConnectionCard({
   shortName,
   description,
   color,
-  comingSoon = true,
   connected = false,
 }: ConnectionCardProps) {
   return (
