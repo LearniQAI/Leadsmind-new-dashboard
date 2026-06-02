@@ -1,0 +1,89 @@
+import React from 'react';
+import { redirect, notFound } from 'next/navigation';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
+import { createServerClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/auth';
+import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
+import StudentQuizClient from './StudentQuizClient';
+
+interface StudentQuizPageProps {
+  params: {
+    id: string;      // courseId
+    quizId: string;  // quizId
+  };
+}
+
+export default async function StudentQuizPage({ params }: StudentQuizPageProps) {
+  const courseId = params.id;
+  const quizId = params.quizId;
+  const user = await requireAuth();
+
+  const supabase = await createServerClient();
+
+  // 1. Fetch course details
+  const { data: course } = await supabase
+    .from('courses')
+    .select('id, workspace_id')
+    .eq('id', courseId)
+    .single();
+
+  if (!course) {
+    notFound();
+  }
+
+  // 2. Fetch student contact and verify enrollment
+  const contactId = await getOrCreateStudentContact(course.workspace_id);
+  if (!contactId) {
+    redirect('/student/marketplace');
+  }
+
+  const { data: enrollment } = await supabase
+    .from('enrollments')
+    .select('id')
+    .eq('course_id', courseId)
+    .eq('contact_id', contactId)
+    .maybeSingle();
+
+  if (!enrollment) {
+    redirect(`/student/courses/${courseId}`);
+  }
+
+  // 3. Fetch quiz lesson nodes
+  const { data: lesson } = await supabase
+    .from('course_lessons')
+    .select('*')
+    .eq('id', quizId)
+    .single();
+
+  if (!lesson || lesson.lesson_type !== 'quiz') {
+    notFound();
+  }
+
+  // 4. Fetch questions and settings
+  const [questionsRes, settingsRes] = await Promise.all([
+    supabase.from('quiz_questions').select('*').eq('lesson_id', quizId).order('position', { ascending: true }),
+    supabase.from('quiz_settings').select('*').eq('lesson_id', quizId).maybeSingle()
+  ]);
+
+  const questions = questionsRes.data || [];
+  const settings = settingsRes.data || {};
+
+  return (
+    <div className="space-y-6 max-w-xl mx-auto">
+      {/* Back to course viewer bar */}
+      <div className="flex items-center gap-1.5 text-xs text-white/40 font-mono uppercase tracking-widest">
+        <Link href={`/student/courses/${courseId}`} className="hover:text-white transition-all flex items-center gap-0.5">
+          <ChevronLeft size={12} /> Back to Course Player
+        </Link>
+      </div>
+
+      <StudentQuizClient
+        courseId={courseId}
+        quiz={lesson}
+        questions={questions}
+        settings={settings}
+      />
+    </div>
+  );
+}

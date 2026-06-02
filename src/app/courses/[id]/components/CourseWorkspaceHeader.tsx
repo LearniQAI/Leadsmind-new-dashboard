@@ -7,8 +7,8 @@ import { useRouter } from "next/navigation";
 interface CourseWorkspaceHeaderProps {
   courseTitle: string;
   courseId: string;
-  activeTab: "overview" | "modules" | "automations" | "analytics";
-  setActiveTab: (tab: "overview" | "modules" | "automations" | "analytics") => void;
+  activeTab: "settings" | "modules" | "automations" | "analytics";
+  setActiveTab: (tab: "settings" | "modules" | "automations" | "analytics") => void;
 }
 
 export default function CourseWorkspaceHeader({
@@ -40,7 +40,7 @@ export default function CourseWorkspaceHeader({
 
       {/* Tabs */}
       <div className="flex items-center bg-[#080f28] border border-white/5 rounded-xl p-1 w-fit shrink-0">
-        {(["overview", "modules", "automations", "analytics"] as const).map((tab) => (
+        {(["settings", "modules", "automations", "analytics"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => {

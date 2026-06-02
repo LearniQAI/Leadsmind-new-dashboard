@@ -15,6 +15,7 @@ import { mapLessonForModal, mapLessonTypeToDb } from "./utils/lessonMapping";
 import CourseSettingsForm from "./components/CourseSettingsForm";
 import ModulesToolbar from "./components/ModulesToolbar";
 import CourseWorkspaceHeader from "./components/CourseWorkspaceHeader";
+import CourseAnalyticsTab from "./components/CourseAnalyticsTab";
 
 interface CourseWorkspaceClientProps {
   course: any;
@@ -34,7 +35,7 @@ export default function CourseWorkspaceClient({
   const [modules, setModules] = useState<any[]>(initialModules);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | "draft" | "published" | "coming_soon">("All");
-  const [activeTab, setActiveTab] = useState<"overview" | "modules" | "automations" | "analytics">("modules");
+  const [activeTab, setActiveTab] = useState<"settings" | "modules" | "automations" | "analytics">("modules");
 
   // Modals States
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
@@ -254,14 +255,12 @@ export default function CourseWorkspaceClient({
         </>
       )}
 
-      {activeTab === "overview" && (
+      {activeTab === "settings" && (
         <CourseSettingsForm course={currentCourse} onSaved={setCurrentCourse} />
       )}
 
       {activeTab === "analytics" && (
-        <div className="bg-[#080f28] border border-white/5 rounded-2xl p-6 text-center text-white/40">
-          Analytics dashboard under configuration. Check back soon.
-        </div>
+        <CourseAnalyticsTab courseId={currentCourse.id} />
       )}
 
       {/* Modals */}

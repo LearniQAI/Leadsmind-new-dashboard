@@ -602,3 +602,166 @@ export async function completeLessonAction(lessonId: string) {
   return { error: error.message };
  }
 }
+
+/**
+ * Fetches analytics, enrollment counts, total earnings, student completions,
+ * progress details, and quiz attempt logs for a specific course.
+ */
+export async function getCourseAnalytics(courseId: string) {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const supabase = await createServerClient();
+
+    // 1. Fetch course details
+    const { data: course, error: courseErr } = await supabase
+      .from('courses')
+      .select('id, title, price, published')
+      .eq('id', courseId)
+      .eq('workspace_id', workspaceId)
+      .single();
+
+    if (courseErr || !course) {
+      throw new Error(courseErr?.message || 'Course not found or unauthorized');
+    }
+
+    // 2. Fetch all enrollments
+    const { data: enrollments, error: enrollError } = await supabase
+      .from('enrollments')
+      .select(`
+        id,
+        enrolled_at,
+        status,
+        contact_id,
+        contact:contacts (
+          id,
+          first_name,
+          last_name,
+          email
+        )
+      `)
+      .eq('course_id', courseId);
+
+    if (enrollError) throw enrollError;
+
+    // 3. Fetch all course lessons
+    const { data: lessons, error: lessonsError } = await supabase
+      .from('course_lessons')
+      .select('id, title, lesson_type')
+      .eq('course_id', courseId);
+
+    if (lessonsError) throw lessonsError;
+
+    // 4. Fetch progress logs
+    const { data: progress, error: progressError } = await supabase
+      .from('course_progress')
+      .select('contact_id, lesson_id')
+      .eq('course_id', courseId);
+
+    if (progressError) throw progressError;
+
+    // 5. Fetch quiz attempts for the quiz lessons in this course
+    const quizLessons = (lessons || []).filter((l: any) => l.lesson_type === 'quiz');
+    const quizLessonIds = quizLessons.map((l: any) => l.id);
+
+    let attempts: any[] = [];
+    let attemptContacts: any[] = [];
+
+    if (quizLessonIds.length > 0) {
+      const { data: attemptsData, error: attemptsError } = await supabase
+        .from('quiz_attempts')
+        .select(`
+          id,
+          lesson_id,
+          student_id,
+          score,
+          max_score,
+          percentage,
+          passed,
+          submitted_at
+        `)
+        .in('lesson_id', quizLessonIds)
+        .order('submitted_at', { ascending: false });
+
+      if (attemptsError) throw attemptsError;
+      attempts = attemptsData || [];
+
+      const contactIdsFromAttempts = Array.from(new Set(attempts.map((a: any) => a.student_id)));
+      if (contactIdsFromAttempts.length > 0) {
+        const { data: contactsData } = await supabase
+          .from('contacts')
+          .select('id, first_name, last_name, email')
+          .in('id', contactIdsFromAttempts);
+        attemptContacts = contactsData || [];
+      }
+    }
+
+    // 6. Compute statistics
+    const totalEnrollments = enrollments?.length || 0;
+    const coursePrice = course.price || 0;
+    const totalEarnings = totalEnrollments * coursePrice;
+    const totalLessons = lessons?.length || 0;
+
+    let completedStudentsCount = 0;
+    let totalProgressPercent = 0;
+
+    const studentStats = (enrollments || []).map((e: any) => {
+      const c = e.contact || {};
+      const completedForThisStudent = (progress || []).filter((p: any) => p.contact_id === e.contact_id).length;
+      const pct = totalLessons > 0 ? Math.round((completedForThisStudent / totalLessons) * 100) : 0;
+      
+      if (pct === 100) {
+        completedStudentsCount++;
+      }
+      totalProgressPercent += pct;
+
+      return {
+        contactId: e.contact_id,
+        firstName: c.first_name || 'Student',
+        lastName: c.last_name || '',
+        email: c.email || 'unknown@example.com',
+        enrolledAt: e.enrolled_at,
+        status: e.status,
+        completedLessons: completedForThisStudent,
+        progressPercentage: pct
+      };
+    });
+
+    const averageProgress = totalEnrollments > 0 ? Math.round(totalProgressPercent / totalEnrollments) : 0;
+
+    const quizAttemptsLog = attempts.map((a: any) => {
+      const lessonObj: any = quizLessons.find((l: any) => l.id === a.lesson_id) || {};
+      const c: any = attemptContacts.find((contact: any) => contact.id === a.student_id) || {};
+      return {
+        id: a.id,
+        quizTitle: lessonObj.title || 'Untitled Quiz',
+        studentName: `${c.first_name || 'Student'} ${c.last_name || ''}`.trim(),
+        studentEmail: c.email || 'unknown@example.com',
+        score: a.score,
+        maxScore: a.max_score || 10,
+        percentage: a.percentage || (a.max_score ? Math.round((a.score / a.max_score) * 100) : 0),
+        passed: a.passed,
+        submittedAt: a.submitted_at
+      };
+    });
+
+    return {
+      data: {
+        summary: {
+          totalEnrollments,
+          coursePrice,
+          totalEarnings,
+          totalLessons,
+          completedStudentsCount,
+          averageProgress,
+          completionRate: totalEnrollments > 0 ? Math.round((completedStudentsCount / totalEnrollments) * 100) : 0
+        },
+        students: studentStats,
+        quizAttempts: quizAttemptsLog
+      }
+    };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}

@@ -63,6 +63,7 @@ const sidebarData: SidebarCategory[] = [
    { id: 221, label: "Help Center", icon: "fa-light fa-circle-question", link: "/articles", permission: "business" },
    { id: 23, label: "Automations", icon: "fa-light fa-bolt", link: "/automations", permission: "automation" },
    { id: 24, label: "Learning", icon: "icon-training", link: "/courses" },
+   { id: 241, label: "Student Portal", icon: "fa-light fa-graduation-cap", link: "/student" },
    { id: 25, label: "Certificates", icon: "icon-trophy", link: "/courses/certificates" },
    { id: 26, label: "Community", icon: "fa-light fa-comments", link: "/community/forums", permission: "business" },
    { id: 27, label: "Media Center", icon: "fa-light fa-folder-open", link: "/media", permission: "business" },
