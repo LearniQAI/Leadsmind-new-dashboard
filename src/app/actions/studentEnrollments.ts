@@ -2,6 +2,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId, getUserRole } from '@/lib/auth';
+import { stripe } from '@/lib/stripe';
 
 /**
  * Resolves the contact_id for the currently logged-in user email.
@@ -55,18 +56,36 @@ export async function enrollStudent(courseId: string) {
     const user = await getUser();
     if (!user) return { error: 'Not authenticated' };
 
-    const role = await getUserRole();
-    if (role === 'admin') {
+    const adminClient = createAdminClient();
+
+    // Fetch the course to find its workspace_id
+    const { data: course, error: courseError } = await adminClient
+      .from('courses')
+      .select('workspace_id')
+      .eq('id', courseId)
+      .single();
+
+    if (courseError || !course) {
+      return { error: 'Course not found' };
+    }
+
+    const workspaceId = course.workspace_id;
+    if (!workspaceId) return { error: 'Course does not belong to a workspace' };
+
+    // Check user role specifically in the course's workspace to block course admins from self-enrolling
+    const { data: membership } = await adminClient
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (membership?.role === 'admin') {
       return { error: 'Administrators cannot enroll in workspace courses as students.' };
     }
 
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No active workspace context' };
-
     const contactId = await getOrCreateStudentContact(workspaceId);
     if (!contactId) return { error: 'Failed to register student contact profile' };
-
-    const adminClient = createAdminClient();
 
     // Check if already enrolled using admin client to bypass RLS
     const { data: existing } = await adminClient
@@ -103,13 +122,17 @@ export async function getMyEnrollments() {
     const user = await getUser();
     if (!user) return { error: 'Not authenticated' };
 
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No active workspace context' };
-
-    const contactId = await getOrCreateStudentContact(workspaceId);
-    if (!contactId) return { data: [] };
-
     const adminClient = createAdminClient();
+
+    // Fetch all contact records matching user's email across all workspaces
+    const { data: contacts, error: contactError } = await adminClient
+      .from('contacts')
+      .select('id')
+      .eq('email', user.email);
+
+    if (contactError) throw contactError;
+    const contactIds = (contacts || []).map((c: any) => c.id);
+    if (contactIds.length === 0) return { data: [] };
 
     // Fetch enrollments with course details using admin client to bypass RLS
     const { data: enrollments, error } = await adminClient
@@ -128,7 +151,7 @@ export async function getMyEnrollments() {
           published
         )
       `)
-      .eq('contact_id', contactId);
+      .in('contact_id', contactIds);
 
     if (error) throw error;
 
@@ -150,19 +173,34 @@ export async function getMyEnrollments() {
 /**
  * Fetches all courses available in the marketplace (published courses in the current workspace).
  */
-export async function getMarketplaceCourses() {
+export async function getMarketplaceCourses(overrideWorkspaceId?: string) {
   try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No active workspace context' };
+    const workspaceId = overrideWorkspaceId || await getCurrentWorkspaceId();
 
     const adminClient = createAdminClient();
-    const { data: courses, error } = await adminClient
+    let query = adminClient
       .from('courses')
       .select('*')
-      .eq('workspace_id', workspaceId)
       .eq('published', true);
 
+    if (workspaceId) {
+      query = query.eq('workspace_id', workspaceId);
+    }
+
+    const { data: courses, error } = await query;
     if (error) throw error;
+
+    // Fallback: If no courses are found in the filtered workspace, but there are published courses in the system, return all published courses
+    if ((!courses || courses.length === 0) && workspaceId) {
+      const { data: allCourses } = await adminClient
+        .from('courses')
+        .select('*')
+        .eq('published', true);
+      if (allCourses && allCourses.length > 0) {
+        return { data: allCourses };
+      }
+    }
+
     return { data: courses || [] };
   } catch (err: any) {
     return { error: err.message };
@@ -177,13 +215,17 @@ export async function getEnrolledCoursesWithProgress() {
     const user = await getUser();
     if (!user) return { error: 'Not authenticated' };
 
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No active workspace context' };
-
-    const contactId = await getOrCreateStudentContact(workspaceId);
-    if (!contactId) return { data: [] };
-
     const adminClient = createAdminClient();
+
+    // Fetch all contact records matching user's email across all workspaces
+    const { data: contacts, error: contactError } = await adminClient
+      .from('contacts')
+      .select('id')
+      .eq('email', user.email);
+
+    if (contactError) throw contactError;
+    const contactIds = (contacts || []).map((c: any) => c.id);
+    if (contactIds.length === 0) return { data: [] };
 
     // 1. Fetch enrollments using admin client to bypass RLS
     const { data: enrollments, error: enrollError } = await adminClient
@@ -202,15 +244,15 @@ export async function getEnrolledCoursesWithProgress() {
           published
         )
       `)
-      .eq('contact_id', contactId);
+      .in('contact_id', contactIds);
 
     if (enrollError) throw enrollError;
 
-    // 2. Fetch all progress logs for this contact using admin client to bypass RLS
+    // 2. Fetch all progress logs for these contacts using admin client to bypass RLS
     const { data: progressLogs, error: progressError } = await adminClient
       .from('course_progress')
       .select('course_id, lesson_id')
-      .eq('contact_id', contactId);
+      .in('contact_id', contactIds);
 
     if (progressError) throw progressError;
 
@@ -258,5 +300,83 @@ export async function getEnrolledCoursesWithProgress() {
     return { data: coursesWithProgress };
   } catch (err: any) {
     return { error: err.message };
+  }
+}
+
+/**
+ * Creates a Stripe Checkout Session for a student course purchase.
+ */
+export async function createCourseCheckoutSession(courseId: string) {
+  try {
+    const user = await getUser();
+    if (!user) return { error: 'Not authenticated' };
+
+    const adminClient = createAdminClient();
+
+    // Fetch course details
+    const { data: course, error: courseError } = await adminClient
+      .from('courses')
+      .select('*')
+      .eq('id', courseId)
+      .single();
+
+    if (courseError || !course) {
+      return { error: 'Course not found' };
+    }
+
+    const workspaceId = course.workspace_id;
+    if (!workspaceId) {
+      return { error: 'Course does not belong to a workspace' };
+    }
+
+    // Check user role specifically in the course's workspace to block course admins from self-enrolling
+    const { data: membership } = await adminClient
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (membership?.role === 'admin') {
+      return { error: 'Administrators cannot enroll in workspace courses as students.' };
+    }
+
+    const contactId = await getOrCreateStudentContact(workspaceId);
+    if (!contactId) {
+      return { error: 'Failed to resolve student contact details' };
+    }
+
+    // Create Stripe checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: course.title,
+              description: course.description || undefined,
+              images: course.thumbnail_url ? [course.thumbnail_url] : undefined,
+            },
+            unit_amount: Math.round(course.price * 100),
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        courseId: course.id,
+        contactId: contactId,
+        workspaceId: workspaceId,
+      },
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/courses/${course.id}?payment=success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/checkout/${course.id}?payment=canceled`,
+      customer_email: user.email || undefined,
+    });
+
+    return { url: session.url };
+  } catch (err: any) {
+    console.error('[StudentEnrollments] createCourseCheckoutSession error:', err);
+    return { error: err.message || 'Failed to create checkout session' };
   }
 }

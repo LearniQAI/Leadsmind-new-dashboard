@@ -79,7 +79,7 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
   const completedLessonIds = progressRes.data || [];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-[1600px] mx-auto">
       {/* Back to Dashboard bar */}
       <div className="flex items-center gap-1.5 text-xs text-white/40 font-mono uppercase tracking-widest shrink-0">
         <Link href="/student" className="hover:text-white transition-all flex items-center gap-0.5">

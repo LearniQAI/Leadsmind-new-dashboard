@@ -20,10 +20,35 @@ export async function POST(req: NextRequest) {
  }
 
   if (event.type === 'checkout.session.completed') {
-   const session = event.data.object as any;
-   const { workspaceId, tierId, invoiceId } = session.metadata;
+    const session = event.data.object as any;
+    const { workspaceId, tierId, invoiceId, courseId, contactId } = session.metadata || {};
 
-   if (invoiceId) {
+    if (courseId && contactId) {
+      const { data: existing } = await supabaseAdmin
+        .from('enrollments')
+        .select('id')
+        .eq('course_id', courseId)
+        .eq('contact_id', contactId)
+        .maybeSingle();
+
+      if (!existing) {
+        const { error } = await supabaseAdmin
+          .from('enrollments')
+          .insert({
+            course_id: courseId,
+            contact_id: contactId,
+            status: 'active'
+          });
+
+        if (error) {
+          console.error(`[Stripe Webhook] Course enrollment insert error: ${error.message}`);
+        } else {
+          console.log(`[Stripe Webhook] Successfully enrolled contact ${contactId} in course ${courseId}`);
+        }
+      } else {
+        console.log(`[Stripe Webhook] Contact ${contactId} is already enrolled in course ${courseId}`);
+      }
+    } else if (invoiceId) {
     const { error } = await supabaseAdmin
      .from('invoices')
      .update({ 

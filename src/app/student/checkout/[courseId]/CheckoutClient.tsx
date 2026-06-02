@@ -6,7 +6,7 @@ import {
   CreditCard, ShieldCheck, Loader2, Sparkles, AlertCircle, CheckCircle2 
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { enrollStudent } from '@/app/actions/studentEnrollments';
+import { enrollStudent, createCourseCheckoutSession } from '@/app/actions/studentEnrollments';
 
 interface CheckoutClientProps {
   course: any;
@@ -33,6 +33,21 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
   const handleCheckout = () => {
     startTransition(async () => {
       try {
+        if (paymentMethod === 'stripe') {
+          // Real Stripe checkout integration
+          const res = await createCourseCheckoutSession(course.id);
+          if (res.error) {
+            toast.error(res.error);
+            return;
+          }
+          if (res.url) {
+            window.location.href = res.url;
+          } else {
+            toast.error("Failed to generate checkout session url.");
+          }
+          return;
+        }
+
         // 1. Simulate the webhook trigger to match CRM/Event Matrix (Trigger #19: PayFast Payment)
         const webhookPayload = {
           payment_status: "COMPLETE",
@@ -71,7 +86,7 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
         }, 1500);
 
       } catch (err) {
-        toast.error("An error occurred processing payment simulation.");
+        toast.error("An error occurred processing payment.");
       }
     });
   };
@@ -241,68 +256,29 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
           </div>
         ) : (
           /* Stripe Form */
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">Cardholder Name</label>
-              <input
-                type="text"
-                placeholder="John Doe"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-bold"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">Card Number</label>
-              <input
-                type="text"
-                placeholder="4000 1234 5678 9010"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(e.target.value)}
-                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-mono"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">Expiry Date</label>
-                <input
-                  type="text"
-                  placeholder="MM/YY"
-                  value={cardExpiry}
-                  onChange={(e) => setCardExpiry(e.target.value)}
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-mono"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">CVC</label>
-                <input
-                  type="text"
-                  placeholder="123"
-                  value={cardCvc}
-                  onChange={(e) => setCardCvc(e.target.value)}
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-mono"
-                  required
-                />
+          <div className="space-y-5">
+            <div className="bg-[#0f2d4a]/20 border border-[#0f2d4a] rounded-xl p-4 flex items-start gap-3">
+              <ShieldCheck className="text-primary shrink-0 mt-0.5" size={16} />
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold text-white block">Secure Stripe checkout integration</span>
+                <span className="text-[9px] text-white/50 block leading-relaxed">
+                  You will be securely redirected to Stripe's hosted checkout gateway to complete your payment of **${course.price.toFixed(2)} USD**.
+                </span>
               </div>
             </div>
 
             <button
               onClick={handleCheckout}
-              disabled={isPending || !cardName || !cardNumber}
+              disabled={isPending}
               className="w-full bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 mt-4"
             >
               {isPending ? (
                 <>
-                  <Loader2 size={13} className="animate-spin" /> Authorizing transaction...
+                  <Loader2 size={13} className="animate-spin" /> Redirecting to Stripe...
                 </>
               ) : (
                 <>
-                  Secure Payment of ${course.price.toFixed(2)} USD
+                  Redirect to Secure Stripe Checkout
                 </>
               )}
             </button>

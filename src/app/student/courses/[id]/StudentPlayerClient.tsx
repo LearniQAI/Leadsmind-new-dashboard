@@ -18,6 +18,42 @@ interface StudentPlayerClientProps {
   enrollment: any;
 }
 
+function getEmbedUrl(url: string): string {
+  if (!url) return '';
+  try {
+    if (url.includes('youtube.com/embed/')) return url;
+    if (url.includes('youtu.be/')) {
+      const parts = url.split('youtu.be/');
+      if (parts[1]) {
+        const videoId = parts[1].split(/[?#]/)[0];
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+    }
+    if (url.includes('youtube.com/watch')) {
+      const urlObj = new URL(url);
+      const videoId = urlObj.searchParams.get('v');
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+    if (url.includes('youtube.com/v/')) {
+      const parts = url.split('youtube.com/v/');
+      if (parts[1]) {
+        const videoId = parts[1].split(/[?#]/)[0];
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+    }
+    if (url.includes('player.vimeo.com/video/')) return url;
+    if (url.includes('vimeo.com/')) {
+      const match = url.match(/vimeo\.com\/(?:video\/)?([0-9]+)/);
+      if (match && match[1]) return `https://player.vimeo.com/video/${match[1]}`;
+      const manageMatch = url.match(/vimeo\.com\/manage\/videos\/([0-9]+)/);
+      if (manageMatch && manageMatch[1]) return `https://player.vimeo.com/video/${manageMatch[1]}`;
+    }
+  } catch (e) {
+    console.error('[EmbedURL] Parsing error:', e);
+  }
+  return url;
+}
+
 export default function StudentPlayerClient({ 
   course, 
   modules, 
@@ -121,13 +157,13 @@ export default function StudentPlayerClient({
   };
 
   return (
-    <div className="flex border border-white/5 rounded-2xl bg-[#080f28]/60 overflow-hidden shadow-2xl h-[calc(100vh-160px)]">
+    <div className="flex border border-white/5 rounded-2xl bg-[#080f28]/60 overflow-hidden shadow-2xl h-[calc(100vh-130px)]">
       {/* Syllabus Sidebar */}
-      <div className="w-[320px] border-r border-white/5 bg-[#04091a]/40 flex flex-col shrink-0">
+      <div className="w-[360px] border-r border-white/5 bg-[#04091a]/40 flex flex-col shrink-0">
         <div className="p-5 border-b border-white/5 shrink-0 flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Syllabus Explorer</span>
-            <span className="text-sm font-bold text-white tracking-tight truncate max-w-[200px] mt-0.5">{course.title}</span>
+            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Syllabus Explorer</span>
+            <span className="text-base font-bold text-white tracking-tight truncate max-w-[240px] mt-0.5">{course.title}</span>
           </div>
           <Switch 
             checked={lowBandwidthMode}
@@ -145,7 +181,7 @@ export default function StudentPlayerClient({
               <div key={mod.id} className="space-y-1.5">
                 {/* Module title/header */}
                 <div className="flex items-center justify-between px-2 py-1">
-                  <span className="text-[10px] font-black uppercase text-primary tracking-widest truncate max-w-[180px]">
+                  <span className="text-xs font-black uppercase text-primary tracking-widest truncate max-w-[240px]">
                     {modIdx + 1}. {mod.title}
                   </span>
                   {mod.required_for_completion && (
@@ -172,7 +208,7 @@ export default function StudentPlayerClient({
                             toast.error(lockReason.message);
                           }
                         }}
-                        className={`p-3 rounded-xl text-xs flex items-center justify-between gap-3 select-none cursor-pointer transition-all border ${
+                        className={`p-3.5 rounded-xl text-sm flex items-center justify-between gap-3 select-none cursor-pointer transition-all border ${
                           lockReason 
                             ? "opacity-40 border-transparent bg-white/[0.01]" 
                             : isSelected
@@ -180,17 +216,17 @@ export default function StudentPlayerClient({
                               : "bg-white/[0.01] border-transparent text-white/60 hover:bg-white/[0.03] hover:text-white"
                         }`}
                       >
-                        <div className="flex items-center gap-2 truncate">
+                        <div className="flex items-center gap-2.5 truncate">
                           {lockReason ? (
-                            <Lock size={12} className="text-white/40 shrink-0" />
+                            <Lock size={14} className="text-white/40 shrink-0" />
                           ) : isDone ? (
-                            <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                            <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
                           ) : (
-                            <Play size={11} className="text-white/40 shrink-0" />
+                            <Play size={13} className="text-white/40 shrink-0" />
                           )}
                           <span className="truncate pr-1">{les.title}</span>
                         </div>
-                        <span className="text-[9px] font-mono text-white/30 uppercase shrink-0">
+                        <span className="text-[10px] font-mono text-white/30 uppercase shrink-0">
                           {les.lesson_type}
                         </span>
                       </div>
@@ -211,23 +247,23 @@ export default function StudentPlayerClient({
         {activeLesson ? (
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Top Toolbar */}
-            <div className="p-5 border-b border-white/5 bg-[#080f28]/30 shrink-0 flex items-center justify-between gap-4">
+            <div className="p-6 border-b border-white/5 bg-[#080f28]/30 shrink-0 flex items-center justify-between gap-4">
               <div>
-                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Active Lesson</span>
-                <h2 className="text-base font-bold text-white tracking-tight mt-0.5">{activeLesson.title}</h2>
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Active Lesson</span>
+                <h2 className="text-xl font-extrabold text-white tracking-tight mt-0.5">{activeLesson.title}</h2>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
                 <Button
                   onClick={() => handleToggleComplete(activeLesson.id)}
                   disabled={isPending}
-                  className={`h-9 rounded-xl text-[10px] font-black uppercase tracking-wider px-4 flex items-center gap-1.5 transition-all ${
+                  className={`h-11 rounded-xl text-xs font-black uppercase tracking-wider px-6 flex items-center gap-2 transition-all ${
                     completedLessonIds.includes(activeLesson.id)
                       ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
-                      : "bg-primary hover:bg-primary/95 text-white shadow-lg shadow-primary/10"
+                      : "bg-primary hover:bg-primary/95 text-white shadow-lg shadow-primary/15"
                   }`}
                 >
-                  <CheckSquare size={13} /> 
+                  <CheckSquare size={14} /> 
                   {completedLessonIds.includes(activeLesson.id) ? "Completed ✓" : "Mark Completed"}
                 </Button>
               </div>
@@ -252,7 +288,7 @@ export default function StudentPlayerClient({
                     {/* Simulated Player embed */}
                     {activeLesson.content?.video_url ? (
                       <iframe
-                        src={activeLesson.content.video_url}
+                        src={getEmbedUrl(activeLesson.content.video_url)}
                         className="w-full h-full"
                         allowFullScreen
                       />
@@ -307,9 +343,9 @@ export default function StudentPlayerClient({
                     const next = getNextLesson();
                     setActiveLesson(next);
                   }}
-                  className="h-10 bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-wider px-5 flex items-center gap-1"
+                  className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-black uppercase tracking-wider px-6 flex items-center gap-1.5"
                 >
-                  Next Lesson <ChevronRight size={13} />
+                  Next Lesson <ChevronRight size={15} />
                 </Button>
               )}
             </div>

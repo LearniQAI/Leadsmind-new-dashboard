@@ -12,9 +12,10 @@ interface MarketplaceClientProps {
   courses: any[];
   enrolledCourseIds: string[];
   userRole?: string | null;
+  activeWorkspaceId?: string | null;
 }
 
-export default function MarketplaceClient({ courses, enrolledCourseIds, userRole }: MarketplaceClientProps) {
+export default function MarketplaceClient({ courses, enrolledCourseIds, userRole, activeWorkspaceId }: MarketplaceClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [loadingCourseId, setLoadingCourseId] = useState<string | null>(null);
@@ -38,13 +39,12 @@ export default function MarketplaceClient({ courses, enrolledCourseIds, userRole
     });
   };
 
-  const isAdmin = userRole === 'admin';
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {courses.map((course: any) => {
         const isEnrolled = enrolledCourseIds.includes(course.id);
         const isLoading = loadingCourseId === course.id && isPending;
+        const isCourseAdmin = userRole === 'admin' && course.workspace_id === activeWorkspaceId;
 
         return (
           <div 
@@ -78,7 +78,7 @@ export default function MarketplaceClient({ courses, enrolledCourseIds, userRole
               </div>
 
               <div className="pt-2">
-                {isAdmin ? (
+                {isCourseAdmin ? (
                   <button 
                     onClick={() => router.push(`/courses/${course.id}`)}
                     className="w-full bg-[#111d47] border border-white/10 hover:bg-[#1a2d6c] text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 flex items-center justify-center gap-1.5 transition-all shadow-md"

@@ -2,12 +2,21 @@ import React from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ShoppingBag } from 'lucide-react';
 import { getMarketplaceCourses, getMyEnrollments } from '@/app/actions/studentEnrollments';
-import { getUserRole } from '@/lib/auth';
+import { getUserRole, getCurrentWorkspaceId } from '@/lib/auth';
 import MarketplaceClient from './MarketplaceClient';
+import { WorkspaceSync } from '@/components/auth/WorkspaceSync';
 
-export default async function MarketplacePage() {
+interface MarketplacePageProps {
+  searchParams: {
+    workspaceId?: string;
+  };
+}
+
+export default async function MarketplacePage({ searchParams }: MarketplacePageProps) {
+  const workspaceId = searchParams.workspaceId || await getCurrentWorkspaceId();
+
   const [coursesRes, enrolledRes, userRole] = await Promise.all([
-    getMarketplaceCourses(),
+    getMarketplaceCourses(workspaceId || undefined),
     getMyEnrollments(),
     getUserRole()
   ]);
@@ -18,6 +27,9 @@ export default async function MarketplacePage() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
+      {searchParams.workspaceId && (
+        <WorkspaceSync workspaceId={searchParams.workspaceId} />
+      )}
       {/* Header bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-white/5 pb-6">
         <div>
@@ -40,6 +52,7 @@ export default async function MarketplacePage() {
           courses={courses} 
           enrolledCourseIds={enrolledCourseIds} 
           userRole={userRole}
+          activeWorkspaceId={workspaceId}
         />
       ) : (
         <div className="text-center py-20 bg-[#080f28] rounded-2xl border border-dashed border-white/5 space-y-4">
