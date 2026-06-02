@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { NextRequest } from 'next/server';
 
 // Load environment variables immediately before any imports to prevent hoisting issues
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -50,7 +51,7 @@ async function runTests() {
 
   console.log('\n[TEST 1] Testing Meta OAuth Connection (Phase 1)');
   // Simulating GET /api/auth/meta/callback with code=mock_code and state=workspaceId
-  const callbackReq = new Request(`http://localhost:3000/api/auth/meta/callback?code=mock_code&state=${testWorkspaceId}`);
+  const callbackReq = new NextRequest(`http://localhost:3000/api/auth/meta/callback?code=mock_code&state=${testWorkspaceId}`);
   const callbackRes = await oauthGET(callbackReq);
   console.log(`Callback Response status: ${callbackRes.status}`);
 
@@ -105,7 +106,7 @@ async function runTests() {
     ]
   };
 
-  const waRes = await webhookPOST(new Request('http://localhost:3000/api/webhooks/meta', {
+  const waRes = await webhookPOST(new NextRequest('http://localhost:3000/api/webhooks/meta', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(waMediaPayload)
@@ -192,7 +193,7 @@ async function runTests() {
     ]
   };
 
-  await webhookPOST(new Request('http://localhost:3000/api/webhooks/meta', {
+  await webhookPOST(new NextRequest('http://localhost:3000/api/webhooks/meta', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(statusPayloadDelivered)
@@ -246,7 +247,7 @@ async function runTests() {
     ]
   };
 
-  await webhookPOST(new Request('http://localhost:3000/api/webhooks/meta', {
+  await webhookPOST(new NextRequest('http://localhost:3000/api/webhooks/meta', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(statusPayloadRead)
@@ -305,7 +306,7 @@ async function runTests() {
     ]
   };
 
-  await webhookPOST(new Request('http://localhost:3000/api/webhooks/meta', {
+  await webhookPOST(new NextRequest('http://localhost:3000/api/webhooks/meta', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(statusPayloadFailed)
