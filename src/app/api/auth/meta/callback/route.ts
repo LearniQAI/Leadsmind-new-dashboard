@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get('code')
   const stateStr = searchParams.get('state') || ''
-  const [workspaceId, platform] = stateStr.split(':')
+  const [workspaceId, targetPlatform] = stateStr.split(':')
+  const platform = targetPlatform || 'facebook'
 
   const redirectBase = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -164,7 +165,7 @@ export async function GET(req: NextRequest) {
     if (platform === 'facebook') {
       const { error: fbErr } = await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
-        platform: 'facebook',
+        platform: platform,
         status: 'connected',
         credentials: {
           user_access_token_encrypted: encrypt(longLivedToken),
@@ -181,7 +182,7 @@ export async function GET(req: NextRequest) {
     } else if (platform === 'instagram') {
       const { error: igErr } = await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
-        platform: 'instagram',
+        platform: platform,
         status: 'connected',
         credentials: {
           user_access_token_encrypted: encrypt(longLivedToken),
@@ -199,7 +200,7 @@ export async function GET(req: NextRequest) {
     } else if (platform === 'whatsapp') {
       const { error: waErr } = await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
-        platform: 'whatsapp',
+        platform: platform,
         status: 'connected',
         credentials: {
           access_token_encrypted: encrypt(longLivedToken),
