@@ -1,21 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Space_Grotesk, DM_Sans } from 'next/font/google';
-import { getMetaOAuthURL } from '@/lib/meta/config';
+import { isMetaConfigured, getMetaOAuthURL } from '@/lib/meta/config';
 import { toast } from 'sonner';
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-space-grotesk',
-});
-
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-dm-sans',
-});
 
 export interface MetaConnection {
   platform: 'facebook' | 'instagram' | 'whatsapp';
@@ -46,9 +33,9 @@ const IGIcon = () => (
     <circle cx="17.6" cy="6.4" r="1.2" fill="white"/>
     <defs>
       <linearGradient id="ig-grad" x1="0" y1="24" x2="24" y2="0" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#E1306C"/>
-        <stop offset="0.5" stop-color="#C13584"/>
-        <stop offset="1" stop-color="#833AB4"/>
+        <stop stopColor="#E1306C"/>
+        <stop offset="0.5" stopColor="#C13584"/>
+        <stop offset="1" stopColor="#833AB4"/>
       </linearGradient>
     </defs>
   </svg>
@@ -66,11 +53,11 @@ export function IntegrationsList({
   connections = [],
   onConnect,
   onDisconnect,
-  onReconnect,
 }: IntegrationsListProps) {
   const [dbConnections, setDbConnections] = useState<MetaConnection[] | null>(null);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [isServerMetaConfigured, setIsServerMetaConfigured] = useState(false);
+  const [showConfigWarning, setShowConfigWarning] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function fetchConnections() {
@@ -98,7 +85,6 @@ export function IntegrationsList({
 
       if (successPlatform) {
         toast.success(`Successfully connected to ${successPlatform.charAt(0).toUpperCase() + successPlatform.slice(1)}!`);
-        // Clean URL parameters
         const url = new URL(window.location.href);
         url.searchParams.delete('success');
         window.history.replaceState({}, '', url.pathname + url.search);
@@ -106,7 +92,6 @@ export function IntegrationsList({
 
       if (errorMsg) {
         toast.error(`Connection failed: ${errorMsg}`);
-        // Clean URL parameters
         const url = new URL(window.location.href);
         url.searchParams.delete('error');
         window.history.replaceState({}, '', url.pathname + url.search);
@@ -115,42 +100,46 @@ export function IntegrationsList({
   }, []);
 
   const activeConnections = dbConnections || connections;
-  const isAnyConnected = activeConnections.some((c) => c.connected);
 
   const getPlatformDetails = (conn: MetaConnection) => {
     switch (conn.platform) {
       case 'facebook':
         return {
-          name: 'Facebook Messenger',
+          name: 'Facebook',
           icon: <FBIcon />,
-          accent: 'bg-[#1877F2]',
-          subline: `facebook.com/${conn.accountName ? conn.accountName.toLowerCase().replace(/\s+/g, '-') : 'page'}`,
+          color: '#1877F2',
+          description: 'Route DMs and customer inquiries sent to your Facebook Page directly to the CRM.',
+          subline: conn.accountName ? `facebook.com/${conn.accountName.toLowerCase().replace(/\s+/g, '-')}` : 'facebook.com/page',
         };
       case 'instagram':
         return {
-          name: 'Instagram Direct',
+          name: 'Instagram',
           icon: <IGIcon />,
-          accent: 'bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]',
+          color: '#E1306C',
+          description: 'Access DMs, story replies, and mentions sent to your Instagram Business profile.',
           subline: conn.accountHandle ? `@${conn.accountHandle}` : '@handle',
         };
       case 'whatsapp':
         return {
-          name: 'WhatsApp Cloud API',
+          name: 'WhatsApp',
           icon: <WAIcon />,
-          accent: 'bg-[#25D366]',
+          color: '#25D366',
+          description: 'Integrate your WhatsApp Business phone line for rich customer messaging.',
           subline: conn.phoneNumber || '+phone_number',
         };
       default:
-        return { name: '', icon: null, accent: '', subline: '' };
+        return { name: '', icon: null, color: '#ffffff', description: '', subline: '' };
     }
   };
 
   const handleConnectClick = (platform: 'facebook' | 'instagram' | 'whatsapp') => {
-    if (isServerMetaConfigured && workspaceId) {
-      const url = getMetaOAuthURL(platform, workspaceId);
+    const configured = isMetaConfigured() || isServerMetaConfigured;
+    if (configured) {
+      const stateObj = JSON.stringify({ workspaceId: workspaceId || 'default' });
+      const url = getMetaOAuthURL(platform, stateObj);
       window.location.href = url;
     } else {
-      onConnect(platform);
+      setShowConfigWarning(prev => ({ ...prev, [platform]: true }));
     }
   };
 
@@ -176,135 +165,94 @@ export function IntegrationsList({
     onDisconnect(platform);
   };
 
-  const handleReconnectClick = () => {
-    const disconnected = activeConnections.find(c => !c.connected);
-    const platformToReconnect = disconnected?.platform || 'facebook';
-    if (isServerMetaConfigured && workspaceId) {
-      const url = getMetaOAuthURL(platformToReconnect, workspaceId);
-      window.location.href = url;
-    } else {
-      onReconnect();
-    }
-  };
-
   return (
-    <div className={`${spaceGrotesk.variable} ${dmSans.variable} font-dm-sans flex flex-col gap-6 text-[#eef2ff]`}>
+    <div className="flex flex-col gap-6 text-[#eef2ff]">
       {/* Section Header */}
       <div>
-        <h2 className="text-[22px] font-bold font-space-grotesk text-[#eef2ff]">
+        <h2 className="text-[22px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
           Meta <span className="text-[#3b82f6]">Connections</span>
         </h2>
-        <p className="text-[11.5px] uppercase tracking-wider font-semibold text-[#4a5a82] mt-1 font-dm-sans">
+        <p className="text-[11.5px] uppercase tracking-wider font-semibold text-[#4a5a82] mt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
           Link your Facebook Pages, Instagram accounts, and WhatsApp lines to the Unified Inbox.
         </p>
       </div>
-
-      {/* Empty State */}
-      {!isAnyConnected && (
-        <div className="flex flex-col items-center justify-center text-center p-6 bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-[12px] max-w-full">
-          <div className="mb-3">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4a5a82" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50 inline-block">
-              <path d="M18.8 6c.4.4.8.9 1 1.4.2.6.3 1.2.2 1.9c-.1.7-.4 1.3-.8 1.8l-2.2 2.2"/>
-              <path d="M9 15l-1.5 1.5a4.8 4.8 0 0 1-6.7-6.7l1.5-1.5"/>
-              <line x1="2" y1="2" x2="22" y2="22"/>
-              <path d="M15 9l1.5-1.5"/>
-              <path d="M10.5 13.5L9 15"/>
-            </svg>
-          </div>
-          <h5 className="text-[13px] font-semibold text-[#94a3c8] font-dm-sans mb-1">
-            No channels connected yet
-          </h5>
-          <p className="text-[12px] text-[#4a5a82] font-dm-sans max-w-[280px] leading-normal">
-            Connect your Meta business accounts to start managing conversations from one place.
-          </p>
-        </div>
-      )}
 
       {/* Platforms Grid/List */}
       <div className="flex flex-col gap-4">
         {activeConnections.map((conn) => {
           const details = getPlatformDetails(conn);
+          const hasWarning = showConfigWarning[conn.platform] && !(isMetaConfigured() || isServerMetaConfigured);
+
           return (
             <div
               key={conn.platform}
-              className="relative p-[20px] sm:px-[24px] sm:py-[20px] bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] hover:border-[rgba(255,255,255,0.13)] hover:bg-[rgba(21,37,80,0.9)] rounded-[12px] transition-all duration-[180ms] flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden"
+              className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] hover:border-[rgba(255,255,255,0.13)] rounded-xl p-5 transition-all duration-200"
             >
-              {/* 2px top accent bar */}
-              <div className={`absolute top-0 left-0 right-0 h-[2px] w-full ${details.accent}`} />
-
-              {/* Left Column: Platform details */}
-              <div className="flex flex-col gap-2 relative z-10">
-                <div className="flex items-center gap-2.5">
-                  {details.icon}
-                  <span className="text-[14px] font-semibold font-space-grotesk text-[#eef2ff]">
-                    {details.name}
-                  </span>
+              <div className="flex flex-row items-center justify-between gap-4">
+                {/* Left side: Platform icon + name + status badge */}
+                <div className="flex items-center gap-4 min-w-0">
+                  <div
+                    className="w-10 h-10 rounded-xl bg-white/[0.04] border-t-2 flex items-center justify-center flex-shrink-0"
+                    style={{ borderTopColor: details.color }}
+                  >
+                    {details.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[14px] font-semibold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                        {details.name}
+                      </span>
+                      {conn.connected ? (
+                        <span className="bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.2)] text-[#10b981] text-[10.5px] font-semibold rounded-full px-2.5 py-0.5 flex-shrink-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                          ● Connected
+                        </span>
+                      ) : (
+                        <span className="bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.07)] text-[#4a5a82] text-[10.5px] font-semibold rounded-full px-2.5 py-0.5 flex-shrink-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                          ○ Not connected
+                        </span>
+                      )}
+                    </div>
+                    
+                    <p className="text-[#94a3c8] text-[11.5px] mt-0.5 leading-snug" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      {conn.connected ? (
+                        `${conn.accountName || 'LeadsMind Account'} (${details.subline})`
+                      ) : (
+                        details.description
+                      )}
+                    </p>
+                  </div>
                 </div>
 
-                {conn.connected && (
-                  <div className="flex flex-col gap-0.5 pl-7">
-                    <span className="text-[13px] font-medium text-[#eef2ff] font-dm-sans leading-tight">
-                      {conn.accountName || 'LeadsMind Account'}
-                    </span>
-                    <span className="text-[11px] text-[#4a5a82] font-dm-sans leading-none">
-                      {details.subline}
-                    </span>
-                  </div>
-                )}
-
-                {/* Token Expiry / Error Row */}
-                {conn.connected && conn.error && (
-                  <div className="mt-2 ml-7 bg-[rgba(245,158,11,0.08)] border-l-2 border-[#f59e0b] px-3 py-2 rounded-r-[6px] flex items-center justify-between gap-2 max-w-md">
-                    <div className="flex items-center">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 shrink-0">
-                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                        <line x1="12" y1="9" x2="12" y2="13"/>
-                        <line x1="12" y1="17" x2="12.01" y2="17"/>
-                      </svg>
-                      <span className="text-[11.5px] text-[#94a3c8] font-dm-sans leading-tight">
-                        {conn.error}
-                      </span>
-                    </div>
+                {/* Right side: Action Button */}
+                <div className="flex-shrink-0">
+                  {conn.connected ? (
                     <button
-                      onClick={handleReconnectClick}
-                      className="text-[#3b82f6] hover:underline text-[11.5px] font-semibold font-dm-sans shrink-0"
+                      onClick={() => handleDisconnectClick(conn.platform)}
+                      className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] rounded-lg px-4 py-2 text-[12px] font-semibold transition-colors hover:bg-[rgba(239,68,68,0.15)]"
+                      style={{ fontFamily: "'DM Sans', sans-serif" }}
                     >
-                      Reconnect
+                      Disconnect
                     </button>
-                  </div>
-                )}
+                  ) : (
+                    <button
+                      onClick={() => handleConnectClick(conn.platform)}
+                      className="text-white font-semibold rounded-lg px-5 py-2 text-[12px] transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: details.color, fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      Connect {conn.platform.charAt(0).toUpperCase() + conn.platform.slice(1)}
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Right Column: Status pill and Action Button */}
-              <div className="flex items-center justify-end gap-3 shrink-0 relative z-10">
-                {/* Status Badge */}
-                {conn.connected ? (
-                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold border border-[rgba(16,185,129,0.2)] bg-[rgba(16,185,129,0.12)] text-[#34d399] flex items-center gap-1.5 font-dm-sans">
-                    ● Connected
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.05)] text-[#4a5a82] flex items-center gap-1.5 font-dm-sans">
-                    ○ Not connected
-                  </span>
-                )}
-
-                {/* Action button */}
-                {conn.connected ? (
-                  <button
-                    onClick={() => handleDisconnectClick(conn.platform)}
-                    className="h-8 px-3 rounded-[8px] bg-[rgba(239,68,68,0.1)] text-[#ef4444] border border-[rgba(239,68,68,0.2)] hover:bg-[rgba(239,68,68,0.15)] text-[12px] font-semibold font-dm-sans transition-colors"
-                  >
-                    Disconnect
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleConnectClick(conn.platform)}
-                    className="h-8 px-3 rounded-[8px] bg-[#2563eb] text-white hover:bg-[#1d4ed8] text-[12px] font-semibold font-dm-sans transition-colors"
-                  >
-                    Connect {conn.platform.charAt(0).toUpperCase() + conn.platform.slice(1)}
-                  </button>
-                )}
-              </div>
+              {/* Inline warning message if clicked when not configured */}
+              {hasWarning && (
+                <div className="bg-[rgba(245,158,11,0.06)] border-l-2 border-[#f59e0b] rounded-r-lg px-3 py-2 mt-3">
+                  <p className="text-[#94a3c8] text-[12px] leading-relaxed" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    Meta credentials are being configured. The connect button will work automatically once setup is complete.
+                  </p>
+                </div>
+              )}
             </div>
           );
         })}

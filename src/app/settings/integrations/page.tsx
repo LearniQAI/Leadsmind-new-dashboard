@@ -88,23 +88,6 @@ export default function MetaIntegrationsPage() {
       {/* Page content — padded to account for sidebar and topbar */}
       <div className="px-6 py-6 max-w-3xl">
 
-        {/* Page header */}
-        <div className="mb-8">
-          <h1
-            className="text-[22px] font-bold leading-tight mb-1"
-            style={{ fontFamily: "'Space Grotesk', sans-serif", color: '#eef2ff' }}
-          >
-            Meta{' '}
-            <span style={{ color: '#3b82f6' }}>Integrations</span>
-          </h1>
-          <p
-            className="text-[11.5px] uppercase tracking-[0.8px] font-medium"
-            style={{ color: '#4a5a82' }}
-          >
-            Connect your Meta channels to the Unified Inbox
-          </p>
-        </div>
-
         {/* Main integrations list */}
         <IntegrationsList
           connections={connections}

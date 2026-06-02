@@ -1,9 +1,48 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
+import { useDashboardContext } from "@/components/layouts/DashboardProvider";
+
+interface ApiKey {
+  id: string;
+  key_prefix: string;
+  label: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked: boolean;
+}
+
+interface Webhook {
+  id: string;
+  url: string;
+  label: string | null;
+  active: boolean;
+  created_at: string;
+}
 
 export default function DeveloperPage() {
+  const { workspace } = useDashboardContext();
+  const workspaceId = workspace?.id || null;
+
+  // API Keys state
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [keysLoading, setKeysLoading] = useState(true);
+  const [keyLabel, setKeyLabel] = useState('');
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  // Webhooks state
+  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+  const [webhooksLoading, setWebhooksLoading] = useState(true);
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookLabel, setWebhookLabel] = useState('');
+  const [addingWebhook, setAddingWebhook] = useState(false);
+
+  // General error messages
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const quickReferences = [
     { method: "GET", path: "/v1/contacts", desc: "List all your contacts" },
     { method: "POST", path: "/v1/contacts", desc: "Create a new contact" },
@@ -13,14 +52,159 @@ export default function DeveloperPage() {
     { method: "POST", path: "/v1/invoices/{id}/send", desc: "Send an invoice by email or WhatsApp" }
   ];
 
+  // Fetch API keys
+  const fetchApiKeys = async () => {
+    if (!workspaceId) return;
+    try {
+      const res = await fetch(`/api/settings/api-keys?workspaceId=${workspaceId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setApiKeys(data.keys || []);
+      }
+    } catch {
+      setErrorMsg('Failed to load API keys.');
+    } finally {
+      setKeysLoading(false);
+    }
+  };
+
+  // Fetch Webhooks
+  const fetchWebhooks = async () => {
+    if (!workspaceId) return;
+    try {
+      const res = await fetch(`/api/settings/webhooks?workspaceId=${workspaceId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setWebhooks(data.webhooks || []);
+      }
+    } catch {
+      setErrorMsg('Failed to load webhooks.');
+    } finally {
+      setWebhooksLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (workspaceId) {
+      fetchApiKeys();
+      fetchWebhooks();
+    }
+  }, [workspaceId]);
+
+  // Create API key
+  const handleGenerateKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!workspaceId) return;
+    setGenerating(true);
+    setGeneratedKey(null);
+    setCopySuccess(false);
+    setErrorMsg(null);
+    try {
+      const res = await fetch('/api/settings/api-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId, label: keyLabel || 'Default' })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGeneratedKey(data.key);
+        setKeyLabel('');
+        fetchApiKeys();
+      } else {
+        setErrorMsg(data.error || 'Failed to generate API key.');
+      }
+    } catch {
+      setErrorMsg('Network error generating key.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Revoke API key
+  const handleRevokeKey = async (id: string) => {
+    if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) return;
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/settings/api-keys?id=${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        fetchApiKeys();
+      } else {
+        const data = await res.json();
+        setErrorMsg(data.error || 'Failed to revoke API key.');
+      }
+    } catch {
+      setErrorMsg('Network error revoking key.');
+    }
+  };
+
+  // Copy API key to clipboard
+  const handleCopyKey = () => {
+    if (!generatedKey) return;
+    navigator.clipboard.writeText(generatedKey);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 3000);
+  };
+
+  // Add webhook
+  const handleAddWebhook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!workspaceId || !webhookUrl) return;
+    if (!webhookUrl.startsWith('https://')) {
+      alert('Webhook URLs must begin with https:// for security.');
+      return;
+    }
+    setAddingWebhook(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch('/api/settings/webhooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId, url: webhookUrl, label: webhookLabel })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setWebhookUrl('');
+        setWebhookLabel('');
+        fetchWebhooks();
+      } else {
+        setErrorMsg(data.error || 'Failed to add webhook.');
+      }
+    } catch {
+      setErrorMsg('Network error adding webhook.');
+    } finally {
+      setAddingWebhook(false);
+    }
+  };
+
+  // Delete webhook
+  const handleDeleteWebhook = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this webhook?')) return;
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/settings/webhooks?id=${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        fetchWebhooks();
+      } else {
+        const data = await res.json();
+        setErrorMsg(data.error || 'Failed to delete webhook.');
+      }
+    } catch {
+      setErrorMsg('Network error deleting webhook.');
+    }
+  };
+
   return (
     <Wrapper>
       <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-3xl">
         {/* Header */}
-        <div>
+        <div className="mb-8">
           <h1
             className="text-[22px] font-bold leading-tight"
-            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+            style={{ fontFamily: "'Space Grotesk', sans-serif", color: '#eef2ff' }}
           >
             Developer & <span className="text-[#3b82f6]">API</span>
           </h1>
@@ -32,25 +216,97 @@ export default function DeveloperPage() {
           </p>
         </div>
 
-        {/* Section 1: API KEY */}
+        {errorMsg && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[12px]">
+            {errorMsg}
+          </div>
+        )}
+
+        {/* Section 1: API KEYS */}
         <h3
           className="text-[10px] font-semibold uppercase tracking-[1.2px] text-[#4a5a82] mb-3 mt-8"
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         >
-          YOUR API KEY
+          YOUR API KEYS
         </h3>
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5">
-          <div className="flex items-center justify-between">
-            <span
-              className="text-[12px] font-semibold text-[#eef2ff]"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
+
+        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 mb-6">
+          <form onSubmit={handleGenerateKey} className="flex flex-col sm:flex-row gap-3 mb-6">
+            <input
+              type="text"
+              placeholder="API Key Label (e.g. Website integration)"
+              value={keyLabel}
+              onChange={(e) => setKeyLabel(e.target.value)}
+              className="flex-1 bg-white/[0.04] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#3b82f6]"
+            />
+            <button
+              type="submit"
+              disabled={generating}
+              className="bg-[#3b82f6] text-white text-[13px] font-semibold rounded-lg px-4 py-2 hover:bg-[#2563eb] disabled:opacity-50 transition-colors"
             >
-              Live API Key
-            </span>
-          </div>
-          
+              {generating ? 'Generating...' : 'Generate New Key'}
+            </button>
+          </form>
+
+          {generatedKey && (
+            <div className="mb-6 p-4 rounded-lg bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.2)]">
+              <span className="text-[#10b981] text-[11px] font-bold block mb-1">
+                New API Key Generated
+              </span>
+              <p className="text-[#94a3c8] text-[11px] mb-3">
+                Copy this key now. You will not be able to see it again.
+              </p>
+              <div className="flex items-center gap-3 bg-black/40 p-2.5 rounded border border-white/5 font-mono text-[12px] text-white">
+                <span className="flex-1 break-all select-all">{generatedKey}</span>
+                <button
+                  onClick={handleCopyKey}
+                  className="bg-white/10 hover:bg-white/20 text-[11px] font-semibold rounded px-2.5 py-1 text-white flex-shrink-0 transition-colors"
+                >
+                  {copySuccess ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {keysLoading ? (
+            <div className="h-20 bg-white/[0.02] animate-pulse rounded-lg" />
+          ) : apiKeys.length === 0 ? (
+            <p className="text-[12px] text-[#4a5a82] italic text-center py-4">
+              No active API keys found.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {apiKeys.map((key) => (
+                <div
+                  key={key.id}
+                  className="flex items-center justify-between gap-4 p-3.5 bg-white/[0.02] border border-white/[0.04] rounded-lg text-[13px]"
+                >
+                  <div className="min-w-0">
+                    <span className="text-[#eef2ff] font-semibold block truncate">
+                      {key.label}
+                    </span>
+                    <span className="font-mono text-[11px] text-[#4a5a82]">
+                      {key.key_prefix}••••••••••••
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <span className="text-[11px] text-[#4a5a82]">
+                      Created {new Date(key.created_at).toLocaleDateString()}
+                    </span>
+                    <button
+                      onClick={() => handleRevokeKey(key.id)}
+                      className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-semibold rounded-lg px-2.5 py-1.5 transition-colors"
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <p
-            className="text-[11px] text-[#4a5a82] italic mt-2"
+            className="text-[11px] text-[#4a5a82] italic mt-4"
             style={{ fontFamily: "'DM Sans', sans-serif" }}
           >
             Your API key gives full access to your workspace. Never share it publicly.
@@ -64,8 +320,7 @@ export default function DeveloperPage() {
         >
           YOUR PLAN LIMITS
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Limit Card 1 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-4 flex flex-col justify-between min-h-[90px]">
             <span
               className="text-[26px] font-bold text-[#3b82f6] leading-none"
@@ -81,7 +336,6 @@ export default function DeveloperPage() {
             </span>
           </div>
 
-          {/* Limit Card 2 */}
           <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-4 flex flex-col justify-between min-h-[90px]">
             <div>
               <span
@@ -105,7 +359,6 @@ export default function DeveloperPage() {
             </span>
           </div>
 
-          {/* Limit Card 3 */}
           <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-4 flex flex-col justify-between min-h-[90px]">
             <span
               className="text-[13px] font-bold text-[#eef2ff] leading-none truncate"
@@ -129,7 +382,7 @@ export default function DeveloperPage() {
         >
           WEBHOOKS
         </h3>
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5">
+        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 mb-6">
           <h4
             className="text-[14px] font-semibold text-[#eef2ff]"
             style={{ fontFamily: "'Space Grotesk', sans-serif" }}
@@ -137,11 +390,76 @@ export default function DeveloperPage() {
             Get notified when things happen in LeadsMind
           </h4>
           <p
-            className="text-[12px] text-[#94a3c8] leading-relaxed mt-1"
+            className="text-[12px] text-[#94a3c8] leading-relaxed mt-1 mb-6"
             style={{ fontFamily: "'DM Sans', sans-serif" }}
           >
-            A webhook is a web address you give us. When something happens in LeadsMind — like an invoice being paid or a form being submitted — we instantly send the details to that address. Your other software receives it and can act on it automatically.
+            A webhook is a web address you give us. When something happens in LeadsMind — like an invoice being paid or a form being submitted — we instantly send the details to that address.
           </p>
+
+          <form onSubmit={handleAddWebhook} className="flex flex-col gap-3 mb-6">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="Webhook Name (e.g. Zapier hook)"
+                value={webhookLabel}
+                onChange={(e) => setWebhookLabel(e.target.value)}
+                className="flex-1 bg-white/[0.04] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#3b82f6]"
+              />
+              <input
+                type="text"
+                placeholder="https://yourdomain.com/webhook"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                className="flex-[2] bg-white/[0.04] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#3b82f6]"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={addingWebhook}
+              className="bg-[#3b82f6] text-white text-[13px] font-semibold rounded-lg px-4 py-2 hover:bg-[#2563eb] disabled:opacity-50 transition-colors self-end"
+            >
+              {addingWebhook ? 'Adding...' : 'Add Webhook'}
+            </button>
+          </form>
+
+          {webhooksLoading ? (
+            <div className="h-20 bg-white/[0.02] animate-pulse rounded-lg" />
+          ) : webhooks.length === 0 ? (
+            <p className="text-[12px] text-[#4a5a82] italic text-center py-4">
+              No webhooks configured.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {webhooks.map((hook) => (
+                <div
+                  key={hook.id}
+                  className="flex items-center justify-between gap-4 p-3.5 bg-white/[0.02] border border-white/[0.04] rounded-lg text-[13px]"
+                >
+                  <div className="min-w-0">
+                    <span className="text-[#eef2ff] font-semibold block truncate">
+                      {hook.label || 'No Label'}
+                    </span>
+                    <span className="font-mono text-[11.5px] text-[#4a5a82] block truncate">
+                      {hook.url}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    {hook.active && (
+                      <span className="bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.2)] text-[#10b981] text-[10px] font-semibold rounded-full px-2 py-0.5">
+                        Active
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handleDeleteWebhook(hook.id)}
+                      className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-semibold rounded-lg px-2.5 py-1.5 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Section 4: API QUICK REFERENCE */}
