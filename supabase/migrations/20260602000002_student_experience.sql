@@ -32,7 +32,7 @@ create policy "students read own course_progress"
   using (exists (
     select 1 from public.contacts
     where contacts.id = course_progress.contact_id
-    and contacts.email = (select email from auth.users where id = auth.uid())
+    and contacts.email = auth.jwt() ->> 'email'
   ));
 
 create policy "students insert own course_progress"
@@ -40,7 +40,7 @@ create policy "students insert own course_progress"
   with check (exists (
     select 1 from public.contacts
     where contacts.id = course_progress.contact_id
-    and contacts.email = (select email from auth.users where id = auth.uid())
+    and contacts.email = auth.jwt() ->> 'email'
   ));
 
 create policy "students delete own course_progress"
@@ -48,7 +48,7 @@ create policy "students delete own course_progress"
   using (exists (
     select 1 from public.contacts
     where contacts.id = course_progress.contact_id
-    and contacts.email = (select email from auth.users where id = auth.uid())
+    and contacts.email = auth.jwt() ->> 'email'
   ));
 
 -- Ensure enrollments table RLS is open to student access
@@ -63,7 +63,7 @@ create policy "students read own enrollments"
   using (exists (
     select 1 from public.contacts
     where contacts.id = enrollments.contact_id
-    and contacts.email = (select email from auth.users where id = auth.uid())
+    and contacts.email = auth.jwt() ->> 'email'
   ));
 
 create policy "students self-register enrollments"
@@ -71,5 +71,6 @@ create policy "students self-register enrollments"
   with check (exists (
     select 1 from public.contacts
     where contacts.id = enrollments.contact_id
-    and contacts.email = (select email from auth.users where id = auth.uid())
+    and contacts.email = auth.jwt() ->> 'email'
   ));
+

@@ -94,7 +94,13 @@ export default function MarketplaceClient({ courses, enrolledCourseIds, userRole
                   </button>
                 ) : (
                   <button 
-                    onClick={() => handleEnroll(course.id)}
+                    onClick={() => {
+                      if (course.price > 0) {
+                        router.push(`/student/checkout/${course.id}`);
+                      } else {
+                        handleEnroll(course.id);
+                      }
+                    }}
                     disabled={isLoading}
                     className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 shadow-lg shadow-primary/15"
                   >

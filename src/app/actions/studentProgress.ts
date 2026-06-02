@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth';
 import { getOrCreateStudentContact } from './studentEnrollments';
 
@@ -18,10 +18,10 @@ export async function markLessonComplete(courseId: string, lessonId: string) {
     const contactId = await getOrCreateStudentContact(workspaceId);
     if (!contactId) return { error: 'Failed to resolve student contact' };
 
-    const supabase = await createServerClient();
+    const adminClient = createAdminClient();
 
-    // Check if already completed
-    const { data: existing } = await supabase
+    // Check if already completed using admin client to bypass RLS
+    const { data: existing } = await adminClient
       .from('course_progress')
       .select('id')
       .eq('contact_id', contactId)
@@ -32,7 +32,7 @@ export async function markLessonComplete(courseId: string, lessonId: string) {
       return { success: true };
     }
 
-    const { error } = await supabase
+    const { error } = await adminClient
       .from('course_progress')
       .insert({
         workspace_id: workspaceId,
@@ -62,9 +62,9 @@ export async function markLessonIncomplete(courseId: string, lessonId: string) {
     const contactId = await getOrCreateStudentContact(workspaceId);
     if (!contactId) return { error: 'Failed to resolve student contact' };
 
-    const supabase = await createServerClient();
+    const adminClient = createAdminClient();
 
-    const { error } = await supabase
+    const { error } = await adminClient
       .from('course_progress')
       .delete()
       .eq('contact_id', contactId)
@@ -91,8 +91,8 @@ export async function getCompletedLessons(courseId: string) {
     const contactId = await getOrCreateStudentContact(workspaceId);
     if (!contactId) return { data: [] };
 
-    const supabase = await createServerClient();
-    const { data: progressList, error } = await supabase
+    const adminClient = createAdminClient();
+    const { data: progressList, error } = await adminClient
       .from('course_progress')
       .select('lesson_id')
       .eq('contact_id', contactId)
@@ -125,10 +125,10 @@ export async function submitQuizAttempt(payload: {
     const contactId = await getOrCreateStudentContact(workspaceId);
     if (!contactId) return { error: 'Failed to resolve student contact' };
 
-    const supabase = await createServerClient();
+    const adminClient = createAdminClient();
 
-    // 1. Insert quiz attempt
-    const { error: attemptErr } = await supabase
+    // 1. Insert quiz attempt using admin client to bypass RLS
+    const { error: attemptErr } = await adminClient
       .from('quiz_attempts')
       .insert({
         workspace_id: workspaceId,

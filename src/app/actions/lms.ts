@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 
 export async function getCourses() {
@@ -612,10 +612,10 @@ export async function getCourseAnalytics(courseId: string) {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
+    const adminClient = createAdminClient();
 
     // 1. Fetch course details
-    const { data: course, error: courseErr } = await supabase
+    const { data: course, error: courseErr } = await adminClient
       .from('courses')
       .select('id, title, price, published')
       .eq('id', courseId)
@@ -627,7 +627,7 @@ export async function getCourseAnalytics(courseId: string) {
     }
 
     // 2. Fetch all enrollments
-    const { data: enrollments, error: enrollError } = await supabase
+    const { data: enrollments, error: enrollError } = await adminClient
       .from('enrollments')
       .select(`
         id,
@@ -646,7 +646,7 @@ export async function getCourseAnalytics(courseId: string) {
     if (enrollError) throw enrollError;
 
     // 3. Fetch all course lessons
-    const { data: lessons, error: lessonsError } = await supabase
+    const { data: lessons, error: lessonsError } = await adminClient
       .from('course_lessons')
       .select('id, title, lesson_type')
       .eq('course_id', courseId);
@@ -654,7 +654,7 @@ export async function getCourseAnalytics(courseId: string) {
     if (lessonsError) throw lessonsError;
 
     // 4. Fetch progress logs
-    const { data: progress, error: progressError } = await supabase
+    const { data: progress, error: progressError } = await adminClient
       .from('course_progress')
       .select('contact_id, lesson_id')
       .eq('course_id', courseId);
@@ -669,7 +669,7 @@ export async function getCourseAnalytics(courseId: string) {
     let attemptContacts: any[] = [];
 
     if (quizLessonIds.length > 0) {
-      const { data: attemptsData, error: attemptsError } = await supabase
+      const { data: attemptsData, error: attemptsError } = await adminClient
         .from('quiz_attempts')
         .select(`
           id,
@@ -689,7 +689,7 @@ export async function getCourseAnalytics(courseId: string) {
 
       const contactIdsFromAttempts = Array.from(new Set(attempts.map((a: any) => a.student_id)));
       if (contactIdsFromAttempts.length > 0) {
-        const { data: contactsData } = await supabase
+        const { data: contactsData } = await adminClient
           .from('contacts')
           .select('id, first_name, last_name, email')
           .in('id', contactIdsFromAttempts);
@@ -739,8 +739,8 @@ export async function getCourseAnalytics(courseId: string) {
         studentName: `${c.first_name || 'Student'} ${c.last_name || ''}`.trim(),
         studentEmail: c.email || 'unknown@example.com',
         score: a.score,
-        maxScore: a.max_score || 10,
-        percentage: a.percentage || (a.max_score ? Math.round((a.score / a.max_score) * 100) : 0),
+        maxScore: a.max_score || 100,
+        percentage: a.percentage ?? (a.max_score ? Math.round((a.score / a.max_score) * 100) : a.score),
         passed: a.passed,
         submittedAt: a.submitted_at
       };

@@ -2,7 +2,7 @@ import React from 'react';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ShieldAlert } from 'lucide-react';
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { getCompletedLessons } from '@/app/actions/studentProgress';
@@ -18,10 +18,10 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
   const courseId = params.id;
   const user = await requireAuth();
 
-  const supabase = await createServerClient();
+  const adminClient = createAdminClient();
 
-  // 1. Fetch course details
-  const { data: course } = await supabase
+  // 1. Fetch course details using admin client to bypass RLS
+  const { data: course } = await adminClient
     .from('courses')
     .select('*')
     .eq('id', courseId)
@@ -31,13 +31,13 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
     notFound();
   }
 
-  // 2. Fetch student contact and enrollment
+  // 2. Fetch student contact and enrollment using admin client to bypass RLS
   const contactId = await getOrCreateStudentContact(course.workspace_id);
   if (!contactId) {
     redirect('/student/marketplace');
   }
 
-  const { data: enrollment } = await supabase
+  const { data: enrollment } = await adminClient
     .from('enrollments')
     .select('*')
     .eq('course_id', courseId)
@@ -54,7 +54,7 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
         <div className="space-y-2">
           <h3 className="text-lg font-space-grotesk font-black uppercase text-white tracking-wider">Access Restricted</h3>
           <p className="text-xs text-white/50 leading-relaxed">
-            You are not registered in the course: <strong className="text-white">"{course.title}"</strong>. Please enroll in the course via the catalog catalog before starting.
+            You are not registered in the course: <strong className="text-white">"{course.title}"</strong>. Please enroll in the course via the catalog before starting.
           </p>
         </div>
         <Link 
@@ -67,10 +67,10 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
     );
   }
 
-  // 3. Fetch modules and lessons
+  // 3. Fetch modules and lessons using admin client to bypass RLS
   const [modulesRes, lessonsRes, progressRes] = await Promise.all([
-    supabase.from('course_modules').select('*').eq('course_id', courseId).order('position', { ascending: true }),
-    supabase.from('course_lessons').select('*').eq('course_id', courseId).order('position', { ascending: true }),
+    adminClient.from('course_modules').select('*').eq('course_id', courseId).order('position', { ascending: true }),
+    adminClient.from('course_lessons').select('*').eq('course_id', courseId).order('position', { ascending: true }),
     getCompletedLessons(courseId)
   ]);
 

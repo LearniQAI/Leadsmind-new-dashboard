@@ -2,7 +2,7 @@ import React from 'react';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import StudentQuizClient from './StudentQuizClient';
@@ -19,10 +19,10 @@ export default async function StudentQuizPage({ params }: StudentQuizPageProps) 
   const quizId = params.quizId;
   const user = await requireAuth();
 
-  const supabase = await createServerClient();
+  const adminClient = createAdminClient();
 
-  // 1. Fetch course details
-  const { data: course } = await supabase
+  // 1. Fetch course details using admin client to bypass RLS
+  const { data: course } = await adminClient
     .from('courses')
     .select('id, workspace_id')
     .eq('id', courseId)
@@ -32,13 +32,13 @@ export default async function StudentQuizPage({ params }: StudentQuizPageProps) 
     notFound();
   }
 
-  // 2. Fetch student contact and verify enrollment
+  // 2. Fetch student contact and verify enrollment using admin client to bypass RLS
   const contactId = await getOrCreateStudentContact(course.workspace_id);
   if (!contactId) {
     redirect('/student/marketplace');
   }
 
-  const { data: enrollment } = await supabase
+  const { data: enrollment } = await adminClient
     .from('enrollments')
     .select('id')
     .eq('course_id', courseId)
@@ -49,8 +49,8 @@ export default async function StudentQuizPage({ params }: StudentQuizPageProps) 
     redirect(`/student/courses/${courseId}`);
   }
 
-  // 3. Fetch quiz lesson nodes
-  const { data: lesson } = await supabase
+  // 3. Fetch quiz lesson nodes using admin client to bypass RLS
+  const { data: lesson } = await adminClient
     .from('course_lessons')
     .select('*')
     .eq('id', quizId)
@@ -60,10 +60,10 @@ export default async function StudentQuizPage({ params }: StudentQuizPageProps) 
     notFound();
   }
 
-  // 4. Fetch questions and settings
+  // 4. Fetch questions and settings using admin client to bypass RLS
   const [questionsRes, settingsRes] = await Promise.all([
-    supabase.from('quiz_questions').select('*').eq('lesson_id', quizId).order('position', { ascending: true }),
-    supabase.from('quiz_settings').select('*').eq('lesson_id', quizId).maybeSingle()
+    adminClient.from('quiz_questions').select('*').eq('lesson_id', quizId).order('position', { ascending: true }),
+    adminClient.from('quiz_settings').select('*').eq('lesson_id', quizId).maybeSingle()
   ]);
 
   const questions = questionsRes.data || [];

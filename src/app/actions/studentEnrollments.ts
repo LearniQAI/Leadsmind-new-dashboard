@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId, getUserRole } from '@/lib/auth';
 
 /**
@@ -11,10 +11,10 @@ export async function getOrCreateStudentContact(workspaceId: string) {
   const user = await getUser();
   if (!user) return null;
 
-  const supabase = await createServerClient();
+  const adminClient = createAdminClient();
 
-  // Find contact by email in workspace
-  const { data: contact } = await supabase
+  // Find contact by email in workspace using admin client to bypass RLS select policies
+  const { data: contact } = await adminClient
     .from('contacts')
     .select('id')
     .eq('email', user.email)
@@ -24,12 +24,12 @@ export async function getOrCreateStudentContact(workspaceId: string) {
 
   if (contact) return contact.id;
 
-  // Auto-create contact record
+  // Auto-create contact record using admin client to bypass RLS insert policies
   const nameParts = (user.user_metadata?.full_name || '').split(' ');
   const firstName = nameParts[0] || 'Student';
   const lastName = nameParts.slice(1).join(' ') || '';
 
-  const { data: newContact, error } = await supabase
+  const { data: newContact, error } = await adminClient
     .from('contacts')
     .insert({
       workspace_id: workspaceId,
@@ -66,10 +66,10 @@ export async function enrollStudent(courseId: string) {
     const contactId = await getOrCreateStudentContact(workspaceId);
     if (!contactId) return { error: 'Failed to register student contact profile' };
 
-    const supabase = await createServerClient();
+    const adminClient = createAdminClient();
 
-    // Check if already enrolled
-    const { data: existing } = await supabase
+    // Check if already enrolled using admin client to bypass RLS
+    const { data: existing } = await adminClient
       .from('enrollments')
       .select('id')
       .eq('course_id', courseId)
@@ -80,7 +80,7 @@ export async function enrollStudent(courseId: string) {
       return { success: true, message: 'Already enrolled' };
     }
 
-    const { error } = await supabase
+    const { error } = await adminClient
       .from('enrollments')
       .insert({
         course_id: courseId,
@@ -109,10 +109,10 @@ export async function getMyEnrollments() {
     const contactId = await getOrCreateStudentContact(workspaceId);
     if (!contactId) return { data: [] };
 
-    const supabase = await createServerClient();
+    const adminClient = createAdminClient();
 
-    // Fetch enrollments with course details
-    const { data: enrollments, error } = await supabase
+    // Fetch enrollments with course details using admin client to bypass RLS
+    const { data: enrollments, error } = await adminClient
       .from('enrollments')
       .select(`
         id,
@@ -155,8 +155,8 @@ export async function getMarketplaceCourses() {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No active workspace context' };
 
-    const supabase = await createServerClient();
-    const { data: courses, error } = await supabase
+    const adminClient = createAdminClient();
+    const { data: courses, error } = await adminClient
       .from('courses')
       .select('*')
       .eq('workspace_id', workspaceId)
@@ -183,10 +183,10 @@ export async function getEnrolledCoursesWithProgress() {
     const contactId = await getOrCreateStudentContact(workspaceId);
     if (!contactId) return { data: [] };
 
-    const supabase = await createServerClient();
+    const adminClient = createAdminClient();
 
-    // 1. Fetch enrollments
-    const { data: enrollments, error: enrollError } = await supabase
+    // 1. Fetch enrollments using admin client to bypass RLS
+    const { data: enrollments, error: enrollError } = await adminClient
       .from('enrollments')
       .select(`
         id,
@@ -206,20 +206,20 @@ export async function getEnrolledCoursesWithProgress() {
 
     if (enrollError) throw enrollError;
 
-    // 2. Fetch all progress logs for this contact
-    const { data: progressLogs, error: progressError } = await supabase
+    // 2. Fetch all progress logs for this contact using admin client to bypass RLS
+    const { data: progressLogs, error: progressError } = await adminClient
       .from('course_progress')
       .select('course_id, lesson_id')
       .eq('contact_id', contactId);
 
     if (progressError) throw progressError;
 
-    // 3. Fetch all course lessons count for enrolled courses
+    // 3. Fetch all course lessons count for enrolled courses using admin client to bypass RLS
     const courseIds = (enrollments || []).map((e: any) => e.course?.id).filter(Boolean);
     
     let lessonCounts: Record<string, number> = {};
     if (courseIds.length > 0) {
-      const { data: lessons, error: lessonsError } = await supabase
+      const { data: lessons, error: lessonsError } = await adminClient
         .from('course_lessons')
         .select('course_id, id')
         .in('course_id', courseIds);

@@ -126,7 +126,21 @@ export async function getCurrentWorkspace(existingUser?: any): Promise<Workspace
  const supabase = await createServerClient();
  let workspaceId = await getCurrentWorkspaceId();
 
- // If no active workspace cookie, find first membership
+ if (workspaceId) {
+  // Validate that the user is actually a member of this workspace to avoid stale/out-of-sync cookies
+  const { data: membership } = await supabase
+   .from('workspace_members')
+   .select('workspace_id')
+   .eq('workspace_id', workspaceId)
+   .eq('user_id', user.id)
+   .maybeSingle();
+
+  if (!membership) {
+   workspaceId = null;
+  }
+ }
+
+ // If no active workspace cookie or if it was invalid, find first membership
  if (!workspaceId) {
   const { data: membership } = await supabase
    .from('workspace_members')
