@@ -287,7 +287,7 @@ export default function BlogManagementClient({ initialPosts, categories }: BlogA
 
           {showCreateModal && (
             <div className="fixed inset-0 z-[600] flex items-center justify-center bg-[#04091a]/80 backdrop-blur-sm p-4">
-              <div className="w-full max-w-md bg-[#080f28] border border-white/10 rounded-xl p-6 shadow-2xl space-y-4">
+              <div className="w-full max-w-md bg-[#080f28] border border-white/10 rounded-xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="font-space-grotesk text-sm font-bold text-white uppercase tracking-wider">Compose <span className="text-primary">New Article</span></h3>
                   <button onClick={() => setShowCreateModal(false)} className="text-white/40 hover:text-white">✕</button>
@@ -328,7 +328,7 @@ export default function BlogManagementClient({ initialPosts, categories }: BlogA
           {/* CUSTOM CONFIRMATION DIALOG */}
           {postToDelete && (
             <div className="fixed inset-0 z-[600] flex items-center justify-center bg-[#04091a]/85 backdrop-blur-sm p-4 animate-fade-in">
-              <div className="w-full max-w-sm bg-[#080f28] border border-white/10 rounded-xl p-6 shadow-2xl space-y-4 text-center">
+              <div className="w-full max-w-sm bg-[#080f28] border border-white/10 rounded-xl p-6 shadow-2xl space-y-4 text-center max-h-[90vh] overflow-y-auto">
                 <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-2 animate-pulse">
                   <Trash2 className="w-5 h-5" />
                 </div>

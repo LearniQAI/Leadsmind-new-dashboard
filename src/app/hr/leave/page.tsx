@@ -26,6 +26,10 @@ interface Employee {
   id: string
   first_name: string
   last_name: string
+  annual_leave_balance?: number
+  annual_leave_used?: number
+  sick_leave_balance?: number
+  sick_leave_used?: number
 }
 
 export default function LeavePage() {
@@ -35,7 +39,7 @@ export default function LeavePage() {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'balances'>('all')
   
   // Modal State
   const [modalOpen, setModalOpen] = useState(false)
@@ -45,6 +49,10 @@ export default function LeavePage() {
   const [endDate, setEndDate] = useState('')
   const [daysCount, setDaysCount] = useState(0)
   const [reason, setReason] = useState('')
+
+  // Rejection State
+  const [rejectingId, setRejectingId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   const fetchLeaveData = async () => {
     if (!workspaceId) return
@@ -113,12 +121,15 @@ export default function LeavePage() {
     }
   }
 
-  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
+  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected', rejectedReason?: string) => {
     try {
+      const body: any = { status }
+      if (rejectedReason) body.rejected_reason = rejectedReason
+
       const res = await fetch(`/api/hr/leave?id=${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify(body)
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -176,6 +187,7 @@ export default function LeavePage() {
 
   const filteredRequests = leaveRequests.filter(req => {
     if (activeTab === 'all') return true
+    if (activeTab === 'balances') return false
     return req.status === activeTab
   })
 
@@ -208,7 +220,7 @@ export default function LeavePage() {
 
         {/* Filter Tabs */}
         <div className="flex items-center gap-2 border-b border-white/5">
-          {(['all', 'pending', 'approved', 'rejected'] as const).map(tab => (
+          {(['all', 'pending', 'approved', 'rejected', 'balances'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -226,6 +238,66 @@ export default function LeavePage() {
 
         {loading ? (
           <div className="text-center py-20 text-[#4a5a82] animate-pulse">Loading leave records...</div>
+        ) : activeTab === 'balances' ? (
+          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-[12px] font-dm-sans">
+                <thead>
+                  <tr className="border-b border-white/5 bg-white/[0.01] text-[#4a5a82] font-semibold">
+                    <th className="p-4">Employee</th>
+                    <th className="p-4">Annual Leave (Used/Entitlement/Remaining)</th>
+                    <th className="p-4">Sick Leave (Used/Entitlement/Remaining)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.02]">
+                  {employees.map(emp => {
+                    const annual_entitlement = emp.annual_leave_balance ?? 15
+                    const annual_used = emp.annual_leave_used ?? 0
+                    const annual_remaining = annual_entitlement - annual_used
+
+                    const sick_entitlement = emp.sick_leave_balance ?? 30
+                    const sick_used = emp.sick_leave_used ?? 0
+                    const sick_remaining = sick_entitlement - sick_used
+
+                    let annualBadgeColor = 'bg-red-500/10 border-red-500/20 text-[#ef4444]'
+                    if (annual_remaining >= 10) {
+                      annualBadgeColor = 'bg-green-500/10 border-green-500/20 text-[#10b981]'
+                    } else if (annual_remaining >= 5) {
+                      annualBadgeColor = 'bg-amber-500/10 border-amber-500/20 text-[#f59e0b]'
+                    }
+
+                    return (
+                      <tr key={emp.id} className="hover:bg-white/[0.01] transition-colors text-[#94a3c8]">
+                        <td className="p-4 text-[#eef2ff] font-semibold whitespace-nowrap">
+                          {emp.first_name} {emp.last_name}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex flex-col gap-1">
+                            <span>Used: {annual_used} / Entitlement: {annual_entitlement} days</span>
+                            <div className="flex">
+                              <span className={`border text-[10px] font-bold px-2.5 py-0.5 rounded-full ${annualBadgeColor}`}>
+                                Remaining: {annual_remaining} days
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex flex-col gap-1">
+                            <span>Used: {sick_used} / Entitlement: {sick_entitlement} days</span>
+                            <div className="flex">
+                              <span className="bg-white/5 border border-white/10 text-[#94a3c8] text-[10px] font-semibold rounded-full px-2.5 py-0.5">
+                                Remaining: {sick_remaining} days
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : filteredRequests.length === 0 ? (
           <div className="text-center py-20 bg-[rgba(12,21,53,0.3)] border border-white/5 rounded-2xl p-8">
             <p className="text-[13px] text-[#4a5a82]">No leave requests found matching this status.</p>
@@ -281,12 +353,40 @@ export default function LeavePage() {
                       >
                         <Check size={12} /> Approve
                       </button>
-                      <button
-                        onClick={() => handleUpdateStatus(req.id, 'rejected')}
-                        className="h-8 px-3 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] hover:bg-red-500/20 text-[11px] font-bold transition-all flex items-center gap-1"
-                      >
-                        <X size={12} /> Reject
-                      </button>
+                      {rejectingId === req.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)}
+                            placeholder="Reason (optional)"
+                            className="bg-[#070d24] border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white w-32"
+                          />
+                          <button
+                            onClick={() => {
+                              handleUpdateStatus(req.id, 'rejected', rejectReason)
+                              setRejectingId(null)
+                              setRejectReason('')
+                            }}
+                            className="h-7 px-2 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] text-[10px] font-bold"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setRejectingId(null)}
+                            className="h-7 px-2 rounded-lg bg-white/5 text-[#4a5a82] text-[10px]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setRejectingId(req.id)}
+                          className="h-8 px-3 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] hover:bg-red-500/20 text-[11px] font-bold transition-all flex items-center gap-1"
+                        >
+                          <X size={12} /> Reject
+                        </button>
+                      )}
                     </>
                   )}
                   {req.status !== 'pending' && (
@@ -306,7 +406,7 @@ export default function LeavePage() {
         {/* Modal */}
         {modalOpen && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/[0.01]">
                 <h3 className="text-[15px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   Request Leave

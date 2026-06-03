@@ -32,9 +32,9 @@ export function TagDialog({
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[1001] bg-[#000000c1] backdrop-blur-sm animate-in fade-in duration-300" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-[1002] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[24px] bg-[#080f28] border border-white/5 p-8 shadow-2xl animate-in zoom-in-95 fade-in duration-300 focus:outline-none">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-[1002] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[24px] bg-[#080f28] border border-white/5 p-6 shadow-2xl animate-in zoom-in-95 fade-in duration-300 focus:outline-none max-h-[90vh] overflow-y-auto">
           <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[#2563eb]/10 border border-[#2563eb]/20 flex items-center justify-center mb-6 shadow-lg shadow-[#2563eb]/5">
+            <div className="w-16 h-16 rounded-2xl bg-[#2563eb]/10 border border-[#2563eb]/20 flex items-center justify-center mb-4 shadow-lg shadow-[#2563eb]/5">
               <i className="fa-solid fa-tags text-[#3b82f6] text-[24px]"></i>
             </div>
             
@@ -42,11 +42,11 @@ export function TagDialog({
               Apply <span className="text-[#3b82f6]">Strategic Tag</span>
             </Dialog.Title>
             
-            <Dialog.Description className="text-[13px] text-[#4a5a82] mb-8 font-dm-sans leading-relaxed">
+            <Dialog.Description className="text-[13px] text-[#4a5a82] mb-5 font-dm-sans leading-relaxed">
               You are applying a tactical tag to <span className="text-[#eef2ff] font-bold">{selectedCount}</span> selected leads. This will help in high-fidelity segmentation.
             </Dialog.Description>
             
-            <form onSubmit={handleSubmit} className="w-full space-y-6">
+            <form onSubmit={handleSubmit} className="w-full space-y-4">
               <div className="relative group">
                 <i className="fa-solid fa-tag absolute left-4 top-1/2 -translate-y-1/2 text-[12px] text-[#4a5a82] group-focus-within:text-[#3b82f6] transition-colors"></i>
                 <input

@@ -41,7 +41,7 @@ export default function LessonTypePicker({
 
   return (
     <div className="fixed inset-0 bg-[#04091a]/75 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
-      <div className="bg-[#080f28] border border-[rgba(255,255,255,0.07)] rounded-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col text-white">
+      <div className="bg-[#080f28] border border-[rgba(255,255,255,0.07)] rounded-xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col text-white">
         
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-[rgba(255,255,255,0.07)]">

@@ -260,7 +260,7 @@ export default function StudioHomeClient({
       {/* Inspect generation full copy modal */}
       {selectedGeneration && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-[#080f28] border border-white/5 w-full max-w-2xl rounded-3xl p-6 relative flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+          <div className="bg-[#080f28] border border-white/5 w-full max-w-xl rounded-3xl p-6 relative flex flex-col max-h-[85vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <button 
               onClick={() => setSelectedGeneration(null)} 
               className="absolute top-4 right-4 text-t3 hover:text-white"

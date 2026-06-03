@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendEmail } from '@/lib/email'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -127,6 +128,41 @@ export async function POST(req: NextRequest) {
       await supabase.from('payroll_runs').delete().eq('id', run.id)
       return NextResponse.json({ error: slipErr.message }, { status: 500 })
     }
+
+    // Notify workspace owner via email
+    try {
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('owner_id, name')
+        .eq('id', workspaceId)
+        .single()
+
+      if (workspace?.owner_id) {
+        const { data: ownerData } = await supabase.auth.admin.getUserById(workspace.owner_id)
+        if (ownerData?.user?.email) {
+          await sendEmail({
+            to: ownerData.user.email,
+            subject: `Payroll Run Created — ${periodLabel}`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #10b981;">Payroll Run Created</h2>
+                <p>A new payroll run has been created for <strong>${periodLabel}</strong>.</p>
+                <table style="width:100%; border-collapse:collapse; margin-top:16px;">
+                  <tr><td style="padding:8px; color:#94a3c8;">Total Employees</td><td style="padding:8px; font-weight:bold;">${employees.length}</td></tr>
+                  <tr><td style="padding:8px; color:#94a3c8;">Gross Payroll</td><td style="padding:8px; font-weight:bold;">R${totalGross.toLocaleString()}</td></tr>
+                  <tr><td style="padding:8px; color:#94a3c8;">Total PAYE</td><td style="padding:8px; font-weight:bold;">R${totalPAYE.toLocaleString()}</td></tr>
+                  <tr><td style="padding:8px; color:#94a3c8;">Total Net Payout</td><td style="padding:8px; font-weight:bold; color:#10b981;">R${totalNet.toLocaleString()}</td></tr>
+                </table>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL ?? 'https://leadsmind.io'}/hr/payroll"
+                  style="display:inline-block; margin-top:16px; padding:10px 20px; background:#10b981; color:white; border-radius:8px; text-decoration:none; font-weight:bold;">
+                  View Payroll in LeadsMind
+                </a>
+              </div>
+            `,
+          }).catch(() => {})
+        }
+      }
+    } catch {} // Don't fail payroll if email fails
 
     return NextResponse.json({ success: true, payrollRun: run })
 

@@ -95,7 +95,7 @@ export function RuleBuilderModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-[#0b132c] border border-white/10 rounded-3xl shadow-2xl overflow-hidden"
+        className="w-full max-w-md bg-[#0b132c] border border-white/10 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         style={{ animation: 'modalIn 0.2s ease-out' }}
       >

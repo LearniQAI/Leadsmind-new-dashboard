@@ -183,7 +183,7 @@ export default function LessonCreatorModal({
 
   return (
     <div className="fixed inset-0 bg-[#04091a]/85 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
-      <div className="bg-[#080f28] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col">
+      <div className="bg-[#080f28] border border-white/10 rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/5">
           <div className="flex items-center gap-2">

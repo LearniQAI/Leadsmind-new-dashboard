@@ -105,7 +105,7 @@ export default function ConnectProviderModal({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-7 shadow-2xl z-10 text-slate-200">
+      <div className="relative bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-5 shadow-2xl z-10 text-slate-200 max-h-[90vh] overflow-y-auto">
         
         {/* Close Button */}
         <button 

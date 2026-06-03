@@ -129,7 +129,7 @@ export function ImportContactsModal({ isOpen: controlledOpen, onOpenChange: cont
       <DialogTrigger asChild>
         {defaultTrigger}
       </DialogTrigger>
-      <DialogContent className="bg-[#080f28] z-[1003] border border-white/10 text-white max-w-2xl rounded-[16px] overflow-hidden shadow-2xl p-6 font-dm-sans">
+      <DialogContent className="bg-[#080f28] z-[1003] border border-white/10 text-white max-w-xl rounded-[16px] overflow-hidden shadow-2xl p-6 font-dm-sans max-h-[90vh] overflow-y-auto">
 
         {/* Header following Design System */}
         <DialogHeader className="space-y-0.5 pb-4 border-b border-white/5">

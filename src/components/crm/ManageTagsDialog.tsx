@@ -74,7 +74,7 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="z-[1002] bg-[#0b0f1a] border-white/5 text-[#eef2ff] max-w-md p-0 overflow-hidden rounded-3xl shadow-2xl">
+        <DialogContent className="z-[1002] bg-[#0b0f1a] border-white/5 text-[#eef2ff] max-w-md p-0 overflow-hidden rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="p-6 pb-4 border-b border-white/5">
             <DialogTitle className="text-xl font-extrabold font-space tracking-tight text-white flex items-center gap-3">
               <i className="fa-solid fa-tags text-[#2563eb]"></i>

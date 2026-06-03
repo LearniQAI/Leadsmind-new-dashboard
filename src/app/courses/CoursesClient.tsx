@@ -178,7 +178,7 @@ export default function CoursesClient({
       {/* Styled Course Initializer Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#04091a]/85 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
-          <div className="bg-[#080f28] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl relative flex flex-col space-y-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-[#080f28] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl relative flex flex-col space-y-4 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <div className="flex items-center gap-2">

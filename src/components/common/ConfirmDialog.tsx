@@ -45,10 +45,10 @@ export function ConfirmDialog({
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[1001] bg-[#000000c1] backdrop-blur-sm animate-in fade-in duration-300" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-[1002] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[24px] bg-[#080f28] border border-white/5 p-8 shadow-2xl animate-in zoom-in-95 fade-in duration-300">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-[1002] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[24px] bg-[#080f28] border border-white/5 p-6 shadow-2xl animate-in zoom-in-95 fade-in duration-300 max-h-[90vh] overflow-y-auto">
           <div className="flex flex-col items-center text-center">
             <div className={cn(
-              "w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-6 bg-white/[0.03] border border-white/5 shadow-xl rotate-6 transition-transform hover:rotate-0 duration-500"
+              "w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-4 bg-white/[0.03] border border-white/5 shadow-xl rotate-6 transition-transform hover:rotate-0 duration-500"
             )}>
               <i className={cn("fa-solid text-[24px]", getIcon())}></i>
             </div>
@@ -57,7 +57,7 @@ export function ConfirmDialog({
               {title}
             </Dialog.Title>
 
-            <Dialog.Description className="text-[13.5px] text-[#4a5a82] mb-8 font-dm-sans leading-relaxed max-w-[320px]">
+            <Dialog.Description className="text-[13.5px] text-[#4a5a82] mb-5 font-dm-sans leading-relaxed max-w-[320px]">
               {description}
             </Dialog.Description>
 

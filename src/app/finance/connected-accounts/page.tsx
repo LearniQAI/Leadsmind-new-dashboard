@@ -382,7 +382,7 @@ export default function ConnectedAccountsPage() {
         {/* Investec Connect Modal */}
         {showInvestecModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-7">
+            <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-5">
                 <div>
                   <h3 className="text-[17px] font-semibold text-[#eef2ff]"
@@ -477,7 +477,7 @@ export default function ConnectedAccountsPage() {
         {/* CSV Upload Modal */}
         {showCSVModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-7">
+            <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-5">
                 <div>
                   <h3 className="text-[17px] font-semibold text-[#eef2ff]"

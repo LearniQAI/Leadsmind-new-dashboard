@@ -59,8 +59,8 @@ export function SearchResultsGrid({ results }: SearchResultsGridProps) {
       {/* Preview Modal MVP */}
       {previewLead && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
-          <div className="bg-n900 border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-8">
+          <div className="bg-n900 border border-white/10 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <span className="text-xs font-black uppercase tracking-widest text-accent bg-accent/10 px-3 py-1 rounded-sm mb-3 inline-block">

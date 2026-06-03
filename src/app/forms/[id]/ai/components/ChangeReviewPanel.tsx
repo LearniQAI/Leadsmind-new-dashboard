@@ -26,7 +26,7 @@ export function ChangeReviewPanel({
 
   return (
     <div className="fixed inset-0 bg-[#040819]/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 font-dm-sans">
-      <div className="bg-[#0b132c] border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col">
+      <div className="bg-[#0b132c] border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
         
         {/* Header banner */}
         <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-b border-white/10 p-5 flex items-start gap-4">

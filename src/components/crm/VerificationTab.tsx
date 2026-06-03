@@ -339,7 +339,7 @@ export default function VerificationTab({
       {/* Confirm Modal */}
       {confirmModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-7">
+          <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-5 max-h-[90vh] overflow-y-auto">
             {(() => {
               const checkDef = CHECK_TYPES.find(c => c.type === confirmModal)!
               return (
@@ -348,12 +348,12 @@ export default function VerificationTab({
                     style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                     Run {checkDef.label}?
                   </h3>
-                  <p className="text-[12px] text-[#94a3c8] mb-5 leading-relaxed"
+                  <p className="text-[12px] text-[#94a3c8] mb-3 leading-relaxed"
                     style={{ fontFamily: "'DM Sans', sans-serif" }}>
                     This will run a {checkDef.provider} {checkDef.label} check on {contactName}.
                     The result will be saved on this contact record with a timestamp.
                   </p>
-                  <label className="flex items-start gap-3 cursor-pointer mb-6">
+                  <label className="flex items-start gap-3 cursor-pointer mb-4">
                     <input
                       type="checkbox"
                       checked={consentTicked}

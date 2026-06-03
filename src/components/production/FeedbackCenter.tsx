@@ -40,7 +40,7 @@ export function FeedbackCenter() {
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-end p-6">
-          <div className="bg-n800 border border-white/10 rounded-3xl p-6 w-[400px] shadow-2xl animate-in slide-in-from-bottom-10">
+          <div className="bg-n800 border border-white/10 rounded-3xl p-6 w-[400px] shadow-2xl animate-in slide-in-from-bottom-10 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-space font-bold text-white text-lg">Send Feedback</h3>
               <button onClick={() => setIsOpen(false)} className="text-t4 hover:text-white transition-colors">Close</button>

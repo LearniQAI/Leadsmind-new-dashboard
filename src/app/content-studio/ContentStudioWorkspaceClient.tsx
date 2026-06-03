@@ -2878,7 +2878,7 @@ export default function ContentStudioWorkspaceClient({
           {/* Paraphraser Modal */}
           {isParaphraseModalOpen && (
             <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-              <div className="bg-[#080f28] border border-white/10 w-full max-w-lg rounded-xl overflow-hidden shadow-2xl flex flex-col">
+              <div className="bg-[#080f28] border border-white/10 w-full max-w-lg rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
                 
                 {/* Modal Header */}
                 <div className="bg-[#0c1535] border-b border-white/10 px-5 py-4 flex items-center justify-between">

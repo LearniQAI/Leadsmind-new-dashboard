@@ -268,7 +268,7 @@ export default function EmployeesPage() {
         {/* Modal */}
         {modalOpen && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/[0.01]">
                 <h3 className="text-[15px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   {editingEmployee ? 'Edit Employee Details' : 'Add New Employee'}
