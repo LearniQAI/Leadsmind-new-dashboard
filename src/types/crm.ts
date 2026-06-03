@@ -17,6 +17,7 @@ export interface Contact {
   tags: string[];
   lead_score?: number;
   last_activity_at?: string;
+  id_number?: string;
   created_at: string;
   updated_at: string;
 }

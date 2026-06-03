@@ -77,7 +77,20 @@ export async function POST(req: Request) {
    }
 
    // 4. Trigger Webhooks if any (Optional enhancement)
-  // We can add logic here to trigger webhooks defined in webhook_endpoints
+   try {
+     const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+     dispatchWebhook(workspace.id, 'contact.created', {
+       contact: {
+         id: contact.id,
+         first_name: contact.first_name,
+         last_name: contact.last_name,
+         email: contact.email,
+         phone: contact.phone,
+       }
+     }).catch(() => {});
+   } catch (e) {
+     console.error('[webhook-dispatch-lead-api-error]', e);
+   }
 
   return NextResponse.json({ 
    success: true, 

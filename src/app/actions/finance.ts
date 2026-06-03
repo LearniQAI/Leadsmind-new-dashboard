@@ -246,9 +246,34 @@ export async function updateInvoiceStatus(id: string, status: string) {
    .from('invoices')
    .update({ status, updated_at: new Date().toISOString() })
    .eq('id', id)
-   .select()
+   .select('*, contact:contacts(*)')
    .single();
   if (error) return { success: false, error: error.message };
+
+  if (status === 'paid' && data) {
+    try {
+      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+      const contactName = (data as any).contact
+        ? `${(data as any).contact.first_name || ''} ${(data as any).contact.last_name || ''}`.trim()
+        : null;
+      dispatchWebhook(data.workspace_id, 'invoice.paid', {
+        invoice: {
+          id: data.id,
+          number: data.invoice_number,
+          amount: data.total_amount,
+          currency: data.currency || 'ZAR',
+          paid_at: new Date().toISOString(),
+          contact: {
+            id: data.contact_id,
+            name: contactName || null,
+          }
+        }
+      }).catch(() => {});
+    } catch (e) {
+      console.error('[webhook-dispatch-error-fallback]', e);
+    }
+  }
+
   revalidatePath('/invoices');
   return { success: true, data };
 }

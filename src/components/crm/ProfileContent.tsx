@@ -78,6 +78,7 @@ export function ProfileContent({ contact, activities, notes, tasks }: ProfileCon
             contactId={contact.id} 
             workspaceId={contact.workspace_id} 
             contactName={`${contact.first_name} ${contact.last_name}`}
+            contactIdNumber={contact.id_number ?? undefined}
           />
         )}
       </div>

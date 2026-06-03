@@ -44,6 +44,23 @@ export default function DeveloperPage() {
   const [copiedWebhookId, setCopiedWebhookId] = useState<string | null>(null);
   const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
 
+  // Webhook logs state
+  interface WebhookLog {
+    id: string;
+    webhook_id: string;
+    event: string;
+    response_status: number;
+    success: boolean;
+    error_message: string | null;
+    delivered_at: string;
+    webhook?: {
+      label: string | null;
+      url: string;
+    } | null;
+  }
+  const [logs, setLogs] = useState<WebhookLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(true);
+
   // General error messages
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -88,10 +105,27 @@ export default function DeveloperPage() {
     }
   };
 
+  // Fetch Webhook Logs
+  const fetchWebhookLogs = async () => {
+    if (!workspaceId) return;
+    try {
+      const res = await fetch(`/api/settings/webhooks/logs?workspaceId=${workspaceId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setLogs(data.logs || []);
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (workspaceId) {
       fetchApiKeys();
       fetchWebhooks();
+      fetchWebhookLogs();
     }
   }, [workspaceId]);
 
@@ -186,6 +220,7 @@ export default function DeveloperPage() {
         setWebhookUrl('');
         setWebhookLabel('');
         fetchWebhooks();
+        fetchWebhookLogs();
       } else {
         setErrorMsg(data.error || 'Failed to add webhook.');
       }
@@ -206,6 +241,7 @@ export default function DeveloperPage() {
       });
       if (res.ok) {
         fetchWebhooks();
+        fetchWebhookLogs();
       } else {
         const data = await res.json();
         setErrorMsg(data.error || 'Failed to delete webhook.');
@@ -536,6 +572,74 @@ export default function DeveloperPage() {
                 </div>
               </div>
             ))
+          )}
+        </div>
+
+        {/* Section: RECENT WEBHOOK DELIVERIES */}
+        <div className="flex items-center justify-between mb-3 mt-8">
+          <h3
+            className="text-[10px] font-semibold uppercase tracking-[1.2px] text-[#4a5a82]"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            RECENT WEBHOOK DELIVERIES
+          </h3>
+          <button
+            onClick={fetchWebhookLogs}
+            disabled={logsLoading}
+            className="text-[11px] text-[#3b82f6] hover:underline"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            {logsLoading ? 'Refreshing...' : 'Refresh Logs'}
+          </button>
+        </div>
+
+        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 mb-6">
+          {logsLoading ? (
+            <div className="h-20 bg-white/[0.02] animate-pulse rounded-lg" />
+          ) : logs.length === 0 ? (
+            <p className="text-[12px] text-[#4a5a82] italic text-center py-4 font-dm-sans" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+              No webhook deliveries recorded yet.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {logs.map((log) => (
+                <div
+                  key={log.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 bg-white/[0.02] border border-white/[0.04] rounded-lg text-[13px]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-[11px] text-white bg-white/[0.06] px-2 py-0.5 rounded">
+                        {log.event}
+                      </span>
+                      <span
+                        className={`text-[9.5px] font-bold rounded-full px-2 py-0.5 border ${
+                          log.success
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}
+                        style={{ fontFamily: "'DM Sans', sans-serif" }}
+                      >
+                        {log.response_status ? `Status ${log.response_status}` : 'Failed'}
+                      </span>
+                    </div>
+                    <span className="text-[#4a5a82] text-[11px] font-mono truncate block mt-1.5">
+                      Fired to: {log.webhook?.label || 'Unknown Webhook'} ({log.webhook?.url || 'URL not found'})
+                    </span>
+                    {!log.success && log.error_message && (
+                      <span className="text-rose-400/80 text-[11px] block mt-1 font-mono">
+                        Error: {log.error_message}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0 text-left sm:text-right">
+                    <span className="text-[11px] text-[#4a5a82]">
+                      {new Date(log.delivered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

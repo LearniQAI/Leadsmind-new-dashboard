@@ -152,6 +152,31 @@ export async function updateDealStage(dealId: string, stageId: string, position:
       stageId,
       status: 'won'
     });
+
+    try {
+      const { data: deal } = await supabase
+        .from('opportunities')
+        .select('*')
+        .eq('id', dealId)
+        .single();
+      if (deal) {
+        const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+        dispatchWebhook(dealBefore.workspace_id, 'deal.won', {
+          deal: {
+            id: deal.id,
+            title: deal.title,
+            value: deal.value,
+            currency: 'USD',
+            status: 'won',
+            contact: {
+              id: deal.contact_id,
+            }
+          }
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.error('[webhook-dispatch-deal-won-error]', e);
+    }
   }
   
   revalidatePath('/pipelines');
@@ -203,6 +228,24 @@ export async function updateOpportunity(id: string, values: any) {
         stageId: data.stage_id,
         status: data.status
       });
+
+      try {
+        const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+        dispatchWebhook(data.workspace_id, 'deal.won', {
+          deal: {
+            id: data.id,
+            title: data.title,
+            value: data.value,
+            currency: 'USD',
+            status: 'won',
+            contact: {
+              id: data.contact_id,
+            }
+          }
+        }).catch(() => {});
+      } catch (e) {
+        console.error('[webhook-dispatch-deal-won-update-error]', e);
+      }
     }
   }
   

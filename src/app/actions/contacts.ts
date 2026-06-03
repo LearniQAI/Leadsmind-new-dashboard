@@ -234,6 +234,21 @@ export async function createContact(values: any) {
     .single();
 
   if (error) return { success: false, error: error.message };
+
+  try {
+    const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+    dispatchWebhook(workspaceId, 'contact.created', {
+      contact: {
+        id: data.id,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone: data.phone,
+      }
+    }).catch(() => {});
+  } catch (e) {
+    console.error('[webhook-dispatch-contact-created-error]', e);
+  }
   
   // Automated Audit Log for creation
   await supabase.from('contact_activities').insert({

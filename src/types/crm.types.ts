@@ -12,6 +12,7 @@ export interface Contact {
  lead_score_explanation?: string;
  no_show_count?: number;
  last_activity_at?: string;
+ id_number?: string;
  created_at: string;
  updated_at: string;
 }
