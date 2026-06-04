@@ -34,9 +34,9 @@ export async function GET(req: NextRequest) {
         connected: dbRecord?.status === 'connected',
         accountName: plat === 'facebook' ? creds.page_name : 
                      plat === 'instagram' ? creds.instagram_username : 
-                     creds.whatsapp_business_name,
+                     (creds.waba_name ?? creds.whatsapp_business_name),
         accountHandle: plat === 'instagram' && creds.instagram_username ? `@${creds.instagram_username}` : undefined,
-        phoneNumber: plat === 'whatsapp' ? creds.whatsapp_phone_number : undefined,
+        phoneNumber: plat === 'whatsapp' ? (creds.phone_number ?? creds.whatsapp_phone_number) : undefined,
       }
     })
 
