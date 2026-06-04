@@ -107,7 +107,7 @@ export async function GET(req: Request) {
     if (platform === 'instagram') {
       // Get Facebook Page first
       const pagesRes = await fetch(
-        `https://graph.facebook.com/v18.0/me/accounts?access_token=${userToken}`
+        `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${userToken}`
       )
       const pagesData = await pagesRes.json()
       const page = pagesData.data?.[0]
@@ -118,12 +118,18 @@ export async function GET(req: Request) {
         )
       }
 
-      // Get Instagram Business Account linked to the Page
-      const igRes = await fetch(
-        `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
-      )
-      const igData = await igRes.json()
-      const igId = igData.instagram_business_account?.id
+      // Try to get igId directly from pagesData first before making the separate igRes call
+      const igIdDirect = page?.instagram_business_account?.id
+      let igId = igIdDirect
+
+      if (!igId) {
+        // Get Instagram Business Account linked to the Page
+        const igRes = await fetch(
+          `https://graph.facebook.com/v18.0/${page.id}?fields=id,name,instagram_business_account&access_token=${page.access_token}`
+        )
+        const igData = await igRes.json()
+        igId = igData?.instagram_business_account?.id
+      }
 
       if (!igId) {
         throw new Error(
@@ -149,49 +155,57 @@ export async function GET(req: Request) {
     }
 
     if (platform === 'whatsapp') {
-      // Get Meta Business accounts
-      const bizRes = await fetch(
-        `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
+      // Get Facebook Pages first
+      const pagesRes = await fetch(
+        `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,whatsapp_business_account&access_token=${userToken}`
       )
-      const bizData = await bizRes.json()
-      const business = bizData.data?.[0]
+      const pagesData = await pagesRes.json()
+      const page = pagesData.data?.[0]
 
-      if (!business) {
-        throw new Error(
-          'No Meta Business found. A Meta Business account is required for WhatsApp.'
-        )
+      if (!page) {
+        throw new Error('No Facebook Page found. WhatsApp Business requires a linked Facebook Page.')
       }
 
-      // Get WhatsApp Business Accounts under the business
-      const wabaRes = await fetch(
-        `https://graph.facebook.com/v18.0/${business.id}/owned_whatsapp_business_accounts?access_token=${userToken}`
-      )
-      const wabaData = await wabaRes.json()
-      const waba = wabaData.data?.[0]
+      // Try to get WABA directly from page first
+      let wabaId = page?.whatsapp_business_account?.id
+      let wabaName = page?.whatsapp_business_account?.name
 
-      if (!waba) {
-        throw new Error(
-          'No WhatsApp Business Account found under your Meta Business.'
+      // Fallback: try businesses endpoint
+      if (!wabaId) {
+        const bizRes = await fetch(
+          `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
         )
+        const bizData = await bizRes.json()
+        const business = bizData.data?.[0]
+        if (business) {
+          const wabaRes = await fetch(
+            `https://graph.facebook.com/v18.0/${business.id}/owned_whatsapp_business_accounts?access_token=${userToken}`
+          )
+          const wabaData = await wabaRes.json()
+          wabaId = wabaData.data?.[0]?.id
+          wabaName = wabaData.data?.[0]?.name
+        }
+      }
+
+      if (!wabaId) {
+        throw new Error('No WhatsApp Business Account found. Make sure your WhatsApp number is linked to your Facebook Page in Meta Business Suite.')
       }
 
       // Get phone numbers under the WABA
       const phoneRes = await fetch(
-        `https://graph.facebook.com/v18.0/${waba.id}/phone_numbers?access_token=${userToken}`
+        `https://graph.facebook.com/v18.0/${wabaId}/phone_numbers?access_token=${userToken}`
       )
       const phoneData = await phoneRes.json()
       const phone = phoneData.data?.[0]
 
       if (!phone) {
-        throw new Error(
-          'No WhatsApp phone number found. Add a phone number to your WhatsApp Business Account.'
-        )
+        throw new Error('No WhatsApp phone number found under this WABA.')
       }
 
       credentials = {
         access_token_encrypted: encrypt(userToken),
-        waba_id: waba.id,
-        waba_name: waba.name,
+        waba_id: wabaId,
+        waba_name: wabaName ?? 'WhatsApp Business',
         phone_number_id: phone.id,
         phone_number: phone.display_phone_number,
         health_status: 'connected',
