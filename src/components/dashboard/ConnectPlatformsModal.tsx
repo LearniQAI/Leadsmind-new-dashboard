@@ -115,18 +115,26 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
 
       // Check if there is a pending OAuth session to trigger Wizard onboarding
       const oauthSession = await getMetaOauthToken();
-      if (oauthSession && oauthSession.status === 'pending') {
+      if (oauthSession && oauthSession.token && targetPlatform && targetPlatform !== 'facebook') {
         setIsOauthWizard(true);
         setWizardStep(1);
         setWizardLoading(true);
         try {
-          const bizList = await fetchMetaBusinesses();
-          setBusinesses(bizList);
-          if (bizList.length > 0) {
-            setSelectedBusiness(bizList[0].id);
+          if (targetPlatform === 'whatsapp') {
+            // For WhatsApp we need business selection
+            const bizList = await fetchMetaBusinesses();
+            setBusinesses(bizList);
+            if (bizList.length > 0) setSelectedBusiness(bizList[0].id);
+          } else {
+            // For Instagram go straight to pages
+            const pageList = await fetchMetaPages('personal');
+            setPages(pageList);
+            if (pageList.length > 0) setSelectedPage(pageList[0]);
+            // Skip to step 2 directly
+            setWizardStep(2);
           }
         } catch (bizErr: any) {
-          toast.error(bizErr.message || 'Failed to fetch Meta Businesses');
+          toast.error(bizErr.message || 'Failed to fetch Meta assets');
         } finally {
           setWizardLoading(false);
         }
@@ -897,7 +905,7 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                       <div className="flex items-center justify-between mt-1 pl-6">
                         <div className="flex flex-col">
                           <span className="text-[11px] text-white/90 font-bold">@{igConn.credentials?.instagram_username || 'ig_account'}</span>
-                          <span className="text-[9px] text-[#4a5a82] mt-0.5">ID: {igConn.credentials?.instagram_business_account_id || 'N/A'}</span>
+                          <span className="text-[9px] text-[#4a5a82] mt-0.5">ID: {igConn.credentials?.instagram_id || 'N/A'}</span>
                         </div>
                         <Button
                           onClick={() => handleDisconnect('instagram')}
