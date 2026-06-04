@@ -104,8 +104,10 @@ export async function GET(req: Request) {
     }, { onConflict: 'workspace_id,platform' })
 
     // STEP 3 - Try to save Instagram (non-fatal if fails):
+    console.log('[Meta OAuth] Attempting Instagram/WhatsApp discovery, userToken present:', !!userToken)
     const igIdDirect = page?.instagram_business_account?.id
     let igId = igIdDirect
+    let igUsername = null
 
     if (!igId) {
       try {
@@ -114,18 +116,40 @@ export async function GET(req: Request) {
         )
         const igData = await igRes.json()
         igId = igData?.instagram_business_account?.id
-      } catch {}
+      } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
+    }
+
+    if (!igId) {
+      try {
+        // Try fetching Instagram accounts via business portfolio
+        const bizRes = await fetch(
+          `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
+        )
+        const bizData = await bizRes.json()
+        for (const biz of bizData.data || []) {
+          const igBizRes = await fetch(
+            `https://graph.facebook.com/v18.0/${biz.id}/instagram_accounts?fields=id,username&access_token=${userToken}`
+          )
+          const igBizData = await igBizRes.json()
+          if (igBizData.data?.[0]) {
+            igId = igBizData.data[0].id
+            igUsername = igBizData.data[0].username
+            break
+          }
+        }
+      } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
     }
 
     if (igId) {
-      let igUsername = null
-      try {
-        const igProfileRes = await fetch(
-          `https://graph.facebook.com/v18.0/${igId}?fields=username,name&access_token=${page.access_token}`
-        )
-        const igProfile = await igProfileRes.json()
-        igUsername = igProfile.username ?? null
-      } catch {}
+      if (!igUsername) {
+        try {
+          const igProfileRes = await fetch(
+            `https://graph.facebook.com/v18.0/${igId}?fields=username,name&access_token=${page.access_token}`
+          )
+          const igProfile = await igProfileRes.json()
+          igUsername = igProfile.username ?? null
+        } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
+      }
 
       await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
@@ -164,7 +188,27 @@ export async function GET(req: Request) {
           wabaId = wabaData.data?.[0]?.id
           wabaName = wabaData.data?.[0]?.name
         }
-      } catch {}
+      } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
+    }
+
+    if (!wabaId) {
+      try {
+        const bizRes = await fetch(
+          `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
+        )
+        const bizData = await bizRes.json()
+        for (const biz of bizData.data || []) {
+          const wabaRes = await fetch(
+            `https://graph.facebook.com/v18.0/${biz.id}/owned_whatsapp_business_accounts?fields=id,name&access_token=${userToken}`
+          )
+          const wabaData = await wabaRes.json()
+          if (wabaData.data?.[0]) {
+            wabaId = wabaData.data[0].id
+            wabaName = wabaData.data[0].name
+            break
+          }
+        }
+      } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
     }
 
     if (wabaId) {
@@ -192,7 +236,7 @@ export async function GET(req: Request) {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'workspace_id,platform' })
         }
-      } catch {}
+      } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
     }
 
     // STEP 5 - Redirect to success:
