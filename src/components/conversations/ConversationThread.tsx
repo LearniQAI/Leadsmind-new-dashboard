@@ -171,8 +171,12 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
           )}
 
           {/* Toggle Panel Button */}
-          <button onClick={onTogglePanel} className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 flex items-center justify-center text-[#4a5a82] hover:text-white transition-all ml-1">
-            <i className="fa-solid fa-sidebar text-[12px]"></i>
+          <button 
+            onClick={onTogglePanel} 
+            className="w-8 h-8 rounded-lg bg-[#2563eb]/20 border border-[#2563eb]/30 hover:bg-[#2563eb]/30 flex items-center justify-center text-[#3b82f6] hover:text-white transition-all ml-2 shrink-0"
+            title="Toggle Contact Panel"
+          >
+            <i className="fa-solid fa-circle-info text-[13px]"></i>
           </button>
         </div>
       </div>
