@@ -55,15 +55,26 @@ export function IntegrationsList() {
   }, [])
 
   const handleConnect = async (platform: 'facebook' | 'instagram' | 'whatsapp') => {
+    // If Facebook is already connected and we're connecting IG or WA,
+    // open the wizard directly without OAuth
+    const fbConnected = connectedPlatforms.find(p => p.platform === 'facebook' && p.status === 'connected')
+    
+    if (platform !== 'facebook' && fbConnected) {
+      setActivePlatform(platform)
+      setIsOpen(true)
+      return
+    }
+    
+    // Otherwise do OAuth (for Facebook or if no Facebook connection exists)
     try {
-      const authUrl = await getMetaAuthUrl(platform);
+      const authUrl = await getMetaAuthUrl(platform)
       if (authUrl) {
-        window.location.href = authUrl;
+        window.location.href = authUrl
       } else {
-        toast.error('Failed to generate connection URL');
+        toast.error('Failed to generate connection URL')
       }
     } catch (err: any) {
-      toast.error(err.message || 'Error initiating platform connection');
+      toast.error(err.message || 'Error initiating platform connection')
     }
   };
 
