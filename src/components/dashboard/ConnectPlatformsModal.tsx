@@ -695,7 +695,7 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                                 <label className="text-[10px] text-[#4a5a82] font-semibold">Instagram Business Account ID</label>
                                 <input
                                   type="text"
-                                  placeholder="e.g. 17841425289260610"
+                                  placeholder="Enter Instagram Business Account ID"
                                   value={selectedInstagram?.id || ''}
                                   onChange={(e) => setSelectedInstagram(e.target.value ? { id: e.target.value, username: 'instagram_account' } : null)}
                                   className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
@@ -703,7 +703,7 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                                 <label className="text-[10px] text-[#4a5a82] font-semibold mt-1">Instagram Username (optional)</label>
                                 <input
                                   type="text"
-                                  placeholder="e.g. obsidan_reign"
+                                  placeholder="Enter Instagram username"
                                   value={selectedInstagram?.username || ''}
                                   onChange={(e) => setSelectedInstagram(prev => prev ? { ...prev, username: e.target.value } : null)}
                                   className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
