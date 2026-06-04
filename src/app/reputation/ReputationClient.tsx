@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
   Star, Search, Trash2, MoreVertical,
-  Reply, Settings, Send, Layout, Copy, Check, Plus, AlertCircle
+  Reply, Settings, Send, Layout, Copy, Check, Plus, AlertCircle, RefreshCw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -17,7 +17,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { getReputationSettings, saveReputationSettings } from '@/app/actions/reputation_actions';
+import { getReputationSettings, saveReputationSettings, syncReviewsAction } from '@/app/actions/reputation_actions';
 import { cn } from '@/lib/utils';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 
@@ -51,6 +51,7 @@ export default function ReputationClient({
   const [googleUrl, setGoogleUrl] = useState('');
   const [facebookUrl, setFacebookUrl] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   // Send Request Modal State
   const [sendRequestOpen, setSendRequestOpen] = useState(false);
@@ -188,6 +189,43 @@ export default function ReputationClient({
     setDeleting(false);
   };
 
+  const handleSyncReviews = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    toast.loading('Syncing Google reviews...', { id: 'sync-reviews' });
+    try {
+      const res = await syncReviewsAction();
+      if (res.error) {
+        toast.error(res.error, { id: 'sync-reviews' });
+      } else {
+        toast.success(res.message || 'Reviews synced successfully!', { id: 'sync-reviews' });
+        
+        // Refresh reviews list
+        if (workspaceId) {
+          const reviewsRes = await fetch(`/api/reputation/reviews?workspaceId=${workspaceId}`);
+          if (reviewsRes.ok) {
+            const reviewsData = await reviewsRes.json();
+            const mappedReviews = reviewsData.map((r: any) => ({
+              id: r.id,
+              reviewer_name: r.reviewer_name,
+              rating: r.rating,
+              body: r.review_text,
+              platform: r.platform,
+              reply_text: r.reply_text,
+              replied: r.replied,
+              review_date: r.published_at || r.created_at
+            }));
+            setReviews(mappedReviews);
+          }
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Sync failed', { id: 'sync-reviews' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleSaveSettings = async () => {
     setSavingSettings(true);
     const res = await saveReputationSettings({ google_review_url: googleUrl, facebook_review_url: facebookUrl });
@@ -197,6 +235,8 @@ export default function ReputationClient({
     } else {
       toast.success('Review links updated successfully');
       setSettingsOpen(false);
+      // Automatically trigger sync
+      handleSyncReviews();
     }
   };
 
@@ -351,6 +391,15 @@ export default function ReputationClient({
           >
             <Layout className="w-4 h-4 text-emerald-400" />
             Get Widget
+          </Button>
+          <Button 
+            onClick={handleSyncReviews} 
+            disabled={syncing}
+            variant="outline" 
+            className="bg-white/5 border-white/5 hover:bg-white/10 text-white rounded-xl h-11 text-xs font-black uppercase tracking-widest flex items-center gap-2"
+          >
+            <RefreshCw className={cn("w-4 h-4 text-amber-400", syncing && "animate-spin")} />
+            {syncing ? 'Syncing...' : 'Sync Reviews'}
           </Button>
           <Button 
             onClick={() => setSettingsOpen(true)} 
