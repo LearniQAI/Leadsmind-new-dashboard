@@ -745,31 +745,7 @@ export async function saveMetaConnections(data: {
       }
     }
 
-    // 2. Validate Instagram access (if selected) before persisting
-    if ((targetPlatform === 'instagram' || (!targetPlatform && data.instagramBusinessAccountId)) && !oauth.isMock) {
-      try {
-        const igRes = await fetch(`https://graph.facebook.com/v18.0/${data.instagramBusinessAccountId}?fields=username&access_token=${data.pageAccessToken}`);
-        if (!igRes.ok) {
-          const errData = await igRes.json();
-          throw new Error(errData.error?.message || 'Invalid Instagram account access');
-        }
-      } catch (err: any) {
-        return { error: `Instagram Validation Failed: ${err.message}` };
-      }
-    }
 
-    // 3. Validate WhatsApp access (if selected) before persisting
-    if ((targetPlatform === 'whatsapp' || (!targetPlatform && data.phoneNumberId)) && !oauth.isMock) {
-      try {
-        const waRes = await fetch(`https://graph.facebook.com/v18.0/${data.phoneNumberId}?fields=verified_name,display_phone_number&access_token=${oauth.token}`);
-        if (!waRes.ok) {
-          const errData = await waRes.json();
-          throw new Error(errData.error?.message || 'Invalid WhatsApp Phone Number access');
-        }
-      } catch (err: any) {
-        return { error: `WhatsApp Validation Failed: ${err.message}` };
-      }
-    }
 
     // Persist connections!
     if (targetPlatform === 'facebook') {
