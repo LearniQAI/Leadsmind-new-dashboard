@@ -14,9 +14,10 @@ interface ConversationThreadProps {
   conversation: any;
   onSendMessage: (text: string, targetConvId: string) => void;
   isSending: boolean;
+  onTogglePanel?: () => void;
 }
 
-export function ConversationThread({ conversation, onSendMessage, isSending }: ConversationThreadProps) {
+export function ConversationThread({ conversation, onSendMessage, isSending, onTogglePanel }: ConversationThreadProps) {
   const router = useRouter();
   const [isCopied, setIsCopied] = useState(false);
   const [isNoteSending, setIsNoteSending] = useState(false);
@@ -168,6 +169,11 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
               SLA Met
             </span>
           )}
+
+          {/* Toggle Panel Button */}
+          <button onClick={onTogglePanel} className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 flex items-center justify-center text-[#4a5a82] hover:text-white transition-all ml-1">
+            <i className="fa-solid fa-sidebar text-[12px]"></i>
+          </button>
         </div>
       </div>
 

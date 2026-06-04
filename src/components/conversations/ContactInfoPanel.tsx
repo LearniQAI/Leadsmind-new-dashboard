@@ -29,8 +29,6 @@ const STATUS_OPTIONS = [
 
 export function ContactInfoPanel({ contact, conversation }: ContactInfoPanelProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'info' | 'tickets'>('info');
-  const [tickets, setTickets] = useState<any[]>([]);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   
   // Controls state
@@ -62,16 +60,8 @@ export function ContactInfoPanel({ contact, conversation }: ContactInfoPanelProp
     }
   }, [contact]);
 
-  // Fetch tickets and workspace team members
+  // Fetch workspace team members
   useEffect(() => {
-    if (contact?.id) {
-      import('@supabase/supabase-js').then(({ createClient }) => {
-        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-        supabase.from('support_tickets').select('*').eq('contact_id', contact.id)
-          .then(({ data }) => setTickets(data || []));
-      });
-    }
-
     async function loadTeam() {
       const res = await getWorkspaceMembers();
       if (res?.data) {
@@ -82,9 +72,6 @@ export function ContactInfoPanel({ contact, conversation }: ContactInfoPanelProp
   }, [contact?.id]);
 
   if (!contact) return null;
-
-  const openTickets = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
-  const closedTickets = tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length;
 
   const handleAssignmentChange = async (userId: string | null) => {
     setAssignedTo(userId);
@@ -184,211 +171,162 @@ export function ContactInfoPanel({ contact, conversation }: ContactInfoPanelProp
         </div>
       </div>
 
-      <div className="flex border-b border-white/5">
-        <button 
-          onClick={() => setActiveTab('info')}
-          className={cn("flex-1 py-3 text-[10px] font-bold uppercase tracking-wider", activeTab === 'info' ? "text-[#eef2ff] border-b-2 border-[#3b82f6]" : "text-[#4a5a82] hover:text-[#94a3c8]")}
-        >
-          Control Panel
-        </button>
-        <button 
-          onClick={() => setActiveTab('tickets')}
-          className={cn("flex-1 py-3 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1", activeTab === 'tickets' ? "text-[#eef2ff] border-b-2 border-[#3b82f6]" : "text-[#4a5a82] hover:text-[#94a3c8]")}
-        >
-          Tickets
-          {tickets.length > 0 && (
-            <span className="bg-[#3b82f6] text-white text-[8px] px-1.5 py-0.5 rounded-full">{tickets.length}</span>
-          )}
-        </button>
+      <div className="px-4 py-3 border-b border-white/5">
+        <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#eef2ff] text-center font-space-grotesk">
+          {contact.first_name} {contact.last_name}
+        </h4>
       </div>
 
-      {activeTab === 'info' ? (
-        <div className="p-4 space-y-5">
-          {/* 1. Status Dropdown */}
-          <div>
-            <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-2 font-dm-sans">
-              Conversation Status
-            </label>
-            <select
-              value={status}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              className={cn(
-                "w-full bg-white/5 border border-white/5 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold focus:outline-none",
-                selectedStatusColor
-              )}
-            >
-              {STATUS_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value} className="bg-[#080f28] text-white">
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 2. Assignee Selector */}
-          <div>
-            <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-2 font-dm-sans">
-              Assigned Agent
-            </label>
-            <select
-              value={assignedTo || ''}
-              onChange={(e) => handleAssignmentChange(e.target.value || null)}
-              className="w-full bg-white/5 border border-white/5 rounded-lg px-2.5 py-1.5 text-[12px] text-[#eef2ff] focus:outline-none"
-            >
-              <option value="" className="bg-[#080f28] text-[#4a5a82]">Unassigned</option>
-              {teamMembers.map(member => (
-                <option key={member.user?.id} value={member.user?.id} className="bg-[#080f28] text-white">
-                  {member.user?.first_name ? `${member.user.first_name} ${member.user.last_name || ''}` : member.user?.email}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 3. Tags Management */}
-          <div>
-            <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-2 font-dm-sans">
-              Tags
-            </label>
-            <div className="flex flex-wrap gap-1 mb-2">
-              {DEFAULT_TAGS.map(tag => {
-                const isActive = tags.includes(tag);
-                return (
-                  <button
-                    key={tag}
-                    onClick={() => handleToggleTag(tag)}
-                    className={cn(
-                      "text-[9px] font-bold px-2 py-0.5 rounded-md border transition-all",
-                      isActive 
-                        ? "bg-[#2563eb]/20 text-[#3b82f6] border-[#2563eb]/30" 
-                        : "bg-white/5 text-[#4a5a82] border-transparent hover:text-white"
-                    )}
-                  >
-                    {tag}
-                  </button>
-                );
-              })}
-            </div>
-            
-            {/* Custom Tag Form */}
-            <form onSubmit={handleAddCustomTag} className="flex gap-1">
-              <input
-                type="text"
-                placeholder="Add custom tag..."
-                value={customTagInput}
-                onChange={(e) => setCustomTagInput(e.target.value)}
-                className="flex-1 bg-white/5 border border-white/5 rounded-lg px-2 py-1 text-[11px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="px-2 bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-lg text-[11px]"
-              >
-                +
-              </button>
-            </form>
-            {tags.filter(t => !DEFAULT_TAGS.includes(t)).length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2 border-t border-white/5 pt-2">
-                {tags.filter(t => !DEFAULT_TAGS.includes(t)).map(tag => (
-                  <span
-                    key={tag}
-                    onClick={() => handleToggleTag(tag)}
-                    className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 cursor-pointer hover:bg-purple-500/20"
-                  >
-                    {tag} &times;
-                  </span>
-                ))}
-              </div>
+      <div className="p-4 space-y-5">
+        {/* 1. Status Dropdown */}
+        <div>
+          <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-2 font-dm-sans">
+            Conversation Status
+          </label>
+          <select
+            value={status}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className={cn(
+              "w-full bg-white/5 border border-white/5 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold focus:outline-none",
+              selectedStatusColor
             )}
-          </div>
-
-          {/* 4. Compliance Overrides */}
-          <div className="border-t border-white/5 pt-4">
-            <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-2 font-dm-sans">
-              Compliance & Consent
-            </label>
-            <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11.5px] text-[#94a3c8]">Status</span>
-                <span className={cn("text-[11px] font-bold", optedOut ? "text-red-400" : "text-emerald-400")}>
-                  {optedOut ? 'Marketing Blocked' : 'Opted In'}
-                </span>
-              </div>
-              
-              {optOutDate && (
-                <div className="text-[10px] text-[#4a5a82] leading-tight">
-                  Opt-out date: {new Date(optOutDate).toLocaleDateString()}
-                </div>
-              )}
-
-              <Button
-                size="sm"
-                onClick={() => handleConsentToggle(!optedOut)}
-                className={cn(
-                  "w-full h-7 text-[10px] font-bold uppercase tracking-wider",
-                  optedOut 
-                    ? "bg-emerald-500 hover:bg-emerald-600 text-white" 
-                    : "bg-red-500 hover:bg-red-600 text-white"
-                )}
-              >
-                {optedOut ? 'Manually Opt-In' : 'Manually Opt-Out'}
-              </Button>
-            </div>
-          </div>
-
-          {/* 5. Contact Info Details */}
-          <div className="border-t border-white/5 pt-4">
-            <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-2 font-dm-sans">
-              Details
-            </label>
-            <div className="space-y-2.5 text-[12px]">
-              <div className="flex items-center gap-2 text-[#94a3c8]">
-                <i className="fa-solid fa-phone text-[#4a5a82] text-[10px] w-4"></i>
-                <span className="truncate">{contact.phone || 'No phone'}</span>
-              </div>
-              {contact.email && (
-                <div className="flex items-center gap-2 text-[#94a3c8]">
-                  <i className="fa-solid fa-envelope text-[#4a5a82] text-[10px] w-4"></i>
-                  <span className="truncate break-all">{contact.email}</span>
-                </div>
-              )}
-            </div>
-          </div>
+          >
+            {STATUS_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value} className="bg-[#080f28] text-white">
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
-      ) : (
-        <div className="p-4 space-y-5">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white/[0.03] border border-white/5 rounded-xl p-3 text-center">
-              <span className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-widest mb-1">Open</span>
-              <span className="block text-lg font-black text-amber-500">{openTickets}</span>
-            </div>
-            <div className="bg-white/[0.03] border border-white/5 rounded-xl p-3 text-center">
-              <span className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-widest mb-1">Closed</span>
-              <span className="block text-lg font-black text-emerald-500">{closedTickets}</span>
-            </div>
+
+        {/* 2. Assignee Selector */}
+        <div>
+          <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-2 font-dm-sans">
+            Assigned Agent
+          </label>
+          <select
+            value={assignedTo || ''}
+            onChange={(e) => handleAssignmentChange(e.target.value || null)}
+            className="w-full bg-white/5 border border-white/5 rounded-lg px-2.5 py-1.5 text-[12px] text-[#eef2ff] focus:outline-none"
+          >
+            <option value="" className="bg-[#080f28] text-[#4a5a82]">Unassigned</option>
+            {teamMembers.map(member => (
+              <option key={member.user?.id} value={member.user?.id} className="bg-[#080f28] text-white">
+                {member.user?.first_name ? `${member.user.first_name} ${member.user.last_name || ''}` : member.user?.email}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 3. Tags Management */}
+        <div>
+          <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-2 font-dm-sans">
+            Tags
+          </label>
+          <div className="flex flex-wrap gap-1 mb-2">
+            {DEFAULT_TAGS.map(tag => {
+              const isActive = tags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  onClick={() => handleToggleTag(tag)}
+                  className={cn(
+                    "text-[9px] font-bold px-2 py-0.5 rounded-md border transition-all",
+                    isActive 
+                      ? "bg-[#2563eb]/20 text-[#3b82f6] border-[#2563eb]/30" 
+                      : "bg-white/5 text-[#4a5a82] border-transparent hover:text-white"
+                  )}
+                >
+                  {tag}
+                </button>
+              );
+            })}
           </div>
           
-          <div>
-            <h4 className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-3 font-dm-sans">
-              History
-            </h4>
-            {tickets.length === 0 ? (
-              <p className="text-[11px] text-[#4a5a82] text-center py-4">No tickets found</p>
-            ) : (
-              <div className="space-y-2.5">
-                {tickets.map(t => (
-                  <div key={t.id} className="bg-white/5 border border-white/5 rounded-xl p-2.5">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-[#94a3c8]">{t.status}</span>
-                      <span className="text-[9px] text-[#4a5a82]">{new Date(t.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-[11.5px] font-medium text-white truncate">{t.title}</p>
-                    <Button variant="link" className="h-auto p-0 text-[9px] text-[#3b82f6] mt-1.5" onClick={() => router.push(`/support/tickets-reply?id=${t.id}`)}>View Ticket</Button>
-                  </div>
-                ))}
+          {/* Custom Tag Form */}
+          <form onSubmit={handleAddCustomTag} className="flex gap-1">
+            <input
+              type="text"
+              placeholder="Add custom tag..."
+              value={customTagInput}
+              onChange={(e) => setCustomTagInput(e.target.value)}
+              className="flex-1 bg-white/5 border border-white/5 rounded-lg px-2 py-1 text-[11px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="px-2 bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-lg text-[11px]"
+            >
+              +
+            </button>
+          </form>
+          {tags.filter(t => !DEFAULT_TAGS.includes(t)).length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2 border-t border-white/5 pt-2">
+              {tags.filter(t => !DEFAULT_TAGS.includes(t)).map(tag => (
+                <span
+                  key={tag}
+                  onClick={() => handleToggleTag(tag)}
+                  className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 cursor-pointer hover:bg-purple-500/20"
+                >
+                  {tag} &times;
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 4. Compliance Overrides */}
+        <div className="border-t border-white/5 pt-4">
+          <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-2 font-dm-sans">
+            Compliance & Consent
+          </label>
+          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11.5px] text-[#94a3c8]">Status</span>
+              <span className={cn("text-[11px] font-bold", optedOut ? "text-red-400" : "text-emerald-400")}>
+                {optedOut ? 'Marketing Blocked' : 'Opted In'}
+              </span>
+            </div>
+            
+            {optOutDate && (
+              <div className="text-[10px] text-[#4a5a82] leading-tight">
+                Opt-out date: {new Date(optOutDate).toLocaleDateString()}
+              </div>
+            )}
+
+            <Button
+              size="sm"
+              onClick={() => handleConsentToggle(!optedOut)}
+              className={cn(
+                "w-full h-7 text-[10px] font-bold uppercase tracking-wider",
+                optedOut 
+                  ? "bg-emerald-500 hover:bg-emerald-600 text-white" 
+                  : "bg-red-500 hover:bg-red-600 text-white"
+              )}
+            >
+              {optedOut ? 'Manually Opt-In' : 'Manually Opt-Out'}
+            </Button>
+          </div>
+        </div>
+
+        {/* 5. Contact Info Details */}
+        <div className="border-t border-white/5 pt-4">
+          <label className="block text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-2 font-dm-sans">
+            Details
+          </label>
+          <div className="space-y-2.5 text-[12px]">
+            <div className="flex items-center gap-2 text-[#94a3c8]">
+              <i className="fa-solid fa-phone text-[#4a5a82] text-[10px] w-4"></i>
+              <span className="truncate">{contact.phone || 'No phone'}</span>
+            </div>
+            {contact.email && (
+              <div className="flex items-center gap-2 text-[#94a3c8]">
+                <i className="fa-solid fa-envelope text-[#4a5a82] text-[10px] w-4"></i>
+                <span className="truncate break-all">{contact.email}</span>
               </div>
             )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

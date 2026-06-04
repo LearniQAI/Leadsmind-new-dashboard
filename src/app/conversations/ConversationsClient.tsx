@@ -18,6 +18,7 @@ export default function ConversationsClient({ initialConversations }: { initialC
   const [isSending, setIsSending] = useState(false);
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showPanel, setShowPanel] = useState(false);
 
   // Fetch current user on mount
   useEffect(() => {
@@ -147,6 +148,41 @@ export default function ConversationsClient({ initialConversations }: { initialC
     };
   }, [supabase, router]);
 
+  // Notifications Subscription
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const channel = supabase
+      .channel('new-message-notify')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const msg = payload.new as any;
+          if (msg.direction === 'inbound') {
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('New message', {
+                body: msg.content || 'New inbound message received',
+                icon: '/favicon.ico'
+              });
+            } else if ('Notification' in window && Notification.permission !== 'denied') {
+              Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                  new Notification('New message', {
+                    body: msg.content || 'New inbound message received',
+                    icon: '/favicon.ico'
+                  });
+                }
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
+
   const filteredConversations = consolidatedConversations.filter(c => {
     const matchesFilter = filter === 'all' || c.availablePlatforms.some((p: any) => p.platform === filter);
     const matchesSearch = !searchQuery || 
@@ -199,10 +235,11 @@ export default function ConversationsClient({ initialConversations }: { initialC
         conversation={activeConv}
         onSendMessage={handleSend}
         isSending={isSending}
+        onTogglePanel={() => setShowPanel(p => !p)}
       />
 
       {/* 3. Contact Info Panel (240px) */}
-      {activeConv && activeConv.contacts && (
+      {activeConv && activeConv.contacts && showPanel && (
         <ContactInfoPanel contact={activeConv.contacts} conversation={activeConv} />
       )}
     </div>
