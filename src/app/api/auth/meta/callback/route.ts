@@ -129,27 +129,27 @@ export async function GET(req: Request) {
       console.log('[Meta OAuth] igId after attempt 2:', igId)
     }
 
+    // Attempt 3: Try via business instagram_accounts endpoint
     if (!igId) {
       try {
-        // Try fetching Instagram accounts via business portfolio
         const bizRes = await fetch(
-          `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
+          `https://graph.facebook.com/v18.0/me/businesses?fields=id,name,instagram_accounts{id,username}&access_token=${userToken}`
         )
         const bizData = await bizRes.json()
+        console.log('[Meta OAuth] businesses response:', JSON.stringify(bizData?.data?.map((b: any) => ({id: b.id, name: b.name, ig: b.instagram_accounts}))))
         for (const biz of bizData.data || []) {
-          const igBizRes = await fetch(
-            `https://graph.facebook.com/v18.0/${biz.id}/instagram_accounts?fields=id,username&access_token=${userToken}`
-          )
-          const igBizData = await igBizRes.json()
-          if (igBizData.data?.[0]) {
-            igId = igBizData.data[0].id
-            igUsername = igBizData.data[0].username
+          const igAccount = biz.instagram_accounts?.data?.[0]
+          if (igAccount) {
+            igId = igAccount.id
+            igUsername = igAccount.username
             break
           }
         }
-      } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
-      console.log('[Meta OAuth] igId after attempt 3:', igId)
+      } catch (err: any) {
+        console.error('[Meta OAuth] Instagram attempt 3 error:', err.message)
+      }
     }
+    console.log('[Meta OAuth] igId after attempt 3:', igId)
 
     if (igId) {
       if (!igUsername) {
@@ -210,23 +210,23 @@ export async function GET(req: Request) {
     if (!wabaId) {
       try {
         const bizRes = await fetch(
-          `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
+          `https://graph.facebook.com/v18.0/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name}&access_token=${userToken}`
         )
         const bizData = await bizRes.json()
+        console.log('[Meta OAuth] WA businesses response:', JSON.stringify(bizData?.data?.map((b: any) => ({id: b.id, name: b.name, waba: b.owned_whatsapp_business_accounts}))))
         for (const biz of bizData.data || []) {
-          const wabaRes = await fetch(
-            `https://graph.facebook.com/v18.0/${biz.id}/owned_whatsapp_business_accounts?fields=id,name&access_token=${userToken}`
-          )
-          const wabaData = await wabaRes.json()
-          if (wabaData.data?.[0]) {
-            wabaId = wabaData.data[0].id
-            wabaName = wabaData.data[0].name
+          const waba = biz.owned_whatsapp_business_accounts?.data?.[0]
+          if (waba) {
+            wabaId = waba.id
+            wabaName = waba.name
             break
           }
         }
-      } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
-      console.log('[Meta OAuth] wabaId after business fallback:', wabaId)
+      } catch (err: any) {
+        console.error('[Meta OAuth] WhatsApp business fallback error:', err.message)
+      }
     }
+    console.log('[Meta OAuth] wabaId after business fallback:', wabaId)
 
     if (wabaId) {
       try {
