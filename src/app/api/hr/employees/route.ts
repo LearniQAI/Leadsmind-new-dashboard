@@ -19,6 +19,55 @@ export async function GET(req: NextRequest) {
 
   const { role } = await getUserAccessInfo()
 
+  // Auto-sync workspace members into the employees table
+  try {
+    const { data: members } = await supabase
+      .from('workspace_members')
+      .select(`
+        role,
+        user_id,
+        user:users (
+          email,
+          first_name,
+          last_name,
+          avatar_url
+        )
+      `)
+      .eq('workspace_id', workspaceId)
+
+    const { data: existingEmployees } = await supabase
+      .from('employees')
+      .select('email')
+      .eq('workspace_id', workspaceId)
+
+    const employeeEmails = new Set(existingEmployees?.map(e => e.email?.toLowerCase()) ?? [])
+    const toInsert = []
+
+    for (const member of (members ?? [])) {
+      const u = member.user as any
+      const userObj = Array.isArray(u) ? u[0] : u
+      const email = userObj?.email
+      if (email && !employeeEmails.has(email.toLowerCase())) {
+        toInsert.push({
+          workspace_id: workspaceId,
+          first_name: userObj?.first_name || 'Member',
+          last_name: userObj?.last_name || '',
+          email: email,
+          role: member.role || 'Member',
+          avatar_url: userObj?.avatar_url || null,
+          status: 'active',
+          employment_type: 'full_time'
+        })
+      }
+    }
+
+    if (toInsert.length > 0) {
+      await supabase.from('employees').insert(toInsert)
+    }
+  } catch (syncError) {
+    console.error('[employees-sync-error]:', syncError)
+  }
+
   let query = supabase
     .from('employees')
     .select('*')

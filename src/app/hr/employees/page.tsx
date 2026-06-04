@@ -5,6 +5,7 @@ import { useDashboardContext } from '@/components/layouts/DashboardProvider'
 import { Plus, Edit2, Trash2, X, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { getWorkspaceMembers } from '@/app/actions/settings'
 
 interface Employee {
   id: string
@@ -27,6 +28,7 @@ export default function EmployeesPage() {
   const workspaceId = workspace?.id
 
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [members, setMembers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
@@ -59,8 +61,21 @@ export default function EmployeesPage() {
     }
   }
 
+  const fetchMembers = async () => {
+    if (!workspaceId) return
+    try {
+      const res = await getWorkspaceMembers()
+      if (res.data) {
+        setMembers(res.data)
+      }
+    } catch (err) {
+      console.error('Failed to load workspace members', err)
+    }
+  }
+
   useEffect(() => {
     fetchEmployees()
+    fetchMembers()
   }, [workspaceId])
 
   const openAddModal = () => {
@@ -279,6 +294,36 @@ export default function EmployeesPage() {
               </div>
 
               <form onSubmit={handleSave} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto common-scrollbar">
+                {!editingEmployee && members.length > 0 && (
+                  <div>
+                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">
+                      Autofill from Workspace Member
+                    </label>
+                    <select
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val) {
+                          const m = members.find(x => x.id === val)
+                          if (m && m.user) {
+                            setFirstName(m.user.first_name || '')
+                            setLastName(m.user.last_name || '')
+                            setEmail(m.user.email || '')
+                            setRole(m.role || '')
+                          }
+                        }
+                      }}
+                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500 mb-2"
+                      defaultValue=""
+                    >
+                      <option value="">-- Select Member --</option>
+                      {members.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.user?.first_name} {m.user?.last_name} ({m.user?.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">First Name</label>
