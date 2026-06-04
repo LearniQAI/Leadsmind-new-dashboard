@@ -326,8 +326,16 @@ export async function GET(req: Request) {
     }
 
     // STEP 5 - Redirect to success:
+    const redirectParams = new URLSearchParams({
+      meta_oauth: '1',
+      platform,
+      success: 'true',
+    })
+    if (!igId) redirectParams.set('needs_instagram', 'true')
+    if (!wabaId) redirectParams.set('needs_whatsapp', 'true')
+
     return NextResponse.redirect(
-      `${REDIRECT_BASE}/settings/integrations?meta_oauth=1&platform=${platform}&success=true`
+      `${REDIRECT_BASE}/settings/integrations?${redirectParams.toString()}`
     )
 
   } catch (err: any) {

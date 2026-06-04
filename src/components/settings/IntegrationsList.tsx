@@ -29,19 +29,22 @@ export function IntegrationsList() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(window.location.search)
       if (params.get('meta_oauth') === '1') {
-        const plat = params.get('platform') as 'facebook' | 'instagram' | 'whatsapp' | null;
-        setActivePlatform(plat);
-        setIsOpen(true);
-        // Clear the URL params
-        window.history.replaceState({}, '', window.location.pathname);
-        // Force refetch connections
-        const fetchConnections = fetchPlatforms;
-        fetchConnections();
+        const needsInstagram = params.get('needs_instagram') === 'true'
+        const needsWhatsapp = params.get('needs_whatsapp') === 'true'
+        window.history.replaceState({}, '', window.location.pathname)
+        fetchPlatforms()
+        if (needsInstagram) {
+          setActivePlatform('instagram')
+          setIsOpen(true)
+        } else if (needsWhatsapp) {
+          setActivePlatform('whatsapp')
+          setIsOpen(true)
+        }
       }
     }
-  }, []);
+  }, [])
 
   const handleConnect = async (platform: 'facebook' | 'instagram' | 'whatsapp') => {
     try {
