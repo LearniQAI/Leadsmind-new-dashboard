@@ -155,19 +155,34 @@ export async function GET(req: Request) {
 
     if (!igId) {
       try {
-        // Attempt 4: fetch page with pages_read_engagement scope
+        // Attempt 4: fetch page with pages_read_engagement scope using userToken
+        const pageDetailRes = await fetch(
+          `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account{id,username}&access_token=${userToken}`
+        )
+        const pageDetail = await pageDetailRes.json()
+        console.log('[Meta OAuth] Page detail with IG (userToken):', JSON.stringify(pageDetail))
+        igId = pageDetail?.instagram_business_account?.id
+        igUsername = pageDetail?.instagram_business_account?.username
+      } catch (err: any) {
+        console.error('[Meta OAuth] Instagram attempt 4 userToken error:', err.message)
+      }
+    }
+
+    if (!igId) {
+      try {
+        // Attempt 5: fetch page with pages_read_engagement scope using page.access_token as fallback
         const pageDetailRes = await fetch(
           `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account{id,username}&access_token=${page.access_token}`
         )
         const pageDetail = await pageDetailRes.json()
-        console.log('[Meta OAuth] Page detail with IG:', JSON.stringify(pageDetail))
+        console.log('[Meta OAuth] Page detail with IG (pageToken):', JSON.stringify(pageDetail))
         igId = pageDetail?.instagram_business_account?.id
         igUsername = pageDetail?.instagram_business_account?.username
       } catch (err: any) {
-        console.error('[Meta OAuth] Instagram attempt 4 error:', err.message)
+        console.error('[Meta OAuth] Instagram attempt 5 pageToken error:', err.message)
       }
     }
-    console.log('[Meta OAuth] igId after attempt 4:', igId)
+    console.log('[Meta OAuth] igId after attempt 4/5:', igId)
 
     if (igId) {
       if (!igUsername) {
@@ -208,16 +223,31 @@ export async function GET(req: Request) {
 
     if (!wabaId) {
       try {
-        // Attempt: fetch WhatsApp directly from page
+        // Attempt: fetch WhatsApp directly from page using userToken
+        const waPageRes = await fetch(
+          `https://graph.facebook.com/v18.0/${page.id}?fields=whatsapp_business_account{id,name,phone_numbers{id,display_phone_number}}&access_token=${userToken}`
+        )
+        const waPageData = await waPageRes.json()
+        console.log('[Meta OAuth] WA from page direct (userToken):', JSON.stringify(waPageData))
+        wabaId = waPageData?.whatsapp_business_account?.id
+        wabaName = waPageData?.whatsapp_business_account?.name
+      } catch (err: any) {
+        console.error('[Meta OAuth] WhatsApp page direct userToken error:', err.message)
+      }
+    }
+
+    if (!wabaId) {
+      try {
+        // Attempt: fetch WhatsApp directly from page using page.access_token as fallback
         const waPageRes = await fetch(
           `https://graph.facebook.com/v18.0/${page.id}?fields=whatsapp_business_account{id,name,phone_numbers{id,display_phone_number}}&access_token=${page.access_token}`
         )
         const waPageData = await waPageRes.json()
-        console.log('[Meta OAuth] WA from page direct:', JSON.stringify(waPageData))
+        console.log('[Meta OAuth] WA from page direct (pageToken):', JSON.stringify(waPageData))
         wabaId = waPageData?.whatsapp_business_account?.id
         wabaName = waPageData?.whatsapp_business_account?.name
       } catch (err: any) {
-        console.error('[Meta OAuth] WhatsApp page direct error:', err.message)
+        console.error('[Meta OAuth] WhatsApp page direct pageToken error:', err.message)
       }
     }
     console.log('[Meta OAuth] wabaId after page direct:', wabaId)
