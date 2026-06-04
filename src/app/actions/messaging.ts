@@ -19,7 +19,7 @@ export async function getMetaAuthUrl(targetPlatform?: string) {
 		return `${metaRedirectUri}?code=mock_code&state=${stateStr}`;
 	}
 
-	const scope = 'pages_messaging,pages_manage_metadata,instagram_manage_messages,whatsapp_business_management,whatsapp_business_messaging';
+	const scope = 'pages_messaging,pages_manage_metadata,pages_read_engagement,instagram_manage_messages,instagram_basic,whatsapp_business_management,whatsapp_business_messaging,business_management';
 	return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${stateStr}`;
 }
 
