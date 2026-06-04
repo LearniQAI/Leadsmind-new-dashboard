@@ -8,7 +8,6 @@ export const META_CONFIG = {
     'pages_manage_metadata',
     'pages_read_engagement',
     'instagram_manage_messages',
-    'instagram_basic',
     'whatsapp_business_messaging',
     'whatsapp_business_management',
     'business_management',
