@@ -87,6 +87,10 @@ export async function GET(req: Request) {
 
     if (!page) throw new Error('No Facebook Page found.')
 
+    console.log('[Meta OAuth] Page found:', page?.id, page?.name)
+    console.log('[Meta OAuth] instagram_business_account from page:', JSON.stringify(page?.instagram_business_account))
+    console.log('[Meta OAuth] whatsapp_business_account from page:', JSON.stringify(page?.whatsapp_business_account))
+
     // STEP 2 - Always save Facebook:
     await supabase.from('platform_connections').upsert({
       workspace_id: workspaceId,
@@ -103,11 +107,16 @@ export async function GET(req: Request) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'workspace_id,platform' })
 
+    console.log('[Meta OAuth] Facebook saved successfully')
+
     // STEP 3 - Try to save Instagram (non-fatal if fails):
     console.log('[Meta OAuth] Attempting Instagram/WhatsApp discovery, userToken present:', !!userToken)
     const igIdDirect = page?.instagram_business_account?.id
+    console.log('[Meta OAuth] Starting Instagram discovery, igIdDirect:', igIdDirect)
     let igId = igIdDirect
     let igUsername = null
+
+    console.log('[Meta OAuth] igId after attempt 1:', igId)
 
     if (!igId) {
       try {
@@ -117,6 +126,7 @@ export async function GET(req: Request) {
         const igData = await igRes.json()
         igId = igData?.instagram_business_account?.id
       } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
+      console.log('[Meta OAuth] igId after attempt 2:', igId)
     }
 
     if (!igId) {
@@ -138,6 +148,7 @@ export async function GET(req: Request) {
           }
         }
       } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
+      console.log('[Meta OAuth] igId after attempt 3:', igId)
     }
 
     if (igId) {
@@ -151,6 +162,7 @@ export async function GET(req: Request) {
         } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
       }
 
+      console.log('[Meta OAuth] Saving Instagram, igId:', igId, 'username:', igUsername)
       await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
         platform: 'instagram',
@@ -167,11 +179,14 @@ export async function GET(req: Request) {
         last_sync_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'workspace_id,platform' })
+      console.log('[Meta OAuth] Instagram saved successfully')
     }
 
     // STEP 4 - Try to save WhatsApp (non-fatal if fails):
+    console.log('[Meta OAuth] Starting WhatsApp discovery')
     let wabaId = page?.whatsapp_business_account?.id
     let wabaName = page?.whatsapp_business_account?.name
+    console.log('[Meta OAuth] wabaId from page:', wabaId)
 
     if (!wabaId) {
       try {
@@ -189,6 +204,7 @@ export async function GET(req: Request) {
           wabaName = wabaData.data?.[0]?.name
         }
       } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
+      console.log('[Meta OAuth] wabaId after business fallback:', wabaId)
     }
 
     if (!wabaId) {
@@ -209,6 +225,7 @@ export async function GET(req: Request) {
           }
         }
       } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
+      console.log('[Meta OAuth] wabaId after business fallback:', wabaId)
     }
 
     if (wabaId) {
@@ -220,6 +237,7 @@ export async function GET(req: Request) {
         const phone = phoneData.data?.[0]
 
         if (phone) {
+          console.log('[Meta OAuth] Saving WhatsApp, wabaId:', wabaId, 'phone:', phone?.id)
           await supabase.from('platform_connections').upsert({
             workspace_id: workspaceId,
             platform: 'whatsapp',
@@ -235,6 +253,7 @@ export async function GET(req: Request) {
             last_sync_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }, { onConflict: 'workspace_id,platform' })
+          console.log('[Meta OAuth] WhatsApp saved successfully')
         }
       } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
     }
