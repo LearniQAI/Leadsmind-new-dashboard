@@ -100,8 +100,8 @@ const DashBoardSidebar = () => {
             const filteredItems = category.items.filter(item => {
               if (role === 'admin' || role === 'owner') return true;
               
-              // Special case: HR & Payroll is allowed for hr and payroll roles
-              if (item.link === '/hr' && (role === 'hr' || role === 'payroll')) {
+              // Special case: HR & Payroll is allowed for all workspace members
+              if (item.link === '/hr') {
                 return true;
               }
 
@@ -162,10 +162,10 @@ const DashBoardSidebar = () => {
                               .filter(sub => {
                                 if (role === 'admin' || role === 'owner') return true;
                                 if (sub.link === '/hr/employees') {
-                                  return role === 'hr';
+                                  return role === 'admin' || role === 'owner' || role === 'hr';
                                 }
                                 if (sub.link === '/hr/payroll') {
-                                  return role === 'hr' || role === 'payroll';
+                                  return role === 'admin' || role === 'owner' || role === 'hr' || role === 'payroll';
                                 }
                                 return true;
                               })

@@ -39,12 +39,13 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
     // Explicit role-based checks for HR and Payroll sections
     if (pathName.startsWith('/hr')) {
       if (pathName.startsWith('/hr/employees')) {
-        return role === 'hr';
+        return role === 'admin' || role === 'owner' || role === 'hr';
       }
       if (pathName.startsWith('/hr/payroll')) {
-        return role === 'hr' || role === 'payroll';
+        return role === 'admin' || role === 'owner' || role === 'hr' || role === 'payroll';
       }
-      if (role === 'hr' || role === 'payroll') return true;
+      // Allow any workspace member to access basic HR pages (Leave, Time Tracking)
+      return true;
     }
 
     const routeMap: Record<string, string> = {
