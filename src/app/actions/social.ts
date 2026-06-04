@@ -94,7 +94,7 @@ export async function getMetaAuthUrl() {
  const workspaceId = await getCurrentWorkspaceId();
  const appId = process.env.META_APP_ID;
  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/facebook`;
- return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=pages_manage_posts,instagram_basic,instagram_content_publish&state=${workspaceId}`;
+ return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=pages_manage_posts,instagram_content_publish&state=${workspaceId}`;
 }
 
 export async function getLinkedInAuthUrl() {
