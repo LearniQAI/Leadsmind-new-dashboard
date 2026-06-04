@@ -129,19 +129,21 @@ export async function GET(req: Request) {
       console.log('[Meta OAuth] igId after attempt 2:', igId)
     }
 
-    // Attempt 3: Try via business instagram_accounts endpoint
     if (!igId) {
       try {
         const bizRes = await fetch(
-          `https://graph.facebook.com/v18.0/me/businesses?fields=id,name,instagram_accounts{id,username}&access_token=${userToken}`
+          `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
         )
         const bizData = await bizRes.json()
-        console.log('[Meta OAuth] businesses response:', JSON.stringify(bizData?.data?.map((b: any) => ({id: b.id, name: b.name, ig: b.instagram_accounts}))))
         for (const biz of bizData.data || []) {
-          const igAccount = biz.instagram_accounts?.data?.[0]
-          if (igAccount) {
-            igId = igAccount.id
-            igUsername = igAccount.username
+          const igRes = await fetch(
+            `https://graph.facebook.com/v18.0/${biz.id}/instagram_accounts?fields=id,username&access_token=${userToken}`
+          )
+          const igData = await igRes.json()
+          console.log('[Meta OAuth] IG accounts for biz', biz.id, ':', JSON.stringify(igData))
+          if (igData.data?.[0]) {
+            igId = igData.data[0].id
+            igUsername = igData.data[0].username
             break
           }
         }
@@ -210,15 +212,18 @@ export async function GET(req: Request) {
     if (!wabaId) {
       try {
         const bizRes = await fetch(
-          `https://graph.facebook.com/v18.0/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name}&access_token=${userToken}`
+          `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
         )
         const bizData = await bizRes.json()
-        console.log('[Meta OAuth] WA businesses response:', JSON.stringify(bizData?.data?.map((b: any) => ({id: b.id, name: b.name, waba: b.owned_whatsapp_business_accounts}))))
         for (const biz of bizData.data || []) {
-          const waba = biz.owned_whatsapp_business_accounts?.data?.[0]
-          if (waba) {
-            wabaId = waba.id
-            wabaName = waba.name
+          const wabaRes = await fetch(
+            `https://graph.facebook.com/v18.0/${biz.id}/owned_whatsapp_business_accounts?access_token=${userToken}`
+          )
+          const wabaData = await wabaRes.json()
+          console.log('[Meta OAuth] WABA for biz', biz.id, ':', JSON.stringify(wabaData))
+          if (wabaData.data?.[0]) {
+            wabaId = wabaData.data[0].id
+            wabaName = wabaData.data[0].name
             break
           }
         }
