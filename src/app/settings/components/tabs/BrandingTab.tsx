@@ -1,6 +1,7 @@
 "use client";
 import React from 'react';
 import { Plus, Monitor } from 'lucide-react';
+import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 
 interface BrandingTabProps {
   branding: any;
@@ -21,6 +22,9 @@ export default function BrandingTab({
   onSaveBranding,
   fileInputRef
 }: BrandingTabProps) {
+  const { role } = useDashboardContext() as any;
+  const isAdmin = role === 'admin' || role === 'owner';
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="grid md:grid-cols-2 gap-8">
@@ -29,15 +33,21 @@ export default function BrandingTab({
             <label className="text-[11px] font-black uppercase tracking-[0.2em] text-t3">Platform Logo</label>
             <input type="file" ref={fileInputRef} onChange={onLogoUpload} className="hidden" accept="image/*" />
             <div
-              onClick={() => fileInputRef.current?.click()}
-              className="h-40 border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center gap-3 bg-white/[0.01] hover:border-accent/30 hover:bg-accent/5 transition-all group cursor-pointer overflow-hidden relative"
+              onClick={() => isAdmin && fileInputRef.current?.click()}
+              className={`h-40 border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center gap-3 bg-white/[0.01] overflow-hidden relative ${
+                isAdmin 
+                ? "hover:border-accent/30 hover:bg-accent/5 cursor-pointer group" 
+                : "opacity-60 cursor-not-allowed"
+              }`}
             >
               {branding?.logo_url ? (
                 <div className="w-full h-full bg-white/5 flex items-center justify-center p-6">
                   <img src={branding.logo_url} alt="Logo" className="max-h-20 object-contain drop-shadow-lg" />
-                  <div className="absolute inset-0 bg-n900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity backdrop-blur-sm">
-                    <span className="text-[11px] font-black text-white uppercase tracking-widest">Change Logo</span>
-                  </div>
+                  {isAdmin && (
+                    <div className="absolute inset-0 bg-n900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity backdrop-blur-sm">
+                      <span className="text-[11px] font-black text-white uppercase tracking-widest">Change Logo</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
@@ -54,30 +64,34 @@ export default function BrandingTab({
             <label className="text-[11px] font-black uppercase tracking-[0.2em] text-t3">Identity Color</label>
             <div className="flex items-center gap-3">
               <div
-                className="w-12 h-12 rounded-xl border border-white/10 cursor-pointer hover:scale-105 transition-transform relative overflow-hidden"
+                className={`w-12 h-12 rounded-xl border border-white/10 relative overflow-hidden ${isAdmin ? "cursor-pointer hover:scale-105 transition-transform" : "opacity-60"}`}
                 style={{ backgroundColor: primaryColor }}
               >
                 <input
                   type="color"
+                  disabled={!isAdmin}
                   value={primaryColor.startsWith('#') ? primaryColor.substring(0, 7) : '#2563eb'}
                   onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 />
               </div>
               <input
                 type="text"
+                disabled={!isAdmin}
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
-                className="flex-1 bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-mono text-xs uppercase outline-none focus:border-accent/50"
+                className="flex-1 bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-mono text-xs uppercase outline-none focus:border-accent/50 disabled:opacity-60"
               />
             </div>
-            <button
-              onClick={onSaveBranding}
-              disabled={isSaving}
-              className="w-full bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[11px] h-11 rounded-xl mt-2 transition-all shadow-lg shadow-accent/20"
-            >
-              {isSaving ? 'Updating...' : 'Save Branding'}
-            </button>
+            {isAdmin && (
+              <button
+                onClick={onSaveBranding}
+                disabled={isSaving}
+                className="w-full bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[11px] h-11 rounded-xl mt-2 transition-all shadow-lg shadow-accent/20"
+              >
+                {isSaving ? 'Updating...' : 'Save Branding'}
+              </button>
+            )}
           </div>
         </div>
 

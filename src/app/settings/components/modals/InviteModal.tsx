@@ -146,6 +146,8 @@ export default function InviteModal({
                   <option value="member">Member (Restricted Access)</option>
                   <option value="admin">Admin (Full System Access)</option>
                   <option value="viewer">Viewer (Read-Only Access)</option>
+                  <option value="hr">HR (Human Resources Manager)</option>
+                  <option value="payroll">Payroll (Finance & Payroll Clerk)</option>
                 </select>
               </div>
             </div>

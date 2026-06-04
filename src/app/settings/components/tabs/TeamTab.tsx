@@ -1,6 +1,7 @@
 "use client";
 import React from 'react';
 import { Plus, Edit, Trash2, X } from 'lucide-react';
+import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 
 interface TeamTabProps {
   members: any[];
@@ -19,6 +20,9 @@ export default function TeamTab({
   onDeleteMember,
   onDeleteInvitation
 }: TeamTabProps) {
+  const { role } = useDashboardContext() as any;
+  const isAdmin = role === 'admin' || role === 'owner';
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="flex items-center justify-between mb-2">
@@ -26,12 +30,14 @@ export default function TeamTab({
           <h4 className="text-[15px] font-space font-bold text-t1 uppercase">Active Team Nodes</h4>
           <p className="text-[11px] text-t3 font-medium uppercase tracking-widest mt-0.5">Authorized access protocols</p>
         </div>
-        <button
-          onClick={onInviteClick}
-          className="bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-lg shadow-accent/20 flex items-center gap-2 transition-all active:scale-95"
-        >
-          <Plus size={14} /> Invite Team Member
-        </button>
+        {isAdmin && (
+          <button
+            onClick={onInviteClick}
+            className="bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-lg shadow-accent/20 flex items-center gap-2 transition-all active:scale-95"
+          >
+            <Plus size={14} /> Invite Team Member
+          </button>
+        )}
       </div>
 
       <div className="bg-n800 border border-white/5 rounded-2xl overflow-hidden shadow-sm">
@@ -61,7 +67,12 @@ export default function TeamTab({
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${member.role === 'admin' ? 'bg-purple/10 text-purple border border-purple/20' : 'bg-white/5 text-t3 border border-white/10'
+                  <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${
+                    member.role === 'admin' ? 'bg-purple/10 text-purple border border-purple/20' : 
+                    member.role === 'hr' ? 'bg-blue/10 text-blue border border-blue/20' : 
+                    member.role === 'payroll' ? 'bg-green/10 text-green border border-green/20' : 
+                    member.role === 'viewer' ? 'bg-amber/10 text-amber border border-amber/20' : 
+                    'bg-white/5 text-t3 border border-white/10'
                     }`}>
                     {member.role || 'Member'}
                   </span>
@@ -73,20 +84,22 @@ export default function TeamTab({
                   </div>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button 
-                      onClick={() => onEditMember(member)}
-                      className="p-2 text-t4 hover:text-accent transition-colors group-hover:bg-white/5 rounded-lg"
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button 
-                      onClick={() => onDeleteMember(member)}
-                      className="p-2 text-t4 hover:text-red transition-colors group-hover:bg-white/5 rounded-lg"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => onEditMember(member)}
+                        className="p-2 text-t4 hover:text-accent transition-colors group-hover:bg-white/5 rounded-lg"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        onClick={() => onDeleteMember(member)}
+                        className="p-2 text-t4 hover:text-red transition-colors group-hover:bg-white/5 rounded-lg"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -106,7 +119,13 @@ export default function TeamTab({
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-white/5 text-t3 border border-white/10">
+                  <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${
+                    invite.role === 'admin' ? 'bg-purple/10 text-purple border border-purple/20' : 
+                    invite.role === 'hr' ? 'bg-blue/10 text-blue border border-blue/20' : 
+                    invite.role === 'payroll' ? 'bg-green/10 text-green border border-green/20' : 
+                    invite.role === 'viewer' ? 'bg-amber/10 text-amber border border-amber/20' : 
+                    'bg-white/5 text-t3 border border-white/10'
+                    }`}>
                     {invite.role || 'Member'}
                   </span>
                 </td>
@@ -117,12 +136,14 @@ export default function TeamTab({
                   </div>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button 
-                    onClick={() => onDeleteInvitation(invite)}
-                    className="p-2 text-t4 hover:text-red transition-colors group-hover:bg-white/5 rounded-lg"
-                  >
-                    <X size={16} />
-                  </button>
+                  {isAdmin && (
+                    <button 
+                      onClick={() => onDeleteInvitation(invite)}
+                      className="p-2 text-t4 hover:text-red transition-colors group-hover:bg-white/5 rounded-lg"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -64,7 +64,7 @@ export default function EditMemberModal({
           <div className="space-y-4">
             <label className="text-[11px] font-black uppercase tracking-widest text-t3">System Role</label>
             <div className="grid grid-cols-2 gap-4">
-              {['member', 'admin'].map((r) => (
+              {['member', 'admin', 'hr', 'payroll', 'viewer'].map((r) => (
                 <button
                   key={r}
                   onClick={() => {
@@ -78,7 +78,13 @@ export default function EditMemberModal({
                   }`}
                 >
                   <p className="text-[12px] font-black uppercase tracking-widest">{r}</p>
-                  <p className="text-[10px] opacity-60 mt-1">{r === 'admin' ? 'Universal Node Control' : 'Segmented Module Access'}</p>
+                  <p className="text-[10px] opacity-60 mt-1">
+                    {r === 'admin' ? 'Universal Node Control' : 
+                     r === 'hr' ? 'HR Management Access' : 
+                     r === 'payroll' ? 'Payroll Processing Access' : 
+                     r === 'viewer' ? 'Read-Only Access' : 
+                     'Segmented Module Access'}
+                  </p>
                   {role === r && <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(37,99,235,1)]" />}
                 </button>
               ))}

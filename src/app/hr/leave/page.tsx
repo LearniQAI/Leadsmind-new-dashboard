@@ -33,8 +33,9 @@ interface Employee {
 }
 
 export default function LeavePage() {
-  const { workspace } = useDashboardContext() as any
+  const { workspace, role } = useDashboardContext() as any
   const workspaceId = workspace?.id
+  const isLeaveApprover = role === 'admin' || role === 'owner' || role === 'hr'
 
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -53,6 +54,12 @@ export default function LeavePage() {
   // Rejection State
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+
+  useEffect(() => {
+    if (employees.length > 0 && !employeeId) {
+      setEmployeeId(employees[0].id)
+    }
+  }, [employees, employeeId])
 
   const fetchLeaveData = async () => {
     if (!workspaceId) return
@@ -345,7 +352,7 @@ export default function LeavePage() {
                 </div>
 
                 <div className="flex items-center gap-2 sm:self-center self-end border-t sm:border-t-0 pt-2 sm:pt-0 border-white/5 w-full sm:w-auto justify-end">
-                  {req.status === 'pending' && (
+                  {isLeaveApprover && req.status === 'pending' && (
                     <>
                       <button
                         onClick={() => handleUpdateStatus(req.id, 'approved')}
@@ -389,7 +396,7 @@ export default function LeavePage() {
                       )}
                     </>
                   )}
-                  {req.status !== 'pending' && (
+                  {isLeaveApprover && req.status !== 'pending' && (
                     <button
                       onClick={() => handleDelete(req.id)}
                       className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/5 text-[#4a5a82] hover:text-[#ef4444] hover:bg-red-500/10 hover:border-red-500/20 text-[10.5px] font-semibold transition-colors"
@@ -424,11 +431,12 @@ export default function LeavePage() {
                   ) : (
                     <select
                       required
+                      disabled={!isLeaveApprover}
                       value={employeeId}
                       onChange={e => setEmployeeId(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
+                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <option value="">-- Choose Employee --</option>
+                      {isLeaveApprover && <option value="">-- Choose Employee --</option>}
                       {employees.map(emp => (
                         <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
                       ))}

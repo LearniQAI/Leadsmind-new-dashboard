@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, Copy, Check, ShieldAlert, Plus, Webhook, Activity, Trash2, Code2, Globe, PlayCircle, CheckCircle2, Terminal } from 'lucide-react';
 import { toast } from 'sonner';
 import { sendDemoLead } from '@/app/actions/demo_actions';
+import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 
 interface ApiTabProps {
   apiKey: string | null;
@@ -25,6 +26,8 @@ export default function ApiTab({
   onNewWebhook,
   onDeleteWebhook
 }: ApiTabProps) {
+  const { role } = useDashboardContext() as any;
+  const isAdmin = role === 'admin' || role === 'owner';
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const webhookUrl = `${origin}/api/webhooks/incoming?workspace_id=${workspaceId}`;
   const [sendingDemo, setSendingDemo] = useState(false);
@@ -57,12 +60,14 @@ export default function ApiTab({
             <ShieldCheck className="text-accent w-5 h-5" />
             <h4 className="text-[15px] font-space font-bold text-t1 uppercase">Master API Secret</h4>
           </div>
-          <button
-            onClick={onRegenerateKey}
-            className="text-[10px] font-black text-accent hover:text-accent2 uppercase tracking-[0.2em] transition-colors"
-          >
-            Regenerate Key
-          </button>
+          {isAdmin && (
+            <button
+              onClick={onRegenerateKey}
+              className="text-[10px] font-black text-accent hover:text-accent2 uppercase tracking-[0.2em] transition-colors"
+            >
+              Regenerate Key
+            </button>
+          )}
         </div>
         <div className="flex gap-2">
           <div className="flex-1 flex items-center gap-2 bg-n900 border border-white/5 rounded-xl px-4 py-3">
@@ -165,7 +170,7 @@ export default function ApiTab({
           <p className="text-[12px] text-t3">Send a simulated lead through your API pipeline to verify everything is connected correctly.</p>
         </div>
         <button
-          disabled={sendingDemo || !apiKey}
+          disabled={sendingDemo || !apiKey || !isAdmin}
           onClick={handleSendDemo}
           className="px-8 py-3.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-n900 font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-emerald-500/20 whitespace-nowrap transition-all"
         >
@@ -176,12 +181,14 @@ export default function ApiTab({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h4 className="text-[13px] font-black text-t1 uppercase tracking-widest">Active Webhooks</h4>
-          <button
-            onClick={onNewWebhook}
-            className="flex items-center gap-2 text-accent text-[11px] font-black uppercase tracking-widest hover:text-accent2 transition-all"
-          >
-            <Plus size={14} /> New Endpoint
-          </button>
+          {isAdmin && (
+            <button
+              onClick={onNewWebhook}
+              className="flex items-center gap-2 text-accent text-[11px] font-black uppercase tracking-widest hover:text-accent2 transition-all"
+            >
+              <Plus size={14} /> New Endpoint
+            </button>
+          )}
         </div>
         <div className="border border-white/5 rounded-2xl overflow-hidden divide-y divide-white/5 bg-n800 shadow-sm">
           {webhooks.length === 0 ? (
@@ -205,12 +212,14 @@ export default function ApiTab({
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => onDeleteWebhook(hook.id)}
-                  className="w-9 h-9 flex items-center justify-center text-t4 hover:text-red transition-all rounded-lg hover:bg-red/10"
-                >
-                  <Trash2 size={16} />
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => onDeleteWebhook(hook.id)}
+                    className="w-9 h-9 flex items-center justify-center text-t4 hover:text-red transition-all rounded-lg hover:bg-red/10"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             ))
           )}

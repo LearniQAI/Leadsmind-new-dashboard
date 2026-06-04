@@ -1,6 +1,7 @@
 "use client";
 import React from 'react';
 import { Globe, Copy, Check } from 'lucide-react';
+import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 
 interface WorkspaceTabProps {
   branding: any;
@@ -18,6 +19,8 @@ export default function WorkspaceTab({
   copiedId 
 }: WorkspaceTabProps) {
   const [name, setName] = React.useState(branding?.platform_name || 'LeadsMind Workspace');
+  const { role } = useDashboardContext() as any;
+  const isAdmin = role === 'admin' || role === 'owner';
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -39,9 +42,10 @@ export default function WorkspaceTab({
               <label className="text-[11px] font-black uppercase tracking-widest text-t3">Workspace Name</label>
               <input
                 type="text"
+                disabled={!isAdmin}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-accent/50 transition-all outline-none text-sm"
+                className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-accent/50 transition-all outline-none text-sm disabled:opacity-60"
               />
             </div>
             <div className="space-y-2">
@@ -60,30 +64,34 @@ export default function WorkspaceTab({
             </div>
           </div>
 
-          <div className="pt-4 flex justify-end">
-            <button
-              onClick={() => onSave(name)}
-              disabled={isSaving}
-              className="bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-accent/20 transition-all disabled:opacity-50"
-            >
-              {isSaving ? 'Processing...' : 'Save Configuration'}
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="pt-4 flex justify-end">
+              <button
+                onClick={() => onSave(name)}
+                disabled={isSaving}
+                className="bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-accent/20 transition-all disabled:opacity-50"
+              >
+                {isSaving ? 'Processing...' : 'Save Configuration'}
+              </button>
+            </div>
+          )}
         </div>
 
-        <div className="bg-n800 border border-white/5 rounded-2xl p-8">
-          <div className="flex items-start justify-between gap-6">
-            <div className="space-y-1">
-              <h4 className="text-[14px] font-bold text-t1 uppercase font-space">Workspace Deletion</h4>
-              <p className="text-[12px] text-t3 leading-relaxed">
-                Permanently remove this workspace and all its data. This action is irreversible.
-              </p>
+        {isAdmin && (
+          <div className="bg-n800 border border-white/5 rounded-2xl p-8">
+            <div className="flex items-start justify-between gap-6">
+              <div className="space-y-1">
+                <h4 className="text-[14px] font-bold text-t1 uppercase font-space">Workspace Deletion</h4>
+                <p className="text-[12px] text-t3 leading-relaxed">
+                  Permanently remove this workspace and all its data. This action is irreversible.
+                </p>
+              </div>
+              <button className="flex-shrink-0 px-4 py-2.5 bg-red/10 text-red hover:bg-red/20 border border-red/20 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all">
+                Terminate Node
+              </button>
             </div>
-            <button className="flex-shrink-0 px-4 py-2.5 bg-red/10 text-red hover:bg-red/20 border border-red/20 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all">
-              Terminate Node
-            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

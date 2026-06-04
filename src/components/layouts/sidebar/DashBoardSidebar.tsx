@@ -98,7 +98,13 @@ const DashBoardSidebar = () => {
           {sidebarData.map((category) => {
             // Filter items in category based on permissions
             const filteredItems = category.items.filter(item => {
-              if (role === 'admin') return true;
+              if (role === 'admin' || role === 'owner') return true;
+              
+              // Special case: HR & Payroll is allowed for hr and payroll roles
+              if (item.link === '/hr' && (role === 'hr' || role === 'payroll')) {
+                return true;
+              }
+
               // Use the permission key from sidebarData
               const requiredPermission = item.permission;
               if (!requiredPermission) return true; // Items without explicit permission are public or basic
@@ -152,16 +158,27 @@ const DashBoardSidebar = () => {
 
                         {item.subItems && (!isCollapse || sideMenuOpen) && linkId === item.id && (
                           <div className="mt-1 ml-4 border-l border-white/5 space-y-1 animate-in slide-in-from-top-2 duration-200">
-                            {item.subItems.map((sub, idx) => (
-                              <Link
-                                key={idx}
-                                href={sub.link || "/"}
-                                className={`text-[12px] py-1.5 pl-6 pr-4 flex items-center transition-all rounded-r-lg ${pathName === sub.link ? "text-t1 font-bold bg-white/[0.02]" : "text-t3 hover:text-t1 hover:bg-white/[0.01]"
-                                  }`}
-                              >
-                                {sub.label}
-                              </Link>
-                            ))}
+                            {item.subItems
+                              .filter(sub => {
+                                if (role === 'admin' || role === 'owner') return true;
+                                if (sub.link === '/hr/employees') {
+                                  return role === 'hr';
+                                }
+                                if (sub.link === '/hr/payroll') {
+                                  return role === 'hr' || role === 'payroll';
+                                }
+                                return true;
+                              })
+                              .map((sub, idx) => (
+                                <Link
+                                  key={idx}
+                                  href={sub.link || "/"}
+                                  className={`text-[12px] py-1.5 pl-6 pr-4 flex items-center transition-all rounded-r-lg ${pathName === sub.link ? "text-t1 font-bold bg-white/[0.02]" : "text-t3 hover:text-t1 hover:bg-white/[0.01]"
+                                    }`}
+                                >
+                                  {sub.label}
+                                </Link>
+                              ))}
                           </div>
                         )}
                       </div>

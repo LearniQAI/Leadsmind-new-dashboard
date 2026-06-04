@@ -101,8 +101,10 @@ export default function SettingsClient({
     { id: 'proposals', label: 'Proposals', icon: FileSignature },
     { id: 'invoices', label: 'Invoices', icon: CreditCard },
     { id: 'marketing', label: 'Marketing', icon: Target },
+    { id: 'commerce', label: 'Commerce & Ops', icon: CreditCard },
+    { id: 'business', label: 'Business Ops', icon: Globe },
+    { id: 'learning', label: 'Learning & Courses', icon: Brain },
     { id: 'automation', label: 'Automations', icon: Zap },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 

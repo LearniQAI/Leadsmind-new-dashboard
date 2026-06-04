@@ -32,8 +32,12 @@ function StatCard({ title, value, icon: Icon, color }: StatCardProps) {
 }
 
 export default function HRPage() {
-  const { workspace } = useDashboardContext() as any
+  const { workspace, role } = useDashboardContext() as any
   const workspaceId = workspace?.id
+
+  const isLeaveApprover = role === 'admin' || role === 'owner' || role === 'hr'
+  const canManageTeam = role === 'admin' || role === 'owner' || role === 'hr'
+  const canRunPayroll = role === 'admin' || role === 'owner' || role === 'hr' || role === 'payroll'
 
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
@@ -141,12 +145,16 @@ export default function HRPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/hr/employees" className="h-9 px-4 rounded-[8px] bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all">
-              Manage Team
-            </Link>
-            <Link href="/hr/payroll" className="h-9 px-4 rounded-[8px] bg-[#10b981] text-white hover:opacity-90 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all shadow-lg shadow-[#10b981]/10">
-              Run Payroll
-            </Link>
+            {canManageTeam && (
+              <Link href="/hr/employees" className="h-9 px-4 rounded-[8px] bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all">
+                Manage Team
+              </Link>
+            )}
+            {canRunPayroll && (
+              <Link href="/hr/payroll" className="h-9 px-4 rounded-[8px] bg-[#10b981] text-white hover:opacity-90 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all shadow-lg shadow-[#10b981]/10">
+                Run Payroll
+              </Link>
+            )}
           </div>
         </div>
 
@@ -219,20 +227,28 @@ export default function HRPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleUpdateLeaveStatus(leave.id, 'approved')}
-                          className="w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/20 text-[#10b981] flex items-center justify-center hover:bg-green-500/20 transition-colors"
-                          title="Approve"
-                        >
-                          <Check size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleUpdateLeaveStatus(leave.id, 'rejected')}
-                          className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] flex items-center justify-center hover:bg-red-500/20 transition-colors"
-                          title="Reject"
-                        >
-                          <X size={14} />
-                        </button>
+                        {isLeaveApprover ? (
+                          <>
+                            <button
+                              onClick={() => handleUpdateLeaveStatus(leave.id, 'approved')}
+                              className="w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/20 text-[#10b981] flex items-center justify-center hover:bg-green-500/20 transition-colors"
+                              title="Approve"
+                            >
+                              <Check size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleUpdateLeaveStatus(leave.id, 'rejected')}
+                              className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] flex items-center justify-center hover:bg-red-500/20 transition-colors"
+                              title="Reject"
+                            >
+                              <X size={14} />
+                            </button>
+                          </>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase tracking-widest font-dm-sans">
+                            Pending
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}

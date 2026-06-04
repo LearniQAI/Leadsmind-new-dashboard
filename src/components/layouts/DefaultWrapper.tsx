@@ -31,30 +31,61 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
   setIsLoading(false);
  }, []);
 
- // Simple path to permission mapping
- const hasPermission = () => {
-   if (role === 'admin') return true;
-   if (pathName === '/dashboard' || pathName === '/' || pathName.startsWith('/auth')) return true;
-   
-   const routeMap: Record<string, string> = {
-     '/contacts': 'contacts',
-     '/pipelines': 'pipelines',
-     '/proposals': 'proposals',
-     '/invoices': 'invoices',
-     '/calendar': 'calendar',
-     '/websites': 'marketing',
-     '/funnels': 'marketing',
-     '/campaigns': 'marketing',
-     '/content-studio': 'marketing',
-     '/automations': 'automation',
-     '/settings': 'settings',
-   };
+  // Simple path to permission mapping
+  const hasPermission = () => {
+    if (role === 'admin' || role === 'owner') return true;
+    if (pathName === '/dashboard' || pathName === '/' || pathName.startsWith('/auth')) return true;
+    
+    // Explicit role-based checks for HR and Payroll sections
+    if (pathName.startsWith('/hr')) {
+      if (pathName.startsWith('/hr/employees')) {
+        return role === 'hr';
+      }
+      if (pathName.startsWith('/hr/payroll')) {
+        return role === 'hr' || role === 'payroll';
+      }
+      if (role === 'hr' || role === 'payroll') return true;
+    }
 
-   const requiredPermission = Object.entries(routeMap).find(([path]) => pathName.startsWith(path))?.[1];
-   if (!requiredPermission) return true; 
-   
-   return permissions.includes(requiredPermission);
- };
+    const routeMap: Record<string, string> = {
+      '/contacts': 'contacts',
+      '/conversations': 'contacts',
+      '/lead-finder': 'contacts',
+      '/pipelines': 'pipelines',
+      '/proposals': 'proposals',
+      '/invoices': 'invoices',
+      '/quotes': 'invoices',
+      '/calendar': 'calendar',
+      '/websites': 'marketing',
+      '/blog': 'marketing',
+      '/ai-studio': 'marketing',
+      '/funnels': 'marketing',
+      '/campaigns': 'marketing',
+      '/forms': 'marketing',
+      '/social': 'marketing',
+      '/reputation': 'marketing',
+      '/ads': 'marketing',
+      '/products': 'commerce',
+      '/orders': 'commerce',
+      '/finance': 'commerce',
+      '/hr': 'commerce',
+      '/inventory': 'commerce',
+      '/projects': 'business',
+      '/support': 'business',
+      '/articles': 'business',
+      '/community': 'business',
+      '/media': 'business',
+      '/automations': 'automation',
+      '/courses': 'learning',
+      '/settings': 'settings',
+      '/tasks': 'dashboard',
+    };
+
+    const requiredPermission = Object.entries(routeMap).find(([path]) => pathName.startsWith(path))?.[1];
+    if (!requiredPermission) return true; 
+    
+    return permissions.includes(requiredPermission);
+  };
 
  const accessGranted = hasPermission();
 

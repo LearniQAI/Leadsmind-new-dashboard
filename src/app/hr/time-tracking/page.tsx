@@ -29,8 +29,9 @@ interface Employee {
 }
 
 export default function TimeTrackingPage() {
-  const { workspace } = useDashboardContext() as any
+  const { workspace, role } = useDashboardContext() as any
   const workspaceId = workspace?.id
+  const isTimeManager = role === 'admin' || role === 'owner' || role === 'hr' || role === 'payroll'
 
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -52,6 +53,12 @@ export default function TimeTrackingPage() {
   const [hours, setHours] = useState(1)
   const [billable, setBillable] = useState(true)
   const [hourlyRate, setHourlyRate] = useState(0)
+
+  useEffect(() => {
+    if (employees.length > 0 && !employeeId) {
+      setEmployeeId(employees[0].id)
+    }
+  }, [employees, employeeId])
 
   const fetchTimeData = async () => {
     if (!workspaceId) return
@@ -214,19 +221,21 @@ export default function TimeTrackingPage() {
 
         {/* Filters */}
         <div className="bg-[rgba(12,21,53,0.85)] border border-white/5 rounded-2xl p-4 flex flex-wrap gap-4 items-center">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] text-[#4a5a82] font-bold uppercase">Employee</span>
-            <select
-              value={filterEmployee}
-              onChange={e => setFilterEmployee(e.target.value)}
-              className="bg-[#070d24] border border-white/5 rounded-xl px-3 py-1.5 text-[11.5px] text-white focus:outline-none"
-            >
-              <option value="all">All Employees</option>
-              {employees.map(emp => (
-                <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
-              ))}
-            </select>
-          </div>
+          {isTimeManager && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-[#4a5a82] font-bold uppercase">Employee</span>
+              <select
+                value={filterEmployee}
+                onChange={e => setFilterEmployee(e.target.value)}
+                className="bg-[#070d24] border border-white/5 rounded-xl px-3 py-1.5 text-[11.5px] text-white focus:outline-none"
+              >
+                <option value="all">All Employees</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1">
             <span className="text-[10px] text-[#4a5a82] font-bold uppercase">Billable Status</span>
@@ -336,11 +345,12 @@ export default function TimeTrackingPage() {
                   <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Employee</label>
                   <select
                     required
+                    disabled={!isTimeManager}
                     value={employeeId}
                     onChange={e => setEmployeeId(e.target.value)}
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none"
+                    className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <option value="">-- Select Employee --</option>
+                    {isTimeManager && <option value="">-- Select Employee --</option>}
                     {employees.map(emp => (
                       <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
                     ))}

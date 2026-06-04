@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
+import { getUserAccessInfo } from '@/lib/auth'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+const ALLOWED_PAYROLL_ROLES = ['admin', 'owner', 'hr', 'payroll'];
 
 function calculatePAYE(monthlyGross: number): number {
   const annual = monthlyGross * 12
@@ -42,6 +45,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const { role } = await getUserAccessInfo()
+    if (!role || !ALLOWED_PAYROLL_ROLES.includes(role)) {
+      return NextResponse.json({ error: 'Unauthorized: Insufficient privileges' }, { status: 403 })
+    }
+
     const { workspaceId, periodStart, periodEnd, periodLabel } = await req.json()
 
     if (!workspaceId || !periodStart || !periodEnd || !periodLabel) {
@@ -176,6 +184,11 @@ export async function PATCH(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
   try {
+    const { role } = await getUserAccessInfo()
+    if (!role || !ALLOWED_PAYROLL_ROLES.includes(role)) {
+      return NextResponse.json({ error: 'Unauthorized: Insufficient privileges' }, { status: 403 })
+    }
+
     const body = await req.json()
     const { data, error } = await supabase
       .from('payroll_runs')
@@ -195,7 +208,16 @@ export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
-  const { error } = await supabase.from('payroll_runs').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  try {
+    const { role } = await getUserAccessInfo()
+    if (!role || !ALLOWED_PAYROLL_ROLES.includes(role)) {
+      return NextResponse.json({ error: 'Unauthorized: Insufficient privileges' }, { status: 403 })
+    }
+
+    const { error } = await supabase.from('payroll_runs').delete().eq('id', id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
 }

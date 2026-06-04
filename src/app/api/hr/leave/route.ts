@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
+import { getUser, getUserAccessInfo } from '@/lib/auth'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,13 +61,35 @@ export async function GET(req: NextRequest) {
   const workspaceId = req.nextUrl.searchParams.get('workspaceId')
   if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
 
+  const user = await getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { role } = await getUserAccessInfo()
+
   const employeeId = req.nextUrl.searchParams.get('employeeId')
   let query = supabase
     .from('leave_requests')
     .select('*, employees(first_name, last_name, email, avatar_url, annual_leave_balance, annual_leave_used, sick_leave_balance, sick_leave_used)')
     .eq('workspace_id', workspaceId)
 
-  if (employeeId) query = query.eq('employee_id', employeeId)
+  // Non-HR/non-admin users can only view their own leave requests
+  if (!role || !['admin', 'owner', 'hr'].includes(role)) {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('email', user.email)
+      .maybeSingle()
+
+    if (!emp) {
+      return NextResponse.json({ leaveRequests: [] })
+    }
+    query = query.eq('employee_id', emp.id)
+  } else {
+    if (employeeId && employeeId !== 'all') {
+      query = query.eq('employee_id', employeeId)
+    }
+  }
 
   const { data, error } = await query.order('created_at', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -75,7 +98,25 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { role } = await getUserAccessInfo()
     const body = await req.json()
+
+    // Non-HR/non-admin users can only request leaves for themselves
+    if (!role || !['admin', 'owner', 'hr'].includes(role)) {
+      const { data: emp } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('workspace_id', body.workspace_id)
+        .eq('email', user.email)
+        .maybeSingle()
+
+      if (!emp || body.employee_id !== emp.id) {
+        return NextResponse.json({ error: 'Unauthorized to request leave for another employee' }, { status: 403 })
+      }
+    }
 
     // Validate employee exists and has enough leave balance
     if (body.leave_type === 'annual' || body.leave_type === 'sick') {
@@ -168,6 +209,11 @@ export async function PATCH(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
   try {
+    const { role } = await getUserAccessInfo()
+    if (!role || !['admin', 'owner', 'hr'].includes(role)) {
+      return NextResponse.json({ error: 'Unauthorized: Only admins and HR can approve or reject leaves' }, { status: 403 })
+    }
+
     const body = await req.json()
 
     // Fetch the leave request to get employee info
@@ -265,7 +311,17 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-  const { error } = await supabase.from('leave_requests').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+
+  try {
+    const { role } = await getUserAccessInfo()
+    if (!role || !['admin', 'owner', 'hr'].includes(role)) {
+      return NextResponse.json({ error: 'Unauthorized: Only admins and HR can delete leave records' }, { status: 403 })
+    }
+
+    const { error } = await supabase.from('leave_requests').delete().eq('id', id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
 }
