@@ -341,7 +341,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
           {/* MODALS */}
           {showImageModal && (
             <div className="fixed inset-0 z-[600] flex items-center justify-center bg-[#04091a]/85 backdrop-blur-sm p-4">
-              <div className="w-full max-w-md bg-[#080f28] border border-white/10 rounded-xl p-6 shadow-2xl space-y-4">
+              <div className="w-full max-w-md bg-[#080f28] border border-white/10 rounded-xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="font-space-grotesk text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                     <ImageIcon className="w-4 h-4 text-primary" /> Insert Media
@@ -399,7 +399,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
 
           {showEmbedModal && (
             <div className="fixed inset-0 z-[600] flex items-center justify-center bg-[#04091a]/85 backdrop-blur-sm p-4">
-              <div className="w-full max-w-md bg-[#080f28] border border-white/10 rounded-xl p-6 shadow-2xl space-y-4">
+              <div className="w-full max-w-md bg-[#080f28] border border-white/10 rounded-xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="font-space-grotesk text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                     <LinkIcon className="w-4 h-4 text-primary" /> Insert Responsive Embed

@@ -378,7 +378,7 @@ export default function ContentStudioHomeClient({ initialDocuments }: ContentStu
         {/* Create Document Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-[#080f28] border border-white/10 p-6 rounded-xl w-full max-w-md shadow-2xl relative animate-scale-in">
+            <div className="bg-[#080f28] border border-white/10 p-6 rounded-xl w-full max-w-md shadow-2xl relative animate-scale-in max-h-[90vh] overflow-y-auto">
               
               <button
                 onClick={() => setShowCreateModal(false)}

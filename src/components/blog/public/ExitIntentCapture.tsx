@@ -62,7 +62,7 @@ export default function ExitIntentCapture({ workspaceId }: ExitIntentProps) {
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#04091a]/80 backdrop-blur-md p-4 animate-fade-in">
-      <div className="relative w-full max-w-md bg-[#080f28] border border-white/10 rounded-2xl p-8 shadow-2xl text-center space-y-5">
+      <div className="relative w-full max-w-md bg-[#080f28] border border-white/10 rounded-2xl p-6 shadow-2xl text-center space-y-5 max-h-[90vh] overflow-y-auto">
         <button
           onClick={() => setIsOpen(false)}
           className="absolute top-4 right-4 text-white/40 hover:text-white transition"

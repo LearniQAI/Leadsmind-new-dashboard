@@ -598,7 +598,7 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
       {/* Custom React Hyperlink Modal Overlay */}
       {showLinkModal && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm select-none">
-          <div className="bg-[#0c1535] border border-white/10 p-6 rounded-2xl w-96 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-[#0c1535] border border-white/10 p-6 rounded-2xl w-96 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xs font-extrabold text-white uppercase tracking-wider mb-4 flex items-center gap-1.5"><Link2 className="w-4 h-4 text-primary" /> Attach Hyperlink</h3>
             <input
               type="text"
@@ -637,7 +637,7 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
       {/* Custom React Rich Image Modal Overlay */}
       {showImageModal && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm select-none">
-          <div className="bg-[#0c1535] border border-white/10 p-6 rounded-2xl w-[400px] shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-[#0c1535] border border-white/10 p-6 rounded-2xl w-[400px] shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xs font-extrabold text-white uppercase tracking-wider mb-4 flex items-center gap-1.5">🖼️ Insert Rich Image</h3>
             
             {/* Tab Selector */}

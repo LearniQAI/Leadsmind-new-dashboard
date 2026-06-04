@@ -34,9 +34,11 @@ export function IntegrationsList() {
         const plat = params.get('platform') as 'facebook' | 'instagram' | 'whatsapp' | null;
         setActivePlatform(plat);
         setIsOpen(true);
-        // Clean up URL parameter to avoid reopening on refresh
-        const newUrl = window.location.pathname + '?tab=integrations';
-        window.history.replaceState({}, '', newUrl);
+        // Clear the URL params
+        window.history.replaceState({}, '', window.location.pathname);
+        // Force refetch connections
+        const fetchConnections = fetchPlatforms;
+        fetchConnections();
       }
     }
   }, []);

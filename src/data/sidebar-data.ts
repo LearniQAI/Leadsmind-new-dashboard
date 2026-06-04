@@ -70,6 +70,32 @@ const sidebarData: SidebarCategory[] = [
   ],
  },
  {
+  id: 7,
+  category: "Operations",
+  items: [
+   {
+    id: 30,
+    label: "HR & Payroll",
+    icon: "fa-light fa-users-gear",
+    link: "/hr",
+    permission: "commerce",
+    subItems: [
+     { label: "Employees", link: "/hr/employees" },
+     { label: "Payroll", link: "/hr/payroll" },
+     { label: "Leave", link: "/hr/leave" },
+     { label: "Time Tracking", link: "/hr/time-tracking" },
+    ],
+   },
+   {
+    id: 31,
+    label: "Inventory",
+    icon: "fa-light fa-boxes-stacked",
+    link: "/inventory",
+    permission: "commerce",
+   },
+  ],
+ },
+ {
   id: 6,
   category: "Business",
   items: [

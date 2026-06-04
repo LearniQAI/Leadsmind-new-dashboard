@@ -35,7 +35,7 @@ export function ResumeRuntime({
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-md bg-[#0c1535]/95 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col gap-6 relative overflow-hidden animate-in zoom-in-95 duration-200"
+        className="w-full max-w-md bg-[#0c1535]/95 border border-white/10 p-6 rounded-3xl shadow-2xl flex flex-col gap-5 relative overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
         style={{ fontFamily: 'DM Sans, sans-serif' }}
       >
         {/* Subtle top decoration */}

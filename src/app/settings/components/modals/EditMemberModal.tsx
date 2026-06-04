@@ -31,8 +31,8 @@ export default function EditMemberModal({
 
   return (
     <div className="fixed inset-0 bg-n900/90 backdrop-blur-md z-[1100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className="bg-n800 border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
-        <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+      <div className="bg-n800 border border-white/10 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
+        <div className="px-6 py-5 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
               <Shield size={20} />
@@ -47,7 +47,7 @@ export default function EditMemberModal({
           </button>
         </div>
 
-        <div className="p-8 space-y-8 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
           <div className="space-y-2">
             <label className="text-[11px] font-black uppercase tracking-widest text-t3">Identity Status</label>
             <div className="p-4 bg-n900 border border-white/5 rounded-2xl flex items-center gap-4">

@@ -58,7 +58,36 @@ export async function applyRetainerToInvoice(invoiceId: string, contactId: strin
   // 5. Update Invoice (Assuming we have a field for balance_due or similar)
   // For now, we'll mark as paid if fully covered, or just log the credit
   if (appliedCredit >= invoiceTotal) {
-    await supabase.from('invoices').update({ status: 'paid' }).eq('id', invoiceId);
+    const { data: updatedInvoice } = await supabase
+      .from('invoices')
+      .update({ status: 'paid' })
+      .eq('id', invoiceId)
+      .select('*, contact:contacts(*)')
+      .single();
+
+    if (updatedInvoice) {
+      try {
+        const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+        const contactName = (updatedInvoice as any).contact
+          ? `${(updatedInvoice as any).contact.first_name || ''} ${(updatedInvoice as any).contact.last_name || ''}`.trim()
+          : null;
+        dispatchWebhook(workspaceId, 'invoice.paid', {
+          invoice: {
+            id: updatedInvoice.id,
+            number: updatedInvoice.invoice_number,
+            amount: updatedInvoice.total_amount,
+            currency: updatedInvoice.currency || 'ZAR',
+            paid_at: new Date().toISOString(),
+            contact: {
+              id: updatedInvoice.contact_id,
+              name: contactName || null,
+            }
+          }
+        }).catch(() => {});
+      } catch (e) {
+        console.error('[webhook-dispatch-error-retainer]', e);
+      }
+    }
   }
 
   revalidatePath('/invoices');

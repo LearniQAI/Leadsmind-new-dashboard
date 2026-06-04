@@ -136,7 +136,7 @@ const GlobalSearchModal = () => {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -20 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="w-full max-w-[640px] bg-n800 border border-white/10 rounded-2xl shadow-2xl overflow-hidden pointer-events-auto"
+                  className="w-full max-w-xl bg-n800 border border-white/10 rounded-2xl shadow-2xl overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto"
                 >
                   {/* Search Input Area */}
                   <div className="relative border-b border-white/5 bg-white/[0.01]">

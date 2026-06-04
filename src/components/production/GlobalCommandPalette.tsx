@@ -26,7 +26,7 @@ export function GlobalCommandPalette() {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-start justify-center pt-[10vh]">
-      <div className="bg-n800 border border-white/10 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in slide-in-from-top-4">
+      <div className="bg-n800 border border-white/10 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in slide-in-from-top-4 max-h-[90vh] overflow-y-auto">
         
         <div className="p-4 border-b border-white/5 flex items-center gap-3">
           <Search className="text-t4" />

@@ -1,0 +1,2611 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Absa Account Information Services",
+    "description": "The Absa AIS services provide account information services exposed via an ASP.NET Core Web API",
+    "version": "1.0"
+  },
+  "paths": {
+    "/accounts": {
+      "get": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Retrieves the full list of accounts and account information that the PSU has authorised to access.",
+        "parameters": [
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Idempotency-Key",
+            "in": "header",
+            "description": "A unique reference id for end to end traceability.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Country-Code",
+            "in": "header",
+            "description": "The country code from where the AIS transaction originates.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Client-Auth",
+            "in": "header",
+            "description": "Authentication token obtained after the client logs in via the online banking channel to give consent to proceed with the AIS instruction.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The AIS accounts result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AisAccountsResultDataApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/accounts/{accountId}": {
+      "get": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Retrieves the account information for the specified account that the PSU has authorised to access.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "A unique identifier used to identify the account resource.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Idempotency-Key",
+            "in": "header",
+            "description": "A unique reference id for end to end traceability.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Country-Code",
+            "in": "header",
+            "description": "The country code from where the AIS transaction originates.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Client-Auth",
+            "in": "header",
+            "description": "Authentication token obtained after the client logs in via the online banking channel to give consent to proceed with the AIS instruction.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The AIS accounts result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AisAccountsResultDataApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/balances": {
+      "get": {
+        "tags": [
+          "Balances"
+        ],
+        "summary": "Retrieves the full list of account balance information that the PSU has authorised to access.",
+        "parameters": [
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Idempotency-Key",
+            "in": "header",
+            "description": "A unique reference id for end to end traceability.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Country-Code",
+            "in": "header",
+            "description": "The country code from where the AIS transaction originates.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Client-Auth",
+            "in": "header",
+            "description": "Authentication token obtained after the client logs in via the online banking channel to give consent to proceed with the AIS instruction.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The AIS account balances result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AisAccountBalancesResultDataApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/accounts/{accountId}/balances": {
+      "get": {
+        "tags": [
+          "Balances"
+        ],
+        "summary": "Retrieves the account balance information for the specified account that the PSU has authorised to access.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "A unique identifier used to identify the account resource.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Idempotency-Key",
+            "in": "header",
+            "description": "A unique reference id for end to end traceability.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Country-Code",
+            "in": "header",
+            "description": "The country code from where the AIS transaction originates.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Client-Auth",
+            "in": "header",
+            "description": "Authentication token obtained after the client logs in via the online banking channel to give consent to proceed with the AIS instruction.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The AIS account balances result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AisAccountBalancesResultDataApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/beneficiaries": {
+      "get": {
+        "tags": [
+          "Beneficiaries"
+        ],
+        "summary": "Retrieves the full list of account beneficiaries information that the PSU has authorised to access.",
+        "parameters": [
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Idempotency-Key",
+            "in": "header",
+            "description": "A unique reference id for end to end traceability.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Country-Code",
+            "in": "header",
+            "description": "The country code from where the AIS transaction originates.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Client-Auth",
+            "in": "header",
+            "description": "Authentication token obtained after the client logs in via the online banking channel to give consent to proceed with the AIS instruction.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The AIS account beneficiaries result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AisAccountBeneficiariesResultDataApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/accounts/{accountId}/beneficiaries": {
+      "get": {
+        "tags": [
+          "Beneficiaries"
+        ],
+        "summary": "Retrieves the account beneficiaries information for the specified account that the PSU has authorised to access.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "A unique identifier used to identify the account resource.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Idempotency-Key",
+            "in": "header",
+            "description": "A unique reference id for end to end traceability.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Country-Code",
+            "in": "header",
+            "description": "The country code from where the AIS transaction originates.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Client-Auth",
+            "in": "header",
+            "description": "Authentication token obtained after the client logs in via the online banking channel to give consent to proceed with the AIS instruction.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The AIS account beneficiaries result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AisAccountBeneficiariesResultDataApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/account-access-consents": {
+      "post": {
+        "tags": [
+          "Consent"
+        ],
+        "summary": "Initiates an Account Information Services consent request.",
+        "parameters": [
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Idempotency-Key",
+            "in": "header",
+            "description": "A unique reference id for end to end traceability.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Country-Code",
+            "in": "header",
+            "description": "The country code from where the AIS transaction originates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The AIS consent request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AisConsentRequestDataAisConsentRequestRiskApiRequestRiskData"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The AIS consent result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AisConsentResultDataAisConsentResultRiskApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/account-access-consents/{consentId}": {
+      "get": {
+        "tags": [
+          "Consent"
+        ],
+        "summary": "Retrieves the status of an existing AIS consent.",
+        "parameters": [
+          {
+            "name": "consentId",
+            "in": "path",
+            "description": "Unique identification as assigned by the AISP to uniquely identify the consent resource.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Idempotency-Key",
+            "in": "header",
+            "description": "A unique reference id for end to end traceability.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Country-Code",
+            "in": "header",
+            "description": "The country code from where the AIS transaction originates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The AIS consent status result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AisConsentStatusResultDataAisConsentStatusResultRiskApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/support/auditlog/referenceid/{referenceId}": {
+      "get": {
+        "tags": [
+          "Support"
+        ],
+        "summary": "Retrieves an application audit log with unprotected data.",
+        "parameters": [
+          {
+            "name": "referenceId",
+            "in": "path",
+            "description": "The unique identifier of the application audit log you wish to retrieve.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The application audit log.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationAuditLogUnprotectedDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationAuditLogUnprotectedDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationAuditLogUnprotectedDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/support/auditlog/correlationid/{correlationId}": {
+      "get": {
+        "tags": [
+          "Support"
+        ],
+        "summary": "Retrieves an application audit log with unprotected data.",
+        "parameters": [
+          {
+            "name": "correlationId",
+            "in": "path",
+            "description": "The correlation id of the application audit log you wish to retrieve.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The application audit log.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationAuditLogUnprotectedDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationAuditLogUnprotectedDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationAuditLogUnprotectedDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/support/Entitlements": {
+      "get": {
+        "tags": [
+          "Support"
+        ],
+        "summary": "Retrieves entitlements for the logged in user.",
+        "parameters": [
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The entitlements for the user.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Entitlements"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Entitlements"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Entitlements"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/transactions": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Retrieves the full list of account transaction information that the PSU has authorised to access.",
+        "parameters": [
+          {
+            "name": "fromBookingDateTime",
+            "in": "query",
+            "description": "Include transactions from this date.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toBookingDateTime",
+            "in": "query",
+            "description": "Include transactions to this date.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Idempotency-Key",
+            "in": "header",
+            "description": "A unique reference id for end to end traceability.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Country-Code",
+            "in": "header",
+            "description": "The country code from where the AIS transaction originates.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Client-Auth",
+            "in": "header",
+            "description": "Authentication token obtained after the client logs in via the online banking channel to give consent to proceed with the AIS instruction.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The AIS account transactions result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AisAccountTransactionsResultDataApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/accounts/{accountId}/transactions": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Retrieves the account transaction information for the specified account that the PSU has authorised to access.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "A unique identifier used to identify the account resource.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fromBookingDateTime",
+            "in": "query",
+            "description": "Include transactions from this date.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toBookingDateTime",
+            "in": "query",
+            "description": "Include transactions to this date.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Absa-ClientInteractionId",
+            "in": "header",
+            "description": "An unique value used as a correlation id to enable a request to be traced.",
+            "allowEmptyValue": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Nonce",
+            "in": "header",
+            "description": "Every request will be processed only once per nonce. The nonce will be valid for 15 minutes.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Initiating-UserId",
+            "in": "header",
+            "description": "The id of the user in the source system that initiated the request.For requests issued by a system process this should be the name of the system.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Idempotency-Key",
+            "in": "header",
+            "description": "A unique reference id for end to end traceability.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Country-Code",
+            "in": "header",
+            "description": "The country code from where the AIS transaction originates.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Absa-Client-Auth",
+            "in": "header",
+            "description": "Authentication token obtained after the client logs in via the online banking channel to give consent to proceed with the AIS instruction.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The AIS account transactions result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AisAccountTransactionsResultDataApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "412": {
+            "description": "Precondition Failed"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "Retry-After": {
+                "description": "Specifies the amount of time in seconds that a client must wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Account": {
+        "type": "object",
+        "properties": {
+          "AccountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "AccountIdentification": {
+            "type": "string",
+            "nullable": true
+          },
+          "AccountSubType": {
+            "type": "string",
+            "nullable": true
+          },
+          "AccountType": {
+            "type": "string",
+            "nullable": true
+          },
+          "Currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "Nickname": {
+            "type": "string",
+            "nullable": true
+          },
+          "OpeningDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "ProductType": {
+            "type": "string",
+            "nullable": true
+          },
+          "Status": {
+            "type": "string",
+            "nullable": true
+          },
+          "StatusUpdateDateTime": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisAccountBalancesResultData": {
+        "type": "object",
+        "properties": {
+          "Balances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Balance"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisAccountBalancesResultDataApiResponse": {
+        "type": "object",
+        "properties": {
+          "Data": {
+            "$ref": "#/components/schemas/AisAccountBalancesResultData"
+          },
+          "Links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          },
+          "Meta": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Metadatum"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisAccountBeneficiariesResultData": {
+        "type": "object",
+        "properties": {
+          "Beneficiaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Beneficiary"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisAccountBeneficiariesResultDataApiResponse": {
+        "type": "object",
+        "properties": {
+          "Data": {
+            "$ref": "#/components/schemas/AisAccountBeneficiariesResultData"
+          },
+          "Links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          },
+          "Meta": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Metadatum"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisAccountTransactionsResultData": {
+        "type": "object",
+        "properties": {
+          "Transactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Transaction"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisAccountTransactionsResultDataApiResponse": {
+        "type": "object",
+        "properties": {
+          "Data": {
+            "$ref": "#/components/schemas/AisAccountTransactionsResultData"
+          },
+          "Links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          },
+          "Meta": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Metadatum"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisAccountsResultData": {
+        "type": "object",
+        "properties": {
+          "Accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Account"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisAccountsResultDataApiResponse": {
+        "type": "object",
+        "properties": {
+          "Data": {
+            "$ref": "#/components/schemas/AisAccountsResultData"
+          },
+          "Links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          },
+          "Meta": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Metadatum"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisConsentRequestData": {
+        "required": [
+          "Permissions"
+        ],
+        "type": "object",
+        "properties": {
+          "Permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          },
+          "TransactionFromDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "TransactionToDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ExpirationDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "SupplementaryData": {
+            "$ref": "#/components/schemas/SupplementaryData"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisConsentRequestDataAisConsentRequestRiskApiRequestRiskData": {
+        "required": [
+          "Data",
+          "Risk"
+        ],
+        "type": "object",
+        "properties": {
+          "Risk": {
+            "$ref": "#/components/schemas/AisConsentRequestRisk"
+          },
+          "Data": {
+            "$ref": "#/components/schemas/AisConsentRequestData"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisConsentRequestRisk": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "AisConsentResultData": {
+        "required": [
+          "Permissions"
+        ],
+        "type": "object",
+        "properties": {
+          "ConsentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "Status": {
+            "type": "string",
+            "nullable": true
+          },
+          "StatusUpdateDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "CreationDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "Permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          },
+          "TransactionFromDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "TransactionToDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ExpirationDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "SupplementaryData": {
+            "$ref": "#/components/schemas/SupplementaryData"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisConsentResultDataAisConsentResultRiskApiResponse": {
+        "type": "object",
+        "properties": {
+          "Risk": {
+            "$ref": "#/components/schemas/AisConsentResultRisk"
+          },
+          "Data": {
+            "$ref": "#/components/schemas/AisConsentResultData"
+          },
+          "Links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          },
+          "Meta": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Metadatum"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisConsentResultRisk": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "AisConsentStatusResultData": {
+        "required": [
+          "Permissions"
+        ],
+        "type": "object",
+        "properties": {
+          "ConsentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "Status": {
+            "type": "string",
+            "nullable": true
+          },
+          "StatusUpdateDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "CreationDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "Permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          },
+          "TransactionFromDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "TransactionToDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ExpirationDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "SupplementaryData": {
+            "$ref": "#/components/schemas/SupplementaryData"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisConsentStatusResultDataAisConsentStatusResultRiskApiResponse": {
+        "type": "object",
+        "properties": {
+          "Risk": {
+            "$ref": "#/components/schemas/AisConsentStatusResultRisk"
+          },
+          "Data": {
+            "$ref": "#/components/schemas/AisConsentStatusResultData"
+          },
+          "Links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "nullable": true
+          },
+          "Meta": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Metadatum"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AisConsentStatusResultRisk": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ApplicationAuditLogUnprotectedDto": {
+        "type": "object",
+        "properties": {
+          "ReferenceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "CorporateProfileId": {
+            "type": "string",
+            "nullable": true
+          },
+          "ClientInteractionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "CorrelationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "UpstreamRequestType": {
+            "type": "string",
+            "nullable": true
+          },
+          "UpstreamRequestJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "DownstreamRequestType": {
+            "type": "string",
+            "nullable": true
+          },
+          "DownstreamRequestJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "DownstreamResponseType": {
+            "type": "string",
+            "nullable": true
+          },
+          "DownstreamResponseJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "DownstreamResponseHttpStatus": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "DownstreamRequestProcessingStatus": {
+            "$ref": "#/components/schemas/DownstreamRequestProcessingStatus"
+          },
+          "DateCreatedUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "DateUpdatedUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Balance": {
+        "type": "object",
+        "properties": {
+          "AccountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "CreditDebitIndicator": {
+            "type": "string",
+            "nullable": true
+          },
+          "Type": {
+            "type": "string",
+            "nullable": true
+          },
+          "DateTime": {
+            "type": "string",
+            "nullable": true
+          },
+          "Amount": {
+            "$ref": "#/components/schemas/BalanceAmount"
+          },
+          "CreditLine": {
+            "$ref": "#/components/schemas/CreditLine"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BalanceAmount": {
+        "type": "object",
+        "properties": {
+          "Amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "Currency": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BankTransactionCode": {
+        "type": "object",
+        "properties": {
+          "Code": {
+            "type": "string",
+            "nullable": true
+          },
+          "SubCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "ProprietaryBankTransactionCode": {
+            "$ref": "#/components/schemas/ProprietaryBankTransactionCode"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Beneficiary": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "string",
+            "nullable": true
+          },
+          "Name": {
+            "type": "string",
+            "nullable": true
+          },
+          "Type": {
+            "type": "string",
+            "nullable": true
+          },
+          "Account": {
+            "$ref": "#/components/schemas/BeneficiaryAccount"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BeneficiaryAccount": {
+        "type": "object",
+        "properties": {
+          "Type": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CardInstrument": {
+        "type": "object",
+        "properties": {
+          "CardSchemeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "AuthorisationType": {
+            "type": "string",
+            "nullable": true
+          },
+          "Name": {
+            "type": "string",
+            "nullable": true
+          },
+          "Identification": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreditLine": {
+        "type": "object",
+        "properties": {
+          "Type": {
+            "type": "string",
+            "nullable": true
+          },
+          "Amount": {
+            "$ref": "#/components/schemas/BalanceAmount"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreditorAccount": {
+        "type": "object",
+        "properties": {
+          "SchemeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "Identification": {
+            "type": "string",
+            "nullable": true
+          },
+          "Name": {
+            "type": "string",
+            "nullable": true
+          },
+          "SecondaryIdentification": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreditorAgent": {
+        "type": "object",
+        "properties": {
+          "SchemeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "Identification": {
+            "type": "string",
+            "nullable": true
+          },
+          "Name": {
+            "type": "string",
+            "nullable": true
+          },
+          "PostalAddress": {
+            "$ref": "#/components/schemas/PostalAddress"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CurrencyExchange": {
+        "type": "object",
+        "properties": {
+          "SourceCurrency": {
+            "type": "string",
+            "nullable": true
+          },
+          "TargetCurrency": {
+            "type": "string",
+            "nullable": true
+          },
+          "UnitCurrency": {
+            "type": "string",
+            "nullable": true
+          },
+          "ExchangeRate": {
+            "type": "string",
+            "nullable": true
+          },
+          "ContractIdentification": {
+            "type": "string",
+            "nullable": true
+          },
+          "QuotationDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "InstructedAmount": {
+            "$ref": "#/components/schemas/TransactionAmount"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DebtorAccount": {
+        "type": "object",
+        "properties": {
+          "SchemeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "Identification": {
+            "type": "string",
+            "nullable": true
+          },
+          "Name": {
+            "type": "string",
+            "nullable": true
+          },
+          "SecondaryIdentification": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DebtorAgent": {
+        "type": "object",
+        "properties": {
+          "SchemeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "Identification": {
+            "type": "string",
+            "nullable": true
+          },
+          "Name": {
+            "type": "string",
+            "nullable": true
+          },
+          "PostalAddress": {
+            "$ref": "#/components/schemas/PostalAddress"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DownstreamRequestProcessingStatus": {
+        "enum": [
+          "Success",
+          "Unauthorized",
+          "ValidationError",
+          "TechnicalError"
+        ],
+        "type": "string"
+      },
+      "Entitlements": {
+        "type": "object",
+        "properties": {
+          "CanSupport": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "ErrorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "Message": {
+            "type": "string",
+            "nullable": true
+          },
+          "Path": {
+            "type": "string",
+            "nullable": true
+          },
+          "Url": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "Code": {
+            "type": "string",
+            "nullable": true
+          },
+          "Id": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string",
+            "nullable": true
+          },
+          "Message": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string",
+            "nullable": true
+          },
+          "Errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "HttpStatusCode": {
+        "enum": [
+          "Continue",
+          "SwitchingProtocols",
+          "Processing",
+          "EarlyHints",
+          "OK",
+          "Created",
+          "Accepted",
+          "NonAuthoritativeInformation",
+          "NoContent",
+          "ResetContent",
+          "PartialContent",
+          "MultiStatus",
+          "AlreadyReported",
+          "IMUsed",
+          "Ambiguous",
+          "Moved",
+          "Redirect",
+          "RedirectMethod",
+          "NotModified",
+          "UseProxy",
+          "Unused",
+          "TemporaryRedirect",
+          "PermanentRedirect",
+          "BadRequest",
+          "Unauthorized",
+          "PaymentRequired",
+          "Forbidden",
+          "NotFound",
+          "MethodNotAllowed",
+          "NotAcceptable",
+          "ProxyAuthenticationRequired",
+          "RequestTimeout",
+          "Conflict",
+          "Gone",
+          "LengthRequired",
+          "PreconditionFailed",
+          "RequestEntityTooLarge",
+          "RequestUriTooLong",
+          "UnsupportedMediaType",
+          "RequestedRangeNotSatisfiable",
+          "ExpectationFailed",
+          "MisdirectedRequest",
+          "UnprocessableEntity",
+          "Locked",
+          "FailedDependency",
+          "UpgradeRequired",
+          "PreconditionRequired",
+          "TooManyRequests",
+          "RequestHeaderFieldsTooLarge",
+          "UnavailableForLegalReasons",
+          "InternalServerError",
+          "NotImplemented",
+          "BadGateway",
+          "ServiceUnavailable",
+          "GatewayTimeout",
+          "HttpVersionNotSupported",
+          "VariantAlsoNegotiates",
+          "InsufficientStorage",
+          "LoopDetected",
+          "NotExtended",
+          "NetworkAuthenticationRequired"
+        ],
+        "type": "string"
+      },
+      "Link": {
+        "type": "object",
+        "properties": {
+          "Rel": {
+            "type": "string",
+            "nullable": true
+          },
+          "Href": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MerchantDetails": {
+        "type": "object",
+        "properties": {
+          "MerchantName": {
+            "type": "string",
+            "nullable": true
+          },
+          "MerchantCategoryCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Metadatum": {
+        "type": "object",
+        "properties": {
+          "Name": {
+            "type": "string",
+            "nullable": true
+          },
+          "Value": {
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Permission": {
+        "enum": [
+          "ReadAccountsBasic",
+          "ReadAccountsDetail",
+          "ReadBalances",
+          "ReadBeneficiariesBasic",
+          "ReadBeneficiariesDetail",
+          "ReadDirectDebits",
+          "ReadOffers",
+          "ReadPAN",
+          "ReadParty",
+          "ReadPartyPSU",
+          "ReadProducts",
+          "ReadScheduledPaymentsBasic",
+          "ReadScheduledPaymentsDetail",
+          "ReadStandingOrdersBasic",
+          "ReadStandingOrdersDetail",
+          "ReadStatementsBasic",
+          "ReadStatementsDetail",
+          "ReadTransactionsBasic",
+          "ReadTransactionsCredits",
+          "ReadTransactionsDebits",
+          "ReadTransactionsDetail"
+        ],
+        "type": "string"
+      },
+      "PostalAddress": {
+        "type": "object",
+        "properties": {
+          "AddressType": {
+            "type": "string",
+            "nullable": true
+          },
+          "Department": {
+            "type": "string",
+            "nullable": true
+          },
+          "SubDepartment": {
+            "type": "string",
+            "nullable": true
+          },
+          "StreetName": {
+            "type": "string",
+            "nullable": true
+          },
+          "BuildingNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "PostCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "TownName": {
+            "type": "string",
+            "nullable": true
+          },
+          "CountrySubDivision": {
+            "type": "string",
+            "nullable": true
+          },
+          "Country": {
+            "type": "string",
+            "nullable": true
+          },
+          "AddressLine": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "Type": {
+            "type": "string",
+            "nullable": true
+          },
+          "Title": {
+            "type": "string",
+            "nullable": true
+          },
+          "Status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "Detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "Instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": { }
+      },
+      "ProprietaryBankTransactionCode": {
+        "type": "object",
+        "properties": {
+          "Code": {
+            "type": "string",
+            "nullable": true
+          },
+          "Issuer": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SupplementaryData": {
+        "required": [
+          "TppUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "TppUrl": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Transaction": {
+        "type": "object",
+        "properties": {
+          "AccountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "TransactionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "TransactionReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "StatementReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "CreditDebitIndicator": {
+            "type": "string",
+            "nullable": true
+          },
+          "Status": {
+            "type": "string",
+            "nullable": true
+          },
+          "TransactionMutability": {
+            "type": "string",
+            "nullable": true
+          },
+          "BookingDateTime": {
+            "type": "string",
+            "nullable": true
+          },
+          "ValueDateTime": {
+            "type": "string",
+            "nullable": true
+          },
+          "TransactionInformation": {
+            "type": "string",
+            "nullable": true
+          },
+          "Amount": {
+            "$ref": "#/components/schemas/TransactionAmount"
+          },
+          "ChargeAmount": {
+            "$ref": "#/components/schemas/TransactionAmount"
+          },
+          "CurrencyExchange": {
+            "$ref": "#/components/schemas/CurrencyExchange"
+          },
+          "BankTransactionCode": {
+            "$ref": "#/components/schemas/BankTransactionCode"
+          },
+          "Balance": {
+            "$ref": "#/components/schemas/TransactionBalance"
+          },
+          "MerchantDetails": {
+            "$ref": "#/components/schemas/MerchantDetails"
+          },
+          "CreditorAgent": {
+            "$ref": "#/components/schemas/CreditorAgent"
+          },
+          "CreditorAccount": {
+            "$ref": "#/components/schemas/CreditorAccount"
+          },
+          "DebtorAgent": {
+            "$ref": "#/components/schemas/DebtorAgent"
+          },
+          "DebtorAccount": {
+            "$ref": "#/components/schemas/DebtorAccount"
+          },
+          "CardInstrument": {
+            "$ref": "#/components/schemas/CardInstrument"
+          },
+          "SupplementaryData": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransactionAmount": {
+        "type": "object",
+        "properties": {
+          "Amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "Currency": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransactionBalance": {
+        "type": "object",
+        "properties": {
+          "CreditDebitIndicator": {
+            "type": "string",
+            "nullable": true
+          },
+          "Type": {
+            "type": "string",
+            "nullable": true
+          },
+          "Amount": {
+            "$ref": "#/components/schemas/TransactionAmount"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

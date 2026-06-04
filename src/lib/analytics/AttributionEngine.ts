@@ -119,10 +119,32 @@ export class AttributionEngine {
           metadata: updatedMetadata
         })
         .eq('id', invoiceId)
-        .select()
+        .select('*, contact:contacts(*)')
         .single();
 
       if (updateError) throw updateError;
+
+      try {
+        const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+        const contactName = (updatedInvoice as any)?.contact
+          ? `${(updatedInvoice as any).contact.first_name || ''} ${(updatedInvoice as any).contact.last_name || ''}`.trim()
+          : null;
+        dispatchWebhook(workspace_id, 'invoice.paid', {
+          invoice: {
+            id: updatedInvoice.id,
+            number: updatedInvoice.invoice_number,
+            amount: updatedInvoice.total_amount,
+            currency: updatedInvoice.currency || 'ZAR',
+            paid_at: updatedInvoice.paid_at || new Date().toISOString(),
+            contact: {
+              id: updatedInvoice.contact_id,
+              name: contactName || null,
+            }
+          }
+        }).catch(() => {});
+      } catch (webhookErr) {
+        console.error('[webhook-dispatch-error]', webhookErr);
+      }
 
       return { success: true, data: updatedInvoice };
     } catch (error: any) {

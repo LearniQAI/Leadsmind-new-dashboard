@@ -29,9 +29,20 @@ export async function GET(req: Request) {
     )
   }
 
-  // Parse state — format is "workspaceId:platform"
-  const [workspaceId, targetPlatform] = stateStr.split(':')
-  const platform = (targetPlatform || 'facebook') as 'facebook' | 'instagram' | 'whatsapp'
+  let workspaceId = ''
+  let platform: 'facebook' | 'instagram' | 'whatsapp' = 'facebook'
+
+  try {
+    // Try JSON format first: {"platform":"facebook","workspaceId":"abc123"}
+    const stateObj = JSON.parse(decodeURIComponent(stateStr))
+    workspaceId = stateObj.workspaceId ?? ''
+    platform = (stateObj.platform ?? 'facebook') as 'facebook' | 'instagram' | 'whatsapp'
+  } catch {
+    // Fallback: colon format "workspaceId:platform"
+    const parts = stateStr.split(':')
+    workspaceId = parts[0] ?? ''
+    platform = (parts[1] ?? 'facebook') as 'facebook' | 'instagram' | 'whatsapp'
+  }
 
   if (!workspaceId) {
     return NextResponse.redirect(

@@ -49,11 +49,11 @@ export default function InviteModal({
         className="absolute inset-0 bg-n900/90 backdrop-blur-md animate-in fade-in duration-300"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-xl bg-n800 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="relative w-full max-w-xl bg-n800 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
         <div className="absolute top-0 left-0 w-full h-1 bg-accent"></div>
 
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-8">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-accent border border-accent/20">
                 <Users size={24} />
@@ -71,7 +71,7 @@ export default function InviteModal({
           </div>
 
           {/* Toggle Mode */}
-          <div className="flex p-1 bg-n900 border border-white/5 rounded-xl mb-8">
+          <div className="flex p-1 bg-n900 border border-white/5 rounded-xl mb-5">
             <button
               onClick={() => setInviteMode('invite')}
               className={`flex-1 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${inviteMode === 'invite' ? "bg-white/5 text-t1 shadow-sm" : "text-t3 hover:text-t2"
@@ -88,7 +88,7 @@ export default function InviteModal({
             </button>
           </div>
 
-          <form onSubmit={onSubmit} className="space-y-6">
+          <form onSubmit={onSubmit} className="space-y-4">
             <div className="grid md:grid-cols-2 gap-6">
               {inviteMode === 'create' && (
                 <div className="space-y-2">

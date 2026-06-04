@@ -338,7 +338,7 @@ export default function PublicCommunityPage() {
       {/* MODAL: Create Post */}
       {isCreatingPost && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[2050] flex items-center justify-center p-4 animate-fade-in font-dm-sans">
-          <div className="w-full max-w-lg bg-[#060b1f] border border-white/15 rounded-3xl overflow-hidden shadow-2xl animate-scale-up">
+          <div className="w-full max-w-lg bg-[#060b1f] border border-white/15 rounded-3xl overflow-hidden shadow-2xl animate-scale-up max-h-[90vh] overflow-y-auto">
             <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#080f28]/60">
               <div className="flex items-center gap-2">
                 <HelpCircle className="w-5 h-5 text-primary" />
@@ -427,7 +427,7 @@ export default function PublicCommunityPage() {
       {/* DRAWER: Post Comments & Moderator Response Stream */}
       {selectedPostId && postDetails && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] animate-fade-in flex justify-end font-dm-sans">
-          <div className="w-full max-w-2xl bg-[#04091a] border-l border-white/10 h-full flex flex-col shadow-2xl animate-slide-in-right relative">
+          <div className="w-full max-w-xl bg-[#04091a] border-l border-white/10 h-full flex flex-col shadow-2xl animate-slide-in-right relative">
             
             {/* Drawer Header */}
             <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#060b1f]">

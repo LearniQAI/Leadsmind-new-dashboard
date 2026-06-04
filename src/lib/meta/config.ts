@@ -5,7 +5,7 @@ export const META_CONFIG = {
   scopes: [
     'pages_show_list',
     'pages_messaging',
-    'instagram_basic',
+    'pages_manage_metadata',
     'instagram_manage_messages',
     'whatsapp_business_messaging',
     'whatsapp_business_management',
