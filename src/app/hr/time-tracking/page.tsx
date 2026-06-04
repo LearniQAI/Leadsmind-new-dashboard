@@ -342,19 +342,33 @@ export default function TimeTrackingPage() {
 
               <form onSubmit={handleSave} className="p-5 space-y-4">
                 <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Employee</label>
-                  <select
-                    required
-                    disabled={!isTimeManager}
-                    value={employeeId}
-                    onChange={e => setEmployeeId(e.target.value)}
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {isTimeManager && <option value="">-- Select Employee --</option>}
-                    {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
-                    ))}
-                  </select>
+                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">
+                    {isTimeManager ? 'Select Employee' : 'Employee'}
+                  </label>
+                  {employees.length === 0 ? (
+                    <div className="text-[11px] text-[#ef4444] mt-1">
+                      {isTimeManager 
+                        ? "Please register employees first in the Employee Directory."
+                        : "Your account is not registered in the Employee Directory. Please ask an administrator to add you."
+                      }
+                    </div>
+                  ) : !isTimeManager ? (
+                    <div className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2.5 text-[12px] text-white/90 font-semibold bg-white/[0.01]">
+                      {employees[0].first_name} {employees[0].last_name}
+                    </div>
+                  ) : (
+                    <select
+                      required
+                      value={employeeId}
+                      onChange={e => setEmployeeId(e.target.value)}
+                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="">-- Select Employee --</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
