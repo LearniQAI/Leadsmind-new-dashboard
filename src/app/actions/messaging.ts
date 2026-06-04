@@ -96,7 +96,7 @@ export async function connectPlatformManually(platform: string, data: any) {
       };
     } else if (platform === 'instagram') {
       credentials = {
-        instagram_business_account_id: data.instagramBusinessAccountId,
+        instagram_id: data.instagramBusinessAccountId,
         instagram_username: validation.name || 'IG Account',
         page_id: data.pageId,
         page_access_token_encrypted: encrypt(data.pageAccessToken),
@@ -789,7 +789,7 @@ export async function saveMetaConnections(data: {
         workspace_id: workspaceId,
         platform: 'instagram',
         credentials: {
-          instagram_business_account_id: data.instagramBusinessAccountId,
+          instagram_id: data.instagramBusinessAccountId,
           instagram_username: data.instagramUsername || 'IG Account',
           page_id: data.pageId,
           page_access_token_encrypted: encrypt(data.pageAccessToken),
@@ -839,7 +839,7 @@ export async function saveMetaConnections(data: {
           workspace_id: workspaceId,
           platform: 'instagram',
           credentials: {
-            instagram_business_account_id: data.instagramBusinessAccountId,
+            instagram_id: data.instagramBusinessAccountId,
             instagram_username: data.instagramUsername || 'IG Account',
             page_id: data.pageId,
             page_access_token_encrypted: encrypt(data.pageAccessToken),
