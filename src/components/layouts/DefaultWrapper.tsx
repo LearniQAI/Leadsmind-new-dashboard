@@ -52,6 +52,7 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       '/contacts': 'contacts',
       '/conversations': 'contacts',
       '/lead-finder': 'contacts',
+      '/social-planner': 'marketing',
       '/pipelines': 'pipelines',
       '/proposals': 'proposals',
       '/invoices': 'invoices',
