@@ -14,7 +14,8 @@ import {
  Sparkles
 } from 'lucide-react';
 import { Instagram, Facebook } from '@/components/icons/BrandIcons';
-import { createSocialPost, getMetaAuthUrl } from '@/app/actions/social';
+import { createSocialPost } from '@/app/actions/social';
+import { getMetaAuthUrl } from '@/app/actions/messaging';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import AIAssistantSidebar from '@/components/content-studio/AIAssistantSidebar';
