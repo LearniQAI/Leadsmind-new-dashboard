@@ -6,11 +6,32 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function corsResponse(body: any, init?: ResponseInit) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    ...(init?.headers || {}),
+  };
+  return NextResponse.json(body, { ...init, headers });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 export async function GET(req: NextRequest) {
   try {
     const workspaceId = req.nextUrl.searchParams.get('workspaceId');
     if (!workspaceId) {
-      return NextResponse.json({ error: 'workspaceId required' }, { status: 400 });
+      return corsResponse({ error: 'workspaceId required' }, { status: 400 });
     }
 
     const { data, error } = await supabase
@@ -20,7 +41,7 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return corsResponse({ error: error.message }, { status: 500 });
     }
 
     if (!data) {
@@ -31,14 +52,14 @@ export async function GET(req: NextRequest) {
         .single();
 
       if (insertError) {
-        return NextResponse.json({ error: insertError.message }, { status: 500 });
+        return corsResponse({ error: insertError.message }, { status: 500 });
       }
-      return NextResponse.json({ config: newConfig });
+      return corsResponse({ config: newConfig });
     }
 
-    return NextResponse.json({ config: data });
+    return corsResponse({ config: data });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return corsResponse({ error: err.message }, { status: 500 });
   }
 }
 
@@ -47,7 +68,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { workspaceId, ...updates } = body;
     if (!workspaceId) {
-      return NextResponse.json({ error: 'workspaceId required' }, { status: 400 });
+      return corsResponse({ error: 'workspaceId required' }, { status: 400 });
     }
 
     const { data, error } = await supabase
@@ -60,12 +81,12 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return corsResponse({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ config: data });
+    return corsResponse({ config: data });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return corsResponse({ error: err.message }, { status: 500 });
   }
 }
 

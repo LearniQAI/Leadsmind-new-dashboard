@@ -6,6 +6,27 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function corsResponse(body: any, init?: ResponseInit) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    ...(init?.headers || {}),
+  };
+  return NextResponse.json(body, { ...init, headers });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -13,7 +34,7 @@ export async function POST(req: NextRequest) {
     let { conversationId } = body;
 
     if (!workspaceId || !visitorMessage) {
-      return NextResponse.json({ error: 'workspaceId and visitorMessage are required' }, { status: 400 });
+      return corsResponse({ error: 'workspaceId and visitorMessage are required' }, { status: 400 });
     }
 
     const cleanVisitorId = visitorId || `visitor_${Math.random().toString(36).substring(2, 12)}`;
@@ -33,7 +54,7 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (newConvError) {
-        return NextResponse.json({ error: newConvError.message }, { status: 500 });
+        return corsResponse({ error: newConvError.message }, { status: 500 });
       }
       conversationId = newConv.id;
     }
@@ -50,7 +71,7 @@ export async function POST(req: NextRequest) {
       });
 
     if (msgErr) {
-      return NextResponse.json({ error: msgErr.message }, { status: 500 });
+      return corsResponse({ error: msgErr.message }, { status: 500 });
     }
 
     // 3. Fetch Workspace Knowledge Base
@@ -61,7 +82,7 @@ export async function POST(req: NextRequest) {
       .eq('active', true);
 
     if (kbError) {
-      return NextResponse.json({ error: kbError.message }, { status: 500 });
+      return corsResponse({ error: kbError.message }, { status: 500 });
     }
 
     // 4. Extract Name and Email from Visitor Message
@@ -100,7 +121,7 @@ export async function POST(req: NextRequest) {
         content: fallbackReply
       });
       await supabase.from('lena_conversations').update({ status: 'waiting_agent', mode: 'human', updated_at: new Date().toISOString() }).eq('id', conversationId);
-      return NextResponse.json({ reply: fallbackReply, mode: 'human', leadCaptured: true, conversationId });
+      return corsResponse({ reply: fallbackReply, mode: 'human', leadCaptured: true, conversationId });
     }
 
     const kbText = kbArticles?.length
@@ -173,7 +194,7 @@ ${kbText}
       });
 
     if (aiMsgErr) {
-      return NextResponse.json({ error: aiMsgErr.message }, { status: 500 });
+      return corsResponse({ error: aiMsgErr.message }, { status: 500 });
     }
 
     // 7. Check for Human Handoff triggers
@@ -206,7 +227,7 @@ ${kbText}
         .eq('id', conversationId);
     }
 
-    return NextResponse.json({
+    return corsResponse({
       reply,
       mode: currentMode,
       leadCaptured: !!(detectedEmail || detectedName),
@@ -215,6 +236,6 @@ ${kbText}
 
   } catch (err: any) {
     console.error('[LENA Visitor API Error]:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return corsResponse({ error: err.message }, { status: 500 });
   }
 }
