@@ -8,7 +8,6 @@ const sidebarData: SidebarCategory[] = [
    { id: 1, label: "Dashboard", icon: "icon-house", link: "/dashboard", permission: "dashboard" },
    { id: 2, label: "Tasks", icon: "fa-light fa-circle-check", link: "/tasks", permission: "dashboard" },
    { id: 3, label: "Chat", icon: "fa-light fa-comments", link: "/conversations", permission: "contacts" },
-   { id: 4, label: "Social Planner", icon: "fa-light fa-bullhorn", link: "/social-planner", permission: "marketing" },
   ],
  },
  {
