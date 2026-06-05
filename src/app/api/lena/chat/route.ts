@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     const cleanVisitorId = visitorId || `visitor_${Math.random().toString(36).substring(2, 12)}`;
 
     // 1. Resolve or Create Conversation
+    let isHumanMode = false;
     if (!conversationId) {
       const { data: newConv, error: newConvError } = await supabase
         .from('lena_conversations')
@@ -57,6 +58,15 @@ export async function POST(req: NextRequest) {
         return corsResponse({ error: newConvError.message }, { status: 500 });
       }
       conversationId = newConv.id;
+    } else {
+      const { data: existingConv } = await supabase
+        .from('lena_conversations')
+        .select('mode')
+        .eq('id', conversationId)
+        .maybeSingle();
+      if (existingConv?.mode === 'human') {
+        isHumanMode = true;
+      }
     }
 
     // 2. Save Visitor Message
@@ -72,6 +82,21 @@ export async function POST(req: NextRequest) {
 
     if (msgErr) {
       return corsResponse({ error: msgErr.message }, { status: 500 });
+    }
+
+    // If the conversation is in human mode, save the message but do not trigger an AI reply
+    if (isHumanMode) {
+      await supabase
+        .from('lena_conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
+
+      return corsResponse({
+        reply: null,
+        mode: 'human',
+        leadCaptured: false,
+        conversationId
+      });
     }
 
     // 3. Fetch Workspace Knowledge Base
@@ -144,16 +169,19 @@ export async function POST(req: NextRequest) {
       }));
 
     const systemPrompt = `You are LENA, the intelligent virtual AI Workspace Support Assistant for LeadsMind.
-You answer visitors queries accurately using only the knowledge base data below.
-If you cannot answer a question based on the knowledge base, state that you will connect them with a human agent.
+You answer visitors' queries accurately using the knowledge base data below.
+For general greetings (like "hi", "hello", "good morning", "how are you"), reply politely and introduce yourself as LENA (LeadsMind's AI Assistant) without suggesting a handoff.
+For specific business or support questions:
+- Use only the provided knowledge base data below to answer.
+- If you don't know or if the information is not in the knowledge base, state that you will connect them with a human agent.
 Naturally capture their name and email address when appropriate.
 
 --- SYSTEM KNOWLEDGE BASE ---
 ${kbText}
 
 --- COMPLIANCE RULES ---
-1. Base your answer strictly on the knowledge base provided.
-2. If you don't know or if context doesn't exist, tell the visitor: "I will connect you with a human support agent shortly."
+1. Answer greetings politely and concisely without triggering agent handoff.
+2. For business/support questions, base your answer strictly on the knowledge base. If not found, tell the visitor: "I will connect you with a human support agent shortly."
 3. Be professional, friendly, and concise (under 4 sentences). Do not mention system parameters.`;
 
     const messages = [

@@ -51,6 +51,7 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const lastTypingSentRef = useRef<number>(0);
 
   const fetchConversations = async () => {
     try {
@@ -122,6 +123,23 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setReplyText(e.target.value);
+
+    if (!selectedConv) return;
+
+    const now = Date.now();
+    if (now - lastTypingSentRef.current > 3000) {
+      lastTypingSentRef.current = now;
+      const typingUntil = new Date(now + 6000).toISOString();
+      fetch(`/api/lena/conversations?id=${selectedConv.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent_typing_until: typingUntil })
+      }).catch(err => console.error('Failed to update agent typing status:', err));
+    }
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyText.trim() || !selectedConv) return;
@@ -141,6 +159,13 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
 
       if (res.ok) {
         setReplyText('');
+        // Immediately reset agent typing status in db
+        fetch(`/api/lena/conversations?id=${selectedConv.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agent_typing_until: new Date(0).toISOString() })
+        }).catch(err => console.error('Failed to reset agent typing status:', err));
+
         fetchMessages(selectedConv.id);
         fetchConversations();
       }
@@ -356,7 +381,7 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
                   type="text"
                   placeholder="Type a message to reply..."
                   value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
+                  onChange={handleInputChange}
                   className="flex-1 bg-white/[0.05] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#2563eb]"
                 />
                 <button

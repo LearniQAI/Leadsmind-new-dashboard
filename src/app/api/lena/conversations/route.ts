@@ -54,7 +54,8 @@ export async function PATCH(req: NextRequest) {
       visitor_name,
       visitor_email,
       visitor_phone,
-      lead_captured
+      lead_captured,
+      agent_typing_until
     } = body;
 
     const updates: any = {};
@@ -65,6 +66,7 @@ export async function PATCH(req: NextRequest) {
     if (visitor_email !== undefined) updates.visitor_email = visitor_email;
     if (visitor_phone !== undefined) updates.visitor_phone = visitor_phone;
     if (lead_captured !== undefined) updates.lead_captured = lead_captured;
+    if (agent_typing_until !== undefined) updates.agent_typing_until = agent_typing_until;
     updates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase

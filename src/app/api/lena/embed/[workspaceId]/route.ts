@@ -137,6 +137,31 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
       border: 1px solid rgba(255,255,255,0.07);
       color: #eef2ff;
     }
+    .lena-typing-bubble {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.07);
+      color: #eef2ff;
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      display: none;
+      align-items: center;
+      gap: 4px;
+    }
+    .lena-typing-dot {
+      width: 6px;
+      height: 6px;
+      background: #94a3c8;
+      border-radius: 50%;
+      animation: lena-bounce 1.4s infinite ease-in-out both;
+    }
+    .lena-typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .lena-typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes lena-bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1.0); }
+    }
     #lena-widget-quickreplies {
       padding: 8px 16px;
       display: flex;
@@ -230,6 +255,8 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
     visitorId = 'vis_' + Math.random().toString(36).substring(2, 15);
     localStorage.setItem('lena_visitor_id_' + '${workspaceId}', visitorId);
   }
+  let isAiThinking = false;
+  let isAgentTypingGlobal = false;
 
   // Toggle
   bubble.onclick = () => {
@@ -248,11 +275,21 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
   const messagesDiv = document.getElementById('lena-widget-messages');
   const quickRepliesDiv = document.getElementById('lena-widget-quickreplies');
 
+  // Typing bubble
+  const typingBubble = document.createElement('div');
+  typingBubble.className = 'lena-typing-bubble';
+  typingBubble.innerHTML = \`
+    <span class="lena-typing-dot"></span>
+    <span class="lena-typing-dot"></span>
+    <span class="lena-typing-dot"></span>
+  \`;
+  messagesDiv.appendChild(typingBubble);
+
   function appendMessage(sender, text) {
     const msg = document.createElement('div');
     msg.className = 'lena-msg lena-msg-' + sender;
     msg.innerText = text;
-    messagesDiv.appendChild(msg);
+    messagesDiv.insertBefore(msg, typingBubble);
     scrollDown();
   }
 
@@ -286,6 +323,7 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
       .then(data => {
         if (data.messages && data.messages.length > 0) {
           messagesDiv.innerHTML = '';
+          messagesDiv.appendChild(typingBubble);
           data.messages.forEach(m => {
             appendMessage(m.sender_type === 'visitor' ? 'visitor' : 'bot', m.content);
           });
@@ -296,6 +334,10 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
   function sendUserMessage(text) {
     if (!text.trim()) return;
     appendMessage('visitor', text);
+
+    isAiThinking = true;
+    typingBubble.style.display = 'flex';
+    scrollDown();
 
     fetch(apiBase + '/api/lena/chat', {
       method: 'POST',
@@ -313,7 +355,15 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
         conversationId = data.conversationId;
         localStorage.setItem('lena_conversation_id_' + '${workspaceId}', conversationId);
       }
-      appendMessage('bot', data.reply);
+      if (data.reply) {
+        appendMessage('bot', data.reply);
+      }
+    })
+    .finally(() => {
+      isAiThinking = false;
+      if (!isAgentTypingGlobal) {
+        typingBubble.style.display = 'none';
+      }
     });
   }
 
@@ -333,16 +383,29 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
     }
   };
 
-  // Poll for messages every 5 seconds
+  // Poll for messages every 1.5 seconds
   setInterval(() => {
     if (conversationId) {
       fetch(apiBase + '/api/lena/messages?conversationId=' + conversationId)
         .then(res => res.json())
         .then(data => {
+          isAgentTypingGlobal = !!data.isAgentTyping;
+          
+          if (isAgentTypingGlobal) {
+            typingBubble.style.display = 'flex';
+            scrollDown();
+          } else if (!isAiThinking) {
+            typingBubble.style.display = 'none';
+          }
+
           if (data.messages && data.messages.length > 0) {
             const currentCount = messagesDiv.getElementsByClassName('lena-msg').length;
             if (data.messages.length > currentCount) {
+              const wasVisible = typingBubble.style.display;
               messagesDiv.innerHTML = '';
+              messagesDiv.appendChild(typingBubble);
+              typingBubble.style.display = wasVisible;
+              
               data.messages.forEach(m => {
                 appendMessage(m.sender_type === 'visitor' ? 'visitor' : 'bot', m.content);
               });
@@ -350,7 +413,7 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
           }
         });
     }
-  }, 5000);
+  }, 1500);
 
 })();
     `;

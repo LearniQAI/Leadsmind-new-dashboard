@@ -44,7 +44,22 @@ export async function GET(req: NextRequest) {
       return corsResponse({ error: error.message }, { status: 500 });
     }
 
-    return corsResponse({ messages: data ?? [] });
+    // Check if agent is actively typing
+    let isAgentTyping = false;
+    const { data: conv } = await supabase
+      .from('lena_conversations')
+      .select('mode, agent_typing_until')
+      .eq('id', conversationId)
+      .maybeSingle();
+
+    if (conv?.mode === 'human' && conv?.agent_typing_until) {
+      isAgentTyping = new Date(conv.agent_typing_until).getTime() > Date.now();
+    }
+
+    return corsResponse({ 
+      messages: data ?? [],
+      isAgentTyping
+    });
   } catch (err: any) {
     return corsResponse({ error: err.message }, { status: 500 });
   }
