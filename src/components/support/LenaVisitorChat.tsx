@@ -29,6 +29,7 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [visitorId, setVisitorId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAgentTyping, setIsAgentTyping] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -84,8 +85,11 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
       try {
         const res = await fetch(`/api/lena/messages?conversationId=${conversationId}`);
         const data = await res.json();
-        if (res.ok && data.messages) {
-          setMessages(data.messages);
+        if (res.ok) {
+          if (data.messages) {
+            setMessages(data.messages);
+          }
+          setIsAgentTyping(!!data.isAgentTyping);
         }
       } catch (err) {
         console.error('Failed to fetch messages:', err);
@@ -94,8 +98,8 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
 
     fetchMessages();
 
-    // Polling interval
-    const interval = setInterval(fetchMessages, 5000);
+    // Polling interval (1.5 seconds for real-time responsiveness)
+    const interval = setInterval(fetchMessages, 1500);
     return () => clearInterval(interval);
   }, [conversationId]);
 
@@ -223,7 +227,7 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
                 </div>
               ))
             )}
-            {isLoading && (
+            {(isLoading || isAgentTyping) && (
               <div className="flex justify-start">
                 <div className="bg-white/5 border border-white/10 p-3 rounded-2xl rounded-tl-none flex gap-1 items-center">
                   <div className="w-1.5 h-1.5 bg-[#94a3c8] rounded-full animate-bounce" />

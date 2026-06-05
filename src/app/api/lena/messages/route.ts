@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       .eq('id', conversationId)
       .maybeSingle();
 
-    if (conv?.mode === 'human' && conv?.agent_typing_until) {
+    if (conv?.agent_typing_until) {
       isAgentTyping = new Date(conv.agent_typing_until).getTime() > Date.now();
     }
 
