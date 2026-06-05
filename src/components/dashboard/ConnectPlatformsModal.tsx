@@ -687,8 +687,28 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
 
                         <div className="flex flex-col gap-2">
                           {igAccounts.length === 0 ? (
-                            <div className="p-3 rounded-lg border border-dashed border-white/10 text-center text-[11px] text-[#4a5a82]">
-                              No linked Instagram Business Account detected for <strong>{selectedPage?.name}</strong>.
+                            <div className="flex flex-col gap-3">
+                              <div className="p-3 rounded-lg border border-dashed border-white/10 text-center text-[11px] text-[#4a5a82]">
+                                Auto-detection unavailable. Enter your Instagram Business Account ID manually.
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <label className="text-[10px] text-[#4a5a82] font-semibold">Instagram Business Account ID</label>
+                                <input
+                                  type="text"
+                                  placeholder="Enter Instagram Business Account ID"
+                                  value={selectedInstagram?.id || ''}
+                                  onChange={(e) => setSelectedInstagram(e.target.value ? { id: e.target.value, username: 'instagram_account' } : null)}
+                                  className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                                />
+                                <label className="text-[10px] text-[#4a5a82] font-semibold mt-1">Instagram Username (optional)</label>
+                                <input
+                                  type="text"
+                                  placeholder="Enter Instagram username"
+                                  value={selectedInstagram?.username || ''}
+                                  onChange={(e) => setSelectedInstagram(prev => prev ? { ...prev, username: e.target.value } : null)}
+                                  className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                                />
+                              </div>
                             </div>
                           ) : (
                             igAccounts.map((ig) => (

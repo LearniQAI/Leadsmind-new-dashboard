@@ -4,21 +4,21 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 
 export async function getSocialAccounts() {
- try {
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
-
-  const supabase = await createServerClient();
-  const { data, error } = await supabase
-   .from('social_accounts')
-   .select('*')
-   .eq('workspace_id', workspaceId);
-
-  if (error) throw error;
-  return { data };
- } catch (error: any) {
-  return { error: error.message };
- }
+  try {
+    const workspaceId = await getCurrentWorkspaceId()
+    if (!workspaceId) return { data: [] }
+    const supabase = await createServerClient()
+    const { data, error } = await supabase
+      .from('platform_connections')
+      .select('platform, status, credentials')
+      .eq('workspace_id', workspaceId)
+      .in('platform', ['facebook', 'instagram'])
+      .eq('status', 'connected')
+    if (error) throw error
+    return { data: data || [] }
+  } catch (error: any) {
+    return { error: error.message, data: [] }
+  }
 }
 
 export async function getSocialPosts() {
@@ -41,37 +41,122 @@ export async function getSocialPosts() {
 }
 
 export async function createSocialPost(postData: {
- platforms: string[];
- content: string;
- media_urls?: string[];
- scheduled_at?: string;
+  platforms: string[];
+  content: string;
+  media_urls?: string[];
+  scheduled_at?: string;
 }) {
- try {
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+    const supabase = await createServerClient();
+    const results: any = {};
 
-  const { data, error } = await supabase
-   .from('social_posts')
-   .insert({
-    workspace_id: workspaceId,
-    platforms: postData.platforms,
-    content: postData.content,
-    media_urls: postData.media_urls || [],
-    scheduled_at: postData.scheduled_at,
-    status: postData.scheduled_at ? 'scheduled' : 'draft',
-    created_by: user?.id
-   })
-   .select('id')
-   .single();
+    for (const platform of postData.platforms) {
+      const { data: conn } = await supabase
+        .from('platform_connections')
+        .select('credentials')
+        .eq('workspace_id', workspaceId)
+        .eq('platform', platform)
+        .eq('status', 'connected')
+        .maybeSingle();
 
-  if (error) throw error;
-  return { success: true, id: data.id };
- } catch (error: any) {
-  return { error: error.message };
- }
+      if (!conn?.credentials) {
+        results[platform] = { error: `${platform} not connected` };
+        continue;
+      }
+
+      const creds = conn.credentials as any;
+
+      try {
+        if (platform === 'facebook') {
+          const { decrypt } = await import('@/lib/encryption');
+          const pageToken = decrypt(creds.page_access_token_encrypted);
+          const pageId = creds.page_id;
+
+          const body: any = {
+            message: postData.content,
+            access_token: pageToken
+          };
+
+          if (postData.media_urls?.[0]) {
+            body.link = postData.media_urls[0];
+          }
+
+          const res = await fetch(`https://graph.facebook.com/v18.0/${pageId}/feed`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error?.message || 'Facebook post failed');
+          results[platform] = { success: true, postId: data.id };
+        }
+
+        if (platform === 'instagram') {
+          const { decrypt } = await import('@/lib/encryption');
+          const pageToken = decrypt(creds.page_access_token_encrypted);
+          const igId = creds.instagram_id;
+
+          if (!igId) throw new Error('Instagram not connected. Please connect Instagram first.');
+
+          const imageUrl = postData.media_urls?.[0];
+          if (!imageUrl) throw new Error('Instagram requires an image URL to publish.');
+
+          const containerRes = await fetch(`https://graph.facebook.com/v18.0/${igId}/media`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              caption: postData.content,
+              image_url: imageUrl,
+              access_token: pageToken
+            })
+          });
+          const container = await containerRes.json();
+          if (!containerRes.ok) throw new Error(container.error?.message || 'Instagram media creation failed');
+
+          const publishRes = await fetch(`https://graph.facebook.com/v18.0/${igId}/media_publish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              creation_id: container.id,
+              access_token: pageToken
+            })
+          });
+          const publishData = await publishRes.json();
+          if (!publishRes.ok) throw new Error(publishData.error?.message || 'Instagram publish failed');
+          results[platform] = { success: true, postId: publishData.id };
+        }
+
+        // Save to DB
+        await supabase.from('social_posts').insert({
+          workspace_id: workspaceId,
+          platforms: [platform],
+          content: postData.content,
+          media_urls: postData.media_urls || [],
+          status: 'published',
+          published_at: new Date().toISOString()
+        });
+
+      } catch (err: any) {
+        results[platform] = { error: err.message };
+      }
+    }
+
+    const anySuccess = Object.values(results).some((r: any) => r.success);
+    const errors = Object.entries(results)
+      .filter(([, r]: any) => r.error)
+      .map(([platform, r]: any) => `${platform}: ${r.error}`)
+      .join(', ');
+
+    if (!anySuccess && errors) return { error: errors };
+
+    return { success: true, results };
+  } catch (error: any) {
+    return { error: error.message };
+  }
 }
 
 export async function publishSocialPost(postId: string) {

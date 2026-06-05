@@ -14,9 +14,10 @@ interface ConversationThreadProps {
   conversation: any;
   onSendMessage: (text: string, targetConvId: string) => void;
   isSending: boolean;
+  onTogglePanel?: () => void;
 }
 
-export function ConversationThread({ conversation, onSendMessage, isSending }: ConversationThreadProps) {
+export function ConversationThread({ conversation, onSendMessage, isSending, onTogglePanel }: ConversationThreadProps) {
   const router = useRouter();
   const [isCopied, setIsCopied] = useState(false);
   const [isNoteSending, setIsNoteSending] = useState(false);
@@ -104,46 +105,46 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
 
   return (
     <div className="flex-1 flex flex-col bg-[#04091a] relative overflow-hidden">
-      {/* Header */}
-      <div className="h-20 border-b border-white/5 flex items-center justify-between px-8 z-10 bg-[#080f28]/80 backdrop-blur-xl shrink-0 overflow-x-auto common-scrollbar gap-8">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 shrink-0 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
-            {selectedPlatform === 'sms' && <i className="fa-solid fa-comment-dots text-[16px] text-[#10b981]"></i>}
-            {selectedPlatform === 'email' && <i className="fa-solid fa-envelope text-[16px] text-[#3b82f6]"></i>}
-            {selectedPlatform === 'whatsapp' && <i className="fa-brands fa-whatsapp text-[18px] text-[#25d366]"></i>}
-            {selectedPlatform === 'instagram' && <i className="fa-brands fa-instagram text-[18px] text-[#ec4899]"></i>}
-            {selectedPlatform === 'facebook' && <i className="fa-brands fa-facebook-messenger text-[18px] text-[#3b82f6]"></i>}
+      {/* Header (h-14, clean, space-saving) */}
+      <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 z-10 bg-[#080f28]/80 backdrop-blur-xl shrink-0 gap-6">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 shrink-0 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
+            {selectedPlatform === 'sms' && <i className="fa-solid fa-comment-dots text-[13px] text-[#10b981]"></i>}
+            {selectedPlatform === 'email' && <i className="fa-solid fa-envelope text-[13px] text-[#3b82f6]"></i>}
+            {selectedPlatform === 'whatsapp' && <i className="fa-brands fa-whatsapp text-[14px] text-[#25d366]"></i>}
+            {selectedPlatform === 'instagram' && <i className="fa-brands fa-instagram text-[14px] text-[#ec4899]"></i>}
+            {selectedPlatform === 'facebook' && <i className="fa-brands fa-facebook-messenger text-[14px] text-[#3b82f6]"></i>}
             {!['sms', 'email', 'whatsapp', 'instagram', 'facebook'].includes(selectedPlatform) && (
-              <i className="fa-solid fa-comment text-[16px] text-[#3b82f6]"></i>
+              <i className="fa-solid fa-comment text-[13px] text-[#3b82f6]"></i>
             )}
           </div>
           <div>
-            <h3 className="text-[15px] font-bold text-[#eef2ff] font-space-grotesk tracking-tight whitespace-nowrap">
+            <h3 className="text-[13px] font-bold text-[#eef2ff] font-space-grotesk tracking-tight whitespace-nowrap">
               {conversation.contacts ? `${conversation.contacts.first_name} ${conversation.contacts.last_name}` : conversation.title}
             </h3>
-            <div className="flex items-center gap-2 mt-0.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse shrink-0" />
-              <span className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-widest font-dm-sans whitespace-nowrap">
-                Active via {availablePlatforms.map((p: any) => p.platform.toUpperCase()).join(' & ')}
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="w-1 h-1 rounded-full bg-[#10b981] animate-pulse shrink-0" />
+              <span className="text-[8px] text-[#4a5a82] font-bold uppercase tracking-widest font-dm-sans whitespace-nowrap">
+                {selectedPlatform}
               </span>
             </div>
           </div>
         </div>
         
         {/* Compliance and SLA Badges */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {/* WhatsApp compliance status */}
           {selectedPlatform === 'whatsapp' && (
             <>
               {!isWhatsAppWindowClosed ? (
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                  <i className="fa-solid fa-circle text-[6px]"></i>
-                  24h Window Open ({windowTimeRemainingText})
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <i className="fa-solid fa-circle text-[4px]"></i>
+                  24h Open ({windowTimeRemainingText})
                 </span>
               ) : (
-                <span className="px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                  <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
-                  24h Window Closed
+                <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <i className="fa-solid fa-triangle-exclamation text-[8px]"></i>
+                  24h Closed
                 </span>
               )}
             </>
@@ -151,53 +152,37 @@ export function ConversationThread({ conversation, onSendMessage, isSending }: C
 
           {/* SLA display */}
           {slaStatus === 'breached' && (
-            <span className="px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 animate-pulse">
-              <i className="fa-solid fa-circle-exclamation text-[10px]"></i>
+            <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center gap-1 animate-pulse">
+              <i className="fa-solid fa-circle-exclamation text-[8px]"></i>
               SLA Overdue ({slaText})
             </span>
           )}
           {slaStatus === 'pending' && (
-            <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-              <i className="fa-regular fa-clock text-[10px]"></i>
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center gap-1">
+              <i className="fa-regular fa-clock text-[8px]"></i>
               SLA Due ({slaText})
             </span>
           )}
           {slaStatus === 'met' && (
-            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-              <i className="fa-solid fa-check text-[10px]"></i>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center gap-1">
+              <i className="fa-solid fa-check text-[8px]"></i>
               SLA Met
             </span>
           )}
 
-          {selectedPlatform === 'sms' && (
-            <div className="flex items-center gap-2">
-               <div className="px-2.5 py-1.5 rounded-lg bg-[#2563eb]/10 border border-[#2563eb]/20 text-[#3b82f6] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
-                  <i className="fa-solid fa-link"></i>
-                  SMS Bridge Active
-               </div>
-               <Button 
-                 variant="ghost" 
-                 size="sm"
-                 className="h-[28px] px-3 text-[10px] font-bold text-[#eef2ff] bg-white/5 border border-white/10 hover:bg-white/10 whitespace-nowrap"
-                 onClick={() => {
-                   navigator.clipboard.writeText(`${conversation.contacts?.phone || ''}@sms.leadsmind.io`);
-                   setIsCopied(true);
-                   setTimeout(() => setIsCopied(false), 2000);
-                 }}
-               >
-                 {isCopied ? (
-                   <><i className="fa-solid fa-check mr-1.5 text-[#10b981]"></i> Copied!</>
-                 ) : (
-                   <><i className="fa-regular fa-copy mr-1.5"></i> Copy Bridge Address</>
-                 )}
-               </Button>
-             </div>
-          )}
+          {/* Toggle Panel Button */}
+          <button 
+            onClick={onTogglePanel} 
+            className="w-8 h-8 rounded-lg bg-[#2563eb]/20 border border-[#2563eb]/30 hover:bg-[#2563eb]/30 flex items-center justify-center text-[#3b82f6] hover:text-white transition-all ml-2 shrink-0"
+            title="Toggle Contact Panel"
+          >
+            <i className="fa-solid fa-circle-info text-[13px]"></i>
+          </button>
         </div>
       </div>
 
-      {/* Messages List */}
-      <div className="flex-1 overflow-y-auto p-8 z-10 common-scrollbar flex flex-col-reverse gap-4">
+      {/* Messages List (increased padding, reduced gap) */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 z-10 common-scrollbar flex flex-col-reverse gap-3">
           {conversation.messages?.slice().sort((a: any, b: any) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()).map((msg: any, i: number) => {
             const isVoice = msg.audio_url || msg.import_type === 'voice';
             const msgPlatform = msg.platform || conversation.platform;

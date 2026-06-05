@@ -29,30 +29,52 @@ export function IntegrationsList() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(window.location.search)
+      console.log('[IntegrationsList] URL params on mount:', window.location.search)
+      console.log('[IntegrationsList] meta_oauth:', params.get('meta_oauth'))
+      console.log('[IntegrationsList] needs_instagram:', params.get('needs_instagram'))
+      console.log('[IntegrationsList] needs_whatsapp:', params.get('needs_whatsapp'))
+      
       if (params.get('meta_oauth') === '1') {
-        const plat = params.get('platform') as 'facebook' | 'instagram' | 'whatsapp' | null;
-        setActivePlatform(plat);
-        setIsOpen(true);
-        // Clear the URL params
-        window.history.replaceState({}, '', window.location.pathname);
-        // Force refetch connections
-        const fetchConnections = fetchPlatforms;
-        fetchConnections();
+        const needsInstagram = params.get('needs_instagram') === 'true'
+        const needsWhatsapp = params.get('needs_whatsapp') === 'true'
+        console.log('[IntegrationsList] needsInstagram:', needsInstagram, 'needsWhatsapp:', needsWhatsapp)
+        
+        window.history.replaceState({}, '', window.location.pathname)
+        fetchPlatforms()
+        
+        if (needsInstagram) {
+          setActivePlatform('instagram')
+          setIsOpen(true)
+        } else if (needsWhatsapp) {
+          setActivePlatform('whatsapp')
+          setIsOpen(true)
+        }
       }
     }
-  }, []);
+  }, [])
 
   const handleConnect = async (platform: 'facebook' | 'instagram' | 'whatsapp') => {
+    // If Facebook is already connected and we're connecting IG or WA,
+    // open the wizard directly without OAuth
+    const fbConnected = connectedPlatforms.find(p => p.platform === 'facebook' && p.status === 'connected')
+    
+    if (platform !== 'facebook' && fbConnected) {
+      setActivePlatform(platform)
+      setIsOpen(true)
+      return
+    }
+    
+    // Otherwise do OAuth (for Facebook or if no Facebook connection exists)
     try {
-      const authUrl = await getMetaAuthUrl(platform);
+      const authUrl = await getMetaAuthUrl(platform)
       if (authUrl) {
-        window.location.href = authUrl;
+        window.location.href = authUrl
       } else {
-        toast.error('Failed to generate connection URL');
+        toast.error('Failed to generate connection URL')
       }
     } catch (err: any) {
-      toast.error(err.message || 'Error initiating platform connection');
+      toast.error(err.message || 'Error initiating platform connection')
     }
   };
 

@@ -13,8 +13,9 @@ import {
  AlertCircle,
  Sparkles
 } from 'lucide-react';
-import { Instagram, Facebook, Twitter, Linkedin } from '@/components/icons/BrandIcons';
-import { createSocialPost, getMetaAuthUrl, getLinkedInAuthUrl, getTikTokAuthUrl } from '@/app/actions/social';
+import { Instagram, Facebook } from '@/components/icons/BrandIcons';
+import { createSocialPost } from '@/app/actions/social';
+import { getMetaAuthUrl } from '@/app/actions/messaging';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import AIAssistantSidebar from '@/components/content-studio/AIAssistantSidebar';
@@ -31,6 +32,7 @@ export default function SocialPlannerClient({
 }) {
   const router = useRouter();
   const [content, setContent] = useState('');
+  const [mediaUrl, setMediaUrl] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
@@ -52,25 +54,19 @@ export default function SocialPlannerClient({
  };
 
  const handleConnect = async (platform: string) => {
-  let url = '';
   try {
-   switch (platform) {
-    case 'facebook': case 'instagram': url = await getMetaAuthUrl(); break;
-    case 'linkedin': url = await getLinkedInAuthUrl(); break;
-    case 'tiktok': url = await getTikTokAuthUrl(); break;
-    default: toast.info(`${platform} connection coming soon!`); return;
-   }
-   if (url) window.location.href = url;
+    if (platform === 'facebook' || platform === 'instagram') {
+      const url = await getMetaAuthUrl(platform)
+      if (url) window.location.href = url
+    }
   } catch (err: any) {
-   toast.error(err.message || 'Failed to get connection URL');
+    toast.error(err.message || 'Failed to get connection URL')
   }
  };
 
  const platforms = [
   { id: 'facebook', icon: <Facebook className="w-4 h-4 stroke-current" />, color: 'bg-[#1877F2]' },
   { id: 'instagram', icon: <Instagram className="w-4 h-4 stroke-current" />, color: 'bg-[#E4405F]' },
-  { id: 'twitter', icon: <Twitter className="w-4 h-4 stroke-current" />, color: 'bg-[#1DA1F2]' },
-  { id: 'linkedin', icon: <Linkedin className="w-4 h-4 stroke-current" />, color: 'bg-[#0A66C2]' },
  ];
 
  const togglePlatform = (id: string) => {
@@ -89,6 +85,7 @@ export default function SocialPlannerClient({
   const res = await createSocialPost({
    platforms: selectedPlatforms,
    content,
+   media_urls: mediaUrl ? [mediaUrl] : [],
   });
 
   if (res.error) {
@@ -96,6 +93,7 @@ export default function SocialPlannerClient({
   } else {
    toast.success('Post created successfully!');
    setContent('');
+   setMediaUrl('');
    setSelectedPlatforms([]);
    setIsComposerOpen(false);
    setIsCopilotOpen(false);
@@ -147,6 +145,14 @@ export default function SocialPlannerClient({
          onChange={(e) => setContent(e.target.value)}
          placeholder="What's happening? Dominating your industry starts with a post..."
          className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/20 focus:outline-none focus:border-primary/50 transition-colors resize-none h-40"
+        />
+
+        <input
+          type="text"
+          placeholder="Image URL (required for Instagram)..."
+          value={mediaUrl}
+          onChange={(e) => setMediaUrl(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder:text-white/20 focus:outline-none focus:border-primary/50 transition-colors text-sm"
         />
 
         <div className="flex items-center justify-between">

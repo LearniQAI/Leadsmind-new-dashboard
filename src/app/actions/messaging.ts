@@ -19,8 +19,11 @@ export async function getMetaAuthUrl(targetPlatform?: string) {
 		return `${metaRedirectUri}?code=mock_code&state=${stateStr}`;
 	}
 
-	const scope = 'pages_messaging,pages_manage_metadata,instagram_manage_messages,whatsapp_business_management,whatsapp_business_messaging';
-	return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${stateStr}`;
+	const scope = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_manage_posts,instagram_manage_messages,instagram_content_publishing,whatsapp_business_messaging,whatsapp_business_management,business_management';
+	const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${stateStr}`;
+	console.log('[Meta OAuth Scope]', scope);
+	console.log('[Meta OAuth URL]', url);
+	return url;
 }
 
 async function validateMetaPlatformCredentials(platform: string, data: any) {
@@ -742,31 +745,7 @@ export async function saveMetaConnections(data: {
       }
     }
 
-    // 2. Validate Instagram access (if selected) before persisting
-    if ((targetPlatform === 'instagram' || (!targetPlatform && data.instagramBusinessAccountId)) && !oauth.isMock) {
-      try {
-        const igRes = await fetch(`https://graph.facebook.com/v18.0/${data.instagramBusinessAccountId}?fields=username&access_token=${data.pageAccessToken}`);
-        if (!igRes.ok) {
-          const errData = await igRes.json();
-          throw new Error(errData.error?.message || 'Invalid Instagram account access');
-        }
-      } catch (err: any) {
-        return { error: `Instagram Validation Failed: ${err.message}` };
-      }
-    }
 
-    // 3. Validate WhatsApp access (if selected) before persisting
-    if ((targetPlatform === 'whatsapp' || (!targetPlatform && data.phoneNumberId)) && !oauth.isMock) {
-      try {
-        const waRes = await fetch(`https://graph.facebook.com/v18.0/${data.phoneNumberId}?fields=verified_name,display_phone_number&access_token=${oauth.token}`);
-        if (!waRes.ok) {
-          const errData = await waRes.json();
-          throw new Error(errData.error?.message || 'Invalid WhatsApp Phone Number access');
-        }
-      } catch (err: any) {
-        return { error: `WhatsApp Validation Failed: ${err.message}` };
-      }
-    }
 
     // Persist connections!
     if (targetPlatform === 'facebook') {

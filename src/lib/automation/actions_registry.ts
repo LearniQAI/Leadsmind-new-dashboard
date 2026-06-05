@@ -2,7 +2,6 @@ import { createServerClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/sms";
 import { calculateLeadScore } from "../../app/actions/automation";
-import { publishSocialPost } from "../../app/actions/social";
 import { enrollStudent, updateProgress } from "../../app/actions/lms";
 import { UnifiedActivityEngine } from "@/lib/crm/UnifiedActivityEngine";
 
@@ -148,20 +147,20 @@ export const AutomationActions = {
    .eq("id", contactId);
  },
 
- social_post: async (workspaceId: string, contactId: string, config: any) => {
-  const { content, platforms } = config;
-  if (!content || !platforms) return;
+  social_post: async (workspaceId: string, contactId: string, config: any) => {
+   const { content, platforms } = config;
+   if (!content || !platforms) return;
 
-  // Create and publish social post
-  const result = await (await import("../../app/actions/social")).createSocialPost({
-   content,
-   platforms
-  });
+   // Create and publish social post
+   const result = await (await import("../../app/actions/social")).createSocialPost({
+    content,
+    platforms
+   });
 
-  if (result.success && result.id) {
-   await (await import("../../app/actions/social")).publishSocialPost(result.id);
-  }
- },
+   if (result.success) {
+    // Post published directly via createSocialPost - no separate publish step needed
+   }
+  },
 
   lms_enroll: async (workspaceId: string, contactId: string, config: any) => {
    const { lms_enroll } = await import("./lms_actions");
