@@ -55,6 +55,6 @@ CREATE POLICY "Public select recordings" ON public.lms_session_recordings FOR SE
 DROP POLICY IF EXISTS "Service role full access recordings" ON public.lms_session_recordings;
 CREATE POLICY "Service role full access recordings" ON public.lms_session_recordings FOR ALL USING (true);
 
--- 5. Add reminder sent tracking columns to lms_expert_sessions
+-- 5. Add reminder sent tracking columns to lms_expert_sessions kss
 ALTER TABLE public.lms_expert_sessions ADD COLUMN IF NOT EXISTS reminder_24h_sent BOOLEAN DEFAULT false;
 ALTER TABLE public.lms_expert_sessions ADD COLUMN IF NOT EXISTS reminder_1h_sent BOOLEAN DEFAULT false;
