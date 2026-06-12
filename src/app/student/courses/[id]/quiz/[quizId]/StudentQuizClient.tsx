@@ -14,13 +14,17 @@ interface StudentQuizClientProps {
   quiz: any;
   questions: any[];
   settings: any;
+  attemptsCount: number;
+  hasPassedRemedial: boolean;
 }
 
 export default function StudentQuizClient({ 
   courseId, 
   quiz, 
   questions, 
-  settings 
+  settings,
+  attemptsCount,
+  hasPassedRemedial
 }: StudentQuizClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -108,6 +112,45 @@ export default function StudentQuizClient({
     );
   }
 
+  const maxAttempts = settings?.max_attempts || 3;
+  const isLocked = attemptsCount >= maxAttempts && !hasPassedRemedial;
+
+  if (isLocked) {
+    return (
+      <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-xl mx-auto text-center space-y-6 shadow-xl">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto">
+          <AlertTriangle size={32} />
+        </div>
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Lockout Status</span>
+          <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Attempts Exceeded</h2>
+          <p className="text-xs text-white/50 leading-relaxed max-w-md mx-auto">
+            You have used all {attemptsCount} of your allowed attempts for this assessment. 
+            To unlock the quiz, you must complete the AI-powered remedial learning path.
+          </p>
+        </div>
+        
+        <div className="pt-2">
+          <Button 
+            onClick={() => router.push(`/student/courses/${courseId}/remedial?lessonId=${quiz.id}`)}
+            className="w-full bg-primary hover:bg-primary/90 text-white h-11 rounded-xl uppercase tracking-wider text-[10px] font-black shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+          >
+            Start AI Remedial Session 🤖
+          </Button>
+        </div>
+        
+        <div className="border-t border-white/5 pt-4">
+          <Button 
+            onClick={() => router.push(`/student/courses/${courseId}`)}
+            className="w-full bg-white/5 border border-white/5 text-white hover:bg-white/10 h-10 rounded-xl uppercase tracking-wider text-[10px] font-black"
+          >
+            Back to Course Player
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isSubmitted) {
     return (
       <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-xl mx-auto space-y-8 shadow-xl">
@@ -190,12 +233,26 @@ export default function StudentQuizClient({
           </div>
         </div>
 
-        <Button 
-          onClick={() => router.push(`/student/courses/${courseId}`)}
-          className="w-full bg-primary hover:bg-primary/95 text-white h-11 rounded-xl uppercase tracking-wider text-[10px] font-black shadow-lg shadow-primary/20"
-        >
-          Back to Course Workspace Player
-        </Button>
+        <div className="flex flex-col gap-3">
+          {!passed && (
+            <Button 
+              onClick={() => router.push(`/student/courses/${courseId}/remedial?lessonId=${quiz.id}`)}
+              className="w-full bg-primary hover:bg-primary/95 text-white h-11 rounded-xl uppercase tracking-wider text-[10px] font-black shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+            >
+              Start AI Remedial Session 🤖
+            </Button>
+          )}
+          <Button 
+            onClick={() => router.push(`/student/courses/${courseId}`)}
+            className={`w-full h-11 rounded-xl uppercase tracking-wider text-[10px] font-black border ${
+              passed 
+                ? 'bg-primary hover:bg-primary/95 text-white border-primary shadow-lg shadow-primary/20' 
+                : 'bg-white/5 border-white/5 text-white hover:bg-white/10'
+            }`}
+          >
+            Back to Course Workspace Player
+          </Button>
+        </div>
       </div>
     );
   }

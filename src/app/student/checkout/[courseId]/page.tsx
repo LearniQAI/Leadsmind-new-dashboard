@@ -52,6 +52,19 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
     redirect(`/student/courses/${courseId}`);
   }
 
+  // Count active enrollments to check cap constraint
+  let isCapped = false;
+  if (course.enrolment_cap !== null && course.enrolment_cap > 0) {
+    const { count } = await supabase
+      .from('enrollments')
+      .select('*', { count: 'exact', head: true })
+      .eq('course_id', courseId);
+    
+    if (count !== null && count >= course.enrolment_cap) {
+      isCapped = true;
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Back button */}
@@ -68,6 +81,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
         user={user}
         workspaceId={workspaceId}
         contactId={contactId}
+        isCapped={isCapped}
       />
     </div>
   );

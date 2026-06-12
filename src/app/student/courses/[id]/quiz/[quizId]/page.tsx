@@ -60,14 +60,18 @@ export default async function StudentQuizPage({ params }: StudentQuizPageProps) 
     notFound();
   }
 
-  // 4. Fetch questions and settings using admin client to bypass RLS
-  const [questionsRes, settingsRes] = await Promise.all([
+  // 4. Fetch questions, settings, attempts, and remedial status using admin client to bypass RLS
+  const [questionsRes, settingsRes, attemptsRes, remedialRes] = await Promise.all([
     adminClient.from('quiz_questions').select('*').eq('lesson_id', quizId).order('position', { ascending: true }),
-    adminClient.from('quiz_settings').select('*').eq('lesson_id', quizId).maybeSingle()
+    adminClient.from('quiz_settings').select('*').eq('lesson_id', quizId).maybeSingle(),
+    adminClient.from('quiz_attempts').select('id').eq('lesson_id', quizId).eq('student_id', contactId),
+    adminClient.from('lms_remedial_assignments').select('status').eq('enrollment_id', enrollment.id).eq('lesson_id', quizId).maybeSingle()
   ]);
 
   const questions = questionsRes.data || [];
   const settings = settingsRes.data || {};
+  const attemptsCount = attemptsRes.data?.length || 0;
+  const hasPassedRemedial = remedialRes.data?.status === 'passed';
 
   return (
     <div className="space-y-6 max-w-xl mx-auto">
@@ -83,6 +87,8 @@ export default async function StudentQuizPage({ params }: StudentQuizPageProps) 
         quiz={lesson}
         questions={questions}
         settings={settings}
+        attemptsCount={attemptsCount}
+        hasPassedRemedial={hasPassedRemedial}
       />
     </div>
   );

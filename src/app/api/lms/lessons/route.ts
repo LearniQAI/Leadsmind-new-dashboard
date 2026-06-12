@@ -52,7 +52,8 @@ export async function POST(req: NextRequest) {
       lesson_type,
       content = {},
       position = 0,
-      is_preview = false
+      is_preview = false,
+      access_level = 'enrolled'
     } = body;
 
     if (!module_id || !course_id || !workspace_id || !title || !lesson_type) {
@@ -69,7 +70,8 @@ export async function POST(req: NextRequest) {
         lesson_type,
         content,
         position,
-        is_preview
+        is_preview,
+        access_level
       })
       .select()
       .single();
@@ -97,7 +99,8 @@ export async function PATCH(req: NextRequest) {
       lesson_type,
       content,
       position,
-      is_preview
+      is_preview,
+      access_level
     } = body;
 
     const updatePayload: any = {};
@@ -106,6 +109,7 @@ export async function PATCH(req: NextRequest) {
     if (content !== undefined) updatePayload.content = content;
     if (position !== undefined) updatePayload.position = position;
     if (is_preview !== undefined) updatePayload.is_preview = is_preview;
+    if (access_level !== undefined) updatePayload.access_level = access_level;
 
     updatePayload.updated_at = new Date().toISOString();
 

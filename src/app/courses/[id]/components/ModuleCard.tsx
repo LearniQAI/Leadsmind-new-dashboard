@@ -13,6 +13,7 @@ import {
   Lock, 
   HelpCircle 
 } from "lucide-react";
+import { toast } from "sonner";
 
 function parseMarkdownToHtml(markdown: string): string {
   if (!markdown) return "";
@@ -152,6 +153,33 @@ export default function ModuleCard({
               <span>{module.nqf_level || "No NQF Level"}</span>
               <span>•</span>
               <span>{module.lessons?.length || 0} Lessons</span>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                ⏱️ Drip: 
+                <input
+                  type="number"
+                  min="0"
+                  defaultValue={module.drip_days || 0}
+                  onBlur={async (e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    if (val !== module.drip_days) {
+                      try {
+                        const res = await fetch(`/api/lms/modules?id=${module.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ drip_days: val })
+                        });
+                        const data = await res.json();
+                        if (data.error) toast.error(data.error);
+                        else toast.success("Relative drip timeline interval updated.");
+                      } catch {
+                        toast.error("Failed to sync relative drip interval");
+                      }
+                    }
+                  }}
+                  className="w-12 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-center font-mono text-[10px] outline-none focus:border-primary text-white"
+                /> days
+              </span>
             </div>
           </div>
         </div>

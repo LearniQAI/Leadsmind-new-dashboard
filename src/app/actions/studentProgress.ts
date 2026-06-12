@@ -42,7 +42,95 @@ export async function markLessonComplete(courseId: string, lessonId: string) {
       });
 
     if (error) throw error;
-    return { success: true };
+
+    // Hook telemetry triggers
+    try {
+      const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
+      await emitLMSEvent('lesson.completed', {
+        workspaceId,
+        contactId,
+        courseId,
+        lessonId
+      });
+
+      // Check if module is completed
+      const { data: lesson } = await adminClient
+        .from('course_lessons')
+        .select('module_id')
+        .eq('id', lessonId)
+        .single();
+
+      if (lesson?.module_id) {
+        const { data: moduleLessons } = await adminClient
+          .from('course_lessons')
+          .select('id')
+          .eq('module_id', lesson.module_id);
+
+        const { data: completedLessons } = await adminClient
+          .from('course_progress')
+          .select('lesson_id')
+          .eq('contact_id', contactId)
+          .eq('course_id', courseId)
+          .in('lesson_id', (moduleLessons || []).map(l => l.id));
+
+        if (completedLessons && completedLessons.length === moduleLessons?.length) {
+          await emitLMSEvent('section.completed', {
+            workspaceId,
+            contactId,
+            courseId,
+            moduleId: lesson.module_id
+          });
+        }
+      }
+
+      // Check if course is completed
+      const { data: allCourseLessons } = await adminClient
+        .from('course_lessons')
+        .select('id')
+        .eq('course_id', courseId);
+
+      const { data: allCompletedCourseLessons } = await adminClient
+        .from('course_progress')
+        .select('lesson_id')
+        .eq('contact_id', contactId)
+        .eq('course_id', courseId);
+
+      if (allCompletedCourseLessons && allCompletedCourseLessons.length === allCourseLessons?.length) {
+        await emitLMSEvent('course.completed', {
+          workspaceId,
+          contactId,
+          courseId
+        });
+      }
+    } catch (telemetryErr) {
+      console.error('[Student Progress Telemetry Hook Error]:', telemetryErr);
+    }
+
+    // Calculate updated percentage
+    const { data: allLessons } = await adminClient
+      .from('course_lessons')
+      .select('id')
+      .eq('course_id', courseId);
+
+    const { data: allCompleted } = await adminClient
+      .from('course_progress')
+      .select('lesson_id')
+      .eq('contact_id', contactId)
+      .eq('course_id', courseId);
+
+    const total = allLessons?.length || 0;
+    const completed = allCompleted?.length || 0;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    // Evaluate student struggle profile in background
+    try {
+      const { evaluateStudentStruggle } = await import('../../../libs/core/src/analytics/struggle-processor');
+      await evaluateStudentStruggle(contactId, courseId, workspaceId);
+    } catch (struggleErr) {
+      console.error('[Struggle processor trigger error]:', struggleErr);
+    }
+
+    return { success: true, progressPercentage: percentage };
   } catch (err: any) {
     return { error: err.message };
   }
@@ -71,7 +159,24 @@ export async function markLessonIncomplete(courseId: string, lessonId: string) {
       .eq('lesson_id', lessonId);
 
     if (error) throw error;
-    return { success: true };
+
+    // Calculate updated percentage
+    const { data: allLessons } = await adminClient
+      .from('course_lessons')
+      .select('id')
+      .eq('course_id', courseId);
+
+    const { data: allCompleted } = await adminClient
+      .from('course_progress')
+      .select('lesson_id')
+      .eq('contact_id', contactId)
+      .eq('course_id', courseId);
+
+    const total = allLessons?.length || 0;
+    const completed = allCompleted?.length || 0;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { success: true, progressPercentage: percentage };
   } catch (err: any) {
     return { error: err.message };
   }
@@ -144,6 +249,14 @@ export async function submitQuizAttempt(payload: {
     // 2. If passed, mark lesson complete in course_progress
     if (payload.passed) {
       await markLessonComplete(payload.courseId, payload.lessonId);
+    }
+
+    // Evaluate student struggle profile in background
+    try {
+      const { evaluateStudentStruggle } = await import('../../../libs/core/src/analytics/struggle-processor');
+      await evaluateStudentStruggle(contactId, payload.courseId, workspaceId);
+    } catch (struggleErr) {
+      console.error('[Struggle processor trigger error]:', struggleErr);
     }
 
     return { success: true };

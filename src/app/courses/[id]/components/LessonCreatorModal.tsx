@@ -50,6 +50,7 @@ export default function LessonCreatorModal({
   const [videoUrl, setVideoUrl] = useState("");
   const [content, setContent] = useState("");
   const [isFree, setIsFree] = useState(false);
+  const [accessLevel, setAccessLevel] = useState<'public' | 'enrolled' | 'paid'>('enrolled');
   
   // Type-specific Metadata states
   const [flashcards, setFlashcards] = useState<{ front: string; back: string }[]>([]);
@@ -94,6 +95,7 @@ export default function LessonCreatorModal({
       setVideoUrl(editingLesson.video_url || "");
       setContent(editingLesson.content || "");
       setIsFree(editingLesson.is_free || false);
+      setAccessLevel(editingLesson.access_level || (editingLesson.is_free ? 'public' : 'enrolled'));
       setType(editingLesson.type || "Text");
       
       const meta = editingLesson.metadata || {};
@@ -111,6 +113,7 @@ export default function LessonCreatorModal({
       setVideoUrl("");
       setContent("");
       setIsFree(false);
+      setAccessLevel('enrolled');
       setType("Text");
       setFlashcards([]);
       setCodeLanguage("javascript");
@@ -166,7 +169,8 @@ export default function LessonCreatorModal({
         title,
         video_url: videoUrl,
         content,
-        is_free: isFree,
+        is_free: accessLevel === 'public',
+        access_level: accessLevel,
         type,
         metadata
       });
@@ -407,17 +411,23 @@ export default function LessonCreatorModal({
               </div>
             )}
 
-            {/* Free Preview Switch */}
-            <div className="flex items-center justify-between bg-[#111d47]/30 border border-white/5 rounded-xl p-4">
-              <div>
-                <span className="text-xs font-bold text-white block">Free Preview Available</span>
-                <span className="text-[10px] text-white/40 block mt-0.5">Unregistered students can preview this lesson for free</span>
-              </div>
-              <Switch
-                checked={isFree}
-                onCheckedChange={setIsFree}
-                className="data-[state=checked]:bg-primary"
-              />
+            {/* Access Level Selector */}
+            <div className="space-y-2 bg-[#111d47]/30 border border-white/5 rounded-xl p-4">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Access Control Visibility</label>
+              <select
+                value={accessLevel}
+                onChange={(e) => setAccessLevel(e.target.value as any)}
+                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all font-body font-bold"
+              >
+                <option value="public">🔓 Public (Accessible without enrollment or login)</option>
+                <option value="enrolled">👥 Free for Enrolled (Requires login & enrollment)</option>
+                <option value="paid">💳 Paid Only (Locked behind paid enrollment verification)</option>
+              </select>
+              <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest mt-1">
+                {accessLevel === 'public' && "Perfect for SEO indexation, search web crawlers, and course previews."}
+                {accessLevel === 'enrolled' && "Forces student registration. Free access for anyone who registers."}
+                {accessLevel === 'paid' && "Hard-locked. Accessible only after confirming payment verification state."}
+              </p>
             </div>
 
             {/* Content (Text description, Rich Text, etc.) */}

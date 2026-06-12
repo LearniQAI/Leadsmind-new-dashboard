@@ -3,29 +3,26 @@
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  CreditCard, ShieldCheck, Loader2, Sparkles, AlertCircle, CheckCircle2 
+  CreditCard, ShieldCheck, Loader2, Sparkles, AlertCircle, CheckCircle2, ShieldAlert, BookOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { enrollStudent, createCourseCheckoutSession } from '@/app/actions/studentEnrollments';
+import { enrollStudent } from '@/app/actions/studentEnrollments';
+import { createDirectCourseCheckoutSession } from '@/app/actions/courseCommerce';
+import { Button } from '@/components/ui/button';
 
 interface CheckoutClientProps {
   course: any;
   user: any;
   workspaceId: string;
   contactId: string;
+  isCapped: boolean;
 }
 
-export default function CheckoutClient({ course, user, workspaceId, contactId }: CheckoutClientProps) {
+export default function CheckoutClient({ course, user, workspaceId, contactId, isCapped }: CheckoutClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [paymentMethod, setPaymentMethod] = useState<'payfast' | 'stripe'>('payfast');
+  const [paymentMethod, setPaymentMethod] = useState<'payfast' | 'stripe'>('stripe');
   const [success, setSuccess] = useState(false);
-
-  // Form states
-  const [cardName, setCardName] = useState(user?.user_metadata?.full_name || '');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvc, setCardCvc] = useState('');
 
   // South African Rand approximation (1 USD ~ 18.5 ZAR)
   const priceZar = (course.price * 18.5).toFixed(2);
@@ -34,8 +31,8 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
     startTransition(async () => {
       try {
         if (paymentMethod === 'stripe') {
-          // Real Stripe checkout integration
-          const res = await createCourseCheckoutSession(course.id);
+          // Direct Stripe Connect checkout integration
+          const res = await createDirectCourseCheckoutSession(course.id);
           if (res.error) {
             toast.error(res.error);
             return;
@@ -48,7 +45,7 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
           return;
         }
 
-        // 1. Simulate the webhook trigger to match CRM/Event Matrix (Trigger #19: PayFast Payment)
+        // Simulate PayFast payment flow
         const webhookPayload = {
           payment_status: "COMPLETE",
           email_address: user.email,
@@ -69,7 +66,7 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
           console.warn("[Checkout] Webhook simulator warning:", await webhookRes.text());
         }
 
-        // 2. Perform the enrollment registration on the backend
+        // Perform enrollment registration
         const enrollRes = await enrollStudent(course.id);
         
         if (enrollRes.error) {
@@ -77,7 +74,6 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
           return;
         }
 
-        // 3. Mark success and redirect
         setSuccess(true);
         toast.success(`Payment of $${course.price.toFixed(2)} completed successfully!`);
         
@@ -91,6 +87,51 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
     });
   };
 
+  const handleFreeEnrollment = () => {
+    startTransition(async () => {
+      try {
+        const enrollRes = await enrollStudent(course.id);
+        if (enrollRes.error) {
+          toast.error(enrollRes.error);
+          return;
+        }
+
+        setSuccess(true);
+        toast.success("Enrolled in free course successfully!");
+        
+        setTimeout(() => {
+          router.push(`/student/courses/${course.id}`);
+        }, 1500);
+      } catch (err) {
+        toast.error("Failed to process free enrollment.");
+      }
+    });
+  };
+
+  // Case 1: Enrollment Closed Cap Gatekeeper
+  if (isCapped) {
+    return (
+      <div className="bg-[#080f28] border border-red-500/10 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
+        <div className="w-20 h-20 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full flex items-center justify-center animate-pulse">
+          <ShieldAlert size={40} />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Enrolment Closed</h2>
+          <p className="text-xs text-white/50 leading-relaxed max-w-sm">
+            We are sorry, but enrollment for <strong className="text-white">"{course.title}"</strong> has reached its maximum structural capacity. Registrations are currently closed.
+          </p>
+        </div>
+        <Button
+          onClick={() => router.push('/student/marketplace')}
+          className="bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8"
+        >
+          Return to Catalog
+        </Button>
+      </div>
+    );
+  }
+
+  // Case 2: Checkout Success Screen
   if (success) {
     return (
       <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
@@ -109,6 +150,10 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
       </div>
     );
   }
+
+  const isFreeModel = course.pricing_model === 'free';
+  const isHybridModel = course.pricing_model === 'hybrid';
+  const isSubscriptionModel = course.pricing_model === 'subscription';
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -143,20 +188,37 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
 
           <div className="border-t border-white/5 pt-4 space-y-3">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-white/40">Subtotal</span>
-              <span className="font-mono text-white/80 font-bold">${course.price.toFixed(2)} USD</span>
+              <span className="text-white/40">Pricing Model</span>
+              <span className="font-bold text-white uppercase tracking-wider text-[10px]">
+                {isFreeModel && "Free Entry"}
+                {isHybridModel && "Hybrid (Free Preview + Upgrade)"}
+                {isSubscriptionModel && `Subscription (${course.subscription_interval || 'month'})`}
+                {course.pricing_model === 'one_time' && "One-time Payment"}
+              </span>
             </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-white/40">Tax / Processing</span>
-              <span className="font-mono text-white/40">R0.00</span>
-            </div>
-            <div className="flex justify-between items-center border-t border-white/5 pt-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-white">Total Due</span>
-              <div className="text-right">
-                <div className="font-mono text-base font-black text-emerald-400">${course.price.toFixed(2)} USD</div>
-                <div className="text-[10px] text-white/30 font-mono font-bold">~ R{priceZar} ZAR</div>
-              </div>
-            </div>
+            
+            {!isFreeModel && (
+              <>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/40">Subtotal</span>
+                  <span className="font-mono text-white/80 font-bold">${course.price?.toFixed(2)} USD</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/40">Tax / Processing</span>
+                  <span className="font-mono text-white/40">R0.00</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-white">Total Due</span>
+                  <div className="text-right">
+                    <div className="font-mono text-base font-black text-emerald-400">
+                      ${course.price?.toFixed(2)} USD
+                      {isSubscriptionModel && <span className="text-[10px] text-white/40 lowercase font-normal">/{course.subscription_interval || 'month'}</span>}
+                    </div>
+                    <div className="text-[10px] text-white/30 font-mono font-bold">~ R{priceZar} ZAR</div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="bg-[#111d47]/20 border border-white/5 p-4 rounded-xl space-y-3">
@@ -175,114 +237,137 @@ export default function CheckoutClient({ course, user, workspaceId, contactId }:
 
       {/* Payment Processing Panel */}
       <div className="lg:col-span-7 bg-[#080f28] border border-white/5 rounded-2xl p-6 space-y-6 shadow-xl">
-        <div className="border-b border-white/5 pb-4">
-          <h4 className="text-sm font-black font-space-grotesk uppercase tracking-wider text-white">Payment Method</h4>
-          <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest mt-1">Select a secure processing node to authenticate enrollment</p>
-        </div>
-
-        {/* Payment tabs */}
-        <div className="grid grid-cols-2 gap-3 bg-[#111d47]/20 border border-white/5 p-1 rounded-xl">
-          <button
-            onClick={() => setPaymentMethod('payfast')}
-            className={`py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-              paymentMethod === 'payfast'
-                ? "bg-primary text-white border border-primary/20 shadow-lg"
-                : "text-white/40 hover:text-white/60"
-            }`}
-          >
-            <span>🇿🇦</span> PayFast (ZAR)
-          </button>
-          <button
-            onClick={() => setPaymentMethod('stripe')}
-            className={`py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-              paymentMethod === 'stripe'
-                ? "bg-primary text-white border border-primary/20 shadow-lg"
-                : "text-white/40 hover:text-white/60"
-            }`}
-          >
-            <CreditCard size={12} /> Stripe Card (USD)
-          </button>
-        </div>
-
-        {paymentMethod === 'payfast' ? (
-          /* PayFast Form */
-          <div className="space-y-5">
-            <div className="bg-[#0f2d4a]/20 border border-[#0f2d4a] rounded-xl p-4 flex items-start gap-3">
-              <AlertCircle className="text-[#3b82f6] shrink-0 mt-0.5" size={16} />
-              <div className="space-y-1">
-                <span className="text-[11px] font-bold text-white block">Secure simulated PayFast Gateway</span>
-                <span className="text-[9px] text-white/50 block leading-relaxed">
-                  The billing processor will convert your checkout subtotal to South African Rand (**R{priceZar} ZAR**). Click the button below to submit a successful simulated transaction callback.
-                </span>
-              </div>
+        {isFreeModel ? (
+          /* Free Enrollment View */
+          <div className="space-y-5 py-6 text-center">
+            <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+              <BookOpen size={24} />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">First Name</label>
-                <input
-                  type="text"
-                  value={user?.user_metadata?.full_name?.split(' ')[0] || 'Student'}
-                  disabled
-                  className="w-full bg-[#111d47]/40 border border-white/5 rounded-xl px-4 py-3 text-xs text-white/50 outline-none"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">Email Address</label>
-                <input
-                  type="email"
-                  value={user?.email || ''}
-                  disabled
-                  className="w-full bg-[#111d47]/40 border border-white/5 rounded-xl px-4 py-3 text-xs text-white/50 outline-none"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <h4 className="text-base font-bold text-white uppercase tracking-wider">Free Access Entry</h4>
+              <p className="text-xs text-white/40 max-w-sm mx-auto leading-relaxed">
+                This course is set to Free Access. You do not need to enter any payment credentials to enroll and begin learning.
+              </p>
             </div>
-
             <button
-              onClick={handleCheckout}
+              onClick={handleFreeEnrollment}
               disabled={isPending}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-emerald-500/15 disabled:opacity-50 mt-4"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-emerald-500/15 disabled:opacity-50"
             >
               {isPending ? (
                 <>
-                  <Loader2 size={13} className="animate-spin" /> Verifying callback...
+                  <Loader2 size={13} className="animate-spin" /> Registering Enrollment...
                 </>
               ) : (
-                <>
-                  Pay R{priceZar} ZAR via PayFast
-                </>
+                "Enroll for Free Now"
               )}
             </button>
           </div>
         ) : (
-          /* Stripe Form */
-          <div className="space-y-5">
-            <div className="bg-[#0f2d4a]/20 border border-[#0f2d4a] rounded-xl p-4 flex items-start gap-3">
-              <ShieldCheck className="text-primary shrink-0 mt-0.5" size={16} />
-              <div className="space-y-1">
-                <span className="text-[11px] font-bold text-white block">Secure Stripe checkout integration</span>
-                <span className="text-[9px] text-white/50 block leading-relaxed">
-                  You will be securely redirected to Stripe's hosted checkout gateway to complete your payment of **${course.price.toFixed(2)} USD**.
-                </span>
-              </div>
+          /* Paid / Hybrid Checkout View */
+          <>
+            <div className="border-b border-white/5 pb-4">
+              <h4 className="text-sm font-black font-space-grotesk uppercase tracking-wider text-white">Payment Method</h4>
+              <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest mt-1">Select a secure processing node to authenticate enrollment</p>
             </div>
 
-            <button
-              onClick={handleCheckout}
-              disabled={isPending}
-              className="w-full bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 mt-4"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 size={13} className="animate-spin" /> Redirecting to Stripe...
-                </>
-              ) : (
-                <>
-                  Redirect to Secure Stripe Checkout
-                </>
-              )}
-            </button>
-          </div>
+            {/* Payment tabs */}
+            <div className="grid grid-cols-2 gap-3 bg-[#111d47]/20 border border-white/5 p-1 rounded-xl">
+              <button
+                onClick={() => setPaymentMethod('stripe')}
+                className={`py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                  paymentMethod === 'stripe'
+                    ? "bg-primary text-white border border-primary/20 shadow-lg"
+                    : "text-white/40 hover:text-white/60"
+                }`}
+              >
+                <CreditCard size={12} /> Stripe Card (USD)
+              </button>
+              <button
+                onClick={() => setPaymentMethod('payfast')}
+                className={`py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                  paymentMethod === 'payfast'
+                    ? "bg-primary text-white border border-primary/20 shadow-lg"
+                    : "text-white/40 hover:text-white/60"
+                }`}
+              >
+                <span>🇿🇦</span> PayFast Sandbox (ZAR)
+              </button>
+            </div>
+
+            {paymentMethod === 'stripe' ? (
+              /* Stripe Redirect */
+              <div className="space-y-5">
+                <div className="bg-[#0f2d4a]/20 border border-[#0f2d4a] rounded-xl p-4 flex items-start gap-3">
+                  <ShieldCheck className="text-primary shrink-0 mt-0.5" size={16} />
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-bold text-white block">Secure Stripe checkout integration</span>
+                    <span className="text-[9px] text-white/50 block leading-relaxed">
+                      You will be securely redirected to Stripe's hosted checkout gateway to complete your payment of **${course.price?.toFixed(2)} USD**.
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCheckout}
+                  disabled={isPending}
+                  className="w-full bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 mt-4"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" /> Redirecting to Stripe...
+                    </>
+                  ) : (
+                    <>
+                      Redirect to Secure Stripe Checkout
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              /* PayFast Sandbox */
+              <div className="space-y-5">
+                <div className="bg-[#0f2d4a]/20 border border-[#0f2d4a] rounded-xl p-4 flex items-start gap-3">
+                  <AlertCircle className="text-[#3b82f6] shrink-0 mt-0.5" size={16} />
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-bold text-white block">Secure simulated PayFast Gateway</span>
+                    <span className="text-[9px] text-white/50 block leading-relaxed">
+                      The billing processor will convert your checkout subtotal to South African Rand (**R{priceZar} ZAR**). Click the button below to submit a successful simulated transaction callback.
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCheckout}
+                  disabled={isPending}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-emerald-500/15 disabled:opacity-50 mt-4"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" /> Verifying callback...
+                    </>
+                  ) : (
+                    <>
+                      Pay R{priceZar} ZAR via PayFast
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {isHybridModel && (
+              <div className="border-t border-white/5 pt-4 text-center">
+                <span className="text-[10px] text-white/40 block">Or start studying the free preview section first</span>
+                <button
+                  onClick={handleFreeEnrollment}
+                  disabled={isPending}
+                  className="text-[10px] font-black text-primary hover:text-primary-light uppercase tracking-wider mt-2 outline-none"
+                >
+                  Enroll in Free Preview Mode
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         <div className="border-t border-white/5 pt-4 flex items-center justify-between text-white/30 text-[9px] font-bold uppercase tracking-widest">

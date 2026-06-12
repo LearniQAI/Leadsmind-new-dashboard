@@ -1,14 +1,19 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useTransition, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
-  BookOpen, ChevronRight, CheckCircle2, Play, Lock, Clock, AlertTriangle, CheckSquare, Eye, ArrowLeft, Download, ShieldAlert
+  BookOpen, ChevronRight, CheckSquare, Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { markLessonComplete, markLessonIncomplete } from '@/app/actions/studentProgress';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import SyllabusSidebar from './components/SyllabusSidebar';
+import VideoPlayer from './components/VideoPlayer';
+import { useHeartbeat } from '@/hooks/useHeartbeat';
+import { getLessonLockReason } from './components/lock-utils';
+import LockedLessonPlaceholder from './components/LockedLessonPlaceholder';
+import LiveHelpWidget from './components/LiveHelpWidget';
 
 interface StudentPlayerClientProps {
   course: any;
@@ -18,42 +23,6 @@ interface StudentPlayerClientProps {
   enrollment: any;
 }
 
-function getEmbedUrl(url: string): string {
-  if (!url) return '';
-  try {
-    if (url.includes('youtube.com/embed/')) return url;
-    if (url.includes('youtu.be/')) {
-      const parts = url.split('youtu.be/');
-      if (parts[1]) {
-        const videoId = parts[1].split(/[?#]/)[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-    }
-    if (url.includes('youtube.com/watch')) {
-      const urlObj = new URL(url);
-      const videoId = urlObj.searchParams.get('v');
-      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
-    }
-    if (url.includes('youtube.com/v/')) {
-      const parts = url.split('youtube.com/v/');
-      if (parts[1]) {
-        const videoId = parts[1].split(/[?#]/)[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-    }
-    if (url.includes('player.vimeo.com/video/')) return url;
-    if (url.includes('vimeo.com/')) {
-      const match = url.match(/vimeo\.com\/(?:video\/)?([0-9]+)/);
-      if (match && match[1]) return `https://player.vimeo.com/video/${match[1]}`;
-      const manageMatch = url.match(/vimeo\.com\/manage\/videos\/([0-9]+)/);
-      if (manageMatch && manageMatch[1]) return `https://player.vimeo.com/video/${manageMatch[1]}`;
-    }
-  } catch (e) {
-    console.error('[EmbedURL] Parsing error:', e);
-  }
-  return url;
-}
-
 export default function StudentPlayerClient({ 
   course, 
   modules, 
@@ -61,12 +30,21 @@ export default function StudentPlayerClient({
   initialCompletedLessonIds,
   enrollment
 }: StudentPlayerClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>(initialCompletedLessonIds);
   const [activeLesson, setActiveLesson] = useState<any>(lessons[0] || null);
   const [isPending, startTransition] = useTransition();
-
-  // Bandwidth optimizer for South African low-bandwidth networks
   const [lowBandwidthMode, setLowBandwidthMode] = useState(false);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+  useHeartbeat({
+    enrolmentId: enrollment.id,
+    activeLessonId: activeLesson?.id,
+    videoElement,
+    isVideoPlaying
+  });
 
   // Group lessons by module
   const lessonsByModule = React.useMemo(() => {
@@ -78,47 +56,24 @@ export default function StudentPlayerClient({
     return map;
   }, [lessons]);
 
-  // Evaluate Navigation Guards/Locks for a module & lesson
-  const getLessonLockReason = (lesson: any, module: any, moduleIndex: number) => {
-    // 1. Check if module is "Coming soon"
-    if (module.publish_status === 'coming_soon') {
-      return { type: 'coming_soon', message: 'This module is coming soon!' };
-    }
+  // Handle state restoration from URL search parameters (?restore=true&t=seconds)
+  useEffect(() => {
+    const restore = searchParams.get('restore');
+    const t = searchParams.get('t');
 
-    // 2. Check Drip Days relative to enrollment date
-    if (module.drip_days > 0 && enrollment?.enrolled_at) {
-      const enrollDate = new Date(enrollment.enrolled_at);
-      const unlockDate = new Date(enrollDate.getTime() + module.drip_days * 24 * 60 * 60 * 1000);
-      const now = new Date();
-      if (now < unlockDate) {
-        const diffMs = unlockDate.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-        return { 
-          type: 'dripped', 
-          message: `This module is dripped. It will unlock in ${diffDays} day${diffDays === 1 ? '' : 's'}.` 
-        };
+    if (restore === 'true' && videoElement && t) {
+      const seconds = parseFloat(t);
+      if (!isNaN(seconds) && seconds > 0) {
+        console.log(`[State Restoration] Seeking video to ${seconds}s`);
+        videoElement.currentTime = seconds;
+        
+        const name = enrollment?.contact?.first_name || 'Student';
+        toast.success(`Welcome back, ${name}! You are picking up right where you left off.`, {
+          duration: 5000
+        });
       }
     }
-
-    // 3. Check Prerequisites (Prior required modules must be complete)
-    // Find all preceding modules that are required for completion
-    for (let i = 0; i < moduleIndex; i++) {
-      const prevMod = modules[i];
-      if (prevMod.required_for_completion) {
-        const prevLessons = lessonsByModule[prevMod.id] || [];
-        const prevLessonIds = prevLessons.map(pl => pl.id);
-        const prevCompleted = prevLessonIds.filter(id => completedLessonIds.includes(id));
-        if (prevCompleted.length < prevLessonIds.length && prevLessonIds.length > 0) {
-          return {
-            type: 'prerequisite',
-            message: `Please complete all lessons in the required previous module: "${prevMod.title}" first.`
-          };
-        }
-      }
-    }
-
-    return null;
-  };
+  }, [searchParams, videoElement, enrollment]);
 
   const handleToggleComplete = async (lessonId: string) => {
     const isCompleted = completedLessonIds.includes(lessonId);
@@ -146,7 +101,10 @@ export default function StudentPlayerClient({
     });
   };
 
-  // Find next lesson for auto-progression
+  const handleDownloadCertificate = () => {
+    window.open(`/api/student/courses/${course.id}/certificate`, '_blank');
+  };
+
   const getNextLesson = () => {
     if (!activeLesson) return null;
     const currentIndex = lessons.findIndex(l => l.id === activeLesson.id);
@@ -156,97 +114,56 @@ export default function StudentPlayerClient({
     return null;
   };
 
+  const activeModule = activeLesson ? modules.find((m: any) => m.id === activeLesson.module_id) : null;
+  const activeModuleIdx = activeLesson ? modules.findIndex((m: any) => m.id === activeLesson.module_id) : -1;
+  const activeLockReason = activeLesson && activeModule ? getLessonLockReason({
+    lesson: activeLesson,
+    module: activeModule,
+    moduleIndex: activeModuleIdx,
+    course,
+    enrollment,
+    modules,
+    lessonsByModule,
+    completedLessonIds
+  }) : null;
+
+  const totalLessonsCount = lessons.length;
+  const completedLessonsCount = lessons.filter(l => completedLessonIds.includes(l.id)).length;
+  const globalProgressPercentage = totalLessonsCount > 0 
+    ? Math.round((completedLessonsCount / totalLessonsCount) * 100) 
+    : 0;
+
   return (
     <div className="flex border border-white/5 rounded-2xl bg-[#080f28]/60 overflow-hidden shadow-2xl h-[calc(100vh-130px)]">
-      {/* Syllabus Sidebar */}
-      <div className="w-[360px] border-r border-white/5 bg-[#04091a]/40 flex flex-col shrink-0">
-        <div className="p-5 border-b border-white/5 shrink-0 flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Syllabus Explorer</span>
-            <span className="text-base font-bold text-white tracking-tight truncate max-w-[240px] mt-0.5">{course.title}</span>
-          </div>
-          <Switch 
-            checked={lowBandwidthMode}
-            onCheckedChange={setLowBandwidthMode}
-            className="data-[state=checked]:bg-emerald-500"
-            title="South African Low-Bandwidth Mode (Throttles bitrates)"
-          />
-        </div>
+      <SyllabusSidebar
+        course={course}
+        modules={modules}
+        lessons={lessons}
+        completedLessonIds={completedLessonIds}
+        activeLesson={activeLesson}
+        setActiveLesson={setActiveLesson}
+        lowBandwidthMode={lowBandwidthMode}
+        setLowBandwidthMode={setLowBandwidthMode}
+        getLessonLockReason={(les, mod, idx) => getLessonLockReason({
+          lesson: les,
+          module: mod,
+          moduleIndex: idx,
+          course,
+          enrollment,
+          modules,
+          lessonsByModule,
+          completedLessonIds
+        })}
+        globalProgressPercentage={globalProgressPercentage}
+        completedLessonsCount={completedLessonsCount}
+        totalLessonsCount={totalLessonsCount}
+        handleDownloadCertificate={handleDownloadCertificate}
+        lessonsByModule={lessonsByModule}
+      />
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {modules.map((mod, modIdx) => {
-            const moduleLessons = lessonsByModule[mod.id] || [];
-
-            return (
-              <div key={mod.id} className="space-y-1.5">
-                {/* Module title/header */}
-                <div className="flex items-center justify-between px-2 py-1">
-                  <span className="text-xs font-black uppercase text-primary tracking-widest truncate max-w-[240px]">
-                    {modIdx + 1}. {mod.title}
-                  </span>
-                  {mod.required_for_completion && (
-                    <span className="text-[8px] font-bold text-white/30 uppercase tracking-wider bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/5 shrink-0">
-                      Required
-                    </span>
-                  )}
-                </div>
-
-                {/* Module lessons list */}
-                <div className="space-y-1">
-                  {moduleLessons.map((les) => {
-                    const lockReason = getLessonLockReason(les, mod, modIdx);
-                    const isSelected = activeLesson?.id === les.id;
-                    const isDone = completedLessonIds.includes(les.id);
-
-                    return (
-                      <div
-                        key={les.id}
-                        onClick={() => {
-                          if (!lockReason) {
-                            setActiveLesson(les);
-                          } else {
-                            toast.error(lockReason.message);
-                          }
-                        }}
-                        className={`p-3.5 rounded-xl text-sm flex items-center justify-between gap-3 select-none cursor-pointer transition-all border ${
-                          lockReason 
-                            ? "opacity-40 border-transparent bg-white/[0.01]" 
-                            : isSelected
-                              ? "bg-accent/10 border-accent text-white font-bold"
-                              : "bg-white/[0.01] border-transparent text-white/60 hover:bg-white/[0.03] hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 truncate">
-                          {lockReason ? (
-                            <Lock size={14} className="text-white/40 shrink-0" />
-                          ) : isDone ? (
-                            <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
-                          ) : (
-                            <Play size={13} className="text-white/40 shrink-0" />
-                          )}
-                          <span className="truncate pr-1">{les.title}</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-white/30 uppercase shrink-0">
-                          {les.lesson_type}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  {moduleLessons.length === 0 && (
-                    <span className="text-[10px] italic text-white/20 pl-3 block py-1.5">No lectures in module</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Content player Area */}
       <div className="flex-1 flex flex-col bg-[#04091a]/15 overflow-hidden">
         {activeLesson ? (
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Top Toolbar */}
             <div className="p-6 border-b border-white/5 bg-[#080f28]/30 shrink-0 flex items-center justify-between gap-4">
               <div>
                 <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Active Lesson</span>
@@ -269,10 +186,8 @@ export default function StudentPlayerClient({
               </div>
             </div>
 
-            {/* Display Media Content Panel */}
             <div className="flex-1 overflow-y-auto p-8 space-y-6">
-              {/* Bandwidth advisory bar */}
-              {lowBandwidthMode && activeLesson.lesson_type === 'video' && (
+              {lowBandwidthMode && activeLesson.lesson_type === 'video' && !activeLockReason && (
                 <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3.5 flex items-center gap-3 text-emerald-400 text-xs">
                   <Clock size={16} />
                   <span>
@@ -281,25 +196,43 @@ export default function StudentPlayerClient({
                 </div>
               )}
 
-              {/* Dynamic Content Views */}
-              {activeLesson.lesson_type === 'video' ? (
-                <div className="space-y-4">
-                  <div className="aspect-video w-full rounded-2xl bg-black overflow-hidden border border-white/5 relative flex items-center justify-center">
-                    {/* Simulated Player embed */}
-                    {activeLesson.content?.video_url ? (
-                      <iframe
-                        src={getEmbedUrl(activeLesson.content.video_url)}
-                        className="w-full h-full"
-                        allowFullScreen
-                      />
-                    ) : (
-                      <div className="text-center space-y-2">
-                        <AlertTriangle className="text-white/20 mx-auto" size={32} />
-                        <span className="text-xs text-white/40 block">No video URL linked to this lecture</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+              {activeLockReason ? (
+                <LockedLessonPlaceholder
+                  activeLockReason={activeLockReason}
+                  courseId={course.id}
+                  onUpgradeRedirect={() => router.push(`/student/checkout/${course.id}`)}
+                />
+              ) : activeLesson.lesson_type === 'video' ? (
+                <VideoPlayer
+                  videoUrl={activeLesson.content?.video_url}
+                  onComplete={() => {
+                    if (!completedLessonIds.includes(activeLesson.id)) {
+                      handleToggleComplete(activeLesson.id);
+                    }
+                  }}
+                  isAlreadyCompleted={completedLessonIds.includes(activeLesson.id)}
+                  lowBandwidthMode={lowBandwidthMode}
+                  onVideoRegister={(el, playing) => {
+                    setVideoElement(el);
+                    setIsVideoPlaying(playing);
+                  }}
+                  onProgressUpdate={async (seconds) => {
+                    if (seconds % 30 === 0) {
+                      try {
+                        await fetch(`/api/enrolments/${enrollment.id}/activity`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            lessonId: activeLesson.id,
+                            progressSeconds: seconds
+                          })
+                        });
+                      } catch (err) {
+                        console.error('[Embed Heartbeat Sync error]:', err);
+                      }
+                    }
+                  }}
+                />
               ) : activeLesson.lesson_type === 'quiz' ? (
                 <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-xl mx-auto text-center space-y-5">
                   <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
@@ -319,7 +252,6 @@ export default function StudentPlayerClient({
                   </a>
                 </div>
               ) : (
-                /* Text and other lessons default view */
                 <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-2xl mx-auto space-y-4 leading-relaxed text-sm text-white/80">
                   {activeLesson.content?.text ? (
                     <div className="whitespace-pre-line text-white/70 leading-relaxed text-sm">
@@ -334,7 +266,6 @@ export default function StudentPlayerClient({
               )}
             </div>
 
-            {/* Bottom Actions Syllabus Navigation */}
             <div className="p-5 border-t border-white/5 bg-[#080f28]/30 shrink-0 flex justify-between items-center">
               <div></div>
               {getNextLesson() && (
@@ -362,6 +293,7 @@ export default function StudentPlayerClient({
           </div>
         )}
       </div>
+      <LiveHelpWidget courseId={course.id} enrollment={enrollment} />
     </div>
   );
 }

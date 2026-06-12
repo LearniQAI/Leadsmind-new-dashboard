@@ -16,6 +16,9 @@ import CourseSettingsForm from "./components/CourseSettingsForm";
 import ModulesToolbar from "./components/ModulesToolbar";
 import CourseWorkspaceHeader from "./components/CourseWorkspaceHeader";
 import CourseAnalyticsTab from "./components/CourseAnalyticsTab";
+import CourseLandingForm from "./components/CourseLandingForm";
+import CoursePricingForm from "./components/CoursePricingForm";
+import EmailTemplateForm from "./components/EmailTemplateForm";
 
 interface CourseWorkspaceClientProps {
   course: any;
@@ -35,7 +38,7 @@ export default function CourseWorkspaceClient({
   const [modules, setModules] = useState<any[]>(initialModules);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | "draft" | "published" | "coming_soon">("All");
-  const [activeTab, setActiveTab] = useState<"settings" | "modules" | "automations" | "analytics">("modules");
+  const [activeTab, setActiveTab] = useState<"settings" | "modules" | "automations" | "analytics" | "landing-page" | "pricing" | "emails">("modules");
 
   // Modals States
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
@@ -128,7 +131,8 @@ export default function CourseWorkspaceClient({
           title: lessonData.title,
           lesson_type: mapLessonTypeToDb(lessonData.type),
           content: contentJsonb,
-          is_preview: lessonData.is_free
+          is_preview: lessonData.is_free,
+          access_level: lessonData.access_level
         })
       });
       const dataJson = await res.json();
@@ -261,6 +265,18 @@ export default function CourseWorkspaceClient({
 
       {activeTab === "analytics" && (
         <CourseAnalyticsTab courseId={currentCourse.id} />
+      )}
+
+      {activeTab === "landing-page" && (
+        <CourseLandingForm course={currentCourse} onSaved={setCurrentCourse} />
+      )}
+
+      {activeTab === "pricing" && (
+        <CoursePricingForm course={currentCourse} onSaved={setCurrentCourse} />
+      )}
+
+      {activeTab === "emails" && (
+        <EmailTemplateForm course={currentCourse} onSaved={setCurrentCourse} />
       )}
 
       {/* Modals */}

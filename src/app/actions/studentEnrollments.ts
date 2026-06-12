@@ -108,6 +108,15 @@ export async function enrollStudent(courseId: string) {
       });
 
     if (error) throw error;
+
+    // Hook telemetry triggers
+    const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
+    await emitLMSEvent('student.enrolled', {
+      workspaceId,
+      contactId,
+      courseId
+    });
+
     return { success: true };
   } catch (err: any) {
     return { error: err.message };
