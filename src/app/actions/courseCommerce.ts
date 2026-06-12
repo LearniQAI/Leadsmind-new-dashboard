@@ -245,8 +245,8 @@ export async function verifyLessonAccess(courseId: string, lessonId: string) {
     }
 
     // 4. Relative Timeline Drip scheduling checks
-    const module = lesson.module;
-    const dripDays = module?.drip_days || 0;
+    const lessonModule = lesson.module;
+    const dripDays = lessonModule?.drip_days || 0;
 
     if (dripDays > 0) {
       const enrolledAt = new Date(enrollment.enrolled_at).getTime();
