@@ -302,3 +302,51 @@ export async function getMeetingAnalytics() {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Creates an on-demand instant Jitsi meeting room.
+ */
+export async function createInstantMeeting(payload: { title?: string; durationMinutes?: number }) {
+  return executeAction(async (supabase, workspaceId) => {
+    const title = payload.title || 'Instant Meeting';
+    const duration = payload.durationMinutes || 60;
+    const startTime = new Date();
+    const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
+
+    const { data, error } = await supabase
+      .from('appointments')
+      .insert({
+        workspace_id: workspaceId,
+        title,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+        meeting_mode: 'internal_meet',
+        status: 'scheduled'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const baseUrl = process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:3000' 
+      : (process.env.NEXT_PUBLIC_APP_URL || '');
+      
+    const internalLink = `${baseUrl}/meet/${data.id}`;
+    
+    const { data: updated, error: updateErr } = await supabase
+      .from('appointments')
+      .update({ 
+        meeting_link: internalLink 
+      })
+      .eq('id', data.id)
+      .select()
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    revalidatePath('/calendar');
+    return updated;
+  });
+}
+
