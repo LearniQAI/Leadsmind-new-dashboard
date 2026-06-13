@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useOptimistic, useTransition } from 'react';
+import React, { useOptimistic, useTransition, useState } from 'react';
 import { TimeSlotPicker } from './TimeSlotPicker';
 import { BookingForm } from './BookingForm';
 import { TimeSlot } from '@/lib/calendar/availability';
@@ -10,14 +10,25 @@ import { Calendar, CheckCircle2 } from 'lucide-react';
 interface BookingFlowProps {
   availableSlots: TimeSlot[];
   onBook: (slot: string, data: any) => Promise<boolean>;
+  customFields?: any[];
+  price?: number;
+  t: (key: string) => string;
+  lang: string;
 }
 
-export function BookingFlow({ availableSlots, onBook }: BookingFlowProps) {
+export function BookingFlow({
+  availableSlots,
+  onBook,
+  customFields = [],
+  price = 0,
+  t,
+  lang
+}: BookingFlowProps) {
   const [isPending, startTransition] = useTransition();
-  const [selectedSlot, setSelectedSlot] = React.useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = React.useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  // Tactical Optimistic UI: Remove booked slot from list immediately
+  // Optimistic UI: Hide booked slot instantly
   const [optimisticSlots, removeOptimisticSlot] = useOptimistic(
     availableSlots,
     (state, bookedSlot: string) => state.filter(s => s.start !== bookedSlot)
@@ -27,17 +38,14 @@ export function BookingFlow({ availableSlots, onBook }: BookingFlowProps) {
     if (!selectedSlot) return;
 
     startTransition(async () => {
-      // 1. Optimistically hide the slot to prevent double-booking attempts
       removeOptimisticSlot(selectedSlot);
-
-      // 2. Execute the actual booking action
       const success = await onBook(selectedSlot, formData);
 
       if (success) {
         setIsSuccess(true);
-        toast.success('Strategic Booking Confirmed');
+        toast.success(t('bookingConfirmed'));
       } else {
-        toast.error('Tactical Failure: This slot may have just been taken');
+        toast.error('Booking failed. The slot may have already been reserved.');
       }
     });
   };
@@ -48,15 +56,17 @@ export function BookingFlow({ availableSlots, onBook }: BookingFlowProps) {
         <div className="w-20 h-20 rounded-full bg-[#10b981]/10 flex items-center justify-center mb-6 border border-[#10b981]/20">
           <CheckCircle2 className="h-10 w-10 text-[#10b981]" />
         </div>
-        <h2 className="text-[24px] font-bold font-space text-[#eef2ff] mb-2 uppercase tracking-tight">Booking <span className="text-[#10b981]">Confirmed</span></h2>
+        <h2 className="text-[24px] font-bold font-space text-[#eef2ff] mb-2 uppercase tracking-tight">
+          {t('bookingConfirmed')}
+        </h2>
         <p className="text-[14px] text-[#94a3c8] max-w-sm mb-8 font-dm-sans">
-          Your strategic session has been successfully scheduled. You'll receive a confirmation email shortly.
+          {t('bookingSuccessMsg')}
         </p>
         <button 
           onClick={() => window.location.reload()}
           className="h-11 px-8 rounded-xl bg-white/5 border border-white/10 text-[#eef2ff] hover:bg-white/10 text-[13px] font-bold font-dm-sans transition-all"
         >
-          Schedule Another
+          {t('scheduleAnother')}
         </button>
       </div>
     );
@@ -67,7 +77,7 @@ export function BookingFlow({ availableSlots, onBook }: BookingFlowProps) {
       <section className="space-y-4">
         <div className="flex items-center gap-3 mb-2">
           <Calendar className="h-5 w-5 text-[#3b82f6]" />
-          <h3 className="text-[14px] font-black text-[#eef2ff] uppercase tracking-[0.15em]">Select Available Slot</h3>
+          <h3 className="text-[13px] font-black text-[#eef2ff] uppercase tracking-[0.15em]">{t('selectSlot')}</h3>
         </div>
         <TimeSlotPicker 
           slots={optimisticSlots} 
@@ -80,12 +90,16 @@ export function BookingFlow({ availableSlots, onBook }: BookingFlowProps) {
       <section className="space-y-4">
         <div className="flex items-center gap-3 mb-2">
           <div className="h-5 w-5 rounded-full border-2 border-[#4a5a82] flex items-center justify-center text-[10px] font-black text-[#4a5a82]">2</div>
-          <h3 className="text-[14px] font-black text-[#eef2ff] uppercase tracking-[0.15em]">Enter Lead Details</h3>
+          <h3 className="text-[13px] font-black text-[#eef2ff] uppercase tracking-[0.15em]">{t('enterDetails')}</h3>
         </div>
         <BookingForm 
           onSubmit={handleBooking} 
           isSubmitting={isPending} 
           selectedTime={selectedSlot || undefined}
+          customFields={customFields}
+          price={price}
+          t={t}
+          lang={lang}
         />
       </section>
     </div>

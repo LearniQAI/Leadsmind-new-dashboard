@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { publishEvent } from "@/lib/events/EventBus";
 import crypto from 'crypto'
+import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
 
 function verifyPayFastSignature(
   payload: Record<string, string>,
@@ -157,34 +158,17 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', matchedInvoice.id)
 
-      // 2. Record income transaction
-      await supabase
-        .from('accounting_transactions')
-        .insert({
-          workspace_id: invoiceWorkspaceId,
-          date: new Date().toISOString().split('T')[0],
-          description: `PayFast payment — Invoice #${matchedInvoice.invoice_number || m_payment_id}`,
-          reference: payload.pf_payment_id || m_payment_id,
-          source_type: 'invoice',
-          source_id: matchedInvoice.id,
-          total_amount: parseFloat(payload.amount_gross || '0'),
-          currency: 'ZAR',
-        })
-
-      // 3. Record PayFast fee as expense
-      const fee = parseFloat(payload.amount_fee || '0')
-      if (fee > 0) {
-        await supabase
-          .from('accounting_transactions')
-          .insert({
-            workspace_id: invoiceWorkspaceId,
-            date: new Date().toISOString().split('T')[0],
-            description: `PayFast processing fee — Invoice #${matchedInvoice.invoice_number || m_payment_id}`,
-            reference: payload.pf_payment_id || m_payment_id,
-            source_type: 'expense',
-            total_amount: -fee,
-            currency: 'ZAR',
-          })
+      // 2. Record double-entry revenue to accounting module
+      try {
+        await logRevenueToAccounting(
+          matchedInvoice.id,
+          parseFloat(payload.amount_gross || '0'),
+          invoiceWorkspaceId,
+          payload.pf_payment_id || m_payment_id,
+          payload.amount_fee || '0'
+        );
+      } catch (ledgerErr) {
+        console.error('[PayFast Webhook] Failed to log revenue journal entries:', ledgerErr);
       }
 
       // 4. Log contact activity

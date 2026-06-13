@@ -1,16 +1,35 @@
 import React from 'react';
-import { getPublicCalendarBySlug } from '@/app/actions/calendar/core';
-import BookingClientWrapper from '@/components/calendar/public/BookingClientWrapper';
 import { notFound } from 'next/navigation';
-import { ShieldCheck, Calendar as CalendarIcon, Clock, Globe } from 'lucide-react';
+import { createAdminClient } from '@/lib/supabase/server';
+import BookingClientWrapper from '@/components/calendar/public/BookingClientWrapper';
+import { ShieldCheck, Clock, Globe } from 'lucide-react';
 
-export default async function BookingPage({
+export default async function CustomDomainBookingPage({
   params
 }: {
-  params: { slug: string }
+  params: { domainName: string; slug: string }
 }) {
-  const { slug } = await params;
-  const calendar = await getPublicCalendarBySlug(slug);
+  const { domainName, slug } = await params;
+  const supabase = createAdminClient();
+
+  // 1. Resolve workspace by custom domain name
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('id')
+    .eq('custom_domain', domainName)
+    .maybeSingle();
+
+  if (!workspace) {
+    return notFound();
+  }
+
+  // 2. Fetch calendar associated with that workspace and slug
+  const { data: calendar } = await supabase
+    .from('booking_calendars')
+    .select('*')
+    .eq('workspace_id', workspace.id)
+    .eq('slug', slug)
+    .maybeSingle();
 
   if (!calendar) {
     return notFound();
@@ -18,7 +37,6 @@ export default async function BookingPage({
 
   return (
     <main className="min-h-screen bg-[var(--n900)] text-[var(--t1)] selection:bg-[var(--accent)] selection:text-white">
-      {/* Decorative background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--accent)] opacity-[0.03] blur-[120px] rounded-full" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[var(--accent2)] opacity-[0.03] blur-[120px] rounded-full" />
@@ -26,7 +44,6 @@ export default async function BookingPage({
 
       <div className="relative max-w-[1200px] mx-auto px-6 py-12 lg:py-24">
         <div className="grid lg:grid-cols-[400px_1fr] gap-12 lg:gap-24 items-start">
-
           {/* Left Sidebar: Engine Details */}
           <div className="space-y-8 animate-in fade-in slide-in-from-left duration-700">
             <div className="space-y-4">
@@ -66,7 +83,6 @@ export default async function BookingPage({
               </div>
             </div>
 
-            {/* Trust Badges */}
             <div className="pt-12">
               <div className="p-4 bg-[var(--n800)] bg-opacity-50 rounded-2xl border border-[var(--bdr)]">
                 <div className="flex items-center gap-3 mb-2">

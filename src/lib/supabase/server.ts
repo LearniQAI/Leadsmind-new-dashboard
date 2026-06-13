@@ -3,7 +3,13 @@ import { createClient as _createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 export const createServerClient = async () => {
- const cookieStore = cookies()
+ let cookieStore;
+ try {
+  cookieStore = cookies()
+ } catch (e) {
+  // Graceful fallback for CLI / background scripts where requestAsyncStorage is not available
+  return createAdminClient();
+ }
 
  return _createServerClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,18 +17,18 @@ export const createServerClient = async () => {
   {
    cookies: {
     get(name: string) {
-     return cookieStore.get(name)?.value
+     return cookieStore?.get(name)?.value
     },
     set(name: string, value: string, options: CookieOptions) {
      try {
-      cookieStore.set({ name, value, ...options })
+      cookieStore?.set({ name, value, ...options })
      } catch {
       // The `set` method was called from a Server Component.
      }
     },
     remove(name: string, options: CookieOptions) {
      try {
-      cookieStore.set({ name, value: '', ...options })
+      cookieStore?.set({ name, value: '', ...options })
      } catch {
       // The `remove` method was called from a Server Component.
      }

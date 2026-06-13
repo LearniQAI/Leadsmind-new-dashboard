@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { validateSlot, getRoundRobinAssignee, updateRoundRobinStats } from './scheduling';
+import { createSupportTicket } from '@/lib/calendar/crossConnect';
 
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
@@ -131,6 +132,13 @@ export async function createAppointment(payload: {
       await updateRoundRobinStats(payload.calendarId, assigneeId);
     }
 
+    // Auto-create Support Ticket if support calendar
+    try {
+      await createSupportTicket(data.id);
+    } catch (supportErr) {
+      console.error('[appointments] Support ticket creation error:', supportErr);
+    }
+
     revalidatePath('/calendar');
     return data;
   });
@@ -184,6 +192,112 @@ export async function getAppointmentById(id: string) {
 
     if (error) throw error;
     return { success: true, data };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Logs a WebRTC participant joining a video call room.
+ */
+export async function logParticipantJoin(
+  appointmentId: string,
+  participantName: string,
+  participantEmail: string
+) {
+  try {
+    const supabase = await createServerClient();
+    const { data: apt } = await supabase
+      .from('appointments')
+      .select('workspace_id')
+      .eq('id', appointmentId)
+      .single();
+
+    if (!apt) throw new Error('Appointment not found');
+
+    const { data: log, error } = await supabase
+      .from('meet_attendance_logs')
+      .insert({
+        workspace_id: apt.workspace_id,
+        appointment_id: appointmentId,
+        participant_name: participantName,
+        participant_email: participantEmail,
+        joined_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, logId: log.id };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Logs a WebRTC participant leaving a video call room and compiles duration.
+ */
+export async function logParticipantLeave(logId: string) {
+  try {
+    const supabase = await createServerClient();
+    const { data: log } = await supabase
+      .from('meet_attendance_logs')
+      .select('joined_at')
+      .eq('id', logId)
+      .single();
+
+    if (!log) throw new Error('Attendance log not found');
+
+    const leftAt = new Date();
+    const joinedAt = new Date(log.joined_at);
+    const duration = Math.floor((leftAt.getTime() - joinedAt.getTime()) / 1000);
+
+    await supabase
+      .from('meet_attendance_logs')
+      .update({
+        left_at: leftAt.toISOString(),
+        duration_seconds: duration
+      })
+      .eq('id', logId);
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Queries meeting metrics and paid consults billing sums for analytics reporting.
+ */
+export async function getMeetingAnalytics() {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { success: false, error: 'No active workspace' };
+
+    const supabase = await createServerClient();
+
+    // 1. Calculate no-shows, completed, cancelled counts
+    const { data: appointments } = await supabase
+      .from('appointments')
+      .select('status, start_time, end_time, user_id')
+      .eq('workspace_id', workspaceId);
+
+    // 2. Query Revenue completed PayFast consultations
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('amount_paid')
+      .eq('workspace_id', workspaceId)
+      .eq('status', 'paid');
+
+    const totalRevenue = (invoices || []).reduce((sum, inv) => sum + parseFloat(inv.amount_paid || '0'), 0);
+
+    return {
+      success: true,
+      data: {
+        appointments: appointments || [],
+        totalRevenue
+      }
+    };
   } catch (err: any) {
     return { success: false, error: err.message };
   }

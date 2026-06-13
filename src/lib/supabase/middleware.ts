@@ -5,8 +5,22 @@ export async function updateSession(request: NextRequest) {
  const host = request.headers.get('host') || ''
  const pathname = request.nextUrl.pathname
 
- const mainDomains = ['localhost', 'leadsmind.com', 'leadsmind.vercel.app', 'www.leadsmind.io', 'leadsmind-new-ui']
+ const isBookSubdomain = host.toLowerCase().startsWith('book.leadsmind.io')
+ const mainDomains = ['localhost', 'leadsmind.com', 'leadsmind.vercel.app', 'www.leadsmind.io', 'leadsmind.io', 'leadsmind-new-ui']
  const isCustomDomain = !mainDomains.some(domain => host.toLowerCase().includes(domain))
+
+ // Subdomain & Custom Domain routing for public booking pages
+ if ((isBookSubdomain || isCustomDomain) && !pathname.startsWith('/api') && !pathname.startsWith('/_next') && pathname !== '/favicon.ico') {
+  if (!pathname.startsWith('/book')) {
+   const url = request.nextUrl.clone()
+   if (isCustomDomain) {
+    url.pathname = `/book/domain/${host}${pathname}`
+   } else {
+    url.pathname = `/book${pathname}`
+   }
+   return NextResponse.rewrite(url)
+  }
+ }
 
  // Intercept course slug pages (/courses/[slug] where [slug] is not a UUID)
  if (pathname.startsWith('/courses/')) {
@@ -109,7 +123,8 @@ export async function updateSession(request: NextRequest) {
             request.nextUrl.pathname === '/favicon.ico' ||
             request.nextUrl.pathname === '/privacy-policy' ||
             request.nextUrl.pathname === '/terms' ||
-            request.nextUrl.pathname.startsWith('/unauthenticated')
+            request.nextUrl.pathname.startsWith('/unauthenticated') ||
+            request.nextUrl.pathname.startsWith('/book')
 
  // 1. If user is logged in and tries to access auth pages, redirect to root
  if (user && isAuthPage) {

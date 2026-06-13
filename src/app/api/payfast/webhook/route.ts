@@ -1,0 +1,206 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { verifyPayFastSignature } from '@/lib/calendar/payfast';
+import { parseISO, addMinutes } from 'date-fns';
+import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
+import { createSupportTicket } from '@/lib/calendar/crossConnect';
+
+export async function POST(req: NextRequest) {
+  try {
+    // 1. Parse PayFast Form Data
+    const formData = await req.formData();
+    const payload: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      payload[key] = value.toString();
+    });
+
+    console.log('[payfast-webhook] Received ITN notification:', JSON.stringify(payload));
+
+    // 2. Signature Validation
+    const isValid = verifyPayFastSignature(payload);
+    if (!isValid && process.env.NODE_ENV === 'production') {
+      console.warn('[payfast-webhook] Invalid PayFast signature!');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    }
+
+    const paymentStatus = payload.payment_status;
+    const leaseId = payload.m_payment_id;
+
+    if (paymentStatus === 'COMPLETE' && leaseId) {
+      const supabase = createAdminClient();
+
+      // 3. Retrieve Lease Hold
+      const { data: lease } = await supabase
+        .from('booking_leases')
+        .select('*')
+        .eq('id', leaseId)
+        .maybeSingle();
+
+      if (!lease || lease.status !== 'holding') {
+        console.warn(`[payfast-webhook] Lease not found or already processed: ${leaseId}`);
+        return new NextResponse('OK', { status: 200 });
+      }
+
+      // 4. Update Lease status to confirmed
+      await supabase
+        .from('booking_leases')
+        .update({ status: 'confirmed' })
+        .eq('id', lease.id);
+
+      // Fetch Calendar and Contact info
+      const { data: calendar } = await supabase
+        .from('booking_calendars')
+        .select('*')
+        .eq('id', lease.calendar_id)
+        .single();
+
+      const { data: contact } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('id', lease.contact_id)
+        .single();
+
+      if (calendar && contact) {
+        // 5. Create final appointment
+        const startTime = parseISO(lease.slot_time);
+        const endTime = addMinutes(startTime, calendar.slot_duration || 30);
+
+        const { data: appointment } = await supabase
+          .from('appointments')
+          .insert({
+            workspace_id: lease.workspace_id,
+            calendar_id: lease.calendar_id,
+            contact_id: lease.contact_id,
+            title: `Paid Meeting: ${calendar.name} with ${contact.first_name} ${contact.last_name}`,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            status: 'scheduled',
+            metadata: {
+              payfast_payment_id: payload.pf_payment_id,
+              lease_id: lease.id,
+              amount_paid: payload.amount_gross,
+              paid_online: true,
+            },
+          })
+          .select()
+          .single();
+
+        if (appointment) {
+          // Generate internal meet links if needed
+          if (calendar.meeting_mode === 'internal_meet' || (calendar.meeting_mode === 'custom_link' && !calendar.custom_link)) {
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+            const internalLink = `${baseUrl}/meet/${appointment.id}`;
+            await supabase
+              .from('appointments')
+              .update({ meeting_link: internalLink, meeting_mode: 'internal_meet' })
+              .eq('id', appointment.id);
+          } else if (calendar.custom_link) {
+            await supabase
+              .from('appointments')
+              .update({ meeting_link: calendar.custom_link })
+              .eq('id', appointment.id);
+          }
+
+          // 6. Cross-Module Invoicing Integration
+          const price = parseFloat(payload.amount_gross || '0');
+          const invoiceNumber = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
+
+          // Create Invoices Row
+          const { data: invoice } = await supabase
+            .from('invoices')
+            .insert({
+              workspace_id: lease.workspace_id,
+              contact_id: lease.contact_id,
+              amount_due: price,
+              amount_paid: price,
+              subtotal: price,
+              tax_total: 0.00,
+              discount_total: 0.00,
+              total_amount: price,
+              invoice_number: invoiceNumber,
+              currency: 'ZAR',
+              status: 'paid',
+              due_date: new Date().toISOString(),
+              notes: `Paid consultation checkout for slot ${lease.slot_time}`,
+            })
+            .select()
+            .single();
+
+          if (invoice) {
+            // Create Invoice Line Items
+            await supabase
+              .from('invoice_items')
+              .insert({
+                workspace_id: lease.workspace_id,
+                invoice_id: invoice.id,
+                description: `Paid Consultation: ${calendar.name} (${calendar.slot_duration} Minutes)`,
+                quantity: 1,
+                unit_price: price,
+                total_amount: price,
+              });
+
+            // Log ledger activities to CRM
+            await supabase
+              .from('contact_activities')
+              .insert({
+                workspace_id: lease.workspace_id,
+                contact_id: lease.contact_id,
+                type: 'invoice',
+                description: `Receipt generated for invoice ${invoiceNumber} - ZAR ${price}`,
+                metadata: {
+                  invoice_id: invoice.id,
+                  invoice_number: invoiceNumber,
+                  amount: price,
+                  payment_ref: payload.pf_payment_id,
+                },
+              });
+
+            // Log double-entry revenue to accounting module
+            try {
+              await logRevenueToAccounting(
+                invoice.id,
+                price,
+                lease.workspace_id,
+                payload.pf_payment_id || payload.m_payment_id,
+                payload.amount_fee || '0'
+              );
+            } catch (ledgerErr) {
+              console.error('[payfast-webhook] Failed to log revenue journal entries:', ledgerErr);
+            }
+          }
+
+          // 7. Audit Ledger Action
+          await supabase
+            .from('meet_audit_trails')
+            .insert({
+              workspace_id: lease.workspace_id,
+              actor_id: lease.contact_id, // contact is actor here
+              action: 'status_change',
+              entity_type: 'booking',
+              entity_id: appointment.id,
+              new_state: {
+                payment_status: 'complete',
+                amount: price,
+                invoice_number: invoiceNumber,
+              },
+            });
+
+          // 8. Simulate Receipts via WhatsApp and Email
+          console.log(`[payfast-webhook] Notification: Receipt invoice ${invoiceNumber} sent to ${contact.email} and WhatsApp ${contact.phone || 'N/A'}`);
+
+          // Auto-create Support Ticket if support calendar
+          try {
+            await createSupportTicket(appointment.id);
+          } catch (supportErr) {
+            console.error('[payfast-webhook] Support ticket creation error:', supportErr);
+          }
+        }
+      }
+    }
+
+    return new NextResponse('OK', { status: 200 });
+  } catch (error) {
+    console.error('[payfast-webhook] Processing failure:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
