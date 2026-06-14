@@ -117,6 +117,13 @@ export async function enrollStudent(courseId: string) {
       courseId
     });
 
+    try {
+      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+      dispatchWebhook(workspaceId, 'course.enrolment', {
+        enrolment: { contact_id: contactId, course_id: courseId, enrolled_at: new Date().toISOString() },
+      }).catch(() => {});
+    } catch (e) { console.error('[webhook-dispatch-course-enrolment-error]', e); }
+
     return { success: true };
   } catch (err: any) {
     return { error: err.message };

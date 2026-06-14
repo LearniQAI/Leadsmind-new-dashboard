@@ -7,25 +7,48 @@ const supabase = createClient(
 )
 
 export type WebhookEvent =
-  | 'invoice.paid'
-  | 'invoice.created'
-  | 'invoice.sent'
+  // Contacts
   | 'contact.created'
   | 'contact.updated'
+  // Deals / opportunities
+  | 'deal.created'
+  | 'deal.stage_changed'
   | 'deal.won'
   | 'deal.lost'
-  | 'deal.created'
-  | 'form.submitted'
+  // Invoices / payments
+  | 'invoice.created'
+  | 'invoice.sent'
+  | 'invoice.paid'
+  | 'invoice.overdue'
   | 'payment.received'
+  // Bookings
+  | 'booking.created'
   | 'booking.confirmed'
+  | 'booking.cancelled'
+  | 'booking.completed'
+  | 'booking.no_show'
+  // Forms
+  | 'form.submitted'
+  // Courses / sequences
+  | 'course.enrolment'
   | 'course.completed'
+  | 'sequence.enrolled'
+  | 'sequence.completed'
+  // Reviews / comms
   | 'review.received'
   | 'email.opened'
   | 'whatsapp.received'
+  // Tasks / team / workspace
   | 'task.completed'
+  | 'team.member.created'
+  | 'workspace.limit.approaching'
+  // KYC / banking
   | 'kyc.identity.passed'
   | 'kyc.identity.failed'
   | 'bank.transaction.imported'
+  // SA-specific
+  | 'sars.deadline.approaching'
+  | 'load_shedding.conflict'
 
 interface WebhookPayload {
   event: WebhookEvent

@@ -1,19 +1,32 @@
-import { type NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
+import { resolveHost } from '@/lib/domains/resolve'
+
+const PLATFORM_HOSTS = new Set(['leadsmind.com', 'www.leadsmind.com', 'app.leadsmind.com', 'localhost'])
 
 export async function middleware(request: NextRequest) {
- return await updateSession(request)
+  const host = (request.headers.get('host') || '').split(':')[0].toLowerCase()
+
+  // Platform hosts behave exactly as before.
+  if (PLATFORM_HOSTS.has(host)) {
+    return await updateSession(request)
+  }
+
+  // Custom/sub domain: resolve to a workspace, inject context, then continue normal auth.
+  const resolved = await resolveHost(host)
+  if (resolved) {
+    const res = await updateSession(request)
+    res.headers.set('x-workspace-id', resolved.workspaceId)
+    res.headers.set('x-tenant-host', resolved.hostname)
+    return res
+  }
+
+  // Unknown host -> behave as platform (no tenant context).
+  return await updateSession(request)
 }
 
 export const config = {
- matcher: [
-  /*
-   * Match all request paths except for the ones starting with:
-   * - _next/static (static files)
-   * - _next/image (image optimization files)
-   * - favicon.ico (favicon file)
-   * Feel free to modify this pattern to include more paths.
-   */
-  '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
- ],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }

@@ -348,6 +348,14 @@ export async function POST(
       return corsError(`Database error: ${submissionError.message || JSON.stringify(submissionError)}`, 500);
     }
 
+    try {
+      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+      dispatchWebhook(workspace_id, 'form.submitted', {
+        form: { id, name: form?.name ?? null },
+        submission: { id: submission?.id, data: formData, contact_id: contactId ?? null },
+      }).catch(() => {});
+    } catch (e) { console.error('[webhook-dispatch-form-submitted-error]', e); }
+
     // Trigger workflow automations asynchronously
     try {
       const { TriggerDispatcher } = await import('@/lib/automations/TriggerDispatcher');

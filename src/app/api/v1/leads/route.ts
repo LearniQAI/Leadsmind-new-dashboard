@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { sendEmail } from '@/lib/email';
+import { validateApiKey } from '@/lib/api/auth'
 
 // Note: We use the service role key here because we need to bypass RLS 
 // to insert leads from an external source, but we validate the workspace_id via api_key
@@ -9,23 +10,13 @@ const supabase = createClient(
  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
  try {
-  const apiKey = req.headers.get('x-api-key');
-  if (!apiKey) {
-   return NextResponse.json({ error: 'Missing API key' }, { status: 401 });
+  const auth = await validateApiKey(req);
+  if (!auth.ok) {
+   return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-
-  // 1. Validate API Key and get workspace_id
-  const { data: workspace, error: wsError } = await supabase
-   .from('workspaces')
-   .select('id')
-   .eq('api_key', apiKey)
-   .single();
-
-  if (wsError || !workspace) {
-   return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
-  }
+  const workspace = { id: auth.workspaceId };
 
   const body = await req.json();
   const { email, first_name, last_name, phone, source, metadata } = body;

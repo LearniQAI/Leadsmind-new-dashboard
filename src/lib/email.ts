@@ -6,6 +6,7 @@ interface SendEmailProps {
  react?: React.ReactElement
  html?: string
  text?: string
+ scheduledAt?: string
  config?: {
   apiKey?: string | null
   fromEmail?: string | null
@@ -15,7 +16,7 @@ interface SendEmailProps {
  }
 }
 
-export async function sendEmail({ to, subject, react, html, text, config }: SendEmailProps) {
+export async function sendEmail({ to, subject, react, html, text, scheduledAt, config }: SendEmailProps) {
  const apiKey = config?.apiKey || process.env.RESEND_API_KEY
  const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@leadsmind.io'
  const fromName = config?.fromName || 'LeadsMind'
@@ -24,6 +25,7 @@ export async function sendEmail({ to, subject, react, html, text, config }: Send
   console.log('\n================== EMAIL MOCKED ==================');
   console.log('To:', to);
   console.log('Subject:', subject);
+  console.log('Scheduled At:', scheduledAt);
   console.log('Tags:', config?.tags);
   console.log('==================================================\n');
   return { id: 'mock_' + Date.now() };
@@ -40,7 +42,8 @@ export async function sendEmail({ to, subject, react, html, text, config }: Send
    text: text || '',
    tags: config?.tags,
    headers: config?.headers,
-  })
+   scheduledAt: scheduledAt || undefined,
+  } as any)
 
   if (error) {
    console.error('Resend API Error:', error);
