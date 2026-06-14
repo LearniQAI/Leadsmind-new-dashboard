@@ -53,11 +53,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${appUrl}/auth/student/login?error=Link has expired`);
     }
 
-    // 4. Immediately invalidate the token in DB to make it single-use
-    const { error: updateErr } = await supabaseAdmin
-      .from('student_magic_links')
-      .update({ used: true })
-      .eq('id', record.id);
+    // 4. Immediately invalidate the token in DB to make it single-use and update last login
+    const { data: contacts } = await supabaseAdmin
+      .from('contacts')
+      .select('id')
+      .eq('email', email);
+    const contactIds = (contacts || []).map(c => c.id);
+
+    const [{ error: updateErr }] = await Promise.all([
+      supabaseAdmin
+        .from('student_magic_links')
+        .update({ used: true })
+        .eq('id', record.id),
+      contactIds.length > 0 ? supabaseAdmin
+        .from('contacts')
+        .update({ last_login_at: new Date().toISOString() })
+        .in('id', contactIds) : Promise.resolve({ error: null })
+    ]);
 
     if (updateErr) {
       throw new Error('Failed to update token state');

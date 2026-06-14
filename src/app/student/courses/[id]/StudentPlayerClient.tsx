@@ -56,10 +56,18 @@ export default function StudentPlayerClient({
     return map;
   }, [lessons]);
 
-  // Handle state restoration from URL search parameters (?restore=true&t=seconds)
+  // Handle state restoration from URL search parameters (?restore=true&t=seconds&lessonId=uuid)
   useEffect(() => {
     const restore = searchParams.get('restore');
     const t = searchParams.get('t');
+    const lessonIdParam = searchParams.get('lessonId');
+
+    if (lessonIdParam) {
+      const matchedLesson = lessons.find(l => l.id === lessonIdParam);
+      if (matchedLesson && activeLesson?.id !== matchedLesson.id) {
+        setActiveLesson(matchedLesson);
+      }
+    }
 
     if (restore === 'true' && videoElement && t) {
       const seconds = parseFloat(t);
@@ -73,7 +81,7 @@ export default function StudentPlayerClient({
         });
       }
     }
-  }, [searchParams, videoElement, enrollment]);
+  }, [searchParams, videoElement, enrollment, lessons, activeLesson]);
 
   const handleToggleComplete = async (lessonId: string) => {
     const isCompleted = completedLessonIds.includes(lessonId);

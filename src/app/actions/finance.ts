@@ -428,3 +428,106 @@ export async function createInvoiceCheckoutSession(invoiceId: string) {
   }
 }
 
+export async function generateInvoicePayFastUrl(
+  invoiceId: string,
+  amount: number,
+  returnUrl: string,
+  cancelUrl: string
+) {
+  try {
+    const supabase = createAdminClient();
+    const { data: invoice, error } = await supabase
+      .from('invoices')
+      .select('*, contact:contacts(*), workspace:workspaces(*)')
+      .eq('id', invoiceId)
+      .single() as any;
+
+    if (error || !invoice) {
+      return { error: 'Invoice not found or could not be loaded' };
+    }
+
+    const outstanding = Number(invoice.amount_due || invoice.total_amount || 0) - Number(invoice.amount_paid || 0);
+    const settings = invoice.workspace?.invoice_settings || {};
+    const allowPartial = settings.allow_partial_payments ?? false;
+
+    let payAmount = amount;
+    if (!allowPartial || !payAmount) {
+      payAmount = outstanding;
+    } else {
+      if (payAmount > outstanding) {
+        payAmount = outstanding;
+      }
+    }
+
+    if (payAmount <= 0) {
+      return { error: 'This invoice has already been fully paid.' };
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const notifyUrl = `${appUrl}/api/webhooks/payfast`;
+
+    const { generatePayFastCheckoutUrl } = await import('@/lib/calendar/payfast');
+
+    const redirectUrl = generatePayFastCheckoutUrl({
+      merchantId: process.env.PAYFAST_MERCHANT_ID || '10000100',
+      merchantKey: process.env.PAYFAST_MERCHANT_KEY || '46f0z550522ac',
+      returnUrl,
+      cancelUrl,
+      notifyUrl,
+      amount: payAmount,
+      itemName: `Invoice ${invoice.invoice_number || invoice.id.substring(0, 8)} Payment`,
+      paymentId: invoice.id,
+      firstName: invoice.contact?.first_name || 'Customer',
+      lastName: invoice.contact?.last_name || '',
+      email: invoice.contact?.email || '',
+      custom_str1: invoice.workspace_id,
+      custom_str2: invoice.contact_id,
+      custom_str4: 'invoice',
+    });
+
+    return { url: redirectUrl };
+  } catch (err: any) {
+    console.error('[finance] payfast checkout generation error:', err);
+    return { error: err.message || 'Failed to create PayFast checkout URL' };
+  }
+}
+
+export async function saveInvoiceSettings(workspaceId: string, settings: any) {
+  try {
+    const supabase = await createServerClient();
+    
+    // Fetch current invoice settings
+    const { data: workspace, error: fetchError } = await supabase
+      .from('workspaces')
+      .select('invoice_settings')
+      .eq('id', workspaceId)
+      .single();
+
+    if (fetchError || !workspace) {
+      return { error: fetchError?.message || 'Workspace not found' };
+    }
+
+    const currentSettings = workspace.invoice_settings || {};
+    const updatedSettings = {
+      ...currentSettings,
+      ...settings,
+    };
+
+    const { error: updateError } = await supabase
+      .from('workspaces')
+      .update({ invoice_settings: updatedSettings })
+      .eq('id', workspaceId);
+
+    if (updateError) {
+      return { error: updateError.message };
+    }
+
+    revalidatePath('/settings');
+    return { success: true };
+  } catch (err: any) {
+    console.error('[finance] save settings error:', err);
+    return { error: err.message || 'Failed to save settings' };
+  }
+}
+
+

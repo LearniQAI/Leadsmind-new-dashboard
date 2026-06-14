@@ -1,7 +1,10 @@
 "use client";
 import React from 'react';
-import { Globe, Copy, Check } from 'lucide-react';
+import { Globe, Copy, Check, CreditCard } from 'lucide-react';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
+import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface WorkspaceTabProps {
   branding: any;
@@ -21,6 +24,83 @@ export default function WorkspaceTab({
   const [name, setName] = React.useState(branding?.platform_name || 'LeadsMind Workspace');
   const { role } = useDashboardContext() as any;
   const isAdmin = role === 'admin' || role === 'owner';
+
+  const [settings, setSettings] = React.useState({
+    show_draft_invoices: false,
+    allow_partial_payments: false,
+    enable_overdue_alert_banner: false,
+    show_line_items: true,
+  });
+  const [projectSettings, setProjectSettings] = React.useState({
+    show_tasks: true,
+    show_employee_names: false,
+    show_financials: false,
+  });
+  const [loadingSettings, setLoadingSettings] = React.useState(true);
+
+  const supabase = React.useMemo(() => createClient(), []);
+
+  React.useEffect(() => {
+    async function loadSettings() {
+      if (!branding?.workspace_id) return;
+      const { data, error } = await supabase
+        .from('workspaces')
+        .select('invoice_settings, project_settings')
+        .eq('id', branding.workspace_id)
+        .single();
+      if (!error) {
+        if (data?.invoice_settings) {
+          setSettings({
+            show_draft_invoices: data.invoice_settings.show_draft_invoices ?? false,
+            allow_partial_payments: data.invoice_settings.allow_partial_payments ?? false,
+            enable_overdue_alert_banner: data.invoice_settings.enable_overdue_alert_banner ?? false,
+            show_line_items: data.invoice_settings.show_line_items ?? true,
+          });
+        }
+        if (data?.project_settings) {
+          setProjectSettings({
+            show_tasks: data.project_settings.show_tasks ?? true,
+            show_employee_names: data.project_settings.show_employee_names ?? false,
+            show_financials: data.project_settings.show_financials ?? false,
+          });
+        }
+      }
+      setLoadingSettings(false);
+    }
+    loadSettings();
+  }, [branding?.workspace_id, supabase]);
+
+  const handleToggle = async (key: string, value: boolean) => {
+    if (!branding?.workspace_id) return;
+    const updated = { ...settings, [key]: value };
+    setSettings(updated);
+
+    const { saveInvoiceSettings } = await import('@/app/actions/finance');
+    const res = await saveInvoiceSettings(branding.workspace_id, updated);
+    if (res.error) {
+      toast.error(res.error);
+      // rollback
+      setSettings(settings);
+    } else {
+      toast.success('Financial controls updated successfully');
+    }
+  };
+
+  const handleProjectToggle = async (key: string, value: boolean) => {
+    if (!branding?.workspace_id) return;
+    const updated = { ...projectSettings, [key]: value };
+    setProjectSettings(updated);
+
+    const { saveWorkspaceProjectSettings } = await import('@/app/actions/projects');
+    const res = await saveWorkspaceProjectSettings(branding.workspace_id, updated);
+    if (res.error) {
+      toast.error(res.error);
+      // rollback
+      setProjectSettings(projectSettings);
+    } else {
+      toast.success('Project visibility controls updated successfully');
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -77,6 +157,208 @@ export default function WorkspaceTab({
           )}
         </div>
 
+        {isAdmin && !loadingSettings && (
+          <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+            <div className="flex items-center gap-4 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                <CreditCard size={20} />
+              </div>
+              <div>
+                <h4 className="text-[15px] font-space font-bold text-t1 uppercase">Financial & Portal Configurations</h4>
+                <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Customer portal visibility & payment protocols</p>
+              </div>
+            </div>
+
+            <div className="grid gap-6 divide-y divide-white/5">
+              {/* Toggle 1: Show Draft Invoices */}
+              <div className="flex items-center justify-between pt-4 first:pt-0">
+                <div className="space-y-1 pr-4">
+                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Show Draft Invoices</p>
+                  <p className="text-[11px] text-t3">Allow clients to view draft-status invoices inside their billing portal directory.</p>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={settings.show_draft_invoices}
+                  onClick={() => handleToggle('show_draft_invoices', !settings.show_draft_invoices)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
+                    settings.show_draft_invoices ? "bg-accent" : "bg-white/10"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      settings.show_draft_invoices ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+              </div>
+
+              {/* Toggle 2: Custom Partial Payments */}
+              <div className="flex items-center justify-between pt-4">
+                <div className="space-y-1 pr-4">
+                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Allow Custom Partial Payments</p>
+                  <p className="text-[11px] text-t3">Enable clients to key in custom payment amounts when checking out outstanding balances.</p>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={settings.allow_partial_payments}
+                  onClick={() => handleToggle('allow_partial_payments', !settings.allow_partial_payments)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
+                    settings.allow_partial_payments ? "bg-accent" : "bg-white/10"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      settings.allow_partial_payments ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+              </div>
+
+              {/* Toggle 3: Overdue Banner Alert */}
+              <div className="flex items-center justify-between pt-4">
+                <div className="space-y-1 pr-4">
+                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Dashboard Overdue Alert Banner</p>
+                  <p className="text-[11px] text-t3">Display a warning alert banner at the top of the client portal dashboard if outstanding balances are overdue.</p>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={settings.enable_overdue_alert_banner}
+                  onClick={() => handleToggle('enable_overdue_alert_banner', !settings.enable_overdue_alert_banner)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
+                    settings.enable_overdue_alert_banner ? "bg-accent" : "bg-white/10"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      settings.enable_overdue_alert_banner ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+              </div>
+
+              {/* Toggle 4: Show Line Items */}
+              <div className="flex items-center justify-between pt-4">
+                <div className="space-y-1 pr-4">
+                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Show Invoice Line Items</p>
+                  <p className="text-[11px] text-t3">Display detailed itemized breakdowns (lines) on customer invoices instead of just totals.</p>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={settings.show_line_items}
+                  onClick={() => handleToggle('show_line_items', !settings.show_line_items)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
+                    settings.show_line_items ? "bg-accent" : "bg-white/10"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      settings.show_line_items ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isAdmin && !loadingSettings && (
+          <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+            <div className="flex items-center gap-4 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400">
+                <Globe size={20} />
+              </div>
+              <div>
+                <h4 className="text-[15px] font-space font-bold text-t1 uppercase">Projects Visibility & Delivery Controls</h4>
+                <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Client portal project settings & safety filters</p>
+              </div>
+            </div>
+
+            <div className="grid gap-6 divide-y divide-white/5">
+              {/* Toggle 1: Show Team Tasks */}
+              <div className="flex items-center justify-between pt-4 first:pt-0">
+                <div className="space-y-1 pr-4">
+                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Show Team Tasks</p>
+                  <p className="text-[11px] text-t3">Allow clients to see individual non-milestone team tasks. If disabled, clients will only see milestones.</p>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={projectSettings.show_tasks}
+                  onClick={() => handleProjectToggle('show_tasks', !projectSettings.show_tasks)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
+                    projectSettings.show_tasks ? "bg-accent" : "bg-white/10"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      projectSettings.show_tasks ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+              </div>
+
+              {/* Toggle 2: Show Employee Names */}
+              <div className="flex items-center justify-between pt-4">
+                <div className="space-y-1 pr-4">
+                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Show Internal Employee Names</p>
+                  <p className="text-[11px] text-t3">Allow clients to see internal names of assignees. If disabled, assignees are masked under "Delivery Team".</p>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={projectSettings.show_employee_names}
+                  onClick={() => handleProjectToggle('show_employee_names', !projectSettings.show_employee_names)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
+                    projectSettings.show_employee_names ? "bg-accent" : "bg-white/10"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      projectSettings.show_employee_names ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+              </div>
+
+              {/* Toggle 3: Show Financial Metrics */}
+              <div className="flex items-center justify-between pt-4">
+                <div className="space-y-1 pr-4">
+                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Show Project Budget & Tracked Hours</p>
+                  <p className="text-[11px] text-t3">Display financial columns including project budget, costs, and internal tracked hours in the portal.</p>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={projectSettings.show_financials}
+                  onClick={() => handleProjectToggle('show_financials', !projectSettings.show_financials)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
+                    projectSettings.show_financials ? "bg-accent" : "bg-white/10"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      projectSettings.show_financials ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {isAdmin && (
           <div className="bg-n800 border border-white/5 rounded-2xl p-8">
             <div className="flex items-start justify-between gap-6">
@@ -96,3 +378,4 @@ export default function WorkspaceTab({
     </div>
   );
 }
+

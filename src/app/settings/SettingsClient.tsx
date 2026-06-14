@@ -20,7 +20,8 @@ import {
   updateWorkspaceLogo,
   updateMemberPermissions,
   removeInvitation,
-  deleteMember
+  deleteMember,
+  verifyCustomDomainCname
 } from '@/app/actions/settings';
 
 // Components
@@ -69,7 +70,14 @@ export default function SettingsClient({
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [primaryColor, setPrimaryColor] = useState(branding?.primary_color || '#2563eb');
+  const [primaryColor, setPrimaryColor] = useState(branding?.primary_color || '#04091a');
+  const [buttonColor, setButtonColor] = useState(branding?.button_color || '#2563eb');
+  const [textColor, setTextColor] = useState(branding?.text_color || '#eef2ff');
+  const [typography, setTypography] = useState(branding?.typography || 'Inter');
+  const [customDomain, setCustomDomain] = useState(branding?.custom_domain || '');
+  const [sslStatus, setSslStatus] = useState(branding?.custom_domain_ssl_status || 'pending');
+  const [isVerifyingCname, setIsVerifyingCname] = useState(false);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
 
   // Modals State
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -212,14 +220,76 @@ export default function SettingsClient({
 
   const handleSaveBranding = async () => {
     setIsSaving(true);
-    const res = await updateWorkspaceBranding({ primary_color: primaryColor });
+    const res = await updateWorkspaceBranding({ 
+      primary_color: primaryColor,
+      button_color: buttonColor,
+      text_color: textColor,
+      typography: typography,
+      custom_domain: customDomain
+    });
     if (res.error) toast.error(res.error);
     else {
       document.documentElement.style.setProperty('--primary-color', primaryColor);
-      toast.success('Neural branding colors synced globally');
+      document.documentElement.style.setProperty('--btn-color', buttonColor);
+      document.documentElement.style.setProperty('--txt-color', textColor);
+      document.documentElement.style.setProperty('--font-family', typography);
+      toast.success('Neural branding settings and colors synced globally');
       router.refresh();
     }
     setIsSaving(false);
+  };
+
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsSaving(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `favicon-${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('branding')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('branding')
+        .getPublicUrl(filePath);
+
+      const res = await updateWorkspaceBranding({ favicon_url: publicUrl });
+      if (res.error) throw new Error(res.error);
+
+      toast.success('Favicon updated successfully');
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload favicon');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleVerifyCname = async () => {
+    if (!customDomain) {
+      toast.error('Please enter a custom domain first');
+      return;
+    }
+    setIsVerifyingCname(true);
+    const res = await verifyCustomDomainCname(customDomain);
+    setIsVerifyingCname(false);
+
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      setSslStatus(res.sslStatus || 'failed');
+      if (res.dnsVerified) {
+        toast.success('CNAME validation passed and SSL active!');
+      } else {
+        toast.error('CNAME validation failed. Make sure your CNAME points to cname.leadsmind.io and try again.');
+      }
+      router.refresh();
+    }
   };
 
   const handleRegenerateKey = async () => {
@@ -374,10 +444,23 @@ export default function SettingsClient({
               branding={branding}
               primaryColor={primaryColor}
               setPrimaryColor={setPrimaryColor}
+              buttonColor={buttonColor}
+              setButtonColor={setButtonColor}
+              textColor={textColor}
+              setTextColor={setTextColor}
+              typography={typography}
+              setTypography={setTypography}
+              customDomain={customDomain}
+              setCustomDomain={setCustomDomain}
+              sslStatus={sslStatus}
               isSaving={isSaving}
+              isVerifyingCname={isVerifyingCname}
               onLogoUpload={handleLogoUpload}
+              onFaviconUpload={handleFaviconUpload}
               onSaveBranding={handleSaveBranding}
+              onVerifyCname={handleVerifyCname}
               fileInputRef={fileInputRef}
+              faviconInputRef={faviconInputRef}
             />
           )}
 

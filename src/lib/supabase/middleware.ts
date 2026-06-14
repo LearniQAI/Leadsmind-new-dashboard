@@ -113,6 +113,34 @@ export async function updateSession(request: NextRequest) {
 
  const { data: { user } } = await supabase.auth.getUser()
 
+ // Inactivity timeout check: 8 hours (28,800,000 ms)
+ const INACTIVITY_TIMEOUT = 8 * 60 * 60 * 1000;
+ const nowMs = Date.now();
+ const lastActivity = request.cookies.get('last_activity_at')?.value;
+
+ if (user && lastActivity) {
+   const lastActivityTime = parseInt(lastActivity, 10);
+   if (!isNaN(lastActivityTime) && nowMs - lastActivityTime > INACTIVITY_TIMEOUT) {
+     await supabase.auth.signOut();
+     const redirectUrl = request.nextUrl.pathname.startsWith('/portal')
+       ? new URL('/auth/portal/login?error=Session expired due to inactivity', request.url)
+       : new URL('/auth/signin-basic?error=Session expired due to inactivity', request.url);
+     const res = NextResponse.redirect(redirectUrl);
+     res.cookies.delete('last_activity_at');
+     return res;
+   }
+ }
+
+ // Update last activity cookie timestamp
+ if (user) {
+   response.cookies.set('last_activity_at', nowMs.toString(), {
+     path: '/',
+     httpOnly: true,
+     sameSite: 'lax',
+     maxAge: 8 * 60 * 60, // 8 hours in seconds
+   });
+ }
+
  const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
  
  // Define what should be public (landing pages, etc. if any)
@@ -133,6 +161,9 @@ export async function updateSession(request: NextRequest) {
 
  // 2. If user is NOT logged in and tries to access ANY page that isn't public, redirect to login
  if (!user && !isPublicPage) {
+  if (request.nextUrl.pathname.startsWith('/portal')) {
+    return NextResponse.redirect(new URL('/auth/portal/login', request.url))
+  }
   return NextResponse.redirect(new URL('/auth/signin-basic', request.url))
  }
 

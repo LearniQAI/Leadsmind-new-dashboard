@@ -5,6 +5,7 @@ import { Contact } from '@/types/crm';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { invokeRightToErasure, ErasureReceipt } from '@/app/actions/popia';
+import { inviteContactToPortal, revokeContactPortalAccess, impersonateContact } from '@/app/actions/portal';
 import { ErasureReceiptModal } from '@/components/crm/ErasureReceiptModal';
 import { toast } from 'sonner';
 
@@ -16,6 +17,58 @@ export function ProfileSidebar({ contact }: ProfileSidebarProps) {
   const [loading, setLoading] = useState(false);
   const [receipt, setReceipt] = useState<ErasureReceipt | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  const handlePortalInvite = async () => {
+    setPortalLoading(true);
+    try {
+      const res = await inviteContactToPortal(contact.id);
+      if (res.success) {
+        toast.success('Portal invitation dispatched successfully!');
+      } else {
+        toast.error(res.error || 'Failed to dispatch portal invitation.');
+      }
+    } catch {
+      toast.error('An unexpected error occurred.');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  const handlePortalRevoke = async () => {
+    const confirmed = window.confirm('Are you sure you want to revoke client portal access immediately?');
+    if (!confirmed) return;
+    setPortalLoading(true);
+    try {
+      const res = await revokeContactPortalAccess(contact.id);
+      if (res.success) {
+        toast.success('Portal access revoked immediately.');
+      } else {
+        toast.error(res.error || 'Failed to revoke portal access.');
+      }
+    } catch {
+      toast.error('An unexpected error occurred.');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  const handlePortalImpersonate = async () => {
+    setPortalLoading(true);
+    try {
+      const res = await impersonateContact(contact.id);
+      if (res.success) {
+        toast.success('Entering client view impersonation...');
+        window.open('/portal/dashboard', '_blank');
+      } else {
+        toast.error(res.error || 'Failed to impersonate client.');
+      }
+    } catch {
+      toast.error('An unexpected error occurred.');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   const handleErasure = async () => {
     const email = contact.email || 'this contact';
@@ -120,6 +173,76 @@ export function ProfileSidebar({ contact }: ProfileSidebarProps) {
             </span>
           )) : (
             <span className="text-[11px] text-[#4a5a82] italic font-dm-sans">No tags assigned</span>
+          )}
+        </div>
+      </div>
+
+      {/* Portal Access Management */}
+      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans">Portal Access</h4>
+          <span className={cn(
+            "text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border",
+            (contact as any).portal_access_revoked
+              ? "bg-red-500/15 text-red-400 border-red-500/20"
+              : (contact as any).portal_access_enabled
+              ? "bg-emerald-500/15 text-emerald-400 border-[#10b981]/20"
+              : "bg-amber-500/15 text-amber-400 border-amber-500/20"
+          )}>
+            {(contact as any).portal_access_revoked ? 'Revoked' : (contact as any).portal_access_enabled ? 'Active' : 'No Access'}
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          {!(contact as any).portal_access_enabled || (contact as any).portal_access_revoked ? (
+            <button
+              type="button"
+              onClick={handlePortalInvite}
+              disabled={portalLoading || contact.first_name === 'ANONYMIZED'}
+              className="w-full h-9 rounded-[8px] bg-[#2563eb] text-white hover:bg-[#2563eb]/95 disabled:opacity-50 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#2563eb]/10"
+            >
+              {portalLoading ? (
+                <i className="fa-solid fa-spinner animate-spin text-[10px]"></i>
+              ) : (
+                <>
+                  <i className="fa-solid fa-paper-plane text-[10px]"></i>
+                  {(contact as any).portal_access_revoked ? 'Re-Invite to Portal' : 'Invite to Portal'}
+                </>
+              )}
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handlePortalImpersonate}
+                disabled={portalLoading}
+                className="w-full h-9 rounded-[8px] bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all"
+              >
+                {portalLoading ? (
+                  <i className="fa-solid fa-spinner animate-spin text-[10px]"></i>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-user-secret text-[10px]"></i>
+                    Impersonate View
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handlePortalRevoke}
+                disabled={portalLoading}
+                className="w-full h-9 rounded-[8px] bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all"
+              >
+                {portalLoading ? (
+                  <i className="fa-solid fa-spinner animate-spin text-[10px]"></i>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-ban text-[10px]"></i>
+                    Revoke Access
+                  </>
+                )}
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -67,6 +67,7 @@
     "@types/express": "^5.0.6",
     "@types/react-redux": "^7.1.25",
     "apexcharts": "^4.0.0",
+    "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -115,6 +116,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/dotenv": "^6.1.1",
     "@types/dropzone": "^5.7.8",
     "@types/hoist-non-react-statics": "^3.3.5",

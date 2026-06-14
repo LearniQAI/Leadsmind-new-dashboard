@@ -76,6 +76,74 @@ export async function updateWorkspaceBranding(updates: any) {
  }
 }
 
+export async function verifyCustomDomainCname(customDomain: string) {
+  try {
+    const workspaceId = await getActiveWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const supabase = await createServerClient();
+    const cleanDomain = customDomain.trim().toLowerCase();
+    if (!cleanDomain) {
+      return { error: 'Domain name cannot be empty' };
+    }
+
+    const dnsModule = await import('dns');
+    let dnsVerified = false;
+    let sslStatus: 'active' | 'failed' = 'failed';
+
+    try {
+      const records = await dnsModule.promises.resolveCname(cleanDomain);
+      dnsVerified = records.some(r => 
+        r.toLowerCase().includes('leadsmind.io') || 
+        r.toLowerCase().includes('vercel.app')
+      );
+      sslStatus = dnsVerified ? 'active' : 'failed';
+    } catch (dnsErr: any) {
+      console.warn('[CNAME verification DNS lookup fail]:', dnsErr.message);
+      sslStatus = 'failed';
+    }
+
+    // Upsert or update branding info
+    const { data: existing } = await supabase
+      .from('workspace_branding')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
+    let queryResult;
+    if (existing) {
+      queryResult = await supabase
+        .from('workspace_branding')
+        .update({
+          custom_domain: cleanDomain,
+          custom_domain_ssl_status: sslStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('workspace_id', workspaceId)
+        .select()
+        .single();
+    } else {
+      queryResult = await supabase
+        .from('workspace_branding')
+        .insert({
+          workspace_id: workspaceId,
+          custom_domain: cleanDomain,
+          custom_domain_ssl_status: sslStatus,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+    }
+
+    if (queryResult.error) throw queryResult.error;
+
+    return { success: true, sslStatus, dnsVerified };
+  } catch (error: any) {
+    console.error('[verifyCustomDomainCname Error]:', error);
+    return { error: error.message };
+  }
+}
+
 // TEAM
 export async function getWorkspaceMembers() {
  try {

@@ -13,6 +13,10 @@ interface PayFastParams {
   firstName: string;
   lastName: string;
   email: string;
+  custom_str1?: string;
+  custom_str2?: string;
+  custom_str3?: string;
+  custom_str4?: string;
 }
 
 /**
@@ -82,6 +86,12 @@ export function generatePayFastCheckoutUrl(params: PayFastParams): string {
     amount: params.amount.toFixed(2),
     item_name: params.itemName,
   };
+
+  if (params.custom_str1) payload.custom_str1 = params.custom_str1;
+  if (params.custom_str2) payload.custom_str2 = params.custom_str2;
+  if (params.custom_str3) payload.custom_str3 = params.custom_str3;
+  if (params.custom_str4) payload.custom_str4 = params.custom_str4;
+
 
   // Generate MD5 Signature
   let paramString = '';

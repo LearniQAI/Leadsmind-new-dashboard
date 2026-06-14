@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { stripe as defaultStripe } from '@/lib/stripe';
 import Stripe from 'stripe';
 import { getOrCreateStudentContact } from './studentEnrollments';
+import { getPortalSession } from '@/lib/portal/session';
 
 /**
  * Saves/updates course pricing settings in public.courses.
@@ -269,5 +270,83 @@ export async function verifyLessonAccess(courseId: string, lessonId: string) {
   } catch (error: any) {
     console.error('[verifyLessonAccess Error]:', error);
     return { allowed: false, reason: 'internal_error' };
+  }
+}
+
+/**
+ * Creates a PayFast checkout URL for purchasing a course.
+ */
+export async function createCoursePayFastCheckout(courseId: string) {
+  try {
+    const session = await getPortalSession();
+    if (!session) return { error: 'Not authenticated' };
+
+    const { contact, workspace } = session;
+    const adminClient = createAdminClient();
+
+    // Fetch course details
+    const { data: course, error: courseError } = await adminClient
+      .from('courses')
+      .select('*')
+      .eq('id', courseId)
+      .single();
+
+    if (courseError || !course) {
+      return { error: 'Course not found' };
+    }
+
+    // Check if the user is already enrolled
+    const { data: existing } = await adminClient
+      .from('enrollments')
+      .select('id')
+      .eq('course_id', courseId)
+      .eq('contact_id', contact.id)
+      .maybeSingle();
+
+    if (existing) {
+      return { error: 'You are already enrolled in this course.' };
+    }
+
+    // Enforce cap check
+    if (course.enrolment_cap !== null && course.enrolment_cap > 0) {
+      const { count } = await adminClient
+        .from('enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', courseId);
+      
+      if (count !== null && count >= course.enrolment_cap) {
+        return { error: 'Enrolment cap reached. Course is closed.' };
+      }
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const notifyUrl = `${appUrl}/api/webhooks/payfast`;
+    const returnUrl = `${appUrl}/portal/courses?payment=success`;
+    const cancelUrl = `${appUrl}/portal/courses?payment=canceled`;
+
+    const { generatePayFastCheckoutUrl } = await import('@/lib/calendar/payfast');
+
+    const redirectUrl = generatePayFastCheckoutUrl({
+      merchantId: process.env.PAYFAST_MERCHANT_ID || '10000100',
+      merchantKey: process.env.PAYFAST_MERCHANT_KEY || '46f0z550522ac',
+      returnUrl,
+      cancelUrl,
+      notifyUrl,
+      amount: Number(course.price || 0),
+      itemName: course.title,
+      paymentId: course.id,
+      firstName: contact.first_name || 'Student',
+      lastName: contact.last_name || '',
+      email: contact.email || '',
+      custom_str1: workspace.id,
+      custom_str2: contact.id,
+      custom_str3: course.id,
+      custom_str4: 'course',
+    });
+
+    return { url: redirectUrl };
+  } catch (err: any) {
+    console.error('[createCoursePayFastCheckout Error]:', err);
+    return { error: err.message || 'Failed to create PayFast checkout URL' };
   }
 }

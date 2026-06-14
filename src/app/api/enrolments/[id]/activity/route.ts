@@ -20,10 +20,18 @@ export async function PATCH(
 
     const adminClient = createAdminClient();
 
+    const updates: any = { last_active_at: new Date().toISOString() };
+    if (lessonId) {
+      updates.last_lesson_id = lessonId;
+    }
+    if (typeof progressSeconds === 'number') {
+      updates.last_position_seconds = progressSeconds;
+    }
+
     // 1. Update last_active_at on the enrollment row
     const { data: enrollment, error: enrollErr } = await adminClient
       .from('enrollments')
-      .update({ last_active_at: new Date().toISOString() })
+      .update(updates)
       .eq('id', enrolmentId)
       .select('contact_id, course_id, workspace_id')
       .single();

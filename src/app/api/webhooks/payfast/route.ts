@@ -193,10 +193,10 @@ export async function POST(req: NextRequest) {
         if (matchedInvoice.contact_id) {
           const { data: contact } = await supabase
             .from('contacts')
-            .select('email, first_name')
+            .select('email, first_name, phone')
             .eq('id', matchedInvoice.contact_id)
             .single()
-
+ 
           if (contact?.email) {
             const { sendEmail } = await import('@/lib/email')
             await sendEmail({
@@ -215,8 +215,37 @@ export async function POST(req: NextRequest) {
               `,
             }).catch(() => {})
           }
+
+          if (contact?.phone) {
+            try {
+              const { sendSMS } = await import('@/lib/sms');
+              const { data: ws } = await supabase
+                .from('workspaces')
+                .select('twilio_sid, twilio_token, twilio_number')
+                .eq('id', invoiceWorkspaceId)
+                .single();
+
+              const from = ws?.twilio_number ? `whatsapp:${ws.twilio_number}` : undefined;
+              const to = contact.phone.startsWith('whatsapp:') ? contact.phone : `whatsapp:${contact.phone}`;
+
+              await sendSMS({
+                to,
+                message: `Payment Confirmed: We have received your payment of R${payload.amount_gross} for invoice #${matchedInvoice.invoice_number || m_payment_id}. Reference: ${payload.pf_payment_id || m_payment_id}. Thank you!`,
+                config: ws?.twilio_sid ? {
+                  accountSid: ws.twilio_sid,
+                  authToken: ws.twilio_token,
+                  fromNumber: from,
+                } : undefined,
+              }).catch((err) => {
+                console.error('[PayFast Webhook] Failed to send WhatsApp message:', err);
+              });
+            } catch (smsErr) {
+              console.error('[PayFast Webhook] SMS integration failed:', smsErr);
+            }
+          }
         }
       } catch {}
+
 
       // 6. Fire outbound webhook event
       try {

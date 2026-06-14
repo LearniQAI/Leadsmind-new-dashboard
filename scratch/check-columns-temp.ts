@@ -10,27 +10,29 @@ const supabase = createClient(
 );
 
 async function check() {
-  const { data, error } = await supabase
-    .from('modules')
-    .select('*')
+  console.log("Checking columns on contacts...");
+  const { data: contacts, error: contactsErr } = await supabase
+    .from('contacts')
+    .select('language, notification_preferences, deletion_requested, deletion_requested_at, last_login_at, last_reengagement_sent_at')
     .limit(1);
+  if (contactsErr) console.log("Contacts Error:", contactsErr.message);
+  else console.log("Contacts columns exist!");
 
-  if (error) {
-    console.error('Error fetching module:', error);
-  } else {
-    console.log('Module columns:', data.length > 0 ? Object.keys(data[0]) : 'No data in modules');
-  }
-
-  const { data: quizData, error: quizError } = await supabase
-    .from('lms_quizzes')
-    .select('*')
+  console.log("Checking columns on support_tickets...");
+  const { data: support, error: supportErr } = await supabase
+    .from('support_tickets')
+    .select('category, csat_rating, csat_feedback')
     .limit(1);
+  if (supportErr) console.log("Support Tickets Error:", supportErr.message);
+  else console.log("Support Tickets columns exist!");
 
-  if (quizError) {
-    console.error('Error fetching quiz:', quizError);
-  } else {
-    console.log('Quiz columns:', quizData.length > 0 ? Object.keys(quizData[0]) : 'No data in lms_quizzes');
-  }
+  console.log("Checking columns on workspace_branding...");
+  const { data: branding, error: brandingErr } = await supabase
+    .from('workspace_branding')
+    .select('text_color, button_color, typography, custom_domain_ssl_status, favicon_url')
+    .limit(1);
+  if (brandingErr) console.log("Branding Error:", brandingErr.message);
+  else console.log("Branding columns exist!");
 }
 
-check();
+check().catch(console.error);
