@@ -1,11 +1,12 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import dns from 'dns';
+import { randomBytes } from 'crypto';
 
-// Promisified DNS TXT Resolver helper
+// --- Promisified DNS TXT Resolver helper ---
 async function getDnsTxtRecords(hostname: string): Promise<string[][]> {
   return new Promise((resolve) => {
     dns.resolveTxt(hostname, (err, records) => {
@@ -26,7 +27,8 @@ async function getActiveWorkspaceId() {
   return null;
 }
 
-// 1. Fetch all domains for the active workspace
+// --- Sender Domains Actions (Original) ---
+
 export async function getSenderDomains() {
   try {
     const workspaceId = await getActiveWorkspaceId();
@@ -46,7 +48,6 @@ export async function getSenderDomains() {
   }
 }
 
-// 2. Register a new sender domain
 export async function registerSenderDomain(domainName: string) {
   try {
     const workspaceId = await getActiveWorkspaceId();
@@ -84,7 +85,6 @@ export async function registerSenderDomain(domainName: string) {
   }
 }
 
-// 3. Delete a sender domain
 export async function deleteSenderDomain(domainId: string) {
   try {
     const workspaceId = await getActiveWorkspaceId();
@@ -106,7 +106,6 @@ export async function deleteSenderDomain(domainId: string) {
   }
 }
 
-// 4. Verify a registered sender domain via Node dns.resolveTxt
 export async function verifySenderDomain(domainId: string) {
   try {
     const workspaceId = await getActiveWorkspaceId();
@@ -149,13 +148,10 @@ export async function verifySenderDomain(domainId: string) {
       
       const spfRecord = rootRecordsFlattened.find(rec => rec.startsWith('v=spf1'));
       if (spfRecord) {
-        // SPF must start with v=spf1 and include a valid relay domain (e.g. resend.com or amazonses.com)
-        // We do a general validation checking if it has spf.resend.com or amazonses or leadsmind
         spfVerified = spfRecord.includes('spf.resend.com') || spfRecord.includes('amazonses.com') || spfRecord.includes('leadsmind');
       }
 
       // 2. Verify DKIM: query TXT for resend._domainkey.domainName
-      // Since Resend uses resend._domainkey as selector by default
       const dkimHost = `resend._domainkey.${domainName}`;
       const dkimTxtRecords = await getDnsTxtRecords(dkimHost);
       const dkimRecordsFlattened = dkimTxtRecords.map(r => r.join(''));
@@ -172,7 +168,6 @@ export async function verifySenderDomain(domainId: string) {
 
       const dmarcRecord = dmarcRecordsFlattened.find(rec => rec.startsWith('v=DMARC1'));
       if (dmarcRecord) {
-        // Check if DMARC recommends quarantine (p=quarantine) or reject (p=reject)
         dmarcVerified = dmarcRecord.includes('p=quarantine') || dmarcRecord.includes('p=reject');
       }
     }
@@ -205,5 +200,133 @@ export async function verifySenderDomain(domainId: string) {
     };
   } catch (error: any) {
     return { error: error.message };
+  }
+}
+
+// --- Plan Gate Helpers (New Custom Domains) ---
+
+async function checkPlanGateForCustomDomain(workspaceId: string) {
+  const supabase = createAdminClient();
+  const { data: workspace, error: wsError } = await supabase
+    .from('workspaces')
+    .select('plan_tier')
+    .eq('id', workspaceId)
+    .single();
+
+  if (wsError || !workspace) {
+    throw new Error('Workspace not found or unauthorized access.');
+  }
+
+  const tier = workspace.plan_tier || 'free';
+  if (!['starter', 'growth', 'agency', 'enterprise'].includes(tier)) {
+    throw new Error('Custom domains are only available on Starter, Growth, Agency, and Enterprise plans.');
+  }
+}
+
+// --- Custom Domain Connection Actions (New) ---
+
+export async function addDomain(
+  workspaceId: string,
+  hostname: string,
+  domainType: 'apex' | 'subdomain' | 'wildcard' = 'subdomain'
+) {
+  try {
+    await checkPlanGateForCustomDomain(workspaceId);
+
+    const cleanHostname = hostname.trim().toLowerCase();
+    if (!cleanHostname) {
+      return { success: false, error: 'Hostname is required.' };
+    }
+
+    const adminClient = createAdminClient();
+
+    const { data: existingDomain } = await adminClient
+      .from('domain_configurations')
+      .select('id, workspace_id')
+      .eq('hostname', cleanHostname)
+      .maybeSingle();
+
+    if (existingDomain) {
+      if (existingDomain.workspace_id === workspaceId) {
+        return { success: false, error: 'This domain is already added to this workspace.' };
+      } else {
+        return { success: false, error: 'This domain is already registered to another workspace.' };
+      }
+    }
+
+    const verificationToken = randomBytes(32).toString('hex');
+
+    const supabase = await createServerClient();
+    const { data: domainConfig, error } = await supabase
+      .from('domain_configurations')
+      .insert({
+        workspace_id: workspaceId,
+        hostname: cleanHostname,
+        domain_type: domainType,
+        status: 'pending',
+        verification_token: verificationToken,
+        routing_config: {}
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    revalidatePath('/settings/domains');
+    return { success: true, data: domainConfig };
+  } catch (err: any) {
+    console.error('[Domains Action] addDomain error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getDomains(workspaceId: string) {
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('domain_configurations')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateDomainRouting(domainId: string, routingConfig: any) {
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('domain_configurations')
+      .update({
+        routing_config: routingConfig,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', domainId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function deleteDomain(domainId: string) {
+  try {
+    const supabase = await createServerClient();
+    const { error } = await supabase
+      .from('domain_configurations')
+      .delete()
+      .eq('id', domainId);
+
+    if (error) throw error;
+    revalidatePath('/settings/domains');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
   }
 }
