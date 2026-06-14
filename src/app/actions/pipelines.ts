@@ -65,6 +65,13 @@ export async function createOpportunity(values: any) {
     console.error(`[SERVER DEBUG] Create deal error:`, error);
     return { success: false, error: error.message };
   }
+
+  try {
+    const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+    dispatchWebhook(workspaceId, 'deal.created', {
+      deal: { id: data.id, title: data.title, value: data.value, currency: data.currency || 'USD', status: data.status, stage_id: data.stage_id, contact_id: data.contact_id },
+    }).catch(() => {});
+  } catch (e) { console.error('[webhook-dispatch-deal-created-error]', e); }
   
   revalidatePath('/pipelines');
   return { success: true, data: data as Opportunity };
@@ -189,6 +196,14 @@ export async function updateOpportunity(id: string, values: any) {
   
   const supabase = await createServerClient();
   
+  const { data: dealBefore } = await supabase
+    .from('opportunities')
+    .select('stage_id, status')
+    .eq('id', id)
+    .single();
+  const prevStageId = dealBefore?.stage_id;
+  const prevStatus = dealBefore?.status;
+  
   // Explicitly log the payload we are about to send to Supabase
   const payload = {
     contact_id: values.contact_id || null,
@@ -247,6 +262,21 @@ export async function updateOpportunity(id: string, values: any) {
         console.error('[webhook-dispatch-deal-won-update-error]', e);
       }
     }
+
+    try {
+      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+      if (values.stage_id && values.stage_id !== prevStageId) {
+        dispatchWebhook(data.workspace_id, 'deal.stage_changed', {
+          deal: { id: data.id, title: data.title, value: data.value, status: data.status },
+          previous_stage_id: prevStageId, new_stage_id: values.stage_id,
+        }).catch(() => {});
+      }
+      if (values.status === 'lost' && prevStatus !== 'lost') {
+        dispatchWebhook(data.workspace_id, 'deal.lost', {
+          deal: { id: data.id, title: data.title, value: data.value, status: 'lost' },
+        }).catch(() => {});
+      }
+    } catch (e) { console.error('[webhook-dispatch-deal-update-error]', e); }
   }
   
   console.log(`>>> [CRITICAL DEBUG] Supabase Success! Returned data:`, JSON.stringify(data, null, 2));

@@ -117,6 +117,16 @@ export async function saveInvoice(data: any) {
  if (error) {
   return { success: false, error: error.message };
  }
+
+  if (invoice) {
+    try {
+      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+      dispatchWebhook(invoice.workspace_id, 'invoice.created', {
+        invoice: { id: invoice.id, number: invoice.invoice_number, amount: invoice.total_amount ?? invoice.amount, currency: invoice.currency || 'ZAR', status: invoice.status, contact_id: invoice.contact_id },
+      }).catch(() => {});
+    } catch (e) { console.error('[webhook-dispatch-invoice-created-error]', e); }
+  }
+
  return { success: true, data: invoice };
 }
 
@@ -213,6 +223,15 @@ export async function convertToInvoice(quoteId: string) {
   .from('quotes')
   .update({ status: 'converted' })
   .eq('id', quoteId);
+
+  if (invoice) {
+    try {
+      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+      dispatchWebhook(invoice.workspace_id, 'invoice.created', {
+        invoice: { id: invoice.id, number: invoice.invoice_number, amount: invoice.total_amount ?? invoice.amount, currency: invoice.currency || 'ZAR', status: invoice.status, contact_id: invoice.contact_id },
+      }).catch(() => {});
+    } catch (e) { console.error('[webhook-dispatch-invoice-created-error]', e); }
+  }
 
  return { success: true, data: invoice };
 }

@@ -104,6 +104,13 @@ export async function enrollStudent(courseId: string, contactId: string) {
   if (course?.workspace_id) {
    const { publishEvent } = await import('@/lib/events/EventBus');
    await publishEvent(course.workspace_id, 'student_enrolled_course', contactId, { courseId });
+
+   try {
+    const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+    dispatchWebhook(course.workspace_id, 'course.enrolment', {
+      enrolment: { contact_id: contactId, course_id: courseId, enrolled_at: new Date().toISOString() },
+    }).catch(() => {});
+   } catch (e) { console.error('[webhook-dispatch-course-enrolment-error]', e); }
   }
 
   return { success: true };
