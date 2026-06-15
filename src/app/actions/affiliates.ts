@@ -552,3 +552,21 @@ export async function getAuthenticatedAffiliate() {
     return null;
   }
 }
+
+export async function suspendAffiliate(affiliateId: string) {
+  try {
+    const supabase = await createServerClient();
+    const { data: affiliate, error } = await supabase
+      .from('affiliates')
+      .update({ status: 'suspended' })
+      .eq('id', affiliateId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, data: affiliate };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
