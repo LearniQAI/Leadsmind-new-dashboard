@@ -122,3 +122,45 @@ export async function updateTrackingBrand(workspaceId: string, brandSettings: an
   if (error) return { success: false, error: error.message }
   return { success: true }
 }
+
+export async function uploadBrandLogo(formData: FormData) {
+  const supabase = createAdminClient()
+  const file = formData.get('file') as File | null
+  const workspaceId = formData.get('workspaceId') as string | null
+
+  if (!file || !workspaceId) {
+    return { success: false, error: 'File and workspaceId are required' }
+  }
+
+  const timestamp = Date.now()
+  const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+  const filePath = `logos/${workspaceId}/${timestamp}_${safeName}`
+
+  try {
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+
+    const { error: uploadError } = await supabase.storage
+      .from('media')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        duplex: 'half'
+      })
+
+    if (uploadError) {
+      return { success: false, error: uploadError.message }
+    }
+
+    const { data: publicData } = supabase.storage
+      .from('media')
+      .getPublicUrl(filePath)
+
+    if (!publicData?.publicUrl) {
+      return { success: false, error: 'Failed to retrieve public URL' }
+    }
+
+    return { success: true, publicUrl: publicData.publicUrl }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Error uploading file' }
+  }
+}

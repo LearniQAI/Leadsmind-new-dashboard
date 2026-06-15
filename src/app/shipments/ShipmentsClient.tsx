@@ -5,9 +5,8 @@ import {
   Package, Truck, CheckCircle, AlertCircle, Clock, Plus, Search,
   X, RefreshCw, Palette
 } from 'lucide-react'
-import { createShipment, getShipmentEvents, updateTrackingBrand } from '@/app/actions/shipments'
+import { createShipment, getShipmentEvents, updateTrackingBrand, uploadBrandLogo } from '@/app/actions/shipments'
 import { toast } from 'sonner'
-import { createClient } from '@/lib/supabase/client'
 
 interface ShipmentsClientProps {
   initialShipments: any[]
@@ -84,19 +83,18 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
     if (!file || !workspaceId) return;
 
     setUploadingLogo(true);
-    const supabase = createClient();
-    const filePath = `logos/${workspaceId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-
     try {
-      const { error: uploadError } = await supabase.storage
-        .from('media')
-        .upload(filePath, file);
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('workspaceId', workspaceId)
 
-      if (uploadError) throw uploadError;
+      const res = await uploadBrandLogo(formData)
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to upload logo')
+      }
 
-      const { data } = supabase.storage.from('media').getPublicUrl(filePath);
-      if (data?.publicUrl) {
-        setLogoUrl(data.publicUrl);
+      if (res.publicUrl) {
+        setLogoUrl(res.publicUrl);
         toast.success('Logo uploaded successfully!');
       }
     } catch (err: any) {
