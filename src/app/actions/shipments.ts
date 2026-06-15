@@ -81,43 +81,21 @@ export async function getShipmentEvents(shipmentId: string) {
 
 export async function updateTrackingBrand(workspaceId: string, brandSettings: any) {
   const supabase = createAdminClient()
-  const { data: existing } = await supabase
+  const { error } = await supabase
     .from('courier_brand_settings')
-    .select('id')
-    .eq('workspace_id', workspaceId)
-    .maybeSingle()
-
-  let error
-  if (existing) {
-    const res = await supabase
-      .from('courier_brand_settings')
-      .update({
-        logo_url: brandSettings.logo_url,
-        brand_colour: brandSettings.brand_colour,
-        tagline: brandSettings.tagline,
-        from_name: brandSettings.from_name,
-        from_email: brandSettings.from_email,
-        custom_track_domain: brandSettings.custom_track_domain,
-        white_label: brandSettings.white_label,
-        updated_at: new Date().toISOString()
-      })
-      .eq('workspace_id', workspaceId)
-    error = res.error
-  } else {
-    const res = await supabase
-      .from('courier_brand_settings')
-      .insert({
-        workspace_id: workspaceId,
-        logo_url: brandSettings.logo_url,
-        brand_colour: brandSettings.brand_colour,
-        tagline: brandSettings.tagline,
-        from_name: brandSettings.from_name,
-        from_email: brandSettings.from_email,
-        custom_track_domain: brandSettings.custom_track_domain,
-        white_label: brandSettings.white_label
-      })
-    error = res.error
-  }
+    .upsert({
+      workspace_id: workspaceId,
+      logo_url: brandSettings.logo_url,
+      brand_colour: brandSettings.brand_colour,
+      tagline: brandSettings.tagline,
+      from_name: brandSettings.from_name,
+      from_email: brandSettings.from_email,
+      custom_track_domain: brandSettings.custom_track_domain,
+      white_label: brandSettings.white_label,
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'workspace_id'
+    })
 
   if (error) return { success: false, error: error.message }
   return { success: true }
