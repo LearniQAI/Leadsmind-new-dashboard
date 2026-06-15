@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { createShipment, getShipmentEvents, updateTrackingBrand } from '@/app/actions/shipments'
 import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
 
 interface ShipmentsClientProps {
   initialShipments: any[]
@@ -75,6 +76,36 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
     setRecipientEmail('')
     setCourierSlug('')
   }
+
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !workspaceId) return;
+
+    setUploadingLogo(true);
+    const supabase = createClient();
+    const filePath = `logos/${workspaceId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('media').getPublicUrl(filePath);
+      if (data?.publicUrl) {
+        setLogoUrl(data.publicUrl);
+        toast.success('Logo uploaded successfully!');
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const handleSaveBrand = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -392,14 +423,45 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
             <form onSubmit={handleSaveBrand} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
-                  Brand Logo URL
+                  Brand Logo
                 </label>
-                <input
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  placeholder="https://yourbrand.com/logo.png"
-                  className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
-                />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      id="logo-file-upload"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                      className="hidden"
+                      onChange={handleLogoUpload}
+                    />
+                    <button
+                      type="button"
+                      disabled={uploadingLogo}
+                      onClick={() => document.getElementById('logo-file-upload')?.click()}
+                      className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-white transition-colors flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {uploadingLogo ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Choose File'}
+                    </button>
+                    <span className="text-xs text-gray-400">or paste URL below</span>
+                  </div>
+
+                  <input
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    placeholder="https://yourbrand.com/logo.png"
+                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                  />
+
+                  {logoUrl && (
+                    <div className="mt-2 p-2 bg-white/5 border border-white/10 rounded-lg max-w-[120px] aspect-square flex items-center justify-center overflow-hidden">
+                      <img
+                        src={logoUrl}
+                        alt="Logo Preview"
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -407,18 +469,25 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
                     Brand Color
                   </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={brandColour}
-                      onChange={(e) => setBrandColour(e.target.value)}
-                      className="w-10 h-9 rounded border border-white/10 bg-transparent cursor-pointer"
-                    />
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center">
+                      <input
+                        type="color"
+                        value={brandColour}
+                        onChange={(e) => setBrandColour(e.target.value)}
+                        className="absolute inset-0 w-full h-full cursor-pointer border-0 p-0 bg-transparent"
+                        style={{
+                          padding: 0,
+                          border: 'none',
+                          WebkitAppearance: 'none'
+                        }}
+                      />
+                    </div>
                     <input
                       value={brandColour}
                       onChange={(e) => setBrandColour(e.target.value)}
                       placeholder="#3b82f6"
-                      className="flex-1 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                      className="flex-1 px-3 py-2 h-10 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
                     />
                   </div>
                 </div>
