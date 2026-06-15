@@ -35,6 +35,7 @@ import BillingTab from './components/tabs/BillingTab';
 import SecurityTab from './components/tabs/SecurityTab';
 import AppearanceTab from './components/tabs/AppearanceTab';
 import DomainsTab from './components/tabs/DomainsTab';
+import CustomDomainsTab from './components/tabs/CustomDomainsTab';
 import AiTab from './components/tabs/AiTab';
 import AiCreditsTab from './components/tabs/AiCreditsTab';
 
@@ -123,7 +124,8 @@ export default function SettingsClient({
     { id: 'integrations', label: 'Messaging Connections', icon: Zap, description: 'Connect Meta & platform channels' },
     { id: 'ai', label: 'AI Voice Profile', icon: Sparkles, description: 'Neural voice & templates' },
     { id: 'ai-credits', label: 'AI Credit Ledger', icon: Brain, description: 'Token balance & consumption' },
-    { id: 'domains', label: 'Domains', icon: ShieldCheck, description: 'Email verification & security' },
+    { id: 'domains', label: 'Email Domains', icon: ShieldCheck, description: 'Email verification & security' },
+    { id: 'custom-domains', label: 'Custom Domains', icon: Globe, description: 'Connect your own domain' },
     { id: 'seo', label: 'SEO Settings', icon: TrendingUp, description: 'Google Search Console sync' },
     { id: 'api', label: 'Developer', icon: Code2, description: 'API keys, webhooks & SDK' },
     { id: 'pricing', label: 'Billing', icon: CreditCard, description: 'Resource allocation' },
@@ -492,6 +494,7 @@ export default function SettingsClient({
           {activeTab === 'audit' && <SecurityTab auditData={auditData} />}
 
           {activeTab === 'domains' && <DomainsTab />}
+          {activeTab === 'custom-domains' && <CustomDomainsTab workspaceId={branding?.workspace_id} />}
 
           {activeTab === 'appearance' && (
             <AppearanceTab
