@@ -92,3 +92,51 @@ export async function getWorkspaceMembers() {
  }));
 }
 
+/**
+ * Saves workspace KYC compliance settings (registered name, registration number, and data-sharing entities)
+ */
+export async function saveWorkspaceKycSettings(
+  workspaceId: string,
+  payload: {
+    registered_name?: string;
+    company_reg_number?: string;
+    kyc_data_sharing_entities?: string[];
+  }
+) {
+  try {
+    const user = await getUser();
+    if (!user) return { error: 'Not authenticated' };
+
+    const supabase = await createServerClient();
+
+    // Verify user is admin in this workspace
+    const { data: membership, error: memberError } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (memberError || !membership || membership.role !== 'admin') {
+      return { error: 'Unauthorized: Workspace administrators only' };
+    }
+
+    const { error: updateError } = await supabase
+      .from('workspaces')
+      .update({
+        registered_name: payload.registered_name || null,
+        company_reg_number: payload.company_reg_number || null,
+        kyc_data_sharing_entities: payload.kyc_data_sharing_entities || [],
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', workspaceId);
+
+    if (updateError) throw updateError;
+
+    revalidatePath('/settings');
+    return { success: true };
+  } catch (err: any) {
+    console.error('[saveWorkspaceKycSettings Error]:', err);
+    return { error: err.message || 'Failed to save KYC settings' };
+  }
+}

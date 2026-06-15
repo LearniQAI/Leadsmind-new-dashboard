@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { Globe, Copy, Check, CreditCard } from 'lucide-react';
+import { Globe, Copy, Check, CreditCard, Shield } from 'lucide-react';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -37,6 +37,12 @@ export default function WorkspaceTab({
     show_financials: false,
   });
   const [loadingSettings, setLoadingSettings] = React.useState(true);
+  const [kycSettings, setKycSettings] = React.useState({
+    registered_name: '',
+    company_reg_number: '',
+    kyc_data_sharing_entities_str: '',
+  });
+  const [isKycSaving, setIsKycSaving] = React.useState(false);
 
   const supabase = React.useMemo(() => createClient(), []);
 
@@ -45,7 +51,7 @@ export default function WorkspaceTab({
       if (!branding?.workspace_id) return;
       const { data, error } = await supabase
         .from('workspaces')
-        .select('invoice_settings, project_settings')
+        .select('invoice_settings, project_settings, registered_name, company_reg_number, kyc_data_sharing_entities')
         .eq('id', branding.workspace_id)
         .single();
       if (!error) {
@@ -64,6 +70,11 @@ export default function WorkspaceTab({
             show_financials: data.project_settings.show_financials ?? false,
           });
         }
+        setKycSettings({
+          registered_name: data?.registered_name || '',
+          company_reg_number: data?.company_reg_number || '',
+          kyc_data_sharing_entities_str: (data?.kyc_data_sharing_entities || []).join(', '),
+        });
       }
       setLoadingSettings(false);
     }
@@ -99,6 +110,34 @@ export default function WorkspaceTab({
       setProjectSettings(projectSettings);
     } else {
       toast.success('Project visibility controls updated successfully');
+    }
+  };
+
+  const handleSaveKycSettings = async () => {
+    if (!branding?.workspace_id) return;
+    setIsKycSaving(true);
+    try {
+      const { saveWorkspaceKycSettings } = await import('@/app/actions/workspace');
+      const entities = kycSettings.kyc_data_sharing_entities_str
+        .split(',')
+        .map(e => e.trim())
+        .filter(Boolean);
+
+      const res = await saveWorkspaceKycSettings(branding.workspace_id, {
+        registered_name: kycSettings.registered_name,
+        company_reg_number: kycSettings.company_reg_number,
+        kyc_data_sharing_entities: entities
+      });
+
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success('KYC & Consent configurations saved successfully');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'An unexpected error occurred');
+    } finally {
+      setIsKycSaving(false);
     }
   };
 
@@ -156,6 +195,69 @@ export default function WorkspaceTab({
             </div>
           )}
         </div>
+
+        {/* KYC & POPIA Consent Configurations */}
+        {isAdmin && (
+          <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+            <div className="flex items-center gap-4 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                <Shield size={20} />
+              </div>
+              <div>
+                <h4 className="text-[15px] font-space font-bold text-t1 uppercase">KYC & POPIA Consent Configuration</h4>
+                <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">FICA and POPIA Statutory Identity verification settings</p>
+              </div>
+            </div>
+
+            <div className="grid gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-t3">Legal / Registered Name</label>
+                  <input
+                    type="text"
+                    value={kycSettings.registered_name}
+                    onChange={(e) => setKycSettings({ ...kycSettings, registered_name: e.target.value })}
+                    placeholder="e.g. Acme Holdings (Pty) Ltd"
+                    className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-purple-500/50 transition-all outline-none text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-t3">Business Registration Number</label>
+                  <input
+                    type="text"
+                    value={kycSettings.company_reg_number}
+                    onChange={(e) => setKycSettings({ ...kycSettings, company_reg_number: e.target.value })}
+                    placeholder="e.g. 2026/123456/07"
+                    className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-purple-500/50 transition-all outline-none text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-black uppercase tracking-widest text-t3">Data-Sharing Entities (Comma-separated)</label>
+                <input
+                  type="text"
+                  value={kycSettings.kyc_data_sharing_entities_str}
+                  onChange={(e) => setKycSettings({ ...kycSettings, kyc_data_sharing_entities_str: e.target.value })}
+                  placeholder="e.g. TransUnion, Experian, HANIS, Home Affairs, Conveyancing Attorneys"
+                  className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-purple-500/50 transition-all outline-none text-sm"
+                />
+                <p className="text-[10px] text-t3">Specify third-party agencies and credit bureaus that verification checks will be processed through.</p>
+              </div>
+            </div>
+
+            <div className="pt-4 flex justify-end">
+              <button
+                onClick={handleSaveKycSettings}
+                disabled={isKycSaving}
+                className="bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-widest text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50"
+              >
+                {isKycSaving ? 'Saving...' : 'Save KYC Settings'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {isAdmin && !loadingSettings && (
           <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">

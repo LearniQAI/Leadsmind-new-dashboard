@@ -18,6 +18,9 @@ export interface Contact {
   lead_score?: number;
   last_activity_at?: string;
   id_number?: string;
+  kyc_id_verified?: boolean;
+  kyc_id_verified_at?: string;
+  kyc_risk_flag?: 'LOW' | 'MEDIUM' | 'HIGH';
   created_at: string;
   updated_at: string;
 }

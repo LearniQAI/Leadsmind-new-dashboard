@@ -8,6 +8,7 @@ import { NotesManager } from './NotesManager';
 import { TasksManager } from './TasksManager';
 import IntelligenceTab from './tabs/IntelligenceTab';
 import VerificationTab from './VerificationTab';
+import { BeneficialOwnershipTab } from './BeneficialOwnershipTab';
 
 interface ProfileContentProps {
   contact: Contact;
@@ -17,7 +18,7 @@ interface ProfileContentProps {
 }
 
 export function ProfileContent({ contact, activities, notes, tasks }: ProfileContentProps) {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'notes' | 'tasks' | 'intelligence' | 'verification'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'notes' | 'tasks' | 'intelligence' | 'verification' | 'beneficial_ownership'>('timeline');
 
   const tabs = [
     { id: 'timeline', label: 'Timeline', icon: 'fa-clock-rotate-left' },
@@ -25,6 +26,7 @@ export function ProfileContent({ contact, activities, notes, tasks }: ProfileCon
     { id: 'tasks', label: 'Tasks', icon: 'fa-list-check' },
     { id: 'intelligence', label: 'AI Insights', icon: 'fa-brain' },
     { id: 'verification', label: 'Verification', icon: 'fa-shield-check' },
+    { id: 'beneficial_ownership', label: 'Beneficial Ownership', icon: 'fa-sitemap' },
   ];
 
   return (
@@ -81,7 +83,14 @@ export function ProfileContent({ contact, activities, notes, tasks }: ProfileCon
             contactIdNumber={contact.id_number ?? undefined}
           />
         )}
+
+        {activeTab === 'beneficial_ownership' && (
+          <BeneficialOwnershipTab 
+            contact={contact}
+          />
+        )}
       </div>
     </div>
   );
 }
+

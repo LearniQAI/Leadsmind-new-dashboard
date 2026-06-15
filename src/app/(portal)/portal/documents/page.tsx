@@ -13,7 +13,7 @@ export default async function PortalDocumentsPage() {
     redirect('/auth/portal/login');
   }
 
-  const { contact } = session;
+  const { contact, workspace } = session;
   const supabase = createAdminClient();
 
   // 1. Fetch documents linked to this contact from the secure contact_documents join table
@@ -49,7 +49,12 @@ export default async function PortalDocumentsPage() {
         </div>
 
         {/* Unified Documents & E-Sign Client Dashboard */}
-        <DocumentsClient initialDocs={docs} initialProposals={proposals} />
+        <DocumentsClient 
+          initialDocs={docs} 
+          initialProposals={proposals} 
+          contactId={contact.id} 
+          workspaceId={workspace.id} 
+        />
       </div>
     </MetaData>
   );

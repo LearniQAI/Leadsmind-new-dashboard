@@ -4,10 +4,10 @@ import React, { useEffect, useState } from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 import { createClient } from '@/lib/supabase/client';
-import { BarChart3, Receipt, ArrowUpDown, Download, Printer, RefreshCw } from 'lucide-react';
+import { BarChart3, Receipt, ArrowUpDown, Download, Printer, RefreshCw, Landmark, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-type ReportType = 'pl' | 'vat' | 'cashflow';
+type ReportType = 'pl' | 'vat' | 'cashflow' | 'compliance';
 
 interface ReportRow {
   label: string;
@@ -45,7 +45,36 @@ export default function ReportsPage() {
     net: number;
   }[]>([]);
 
+  // Compliance Audit Data States
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingContacts, setLoadingContacts] = useState(false);
+
   const supabase = createClient();
+
+  const fetchContactsForCompliance = async () => {
+    if (!workspaceId) return;
+    setLoadingContacts(true);
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('first_name', { ascending: true });
+      if (error) throw error;
+      setContacts(data || []);
+    } catch (err: any) {
+      toast.error('Failed to load contacts for compliance: ' + err.message);
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeReport === 'compliance') {
+      fetchContactsForCompliance();
+    }
+  }, [workspaceId, activeReport]);
 
   const getStartEndDates = (period: string) => {
     const now = new Date();
@@ -317,7 +346,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Report Selector Tabs (Hidden when printing) */}
-        <div className="grid grid-cols-3 gap-4 mb-8 print:hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 print:hidden">
           {/* Card 1: Profit & Loss */}
           <button
             onClick={() => setActiveReport('pl')}
@@ -369,6 +398,24 @@ export default function ReportsPage() {
             <div>
               <span className="text-[13px] font-bold text-[#eef2ff] block">Cash Flow</span>
               <span className="text-[11px] text-[#94a3c8] mt-0.5 block">12-month money inflow/outflow</span>
+            </div>
+          </button>
+
+          {/* Card 4: FICA Compliance */}
+          <button
+            onClick={() => setActiveReport('compliance')}
+            className={`p-5 rounded-2xl border flex flex-col items-start text-left gap-2 transition-all ${
+              activeReport === 'compliance'
+                ? 'bg-[#8b5cf6]/10 border-[#8b5cf6] shadow-md shadow-purple-500/5'
+                : 'bg-[rgba(12,21,53,0.85)] border-[rgba(255,255,255,0.07)] hover:border-white/10'
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeReport === 'compliance' ? 'bg-[#8b5cf6] text-white' : 'bg-purple-500/10 text-[#8b5cf6]'}`}>
+              <Landmark size={16} />
+            </div>
+            <div>
+              <span className="text-[13px] font-bold text-[#eef2ff] block">FICA KYC Audit</span>
+              <span className="text-[11px] text-[#94a3c8] mt-0.5 block">Audit trails & FICA report exports</span>
             </div>
           </button>
         </div>
@@ -590,6 +637,124 @@ export default function ReportsPage() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 4: FICA Compliance Audit Panel */}
+              {activeReport === 'compliance' && (
+                <div>
+                  <div className="border-b border-white/5 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-[16px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                        FICA Regulatory Auditing Ledger
+                      </h3>
+                      <span className="text-[11px] text-[#4a5a82] font-semibold uppercase">
+                        Generate official audit files for regulatory inspections
+                      </span>
+                    </div>
+
+                    {/* Search bar */}
+                    <div className="relative w-full sm:w-64">
+                      <input
+                        type="text"
+                        placeholder="Search by name or ID..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="w-full h-9 bg-[#04091a] border border-white/5 text-xs px-3.5 rounded-xl text-white outline-none focus:border-[#8b5cf6]/40 font-dm-sans"
+                      />
+                    </div>
+                  </div>
+
+                  {loadingContacts ? (
+                    <div className="py-12 flex flex-col items-center justify-center gap-2">
+                      <RefreshCw className="animate-spin text-[#8b5cf6]" size={24} />
+                      <span className="text-[12px] text-t3">Loading compliance records...</span>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-[12px]">
+                        <thead>
+                          <tr className="border-b border-white/10 font-bold text-[#4a5a82]">
+                            <th className="py-3">Contact</th>
+                            <th className="py-3">ID Number</th>
+                            <th className="py-3">FICA Status</th>
+                            <th className="py-3">Risk Rating</th>
+                            <th className="py-3 text-right">Audit PDF</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.02]">
+                          {(() => {
+                            const filtered = contacts.filter(c => {
+                              const q = searchQuery.toLowerCase();
+                              const name = `${c.first_name} ${c.last_name || ''}`.toLowerCase();
+                              const idNum = (c.id_number || '').toLowerCase();
+                              return name.includes(q) || idNum.includes(q);
+                            });
+
+                            if (filtered.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={5} className="py-8 text-center text-[#4a5a82] italic">
+                                    No matching compliance profiles found.
+                                  </td>
+                                </tr>
+                              );
+                            }
+
+                            return filtered.map((c) => (
+                              <tr key={c.id} className="text-[#eef2ff]">
+                                <td className="py-3.5">
+                                  <div className="font-bold">{c.first_name} {c.last_name || ''}</div>
+                                  <div className="text-[10px] text-[#4a5a82]">{c.email || 'No email'}</div>
+                                </td>
+                                <td className="py-3.5 font-mono text-[11px] font-semibold">
+                                  {c.id_number || 'Missing ID'}
+                                </td>
+                                <td className="py-3.5">
+                                  <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold uppercase border ${
+                                    c.kyc_id_verified
+                                      ? 'bg-green-500/10 text-[#10b981] border-green-500/20'
+                                      : 'bg-white/5 text-[#4a5a82] border-white/5'
+                                  }`}>
+                                    {c.kyc_id_verified ? 'Verified' : 'Unverified'}
+                                  </span>
+                                </td>
+                                <td className="py-3.5">
+                                  <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold uppercase border ${
+                                    c.kyc_risk_flag === 'HIGH'
+                                      ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                      : c.kyc_risk_flag === 'MEDIUM'
+                                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                      : 'bg-green-500/10 text-[#10b981] border-green-500/20'
+                                  }`}>
+                                    {c.kyc_risk_flag || 'LOW'}
+                                  </span>
+                                </td>
+                                <td className="py-3.5 text-right">
+                                  <a
+                                    href={`/api/kyc/reports/download/${c.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-[#8b5cf6] hover:text-white bg-[#8b5cf6]/5 hover:bg-[#8b5cf6]/15 px-3 py-1.5 rounded-lg border border-[#8b5cf6]/10 hover:border-[#8b5cf6]/20 transition-all"
+                                  >
+                                    Export <Download size={11} />
+                                  </a>
+                                </td>
+                              </tr>
+                            ));
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* FICA Regulatory Audit Info card */}
+                  <div className="bg-[#111d47]/20 border border-white/5 p-4 rounded-2xl flex gap-3 text-[10.5px] text-[#4a5a82] leading-relaxed mt-6">
+                    <AlertCircle size={14} className="shrink-0 text-[#8b5cf6] mt-0.5" />
+                    <span>
+                      <strong>Regulatory Auditing Guide:</strong> Under the Financial Intelligence Centre Act (FICA), this platform keeps electronic audit logs for all verifications. Exporting PDF reports compiles legal profiles containing client details, HANIS outputs, sanctions screen details, and POPIA timestamps suitable for regulatory inspections.
+                    </span>
                   </div>
                 </div>
               )}
