@@ -157,7 +157,7 @@ const getResponsiveStyles = (id: string, props: any) => {
 
 export const Container = (allProps: ContainerProps & any) => {
   const { 
-    layoutType,
+    layoutType: _layoutType,
     backgroundColor,
     padding: _p,
     children, 
@@ -173,12 +173,19 @@ export const Container = (allProps: ContainerProps & any) => {
     enabled: state.options.enabled
   }));
 
-  // Responsive values
-  const padding = useResponsiveValue(allProps, 'padding', 16);
-  const maxWidth = useResponsiveValue(allProps, 'maxWidth', '1200px');
+  // Responsive values & Root overrides
+  const isRoot = id === 'ROOT';
+  const padding = isRoot ? 0 : useResponsiveValue(allProps, 'padding', 16);
+  const layoutType = isRoot ? 'fluid' : useResponsiveValue(allProps, 'layoutType', 'fixed');
+  const maxWidth = isRoot ? '100%' : useResponsiveValue(allProps, 'maxWidth', '1200px');
   
   const cleanId = id.replace(/[^a-zA-Z0-9-]/g, '_');
   const cssRules = getResponsiveStyles(cleanId, allProps);
+
+  let cleanClassName = props.className;
+  if (isRoot && props.className) {
+    cleanClassName = props.className.replace(/\bbg-\S+/g, '').trim();
+  }
 
   return (
     <>
@@ -201,12 +208,12 @@ export const Container = (allProps: ContainerProps & any) => {
           layoutType === 'fixed' ? "mx-auto" : "w-full",
           `node-${cleanId}`,
           formatPseudoClasses(allProps.customClasses, allProps.hoverClasses, allProps.focusClasses),
-          props.className
+          cleanClassName
         )}
         style={{
           maxWidth: layoutType === 'fixed' ? maxWidth : '100%',
           padding: _p !== undefined && !allProps.paddingTop && !allProps.paddingRight && !allProps.paddingBottom && !allProps.paddingLeft ? `${padding}px` : undefined,
-          backgroundColor: !allProps.backgroundGradient && backgroundColor && !allProps.backgroundColor ? backgroundColor : undefined,
+          backgroundColor: isRoot ? 'var(--theme-bg)' : (!allProps.backgroundGradient && backgroundColor && !allProps.backgroundColor ? backgroundColor : undefined),
         }}
       >
         {React.Children.count(children) === 0 && enabled ? (

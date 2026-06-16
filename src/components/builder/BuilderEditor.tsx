@@ -718,7 +718,7 @@ const BuilderEditorLayout = ({
                     </div>
                 </div>
                 <Viewport>
-                    <div className="flex flex-col min-h-screen w-full font-sans bg-white pointer-events-none select-none">
+                    <div className="flex flex-col min-h-screen w-full font-sans bg-[var(--theme-bg)] pointer-events-none select-none">
                         {hasNav && (
                             <nav
                                 className={`w-full sticky top-0 z-50 transition-all ${navStyle.border ? 'border-b border-black/10' : ''} ${navStyle.glass ? 'backdrop-blur-md bg-opacity-70' : ''}`}

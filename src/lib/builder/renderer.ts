@@ -55,7 +55,7 @@ export function renderCraftToHtml(
     return '';
   }
 
-  const html = renderNode(rootNode, content);
+  const html = renderNode(rootNode, content, 'ROOT');
   
   // Inject form handler script if needed
   const submissionScript = `
@@ -199,7 +199,7 @@ export function renderCraftToHtml(
   return minifyHtml(html + submissionScript);
 }
 
-function renderNode(node: CraftNode, allNodes: CraftContent): string {
+function renderNode(node: CraftNode, allNodes: CraftContent, nodeId: string): string {
   if (!node) return '';
   const { type, props, nodes, linkedNodes } = node;
   
@@ -208,13 +208,13 @@ function renderNode(node: CraftNode, allNodes: CraftContent): string {
   const childrenHtml = (nodes || []).map(id => {
     const childNode = allNodes[id];
     if (!childNode) return '';
-    return renderNode(childNode, allNodes);
+    return renderNode(childNode, allNodes, id);
   }).join('');
   
   const linkedHtml = Object.values(linkedNodes || {}).map(id => {
     const linkedNode = allNodes[id];
     if (!linkedNode) return '';
-    return renderNode(linkedNode, allNodes);
+    return renderNode(linkedNode, allNodes, id);
   }).join('');
 
   const fullChildren = childrenHtml + linkedHtml;
@@ -225,9 +225,18 @@ function renderNode(node: CraftNode, allNodes: CraftContent): string {
       return `<section ${classesStr} style="width: 100%; position: relative; padding-top: ${props.paddingTop}px; padding-bottom: ${props.paddingBottom}px; padding-left: ${props.paddingLeft}px; padding-right: ${props.paddingRight}px; background-color: ${props.backgroundColor || 'transparent'}; ${mapPropsToStyle(props)}">${fullChildren}</section>`;
 
     case 'Container':
-      const bgColor = props.backgroundColor || (props.style?.backgroundColor) || 'transparent';
-      const maxWidthStyle = props.layoutType === 'fixed' ? `max-width: ${props.maxWidth || '1200px'}; margin-left: auto; margin-right: auto;` : 'width: 100%;';
-      return `<div ${classesStr} style="${maxWidthStyle} padding: ${props.padding}px; background-color: ${bgColor}; ${mapPropsToStyle(props)}">${fullChildren}</div>`;
+      const isRoot = nodeId === 'ROOT';
+      let cleanClasses = classesStr;
+      if (isRoot && classesStr) {
+        cleanClasses = classesStr.replace(/class="([^"]*)"/, (match, p1) => {
+          const classesWithoutBg = p1.replace(/\bbg-\S+/g, '').trim();
+          return classesWithoutBg ? `class="${classesWithoutBg}"` : '';
+        });
+      }
+      const bgColor = isRoot ? 'var(--theme-bg)' : (props.backgroundColor || (props.style?.backgroundColor) || 'transparent');
+      const maxWidthStyle = (props.layoutType === 'fixed' && !isRoot) ? `max-width: ${props.maxWidth || '1200px'}; margin-left: auto; margin-right: auto;` : 'width: 100%;';
+      const paddingVal = isRoot ? 0 : (props.padding ?? 16);
+      return `<div ${cleanClasses} style="${maxWidthStyle} padding: ${paddingVal}px; background-color: ${bgColor}; ${mapPropsToStyle(props)}">${fullChildren}</div>`;
       
     case 'Columns':
       let gridTemplate = 'grid-template-columns: repeat(1, minmax(0, 1fr));';
