@@ -13,6 +13,7 @@ import { headers } from 'next/headers';
 import ClientLayoutShell from '@/app/(portal)/portal/layout-client';
 import PopiaConsentWall from '@/components/portal/PopiaConsentWall';
 import PortalLenaChat from '@/components/portal/PortalLenaChat';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +58,16 @@ export default async function PortalLayout({ children }: { children: React.React
       </div>
     );
   }
+
+  // Check FICA completion status
+  const supabase = createAdminClient();
+  const { data: rating } = await supabase
+    .from('kyc_risk_ratings')
+    .select('fica_complete')
+    .eq('contact_id', session.contact.id)
+    .maybeSingle();
+
+  const ficaComplete = rating?.fica_complete ?? false;
 
   // Server action to exit impersonation
   const handleExitImpersonation = async () => {
@@ -124,6 +135,7 @@ export default async function PortalLayout({ children }: { children: React.React
         session={session} 
         navItems={navItems} 
         handleSwitchWorkspace={handleSwitchWorkspace}
+        ficaComplete={ficaComplete}
       >
         {children}
       </ClientLayoutShell>

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X, ChevronDown, Building, LogOut } from 'lucide-react';
+import { Menu, X, ChevronDown, Building, LogOut, ShieldAlert, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { handleLogout } from '@/app/actions/auth';
 
@@ -11,6 +11,7 @@ interface ClientLayoutShellProps {
   session: any;
   navItems: any[];
   handleSwitchWorkspace: (wsId: string) => Promise<void>;
+  ficaComplete: boolean;
   children: React.ReactNode;
 }
 
@@ -18,6 +19,7 @@ export default function ClientLayoutShell({
   session,
   navItems,
   handleSwitchWorkspace,
+  ficaComplete,
   children
 }: ClientLayoutShellProps) {
   const pathname = usePathname();
@@ -103,18 +105,25 @@ export default function ClientLayoutShell({
         <nav className="flex-1 space-y-1">
           {navItems.map((item, i) => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isRestricted = !ficaComplete && ['/portal/bookings', '/portal/courses', '/portal/projects', '/portal/support'].includes(item.href);
             return (
               <Link 
                 key={i}
                 href={item.href}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+                  "w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
                   active 
                     ? 'bg-[var(--accentg)] text-[var(--accent2)] border-l-2 border-blue-500' 
-                    : 'text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[rgba(255,255,255,0.03)]'
+                    : isRestricted
+                      ? 'text-[var(--t4)] hover:text-[var(--t3)] cursor-not-allowed opacity-50'
+                      : 'text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[rgba(255,255,255,0.03)]'
                 )}
               >
-                <item.icon size={16} /> {item.label}
+                <div className="flex items-center gap-3">
+                  <item.icon size={16} />
+                  <span>{item.label}</span>
+                </div>
+                {isRestricted && <Lock size={12} className="text-amber-500 shrink-0" />}
               </Link>
             );
           })}
@@ -202,19 +211,26 @@ export default function ClientLayoutShell({
             <nav className="flex-grow space-y-1 overflow-y-auto">
               {navItems.map((item, i) => {
                 const active = pathname === item.href || pathname.startsWith(item.href + '/');
+                const isRestricted = !ficaComplete && ['/portal/bookings', '/portal/courses', '/portal/projects', '/portal/support'].includes(item.href);
                 return (
                   <Link 
                     key={i}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-transparent",
+                      "w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-transparent",
                       active 
                         ? 'bg-[var(--accentg)] text-[var(--accent2)] border-blue-500/20' 
-                        : 'text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[rgba(255,255,255,0.03)]'
+                        : isRestricted
+                          ? 'text-[var(--t4)] opacity-55'
+                          : 'text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[rgba(255,255,255,0.03)]'
                     )}
                   >
-                    <item.icon size={16} /> {item.label}
+                    <div className="flex items-center gap-3">
+                      <item.icon size={16} />
+                      <span>{item.label}</span>
+                    </div>
+                    {isRestricted && <Lock size={12} className="text-amber-500 shrink-0" />}
                   </Link>
                 );
               })}
@@ -235,7 +251,52 @@ export default function ClientLayoutShell({
 
         {/* 3. Main Dashboard Workspace Content */}
         <main className="flex-1 overflow-y-auto relative z-10">
-          {children}
+          {!ficaComplete && ['/portal/bookings', '/portal/courses', '/portal/projects', '/portal/support'].some(p => pathname === p || pathname.startsWith(p + '/')) ? (
+            <div className="max-w-xl mx-auto my-12 p-8 bg-[var(--n800)] border border-[var(--bdr)] rounded-[32px] text-center space-y-6 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-amber-950/20 animate-pulse">
+                <ShieldAlert size={32} />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold uppercase tracking-wider text-white font-space">FICA Compliance Block Active</h2>
+                <p className="text-xs text-[var(--t3)] uppercase tracking-widest font-semibold text-amber-400">Identity Verification Hold</p>
+              </div>
+              <p className="text-xs text-[#94a3c8] leading-relaxed max-w-sm mx-auto font-sans font-medium">
+                Under the Financial Intelligence Centre Act (FICA) regulations, we are required to obtain and verify your identity documentation and physical address confirmation. 
+                Access to bookings, classes, project files, and support channels will remain locked until your verification is complete.
+              </p>
+              <div className="bg-[#0b1329]/50 border border-white/5 rounded-2xl p-4 text-left space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-350">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  <span>Verify Identity Book, Card, or Passport</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-350">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  <span>Verify Proof of Physical Address (Utility bill)</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-350">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  <span>Provide Experian TrueID Biometric Selfie</span>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <Link
+                  href="/portal/documents"
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl text-[10.5px] uppercase tracking-wider transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-1.5"
+                >
+                  Go to Verification Vault
+                </Link>
+                <Link
+                  href="/portal/dashboard"
+                  className="flex-1 bg-white/5 hover:bg-white/10 text-white border border-white/5 font-black py-3 rounded-xl text-[10.5px] uppercase tracking-wider transition-all flex items-center justify-center"
+                >
+                  View Dashboard
+                </Link>
+              </div>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>
