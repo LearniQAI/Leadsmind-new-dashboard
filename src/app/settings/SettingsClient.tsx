@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Globe, Users, Palette, Code2, CreditCard, ShieldCheck, Monitor, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain
+  Globe, Users, Palette, Code2, CreditCard, ShieldCheck, Monitor, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain, Mail
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -38,6 +38,7 @@ import DomainsTab from './components/tabs/DomainsTab';
 import CustomDomainsTab from './components/tabs/CustomDomainsTab';
 import AiTab from './components/tabs/AiTab';
 import AiCreditsTab from './components/tabs/AiCreditsTab';
+import EmailProviderTab from './components/tabs/EmailProviderTab';
 
 // Modals
 import InviteModal from './components/modals/InviteModal';
@@ -126,6 +127,7 @@ export default function SettingsClient({
     { id: 'ai-credits', label: 'AI Credit Ledger', icon: Brain, description: 'Token balance & consumption' },
     { id: 'domains', label: 'Email Domains', icon: ShieldCheck, description: 'Email verification & security' },
     { id: 'custom-domains', label: 'Custom Domains', icon: Globe, description: 'Connect your own domain' },
+    { id: 'email-provider', label: 'Email Provider', icon: Mail, description: 'Custom transactional email gateway' },
     { id: 'seo', label: 'SEO Settings', icon: TrendingUp, description: 'Google Search Console sync' },
     { id: 'api', label: 'Developer', icon: Code2, description: 'API keys, webhooks & SDK' },
     { id: 'pricing', label: 'Billing', icon: CreditCard, description: 'Resource allocation' },
@@ -495,6 +497,7 @@ export default function SettingsClient({
 
           {activeTab === 'domains' && <DomainsTab />}
           {activeTab === 'custom-domains' && <CustomDomainsTab workspaceId={branding?.workspace_id} />}
+          {activeTab === 'email-provider' && <EmailProviderTab workspaceId={branding?.workspace_id} />}
 
           {activeTab === 'appearance' && (
             <AppearanceTab

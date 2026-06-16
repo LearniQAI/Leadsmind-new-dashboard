@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { scryptSync, randomBytes, timingSafeEqual } from 'crypto';
 import { sendEmail } from '@/lib/email';
 import { cookies } from 'next/headers';
+import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { SignJWT, jwtVerify } from 'jose';
 
 const JWT_SECRET_KEY = new TextEncoder().encode(
@@ -296,6 +297,7 @@ export async function applyToProgramme(
     const now = Date.now();
     const day = 24 * 60 * 60 * 1000;
     
+    const customConfig = await getWorkspaceEmailConfig(programme.workspace_id);
     const sendWelcome = async (daysOffset: number, subject: string, htmlContent: string) => {
       try {
         const scheduledTime = daysOffset > 0 ? new Date(now + daysOffset * day).toISOString() : undefined;
@@ -303,7 +305,8 @@ export async function applyToProgramme(
           to: email.toLowerCase().trim(),
           subject,
           html: htmlContent,
-          scheduledAt: scheduledTime
+          scheduledAt: scheduledTime,
+          config: customConfig || undefined
         });
       } catch (err) {
         console.error(`[Affiliate Sequence Error] Failed to schedule email for Day ${daysOffset}:`, err);
@@ -399,6 +402,7 @@ export async function approveAffiliate(affiliateId: string) {
     
     // Send approval notification email
     try {
+      const customConfig = affiliate.workspace_id ? await getWorkspaceEmailConfig(affiliate.workspace_id) : null;
       await sendEmail({
         to: affiliate.email,
         subject: 'Your Affiliate Application Has Been Approved!',
@@ -412,7 +416,8 @@ export async function approveAffiliate(affiliateId: string) {
               <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/affiliate-portal/login" style="background-color:#10b981;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">Access Dashboard</a>
             </div>
           </div>
-        `
+        `,
+        config: customConfig || undefined
       });
     } catch (e) {
       console.error('[Affiliate Notification Error]', e);
@@ -440,6 +445,7 @@ export async function rejectAffiliate(affiliateId: string) {
 
     // Send rejection email
     try {
+      const customConfig = affiliate.workspace_id ? await getWorkspaceEmailConfig(affiliate.workspace_id) : null;
       await sendEmail({
         to: affiliate.email,
         subject: 'Affiliate Application Update',
@@ -450,7 +456,8 @@ export async function rejectAffiliate(affiliateId: string) {
             <p>Thank you for your interest in our affiliate programme. Unfortunately, we are unable to approve your application at this time.</p>
             <p>If you have any questions, feel free to contact our support team.</p>
           </div>
-        `
+        `,
+        config: customConfig || undefined
       });
     } catch (e) {
       console.error('[Affiliate Notification Error]', e);

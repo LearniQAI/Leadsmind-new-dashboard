@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "clean": "rm -rf .next yarn.lock node_modules && yarn install",
-    "build": "next build",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
     "start": "next start",
     "lint": "next lint",
     "query": "node run_queries.js"
@@ -131,6 +131,7 @@
     "@types/react-modal-video": "^1.2.0",
     "@types/recharts": "^1.8.29",
     "autoprefixer": "^10.4.20",
+    "cross-env": "^7.0.3",
     "dotenv": "^17.4.2",
     "eslint": "^8",
     "eslint-config-next": "14.0.3",

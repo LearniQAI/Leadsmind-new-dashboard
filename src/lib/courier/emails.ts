@@ -1,6 +1,7 @@
 import { sendEmail } from '@/lib/email'
 import { createAdminClient } from '@/lib/supabase/server'
 import { NormalStatus } from './normalise'
+import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig'
 
 export async function sendShipmentRegistered(shipment: any) {
   const supabase = createAdminClient()
@@ -30,11 +31,14 @@ export async function sendShipmentRegistered(shipment: any) {
         ${brand?.tagline ? `<p style="font-style: italic; color: #666; font-size: 0.9em;">${brand.tagline}</p>` : ''}
       </div>
     `
+    const customConfig = await getWorkspaceEmailConfig(shipment.workspace_id)
+    const emailConfig = customConfig || { fromEmail, fromName }
+
     await sendEmail({
       to: recipientEmail,
       subject,
       html,
-      config: { fromEmail, fromName }
+      config: emailConfig
     })
 
     await supabase.from('notifications_sent').insert({
@@ -132,11 +136,14 @@ export async function sendStatusUpdate(
       </div>
     `
 
+    const customConfig = await getWorkspaceEmailConfig(shipment.workspace_id)
+    const emailConfig = customConfig || { fromEmail, fromName }
+
     await sendEmail({
       to: recipientEmail,
       subject,
       html,
-      config: { fromEmail, fromName }
+      config: emailConfig
     })
 
     await supabase.from('notifications_sent').insert({

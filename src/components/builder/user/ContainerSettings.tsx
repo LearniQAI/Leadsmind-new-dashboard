@@ -9,6 +9,12 @@ import { ColorPicker } from '../ColorPicker';
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 
+import { FlexboxControl } from '../inspector/FlexboxControl';
+import { BoxModelControl } from '../inspector/BoxModelControl';
+import { TypographyControl } from '../inspector/TypographyControl';
+import { BackgroundBorderControl } from '../inspector/BackgroundBorderControl';
+import { CustomClassControl } from '../inspector/CustomClassControl';
+
 export const ContainerSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
     props: node.data.props,
@@ -72,6 +78,13 @@ export const ContainerSettings = () => {
           className="w-full accent-primary"
         />
       </div>
+
+      <FlexboxControl />
+      <BoxModelControl />
+      <TypographyControl />
+      <BackgroundBorderControl />
+      <CustomClassControl />
     </div>
   );
 };
+
