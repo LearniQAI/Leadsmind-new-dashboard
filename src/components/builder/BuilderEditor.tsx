@@ -550,20 +550,20 @@ const BuilderEditorLayout = ({
     return (
         <div className="h-screen w-full flex flex-col overflow-hidden bg-[#050508] text-white">
             {/* Header Section */}
-            <header className="h-[70px] border-b border-white/5 bg-[#0b0b14]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-3 pr-6 border-r border-white/5">
-                        <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+            <header className="h-[70px] border-b border-white/5 bg-[#0b0b14]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50 w-full select-none">
+                <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-3 pr-6 border-r border-white/5 shrink-0">
+                        <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
                             <span className="font-black text-lg tracking-tighter">L</span>
                         </div>
-                        <div>
-                            <span className="block text-[11px] font-black uppercase tracking-tighter text-white leading-none">Leadsmind</span>
-                            <span className="block text-[8px] font-bold uppercase tracking-[0.2em] text-primary mt-0.5">Neural Node Builder</span>
+                        <div className="shrink-0">
+                            <span className="block text-[11px] font-black uppercase tracking-tighter text-white leading-none whitespace-nowrap">Leadsmind</span>
+                            <span className="block text-[8px] font-bold uppercase tracking-[0.2em] text-primary mt-0.5 whitespace-nowrap">Neural Node Builder</span>
                         </div>
                     </div>
 
                     {/* Sidebar Toggles */}
-                    <div className="flex items-center gap-2 px-4 border-r border-white/5">
+                    <div className="flex items-center gap-2 px-4 border-r border-white/5 shrink-0">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -621,15 +621,15 @@ const BuilderEditorLayout = ({
                     </div>
 
                     {/* Page Switcher */}
-                    <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-                        <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Editing Mode:</span>
+                    <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5 shrink-0">
+                        <div className="flex items-center gap-2 shrink-0">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/40 whitespace-nowrap">Editing Mode:</span>
                         </div>
                         <select
                             value={pageId as string}
                             onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
-                            className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-white outline-none cursor-pointer hover:text-primary transition-colors min-w-[120px]"
+                            className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-white outline-none cursor-pointer hover:text-primary transition-colors min-w-[120px] shrink-0"
                         >
                             {pages.map((p) => (
                                 <option key={p.id} value={p.id} className="bg-[#0b0b14] text-white">{p.name} ({p.slug})</option>
@@ -638,11 +638,11 @@ const BuilderEditorLayout = ({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 px-4 border-r border-white/5 mr-2">
-                        <div className="text-right hidden sm:block">
-                            <span className="block text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Node Status</span>
-                            <span className="block text-[10px] font-black uppercase text-emerald-500">System Online</span>
+                <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-2 px-4 border-r border-white/5 mr-2 shrink-0">
+                        <div className="text-right hidden sm:block shrink-0">
+                            <span className="block text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5 whitespace-nowrap">Node Status</span>
+                            <span className="block text-[10px] font-black uppercase text-emerald-500 whitespace-nowrap">System Online</span>
                         </div>
                     </div>
 
