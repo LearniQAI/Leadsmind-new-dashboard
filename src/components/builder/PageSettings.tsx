@@ -1,20 +1,24 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useBuilder } from './BuilderContext';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '../ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Search, Image, Globe, Sparkles } from 'lucide-react';
+import { Search, Image, Globe, Sparkles, History, CheckCircle, FileCode, Plus } from 'lucide-react';
 import { updatePageSettings } from '@/app/actions/builder';
+import { getPageRevisions, restorePageRevision } from '@/app/actions/builderDeploy';
+import { generateAICopySuggestions } from '@/app/actions/builderAI';
 import { toast } from 'sonner';
 import { useParams } from 'next/navigation';
 
 export const PageSettings = () => {
   const { pageId } = useParams();
-  const [loading, setLoading] = React.useState(false);
-  const [settings, setSettings] = React.useState({
+  const { websiteData } = useBuilder();
+  const [loading, setLoading] = useState(false);
+  const [revisions, setRevisions] = useState<any[]>([]);
+  const [settings, setSettings] = useState({
     name: '',
     seo_title: '',
     seo_description: '',
@@ -26,7 +30,12 @@ export const PageSettings = () => {
     excerpt: '',
   });
 
-  React.useEffect(() => {
+  // AI Copy Generator State
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
+  const [generatingAI, setGeneratingAI] = useState(false);
+
+  useEffect(() => {
     async function loadPageDetails() {
       if (!pageId) return;
       const { createClient } = await import('@/lib/supabase/client');
@@ -50,9 +59,18 @@ export const PageSettings = () => {
           excerpt: data.excerpt || '',
         });
       }
+      fetchRevisions();
     }
     loadPageDetails();
   }, [pageId]);
+
+  const fetchRevisions = async () => {
+    if (!pageId) return;
+    const res = await getPageRevisions(pageId as string);
+    if (res.success && res.versions) {
+      setRevisions(res.versions);
+    }
+  };
 
   const handleSave = async () => {
     if (!pageId) return;
@@ -61,9 +79,43 @@ export const PageSettings = () => {
     setLoading(false);
     if (result.success) {
       toast.success("Page settings updated!");
+      fetchRevisions();
     } else {
       toast.error("Failed to update settings");
     }
+  };
+
+  const handleRestore = async (versionId: string) => {
+    if (!confirm("Are you sure you want to rollback to this draft? Current unsaved changes will be overwritten.")) return;
+    const res = await restorePageRevision(versionId);
+    if (res.success) {
+      toast.success("Revision restored!");
+      setTimeout(() => window.location.reload(), 300);
+    } else {
+      toast.error("Rollback failed");
+    }
+  };
+
+  const handleAskAI = async () => {
+    if (!aiPrompt) return;
+    setGeneratingAI(true);
+    const res = await generateAICopySuggestions(aiPrompt, settings.seo_title || 'Marketing Page');
+    setGeneratingAI(false);
+    if (res.success && res.suggestions) {
+      setAiSuggestions(res.suggestions);
+      toast.success("Suggestions loaded");
+    } else {
+      toast.error("AI Generation failed");
+    }
+  };
+
+  const applyAISuggestion = (sug: any) => {
+    setSettings(s => ({
+      ...s,
+      seo_title: sug.heading,
+      seo_description: sug.subheading
+    }));
+    toast.success("Applied headings to SEO inputs");
   };
 
   return (
@@ -71,14 +123,15 @@ export const PageSettings = () => {
       <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Search className="w-3.5 h-3.5 text-[#6c47ff]" />
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/60">Page SEO & Social</h2>
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/60">Page settings</h2>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-8 custom-scrollbar">
+        {/* SEO Tags */}
         <section className="space-y-4">
           <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-            <Globe className="w-3 h-3" /> Meta Tags
+            <Globe className="w-3 h-3" /> Meta Search Config
           </h3>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -87,7 +140,6 @@ export const PageSettings = () => {
                 value={settings.name}
                 onChange={(e) => setSettings(s => ({ ...s, name: e.target.value }))}
                 className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
-                placeholder="Internal page name"
               />
             </div>
             <div className="space-y-2">
@@ -96,120 +148,91 @@ export const PageSettings = () => {
                 value={settings.seo_title}
                 onChange={(e) => setSettings(s => ({ ...s, seo_title: e.target.value }))}
                 className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
-                placeholder="Page title in search results"
               />
-              <p className="text-[9px] text-white/40">Keep it under 60 characters for best results.</p>
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Meta Description</Label>
               <Textarea 
                 value={settings.seo_description}
                 onChange={(e) => setSettings(s => ({ ...s, seo_description: e.target.value }))}
-                className="bg-white/5 border-white/10 text-white text-sm min-h-[100px] placeholder:text-white/20"
-                placeholder="Briefly describe what this page is about..."
+                className="bg-white/5 border-white/10 text-white text-sm min-h-[80px]"
               />
             </div>
           </div>
         </section>
 
-        <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-            <Image className="w-3 h-3" /> Social Preview (OG)
-          </h3>
-          <div className="space-y-4">
-            <div className="aspect-[1200/630] w-full rounded-xl border border-white/10 bg-white/5 overflow-hidden relative group">
-              {settings.og_image_url ? (
-                <img src={settings.og_image_url} alt="OG Preview" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-30">
-                  <Image size={32} />
-                  <span className="text-[10px] font-bold text-white">No Image Set</span>
-                </div>
-              )}
+        {/* XML Sitemap Endpoint Link */}
+        {websiteData?.id && (
+          <section className="p-3.5 bg-white/5 rounded-2xl border border-white/5 flex flex-col gap-2">
+            <div className="text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+              <FileCode className="w-3.5 h-3.5 text-primary" /> Sitemap Indexer
             </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">OG Image URL</Label>
-              <div className="flex gap-2">
-                <Input 
-                  value={settings.og_image_url}
-                  onChange={(e) => setSettings(s => ({ ...s, og_image_url: e.target.value }))}
-                  className="h-9 bg-white/5 border-white/10 text-white text-xs placeholder:text-white/20"
-                  placeholder="https://..."
-                />
-                <Button size="icon" variant="secondary" className="h-9 w-9 bg-[#6c47ff]/10 text-primary border border-[#6c47ff]/20">
-                  <Sparkles size={14} />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </section>
-        
-        <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
-          <p className="text-[10px] text-primary font-medium leading-relaxed">
-            Tip: Good SEO helps your site rank higher on Google. Don't forget to add a high-quality OG image for social sharing!
-          </p>
-        </div>
+            <a 
+              href={`/api/builder/sitemap?websiteId=${websiteData.id}`}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[10px] text-primary hover:underline truncate"
+            >
+              /api/builder/sitemap?websiteId={websiteData.id}
+            </a>
+          </section>
+        )}
 
+        {/* AI Copywriter panel */}
         <section className="space-y-4 pt-4 border-t border-white/5">
           <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-            <Sparkles className="w-3 h-3" /> Content Type & Meta
+            <Sparkles className="w-3 h-3 text-primary animate-pulse" /> AI Copywriter Suggestions
           </h3>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Page Type</Label>
-              <select 
-                value={settings.type}
-                onChange={(e) => setSettings(s => ({ ...s, type: e.target.value }))}
-                className="w-full h-9 bg-white/5 border border-white/10 text-white rounded px-2 text-sm font-bold outline-none"
-              >
-                <option value="page" className="bg-[#0b0b14]">Standard Page</option>
-                <option value="blog_post" className="bg-[#0b0b14]">Blog Post</option>
-                <option value="funnel_step" className="bg-[#0b0b14]">Funnel Step</option>
-              </select>
-            </div>
+          <div className="space-y-3">
+            <Textarea 
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="headline for a digital agency..."
+              className="bg-white/5 border-white/10 text-white text-xs min-h-[60px]"
+            />
+            <Button onClick={handleAskAI} disabled={generatingAI} size="sm" className="w-full bg-[#6c47ff]/20 hover:bg-[#6c47ff]/30 text-primary border border-[#6c47ff]/30 text-[10px] uppercase font-bold h-9">
+              {generatingAI ? 'Suggesting...' : 'Ask AI Copywriter'}
+            </Button>
 
-            {settings.type === 'blog_post' && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-300">
-                <div className="space-y-2">
-                  <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Author Name</Label>
-                  <Input 
-                    value={settings.author}
-                    onChange={(e) => setSettings(s => ({ ...s, author: e.target.value }))}
-                    className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
-                    placeholder="Author name"
-                  />
+            <div className="space-y-2">
+              {aiSuggestions.map((sug, i) => (
+                <div key={i} onClick={() => applyAISuggestion(sug)} className="p-3 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-primary/30 rounded-xl cursor-pointer transition-all space-y-1">
+                  <div className="text-xs font-bold text-white flex justify-between items-center">
+                    {sug.heading}
+                    <Plus className="w-3 h-3 text-primary" />
+                  </div>
+                  <div className="text-[9px] text-white/50 leading-relaxed">{sug.subheading}</div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Category</Label>
-                  <Input 
-                    value={settings.category}
-                    onChange={(e) => setSettings(s => ({ ...s, category: e.target.value }))}
-                    className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
-                    placeholder="e.g. Marketing, Sales"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Blog Excerpt</Label>
-                  <Textarea 
-                    value={settings.excerpt}
-                    onChange={(e) => setSettings(s => ({ ...s, excerpt: e.target.value }))}
-                    className="bg-white/5 border-white/10 text-white text-sm min-h-[80px] placeholder:text-white/20"
-                    placeholder="Short summary for the blog feed..."
-                  />
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         </section>
 
+        {/* Revision Vault Rollbacks */}
+        <section className="space-y-4 pt-4 border-t border-white/5">
+          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
+            <History className="w-3 h-3" /> Snapshot Vault
+          </h3>
+          <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+            {revisions.map((rev) => (
+              <div key={rev.id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white truncate max-w-[150px]">{rev.name}</div>
+                  <div className="text-[9px] text-white/40">
+                    {new Date(rev.created_at).toLocaleString()}
+                  </div>
+                </div>
+                <Button onClick={() => handleRestore(rev.id)} size="sm" variant="ghost" className="h-7 px-2.5 text-[9px] font-bold uppercase text-primary bg-primary/10 hover:bg-primary/20 border border-primary/20">
+                  Restore
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
 
       <div className="p-4 border-t border-white/5 bg-black/20">
-        <Button 
-          disabled={loading}
-          onClick={handleSave}
-          className="w-full bg-[#6c47ff] hover:bg-[#6c47ff]/90 text-white font-bold h-10 shadow-lg shadow-[#6c47ff]/20 uppercase text-[10px] tracking-widest"
-        >
+        <Button disabled={loading} onClick={handleSave} className="w-full bg-[#6c47ff] hover:bg-[#6c47ff]/90 text-white font-bold h-10 shadow-lg shadow-[#6c47ff]/20 uppercase text-[10px] tracking-widest">
           {loading ? "SAVING..." : "SAVE PAGE SETTINGS"}
         </Button>
       </div>

@@ -4,7 +4,6 @@ import React from 'react';
 import { useNode } from '@craftjs/core';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export const CustomClassControl = () => {
@@ -13,8 +12,25 @@ export const CustomClassControl = () => {
   }));
 
   const [isOpen, setIsOpen] = React.useState(false);
+  const [pseudoState, setPseudoState] = React.useState<'normal' | 'hover' | 'focus'>('normal');
 
   const customClasses = props.customClasses || '';
+  const hoverClasses = props.hoverClasses || '';
+  const focusClasses = props.focusClasses || '';
+
+  const getActiveValue = () => {
+    if (pseudoState === 'hover') return hoverClasses;
+    if (pseudoState === 'focus') return focusClasses;
+    return customClasses;
+  };
+
+  const handleValueChange = (val: string) => {
+    setProp((props: any) => {
+      if (pseudoState === 'hover') props.hoverClasses = val;
+      else if (pseudoState === 'focus') props.focusClasses = val;
+      else props.customClasses = val;
+    });
+  };
 
   return (
     <div className="space-y-3">
@@ -24,7 +40,7 @@ export const CustomClassControl = () => {
         className="flex items-center justify-between w-full py-1.5 hover:bg-white/[0.02] transition-colors group text-left"
       >
         <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground group-hover:text-white transition-colors">
-          Custom Classes
+          Tailwind Link Inspector
         </span>
         {isOpen ? (
           <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-white transition-colors" />
@@ -34,15 +50,45 @@ export const CustomClassControl = () => {
       </button>
 
       {isOpen && (
-        <div className="space-y-2 pt-1">
-          <Input 
-            value={customClasses}
-            onChange={(e) => setProp((props: any) => props.customClasses = e.target.value)}
-            className="h-9 text-xs bg-white/5 border-white/10"
-            placeholder="e.g. shadow-lg hover:scale-105 transition"
-          />
+        <div className="space-y-3 pt-1">
+          {/* State Selectors */}
+          <div className="grid grid-cols-3 bg-white/5 p-0.5 rounded-lg border border-white/5">
+            {(['normal', 'hover', 'focus'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setPseudoState(s)}
+                className={`py-1 text-[9px] uppercase tracking-wider font-black rounded capitalize transition-all ${
+                  pseudoState === s 
+                    ? 'bg-primary text-white shadow' 
+                    : 'text-white/30 hover:text-white'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block">
+              {pseudoState} classes
+            </Label>
+            <Input 
+              value={getActiveValue()}
+              onChange={(e) => handleValueChange(e.target.value)}
+              className="h-9 text-xs bg-white/5 border-white/10"
+              placeholder={
+                pseudoState === 'hover' 
+                  ? 'e.g. scale-105 border-primary shadow-xl' 
+                  : pseudoState === 'focus'
+                  ? 'e.g. border-blue-500 ring-2'
+                  : 'e.g. shadow-lg transition duration-300'
+              }
+            />
+          </div>
+
           <span className="text-[10px] text-muted-foreground block leading-tight">
-            Add custom Tailwind utility classes here. They will be merged with the component styles.
+            Tailwind classes will merge into the element style tree. Hover/focus states are automatically prefixed.
           </span>
         </div>
       )}

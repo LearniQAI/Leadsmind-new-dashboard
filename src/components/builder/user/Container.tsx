@@ -1,11 +1,12 @@
 "use client";
 
 import React from 'react';
-import { useNode } from '@craftjs/core';
+import { useNode, useEditor } from '@craftjs/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ContainerSettings } from './ContainerSettings';
 import { useResponsiveValue } from '@/lib/builder/hooks';
+import { formatPseudoClasses } from '@/lib/builder/utils';
 
 function cn(...inputs: ClassValue[]) {
  return twMerge(clsx(inputs));
@@ -167,6 +168,10 @@ export const Container = (allProps: ContainerProps & any) => {
   } = allProps;
   
   const { id, connectors: { connect, drag } } = useNode();
+  
+  const { enabled } = useEditor((state) => ({
+    enabled: state.options.enabled
+  }));
 
   // Responsive values
   const padding = useResponsiveValue(allProps, 'padding', 16);
@@ -191,10 +196,11 @@ export const Container = (allProps: ContainerProps & any) => {
           }
         }}
         className={cn(
-          "transition-all duration-200 outline-dashed outline-1 outline-transparent hover:outline-black/10",
+          "transition-all duration-200",
+          enabled && "outline-dashed outline-1 outline-transparent hover:outline-black/10",
           layoutType === 'fixed' ? "mx-auto" : "w-full",
           `node-${cleanId}`,
-          allProps.customClasses,
+          formatPseudoClasses(allProps.customClasses, allProps.hoverClasses, allProps.focusClasses),
           props.className
         )}
         style={{
@@ -203,7 +209,11 @@ export const Container = (allProps: ContainerProps & any) => {
           backgroundColor: !allProps.backgroundGradient && backgroundColor && !allProps.backgroundColor ? backgroundColor : undefined,
         }}
       >
-        {children}
+        {React.Children.count(children) === 0 && enabled ? (
+          <div className="w-full min-h-[80px] bg-slate-900/5 border border-dashed border-slate-900/10 flex items-center justify-center rounded-xl p-4">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">Empty Container</span>
+          </div>
+        ) : children}
       </div>
     </>
   );
@@ -252,6 +262,8 @@ Container.craft = {
     borderBottomLeftRadius: '',
     boxShadow: 'none',
     customClasses: '',
+    hoverClasses: '',
+    focusClasses: '',
   },
   related: {
     settings: ContainerSettings,

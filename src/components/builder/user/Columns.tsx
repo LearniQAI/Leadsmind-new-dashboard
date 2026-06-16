@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useNode } from '@craftjs/core';
+import { useNode, useEditor } from '@craftjs/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ColumnsSettings } from './ColumnsSettings';
@@ -28,6 +28,9 @@ export const Columns = ({
   ...props 
 }: ColumnsProps & any) => {
  const { connectors: { connect, drag } } = useNode();
+ const { enabled } = useEditor((state) => ({
+   enabled: state.options.enabled
+ }));
  
  let gridStyle = "grid-cols-1";
  let inlineGrid = undefined;
@@ -53,14 +56,23 @@ export const Columns = ({
       }
     }
    }}
-   className={cn("w-full grid transition-all", gridStyle, props.className)}
+   className={cn(
+      "w-full grid transition-all",
+      enabled && "outline-dashed outline-1 outline-transparent hover:outline-black/10",
+      gridStyle,
+      props.className
+    )}
    style={{
     gap: `${gap}px`,
     padding: `${padding}px`,
     ...inlineGrid
    }}
   >
-   {children}
+    {React.Children.count(children) === 0 && enabled ? (
+      <div className="col-span-full w-full min-h-[80px] bg-slate-900/5 border border-dashed border-slate-900/10 flex items-center justify-center rounded-xl p-4">
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">Empty Columns Grid</span>
+      </div>
+    ) : children}
   </div>
  );
 };

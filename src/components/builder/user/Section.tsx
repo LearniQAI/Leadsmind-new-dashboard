@@ -1,12 +1,13 @@
 "use client";
 
 import React from 'react';
-import { useNode } from '@craftjs/core';
+import { useNode, useEditor } from '@craftjs/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SectionSettings } from './SectionSettings';
 import { useResponsiveValue } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
+import { formatPseudoClasses } from '@/lib/builder/utils';
 
 function cn(...inputs: ClassValue[]) {
  return twMerge(clsx(inputs));
@@ -44,6 +45,9 @@ export const Section = (allProps: SectionProps & any) => {
   } = allProps;
  const { connectors: { connect, drag } } = useNode();
  const { viewMode } = useBuilder();
+ const { enabled } = useEditor((state) => ({
+   enabled: state.options.enabled
+ }));
 
  // Responsive values
  const paddingTop = useResponsiveValue(allProps, 'paddingTop', 64);
@@ -64,7 +68,10 @@ export const Section = (allProps: SectionProps & any) => {
      }
     }
    }}
-   className="w-full relative"
+    className={cn(
+      "w-full relative",
+      formatPseudoClasses(allProps.customClasses, allProps.hoverClasses, allProps.focusClasses)
+    )}
    style={{
     paddingTop: `${paddingTop}px`,
     paddingBottom: `${paddingBottom}px`,
@@ -73,7 +80,11 @@ export const Section = (allProps: SectionProps & any) => {
     backgroundColor,
    }}
   >
-   {children}
+    {React.Children.count(children) === 0 && enabled ? (
+      <div className="w-full min-h-[120px] bg-slate-900/5 border border-dashed border-slate-900/10 flex items-center justify-center rounded-2xl p-6">
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">Empty Section</span>
+      </div>
+    ) : children}
   </section>
  );
 };
@@ -87,6 +98,9 @@ Section.craft = {
   paddingLeft: 24,
   paddingRight: 24,
   backgroundColor: 'transparent',
+  customClasses: '',
+  hoverClasses: '',
+  focusClasses: '',
  },
  related: {
   settings: SectionSettings,

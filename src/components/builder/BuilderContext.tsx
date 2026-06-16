@@ -14,6 +14,12 @@ interface BuilderContextType {
   pages: any[];
   websiteId?: string;
   funnelId?: string;
+  previewMode: boolean;
+  setPreviewMode: (preview: boolean) => void;
+  builderSettings: any;
+  setBuilderSettings: (settings: any) => void;
+  blueprintNodeId: string | null;
+  setBlueprintNodeId: (id: string | null) => void;
 }
 
 const BuilderContext = createContext<BuilderContextType | undefined>(undefined);
@@ -38,6 +44,25 @@ export function BuilderProvider({
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [propertiesOpen, setPropertiesOpen] = useState(true);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [builderSettings, setBuilderSettings] = useState<any>({});
+  const [blueprintNodeId, setBlueprintNodeId] = useState<string | null>(null);
+
+  // Load settings on mount
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const { getWorkspaceBuilderSettings } = await import('@/app/actions/builder');
+        const res = await getWorkspaceBuilderSettings();
+        if (res.success && res.settings) {
+          setBuilderSettings(res.settings);
+        }
+      } catch (err) {
+        console.error('Failed to load builder settings:', err);
+      }
+    }
+    loadSettings();
+  }, []);
 
   return (
     <BuilderContext.Provider 
@@ -52,7 +77,13 @@ export function BuilderProvider({
         setPropertiesOpen,
         pages,
         websiteId,
-        funnelId
+        funnelId,
+        previewMode,
+        setPreviewMode,
+        builderSettings,
+        setBuilderSettings,
+        blueprintNodeId,
+        setBlueprintNodeId
       }}
     >
       {children}
@@ -75,7 +106,14 @@ export function useBuilder() {
       pages: [],
       websiteId: undefined,
       funnelId: undefined,
+      previewMode: false,
+      setPreviewMode: () => {},
+      builderSettings: {},
+      setBuilderSettings: () => {},
+      blueprintNodeId: null,
+      setBlueprintNodeId: () => {},
     };
   }
   return context;
 }
+

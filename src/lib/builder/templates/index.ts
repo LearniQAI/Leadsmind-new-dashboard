@@ -12,6 +12,20 @@ import { etherealWellness } from './ethereal-wellness';
 import { humanInterest } from './human-interest';
 import { hutsArchitectural } from './huts-architectural';
 import { agenticCopilot } from './agentic-copilot';
+import {
+  saasCenteredGlowHeader,
+  agencyMinimalSplitHeader,
+  ecommerceCleanHeader,
+  glassmorphicStickyHeader,
+  leftAlignedCorporateHeader,
+  underlinedGlowLinkHeader,
+  lightCleanGridHeader,
+  creativeFullWidthStackedHeader,
+  realEstateOverlayHeader,
+  ecommerceProductHubHeader,
+  saasHighConvertingLanding,
+  leadCaptureAccelerator
+} from './predefined';
 import { BuilderTemplate } from '../templates';
 
 export const ALL_TEMPLATES: BuilderTemplate[] = [
@@ -28,5 +42,17 @@ export const ALL_TEMPLATES: BuilderTemplate[] = [
   etherealWellness,
   humanInterest,
   hutsArchitectural,
-  agenticCopilot
+  agenticCopilot,
+  saasCenteredGlowHeader,
+  agencyMinimalSplitHeader,
+  ecommerceCleanHeader,
+  glassmorphicStickyHeader,
+  leftAlignedCorporateHeader,
+  underlinedGlowLinkHeader,
+  lightCleanGridHeader,
+  creativeFullWidthStackedHeader,
+  realEstateOverlayHeader,
+  ecommerceProductHubHeader,
+  saasHighConvertingLanding,
+  leadCaptureAccelerator
 ];

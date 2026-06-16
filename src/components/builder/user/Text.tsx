@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useEditor, useNode } from '@craftjs/core';
-import ContentEditable from 'react-contenteditable';
+import { InlineTextEditor } from './InlineTextEditor';
 import { TextSettings } from './TextSettings';
 import { replaceMergeTags } from '@/lib/builder/utils';
 
@@ -33,18 +33,16 @@ export const Text = ({ text, fontSize, textAlign, color, dragRef, ...props }: an
     color,
    }}
   >
-   {enabled ? (
-    <ContentEditable
-     html={text}
-     disabled={!enabled}
-     onChange={(e) => setProp((props: any) => (props.text = e.target.value), 500)}
-     tagName="span"
-     className="outline-none block w-full"
-     style={{ color: 'inherit' }}
-    />
-   ) : (
-    <span style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
-   )}
+    {enabled ? (
+      <span className="outline-none block w-full" style={{ color: 'inherit' }}>
+        <InlineTextEditor
+          value={text}
+          onChange={(val) => setProp((props: any) => { props.text = val; }, 500)}
+        />
+      </span>
+    ) : (
+      <span style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
+    )}
   </div>
  );
 };

@@ -60,4 +60,21 @@ export function resolveLink(link: any, context?: { basePath?: string, websiteId?
   }
 }
 
+/**
+ * Merges customClasses, hoverClasses, and focusClasses with Tailwind prefixes
+ */
+export function formatPseudoClasses(customClasses?: string, hoverClasses?: string, focusClasses?: string): string {
+  const hoverClassStr = (hoverClasses || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((c: string) => c.startsWith('hover:') ? c : `hover:${c}`)
+    .join(' ');
+  const focusClassStr = (focusClasses || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((c: string) => c.startsWith('focus:') ? c : `focus:${c}`)
+    .join(' ');
+  return [customClasses, hoverClassStr, focusClassStr].filter(Boolean).join(' ');
+}
+
 

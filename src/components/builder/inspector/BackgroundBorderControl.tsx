@@ -10,9 +10,38 @@ import { useBuilder } from '../BuilderContext';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export const BackgroundBorderControl = () => {
-  const { props } = useNode((node) => ({
+  const { actions: { setProp }, props } = useNode((node) => ({
     props: node.data.props,
   }));
+
+  const roundedPresets = [
+    'rounded-none',
+    'rounded-sm',
+    'rounded',
+    'rounded-md',
+    'rounded-lg',
+    'rounded-xl',
+    'rounded-2xl',
+    'rounded-3xl',
+    'rounded-full'
+  ];
+
+  const customClasses = props.customClasses || '';
+  const currentRounded = roundedPresets.find(p => customClasses.split(/\s+/).includes(p)) || 'rounded-none';
+  const currentRoundedIdx = roundedPresets.indexOf(currentRounded);
+
+  const handleRoundedChange = (idx: number) => {
+    const nextPreset = roundedPresets[idx];
+    setProp((props: any) => {
+      let classes = props.customClasses || '';
+      // Remove any existing rounded-* classes
+      roundedPresets.forEach(preset => {
+        classes = classes.replace(new RegExp(`\\b${preset}\\b`, 'g'), '');
+      });
+      classes = `${classes} ${nextPreset}`.replace(/\s+/g, ' ').trim();
+      props.customClasses = classes;
+    });
+  };
   const { viewMode } = useBuilder();
   const { setResponsiveValue } = useResponsiveSetProp();
 
@@ -168,12 +197,15 @@ export const BackgroundBorderControl = () => {
 
             {!borderRadiusIndividual ? (
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground block">Border Radius</Label>
-                <Input 
-                  value={borderRadius}
-                  onChange={(e) => setResponsiveValue('borderRadius', e.target.value)}
-                  className="h-9 text-xs bg-white/5 border-white/10"
-                  placeholder="e.g. 8px or 1rem"
+                <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground block flex justify-between">
+                  <span>Tailwind Roundness</span>
+                  <span className="text-primary font-black text-[9px] uppercase">{currentRounded.replace('rounded-', '') || 'none'}</span>
+                </Label>
+                <input 
+                  type="range" min="0" max="8" step="1"
+                  value={currentRoundedIdx !== -1 ? currentRoundedIdx : 0}
+                  onChange={(e) => handleRoundedChange(Number(e.target.value))}
+                  className="w-full accent-primary"
                 />
               </div>
             ) : (

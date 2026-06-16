@@ -31,16 +31,22 @@ import { Navbar } from './user/Navbar';
 import { Footer } from './user/Footer';
 import { BlogFeed } from './user/BlogFeed';
 import { BuilderProvider, useBuilder } from './BuilderContext';
-import { publishPage, updatePageContent, updateWebsiteSettings } from '@/app/actions/builder';
+import { updatePageContent, updateWebsiteSettings } from '@/app/actions/builder';
+import { publishPageStatic } from '@/app/actions/builderDeploy';
 import { createClient } from '@/lib/supabase/client';
+import { TemplateDirectoryModal } from './TemplateDirectoryModal';
 
 import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, Send, AlertCircle, Copy as CopyIcon } from 'lucide-react';
+import { Loader2, Save, Send, AlertCircle, Copy as CopyIcon, Sparkles, Upload } from 'lucide-react';
 import { RESOLVER, wrapForReact19 } from '@/lib/builder/resolver';
 import { cn } from '@/lib/utils';
 import { LayoutTemplate, Settings2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 class SafeFrameErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
     constructor(props: any) {
@@ -74,6 +80,38 @@ class SafeFrameErrorBoundary extends React.Component<{ children: React.ReactNode
     }
 }
 
+const sanitizeDraftJSON = (json: string): string => {
+    try {
+        const data = JSON.parse(json);
+        Object.keys(data).forEach(id => {
+            const node = data[id];
+            if (node.props) {
+                // Strip editor-specific props
+                delete node.props.dragRef;
+                delete node.props.connect;
+                delete node.props.drag;
+                
+                // Clean class names from editor layout outlines
+                if (typeof node.props.className === 'string') {
+                    node.props.className = node.props.className
+                        .replace(/\boutline-dashed\b/g, '')
+                        .replace(/\boutline-1\b/g, '')
+                        .replace(/\boutline-transparent\b/g, '')
+                        .replace(/\bhover:outline-blue-500\/50\b/g, '')
+                        .replace(/\bhover:outline-black\/10\b/g, '')
+                        .replace(/\btransition-all\b/g, '')
+                        .replace(/\bcomponent-selected\b/g, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                }
+            }
+        });
+        return JSON.stringify(data);
+    } catch (e) {
+        return json;
+    }
+};
+
 const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
     const { pageId } = useParams();
     const router = useRouter();
@@ -85,7 +123,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
     const handleSaveDraft = async () => {
         if (!pageId) return;
         setIsSaving(true);
-        const content = query.serialize();
+        const content = sanitizeDraftJSON(query.serialize());
 
         try {
             // Use client-side supabase directly to bypass Server Action payload limits (1MB)
@@ -126,7 +164,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
     }, [pageId]);
 
     const handleExportJSON = () => {
-        const content = query.serialize();
+        const content = sanitizeDraftJSON(query.serialize());
         navigator.clipboard.writeText(content);
         toast.success('Template JSON copied to clipboard!');
     };
@@ -134,7 +172,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
     const handlePublish = async () => {
         if (!pageId) return;
         setIsPublishing(true);
-        const content = query.serialize();
+        const content = sanitizeDraftJSON(query.serialize());
 
         try {
             // 1. Save content client-side first
@@ -147,7 +185,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             if (saveError) throw saveError;
 
             // 2. Trigger publishing logic on server (no need to send large content again)
-            const result = await publishPage(pageId as string);
+            const result = await publishPageStatic(pageId as string);
 
             if (result.success) {
                 toast.success('Page published live!');
@@ -157,7 +195,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
         } catch (err: any) {
             console.error('Publish error:', err);
             // Fallback
-            const result = await publishPage(pageId as string, content);
+            const result = await publishPageStatic(pageId as string);
             if (result.success) {
                 toast.success('Page published (Server Fallback)');
             } else {
@@ -167,7 +205,6 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             setIsPublishing(false);
         }
     };
-
 
     const handleUpdateWebsite = (updates: any) => {
         if (!websiteData?.id) return;
@@ -420,8 +457,92 @@ const BuilderEditorLayout = ({
         sidebarOpen,
         setSidebarOpen,
         propertiesOpen,
-        setPropertiesOpen
+        setPropertiesOpen,
+        previewMode,
+        setPreviewMode,
+        blueprintNodeId,
+        setBlueprintNodeId
     } = useBuilder();
+
+    const { actions: editorActions, query, canUndo, canRedo } = useEditor((state, query) => ({
+        canUndo: query.history.canUndo(),
+        canRedo: query.history.canRedo()
+    }));
+
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                if (e.shiftKey) {
+                    if (query.history.canRedo()) editorActions.history.redo();
+                } else {
+                    if (query.history.canUndo()) editorActions.history.undo();
+                }
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                if (query.history.canRedo()) editorActions.history.redo();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [editorActions, query]);
+
+    const [blueprintName, setBlueprintName] = React.useState('');
+    const [blueprintDesc, setBlueprintDesc] = React.useState('');
+    const [isSavingBlueprint, setIsSavingBlueprint] = React.useState(false);
+
+    const handleSaveBlueprint = async () => {
+        if (!blueprintNodeId || !blueprintName) return;
+        setIsSavingBlueprint(true);
+        try {
+            const nodeTree = query.node(blueprintNodeId).toNodeTree();
+            const { saveCustomComponent } = await import('@/app/actions/builder');
+            const res = await saveCustomComponent(blueprintName, blueprintDesc, nodeTree);
+            if (res.success) {
+                toast.success('Blueprint saved successfully');
+                setBlueprintNodeId(null);
+                setBlueprintName('');
+                setBlueprintDesc('');
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('reload-custom-components'));
+                }
+            } else {
+                toast.error('Failed to save blueprint: ' + res.error);
+            }
+        } catch (err: any) {
+            console.error('Error saving blueprint:', err);
+            toast.error('Failed to save blueprint');
+        } finally {
+            setIsSavingBlueprint(false);
+        }
+    };
+
+    const [importJsonText, setImportJsonText] = React.useState('');
+    const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
+    const [isTemplateDirectoryOpen, setIsTemplateDirectoryOpen] = React.useState(false);
+
+    const handleImportJSON = () => {
+        if (!importJsonText) return;
+        try {
+            const parsed = JSON.parse(importJsonText);
+            if (!parsed.ROOT) {
+                toast.error('Invalid template: missing ROOT node');
+                return;
+            }
+            editorActions.deserialize(importJsonText);
+            setIsImportModalOpen(false);
+            setImportJsonText('');
+            toast.success('Template loaded successfully!');
+        } catch (e) {
+            toast.error('Invalid JSON structure: failed to parse');
+        }
+    };
+
+    React.useEffect(() => {
+        editorActions.setOptions((options) => {
+            options.enabled = !previewMode;
+        });
+    }, [previewMode, editorActions]);
 
     const router = useRouter();
     const { pageId } = useParams();
@@ -469,6 +590,36 @@ const BuilderEditorLayout = ({
                         </Button>
                     </div>
 
+                    {/* Undo / Redo Actions */}
+                    <div className="flex items-center gap-1.5 px-4 border-r border-white/5">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={!canUndo}
+                            onClick={() => editorActions.history.undo()}
+                            title="Undo (Ctrl+Z)"
+                            className={cn(
+                                "h-9 w-9 rounded-lg border border-white/5 transition-all text-white/30 hover:text-white",
+                                !canUndo && "opacity-40 cursor-not-allowed text-white/10"
+                            )}
+                        >
+                            <span className="text-sm">↩</span>
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={!canRedo}
+                            onClick={() => editorActions.history.redo()}
+                            title="Redo (Ctrl+Y)"
+                            className={cn(
+                                "h-9 w-9 rounded-lg border border-white/5 transition-all text-white/30 hover:text-white",
+                                !canRedo && "opacity-40 cursor-not-allowed text-white/10"
+                            )}
+                        >
+                            <span className="text-sm">↪</span>
+                        </Button>
+                    </div>
+
                     {/* Page Switcher */}
                     <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
                         <div className="flex items-center gap-2">
@@ -495,6 +646,33 @@ const BuilderEditorLayout = ({
                         </div>
                     </div>
 
+                    <Button
+                        variant="ghost"
+                        onClick={() => setPreviewMode(!previewMode)}
+                        className={cn(
+                            "h-11 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all mr-2",
+                            previewMode ? "bg-primary/20 border-primary/30 text-primary hover:bg-primary/30" : "border-white/5 hover:bg-white/5 text-white/60 hover:text-white"
+                        )}
+                    >
+                        {previewMode ? "Edit Mode" : "Preview Mode"}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        onClick={() => setIsTemplateDirectoryOpen(true)}
+                        className="h-11 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-primary hover:text-white transition-all mr-2"
+                        title="Open Template Directory"
+                    >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Templates
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="h-11 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/40 hover:text-white transition-all mr-2"
+                        title="Import JSON Template"
+                    >
+                        <Upload className="w-4 h-4" />
+                    </Button>
                     <Button
                         variant="ghost"
                         onClick={handleExportJSON}
@@ -528,7 +706,7 @@ const BuilderEditorLayout = ({
                 <div
                     className={cn(
                         "transition-all duration-300 ease-in-out border-r border-white/5 bg-[#0b0b14] overflow-hidden shrink-0",
-                        sidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0 border-none"
+                        sidebarOpen && !previewMode ? "w-[300px] opacity-100" : "w-0 opacity-0 border-none"
                     )}
                 >
                     <div className="w-[300px] h-full"> {/* Fixed width and height inner to prevent squishing and enable scrolling */}
@@ -629,7 +807,7 @@ const BuilderEditorLayout = ({
                 <div
                     className={cn(
                         "transition-all duration-300 ease-in-out border-l border-white/5 bg-[#0b0b14] overflow-hidden shrink-0",
-                        propertiesOpen ? "w-[320px] opacity-100" : "w-0 opacity-0 border-none"
+                        propertiesOpen && !previewMode ? "w-[320px] opacity-100" : "w-0 opacity-0 border-none"
                     )}
                 >
                     <div className="w-[320px] h-full">
@@ -637,6 +815,87 @@ const BuilderEditorLayout = ({
                     </div>
                 </div>
             </div>
+
+            {/* Save Blueprint Modal */}
+            <Dialog open={!!blueprintNodeId} onOpenChange={(open) => !open && setBlueprintNodeId(null)}>
+              <DialogContent className="sm:max-w-[420px] bg-[#080f28] border-white/[0.07] text-[#eef2ff] rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
+                <DialogHeader className="p-6 pb-0">
+                  <DialogTitle className="text-[18px] font-bold font-display uppercase tracking-tight">Save <span className="text-[#3b82f6]">Blueprint</span></DialogTitle>
+                  <DialogDescription className="text-[11px] font-medium uppercase tracking-[0.8px] text-[#4a5a82] mt-0.5">
+                    Save component layout to reuse later
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="p-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="blueprint-name" className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Blueprint Name</Label>
+                    <Input
+                      id="blueprint-name"
+                      placeholder="E.g. SaaS Pricing Table..."
+                      value={blueprintName}
+                      onChange={(e) => setBlueprintName(e.target.value)}
+                      className="h-12 bg-white/5 border-white/10 text-[#eef2ff] rounded-[8px] px-4 font-medium focus:border-[#2563eb]/50 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="blueprint-desc" className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Description (Optional)</Label>
+                    <Input
+                      id="blueprint-desc"
+                      placeholder="E.g. Custom 3-column pricing table section"
+                      value={blueprintDesc}
+                      onChange={(e) => setBlueprintDesc(e.target.value)}
+                      className="h-12 bg-white/5 border-white/10 text-[#eef2ff] rounded-[8px] px-4 font-medium focus:border-[#2563eb]/50 outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="p-6 bg-white/[0.02] border-t border-white/[0.07] flex items-center justify-end gap-3">
+                  <Button variant="ghost" onClick={() => setBlueprintNodeId(null)} className="text-[11px] font-bold uppercase tracking-widest text-[#4a5a82] hover:text-[#eef2ff] h-10">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveBlueprint} disabled={isSavingBlueprint || !blueprintName} className="bg-[#2563eb] hover:bg-[#1d4ed8] h-10 px-6 rounded-[8px] font-bold uppercase text-[11px]">
+                    {isSavingBlueprint ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                    Save Blueprint
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Import JSON Modal */}
+            <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+              <DialogContent className="sm:max-w-[500px] bg-[#080f28] border-white/[0.07] text-[#eef2ff] rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
+                <DialogHeader className="p-6 pb-0">
+                  <DialogTitle className="text-[18px] font-bold font-display uppercase tracking-tight">Import <span className="text-[#3b82f6]">JSON Template</span></DialogTitle>
+                  <DialogDescription className="text-[11px] font-medium uppercase tracking-[0.8px] text-[#4a5a82] mt-0.5">
+                    Paste CraftJS JSON template content to replace canvas layout
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="p-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="import-json" className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Template JSON</Label>
+                    <Textarea
+                      id="import-json"
+                      placeholder='{"ROOT": {...}}'
+                      value={importJsonText}
+                      onChange={(e) => setImportJsonText(e.target.value)}
+                      className="min-h-[200px] bg-white/5 border-white/10 text-[#eef2ff] rounded-[8px] p-4 font-mono text-xs focus:border-[#2563eb]/50 outline-none resize-y"
+                    />
+                  </div>
+                </div>
+                <div className="p-6 bg-white/[0.02] border-t border-white/[0.07] flex items-center justify-end gap-3">
+                  <Button variant="ghost" onClick={() => setIsImportModalOpen(false)} className="text-[11px] font-bold uppercase tracking-widest text-[#4a5a82] hover:text-[#eef2ff] h-10">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleImportJSON} disabled={!importJsonText} className="bg-[#2563eb] hover:bg-[#1d4ed8] h-10 px-6 rounded-[8px] font-bold uppercase text-[11px]">
+                    Import Layout
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Template Directory Modal */}
+            <TemplateDirectoryModal
+              isOpen={isTemplateDirectoryOpen}
+              onOpenChange={setIsTemplateDirectoryOpen}
+            />
         </div>
     );
 };
