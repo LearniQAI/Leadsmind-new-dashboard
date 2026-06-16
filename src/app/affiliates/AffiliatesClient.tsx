@@ -16,13 +16,15 @@ interface AffiliatesClientProps {
   initialAffiliates: any[]
   initialCommissions: any[]
   workspaceId: string
+  workspaceSlug?: string
 }
 
 export default function AffiliatesClient({
   initialProgrammes,
   initialAffiliates,
   initialCommissions,
-  workspaceId
+  workspaceId,
+  workspaceSlug
 }: AffiliatesClientProps) {
   const [programmes, setProgrammes] = useState(initialProgrammes)
   const [affiliates, setAffiliates] = useState(initialAffiliates)
@@ -50,7 +52,9 @@ export default function AffiliatesClient({
 
   const handleCopyInviteLink = (programmeId: string) => {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
-    const inviteLink = `${appUrl}/affiliate-portal/register?programmeId=${programmeId}`
+    const inviteLink = workspaceSlug 
+      ? `${appUrl}/join/${workspaceSlug}`
+      : `${appUrl}/affiliate-portal/register?programmeId=${programmeId}`
     
     navigator.clipboard.writeText(inviteLink)
       .then(() => {
