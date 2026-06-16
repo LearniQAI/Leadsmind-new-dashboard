@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import {
   Users, Handshake, DollarSign, CheckCircle2, AlertTriangle, Clock, Plus, Search,
-  X, RefreshCw, Layers, Edit, Trash, HelpCircle, Ban, ToggleLeft, ToggleRight
+  X, RefreshCw, Layers, Edit, Trash, HelpCircle, Ban, ToggleLeft, ToggleRight, Copy
 } from 'lucide-react'
 import {
   createProgramme, updateProgramme, deleteProgramme,
@@ -47,6 +47,19 @@ export default function AffiliatesClient({
   // Quick stats
   const totalClicks = 0 // Resolved on click tables if joined, default placeholder or mock
   const totalCommissionsVal = commissions.reduce((sum, c) => sum + Number(c.amount), 0)
+
+  const handleCopyInviteLink = (programmeId: string) => {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+    const inviteLink = `${appUrl}/affiliate-portal/register?programmeId=${programmeId}`
+    
+    navigator.clipboard.writeText(inviteLink)
+      .then(() => {
+        toast.success('Invite link copied to clipboard!')
+      })
+      .catch((err) => {
+        toast.error('Failed to copy link: ' + (err.message || err))
+      })
+  }
 
   const handleCreateOrUpdateProg = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -261,6 +274,13 @@ export default function AffiliatesClient({
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleCopyInviteLink(p.id)}
+                            className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-blue-400"
+                            title="Copy invite link"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => {
                               setEditingProg(p)

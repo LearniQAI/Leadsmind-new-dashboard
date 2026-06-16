@@ -4,16 +4,58 @@ import RegisterForm from './RegisterForm';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AffiliateRegisterPage() {
-  const supabase = createAdminClient();
-  
-  // Fetch active programmes
-  const { data: programmes } = await supabase
-    .from('affiliate_programmes')
-    .select('id, name, commission_value, commission_type')
-    .eq('status', 'active');
+interface PageProps {
+  searchParams: {
+    workspace?: string;
+    programmeId?: string;
+  };
+}
 
-  const activeProgrammes = programmes || [];
+export default async function AffiliateRegisterPage({ searchParams }: PageProps) {
+  const supabase = createAdminClient();
+  const workspaceSlug = searchParams.workspace;
+  const programmeId = searchParams.programmeId;
+
+  let activeProgrammes: any[] = [];
+  let resolvedWorkspaceId: string | null = null;
+
+  if (workspaceSlug) {
+    const { data: ws } = await supabase
+      .from('workspaces')
+      .select('id')
+      .eq('slug', workspaceSlug)
+      .maybeSingle();
+    if (ws) {
+      resolvedWorkspaceId = ws.id;
+    }
+  } else if (programmeId) {
+    const { data: prog } = await supabase
+      .from('affiliate_programmes')
+      .select('workspace_id')
+      .eq('id', programmeId)
+      .maybeSingle();
+    if (prog) {
+      resolvedWorkspaceId = prog.workspace_id;
+    }
+  }
+
+  if (resolvedWorkspaceId) {
+    // Fetch active programmes for this workspace only
+    const { data: programmes } = await supabase
+      .from('affiliate_programmes')
+      .select('id, name, commission_value, commission_type')
+      .eq('workspace_id', resolvedWorkspaceId)
+      .eq('status', 'active');
+
+    if (programmes) {
+      if (!workspaceSlug && programmeId) {
+        // If no workspace slug parameter is provided, show only the specific programme from ?programmeId
+        activeProgrammes = programmes.filter((p) => p.id === programmeId);
+      } else {
+        activeProgrammes = programmes;
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
