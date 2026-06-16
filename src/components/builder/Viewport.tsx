@@ -98,10 +98,14 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
    </div>
 
    {/* Canvas Area */}
-   <div className="flex-1 overflow-auto p-8 flex justify-center items-start transition-all duration-300 scroll-smooth">
+   <div className={cn(
+      "flex-1 overflow-auto flex justify-center items-start transition-all duration-300 scroll-smooth",
+      viewMode === 'desktop' ? "p-0" : "p-8"
+   )}>
     <div 
      className={cn(
-      "bg-white shadow-2xl transition-all duration-500 origin-top min-h-full",
+      "transition-all duration-500 origin-top min-h-full",
+      viewMode === 'desktop' ? "" : "bg-white shadow-2xl",
       viewMode === 'mobile' && "rounded-[32px] border-[8px] border-slate-900 overflow-hidden",
       viewMode === 'tablet' && "rounded-xl border-4 border-slate-800"
      )}
