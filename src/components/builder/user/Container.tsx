@@ -175,9 +175,13 @@ export const Container = (allProps: ContainerProps & any) => {
 
   // Responsive values & Root overrides
   const isRoot = id === 'ROOT';
-  const padding = isRoot ? 0 : useResponsiveValue(allProps, 'padding', 16);
-  const layoutType = isRoot ? 'fluid' : useResponsiveValue(allProps, 'layoutType', 'fixed');
-  const maxWidth = isRoot ? '100%' : useResponsiveValue(allProps, 'maxWidth', '1200px');
+  const responsivePadding = useResponsiveValue(allProps, 'padding', 16);
+  const responsiveLayoutType = useResponsiveValue(allProps, 'layoutType', 'fixed');
+  const responsiveMaxWidth = useResponsiveValue(allProps, 'maxWidth', '1200px');
+
+  const padding = isRoot ? 0 : responsivePadding;
+  const layoutType = isRoot ? 'fluid' : responsiveLayoutType;
+  const maxWidth = isRoot ? '100%' : responsiveMaxWidth;
   
   const cleanId = id.replace(/[^a-zA-Z0-9-]/g, '_');
   const cssRules = getResponsiveStyles(cleanId, allProps);
