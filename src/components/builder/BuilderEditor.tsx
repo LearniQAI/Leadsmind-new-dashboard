@@ -550,7 +550,7 @@ const BuilderEditorLayout = ({
     return (
         <div className="h-screen w-full flex flex-col overflow-hidden bg-[#050508] text-white">
             {/* Header Section */}
-            <header className="h-[70px] border-b border-white/5 bg-[#0b0b14]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50 w-full select-none">
+            <header className="h-[70px] border-b border-white/5 bg-[#0b0b14]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50 w-full select-none overflow-x-auto scrollbar-none">
                 <div className="flex items-center gap-4 shrink-0">
                     <div className="flex items-center gap-3 pr-6 border-r border-white/5 shrink-0">
                         <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
