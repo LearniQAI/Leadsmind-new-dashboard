@@ -1,5 +1,6 @@
 import dns from 'dns'
 import { createAdminClient } from '@/lib/supabase/server'
+import { addDomainToProject, getDomainStatus } from './vercel'
 
 const dnsPromises = dns.promises
 
@@ -19,8 +20,8 @@ export async function verifyDns(domainId: string): Promise<{
     return { success: false, status: 'error', error: 'Domain configuration not found' }
   }
 
-  // 1. If mock mode is enabled, skip external checks and activate
-  if (process.env.MOCK_DNS_VERIFICATION === 'true' || !process.env.CLOUDFLARE_API_TOKEN) {
+  // 1. Mock DNS Verification for local dev escape hatch
+  if (process.env.MOCK_DNS_VERIFICATION === 'true') {
     const nextStatus = 'active'
     await supabase
       .from('domain_configurations')
@@ -33,34 +34,69 @@ export async function verifyDns(domainId: string): Promise<{
     return { success: true, status: nextStatus }
   }
 
-  // 2. Perform DNS validation
   try {
-    // Check TXT verification token
+    // 2. Register/Add custom domain to Vercel project to kick off SSL provisioning
+    const addRes = await addDomainToProject(domain.hostname)
+    if (!addRes.success) {
+      return {
+        success: false,
+        status: domain.status || 'verifying',
+        error: addRes.error || 'Failed to add domain to Vercel project'
+      }
+    }
+
+    // Transition database status to 'verifying' if it is currently 'pending'
+    if (domain.status === 'pending') {
+      await supabase
+        .from('domain_configurations')
+        .update({
+          status: 'verifying',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', domainId)
+      domain.status = 'verifying'
+    }
+
+    // 3. Ownership check: verify presence of TXT token at _leadsmind-verify.<domain>
     if (domain.verification_token) {
       try {
         const txtRecords = await dnsPromises.resolveTxt(`_leadsmind-verify.${domain.hostname}`)
         const matched = txtRecords.some(record => record.includes(domain.verification_token))
         if (!matched) {
-          return { success: false, status: 'verifying', error: 'Verification TXT token not found or incorrect' }
+          return {
+            success: false,
+            status: 'verifying',
+            error: 'TXT ownership token not found at _leadsmind-verify.' + domain.hostname
+          }
         }
-      } catch (e) {
-        return { success: false, status: 'verifying', error: 'TXT verification lookup failed' }
+      } catch (e: any) {
+        return {
+          success: false,
+          status: 'verifying',
+          error: 'TXT ownership lookup failed: ' + (e.message || 'DNS error')
+        }
       }
     }
 
-    // Check CNAME record targeting domains.leadsmind.com
-    try {
-      const cnames = await dnsPromises.resolveCname(domain.hostname)
-      const target = 'domains.leadsmind.com'
-      const hasCname = cnames.some(c => c.toLowerCase() === target)
-      if (!hasCname) {
-        return { success: false, status: 'verifying', error: `CNAME does not target ${target}` }
+    // 4. Config check: query Vercel config API for verified status and correct routing (non-misconfigured)
+    const statusRes = await getDomainStatus(domain.hostname)
+    if (!statusRes.success) {
+      return {
+        success: false,
+        status: 'verifying',
+        error: statusRes.error || 'Failed to query Vercel domain config'
       }
-    } catch (e) {
-      return { success: false, status: 'verifying', error: 'CNAME verification lookup failed' }
     }
 
-    // Advancing status to active
+    if (!statusRes.verified) {
+      return {
+        success: false,
+        status: 'verifying',
+        error: 'Domain added to Vercel project, but DNS mapping or SSL certificate generation is still in progress'
+      }
+    }
+
+    // 5. Mark domain active on successful DNS & SSL check
     const nextStatus = 'active'
     await supabase
       .from('domain_configurations')
@@ -73,6 +109,10 @@ export async function verifyDns(domainId: string): Promise<{
 
     return { success: true, status: nextStatus }
   } catch (err: any) {
-    return { success: false, status: 'verifying', error: err.message || 'DNS query failed' }
+    return {
+      success: false,
+      status: domain.status || 'verifying',
+      error: err.message || 'DNS verification failed'
+    }
   }
 }

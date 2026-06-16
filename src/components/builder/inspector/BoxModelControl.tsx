@@ -5,6 +5,7 @@ import { useNode } from '@craftjs/core';
 import { Label } from '@/components/ui/label';
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export const BoxModelControl = () => {
   const { props } = useNode((node) => ({
@@ -12,6 +13,8 @@ export const BoxModelControl = () => {
   }));
   const { viewMode } = useBuilder();
   const { setResponsiveValue } = useResponsiveSetProp();
+
+  const [isOpen, setIsOpen] = React.useState(true);
 
   const getDisplayValue = (propName: string, baseValue: any) => {
     if (viewMode === 'mobile') return props[`${propName}_mobile`] ?? baseValue;
@@ -41,91 +44,108 @@ export const BoxModelControl = () => {
   );
 
   return (
-    <div className="space-y-3 pt-4 border-t border-white/5">
-      <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Spacing (Box Model)</Label>
-      
-      {/* Outer Margin Box */}
-      <div className="relative border border-dashed border-white/10 rounded-xl bg-white/[0.02] p-4 flex flex-col items-center justify-center">
-        <span className="absolute top-1 left-2 text-[8px] uppercase tracking-widest font-black text-white/20">Margin</span>
-        
-        {/* Margin Top */}
-        <div className="mb-2">
-          <BoxInput 
-            value={mt} 
-            onChange={(val) => setResponsiveValue('marginTop', val)} 
-            placeholder="0px" 
-          />
-        </div>
-        
-        <div className="w-full flex items-center justify-between gap-2">
-          {/* Margin Left */}
-          <BoxInput 
-            value={ml} 
-            onChange={(val) => setResponsiveValue('marginLeft', val)} 
-            placeholder="0px" 
-          />
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-full py-1.5 hover:bg-white/[0.02] transition-colors group text-left"
+      >
+        <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground group-hover:text-white transition-colors">
+          Spacing (Box Model)
+        </span>
+        {isOpen ? (
+          <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-white transition-colors" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-white transition-colors" />
+        )}
+      </button>
 
-          {/* Inner Padding Box */}
-          <div className="flex-1 relative border border-solid border-white/15 rounded-lg bg-white/5 p-4 flex flex-col items-center justify-center min-h-[100px] max-w-[190px]">
-            <span className="absolute top-1 left-2 text-[8px] uppercase tracking-widest font-black text-white/30">Padding</span>
-
-            {/* Padding Top */}
+      {isOpen && (
+        <div className="space-y-4 pt-1">
+          {/* Outer Margin Box */}
+          <div className="relative border border-dashed border-white/10 rounded-xl bg-white/[0.02] p-4 flex flex-col items-center justify-center">
+            <span className="absolute top-1 left-2 text-[8px] uppercase tracking-widest font-black text-white/20">Margin</span>
+            
+            {/* Margin Top */}
             <div className="mb-2">
               <BoxInput 
-                value={pt} 
-                onChange={(val) => setResponsiveValue('paddingTop', val)} 
+                value={mt} 
+                onChange={(val) => setResponsiveValue('marginTop', val)} 
                 placeholder="0px" 
               />
             </div>
-
-            <div className="w-full flex items-center justify-between gap-1">
-              {/* Padding Left */}
+            
+            <div className="w-full flex items-center justify-between gap-2">
+              {/* Margin Left */}
               <BoxInput 
-                value={pl} 
-                onChange={(val) => setResponsiveValue('paddingLeft', val)} 
+                value={ml} 
+                onChange={(val) => setResponsiveValue('marginLeft', val)} 
                 placeholder="0px" 
               />
-              
-              {/* Center Content Indicator */}
-              <div className="text-[9px] uppercase tracking-widest font-black text-white/40 select-none">
-                Content
+
+              {/* Inner Padding Box */}
+              <div className="flex-1 relative border border-solid border-white/15 rounded-lg bg-white/5 p-4 flex flex-col items-center justify-center min-h-[100px] max-w-[190px]">
+                <span className="absolute top-1 left-2 text-[8px] uppercase tracking-widest font-black text-white/30">Padding</span>
+
+                {/* Padding Top */}
+                <div className="mb-2">
+                  <BoxInput 
+                    value={pt} 
+                    onChange={(val) => setResponsiveValue('paddingTop', val)} 
+                    placeholder="0px" 
+                  />
+                </div>
+
+                <div className="w-full flex items-center justify-between gap-1">
+                  {/* Padding Left */}
+                  <BoxInput 
+                    value={pl} 
+                    onChange={(val) => setResponsiveValue('paddingLeft', val)} 
+                    placeholder="0px" 
+                  />
+                  
+                  {/* Center Content Indicator */}
+                  <div className="text-[9px] uppercase tracking-widest font-black text-white/40 select-none">
+                    Content
+                  </div>
+
+                  {/* Padding Right */}
+                  <BoxInput 
+                    value={pr} 
+                    onChange={(val) => setResponsiveValue('paddingRight', val)} 
+                    placeholder="0px" 
+                  />
+                </div>
+
+                {/* Padding Bottom */}
+                <div className="mt-2">
+                  <BoxInput 
+                    value={pb} 
+                    onChange={(val) => setResponsiveValue('paddingBottom', val)} 
+                    placeholder="0px" 
+                  />
+                </div>
               </div>
 
-              {/* Padding Right */}
+              {/* Margin Right */}
               <BoxInput 
-                value={pr} 
-                onChange={(val) => setResponsiveValue('paddingRight', val)} 
+                value={mr} 
+                onChange={(val) => setResponsiveValue('marginRight', val)} 
                 placeholder="0px" 
               />
             </div>
 
-            {/* Padding Bottom */}
+            {/* Margin Bottom */}
             <div className="mt-2">
               <BoxInput 
-                value={pb} 
-                onChange={(val) => setResponsiveValue('paddingBottom', val)} 
+                value={mb} 
+                onChange={(val) => setResponsiveValue('marginBottom', val)} 
                 placeholder="0px" 
               />
             </div>
           </div>
-
-          {/* Margin Right */}
-          <BoxInput 
-            value={mr} 
-            onChange={(val) => setResponsiveValue('marginRight', val)} 
-            placeholder="0px" 
-          />
         </div>
-
-        {/* Margin Bottom */}
-        <div className="mt-2">
-          <BoxInput 
-            value={mb} 
-            onChange={(val) => setResponsiveValue('marginBottom', val)} 
-            placeholder="0px" 
-          />
-        </div>
-      </div>
+      )}
     </div>
   );
 };
