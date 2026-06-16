@@ -22,6 +22,15 @@ export default async function PortalDashboard() {
   const { contact, workspace } = session;
   const supabase = createAdminClient();
 
+  // Fetch FICA completeness status
+  const { data: rating } = await supabase
+    .from('kyc_risk_ratings')
+    .select('fica_complete')
+    .eq('contact_id', contact.id)
+    .maybeSingle();
+
+  const ficaComplete = rating?.fica_complete ?? false;
+
   // 1. Fetch Invoices for this contact in this workspace
   const { data: dbInvoices } = await supabase
     .from('invoices')
@@ -128,6 +137,29 @@ export default async function PortalDashboard() {
             View Invoices <CreditCard size={16} />
           </Link>
         </div>
+
+        {/* FICA Hold Alert Banner */}
+        {!ficaComplete && (
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-amber-200 font-space">FICA Onboarding Incomplete</h3>
+                <p className="text-xs text-amber-400/80 mt-1 max-w-lg leading-relaxed font-sans font-medium">
+                  Your identity verification is currently unverified or pending completion. Please upload required documentation and complete a biometric selfie to unlock bookings, courses, and support services.
+                </p>
+              </div>
+            </div>
+            <Link 
+              href="/portal/documents" 
+              className="bg-amber-600 hover:bg-amber-500 text-white font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition-all duration-300 active:scale-95 shrink-0 shadow-lg shadow-amber-950/40 flex items-center gap-1.5"
+            >
+              Verify Identity <FileText size={14} />
+            </Link>
+          </div>
+        )}
 
         {/* Overdue Alert Banner */}
         {overdueAlertEnabled && hasOverdueInvoice && (

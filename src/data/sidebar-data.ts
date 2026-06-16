@@ -20,6 +20,7 @@ const sidebarData: SidebarCategory[] = [
    { id: 7, label: "Proposals", icon: "fa-light fa-file-signature", link: "/proposals", permission: "proposals" },
    { id: 8, label: "Invoices", icon: "fa-light fa-file-invoice-dollar", link: "/invoices", permission: "invoices" },
    { id: 81, label: "Quotes", icon: "fa-light fa-file-invoice", link: "/quotes", permission: "invoices" },
+   { id: 82, label: "Compliance Hub", icon: "fa-light fa-shield-halved", link: "/admin/compliance", permission: "contacts" },
   ],
  },
  {
