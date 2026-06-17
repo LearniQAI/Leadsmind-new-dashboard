@@ -349,3 +349,147 @@ export async function handlePageFormSubmission(pageId: string, workspaceId: stri
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * --- WORKSPACE BUILDER SETTINGS ---
+ */
+export async function getWorkspaceBuilderSettings() {
+  return executeAction(async (supabase, workspaceId) => {
+    const { data, error } = await supabase
+      .from('workspace_builder_settings')
+      .select('settings')
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return { settings: data?.settings || {} };
+  });
+}
+
+export async function updateWorkspaceBuilderSettings(settings: any) {
+  return executeAction(async (supabase, workspaceId) => {
+    const { data: existing } = await supabase
+      .from('workspace_builder_settings')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase
+        .from('workspace_builder_settings')
+        .update({
+          settings,
+          updated_at: new Date().toISOString()
+        })
+        .eq('workspace_id', workspaceId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('workspace_builder_settings')
+        .insert({
+          workspace_id: workspaceId,
+          settings
+        });
+      if (error) throw error;
+    }
+
+    return { success: true };
+  });
+}
+
+/**
+ * --- CUSTOM COMPONENT BLUEPRINTS ---
+ */
+export async function saveCustomComponent(name: string, description: string, content: any) {
+  return executeAction(async (supabase, workspaceId) => {
+    const { data, error } = await supabase
+      .from('custom_builder_components')
+      .insert({
+        workspace_id: workspaceId,
+        name,
+        description,
+        content
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { component: data };
+  });
+}
+
+export async function getCustomComponents() {
+  return executeAction(async (supabase, workspaceId) => {
+    const { data, error } = await supabase
+      .from('custom_builder_components')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { components: data || [] };
+  });
+}
+
+export async function deleteCustomComponent(id: string) {
+  return executeAction(async (supabase, workspaceId) => {
+    const { error } = await supabase
+      .from('custom_builder_components')
+      .delete()
+      .eq('id', id)
+      .eq('workspace_id', workspaceId);
+
+    if (error) throw error;
+    return { success: true };
+  });
+}
+
+/**
+ * --- BUILDER MEDIA ASSETS ---
+ */
+export async function saveMediaAsset(url: string, filename: string, sizeBytes: number, mimeType: string, label?: string) {
+  return executeAction(async (supabase, workspaceId) => {
+    const { data, error } = await supabase
+      .from('builder_media_assets')
+      .insert({
+        workspace_id: workspaceId,
+        url,
+        filename,
+        size_bytes: sizeBytes,
+        mime_type: mimeType,
+        label
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { asset: data };
+  });
+}
+
+export async function getMediaAssets() {
+  return executeAction(async (supabase, workspaceId) => {
+    const { data, error } = await supabase
+      .from('builder_media_assets')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { assets: data || [] };
+  });
+}
+
+export async function deleteMediaAsset(id: string) {
+  return executeAction(async (supabase, workspaceId) => {
+    const { error } = await supabase
+      .from('builder_media_assets')
+      .delete()
+      .eq('id', id)
+      .eq('workspace_id', workspaceId);
+
+    if (error) throw error;
+    return { success: true };
+  });
+}
+

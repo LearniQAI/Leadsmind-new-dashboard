@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useNode, useEditor } from '@craftjs/core';
-import ContentEditable from 'react-contenteditable';
+import { InlineTextEditor } from './InlineTextEditor';
 import { HeadingSettings } from './HeadingSettings';
 import { replaceMergeTags } from '../../../lib/builder/utils';
 import { useResponsiveValue } from '../../../lib/builder/hooks';
@@ -87,7 +87,7 @@ export const Heading = (allProps: HeadingProps & any) => {
        }
      }
     }}
-    className={`w-full outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all ${!fontSize ? baseSizes[level as keyof typeof baseSizes] : ''} ${weights[fontWeight as keyof typeof weights]} ${alignments[textAlign as keyof typeof alignments]} ${props.className || ''}`}
+    className={`w-full ${enabled ? 'outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all' : ''} ${!fontSize ? baseSizes[level as keyof typeof baseSizes] : ''} ${weights[fontWeight as keyof typeof weights]} ${alignments[textAlign as keyof typeof alignments]} ${props.className || ''}`}
     style={{
      color,
      fontSize: fontSize ? `${fontSize}px` : undefined,
@@ -95,14 +95,12 @@ export const Heading = (allProps: HeadingProps & any) => {
     }}
    >
     {enabled ? (
-     <ContentEditable
-       html={text}
-       disabled={!enabled}
-       onChange={(e) => setProp((props: any) => (props.text = e.target.value), 500)}
-       tagName={Tag as any}
-       className="outline-none w-full m-0 p-0 leading-tight tracking-tight"
-       style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }}
-     />
+      <Tag className="outline-none w-full m-0 p-0 leading-tight tracking-tight" style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }}>
+        <InlineTextEditor
+          value={text}
+          onChange={(val) => setProp((props: any) => { props.text = val; }, 500)}
+        />
+      </Tag>
     ) : (
      <Tag className="outline-none w-full m-0 p-0 leading-tight tracking-tight" style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
     )}

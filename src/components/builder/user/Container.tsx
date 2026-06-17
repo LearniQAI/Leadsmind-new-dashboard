@@ -1,11 +1,12 @@
 "use client";
 
 import React from 'react';
-import { useNode } from '@craftjs/core';
+import { useNode, useEditor } from '@craftjs/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ContainerSettings } from './ContainerSettings';
 import { useResponsiveValue } from '@/lib/builder/hooks';
+import { formatPseudoClasses } from '@/lib/builder/utils';
 
 function cn(...inputs: ClassValue[]) {
  return twMerge(clsx(inputs));
@@ -156,7 +157,7 @@ const getResponsiveStyles = (id: string, props: any) => {
 
 export const Container = (allProps: ContainerProps & any) => {
   const { 
-    layoutType,
+    layoutType: _layoutType,
     backgroundColor,
     padding: _p,
     children, 
@@ -167,13 +168,28 @@ export const Container = (allProps: ContainerProps & any) => {
   } = allProps;
   
   const { id, connectors: { connect, drag } } = useNode();
+  
+  const { enabled } = useEditor((state) => ({
+    enabled: state.options.enabled
+  }));
 
-  // Responsive values
-  const padding = useResponsiveValue(allProps, 'padding', 16);
-  const maxWidth = useResponsiveValue(allProps, 'maxWidth', '1200px');
+  // Responsive values & Root overrides
+  const isRoot = id === 'ROOT';
+  const responsivePadding = useResponsiveValue(allProps, 'padding', 16);
+  const responsiveLayoutType = useResponsiveValue(allProps, 'layoutType', 'fixed');
+  const responsiveMaxWidth = useResponsiveValue(allProps, 'maxWidth', '1200px');
+
+  const padding = isRoot ? 0 : responsivePadding;
+  const layoutType = isRoot ? 'fluid' : responsiveLayoutType;
+  const maxWidth = isRoot ? '100%' : responsiveMaxWidth;
   
   const cleanId = id.replace(/[^a-zA-Z0-9-]/g, '_');
   const cssRules = getResponsiveStyles(cleanId, allProps);
+
+  let cleanClassName = props.className;
+  if (isRoot && props.className) {
+    cleanClassName = props.className.replace(/\bbg-\S+/g, '').trim();
+  }
 
   return (
     <>
@@ -191,19 +207,24 @@ export const Container = (allProps: ContainerProps & any) => {
           }
         }}
         className={cn(
-          "transition-all duration-200 outline-dashed outline-1 outline-transparent hover:outline-black/10",
+          "transition-all duration-200",
+          enabled && "outline-dashed outline-1 outline-transparent hover:outline-black/10",
           layoutType === 'fixed' ? "mx-auto" : "w-full",
           `node-${cleanId}`,
-          allProps.customClasses,
-          props.className
+          formatPseudoClasses(allProps.customClasses, allProps.hoverClasses, allProps.focusClasses),
+          cleanClassName
         )}
         style={{
           maxWidth: layoutType === 'fixed' ? maxWidth : '100%',
           padding: _p !== undefined && !allProps.paddingTop && !allProps.paddingRight && !allProps.paddingBottom && !allProps.paddingLeft ? `${padding}px` : undefined,
-          backgroundColor: !allProps.backgroundGradient && backgroundColor && !allProps.backgroundColor ? backgroundColor : undefined,
+          backgroundColor: isRoot ? 'var(--theme-bg)' : (!allProps.backgroundGradient && backgroundColor && !allProps.backgroundColor ? backgroundColor : undefined),
         }}
       >
-        {children}
+        {React.Children.count(children) === 0 && enabled ? (
+          <div className="w-full min-h-[80px] bg-slate-900/5 border border-dashed border-slate-900/10 flex items-center justify-center rounded-xl p-4">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">Empty Container</span>
+          </div>
+        ) : children}
       </div>
     </>
   );
@@ -252,6 +273,8 @@ Container.craft = {
     borderBottomLeftRadius: '',
     boxShadow: 'none',
     customClasses: '',
+    hoverClasses: '',
+    focusClasses: '',
   },
   related: {
     settings: ContainerSettings,

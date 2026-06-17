@@ -5,9 +5,10 @@ import { useNode } from '@craftjs/core';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { MediaVaultModal } from '../MediaVaultModal';
 
 export const ImageSettings = () => {
   const { actions: { setProp }, src, alt, borderRadius, objectFit, width, height, shape } = useNode((node) => ({
@@ -21,6 +22,7 @@ export const ImageSettings = () => {
   }));
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isVaultOpen, setIsVaultOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,9 +78,19 @@ export const ImageSettings = () => {
           <Button 
             variant="secondary" 
             size="icon" 
+            className="h-9 w-9 shrink-0 bg-[#6c47ff]/20 hover:bg-[#6c47ff]/30 border border-[#6c47ff]/30 text-primary"
+            onClick={() => setIsVaultOpen(true)}
+            title="Browse Media Library"
+          >
+            <ImageIcon className="w-4 h-4" />
+          </Button>
+          <Button 
+            variant="secondary" 
+            size="icon" 
             className="h-9 w-9 shrink-0 bg-white/5 hover:bg-white/10 border-none"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
+            title="Direct File Upload"
           >
             {isUploading ? <Loader2 className="w-4 h-4 animate-spin text-white/50" /> : <Upload className="w-4 h-4 text-white/50" />}
           </Button>
@@ -157,6 +169,11 @@ export const ImageSettings = () => {
           ))}
         </div>
       </div>
+      <MediaVaultModal 
+        isOpen={isVaultOpen}
+        onOpenChange={setIsVaultOpen}
+        onSelect={(url) => setProp((props: any) => props.src = url)}
+      />
     </div>
   );
 };

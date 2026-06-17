@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useNode, useEditor } from '@craftjs/core';
-import ContentEditable from 'react-contenteditable';
+import { InlineTextEditor } from './InlineTextEditor';
 import { ParagraphSettings } from './ParagraphSettings';
 import { replaceMergeTags } from '@/lib/builder/utils';
 import { useResponsiveValue } from '@/lib/builder/hooks';
@@ -73,21 +73,19 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
       }
     }
    }}
-   className={`w-full outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all ${alignments[textAlign as keyof typeof alignments]} ${lineHeights[lineHeight as keyof typeof lineHeights]} ${props.className || ''}`}
+   className={`w-full ${enabled ? 'outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all' : ''} ${alignments[textAlign as keyof typeof alignments]} ${lineHeights[lineHeight as keyof typeof lineHeights]} ${props.className || ''}`}
    style={{
     color,
     fontSize: `${fontSize}px`,
    }}
   >
-   {enabled ? (
-    <ContentEditable
-      html={text}
-      disabled={!enabled}
-      onChange={(e) => setProp((props: any) => (props.text = e.target.value), 500)}
-      tagName="p"
-      className="outline-none w-full m-0 p-0"
-      style={{ color: 'inherit', fontSize: 'inherit', textAlign: 'inherit' }}
-    />
+    {enabled ? (
+      <p className="outline-none w-full m-0 p-0" style={{ color: 'inherit', fontSize: 'inherit', textAlign: 'inherit' }}>
+        <InlineTextEditor
+          value={text}
+          onChange={(val) => setProp((props: any) => { props.text = val; }, 500)}
+        />
+      </p>
    ) : (
     <p style={{ color: 'inherit', margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
    )}
