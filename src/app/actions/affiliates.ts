@@ -7,6 +7,7 @@ import { sendEmail } from '@/lib/email';
 import { cookies } from 'next/headers';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { SignJWT, jwtVerify } from 'jose';
+import { ENFORCE_PLAN_LIMITS } from '@/lib/config/flags';
 
 const JWT_SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback_secret_key_leadsmind_jwt_affiliate_token'
@@ -30,6 +31,7 @@ function verifyPassword(password: string, hashWithSalt: string): boolean {
 // --- Plan Gate Helpers ---
 
 async function checkPlanGateForProgrammeCreation(workspaceId: string) {
+  if (!ENFORCE_PLAN_LIMITS) return;
   const supabase = createAdminClient();
   const { data: workspace, error: wsError } = await supabase
     .from('workspaces')
@@ -61,6 +63,7 @@ async function checkPlanGateForProgrammeCreation(workspaceId: string) {
 }
 
 async function checkPlanGateForAffiliateLimit(workspaceId: string) {
+  if (!ENFORCE_PLAN_LIMITS) return;
   const supabase = createAdminClient();
   const { data: workspace, error: wsError } = await supabase
     .from('workspaces')
