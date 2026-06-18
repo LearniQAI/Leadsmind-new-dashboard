@@ -15,8 +15,14 @@ export async function inviteContactToPortal(contactId: string) {
   const supabase = await createServerClient();
   const adminClient = createAdminClient();
 
-  // 1. Fetch contact details with workspace relation
-  const { data: contact, error: fetchErr } = await supabase
+  // Get current user session to authorize action
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // 1. Fetch contact details with workspace relation using adminClient to bypass RLS/join constraints
+  const { data: contact, error: fetchErr } = await adminClient
     .from('contacts')
     .select('*, workspace:workspaces(*)')
     .eq('id', contactId)
@@ -26,8 +32,25 @@ export async function inviteContactToPortal(contactId: string) {
     return { success: false, error: 'Contact not found' };
   }
 
+  if (!contact.email) {
+    return { success: false, error: 'Contact does not have an email address.' };
+  }
+
+  // Verify that the authenticated user is a member of this contact's workspace
+  const { data: membership, error: memberErr } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', contact.workspace_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (memberErr || !membership) {
+    return { success: false, error: 'Permission denied: Not a member of this workspace' };
+  }
+
   const workspace = contact.workspace || {};
-  const isWhiteLabeled = workspace.plan_tier !== 'free';
+  const plan = workspace.plan_tier || workspace.plan || 'free';
+  const isWhiteLabeled = plan !== 'free';
   const portalName = isWhiteLabeled ? workspace.name : 'LeadsMind';
 
   // 2. Set portal access fields in database
@@ -101,7 +124,14 @@ export async function revokeContactPortalAccess(contactId: string) {
   const supabase = await createServerClient();
   const adminClient = createAdminClient();
 
-  const { data: contact, error: fetchErr } = await supabase
+  // Get current user session to authorize action
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // 1. Fetch contact details using adminClient
+  const { data: contact, error: fetchErr } = await adminClient
     .from('contacts')
     .select('*')
     .eq('id', contactId)
@@ -109,6 +139,18 @@ export async function revokeContactPortalAccess(contactId: string) {
 
   if (fetchErr || !contact) {
     return { success: false, error: 'Contact not found' };
+  }
+
+  // Verify that the authenticated user is a member of this contact's workspace
+  const { data: membership, error: memberErr } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', contact.workspace_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (memberErr || !membership) {
+    return { success: false, error: 'Permission denied: Not a member of this workspace' };
   }
 
   const { error: updateErr } = await adminClient
