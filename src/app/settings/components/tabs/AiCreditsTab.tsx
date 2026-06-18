@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, AlertTriangle, ShieldCheck, Zap, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { ENFORCE_PLAN_LIMITS } from '@/lib/config/flags';
 
 interface AiCreditsTabProps {
   workspaceId: string;
@@ -79,8 +80,8 @@ export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
   const usedCredits = credits?.credits_used_this_period ?? 0;
   
   const percentageUsed = totalAllocated > 0 ? Math.min(Math.round((usedCredits / totalAllocated) * 100), 100) : 0;
-  const isHighUsage = percentageUsed >= 80;
-  const isFullyDepleted = usedCredits >= totalAllocated;
+  const isHighUsage = ENFORCE_PLAN_LIMITS && percentageUsed >= 80;
+  const isFullyDepleted = ENFORCE_PLAN_LIMITS && usedCredits >= totalAllocated;
 
   const billingCycleEnd = credits?.billing_cycle_end 
     ? new Date(credits.billing_cycle_end).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })

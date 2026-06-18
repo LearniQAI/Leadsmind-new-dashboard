@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../database/datasource';
+import { ENFORCE_PLAN_LIMITS } from '@/lib/config/flags';
 
 export async function verifyAICreditBalance(req: Request, res: Response, next: NextFunction) {
   // If request has JSON body or searchParams, get workspaceId
@@ -48,18 +49,29 @@ export async function verifyAICreditBalance(req: Request, res: Response, next: N
     }
   }
 
-  const absoluteCeiling = usageRecord.plan_monthly_credits + usageRecord.credits_purchased_addon;
+  const enforceLimits = ENFORCE_PLAN_LIMITS;
+  const absoluteCeiling = enforceLimits
+    ? (usageRecord.plan_monthly_credits + usageRecord.credits_purchased_addon)
+    : 5000; // High fixed safety ceiling during testing
+
   const currentUsage = usageRecord.credits_used_this_period;
 
   // 1. Throttling Guard Layer (100% depletion blocking)
   if (currentUsage >= absoluteCeiling) {
     return res.status(402).json({
       error: 'CREDIT_LIMIT_EXCEEDED',
-      message: 'Your workspace has exhausted its assigned monthly AI credits. Upgrade your account or purchase a top-up bundle.'
+      message: enforceLimits
+        ? 'Your workspace has exhausted its assigned monthly AI credits. Upgrade your account or purchase a top-up bundle.'
+        : 'Safety limit of 5000 AI credits reached. Please contact admin.'
     });
   }
 
   // 2. Automated Usage Threshold Checker (80% warning trigger)
+  if (!enforceLimits) {
+    next();
+    return;
+  }
+
   const usageRatio = currentUsage / absoluteCeiling;
   if (usageRatio >= 0.8 && !usageRecord.last_notification_sent_at) {
     try {

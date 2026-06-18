@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import dns from 'dns';
 import { randomBytes } from 'crypto';
+import { ENFORCE_PLAN_LIMITS } from '@/lib/config/flags';
 
 // --- Promisified DNS TXT Resolver helper ---
 async function getDnsTxtRecords(hostname: string): Promise<string[][]> {
@@ -206,6 +207,7 @@ export async function verifySenderDomain(domainId: string) {
 // --- Plan Gate Helpers (New Custom Domains) ---
 
 async function checkPlanGateForCustomDomain(workspaceId: string) {
+  if (!ENFORCE_PLAN_LIMITS) return;
   const supabase = createAdminClient();
   const { data: workspace, error: wsError } = await supabase
     .from('workspaces')
