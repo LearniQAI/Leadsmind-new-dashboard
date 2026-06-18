@@ -18,14 +18,26 @@ export async function getPortalSession(): Promise<PortalSession | null> {
   const supabase = createAdminClient();
 
   // 1. Fetch all contacts matching the authenticated user's email who have active portal access
-  const { data: contacts } = await supabase
+  const { data: contactsData } = await supabase
     .from('contacts')
-    .select('*, workspace:workspaces(*)')
+    .select('*')
     .eq('email', user.email)
     .eq('portal_access_enabled', true)
     .eq('portal_access_revoked', false);
 
-  if (!contacts || contacts.length === 0) return null;
+  if (!contactsData || contactsData.length === 0) return null;
+
+  // Fetch workspaces for these contacts separately to bypass PostgREST join limits
+  const workspaceIds = Array.from(new Set(contactsData.map(c => c.workspace_id)));
+  const { data: workspaces } = await supabase
+    .from('workspaces')
+    .select('*')
+    .in('id', workspaceIds);
+
+  const contacts = contactsData.map(c => ({
+    ...c,
+    workspace: workspaces?.find(w => w.id === c.workspace_id) || null
+  })) as any[];
 
   const cookieStore = cookies();
   const impersonateId = cookieStore.get('impersonate_contact_id')?.value;
@@ -42,23 +54,35 @@ export async function getPortalSession(): Promise<PortalSession | null> {
 
   // 2. Impersonation Check
   if (impersonateId) {
-    const { data: impersonatedContact } = await supabase
+    const { data: impersonatedContactData } = await supabase
       .from('contacts')
-      .select('*, workspace:workspaces(*)')
+      .select('*')
       .eq('id', impersonateId)
       .single();
 
-    if (impersonatedContact) {
+    if (impersonatedContactData) {
       // Validate that the logged-in user is an admin of this contact's workspace
       const { data: membership } = await supabase
         .from('workspace_members')
         .select('role')
-        .eq('workspace_id', impersonatedContact.workspace_id)
+        .eq('workspace_id', impersonatedContactData.workspace_id)
         .eq('user_id', user.id)
         .eq('role', 'admin')
         .maybeSingle();
 
       if (membership) {
+        // Fetch workspace separately
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('*')
+          .eq('id', impersonatedContactData.workspace_id)
+          .single();
+
+        const impersonatedContact = {
+          ...impersonatedContactData,
+          workspace: ws || null
+        } as any;
+
         const branding = await fetchBranding(impersonatedContact.workspace_id);
         return {
           user,

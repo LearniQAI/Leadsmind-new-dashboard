@@ -21,12 +21,12 @@ export async function inviteContactToPortal(contactId: string) {
     return { success: false, error: 'Unauthorized: No session user found.' };
   }
 
-  // 1. Fetch contact details with workspace relation using adminClient to bypass RLS/join constraints
+  // 1. Fetch contact details using adminClient to bypass RLS constraints
   const { data: contact, error: fetchErr } = await adminClient
     .from('contacts')
-    .select('*, workspace:workspaces(*)')
+    .select('*')
     .eq('id', contactId)
-    .single() as any;
+    .single();
 
   if (fetchErr) {
     console.error('[inviteContactToPortal] fetch error:', fetchErr);
@@ -38,6 +38,17 @@ export async function inviteContactToPortal(contactId: string) {
 
   if (!contact.email) {
     return { success: false, error: 'Contact does not have an email address.' };
+  }
+
+  // 1b. Fetch workspace details in a separate query to bypass PostgREST join constraints (PGRST200)
+  const { data: workspace, error: wsErr } = await adminClient
+    .from('workspaces')
+    .select('*')
+    .eq('id', contact.workspace_id)
+    .single();
+
+  if (wsErr) {
+    console.error('[inviteContactToPortal] workspace fetch error:', wsErr);
   }
 
   // Verify that the authenticated user is a member of this contact's workspace
@@ -56,10 +67,9 @@ export async function inviteContactToPortal(contactId: string) {
     return { success: false, error: `Permission denied: User ${user.email} is not a member of contact's workspace (${contact.workspace_id}).` };
   }
 
-  const workspace = contact.workspace || {};
-  const plan = workspace.plan_tier || workspace.plan || 'free';
+  const plan = workspace?.plan_tier || workspace?.plan || 'free';
   const isWhiteLabeled = plan !== 'free';
-  const portalName = isWhiteLabeled ? workspace.name : 'LeadsMind';
+  const portalName = (isWhiteLabeled && workspace?.name) ? workspace.name : 'LeadsMind';
 
   // 2. Set portal access fields in database
   const { error: updateErr } = await adminClient
