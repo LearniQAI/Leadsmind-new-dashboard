@@ -18,7 +18,7 @@ export async function inviteContactToPortal(contactId: string) {
   // Get current user session to authorize action
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { success: false, error: 'Unauthorized' };
+    return { success: false, error: 'Unauthorized: No session user found.' };
   }
 
   // 1. Fetch contact details with workspace relation using adminClient to bypass RLS/join constraints
@@ -28,8 +28,12 @@ export async function inviteContactToPortal(contactId: string) {
     .eq('id', contactId)
     .single() as any;
 
-  if (fetchErr || !contact) {
-    return { success: false, error: 'Contact not found' };
+  if (fetchErr) {
+    console.error('[inviteContactToPortal] fetch error:', fetchErr);
+    return { success: false, error: `Contact fetch query error: ${fetchErr.message} (Code: ${fetchErr.code})` };
+  }
+  if (!contact) {
+    return { success: false, error: 'Contact not found in database (null record).' };
   }
 
   if (!contact.email) {
@@ -44,8 +48,12 @@ export async function inviteContactToPortal(contactId: string) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (memberErr || !membership) {
-    return { success: false, error: 'Permission denied: Not a member of this workspace' };
+  if (memberErr) {
+    console.error('[inviteContactToPortal] membership check error:', memberErr);
+    return { success: false, error: `Workspace membership query error: ${memberErr.message}` };
+  }
+  if (!membership) {
+    return { success: false, error: `Permission denied: User ${user.email} is not a member of contact's workspace (${contact.workspace_id}).` };
   }
 
   const workspace = contact.workspace || {};
@@ -127,7 +135,7 @@ export async function revokeContactPortalAccess(contactId: string) {
   // Get current user session to authorize action
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { success: false, error: 'Unauthorized' };
+    return { success: false, error: 'Unauthorized: No session user found.' };
   }
 
   // 1. Fetch contact details using adminClient
@@ -137,8 +145,12 @@ export async function revokeContactPortalAccess(contactId: string) {
     .eq('id', contactId)
     .single();
 
-  if (fetchErr || !contact) {
-    return { success: false, error: 'Contact not found' };
+  if (fetchErr) {
+    console.error('[revokeContactPortalAccess] fetch error:', fetchErr);
+    return { success: false, error: `Contact fetch query error: ${fetchErr.message}` };
+  }
+  if (!contact) {
+    return { success: false, error: 'Contact not found (null record).' };
   }
 
   // Verify that the authenticated user is a member of this contact's workspace
@@ -149,8 +161,12 @@ export async function revokeContactPortalAccess(contactId: string) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (memberErr || !membership) {
-    return { success: false, error: 'Permission denied: Not a member of this workspace' };
+  if (memberErr) {
+    console.error('[revokeContactPortalAccess] membership check error:', memberErr);
+    return { success: false, error: `Workspace membership query error: ${memberErr.message}` };
+  }
+  if (!membership) {
+    return { success: false, error: `Permission denied: User ${user.email} is not a member of contact's workspace (${contact.workspace_id}).` };
   }
 
   const { error: updateErr } = await adminClient
@@ -182,7 +198,7 @@ export async function impersonateContact(contactId: string, reason: string = 'Ad
   const adminClient = createAdminClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: 'Unauthorized' };
+  if (!user) return { success: false, error: 'Unauthorized: No session user found.' };
 
   // Fetch contact
   const { data: contact, error: fetchErr } = await adminClient
@@ -191,12 +207,16 @@ export async function impersonateContact(contactId: string, reason: string = 'Ad
     .eq('id', contactId)
     .single();
 
-  if (fetchErr || !contact) {
-    return { success: false, error: 'Contact not found' };
+  if (fetchErr) {
+    console.error('[impersonateContact] fetch error:', fetchErr);
+    return { success: false, error: `Contact fetch query error: ${fetchErr.message}` };
+  }
+  if (!contact) {
+    return { success: false, error: 'Contact not found (null record).' };
   }
 
   // Verify that current user is an admin of the workspace
-  const { data: membership } = await supabase
+  const { data: membership, error: memberErr } = await supabase
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', contact.workspace_id)
@@ -204,6 +224,10 @@ export async function impersonateContact(contactId: string, reason: string = 'Ad
     .eq('role', 'admin')
     .maybeSingle();
 
+  if (memberErr) {
+    console.error('[impersonateContact] membership check error:', memberErr);
+    return { success: false, error: `Workspace membership query error: ${memberErr.message}` };
+  }
   if (!membership) {
     return { success: false, error: 'Permission denied: Requires admin access' };
   }
