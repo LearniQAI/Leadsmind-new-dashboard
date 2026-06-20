@@ -56,10 +56,41 @@ export default function LessonCreatorModal({
   const [flashcards, setFlashcards] = useState<{ front: string; back: string }[]>([]);
   const [codeLanguage, setCodeLanguage] = useState("javascript");
   const [starterCode, setStarterCode] = useState("");
+  const [scormVersion, setScormVersion] = useState("scorm12");
+  const [startTime, setStartTime] = useState("");
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [quizId, setQuizId] = useState<string | null>(null);
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fileType: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingType(fileType);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('pathPrefix', `lms/${fileType}`);
+
+    try {
+      const res = await fetch('/api/lms/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.error) {
+        toast.error(`Upload failed: ${data.error}`);
+      } else {
+        setVideoUrl(data.url);
+        toast.success(`${fileType.toUpperCase()} file uploaded successfully!`);
+      }
+    } catch {
+      toast.error('Network error uploading file');
+    } finally {
+      setUploadingType(null);
+    }
+  };
 
   const fetchOrCreateQuiz = async (lesId: string, lesTitle: string) => {
     setIsLoadingQuiz(true);
@@ -102,6 +133,8 @@ export default function LessonCreatorModal({
       setFlashcards(meta.flashcards || []);
       setCodeLanguage(meta.codeLanguage || "javascript");
       setStarterCode(meta.starterCode || "");
+      setScormVersion(meta.scormVersion || "scorm12");
+      setStartTime(meta.startTime || "");
       
       if (editingLesson.type === "Quiz") {
         fetchOrCreateQuiz(editingLesson.id, editingLesson.title || "");
@@ -118,6 +151,8 @@ export default function LessonCreatorModal({
       setFlashcards([]);
       setCodeLanguage("javascript");
       setStarterCode("");
+      setScormVersion("scorm12");
+      setStartTime("");
       setQuizId(null);
       setStep(1); // Selection wizard first
     }
@@ -160,6 +195,10 @@ export default function LessonCreatorModal({
     } else if (type === "Code") {
       metadata.codeLanguage = codeLanguage;
       metadata.starterCode = starterCode;
+    } else if (type === "SCORM") {
+      metadata.scormVersion = scormVersion;
+    } else if (type === "Live Session") {
+      metadata.startTime = startTime;
     }
 
     try {
@@ -272,12 +311,70 @@ export default function LessonCreatorModal({
                 <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">
                   {type === "Live Session" ? "Broadcast Stream Meeting URL" : `${type} Asset URL`}
                 </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
+                    placeholder={`https://example.com/assets/${type.toLowerCase()}`}
+                    className="flex-1 bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-mono"
+                    required
+                  />
+                  {["Video", "Audio", "PDF", "SCORM"].includes(type) && (
+                    <div className="relative shrink-0">
+                      <input
+                        type="file"
+                        accept={
+                          type === "Video" ? "video/*" :
+                          type === "Audio" ? "audio/*" :
+                          type === "PDF" ? "application/pdf" :
+                          ".zip"
+                        }
+                        onChange={(e) => handleFileUpload(e, type.toLowerCase())}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        disabled={uploadingType !== null}
+                      />
+                      <Button
+                        type="button"
+                        disabled={uploadingType !== null}
+                        className="h-full bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-wider px-4 rounded-xl flex items-center gap-1.5"
+                      >
+                        {uploadingType === type.toLowerCase() ? "Uploading..." : "Upload File"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SCORM Config Parameters */}
+            {type === "SCORM" && (
+              <div className="space-y-2 bg-[#111d47]/30 border border-white/5 rounded-xl p-4">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">
+                  SCORM Standards Version Compliance
+                </label>
+                <select
+                  value={scormVersion}
+                  onChange={(e) => setScormVersion(e.target.value)}
+                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary"
+                >
+                  <option value="scorm12">SCORM 1.2 standard</option>
+                  <option value="scorm2004">SCORM 2004 standard</option>
+                </select>
+              </div>
+            )}
+
+            {/* Live Session Scheduling Parameters */}
+            {type === "Live Session" && (
+              <div className="space-y-2 bg-[#111d47]/30 border border-white/5 rounded-xl p-4">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">
+                  Broadcast Start Date & Time
+                </label>
                 <input
-                  type="url"
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  placeholder={`https://example.com/assets/${type.toLowerCase()}`}
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-mono"
+                  type="datetime-local"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary"
                   required
                 />
               </div>

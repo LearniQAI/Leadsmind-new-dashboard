@@ -19,6 +19,7 @@ import CourseAnalyticsTab from "./components/CourseAnalyticsTab";
 import CourseLandingForm from "./components/CourseLandingForm";
 import CoursePricingForm from "./components/CoursePricingForm";
 import EmailTemplateForm from "./components/EmailTemplateForm";
+import CourseSubmissionsTab from "./components/CourseSubmissionsTab";
 
 interface CourseWorkspaceClientProps {
   course: any;
@@ -38,7 +39,7 @@ export default function CourseWorkspaceClient({
   const [modules, setModules] = useState<any[]>(initialModules);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | "draft" | "published" | "coming_soon">("All");
-  const [activeTab, setActiveTab] = useState<"settings" | "modules" | "automations" | "analytics" | "landing-page" | "pricing" | "emails">("modules");
+  const [activeTab, setActiveTab] = useState<"settings" | "modules" | "automations" | "analytics" | "landing-page" | "pricing" | "emails" | "submissions">("modules");
 
   // Modals States
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
@@ -277,6 +278,10 @@ export default function CourseWorkspaceClient({
 
       {activeTab === "emails" && (
         <EmailTemplateForm course={currentCourse} onSaved={setCurrentCourse} />
+      )}
+
+      {activeTab === "submissions" && (
+        <CourseSubmissionsTab courseId={currentCourse.id} />
       )}
 
       {/* Modals */}
