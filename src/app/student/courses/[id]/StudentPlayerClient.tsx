@@ -3,7 +3,7 @@
 import React, { useState, useTransition, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
-  BookOpen, ChevronRight, CheckSquare, Clock, Headphones, FileEdit, FileText, Video, Layers, Code, Archive, Download, MessageSquare, Loader2
+  BookOpen, ChevronRight, CheckSquare, Clock, Headphones, FileEdit, FileText, Video, Layers, Code, Archive, Download, MessageSquare, Loader2, Maximize2, Minimize2, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { markLessonComplete, markLessonIncomplete } from '@/app/actions/studentProgress';
@@ -98,6 +98,9 @@ export default function StudentPlayerClient({
   const [codeValue, setCodeValue] = useState("");
   const [codeConsole, setCodeConsole] = useState("");
   const [codeRunning, setCodeRunning] = useState(false);
+
+  // PDF Fullscreen state
+  const [isPdfFullscreen, setIsPdfFullscreen] = useState(false);
 
   // Load assignment submission history when active lesson is selected
   useEffect(() => {
@@ -314,6 +317,21 @@ export default function StudentPlayerClient({
     }
   }, [searchParams, videoElement, enrollment, lessons, activeLesson]);
 
+  // Handle PDF Fullscreen Escape key listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsPdfFullscreen(false);
+      }
+    };
+    if (isPdfFullscreen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPdfFullscreen]);
+
   const handleToggleComplete = async (lessonId: string) => {
     const isCompleted = completedLessonIds.includes(lessonId);
     
@@ -494,14 +512,22 @@ export default function StudentPlayerClient({
                 <div className="flex flex-col h-[650px] bg-[#080f28] border border-white/5 rounded-2xl overflow-hidden">
                   <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#080f28]/60 shrink-0">
                     <span className="text-xs font-bold text-white uppercase tracking-wider">PDF Document Viewer</span>
-                    <a
-                      href={activeLesson.content?.video_url || activeLesson.video_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex bg-primary hover:bg-primary/90 text-white rounded-lg text-[10px] font-black uppercase tracking-wider h-9 px-4 items-center justify-center gap-1.5"
-                    >
-                      <Download size={13} /> Download PDF
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => setIsPdfFullscreen(true)}
+                        className="inline-flex bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-lg text-[10px] font-black uppercase tracking-wider h-9 px-4 items-center justify-center gap-1.5 transition-all"
+                      >
+                        <Maximize2 size={13} /> Expand View
+                      </Button>
+                      <a
+                        href={activeLesson.content?.video_url || activeLesson.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex bg-primary hover:bg-primary/90 text-white rounded-lg text-[10px] font-black uppercase tracking-wider h-9 px-4 items-center justify-center gap-1.5 transition-all"
+                      >
+                        <Download size={13} /> Download PDF
+                      </a>
+                    </div>
                   </div>
                   <iframe src={getEmbeddablePdfUrl(activeLesson.content?.video_url || activeLesson.video_url)} className="flex-1 w-full border-0" />
                 </div>
@@ -869,6 +895,36 @@ export default function StudentPlayerClient({
         )}
       </div>
       <LiveHelpWidget courseId={course.id} enrollment={enrollment} />
+
+      {isPdfFullscreen && (
+        <div className="fixed inset-0 bg-[#04091a]/95 backdrop-blur-md z-[999] flex flex-col p-4 md:p-8 animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-center justify-between p-4 bg-[#080f28] border border-white/10 rounded-t-2xl shrink-0">
+            <div className="flex items-center gap-2">
+              <FileText size={18} className="text-primary" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider">{activeLesson.title} - Full Screen Mode</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={activeLesson.content?.video_url || activeLesson.video_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex bg-white/5 hover:bg-white/10 text-white border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-wider h-10 px-4 items-center justify-center gap-1.5 transition-all"
+              >
+                <Download size={13} /> Download
+              </a>
+              <Button
+                onClick={() => setIsPdfFullscreen(false)}
+                className="bg-primary hover:bg-primary/95 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-10 px-4 flex items-center justify-center gap-1.5 transition-all"
+              >
+                <Minimize2 size={13} /> Exit Full Screen
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 bg-[#020617] rounded-b-2xl overflow-hidden border-x border-b border-white/10">
+            <iframe src={getEmbeddablePdfUrl(activeLesson.content?.video_url || activeLesson.video_url)} className="w-full h-full border-0 bg-[#020617]" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
