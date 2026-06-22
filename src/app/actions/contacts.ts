@@ -200,6 +200,20 @@ export async function createContact(values: any) {
 
   const supabase = await createServerClient();
   
+  // Resolve affiliate attribution
+  let referredByAffiliateId = null;
+  let referredProgrammeId = null;
+  try {
+    const { resolveAttribution } = await import('@/lib/affiliate/attribution');
+    const attr = await resolveAttribution(null, values.email);
+    if (attr.affiliateId && attr.programmeId) {
+      referredByAffiliateId = attr.affiliateId;
+      referredProgrammeId = attr.programmeId;
+    }
+  } catch (e) {
+    console.error('[contacts-create-resolve-attribution-error]', e);
+  }
+
   const payload: any = {
     workspace_id: workspaceId,
     first_name: values.firstName,
@@ -209,6 +223,8 @@ export async function createContact(values: any) {
     source: values.source,
     owner_id: values.ownerId || null,
     tags: values.tags || [],
+    referred_by_affiliate_id: referredByAffiliateId,
+    referred_programme_id: referredProgrammeId,
   };
 
   if (values.consentTimestamp) {

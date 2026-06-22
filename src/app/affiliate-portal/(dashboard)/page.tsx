@@ -12,7 +12,7 @@ export default async function AffiliateDashboardPage() {
   }
 
   const supabase = await createServerClient();
-  const [clicksRes, commissionsRes, payoutsRes, leaderboardRes] = await Promise.all([
+  const [clicksRes, commissionsRes, payoutsRes, leaderboardRes, referralsRes] = await Promise.all([
     supabase
       .from('affiliate_clicks')
       .select('*')
@@ -33,13 +33,20 @@ export default async function AffiliateDashboardPage() {
       .from('affiliate_commissions')
       .select('amount, affiliate:affiliates(full_name)')
       .eq('programme_id', affiliate.programme_id)
-      .in('status', ['approved', 'paid'])
+      .in('status', ['approved', 'paid']),
+    // Fetch referred contacts
+    supabase
+      .from('contacts')
+      .select('id, first_name, last_name, email, created_at')
+      .eq('referred_by_affiliate_id', affiliate.id)
+      .order('created_at', { ascending: false })
   ]);
 
   const clicks = clicksRes.data || [];
   const commissions = commissionsRes.data || [];
   const payouts = payoutsRes.data || [];
   const rawLeaderboard = leaderboardRes.data || [];
+  const referrals = referralsRes.data || [];
 
   // Group and sum leaderboard earnings
   const earningsMap: Record<string, number> = {};
@@ -60,6 +67,7 @@ export default async function AffiliateDashboardPage() {
       commissions={commissions}
       payouts={payouts}
       leaderboard={leaderboard}
+      referrals={referrals}
     />
   );
 }

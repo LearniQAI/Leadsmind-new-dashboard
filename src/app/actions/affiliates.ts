@@ -425,6 +425,22 @@ export async function approveAffiliate(affiliateId: string) {
 
     if (error) throw error;
     
+    // Queue onboarding emails
+    try {
+      const now = new Date();
+      const day1 = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const day3 = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+      const day7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      await supabase.from('affiliate_email_queue').insert([
+        { affiliate_id: affiliate.id, email_type: 'day1', send_at: day1.toISOString(), status: 'pending' },
+        { affiliate_id: affiliate.id, email_type: 'day3', send_at: day3.toISOString(), status: 'pending' },
+        { affiliate_id: affiliate.id, email_type: 'day7', send_at: day7.toISOString(), status: 'pending' }
+      ]);
+    } catch (e) {
+      console.error('[Affiliate Queue Error]', e);
+    }
+    
     // Send approval notification email
     try {
       const customConfig = affiliate.workspace_id ? await getWorkspaceEmailConfig(affiliate.workspace_id) : null;
@@ -612,6 +628,245 @@ export async function deleteAffiliate(affiliateId: string) {
       .eq('id', affiliateId);
     if (error) throw error;
     return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function requestPayout(amount: number, method: string) {
+  try {
+    const affiliate = await getAuthenticatedAffiliate();
+    if (!affiliate) return { success: false, error: 'Unauthorized' };
+
+    const supabase = await createServerClient();
+
+    // 1. Fetch approved and unpaid commissions
+    const { data: commissions, error: commError } = await supabase
+      .from('affiliate_commissions')
+      .select('id, amount')
+      .eq('affiliate_id', affiliate.id)
+      .eq('status', 'approved');
+
+    if (commError) throw commError;
+
+    // Filter out those already in pending payouts
+    const { data: existingPayouts } = await supabase
+      .from('affiliate_payouts')
+      .select('commission_ids')
+      .eq('affiliate_id', affiliate.id)
+      .eq('status', 'requested');
+
+    const requestedIds = new Set((existingPayouts || []).flatMap(p => p.commission_ids || []));
+    const eligibleComms = (commissions || []).filter(c => !requestedIds.has(c.id));
+
+    const unpaidBalance = eligibleComms.reduce((sum, c) => sum + Number(c.amount), 0);
+    if (amount <= 0 || amount > unpaidBalance) {
+      return { success: false, error: 'Invalid payout amount requested' };
+    }
+
+    const selectedCommIds: string[] = [];
+    let runningSum = 0;
+    for (const c of eligibleComms) {
+      selectedCommIds.push(c.id);
+      runningSum += Number(c.amount);
+      if (runningSum >= amount) break;
+    }
+
+    // 2. Create affiliate_payouts row
+    const { data: payout, error: payoutError } = await supabase
+      .from('affiliate_payouts')
+      .insert({
+        affiliate_id: affiliate.id,
+        workspace_id: affiliate.workspace_id,
+        amount: amount,
+        currency: affiliate.programme?.currency || 'ZAR',
+        method: method,
+        commission_ids: selectedCommIds,
+        status: 'requested'
+      })
+      .select()
+      .single();
+
+    if (payoutError) throw payoutError;
+
+    revalidatePath('/affiliate-portal');
+    return { success: true, data: payout };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updatePayoutSettings(payoutMethod: string, payoutDetails: any) {
+  try {
+    const affiliate = await getAuthenticatedAffiliate();
+    if (!affiliate) return { success: false, error: 'Unauthorized' };
+
+    const { encrypt } = await import('@/lib/encryption');
+    const encryptedDetails = encrypt(JSON.stringify(payoutDetails));
+
+    const supabase = await createServerClient();
+    const { error } = await supabase
+      .from('affiliates')
+      .update({
+        payout_method: payoutMethod,
+        payout_details: encryptedDetails as any
+      })
+      .eq('id', affiliate.id);
+
+    if (error) throw error;
+    revalidatePath('/affiliate-portal');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getDecryptedPayoutDetails() {
+  try {
+    const affiliate = await getAuthenticatedAffiliate();
+    if (!affiliate) return { success: false, error: 'Unauthorized' };
+
+    if (!affiliate.payout_details) {
+      return { success: true, data: null };
+    }
+
+    try {
+      const { decrypt } = await import('@/lib/encryption');
+      const decryptedStr = decrypt(affiliate.payout_details);
+      const data = JSON.parse(decryptedStr);
+      return { success: true, data };
+    } catch {
+      return { success: true, data: affiliate.payout_details };
+    }
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function approvePayout(payoutId: string, reference: string) {
+  try {
+    const supabase = await createServerClient();
+    
+    // 1. Get payout details
+    const { data: payout, error: getError } = await supabase
+      .from('affiliate_payouts')
+      .select('*')
+      .eq('id', payoutId)
+      .single();
+
+    if (getError || !payout) throw new Error('Payout not found');
+
+    // 2. Update payout status to paid
+    const { error: updateError } = await supabase
+      .from('affiliate_payouts')
+      .update({
+        status: 'paid',
+        reference: reference || `PAID-${Date.now()}`,
+        processed_at: new Date().toISOString()
+      })
+      .eq('id', payoutId);
+
+    if (updateError) throw updateError;
+
+    // 3. Update commissions to paid
+    if (payout.commission_ids && payout.commission_ids.length > 0) {
+      const { error: commError } = await supabase
+        .from('affiliate_commissions')
+        .update({ status: 'paid' })
+        .in('id', payout.commission_ids);
+      if (commError) throw commError;
+    }
+
+    revalidatePath('/affiliates');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function rejectPayout(payoutId: string) {
+  try {
+    const supabase = await createServerClient();
+    
+    // 1. Get payout details
+    const { data: payout, error: getError } = await supabase
+      .from('affiliate_payouts')
+      .select('*')
+      .eq('id', payoutId)
+      .single();
+
+    if (getError || !payout) throw new Error('Payout not found');
+
+    // 2. Update payout status to failed (rejected)
+    const { error: updateError } = await supabase
+      .from('affiliate_payouts')
+      .update({
+        status: 'failed',
+        reference: 'Rejected by owner',
+        processed_at: new Date().toISOString()
+      })
+      .eq('id', payoutId);
+
+    if (updateError) throw updateError;
+
+    revalidatePath('/affiliates');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateCommissionStatus(commissionId: string, status: 'pending' | 'approved' | 'reversed' | 'paid') {
+  try {
+    const supabase = await createServerClient();
+    const { error } = await supabase
+      .from('affiliate_commissions')
+      .update({ status })
+      .eq('id', commissionId);
+
+    if (error) throw error;
+    revalidatePath('/affiliates');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getDecryptedPayoutBatch(payoutIds: string[]) {
+  try {
+    const supabase = await createServerClient();
+    const { data: payouts, error: payoutsError } = await supabase
+      .from('affiliate_payouts')
+      .select('*, affiliate:affiliates(full_name, email, payout_details)')
+      .in('id', payoutIds);
+
+    if (payoutsError) throw payoutsError;
+
+    const { decrypt } = await import('@/lib/encryption');
+
+    const result = (payouts || []).map(p => {
+      let bankInfo = null;
+      const detailsEncrypted = p.affiliate?.payout_details;
+      if (detailsEncrypted) {
+        try {
+          const decrypted = decrypt(detailsEncrypted);
+          bankInfo = JSON.parse(decrypted);
+        } catch {
+          bankInfo = detailsEncrypted; // fallback if plain
+        }
+      }
+      return {
+        id: p.id,
+        affiliate_name: p.affiliate?.full_name || 'N/A',
+        affiliate_email: p.affiliate?.email || 'N/A',
+        amount: p.amount,
+        method: p.method,
+        status: p.status,
+        bank_details: bankInfo
+      };
+    });
+
+    return { success: true, data: result };
   } catch (err: any) {
     return { success: false, error: err.message };
   }

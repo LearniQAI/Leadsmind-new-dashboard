@@ -4,6 +4,7 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId as getWsId, getCurrentWorkspace } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
+import { createHash, randomBytes } from 'crypto';
 
 async function getActiveWorkspaceId() {
   const id = await getWsId();
@@ -478,11 +479,54 @@ export async function createWebhook(url: string, events: string[]) {
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
+  const secret = `whsec_${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`;
   const { data, error } = await supabase
    .from('webhook_endpoints')
-   .insert({ workspace_id: workspaceId, url, events })
+   .insert({ workspace_id: workspaceId, url, events, secret, is_active: true })
    .select()
    .single();
+
+  if (error) throw error;
+  revalidatePath('/settings');
+  return { data };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function deleteWebhook(id: string) {
+ try {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { error } = await supabase
+   .from('webhook_endpoints')
+   .delete()
+   .eq('id', id)
+   .eq('workspace_id', workspaceId);
+
+  if (error) throw error;
+  revalidatePath('/settings');
+  return { success: true };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function getWebhookLogs(webhookId: string) {
+ try {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('webhook_delivery_logs')
+   .select('*')
+   .eq('webhook_id', webhookId)
+   .eq('workspace_id', workspaceId)
+   .order('delivered_at', { ascending: false })
+   .limit(20);
 
   if (error) throw error;
   return { data };
@@ -490,6 +534,7 @@ export async function createWebhook(url: string, events: string[]) {
   return { error: error.message };
  }
 }
+
 
 // API KEYS
 export async function getWorkspaceApiKey() {
@@ -586,3 +631,74 @@ export async function testEmailConnection() {
   return { error: error.message };
  }
 }
+
+export async function getOAuthClients() {
+ try {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('oauth_clients')
+   .select('*')
+   .eq('workspace_id', workspaceId)
+   .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return { data };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function createOAuthClient(name: string, redirectUris: string[], scopes: string[]) {
+ try {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const clientId = 'client_' + randomBytes(16).toString('hex');
+  const clientSecret = 'secret_' + randomBytes(24).toString('hex');
+  const secretHash = createHash('sha256').update(clientSecret).digest('hex');
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('oauth_clients')
+   .insert({
+    name,
+    client_id: clientId,
+    client_secret_hash: secretHash,
+    redirect_uris: redirectUris,
+    scopes: scopes,
+    workspace_id: workspaceId
+   })
+   .select('*')
+   .single();
+
+  if (error) throw error;
+  revalidatePath('/settings');
+  return { data, clientSecret }; // Return raw secret once for user copy
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+
+export async function deleteOAuthClient(clientId: string) {
+ try {
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { error } = await supabase
+   .from('oauth_clients')
+   .delete()
+   .eq('client_id', clientId)
+   .eq('workspace_id', workspaceId);
+
+  if (error) throw error;
+  revalidatePath('/settings');
+  return { success: true };
+ } catch (error: any) {
+  return { error: error.message };
+ }
+}
+

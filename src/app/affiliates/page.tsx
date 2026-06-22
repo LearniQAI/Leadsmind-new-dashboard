@@ -13,7 +13,7 @@ export default async function AffiliatesPage() {
   if (!workspaceId) redirect('/login');
 
   const supabase = await createServerClient();
-  const [programmesRes, affiliatesRes, commissionsRes, workspaceRes] = await Promise.all([
+  const [programmesRes, affiliatesRes, commissionsRes, workspaceRes, payoutsRes] = await Promise.all([
     supabase
       .from('affiliate_programmes')
       .select('*')
@@ -33,13 +33,19 @@ export default async function AffiliatesPage() {
       .from('workspaces')
       .select('slug')
       .eq('id', workspaceId)
-      .maybeSingle()
+      .maybeSingle(),
+    supabase
+      .from('affiliate_payouts')
+      .select('*, affiliate:affiliates(full_name, email, payout_details)')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false })
   ]);
 
   const programmes = programmesRes.data || [];
   const affiliates = affiliatesRes.data || [];
   const commissions = commissionsRes.data || [];
   const workspaceSlug = workspaceRes.data?.slug || '';
+  const payouts = payoutsRes.data || [];
 
   return (
     <MetaData pageTitle="Affiliate Marketing Management">
@@ -61,6 +67,7 @@ export default async function AffiliatesPage() {
               initialProgrammes={programmes}
               initialAffiliates={affiliates}
               initialCommissions={commissions}
+              initialPayouts={payouts}
               workspaceId={workspaceId}
               workspaceSlug={workspaceSlug}
             />

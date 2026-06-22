@@ -7,6 +7,25 @@ const PLATFORM_HOSTS = new Set(['leadsmind.com', 'www.leadsmind.com', 'app.leads
 export async function middleware(request: NextRequest) {
   const host = (request.headers.get('host') || '').split(':')[0].toLowerCase()
 
+  // 1. Custom tracking domains rewrite (e.g. track.leadsmind.io/uuid -> /track/uuid)
+  const isTrackHost = host === 'track.leadsmind.io' || host === 'track.leadsmind.com' || host.startsWith('track.')
+  const path = request.nextUrl.pathname
+  const segments = path.split('/').filter(Boolean)
+  
+  if (segments.length === 1) {
+    const segment = segments[0]
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment)
+    const isTrackingNumber = /^[A-Z0-9]{8,25}$/i.test(segment)
+    
+    if (isUuid || isTrackingNumber) {
+      if (isTrackHost || !PLATFORM_HOSTS.has(host)) {
+        const url = request.nextUrl.clone()
+        url.pathname = `/track/${segment}`
+        return NextResponse.rewrite(url)
+      }
+    }
+  }
+
   // Platform hosts behave exactly as before.
   if (PLATFORM_HOSTS.has(host)) {
     return await updateSession(request)

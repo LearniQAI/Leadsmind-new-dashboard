@@ -6,6 +6,7 @@ import { Activity, LayoutDashboard, FileText, Phone, Mail, Target, Building2, Us
 import Link from 'next/link';
 import { AvatarImage } from '@/components/common/AvatarImage';
 import { VoiceNotePlayer } from '@/components/common/VoiceNotePlayer';
+import { VoiceNoteCard } from '@/components/common/VoiceNoteCard';
 
 export default async function GlobalActivityPage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -65,67 +66,79 @@ export default async function GlobalActivityPage() {
                       {getIcon(item.activity_type, item.entity_type)}
                     </div>
                     <div className="pt-2 w-full min-w-0">
-                      <div className="flex items-center justify-between gap-4 mb-2">
-                        <span className="text-sm font-bold flex items-center gap-2 min-w-0">
-                          {hasUser ? (
-                            <>
-                              <AvatarImage
-                                src={item.auth_user.profile_photo_url}
-                                emailPresetUrl={item.auth_user.avatar_preset_id ? `/assets/presets/${item.auth_user.avatar_preset_id}.png` : null}
-                                initials={initials}
-                                bgColor={item.auth_user.identity_color || '#3b82f6'}
-                                size={32}
-                                shape="circle"
-                                className="border-slate-200/20 hover:scale-100 shadow-sm"
-                              />
-                              <span style={{ color: nameColor }} className="truncate">
-                                {item.auth_user.full_name || `${firstName} ${lastName}`.trim() || item.auth_user.email}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="text-t3">System Workflow</span>
-                          )}
-                        </span>
-                        <span className="text-xs text-t4 uppercase tracking-widest font-bold shrink-0">
-                          {new Date(item.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                      
-                      <div className="bg-n900 border border-white/5 rounded-2xl p-5 group-hover:border-white/10 transition-colors">
-                        {isVoice ? (
-                          <div className="w-full max-w-full">
-                            <VoiceNotePlayer audioUrl={item.metadata?.audio_url || item.source_url || ""} theme="dark" />
-                            {item.content && (
-                              <p className="text-sm text-t2 mt-3 font-dm-sans italic">
-                                "{item.content}"
-                              </p>
-                            )}
+                      {isVoice ? (
+                        <VoiceNoteCard
+                          sender={item.auth_user ? {
+                            first_name: item.auth_user.first_name,
+                            last_name: item.auth_user.last_name,
+                            full_name: item.auth_user.full_name || `${item.auth_user.first_name || ''} ${item.auth_user.last_name || ''}`.trim() || null,
+                            profile_photo_url: item.auth_user.profile_photo_url,
+                            avatar_preset_id: item.auth_user.avatar_preset_id,
+                            job_title: item.auth_user.job_title || "Team Member",
+                            identity_color: item.auth_user.identity_color
+                          } : undefined}
+                          createdAt={item.created_at}
+                          deliveryChannel={item.metadata?.channel || 'internal'}
+                          audioUrl={item.metadata?.audio_url || item.source_url || ''}
+                          audioDuration={item.metadata?.duration}
+                          caption={item.content}
+                          transcript={item.metadata?.transcript || item.original_text}
+                          theme="dark"
+                        />
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between gap-4 mb-2">
+                            <span className="text-sm font-bold flex items-center gap-2 min-w-0">
+                              {hasUser ? (
+                                <>
+                                  <AvatarImage
+                                    src={item.auth_user.profile_photo_url}
+                                    emailPresetUrl={item.auth_user.avatar_preset_id ? `/assets/presets/${item.auth_user.avatar_preset_id}.png` : null}
+                                    initials={initials}
+                                    bgColor={item.auth_user.identity_color || '#3b82f6'}
+                                    size={32}
+                                    shape="circle"
+                                    className="border-slate-200/20 hover:scale-100 shadow-sm"
+                                  />
+                                  <span style={{ color: nameColor }} className="truncate">
+                                    {item.auth_user.full_name || `${firstName} ${lastName}`.trim() || item.auth_user.email}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-t3">System Workflow</span>
+                              )}
+                            </span>
+                            <span className="text-xs text-t4 uppercase tracking-widest font-bold shrink-0">
+                              {new Date(item.created_at).toLocaleString()}
+                            </span>
                           </div>
-                        ) : (
-                          <p className="text-sm text-white leading-relaxed font-dm-sans">
-                            {item.content}
-                          </p>
-                        )}
-                        
-                        <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-3 flex-wrap">
-                          <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
-                            <LinkIcon size={10} /> {item.entity_type} Record
-                          </span>
-                          <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
-                            <Activity size={10} /> {item.activity_type.replace('_', ' ')}
-                          </span>
-                          {item.metadata?.channel === 'whatsapp' && (
-                            <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
-                              WhatsApp {item.metadata.destination ? `(${item.metadata.destination})` : ''}
-                            </span>
-                          )}
-                          {item.metadata?.channel === 'email' && (
-                            <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
-                              Email {item.metadata.destination ? `(${item.metadata.destination})` : ''}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                          
+                          <div className="bg-n900 border border-white/5 rounded-2xl p-5 group-hover:border-white/10 transition-colors">
+                            <p className="text-sm text-white leading-relaxed font-dm-sans">
+                              {item.content}
+                            </p>
+                            
+                            <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-3 flex-wrap">
+                              <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
+                                <LinkIcon size={10} /> {item.entity_type} Record
+                              </span>
+                              <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
+                                <Activity size={10} /> {item.activity_type.replace('_', ' ')}
+                              </span>
+                              {item.metadata?.channel === 'whatsapp' && (
+                                <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
+                                  WhatsApp {item.metadata.destination ? `(${item.metadata.destination})` : ''}
+                                </span>
+                              )}
+                              {item.metadata?.channel === 'email' && (
+                                <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
+                                  Email {item.metadata.destination ? `(${item.metadata.destination})` : ''}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 );

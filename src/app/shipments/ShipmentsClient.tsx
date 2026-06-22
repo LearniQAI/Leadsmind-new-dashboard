@@ -50,6 +50,7 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
   const [fromEmail, setFromEmail] = useState(brandSettings?.from_email || '')
   const [customTrackDomain, setCustomTrackDomain] = useState(brandSettings?.custom_track_domain || '')
   const [whiteLabel, setWhiteLabel] = useState(!!brandSettings?.white_label)
+  const [recipientAlertsDisabled, setRecipientAlertsDisabled] = useState(!!brandSettings?.recipient_alerts_disabled)
   const [savingBrand, setSavingBrand] = useState(false)
 
   const handleAddShipment = async (e: React.FormEvent) => {
@@ -115,7 +116,8 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
       from_name: fromName.trim() || null,
       from_email: fromEmail.trim() || null,
       custom_track_domain: customTrackDomain.trim() || null,
-      white_label: whiteLabel
+      white_label: whiteLabel,
+      recipient_alerts_disabled: recipientAlertsDisabled
     })
     setSavingBrand(false)
     if (!res.success) {
@@ -242,6 +244,11 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${status.bg} ${status.text}`}>
                             <Icon className="w-3 h-3" /> {status.label}
                           </span>
+                          {s.received_confirmed_at && (
+                            <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30 uppercase tracking-wider">
+                              <CheckCircle className="w-2.5 h-2.5" /> Confirmed
+                            </span>
+                          )}
                         </td>
                         <td className="p-4 text-gray-400">
                           {new Date(s.created_at).toLocaleDateString()}
@@ -262,6 +269,12 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
               <div>
                 <h4 className="font-bold text-white text-base">Tracking Timeline</h4>
                 <p className="text-xs text-gray-400 mt-0.5">{selectedShipment.tracking_number}</p>
+                {selectedShipment.received_confirmed_at && (
+                  <div className="mt-2 bg-green-500/10 border border-green-500/20 rounded-lg p-2 text-[11px] text-green-400 flex items-center gap-1.5 font-mono">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Confirmed at {new Date(selectedShipment.received_confirmed_at).toLocaleString()}</span>
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => setSelectedShipment(null)}
@@ -515,8 +528,21 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
                 />
               </div>
 
-              <div className="border-t border-white/10 pt-4">
-                <div className="flex items-center justify-between mb-4">
+              <div className="border-t border-white/10 pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h5 className="text-sm font-semibold text-white">Disable Recipient Email Alerts</h5>
+                    <p className="text-xs text-gray-400 mt-0.5 font-normal">Turn off automatic email updates to delivery recipients.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={recipientAlertsDisabled}
+                    onChange={(e) => setRecipientAlertsDisabled(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-white/10 rounded focus:ring-blue-500 bg-white/5"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-white/5">
                   <div>
                     <h5 className="text-sm font-semibold text-white">White Label Notifications</h5>
                     <p className="text-xs text-gray-400 mt-0.5">Use your own domain and details to send notifications.</p>

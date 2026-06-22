@@ -80,6 +80,7 @@ export default function ConnectProviderModal({
           provider,
           category,
           accountLabel: label,
+          webhookUrl: field1.trim(),
         }),
       });
 
