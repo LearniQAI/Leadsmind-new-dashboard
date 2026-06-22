@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import Link from 'next/link'
 import {
   Users, Handshake, DollarSign, CheckCircle2, AlertTriangle, Clock, Plus, Search,
   X, RefreshCw, Layers, Edit, Trash, HelpCircle, Ban, ToggleLeft, ToggleRight, Copy,
@@ -360,28 +361,42 @@ export default function AffiliatesClient({
           ))}
         </div>
 
-        <div className="flex gap-2 w-full sm:w-auto shrink-0">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto shrink-0">
           {activeView === 'programmes' && (
-            <button
-              onClick={() => {
-                setEditingProg(null)
-                setProgName('')
-                setProgCommissionType('percentage')
-                setProgCommissionValue(10)
-                setProgCookieDays(30)
-                setProgApprovalMode('manual')
-                setTwoTierEnabled(false)
-                setLogoUrl('')
-                setHeadline('')
-                setBenefits([''])
-                setCustomQuestions([])
-                setTerms('')
-                setShowProgModal(true)
-              }}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto"
-            >
-              <Plus className="w-4 h-4" /> Create Programme
-            </button>
+            <>
+              <Link
+                href="/affiliate-marketplace"
+                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium flex items-center justify-center gap-2 border border-white/10 transition-colors w-full sm:w-auto"
+              >
+                <Layers className="w-4 h-4 text-blue-400" /> Marketplace
+              </Link>
+              <Link
+                href="/affiliate-portal"
+                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium flex items-center justify-center gap-2 border border-white/10 transition-colors w-full sm:w-auto"
+              >
+                <Handshake className="w-4 h-4 text-purple-400" /> Affiliate Portal
+              </Link>
+              <button
+                onClick={() => {
+                  setEditingProg(null)
+                  setProgName('')
+                  setProgCommissionType('percentage')
+                  setProgCommissionValue(10)
+                  setProgCookieDays(30)
+                  setProgApprovalMode('manual')
+                  setTwoTierEnabled(false)
+                  setLogoUrl('')
+                  setHeadline('')
+                  setBenefits([''])
+                  setCustomQuestions([])
+                  setTerms('')
+                  setShowProgModal(true)
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto"
+              >
+                <Plus className="w-4 h-4" /> Create Programme
+              </button>
+            </>
           )}
 
           {activeView === 'payouts' && (
