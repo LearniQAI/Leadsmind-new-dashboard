@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import {
   createProgramme, updateProgramme, deleteProgramme,
-  approveAffiliate, rejectAffiliate, suspendAffiliate
+  approveAffiliate, rejectAffiliate, suspendAffiliate, deleteAffiliate
 } from '@/app/actions/affiliates'
 import { toast } from 'sonner'
 
@@ -45,6 +45,11 @@ export default function AffiliatesClient({
   const [twoTierEnabled, setTwoTierEnabled] = useState(false)
   const [tier2Percent, setTier2Percent] = useState(5)
   const [submittingProg, setSubmittingProg] = useState(false)
+  const [logoUrl, setLogoUrl] = useState('')
+  const [headline, setHeadline] = useState('')
+  const [benefits, setBenefits] = useState<string[]>([''])
+  const [customQuestions, setCustomQuestions] = useState<any[]>([])
+  const [terms, setTerms] = useState('')
 
   // Quick stats
   const totalClicks = 0 // Resolved on click tables if joined, default placeholder or mock
@@ -78,7 +83,14 @@ export default function AffiliatesClient({
       approval_mode: progApprovalMode,
       two_tier_enabled: twoTierEnabled,
       tier2_override_percent: twoTierEnabled ? Number(tier2Percent) : 0,
-      status: editingProg?.status || 'active'
+      status: editingProg?.status || 'active',
+      registration_settings: {
+        logo_url: logoUrl.trim(),
+        headline: headline.trim(),
+        benefits: benefits.map(b => b.trim()).filter(Boolean),
+        custom_questions: customQuestions.filter(q => q.label.trim()),
+        terms: terms.trim()
+      }
     }
 
     let res
@@ -146,6 +158,14 @@ export default function AffiliatesClient({
     }
     toast.success('Affiliate suspended')
     setAffiliates(affiliates.map(a => a.id === id ? { ...a, status: 'suspended' } : a))
+  }
+
+  const handleDeleteAff = async (id: string) => {
+    if (!confirm('Delete this affiliate permanently? This removes their referral data and frees their email to register again.')) return
+    const res = await deleteAffiliate(id)
+    if (!res.success) { toast.error(res.error || 'Failed to delete affiliate'); return }
+    toast.success('Affiliate deleted')
+    setAffiliates(affiliates.filter(a => a.id !== id))
   }
 
   return (
@@ -227,6 +247,11 @@ export default function AffiliatesClient({
                 setProgCookieDays(30)
                 setProgApprovalMode('manual')
                 setTwoTierEnabled(false)
+                setLogoUrl('')
+                setHeadline('')
+                setBenefits([''])
+                setCustomQuestions([])
+                setTerms('')
                 setShowProgModal(true)
               }}
               className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto"
@@ -295,6 +320,12 @@ export default function AffiliatesClient({
                               setProgApprovalMode(p.approval_mode)
                               setTwoTierEnabled(p.two_tier_enabled)
                               setTier2Percent(p.tier2_override_percent)
+                              const settings = p.registration_settings || {}
+                              setLogoUrl(settings.logo_url || '')
+                              setHeadline(settings.headline || '')
+                              setBenefits(settings.benefits || [''])
+                              setCustomQuestions(settings.custom_questions || [])
+                              setTerms(settings.terms || '')
                               setShowProgModal(true)
                             }}
                             className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white"
@@ -380,6 +411,12 @@ export default function AffiliatesClient({
                               <Ban className="w-3.5 h-3.5" /> Suspend
                             </button>
                           )}
+                          <button
+                            onClick={() => handleDeleteAff(a.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                          >
+                            <Trash className="w-3.5 h-3.5" /> Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -445,7 +482,7 @@ export default function AffiliatesClient({
       {/* Programme Modal */}
       {showProgModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#0b1329] border border-white/10 rounded-xl p-6 max-w-md w-full relative">
+          <div className="bg-[#0b1329] border border-white/10 rounded-xl p-6 max-w-2xl w-full relative overflow-y-auto max-h-[90vh]">
             <button
               onClick={() => {
                 setShowProgModal(false)
@@ -562,6 +599,136 @@ export default function AffiliatesClient({
                     />
                   </div>
                 )}
+              </div>
+
+              <div className="border-t border-white/10 pt-4 space-y-4">
+                <h4 className="text-sm font-semibold text-white">Registration Page Branding</h4>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                    Logo URL
+                  </label>
+                  <input
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    placeholder="https://example.com/logo.png"
+                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                    Headline
+                  </label>
+                  <input
+                    value={headline}
+                    onChange={(e) => setHeadline(e.target.value)}
+                    placeholder="Partner with us and earn"
+                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5 flex justify-between items-center">
+                    <span>Benefits List</span>
+                    <button
+                      type="button"
+                      onClick={() => setBenefits([...benefits, ''])}
+                      className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold font-mono"
+                    >
+                      + Add Benefit
+                    </button>
+                  </label>
+                  <div className="space-y-2">
+                    {benefits.map((b, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          value={b}
+                          onChange={(e) => {
+                            const newB = [...benefits]
+                            newB[idx] = e.target.value
+                            setBenefits(newB)
+                          }}
+                          placeholder="e.g. 30-day cookie window"
+                          className="flex-1 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                        />
+                        {benefits.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setBenefits(benefits.filter((_, i) => i !== idx))}
+                            className="text-red-400 hover:text-red-300 px-2 text-xs"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5 flex justify-between items-center">
+                    <span>Custom Application Questions</span>
+                    <button
+                      type="button"
+                      onClick={() => setCustomQuestions([...customQuestions, { id: Math.random().toString(36).substr(2, 9), label: '', required: false }])}
+                      className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold font-mono"
+                    >
+                      + Add Question
+                    </button>
+                  </label>
+                  <div className="space-y-3">
+                    {customQuestions.map((q, idx) => (
+                      <div key={q.id || idx} className="flex flex-col gap-2 p-2 border border-white/5 bg-white/[0.02] rounded-lg">
+                        <div className="flex gap-2">
+                          <input
+                            value={q.label}
+                            onChange={(e) => {
+                              const newQ = [...customQuestions]
+                              newQ[idx] = { ...newQ[idx], label: e.target.value }
+                              setCustomQuestions(newQ)
+                            }}
+                            placeholder="Question Label (e.g. Website URL or Social handles)"
+                            className="flex-1 px-3 py-1.5 rounded-lg border border-white/10 bg-[#0b1329] text-sm focus:outline-none focus:border-blue-500 text-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setCustomQuestions(customQuestions.filter((_, i) => i !== idx))}
+                            className="text-red-400 hover:text-red-300 px-2 text-xs"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <label className="flex items-center gap-2 text-xs text-gray-400">
+                          <input
+                            type="checkbox"
+                            checked={q.required || false}
+                            onChange={(e) => {
+                              const newQ = [...customQuestions]
+                              newQ[idx] = { ...newQ[idx], required: e.target.checked }
+                              setCustomQuestions(newQ)
+                            }}
+                            className="w-3.5 h-3.5 text-blue-600 border-white/10 rounded focus:ring-blue-500 bg-white/5"
+                          />
+                          Required question
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                    Terms & Conditions (Optional Checkbox Text)
+                  </label>
+                  <textarea
+                    value={terms}
+                    onChange={(e) => setTerms(e.target.value)}
+                    placeholder="e.g. I agree to the programme terms and privacy policy."
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-white/10">

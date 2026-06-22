@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { applyToProgramme } from '@/app/actions/affiliates';
 
 interface ProgrammeItem {
@@ -9,209 +9,155 @@ interface ProgrammeItem {
   name: string;
   commission_value: number;
   commission_type: string;
+  registration_settings?: {
+    logo_url?: string;
+    headline?: string;
+    benefits?: string[];
+    custom_questions?: { id: string; label: string; required?: boolean }[];
+    terms?: string;
+  };
 }
-
-interface RegisterFormProps {
+interface Props {
   programmes: ProgrammeItem[];
 }
 
-export default function RegisterForm({ programmes }: RegisterFormProps) {
+export default function RegisterForm({ programmes }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // Default selection from query parameter if present
-  const initialProgId = searchParams.get('programmeId') || (programmes.length > 0 ? programmes[0].id : '');
+  const initialId = searchParams.get('programmeId') || (programmes[0]?.id ?? '');
   const parentAffiliateId = searchParams.get('parent') || null;
 
-  const [programmeId, setProgrammeId] = useState(initialProgId);
+  const [programmeId, setProgrammeId] = useState(initialId);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [answers, setAnswers] = useState({ promoPlan: '' });
-  
-  const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState('');
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const prog = programmes.find((p) => p.id === programmeId);
+  const rs = prog?.registration_settings || {};
+  const commissionLabel = prog
+    ? (prog.commission_type === 'fixed' ? `Earn R${prog.commission_value} per sale`
+       : `Earn ${prog.commission_value}% commission`)
+    : '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!programmeId) {
-      setError('Please select an affiliate programme.');
-      return;
-    }
-
-    setLoading(true);
     setError('');
-
-    try {
-      const res = await applyToProgramme(
-        programmeId,
-        email,
-        password,
-        fullName,
-        phone,
-        answers,
-        parentAffiliateId
-      );
-
-      if (res.success) {
-        setSuccess(true);
-      } else {
-        setError(res.error || 'Failed to submit application.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during submission.');
-    } finally {
-      setLoading(false);
-    }
+    if (!programmeId) { setError('Please select a programme.'); return; }
+    if (rs.terms && !agreed) { setError('Please accept the terms to continue.'); return; }
+    const missing = (rs.custom_questions || []).find((q) => q.required && !answers[q.id]?.trim());
+    if (missing) { setError(`Please answer: ${missing.label}`); return; }
+    setLoading(true);
+    
+    const res: any = await applyToProgramme(programmeId, {
+      email,
+      password,
+      full_name: fullName,
+      phone,
+      answers,
+      parentAffiliateId
+    } as any);
+    
+    setLoading(false);
+    if (res?.success === false) { setError(res.error || 'Registration failed.'); return; }
+    setDone(true);
   };
 
-  if (success) {
+  if (done) {
     return (
-      <div className="bg-slate-900 py-8 px-4 shadow-2xl border border-slate-800 sm:rounded-2xl sm:px-10 text-center max-w-md mx-auto mt-8">
-        <div className="w-16 h-16 bg-emerald-950 border border-emerald-500/30 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-          ✓
+      <div className="max-w-md mx-auto mt-16 text-center p-8 rounded-2xl bg-white shadow">
+        <h2 className="text-xl font-bold text-emerald-600">Application received</h2>
+        <p className="mt-2 text-slate-600">We'll review your application and email you once it's approved.</p>
+        <div className="mt-6">
+          <a
+            href="/affiliate-portal/login"
+            className="inline-block rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition-all"
+          >
+            Go to Sign In
+          </a>
         </div>
-        <h3 className="text-xl font-bold text-white mb-2">Application Submitted!</h3>
-        <p className="text-slate-400 text-sm mb-6">
-          Thank you for applying. We have sent a welcome email sequence to <strong>{email}</strong>. Please check your inbox for next steps.
-        </p>
-        <a
-          href="/affiliate-portal/login"
-          className="inline-block rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-all"
-        >
-          Go to Sign In
-        </a>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-900 py-8 px-4 shadow-2xl border border-slate-800 sm:rounded-2xl sm:px-10">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {error && (
-          <div className="bg-red-950/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl text-sm text-center">
-            {error}
-          </div>
+    <div className="max-w-lg mx-auto mt-10 mb-16">
+      {/* Branded header */}
+      <div className="rounded-t-2xl bg-slate-900 text-white p-7 text-center">
+        {rs.logo_url
+          ? <img src={rs.logo_url} alt="" className="h-10 mx-auto mb-3 object-contain" />
+          : null}
+        <h1 className="text-2xl font-bold">{rs.headline || 'Join our affiliate programme'}</h1>
+        {commissionLabel && (
+          <span className="inline-block mt-3 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-sm font-semibold">
+            {commissionLabel}
+          </span>
         )}
+      </div>
 
-        <div>
-          <label htmlFor="programme" className="block text-sm font-medium text-slate-300">
-            Select Programme
-          </label>
-          <div className="mt-1">
-            <select
-              id="programme"
-              required
-              value={programmeId}
-              onChange={(e) => setProgrammeId(e.target.value)}
-              className="block w-full rounded-xl border-slate-800 bg-slate-950 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
-            >
-              <option value="">-- Choose a Programme --</option>
-              {programmes.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.commission_value}% {p.commission_type})
-                </option>
-              ))}
+      {/* Benefits */}
+      {(rs.benefits?.length ?? 0) > 0 && (
+        <div className="bg-slate-50 px-7 py-4 border-x border-slate-200">
+          <ul className="space-y-1.5">
+            {rs.benefits!.map((b, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                <span className="text-emerald-500 mt-0.5">✓</span><span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="bg-white rounded-b-2xl shadow px-7 py-6 space-y-4 border-x border-b border-slate-200">
+        {programmes.length > 1 && (
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Programme</label>
+            <select value={programmeId} onChange={(e) => setProgrammeId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-900">
+              {programmes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
-        </div>
+        )}
+        <Field label="Full name" value={fullName} onChange={setFullName} required />
+        <Field label="Email" value={email} onChange={setEmail} type="email" required />
+        <Field label="Phone" value={phone} onChange={setPhone} />
+        <Field label="Password" value={password} onChange={setPassword} type="password" required />
 
-        <div>
-          <label htmlFor="fullName" className="block text-sm font-medium text-slate-300">
-            Full Name
+        {(rs.custom_questions || []).map((q) => (
+          <Field key={q.id} label={q.label + (q.required ? ' *' : '')}
+            value={answers[q.id] || ''} onChange={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))} />
+        ))}
+
+        {rs.terms && (
+          <label className="flex items-start gap-2 text-xs text-slate-600">
+            <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5" />
+            <span>{rs.terms}</span>
           </label>
-          <div className="mt-1">
-            <input
-              id="fullName"
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="block w-full rounded-xl border-slate-800 bg-slate-950 text-white placeholder-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
-              placeholder="John Doe"
-            />
-          </div>
-        </div>
+        )}
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-300">
-            Email Address
-          </label>
-          <div className="mt-1">
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="block w-full rounded-xl border-slate-800 bg-slate-950 text-white placeholder-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
-              placeholder="name@example.com"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-300">
-            Password (for dashboard login)
-          </label>
-          <div className="mt-1">
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-xl border-slate-800 bg-slate-950 text-white placeholder-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
-              placeholder="Minimum 6 characters"
-              minLength={6}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-slate-300">
-            Phone Number (Optional)
-          </label>
-          <div className="mt-1">
-            <input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="block w-full rounded-xl border-slate-800 bg-slate-950 text-white placeholder-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
-              placeholder="+27 82 123 4567"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor="promoPlan" className="block text-sm font-medium text-slate-300">
-            How do you plan to promote us?
-          </label>
-          <div className="mt-1">
-            <textarea
-              id="promoPlan"
-              rows={3}
-              value={answers.promoPlan}
-              onChange={(e) => setAnswers({ ...answers, promoPlan: e.target.value })}
-              className="block w-full rounded-xl border-slate-800 bg-slate-950 text-white placeholder-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
-              placeholder="Briefly describe your marketing channels, website, or network..."
-            />
-          </div>
-        </div>
-
-        <div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex w-full justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            {loading ? 'Submitting Application...' : 'Apply to Programme'}
-          </button>
-        </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button type="submit" disabled={loading}
+          className="w-full py-2.5 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 disabled:opacity-50">
+          {loading ? 'Submitting…' : 'Apply to join'}
+        </button>
       </form>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, type = 'text', required = false }:
+  { label: string; value: string; onChange: (v: string) => void; type?: string; required?: boolean }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
+      <input type={type} value={value} required={required} onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20" />
     </div>
   );
 }

@@ -108,10 +108,7 @@ const SignInBasicForm = () => {
    }
 
    if (formattedWorkspaces.length === 1) {
-    await fetch("/api/workspace/active", {
-     method: "POST",
-     body: JSON.stringify({ workspaceId: formattedWorkspaces[0].id }),
-    });
+    await setActiveWorkspace(formattedWorkspaces[0].id);
     toast.success("Welcome back!");
     setTimeout(() => {
      window.location.href = next || "/dashboard";

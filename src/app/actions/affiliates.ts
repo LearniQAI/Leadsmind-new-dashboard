@@ -207,16 +207,38 @@ export async function deleteProgramme(id: string) {
 
 export async function applyToProgramme(
   programmeId: string,
-  email: string,
-  passwordPlain: string,
-  fullName: string,
-  phone: string,
-  answers: any,
+  emailOrData: any,
+  passwordPlain?: string,
+  fullName?: string,
+  phone?: string,
+  answers?: any,
   parentAffiliateId?: string | null
 ) {
   try {
     const adminClient = createAdminClient();
-    
+
+    let email = '';
+    let finalPasswordPlain = '';
+    let finalFullName = '';
+    let finalPhone = '';
+    let finalAnswers = answers;
+    let finalParentAffiliateId = parentAffiliateId;
+
+    if (emailOrData && typeof emailOrData === 'object') {
+      email = emailOrData.email || '';
+      finalPasswordPlain = emailOrData.password || emailOrData.passwordPlain || '';
+      finalFullName = emailOrData.full_name || emailOrData.fullName || '';
+      finalPhone = emailOrData.phone || '';
+      finalAnswers = emailOrData.answers || {};
+      finalParentAffiliateId = emailOrData.parentAffiliateId || emailOrData.parent_affiliate_id || null;
+    } else {
+      email = emailOrData || '';
+      finalPasswordPlain = passwordPlain || '';
+      finalFullName = fullName || '';
+      finalPhone = phone || '';
+      finalAnswers = answers || {};
+    }
+
     // 1. Fetch the programme details
     const { data: programme, error: progErr } = await adminClient
       .from('affiliate_programmes')
@@ -273,7 +295,7 @@ export async function applyToProgramme(
     }
 
     // 6. Hash password
-    const passwordHash = hashPassword(passwordPlain);
+    const passwordHash = hashPassword(finalPasswordPlain);
 
     // 7. Insert Affiliate
     const { data: affiliate, error: insertError } = await adminClient
@@ -281,14 +303,14 @@ export async function applyToProgramme(
       .insert({
         programme_id: programmeId,
         workspace_id: programme.workspace_id,
-        parent_affiliate_id: parentAffiliateId || null,
+        parent_affiliate_id: finalParentAffiliateId || null,
         email: email.toLowerCase().trim(),
         password_hash: passwordHash,
-        full_name: fullName,
-        phone: phone || null,
+        full_name: finalFullName,
+        phone: finalPhone || null,
         short_code: shortCode,
         status: initialStatus,
-        application_answers: answers || {},
+        application_answers: finalAnswers || {},
         approved_at: initialStatus === 'approved' ? new Date().toISOString() : null
       })
       .select()
@@ -322,7 +344,7 @@ export async function applyToProgramme(
     await sendWelcome(0, 'Welcome to the Affiliate Programme!', `
       <div style="font-family:sans-serif;padding:30px;color:#333;line-height:1.6;max-width:500px;margin:0 auto;border:1px solid #eaeaea;border-radius:12px;background:#ffffff;">
         <h2 style="color:#2563eb;margin-bottom:15px;">Welcome to the Family!</h2>
-        <p>Hi ${fullName},</p>
+        <p>Hi ${finalFullName},</p>
         <p>Thank you for applying to the <strong>${programme.name}</strong> affiliate programme. Your application status is currently: <strong>${initialStatus.toUpperCase()}</strong>.</p>
         ${initialStatus === 'approved' 
           ? `<p>Your referral link is: <strong>${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/r/${shortCode}</strong></p>` 
@@ -341,7 +363,7 @@ export async function applyToProgramme(
     await sendWelcome(1, 'Affiliate Day 1: How to get started', `
       <div style="font-family:sans-serif;padding:30px;color:#333;line-height:1.6;max-width:500px;margin:0 auto;border:1px solid #eaeaea;border-radius:12px;background:#ffffff;">
         <h2 style="color:#2563eb;margin-bottom:15px;">Tips to Maximize Your Earnings</h2>
-        <p>Hi ${fullName},</p>
+        <p>Hi ${finalFullName},</p>
         <p>Now that you've joined, here are a few tips to share your link effectively:</p>
         <ul>
           <li>Share your unique link on social media platforms (LinkedIn, Twitter, Facebook).</li>
@@ -359,7 +381,7 @@ export async function applyToProgramme(
     await sendWelcome(3, 'Affiliate Day 3: Promo assets & resources', `
       <div style="font-family:sans-serif;padding:30px;color:#333;line-height:1.6;max-width:500px;margin:0 auto;border:1px solid #eaeaea;border-radius:12px;background:#ffffff;">
         <h2 style="color:#2563eb;margin-bottom:15px;">Boost Your Conversions</h2>
-        <p>Hi ${fullName},</p>
+        <p>Hi ${finalFullName},</p>
         <p>We've loaded high-converting banners and copy swipe files into your affiliate portal.</p>
         <p>Log in now and use these ready-to-go assets to attract more referrals and earn more commissions.</p>
         <div style="margin:25px 0;text-align:center;">
@@ -372,7 +394,7 @@ export async function applyToProgramme(
     await sendWelcome(7, 'Affiliate Day 7: Weekly performance check-in', `
       <div style="font-family:sans-serif;padding:30px;color:#333;line-height:1.6;max-width:500px;margin:0 auto;border:1px solid #eaeaea;border-radius:12px;background:#ffffff;">
         <h2 style="color:#2563eb;margin-bottom:15px;">How's it going?</h2>
-        <p>Hi ${fullName},</p>
+        <p>Hi ${finalFullName},</p>
         <p>It's been a week since you registered! Check your click metrics and commission balances directly inside your dashboard.</p>
         <p>If you have any questions or need custom resources, feel free to reply to this email.</p>
         <div style="margin:25px 0;text-align:center;">
@@ -579,4 +601,20 @@ export async function suspendAffiliate(affiliateId: string) {
     return { success: false, error: err.message };
   }
 }
+
+export async function deleteAffiliate(affiliateId: string) {
+  try {
+    const supabase = await createServerClient();
+    // Hard delete. clicks/commissions/payouts cascade via FK; parent_affiliate_id -> null.
+    const { error } = await supabase
+      .from('affiliates')
+      .delete()
+      .eq('id', affiliateId);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 
