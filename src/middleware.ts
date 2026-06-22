@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 import { resolveHost } from '@/lib/domains/resolve'
 
-const PLATFORM_HOSTS = new Set(['leadsmind.com', 'www.leadsmind.com', 'app.leadsmind.com', 'localhost'])
+const PLATFORM_HOSTS = new Set([
+  'leadsmind.com',
+  'www.leadsmind.com',
+  'app.leadsmind.com',
+  'leadsmind.io',
+  'www.leadsmind.io',
+  'app.leadsmind.io',
+  'localhost'
+])
 
 export async function middleware(request: NextRequest) {
   const host = (request.headers.get('host') || '').split(':')[0].toLowerCase()
