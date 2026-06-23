@@ -27,7 +27,7 @@ import { Hero } from './user/Hero';
 import { Navbar } from './user/Navbar';
 import { Footer } from './user/Footer';
 import { PageSettings } from './PageSettings';
-import { Layout, Type, Image as ImageIcon, RectangleHorizontal as ButtonIcon, Square, Columns as ColumnsIcon, FormInput, Timer, CreditCard, MessageCircleQuestion, Section as SectionIcon, ArrowUpDown, Minus, Heading as HeadingIcon, AlignLeft, Video as VideoIcon, Star, Navigation, LayoutGrid, Layers, Settings, Search, Code as CodeIcon, ListOrdered, Sparkles } from 'lucide-react';
+import { Layout, Type, Image as ImageIcon, RectangleHorizontal as ButtonIcon, Square, Columns as ColumnsIcon, FormInput, Timer, CreditCard, MessageCircleQuestion, Section as SectionIcon, ArrowUpDown, Minus, Heading as HeadingIcon, AlignLeft, Video as VideoIcon, Star, Navigation, LayoutGrid, Layers, Settings, Search, Code as CodeIcon, ListOrdered, Sparkles, ArrowLeft, Trash2 } from 'lucide-react';
 import { BlogFeed } from './user/BlogFeed';
 import { RESOLVER } from '@/lib/builder/resolver';
 import { WebsiteSettings } from './WebsiteSettings';
@@ -79,7 +79,24 @@ export const Sidebar = ({
   const { pages, websiteData } = useBuilder();
   const [activeTab, setActiveTab] = React.useState<'elements' | 'layers' | 'settings' | 'page' | 'steps'>('elements');
 
-  const { connectors } = useEditor();
+  const { selected } = useEditor((state) => {
+    const selectedId = Array.from(state.events.selected)[0];
+    let selectedNode;
+
+    if (selectedId) {
+      selectedNode = {
+        id: selectedId,
+        name: state.nodes[selectedId].data.custom?.displayName || state.nodes[selectedId].data.displayName,
+        settings: state.nodes[selectedId].related && state.nodes[selectedId].related.settings,
+        isDeletable: (state.nodes[selectedId].data as any).rules?.canDelete ? (state.nodes[selectedId].data as any).rules.canDelete() : true,
+      };
+    }
+
+    return {
+      selected: selectedNode
+    };
+  });
+  const { connectors, actions: editorActions } = useEditor();
   const [customBlueprints, setCustomBlueprints] = React.useState<any[]>([]);
   
   // AI Layout Ingestion State
@@ -215,6 +232,57 @@ export const Sidebar = ({
       toast.error('Failed to save order: ' + err.message, { id: toastId });
     }
   };
+
+  if (selected && selected.id !== 'ROOT') {
+    return (
+      <div className="w-[300px] h-full bg-[#0b0b14] border-r border-white/5 flex flex-col font-sans select-none z-40 animate-in fade-in slide-in-from-left duration-200">
+        <div className="p-4 border-b border-white/5 flex items-center gap-3 bg-white/[0.02]">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => editorActions.selectNode(null)}
+            className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/5 rounded-lg transition-colors shrink-0"
+            title="Back to Elements"
+          >
+            <ArrowLeft size={16} />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[11px] font-black uppercase tracking-tighter flex items-center gap-2 truncate">
+              <div className="h-6 w-6 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30 shrink-0">
+                <Settings className="w-3 h-3 text-primary" />
+              </div>
+              <span className="truncate">{selected.name}</span>
+            </h2>
+          </div>
+          {selected.id !== 'ROOT' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                editorActions.delete(selected.id);
+              }}
+              className="h-8 w-8 hover:bg-rose-500/10 text-rose-500 rounded-lg transition-all shrink-0"
+              title="Delete Element"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-5 space-y-8 common-scrollbar">
+          {selected.settings && React.createElement(selected.settings as any)}
+          {!selected.settings && (
+            <div className="text-center py-20">
+              <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4 opacity-20">
+                <Settings className="w-6 h-6" />
+              </div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-white/20">No Modulators Available</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-[300px] h-full bg-[#0b0b14] border-r border-white/5 flex flex-col font-sans select-none z-40">

@@ -5,6 +5,7 @@ import { Editor, Frame, Element, useEditor } from '@craftjs/core';
 import { Sidebar } from './Sidebar';
 import { Viewport } from './Viewport';
 import { PropertiesPanel } from './PropertiesPanel';
+import { FloatingPropertiesPanel } from './FloatingPropertiesPanel';
 import { RenderNode } from './RenderNode';
 import { Container } from './user/Container';
 import { Section } from './user/Section';
@@ -803,17 +804,8 @@ const BuilderEditorLayout = ({
                         )}
                     </div>
                 </Viewport>
-                {/* Right Properties Transition Wrapper */}
-                <div
-                    className={cn(
-                        "transition-all duration-300 ease-in-out border-l border-white/5 bg-[#0b0b14] overflow-hidden shrink-0",
-                        propertiesOpen && !previewMode ? "w-[320px] opacity-100" : "w-0 opacity-0 border-none"
-                    )}
-                >
-                    <div className="w-[320px] h-full">
-                        <PropertiesPanel />
-                    </div>
-                </div>
+                {/* Floating Properties Panel */}
+                <FloatingPropertiesPanel />
             </div>
 
             {/* Save Blueprint Modal */}

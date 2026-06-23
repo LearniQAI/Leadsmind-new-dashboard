@@ -5,7 +5,7 @@ import { useNode, useEditor } from '@craftjs/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useBuilder } from './BuilderContext';
-import { Save, Copy, Trash2, RefreshCw } from 'lucide-react';
+import { Save, Copy, Trash2, RefreshCw, Settings } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -13,7 +13,7 @@ function cn(...inputs: ClassValue[]) {
 
 export const RenderNode = ({ render }: { render: React.ReactNode }) => {
   const { id } = useNode();
-  const { setBlueprintNodeId } = useBuilder();
+  const { setBlueprintNodeId, setPropertiesOpen } = useBuilder();
   const { actions: editorActions, query } = useEditor();
 
   const { isActive, isHovered, dom, name, parentId } = useNode((node) => ({
@@ -104,6 +104,7 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
         if (!isEnabled) return;
         e.preventDefault();
         e.stopPropagation();
+        editorActions.selectNode(id);
         setContextMenu({ x: e.clientX, y: e.clientY });
       }}
     >
@@ -138,6 +139,20 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
           style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            onClick={() => {
+              setPropertiesOpen(true);
+              window.dispatchEvent(new CustomEvent('open-floating-properties', { 
+                detail: { x: contextMenu.x, y: contextMenu.y } 
+              }));
+              setContextMenu(null);
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white/75 hover:text-white hover:bg-primary/20 rounded-xl transition-all text-left w-full"
+          >
+            <Settings size={12} className="text-[#a855f7] shrink-0" />
+            Properties
+          </button>
+          <div className="h-[1px] bg-white/5 my-1" />
           <button
             onClick={handleDuplicate}
             className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white/75 hover:text-white hover:bg-primary/20 rounded-xl transition-all text-left w-full"
