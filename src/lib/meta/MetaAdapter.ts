@@ -103,17 +103,15 @@ export class MetaAdapter {
     }
   }
 
-  /**
-   * Dispatches WhatsApp message using WhatsApp Business Cloud API.
-   */
   async sendWhatsApp(
     to: string,
-    text: string
+    text: string,
+    audioUrl?: string
   ): Promise<{ success: boolean; externalId?: string; error?: string }> {
     console.log(`[MetaAdapter] Dispatching WhatsApp to ${to}`);
 
     const phoneNumberId = this.credentials?.phone_number_id || '';
-    const encryptedToken = this.credentials?.access_token_encrypted || '';
+    const encryptedToken = this.credentials?.access_token_encrypted || this.credentials?.system_user_access_token_encrypted || '';
 
     if (phoneNumberId.startsWith('mock_') || !encryptedToken) {
       console.log('[MetaAdapter] Mock WhatsApp Dispatch Successful.');
@@ -124,27 +122,54 @@ export class MetaAdapter {
       const systemToken = decrypt(encryptedToken);
       const cleanTo = to.replace('+', '').trim();
 
-      const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${systemToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          recipient_type: 'individual',
-          to: cleanTo,
-          type: 'text',
-          text: { body: text }
-        })
-      });
+      let textResId = '';
+      if (text) {
+        const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${systemToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: cleanTo,
+            type: 'text',
+            text: { body: text }
+          })
+        });
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed WhatsApp request');
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error?.message || 'Failed WhatsApp request');
+        }
+        textResId = data.messages?.[0]?.id;
       }
 
-      return { success: true, externalId: data.messages?.[0]?.id };
+      if (audioUrl) {
+        const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${systemToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: cleanTo,
+            type: 'audio',
+            audio: { link: audioUrl }
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error?.message || 'Failed WhatsApp audio request');
+        }
+        return { success: true, externalId: data.messages?.[0]?.id || textResId };
+      }
+
+      return { success: true, externalId: textResId };
     } catch (e: any) {
       console.error('[MetaAdapter] WhatsApp Error:', e.message);
       return { success: false, error: e.message };

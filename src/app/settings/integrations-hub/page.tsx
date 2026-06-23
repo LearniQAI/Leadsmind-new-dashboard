@@ -122,8 +122,6 @@ export default function IntegrationsHubPage() {
                   desc: 'Your calendar syncs with LeadsMind, letting contacts book meetings directly', status: 'coming_soon', category: 'email_calendar' },
                 { name: 'Outlook & Microsoft 365', shortName: 'MS', color: '#0078d4',
                   desc: 'Sync your Outlook emails and calendar events automatically', status: 'coming_soon', category: 'email_calendar' },
-                { name: 'Google Drive', shortName: 'GD', color: '#34a853',
-                  desc: 'Attach files from Google Drive to contacts, deals, and messages', status: 'coming_soon', category: 'email_calendar' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
 
@@ -136,12 +134,6 @@ export default function IntegrationsHubPage() {
               {[
                 { name: 'Slack', shortName: 'SL', color: '#4a154b',
                   desc: 'Get notified in Slack when leads fill in forms or buy products', status: 'coming_soon', category: 'communication' },
-                { name: 'Microsoft Teams', shortName: 'MT', color: '#6264a7',
-                  desc: 'Send automated alerts to Teams channels', status: 'coming_soon', category: 'communication' },
-                { name: 'Telegram', shortName: 'TG', color: '#2ca5e0',
-                  desc: 'Receive important notifications on the go via Telegram', status: 'coming_soon', category: 'communication' },
-                { name: 'Zoom', shortName: 'ZM', color: '#2d8cff',
-                  desc: 'Auto-create Zoom meeting links for scheduled appointments', status: 'coming_soon', category: 'communication' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
 
@@ -156,10 +148,6 @@ export default function IntegrationsHubPage() {
                   desc: 'Connect LeadsMind to 5,000+ apps via Zapier triggers and actions', status: 'coming_soon', category: 'automation' },
                 { name: 'Make.com', shortName: 'MK', color: '#6d00cc',
                   desc: 'Build advanced workflows and scenarios', status: 'coming_soon', category: 'automation' },
-                { name: 'n8n', shortName: 'N8N', color: '#ea4b71',
-                  desc: 'Workflow automation with self-hosted flexibility', status: 'coming_soon', category: 'automation' },
-                { name: 'Pabbly Connect', shortName: 'PAB', color: '#1da1f2',
-                  desc: 'Send data to other tools with zero coding required', status: 'coming_soon', category: 'automation' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
 
@@ -174,8 +162,6 @@ export default function IntegrationsHubPage() {
                   desc: 'Sync customers, products, and order data in real time', status: 'coming_soon', category: 'ecommerce' },
                 { name: 'WooCommerce', shortName: 'WC', color: '#7f54b3',
                   desc: 'Import WooCommerce order history and update contact stages', status: 'coming_soon', category: 'ecommerce' },
-                { name: 'Takealot', shortName: 'TA', color: '#0099cc',
-                  desc: 'Sync sales and orders from South Africa\'s largest online retailer', status: 'coming_soon', category: 'ecommerce' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
 
@@ -184,52 +170,14 @@ export default function IntegrationsHubPage() {
               style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
               Marketing & Social
             </p>
-            <div className="flex flex-col gap-3 mb-8">
+            <div className="flex flex-col gap-3">
               {[
                 { name: 'Meta Ads', shortName: 'FB', color: '#1877f2',
                   desc: 'Sync Meta Lead Ads forms directly to your LeadsMind CRM pipelines', status: 'coming_soon', category: 'marketing' },
                 { name: 'Google Ads', shortName: 'GA', color: '#fbbc04',
                   desc: 'Track conversions and sync lead acquisition data', status: 'coming_soon', category: 'marketing' },
-                { name: 'LinkedIn', shortName: 'LI', color: '#0a66c2',
-                  desc: 'Import LinkedIn Lead Gen forms directly', status: 'coming_soon', category: 'marketing' },
-                { name: 'TikTok', shortName: 'TT', color: '#000000',
-                  desc: 'Sync TikTok Lead Generation forms', status: 'coming_soon', category: 'marketing' },
                 { name: 'Mailchimp', shortName: 'MC', color: '#ffe01b',
                   desc: 'Sync contact lists and newsletter subscriptions automatically', status: 'coming_soon', category: 'marketing' },
-              ].map(item => renderIntegrationCard(item as any))}
-            </div>
-
-            {/* Analytics */}
-            <p className="text-[10px] font-semibold uppercase tracking-[1.2px] mb-3"
-              style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
-              Analytics
-            </p>
-            <div className="flex flex-col gap-3 mb-8">
-              {[
-                { name: 'Google Analytics', shortName: 'GA4', color: '#e37400',
-                  desc: 'Monitor website traffic patterns and conversion funnels', status: 'coming_soon', category: 'analytics' },
-                { name: 'Meta Pixel', shortName: 'PIX', color: '#1877f2',
-                  desc: 'Track visitor actions and target custom Facebook Audiences', status: 'coming_soon', category: 'analytics' },
-                { name: 'HotJar', shortName: 'HJ', color: '#ff3c00',
-                  desc: 'View heatmaps and visitor recordings on your site', status: 'coming_soon', category: 'analytics' },
-                { name: 'Google Tag Manager', shortName: 'GTM', color: '#4285f4',
-                  desc: 'Deploy tracking tags without manual code edits', status: 'coming_soon', category: 'analytics' },
-              ].map(item => renderIntegrationCard(item as any))}
-            </div>
-
-            {/* Courier */}
-            <p className="text-[10px] font-semibold uppercase tracking-[1.2px] mb-3"
-              style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
-              Courier
-            </p>
-            <div className="flex flex-col gap-3">
-              {[
-                { name: 'The Courier Guy', shortName: 'TCG', color: '#e31e24',
-                  desc: 'Book shipments and track deliveries from invoice records', status: 'coming_soon', category: 'courier' },
-                { name: 'DHL South Africa', shortName: 'DHL', color: '#d40511',
-                  desc: 'Automate international courier shipping and updates', status: 'coming_soon', category: 'courier' },
-                { name: 'Skynet', shortName: 'SKY', color: '#003087',
-                  desc: 'Integrate local domestic logistics and tracking', status: 'coming_soon', category: 'courier' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
           </>

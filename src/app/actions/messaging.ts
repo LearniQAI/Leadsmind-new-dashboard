@@ -5,6 +5,9 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
 import { encrypt, decrypt } from '@/lib/encryption';
+import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { EmailAutomationService } from '@/lib/automations/EmailAutomationService';
+import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 
 const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
 
@@ -230,7 +233,7 @@ export async function getConversations() {
  }
 }
 
-export async function sendMessage(conversationId: string, content: string) {
+export async function sendMessage(conversationId: string, content: string, audioUrl?: string, transcript?: string) {
   const ids = await resolveConversationIds(conversationId);
   const targetConvId = ids[0] || conversationId;
 
@@ -246,7 +249,12 @@ export async function sendMessage(conversationId: string, content: string) {
     conversation_id: targetConvId,
     direction: 'outbound',
     content,
-    status: 'sending'
+    audio_url: audioUrl || null,
+    status: 'sending',
+    metadata: {
+      transcript: transcript || null,
+      audio_url: audioUrl || null
+    }
    })
    .select()
    .single();
@@ -259,7 +267,7 @@ export async function sendMessage(conversationId: string, content: string) {
   // If it's an email platform, send the actual email via Resend
   const { data: conv } = await supabase
    .from('conversations')
-   .select('platform, external_thread_id, contacts(email, phone)')
+   .select('platform, external_thread_id, contacts(id, email, phone, first_name)')
    .eq('id', targetConvId)
    .single();
 
@@ -270,11 +278,182 @@ export async function sendMessage(conversationId: string, content: string) {
    const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
    if (contact?.email) {
     try {
-     await sendEmail({
-      to: contact.email,
-      subject: 'New message from LeadsMind Support',
-      text: content,
-     });
+     if (audioUrl) {
+       // Voice note email!
+       // Fetch user, workspace, and branding configs
+       const { data: { user: currentUser } } = await supabase.auth.getUser();
+       const { data: sender } = await supabase
+         .from('users')
+         .select('first_name, last_name, profile_photo_url, job_title, identity_color')
+         .eq('id', currentUser?.id)
+         .maybeSingle();
+
+       const { data: ws } = await supabase
+         .from('workspaces')
+         .select('resend_api_key, email_from_name, email_from_address, name')
+         .eq('id', workspaceId)
+         .maybeSingle();
+
+       const { data: branding } = await supabase
+         .from('workspace_branding')
+         .select('logo_url, primary_color')
+         .eq('workspace_id', workspaceId)
+         .maybeSingle();
+
+       const providerConfig = await getWorkspaceEmailConfig(workspaceId);
+       const apiKey = providerConfig?.apiKey || ws?.resend_api_key || process.env.RESEND_API_KEY;
+       const fromName = providerConfig?.fromName || ws?.email_from_name || 'LeadsMind';
+       const fromEmail = providerConfig?.fromEmail || ws?.email_from_address || 'onboarding@resend.dev';
+
+       const senderFullName = `${sender?.first_name || ''} ${sender?.last_name || ''}`.trim() || 'Team Member';
+       const senderPhotoUrl = sender?.profile_photo_url || '';
+       const senderJobTitle = sender?.job_title || 'Workspace Member';
+       const workspaceName = ws?.name || 'LeadsMind Workspace';
+       const workspaceLogoUrl = branding?.logo_url || 'https://leadsmind.io/logo-white.png';
+       const workspaceColor = branding?.primary_color || '#5C4AC7';
+
+       const initials = senderFullName
+         .split(' ')
+         .map((n: string) => n[0])
+         .join('')
+         .slice(0, 2)
+         .toUpperCase() || 'TM';
+
+       const avatarHtml = senderPhotoUrl
+         ? `<img src="${senderPhotoUrl}" alt="${senderFullName}" width="56" height="56" style="border: 0; outline: none; display: block; border-radius: 28px; width: 56px; height: 56px; object-fit: cover;" />`
+         : `<div style="width: 56px; height: 56px; border-radius: 28px; background-color: ${workspaceColor}; color: #ffffff; text-align: center; line-height: 56px; font-size: 20px; font-weight: bold; font-family: Arial, sans-serif;">${initials}</div>`;
+
+       const htmlContent = `
+         <!DOCTYPE html>
+         <html>
+         <head>
+           <meta charset="utf-8">
+           <title>Voice Note from ${senderFullName}</title>
+         </head>
+         <body style="font-family: Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px 0;">
+           <table cellpadding="0" cellspacing="0" border="0" width="100%">
+             <tr>
+               <td align="center">
+                 <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                   
+                   <!-- Header Band -->
+                   <tr>
+                     <td style="background-color: ${workspaceColor}; padding: 16px 24px; text-align: center; vertical-align: middle;">
+                       <img src="${workspaceLogoUrl}" alt="Workspace Logo" height="28" style="border: 0; outline: none; display: block; margin: 0 auto; max-height: 28px;" />
+                     </td>
+                   </tr>
+
+                   <!-- Content Area -->
+                   <tr>
+                     <td style="padding: 24px;">
+                       
+                       <h2 style="font-size: 18px; font-weight: bold; color: #1e293b; margin: 0 0 16px 0;">Voice Note Received</h2>
+
+                       <!-- Identity Row -->
+                       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+                         <tr>
+                           <td width="56" valign="top" style="padding-right: 14px;">
+                             ${avatarHtml}
+                           </td>
+                           <td valign="middle">
+                             <div style="font-size: 17px; font-weight: bold; color: #1A1A1A; line-height: 1.2;">${senderFullName}</div>
+                             <div style="font-size: 13px; color: #888888; margin-top: 3px;">${senderJobTitle} · ${workspaceName}</div>
+                           </td>
+                         </tr>
+                       </table>
+
+                       <p style="font-size: 14px; line-height: 1.6; color: #2D2D2D; margin: 0 0 12px 0;">
+                         Hi ${contact?.first_name || 'there'},
+                       </p>
+
+                       ${content ? `<p style="font-size: 14px; line-height: 1.6; color: #2D2D2D; margin: 0 0 20px 0;">${content.replace(/\n/g, '<br>')}</p>` : ''}
+
+                       <!-- Audio Block -->
+                       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #F1EFE8; border-left: 4px solid ${workspaceColor}; border-radius: 12px; margin: 0 0 24px 0;">
+                         <tr>
+                           <td style="padding: 20px;">
+                             <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: ${workspaceColor}; margin-bottom: 12px; letter-spacing: 0.05em;">Voice Note Attachment</div>
+                             
+                             <div style="margin: 20px 0; text-align: center;">
+                               <a href="${audioUrl}" target="_blank" style="display: inline-block; width: 48px; height: 48px; line-height: 48px; background-color: ${workspaceColor}; border-radius: 24px; text-align: center; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+                                 <span style="color: #ffffff; font-size: 18px; margin-left: 4px; display: inline-block; vertical-align: middle; line-height: 48px;">▶</span>
+                               </a>
+                             </div>
+
+                             <div style="font-size: 12px; color: #888888; text-align: center; margin-bottom: 16px; font-family: Arial, sans-serif;">
+                               Tap the button above to listen in your browser
+                             </div>
+
+                             <div style="margin-bottom: 16px;">
+                               <audio controls style="width: 100%; border-radius: 8px;">
+                                 <source src="${audioUrl}" type="audio/mpeg" />
+                                 Your browser does not support audio playback inline.
+                               </audio>
+                             </div>
+
+                             <div style="text-align: left;">
+                               <a href="${audioUrl}" download style="font-size: 13px; color: ${workspaceColor}; font-weight: bold; text-decoration: none; display: inline-block;">
+                                 ⬇ Download Audio to listen offline
+                               </a>
+                             </div>
+                           </td>
+                         </tr>
+                       </table>
+
+                       <!-- Expandable Transcript Module -->
+                       ${transcript ? `
+                       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 20px 0;">
+                         <tr>
+                           <td>
+                             <details style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #FAFAFE; outline: none;">
+                               <summary style="padding: 16px; font-size: 13px; font-weight: bold; color: ${workspaceColor}; cursor: pointer; user-select: none; outline: none;">
+                                 ✨ View AI Audio Transcript
+                               </summary>
+                               <div style="padding: 16px; border-top: 1px solid #e2e8f0; font-size: 13.5px; line-height: 1.6; color: #475569; font-style: italic; background-color: #FAFAFE;">
+                                 "${transcript}"
+                               </div>
+                             </details>
+                           </td>
+                         </tr>
+                       </table>
+                       ` : ''}
+
+                     </td>
+                   </tr>
+
+                   <!-- Footer -->
+                   <tr>
+                     <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px; text-align: center; font-size: 11px; color: #64748b; line-height: 1.5;">
+                       Sent automatically by LeadsMind Voice Engine. Keep capturing premium high-intent leads.<br>
+                       © ${new Date().getFullYear()} LeadsMind Inc. All rights reserved.
+                     </td>
+                   </tr>
+
+                 </table>
+               </td>
+             </tr>
+           </table>
+         </body>
+         </html>
+       `;
+
+       await sendEmail({
+         to: contact.email,
+         subject: 'Voice note from ' + senderFullName,
+         html: htmlContent,
+         config: {
+           apiKey,
+           fromEmail,
+           fromName,
+         },
+       });
+     } else {
+       await sendEmail({
+        to: contact.email,
+        subject: 'New message from LeadsMind Support',
+        text: content,
+       });
+     }
      await supabase.from('messages').update({ status: 'delivered' }).eq('id', msgData.id);
     } catch (emailErr: any) {
      console.error('[messaging] Failed to send actual email:', emailErr);
@@ -324,7 +503,28 @@ export async function sendMessage(conversationId: string, content: string) {
     } else if (conv!.platform === 'instagram') {
       res = await adapter.sendInstagram(conv!.external_thread_id || '', content);
     } else if (conv!.platform === 'whatsapp') {
-      res = await adapter.sendWhatsApp(conv!.external_thread_id || '', content);
+      if (audioUrl) {
+        // Fetch user and workspace settings for WhatsApp intro
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const { data: sender } = await supabase
+          .from('users')
+          .select('first_name, last_name')
+          .eq('id', currentUser?.id)
+          .maybeSingle();
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('name')
+          .eq('id', workspaceId)
+          .maybeSingle();
+
+        const senderName = `${sender?.first_name || ''} ${sender?.last_name || ''}`.trim() || 'Team Member';
+        const workspaceName = ws?.name || 'LeadsMind';
+        const introText = `Hi, this is ${senderName} from ${workspaceName}. I've sent you a voice note below 👇\n\n${content || ''}`.trim();
+        
+        res = await adapter.sendWhatsApp(conv!.external_thread_id || '', introText, audioUrl);
+      } else {
+        res = await adapter.sendWhatsApp(conv!.external_thread_id || '', content);
+      }
     }
 
     if (res && res.success) {
@@ -334,12 +534,38 @@ export async function sendMessage(conversationId: string, content: string) {
       errorMessage = res?.error || 'Failed to dispatch via MetaAdapter';
     }
    } else {
-    messageFailed = true;
-    errorMessage = `${conv?.platform} connection not configured`;
+     messageFailed = true;
+     errorMessage = `${conv?.platform} connection not configured`;
    }
   } else {
     // Just mark as sent for other platforms for now
     await supabase.from('messages').update({ status: 'delivered' }).eq('id', msgData.id);
+  }
+
+  // Log the activity to the CRM timeline feed if it is a voice note and sending succeeded
+  if (audioUrl && !messageFailed) {
+    const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
+    if (contact?.id) {
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        await UnifiedActivityEngine.logActivity(
+          workspaceId,
+          currentUser?.id || null,
+          'contact',
+          contact.id,
+          'voice_note',
+          content || `Sent voice note via ${conv?.platform || 'system'}.`,
+          {
+            channel: conv?.platform || 'email',
+            audio_url: audioUrl,
+            transcript: transcript,
+            destination: conv?.platform === 'email' ? contact.email : contact.phone
+          }
+        );
+      } catch (actErr) {
+        console.error('[messaging] Failed to log voice activity:', actErr);
+      }
+    }
   }
 
   if (messageFailed) {
