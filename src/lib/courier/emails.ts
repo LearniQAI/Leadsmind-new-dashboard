@@ -17,7 +17,7 @@ export async function sendShipmentRegistered(shipment: any) {
   const trackDomain = useWhiteLabel && brand.custom_track_domain ? brand.custom_track_domain : 'track.leadsmind.io'
   
   const recipientEmail = shipment.recipient_email
-  if (recipientEmail) {
+  if (recipientEmail && !brand?.recipient_alerts_disabled) {
     const subject = `Your shipment ${shipment.tracking_number} has been registered`
     const html = `
       <div style="font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px;">
@@ -26,7 +26,7 @@ export async function sendShipmentRegistered(shipment: any) {
         <p>Hi ${shipment.recipient_name || 'there'},</p>
         <p>Your shipment with tracking number <strong>${shipment.tracking_number}</strong> has been registered and is currently pending carrier pickup.</p>
         <div style="margin: 20px 0;">
-          <a href="https://${trackDomain}/${shipment.tracking_number}" style="background-color: ${brand?.brand_colour || '#0b1310'}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Track Shipment</a>
+          <a href="https://${trackDomain}/${shipment.id}" style="background-color: ${brand?.brand_colour || '#0b1310'}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Track Shipment</a>
         </div>
         ${brand?.tagline ? `<p style="font-style: italic; color: #666; font-size: 0.9em;">${brand.tagline}</p>` : ''}
       </div>
@@ -120,7 +120,7 @@ export async function sendStatusUpdate(
   const trackDomain = useWhiteLabel && brand.custom_track_domain ? brand.custom_track_domain : 'track.leadsmind.io'
 
   const recipientEmail = shipment.recipient_email
-  if (recipientEmail) {
+  if (recipientEmail && !brand?.recipient_alerts_disabled) {
     const subject = `Update on shipment ${shipment.tracking_number}: ${status}`
     const html = `
       <div style="font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px;">
@@ -130,7 +130,7 @@ export async function sendStatusUpdate(
         <p>Your shipment with tracking number <strong>${shipment.tracking_number}</strong> is now <strong>${status}</strong>.</p>
         ${opts.location ? `<p><strong>Last Location:</strong> ${opts.location}</p>` : ''}
         <div style="margin: 20px 0;">
-          <a href="https://${trackDomain}/${shipment.tracking_number}" style="background-color: ${brand?.brand_colour || '#0b1310'}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Track Shipment</a>
+          <a href="https://${trackDomain}/${shipment.id}" style="background-color: ${brand?.brand_colour || '#0b1310'}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Track Shipment</a>
         </div>
         ${brand?.tagline ? `<p style="font-style: italic; color: #666; font-size: 0.9em;">${brand.tagline}</p>` : ''}
       </div>

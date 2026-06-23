@@ -4,6 +4,14 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
 import { revalidatePath } from 'next/cache';
 
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (e) {
+    // Gracefully handle next/cache bailout when run outside server context
+  }
+}
+
 // --- Invoice & Quote Actions (Restored) ---
 
 export async function getInvoices(workspaceId: string, contactId?: string) {
@@ -240,18 +248,19 @@ export async function deleteInvoice(id: string) {
  const supabase = await createServerClient();
  const { error } = await supabase.from('invoices').delete().eq('id', id);
  if (error) return { success: false, error: error.message };
- revalidatePath('/invoices');
- return { success: true };
+  safeRevalidatePath('/invoices');
+  return { success: true };
 }
 
 export async function updateInvoiceStatus(id: string, status: string) {
+  let data: any = null;
+
   if (status === 'paid') {
     try {
       const { AttributionEngine } = await import('@/lib/analytics/AttributionEngine');
       const res = await AttributionEngine.trackInvoicePayment(id);
       if (res.success && res.data) {
-        revalidatePath('/invoices');
-        return { success: true, data: res.data };
+        data = res.data;
       } else {
         console.error('[finance] Attribution Engine failed, falling back to simple update:', res.error);
       }
@@ -260,14 +269,17 @@ export async function updateInvoiceStatus(id: string, status: string) {
     }
   }
 
-  const supabase = await createServerClient();
-  const { data, error } = await supabase
-   .from('invoices')
-   .update({ status, updated_at: new Date().toISOString() })
-   .eq('id', id)
-   .select('*, contact:contacts(*)')
-   .single();
-  if (error) return { success: false, error: error.message };
+  if (!data) {
+    const supabase = await createServerClient();
+    const { data: updatedData, error } = await supabase
+     .from('invoices')
+     .update({ status, updated_at: new Date().toISOString() })
+     .eq('id', id)
+     .select('*, contact:contacts(*)')
+     .single();
+    if (error) return { success: false, error: error.message };
+    data = updatedData;
+  }
 
   if (status === 'paid' && data) {
     try {
@@ -291,9 +303,93 @@ export async function updateInvoiceStatus(id: string, status: string) {
     } catch (e) {
       console.error('[webhook-dispatch-error-fallback]', e);
     }
+
+    // Auto-create courier shipment if shipping address is present
+    try {
+      const metadata = (data.metadata || {}) as any
+      const customFields = (data.custom_field_values || {}) as any
+      const contactMetadata = (data.contact?.metadata || {}) as any
+      
+      const shippingAddress = 
+        metadata.shipping_address || 
+        metadata.shippingAddress || 
+        customFields.shipping_address || 
+        customFields.shippingAddress || 
+        contactMetadata.shipping_address || 
+        contactMetadata.shippingAddress
+      
+      if (shippingAddress) {
+        const { createAdminClient } = await import('@/lib/supabase/server')
+        const adminSupabase = createAdminClient()
+        
+        const trackingNum = `LM-INV-${data.invoice_number || data.id.substring(0, 8)}`
+        const recipientName = data.contact 
+          ? `${data.contact.first_name || ''} ${data.contact.last_name || ''}`.trim()
+          : null
+        const recipientEmail = data.contact?.email || null
+
+        const { data: existingShipment } = await adminSupabase
+          .from('courier_shipments')
+          .select('id')
+          .eq('workspace_id', data.workspace_id)
+          .eq('tracking_number', trackingNum)
+          .maybeSingle()
+
+        if (!existingShipment) {
+          const { createShipment } = await import('@/app/actions/shipments')
+          await createShipment(data.workspace_id, {
+            tracking_number: trackingNum,
+            recipient_name: recipientName || undefined,
+            recipient_email: recipientEmail || undefined
+          })
+
+          // Update source and source_id details
+          await adminSupabase
+            .from('courier_shipments')
+            .update({
+              source: 'invoice',
+              source_id: data.id
+            })
+            .eq('workspace_id', data.workspace_id)
+            .eq('tracking_number', trackingNum)
+        }
+      }
+    } catch (err) {
+      console.error('[finance-auto-shipment]', err)
+    }
+
+    // Affiliate Commission Conversion
+    try {
+      const contact = (data as any).contact;
+      if (contact?.referred_by_affiliate_id && contact?.referred_programme_id) {
+        const { createAdminClient } = await import('@/lib/supabase/server');
+        const adminSupabase = createAdminClient();
+        const { data: existingComm } = await adminSupabase
+          .from('affiliate_commissions')
+          .select('id')
+          .eq('source_type', 'invoice')
+          .eq('source_id', data.id)
+          .maybeSingle();
+
+        if (!existingComm) {
+          const { recordConversion } = await import('@/lib/affiliate/commission');
+          await recordConversion({
+            workspaceId: data.workspace_id,
+            affiliateId: contact.referred_by_affiliate_id,
+            programmeId: contact.referred_programme_id,
+            sourceType: 'invoice',
+            sourceId: data.id,
+            contactId: data.contact_id,
+            amount: Number(data.total_amount || 0)
+          });
+        }
+      }
+    } catch (affError) {
+      console.error('[affiliate-conversion-invoice-error]', affError);
+    }
   }
 
-  revalidatePath('/invoices');
+  safeRevalidatePath('/invoices');
   return { success: true, data };
 }
 
@@ -301,8 +397,8 @@ export async function deleteQuote(id: string) {
  const supabase = await createServerClient();
  const { error } = await supabase.from('quotes').delete().eq('id', id);
  if (error) return { success: false, error: error.message };
- revalidatePath('/quotes');
- return { success: true };
+  safeRevalidatePath('/quotes');
+  return { success: true };
 }
 
 export async function updateQuoteStatus(id: string, status: string) {
@@ -314,8 +410,8 @@ export async function updateQuoteStatus(id: string, status: string) {
   .select()
   .single();
  if (error) return { success: false, error: error.message };
- revalidatePath('/quotes');
- return { success: true, data };
+  safeRevalidatePath('/quotes');
+  return { success: true, data };
 }
 
 // --- Stripe & SaaS Subscription Actions ---
@@ -397,7 +493,7 @@ export async function writeOffInvoice(invoiceId: string, workspaceId: string, am
 
   if (updateError) return { success: false, error: updateError.message };
 
-  revalidatePath('/invoices');
+  safeRevalidatePath('/invoices');
   return { success: true };
 }
 
@@ -541,7 +637,7 @@ export async function saveInvoiceSettings(workspaceId: string, settings: any) {
       return { error: updateError.message };
     }
 
-    revalidatePath('/settings');
+    safeRevalidatePath('/settings');
     return { success: true };
   } catch (err: any) {
     console.error('[finance] save settings error:', err);

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { createHash } from 'crypto'
+import { cookies, headers } from 'next/headers'
 
 export interface AttributionResult {
   affiliateId: string | null
@@ -12,13 +13,21 @@ function hashIp(ip: string): string {
 }
 
 export async function resolveAttribution(
-  req: NextRequest,
+  req?: NextRequest | null,
   email?: string | null
 ): Promise<AttributionResult> {
   const supabase = createAdminClient()
 
   // 1) Cookie lm_ref
-  const cookieVal = req.cookies.get('lm_ref')?.value
+  let cookieVal: string | undefined
+  if (req) {
+    cookieVal = req.cookies.get('lm_ref')?.value
+  } else {
+    try {
+      cookieVal = cookies().get('lm_ref')?.value
+    } catch (e) {}
+  }
+
   if (cookieVal) {
     try {
       const parsed = JSON.parse(cookieVal)
@@ -29,21 +38,31 @@ export async function resolveAttribution(
   }
 
   // 2) URL ref query parameter
-  const ref = req.nextUrl.searchParams.get('ref')
-  if (ref) {
-    const { data: affiliate } = await supabase
-      .from('affiliates')
-      .select('id, programme_id')
-      .eq('short_code', ref)
-      .eq('status', 'approved')
-      .maybeSingle()
-    if (affiliate) {
-      return { affiliateId: affiliate.id, programmeId: affiliate.programme_id }
+  if (req) {
+    const ref = req.nextUrl.searchParams.get('ref')
+    if (ref) {
+      const { data: affiliate } = await supabase
+        .from('affiliates')
+        .select('id, programme_id')
+        .eq('short_code', ref)
+        .eq('status', 'approved')
+        .maybeSingle()
+      if (affiliate) {
+        return { affiliateId: affiliate.id, programmeId: affiliate.programme_id }
+      }
     }
   }
 
   // 3) IP Hash match (most recent unique click from same IP hash in last 30 days)
-  const ip = req.headers.get('x-forwarded-for') || req.ip || '127.0.0.1'
+  let ip = '127.0.0.1'
+  if (req) {
+    ip = req.headers.get('x-forwarded-for') || req.ip || '127.0.0.1'
+  } else {
+    try {
+      const reqHeaders = headers()
+      ip = reqHeaders.get('x-forwarded-for') || '127.0.0.1'
+    } catch (e) {}
+  }
   const ipHash = hashIp(ip.split(',')[0].trim())
   
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()

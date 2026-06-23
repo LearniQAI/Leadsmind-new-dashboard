@@ -5,6 +5,7 @@
 import { sendEmail } from '@/lib/email';
 import { createAdminClient } from '@/lib/supabase/server';
 import { SpamValidator } from '@/lib/intelligence/SpamValidator';
+import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 
 export interface EmailActionConfig {
   templateType: 'confirmation' | 'notification' | 'recovery' | 'welcome' | 'custom_followup' | 'voice_note' | 'voice_note_notification';
@@ -26,16 +27,18 @@ export const EmailAutomationService = {
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     const supabase = createAdminClient();
 
-    // 1. Fetch workspace custom email configs if they exist
+    // 1. Fetch workspace custom email configs if they exist using getWorkspaceEmailConfig
+    const providerConfig = await getWorkspaceEmailConfig(workspaceId);
+
     const { data: ws } = await supabase
       .from('workspaces')
       .select('resend_api_key, email_from_name, email_from_address')
       .eq('id', workspaceId)
       .maybeSingle();
 
-    const apiKey = ws?.resend_api_key || process.env.RESEND_API_KEY;
-    const fromName = ws?.email_from_name || config.fromName || 'LeadsMind';
-    const fromEmail = ws?.email_from_address || config.fromEmail || 'onboarding@resend.dev';
+    const apiKey = providerConfig?.apiKey || ws?.resend_api_key || process.env.RESEND_API_KEY;
+    const fromName = providerConfig?.fromName || ws?.email_from_name || config.fromName || 'LeadsMind';
+    const fromEmail = providerConfig?.fromEmail || ws?.email_from_address || config.fromEmail || 'onboarding@resend.dev';
 
     if (!apiKey) {
       return { success: false, error: 'Email service Resend API Key is missing in workspace config.' };
@@ -137,7 +140,7 @@ export const EmailAutomationService = {
     }
 
     // 3. Render HTML using structured navy branding template
-    const htmlContent = this.compileHtmlTemplate(config.templateType, subject, bodyText, variables);
+    const htmlContent = await this.compileHtmlTemplate(workspaceId, config.templateType, subject, bodyText, variables);
 
     // 4. Dispatch email with retry safety
     let attempts = 0;
@@ -194,24 +197,48 @@ export const EmailAutomationService = {
   /**
    * Compiles templates using LeadsMind Design System styles.
    */
-  compileHtmlTemplate(
+  async compileHtmlTemplate(
+    workspaceId: string,
     type: string,
     subject: string,
     body: string,
     variables: Record<string, any>
-  ): string {
+  ): Promise<string> {
+    const supabase = createAdminClient();
+
     if (type === 'voice_note' || type === 'voice_note_notification') {
       const senderFullName = variables.sender_full_name || variables.full_name || 'Team Member';
-      const senderPhotoUrl = variables.sender_photo_url || variables.profile_photo_url || 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/images/portrait-placeholder.png';
+      const senderPhotoUrl = variables.sender_photo_url || variables.profile_photo_url || '';
       const senderJobTitle = variables.sender_job_title || variables.job_title || 'AI Developer';
       const workspaceName = variables.workspace_name || 'LeadsMind Workspace';
-      const workspaceLogoUrl = variables.workspace_logo_url || 'https://leadsmind.io/logo-white.png';
+      
+      // Fetch workspace logo and brand color
+      const { data: branding } = await supabase
+        .from('workspace_branding')
+        .select('logo_url, primary_color')
+        .eq('workspace_id', workspaceId)
+        .maybeSingle();
+
+      const workspaceLogoUrl = branding?.logo_url || variables.workspace_logo_url || variables.logo_url || 'https://leadsmind.io/logo-white.png';
+      const workspaceColor = branding?.primary_color || '#5C4AC7';
+
       const audioHostedUrl = variables.audio_hosted_url || variables.audio_url || variables.source_url || '';
       const waveformImageUrl = variables.waveform_image_url || '';
       const transcript = variables.transcript || variables.original_text || '';
       const contactFirstName = variables.contact_first_name || variables.first_name || 'there';
       const voiceNoteCaption = variables.voice_note_caption || variables.caption || '';
       const durationFormatted = variables.duration_formatted || '0:30';
+
+      const initials = senderFullName
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase() || 'TM';
+
+      const avatarHtml = senderPhotoUrl
+        ? `<img src="${senderPhotoUrl}" alt="${senderFullName}" width="56" height="56" style="border: 0; outline: none; display: block; border-radius: 28px; width: 56px; height: 56px; object-fit: cover;" />`
+        : `<div style="width: 56px; height: 56px; border-radius: 28px; background-color: ${workspaceColor}; color: #ffffff; text-align: center; line-height: 56px; font-size: 20px; font-weight: bold; font-family: Arial, sans-serif;">${initials}</div>`;
 
       return `
         <!DOCTYPE html>
@@ -228,7 +255,7 @@ export const EmailAutomationService = {
                   
                   <!-- Header Band (Full bleed brand color strip with Vertical 16px / Horizontal 24px padding) -->
                   <tr>
-                    <td style="background-color: #5C4AC7; padding: 16px 24px; text-align: center; vertical-align: middle;">
+                    <td style="background-color: ${workspaceColor}; padding: 16px 24px; text-align: center; vertical-align: middle;">
                       <img src="${workspaceLogoUrl}" alt="Workspace Logo" height="28" style="border: 0; outline: none; display: block; margin: 0 auto; max-height: 28px;" />
                     </td>
                   </tr>
@@ -244,7 +271,7 @@ export const EmailAutomationService = {
                       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 24px 0;">
                         <tr>
                           <td width="56" valign="top" style="padding-right: 14px;">
-                            <img src="${senderPhotoUrl}" alt="${senderFullName}" width="56" height="56" style="border: 0; outline: none; display: block; border-radius: 28px; width: 56px; height: 56px; object-fit: cover;" />
+                            ${avatarHtml}
                           </td>
                           <td valign="middle">
                             <div style="font-size: 17px; font-weight: bold; color: #1A1A1A; line-height: 1.2;">${senderFullName}</div>
@@ -269,10 +296,10 @@ export const EmailAutomationService = {
                       ` : ''}
 
                       <!-- Audio Block (Soft warm gray background container #F1EFE8 with 12px rounded borders & 4px left highlight brand color line) -->
-                      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #F1EFE8; border-left: 4px solid #5C4AC7; border-radius: 12px; margin: 0 0 24px 0;">
+                      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #F1EFE8; border-left: 4px solid ${workspaceColor}; border-radius: 12px; margin: 0 0 24px 0;">
                         <tr>
                           <td style="padding: 20px;">
-                            <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: #5C4AC7; margin-bottom: 12px; letter-spacing: 0.05em;">Voice Note Attachment</div>
+                            <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: ${workspaceColor}; margin-bottom: 12px; letter-spacing: 0.05em;">Voice Note Attachment</div>
                             
                             <!-- Static PNG Waveform Fallback Image -->
                             ${waveformImageUrl ? `
@@ -283,7 +310,7 @@ export const EmailAutomationService = {
 
                             <!-- Play Integration Trigger (Centered 48x48px circular play action element) -->
                             <div style="margin: 20px 0; text-align: center;">
-                              <a href="${audioHostedUrl}" target="_blank" style="display: inline-block; width: 48px; height: 48px; line-height: 48px; background-color: #5C4AC7; border-radius: 24px; text-align: center; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+                              <a href="${audioHostedUrl}" target="_blank" style="display: inline-block; width: 48px; height: 48px; line-height: 48px; background-color: ${workspaceColor}; border-radius: 24px; text-align: center; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
                                 <span style="color: #ffffff; font-size: 18px; margin-left: 4px; display: inline-block; vertical-align: middle; line-height: 48px;">▶</span>
                               </a>
                             </div>
@@ -304,7 +331,7 @@ export const EmailAutomationService = {
 
                             <!-- Download Actions Link -->
                             <div style="text-align: left;">
-                              <a href="${audioHostedUrl}" download style="font-size: 13px; color: #5C4AC7; font-weight: bold; text-decoration: none; display: inline-block;">
+                              <a href="${audioHostedUrl}" download style="font-size: 13px; color: ${workspaceColor}; font-weight: bold; text-decoration: none; display: inline-block;">
                                 ⬇ Download MP3 to listen offline
                               </a>
                             </div>
@@ -318,7 +345,7 @@ export const EmailAutomationService = {
                         <tr>
                           <td>
                             <details style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #FAFAFE; outline: none;">
-                              <summary style="padding: 16px; font-size: 13px; font-weight: bold; color: #5C4AC7; cursor: pointer; user-select: none; outline: none;">
+                              <summary style="padding: 16px; font-size: 13px; font-weight: bold; color: ${workspaceColor}; cursor: pointer; user-select: none; outline: none;">
                                 ✨ View AI Audio Transcript
                               </summary>
                               <div style="padding: 16px; border-top: 1px solid #e2e8f0; font-size: 13.5px; line-height: 1.6; color: #475569; font-style: italic; background-color: #FAFAFE;">

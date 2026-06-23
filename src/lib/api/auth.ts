@@ -28,11 +28,44 @@ function extractKey(req: NextRequest): string | null {
  * Validate an inbound API key and resolve it to a workspace.
  * Order: 1) hashed lookup in workspace_api_keys  2) legacy raw workspaces.api_key
  */
-export async function validateApiKey(req: NextRequest): Promise<ApiAuth> {
+export async function validateApiKey(req: NextRequest, requiredScope?: string): Promise<ApiAuth> {
   const raw = extractKey(req)
-  if (!raw) return { ok: false, workspaceId: '', keyId: null, status: 401, error: 'Missing API key' }
+  if (!raw) return { ok: false, workspaceId: '', keyId: null, status: 401, error: 'Missing API key or token' }
 
   const supabase = createAdminClient()
+
+  // Check if it's an OAuth access token (does not start with typical API key prefixes)
+  const isApiKey = raw.startsWith('lm_live_') || raw.startsWith('lm_test_') || raw.length === 32 || raw.includes('_key')
+  
+  if (!isApiKey) {
+    try {
+      const { data: tokenRow } = await supabase
+        .from('oauth_access_tokens')
+        .select('*')
+        .eq('token', raw)
+        .maybeSingle()
+
+      if (tokenRow) {
+        const expiresAt = new Date(tokenRow.expires_at).getTime()
+        if (expiresAt < Date.now()) {
+          return { ok: false, workspaceId: '', keyId: null, status: 401, error: 'OAuth token expired' }
+        }
+
+        if (requiredScope) {
+          const scopes: string[] = tokenRow.scopes || []
+          const hasScope = scopes.includes(requiredScope) || scopes.includes('*') || scopes.includes('all') || scopes.includes('admin')
+          if (!hasScope) {
+            return { ok: false, workspaceId: '', keyId: null, status: 403, error: `Insufficient permissions. Scope '${requiredScope}' required.` }
+          }
+        }
+
+        return { ok: true, workspaceId: tokenRow.workspace_id, keyId: null, status: 200, error: '' }
+      }
+    } catch (e) {
+      // Graceful bypass if oauth_access_tokens table is missing in local dev
+    }
+  }
+
   const keyHash = createHash('sha256').update(raw).digest('hex')
 
   // 1) Modern hashed key
@@ -50,6 +83,15 @@ export async function validateApiKey(req: NextRequest): Promise<ApiAuth> {
       .update({ last_used_at: new Date().toISOString() })
       .eq('id', keyRow.id)
       .then(() => {}, () => {})
+
+    // Check scope if defined on the key metadata
+    if (requiredScope && (keyRow as any).scopes) {
+      const scopes: string[] = (keyRow as any).scopes || []
+      const hasScope = scopes.includes(requiredScope) || scopes.includes('*') || scopes.includes('all') || scopes.length === 0
+      if (!hasScope) {
+        return { ok: false, workspaceId: '', keyId: null, status: 403, error: `Insufficient permissions. Scope '${requiredScope}' required.` }
+      }
+    }
     return { ok: true, workspaceId: keyRow.workspace_id, keyId: keyRow.id, status: 200, error: '' }
   }
 
@@ -62,7 +104,7 @@ export async function validateApiKey(req: NextRequest): Promise<ApiAuth> {
 
   if (ws) return { ok: true, workspaceId: ws.id, keyId: null, status: 200, error: '' }
 
-  return { ok: false, workspaceId: '', keyId: null, status: 401, error: 'Invalid API key' }
+  return { ok: false, workspaceId: '', keyId: null, status: 401, error: 'Invalid API key or token' }
 }
 
 /** Standard error envelope. */

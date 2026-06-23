@@ -302,6 +302,43 @@ export async function POST(req: NextRequest) {
       itemName: item_name
     });
 
+    // Affiliate Commission Conversion
+    try {
+      if (contactId) {
+        const { data: contact } = await supabase
+          .from("contacts")
+          .select("referred_by_affiliate_id, referred_programme_id")
+          .eq("id", contactId)
+          .single();
+
+        if (contact?.referred_by_affiliate_id && contact?.referred_programme_id) {
+          const { data: existingComm } = await supabase
+            .from('affiliate_commissions')
+            .select('id')
+            .eq('source_type', 'order')
+            .eq('source_id', payload.pf_payment_id || m_payment_id)
+            .maybeSingle();
+
+          if (!existingComm) {
+            const ipHashStr = crypto.createHash('md5').update(clientIP).digest('hex');
+            const { recordConversion } = await import('@/lib/affiliate/commission');
+            await recordConversion({
+              workspaceId: workspaceId,
+              affiliateId: contact.referred_by_affiliate_id,
+              programmeId: contact.referred_programme_id,
+              sourceType: 'order',
+              sourceId: payload.pf_payment_id || m_payment_id,
+              contactId: contactId,
+              amount: parseFloat(amount_gross || '0'),
+              ipHash: ipHashStr
+            });
+          }
+        }
+      }
+    } catch (affError) {
+      console.error('[affiliate-conversion-payfast-error]', affError);
+    }
+
     return NextResponse.json({ success: true, processed: true });
   } catch (err: any) {
     console.error("[PayFast Webhook] Exception occurred:", err);

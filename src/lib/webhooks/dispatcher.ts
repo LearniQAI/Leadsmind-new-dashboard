@@ -65,14 +65,22 @@ export async function dispatchWebhook(
   data: Record<string, any>
 ): Promise<void> {
   try {
-    // Fetch all active webhooks for this workspace
+    // Fetch all active webhooks for this workspace from webhook_endpoints
     const { data: webhooks, error } = await supabase
-      .from('workspace_webhooks')
-      .select('id, url, label')
+      .from('webhook_endpoints')
+      .select('id, url, events, secret')
       .eq('workspace_id', workspaceId)
-      .eq('active', true)
+      .eq('is_active', true)
 
     if (error || !webhooks || webhooks.length === 0) return
+
+    // Filter webhooks that match the event type
+    const activeWebhooks = webhooks.filter((w) => {
+      const evs = w.events || []
+      return evs.includes(event) || evs.includes('*') || evs.includes('all')
+    })
+
+    if (activeWebhooks.length === 0) return
 
     const payload: WebhookPayload = {
       event,
@@ -86,10 +94,11 @@ export async function dispatchWebhook(
     const payloadString = JSON.stringify(payload)
 
     // Fire to all registered webhook URLs in parallel
-    const fires = webhooks.map(async (webhook) => {
+    const fires = activeWebhooks.map(async (webhook) => {
+      const startTime = Date.now()
       try {
-        // Generate HMAC signature
-        const secret = process.env.WEBHOOK_SIGNING_SECRET ?? 'leadsmind_webhook_secret'
+        // Generate HMAC signature using webhook secret
+        const secret = webhook.secret || process.env.WEBHOOK_SIGNING_SECRET || 'leadsmind_webhook_secret'
         const signature = crypto
           .createHmac('sha256', secret)
           .update(payloadString)
@@ -112,30 +121,34 @@ export async function dispatchWebhook(
         })
 
         clearTimeout(timeout)
+        const latency = Date.now() - startTime
 
         // Log delivery attempt
+        const payloadWithLatency = { ...payload, latency_ms: latency }
         await supabase.from('webhook_delivery_logs').insert({
           webhook_id: webhook.id,
           workspace_id: workspaceId,
           event,
-          payload: payload,
+          payload: payloadWithLatency,
           response_status: res.status,
           success: res.ok,
           delivered_at: new Date().toISOString(),
-        }).single()
+        })
 
       } catch (err: any) {
+        const latency = Date.now() - startTime
         // Log failure
+        const payloadWithLatency = { ...payload, latency_ms: latency }
         await supabase.from('webhook_delivery_logs').insert({
           webhook_id: webhook.id,
           workspace_id: workspaceId,
           event,
-          payload: payload,
+          payload: payloadWithLatency,
           response_status: 0,
           success: false,
           error_message: err.message,
           delivered_at: new Date().toISOString(),
-        }).single()
+        })
       }
     })
 

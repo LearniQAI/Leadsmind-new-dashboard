@@ -234,6 +234,19 @@ export async function POST(
     }
 
     // 4. Merge or Create CRM Contact
+    let referredByAffiliateId = null;
+    let referredProgrammeId = null;
+    try {
+      const { resolveAttribution } = await import('@/lib/affiliate/attribution');
+      const attr = await resolveAttribution(req, submissionEmail);
+      if (attr.affiliateId && attr.programmeId) {
+        referredByAffiliateId = attr.affiliateId;
+        referredProgrammeId = attr.programmeId;
+      }
+    } catch (e) {
+      console.error('[public-submit-resolve-attribution-error]', e);
+    }
+
     if (existingContact) {
       // Safe merge: update only if new data is provided
       const updates: any = {};
@@ -243,6 +256,14 @@ export async function POST(
       if (submissionEmail && !existingContact.email) updates.email = submissionEmail;
       if (submissionCompany && !existingContact.company) updates.company = submissionCompany;
       
+      // Stamp referred affiliate details if not set
+      if (referredByAffiliateId && !existingContact.referred_by_affiliate_id) {
+        updates.referred_by_affiliate_id = referredByAffiliateId;
+      }
+      if (referredProgrammeId && !existingContact.referred_programme_id) {
+        updates.referred_programme_id = referredProgrammeId;
+      }
+
       // Merge first-touch attribution if not already set on the contact
       const firstTouchSource = attribution?.first_touch_source;
       const firstTouchKeyword = attribution?.first_touch_keyword;
@@ -291,6 +312,8 @@ export async function POST(
           first_touch_source: firstTouchSource,
           first_touch_keyword: firstTouchKeyword,
           first_touch_page: firstTouchPage,
+          referred_by_affiliate_id: referredByAffiliateId,
+          referred_programme_id: referredProgrammeId,
           // POPIA consent parameter logging on creation
           consent_timestamp: new Date().toISOString(),
           consent_ip: ip,

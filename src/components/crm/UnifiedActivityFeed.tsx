@@ -5,6 +5,7 @@ import { Activity, Clock, FileText, User, ArrowRight, Phone, Mail, Building2, Li
 import Link from 'next/link';
 import { AvatarImage } from '@/components/common/AvatarImage';
 import { VoiceNotePlayer } from '@/components/common/VoiceNotePlayer';
+import { VoiceNoteCard } from '@/components/common/VoiceNoteCard';
 
 export function UnifiedActivityFeed({ 
   activities,
@@ -59,62 +60,73 @@ export function UnifiedActivityFeed({
                   {getIcon(item.activity_type, item.entity_type)}
                 </div>
                 <div className="pt-1 w-full min-w-0">
-                  <div className="flex items-center justify-between gap-4 mb-1">
-                    <span className="text-xs font-bold flex items-center gap-2 min-w-0">
-                      {hasUser ? (
-                        <>
-                          <AvatarImage
-                            src={item.auth_user.profile_photo_url}
-                            emailPresetUrl={item.auth_user.avatar_preset_id ? `/assets/presets/${item.auth_user.avatar_preset_id}.png` : null}
-                            initials={initials}
-                            bgColor={item.auth_user.identity_color || '#3b82f6'}
-                            size={32}
-                            shape="circle"
-                            className="border-slate-200/20 hover:scale-100 shadow-sm"
-                          />
-                          <span style={{ color: nameColor }} className="truncate">
-                            {item.auth_user.full_name || `${firstName} ${lastName}`.trim() || item.auth_user.email.split('@')[0]}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-t3">System Workflow</span>
-                      )}
-                    </span>
-                    <span className="text-[10px] text-t4 uppercase tracking-widest font-semibold shrink-0">
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  
                   {isVoice ? (
-                    <div className="mt-2 w-full max-w-full">
-                      <VoiceNotePlayer audioUrl={item.metadata?.audio_url || item.source_url || ""} theme="dark" />
-                      {item.content && (
-                        <p className="text-sm text-t2 mt-2 font-dm-sans italic">
-                          "{item.content}"
-                        </p>
-                      )}
-                    </div>
+                    <VoiceNoteCard
+                      sender={item.auth_user ? {
+                        first_name: item.auth_user.first_name,
+                        last_name: item.auth_user.last_name,
+                        full_name: item.auth_user.full_name || `${item.auth_user.first_name || ''} ${item.auth_user.last_name || ''}`.trim() || null,
+                        profile_photo_url: item.auth_user.profile_photo_url,
+                        avatar_preset_id: item.auth_user.avatar_preset_id,
+                        job_title: item.auth_user.job_title || "Team Member",
+                        identity_color: item.auth_user.identity_color
+                      } : undefined}
+                      createdAt={item.created_at}
+                      deliveryChannel={item.metadata?.channel || 'internal'}
+                      audioUrl={item.metadata?.audio_url || item.source_url || ''}
+                      audioDuration={item.metadata?.duration}
+                      caption={item.content}
+                      transcript={item.metadata?.transcript || item.original_text}
+                      theme="dark"
+                    />
                   ) : (
-                    <p className="text-sm text-white mt-1 font-dm-sans">
-                      {item.content}
-                    </p>
+                    <>
+                      <div className="flex items-center justify-between gap-4 mb-1">
+                        <span className="text-xs font-bold flex items-center gap-2 min-w-0">
+                          {hasUser ? (
+                            <>
+                              <AvatarImage
+                                src={item.auth_user.profile_photo_url}
+                                emailPresetUrl={item.auth_user.avatar_preset_id ? `/assets/presets/${item.auth_user.avatar_preset_id}.png` : null}
+                                initials={initials}
+                                bgColor={item.auth_user.identity_color || '#3b82f6'}
+                                size={32}
+                                shape="circle"
+                                className="border-slate-200/20 hover:scale-100 shadow-sm"
+                              />
+                              <span style={{ color: nameColor }} className="truncate">
+                                {item.auth_user.full_name || `${firstName} ${lastName}`.trim() || item.auth_user.email.split('@')[0]}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-t3">System Workflow</span>
+                          )}
+                        </span>
+                        <span className="text-[10px] text-t4 uppercase tracking-widest font-semibold shrink-0">
+                          {new Date(item.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-white mt-1 font-dm-sans">
+                        {item.content}
+                      </p>
+                      
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
+                          <LinkIcon size={10} /> {item.entity_type}
+                        </span>
+                        {item.metadata?.channel === 'whatsapp' && (
+                          <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
+                            WhatsApp {item.metadata.destination ? `(${item.metadata.destination})` : ''}
+                          </span>
+                        )}
+                        {item.metadata?.channel === 'email' && (
+                          <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
+                            Email {item.metadata.destination ? `(${item.metadata.destination})` : ''}
+                          </span>
+                        )}
+                      </div>
+                    </>
                   )}
-                  
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
-                      <LinkIcon size={10} /> {item.entity_type}
-                    </span>
-                    {item.metadata?.channel === 'whatsapp' && (
-                      <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
-                        WhatsApp {item.metadata.destination ? `(${item.metadata.destination})` : ''}
-                      </span>
-                    )}
-                    {item.metadata?.channel === 'email' && (
-                      <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
-                        Email {item.metadata.destination ? `(${item.metadata.destination})` : ''}
-                      </span>
-                    )}
-                  </div>
                 </div>
               </div>
             );

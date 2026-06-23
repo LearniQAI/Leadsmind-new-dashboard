@@ -43,7 +43,7 @@ export default async function AffiliateRegisterPage({ searchParams }: PageProps)
     // Fetch active programmes for this workspace only
     const { data: programmes } = await supabase
       .from('affiliate_programmes')
-      .select('id, name, commission_value, commission_type')
+      .select('id, name, commission_value, commission_type, registration_settings')
       .eq('workspace_id', resolvedWorkspaceId)
       .eq('status', 'active');
 

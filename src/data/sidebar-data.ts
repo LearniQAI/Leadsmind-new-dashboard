@@ -54,7 +54,18 @@ const sidebarData: SidebarCategory[] = [
    { id: 18, label: "Products", icon: "fa-light fa-box", link: "/products", permission: "commerce" },
    { id: 19, label: "Orders", icon: "fa-light fa-bag-shopping", link: "/orders", permission: "commerce" },
    { id: 191, label: "Shipments", icon: "fa-light fa-truck", link: "/shipments", permission: "commerce" },
-   { id: 192, label: "Affiliates", icon: "fa-light fa-handshake", link: "/affiliates", permission: "commerce" },
+   {
+    id: 192,
+    label: "Affiliates",
+    icon: "fa-light fa-handshake",
+    link: "/affiliates",
+    permission: "commerce",
+    subItems: [
+     { label: "Management", link: "/affiliates" },
+     { label: "Affiliate Portal", link: "/affiliate-portal" },
+     { label: "Program Marketplace", link: "/affiliate-marketplace" },
+    ]
+   },
    {
     id: 20,
     label: "Finance",

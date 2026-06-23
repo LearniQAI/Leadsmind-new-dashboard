@@ -15,6 +15,7 @@ import {
   inviteTeamMember,
   updateWorkspaceBranding,
   createWebhook,
+  deleteWebhook,
   getWorkspaceApiKey,
   generateWorkspaceApiKey,
   updateWorkspaceLogo,
@@ -323,6 +324,23 @@ export default function SettingsClient({
       router.refresh();
     }
   };
+  
+  const handleDeleteWebhook = async (id: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Webhook?',
+      description: 'Are you sure you want to permanently delete this webhook? It will no longer receive event notifications.',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        const res = await deleteWebhook(id);
+        if (res.error) toast.error(res.error);
+        else {
+          toast.success('Webhook deleted successfully');
+          router.refresh();
+        }
+      }
+    });
+  };
 
   const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -487,7 +505,7 @@ export default function SettingsClient({
               workspaceId={branding?.workspace_id || ''}
               webhooks={webhooks}
               onNewWebhook={handleNewWebhook}
-              onDeleteWebhook={() => toast.info('Delete functionality coming soon')}
+              onDeleteWebhook={handleDeleteWebhook}
             />
           )}
 
