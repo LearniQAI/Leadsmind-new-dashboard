@@ -5,7 +5,10 @@ import {
   Package, Truck, CheckCircle, AlertCircle, Clock, Plus, Search,
   X, RefreshCw, Palette
 } from 'lucide-react'
-import { createShipment, getShipmentEvents, updateTrackingBrand, uploadBrandLogo } from '@/app/actions/shipments'
+import {
+  createShipment, getShipmentEvents, updateTrackingBrand, uploadBrandLogo,
+  updateShipmentStatus, syncShipmentTracking
+} from '@/app/actions/shipments'
 import { toast } from 'sonner'
 
 interface ShipmentsClientProps {
@@ -32,6 +35,15 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
   const [selectedShipment, setSelectedShipment] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
   const [loadingEvents, setLoadingEvents] = useState(false)
+
+  // Manual Edit / Sync State
+  const [syncingId, setSyncingId] = useState<string | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [showStatusEdit, setShowStatusEdit] = useState(false)
+  const [editStatus, setEditStatus] = useState('PENDING')
+  const [editActive, setEditActive] = useState(true)
+  const [editRawStatus, setEditRawStatus] = useState('')
+  const [editLocation, setEditLocation] = useState('')
 
   // Add Shipment Modal State
   const [showAddModal, setShowAddModal] = useState(false)
@@ -130,6 +142,11 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
 
   const handleSelectShipment = async (shipment: any) => {
     setSelectedShipment(shipment)
+    setEditStatus(shipment.status)
+    setEditActive(shipment.active)
+    setEditRawStatus(shipment.raw_status || '')
+    setEditLocation(shipment.last_location || '')
+    setShowStatusEdit(false)
     setLoadingEvents(true)
     const res = await getShipmentEvents(shipment.id)
     setLoadingEvents(false)
@@ -137,6 +154,81 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
       setEvents(res.data || [])
     } else {
       toast.error('Failed to load tracking events')
+    }
+  }
+
+  const handleManualStatusUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedShipment) return
+    setUpdatingStatus(true)
+    const res = await updateShipmentStatus(selectedShipment.id, {
+      status: editStatus as any,
+      active: editActive,
+      raw_status: editRawStatus.trim() || undefined,
+      location: editLocation.trim() || undefined
+    })
+    setUpdatingStatus(false)
+    if (!res.success) {
+      toast.error(res.error || 'Failed to update status')
+      return
+    }
+    toast.success('Shipment status updated manually!')
+    setShowStatusEdit(false)
+
+    const updatedShipments = shipments.map((s) =>
+      s.id === selectedShipment.id
+        ? {
+            ...s,
+            status: editStatus,
+            active: editActive,
+            raw_status: editRawStatus.trim() || 'Manually updated by admin',
+            last_location: editLocation.trim() || s.last_location,
+            updated_at: new Date().toISOString()
+          }
+        : s
+    )
+    setShipments(updatedShipments)
+
+    const refreshed = updatedShipments.find((s) => s.id === selectedShipment.id)
+    if (refreshed) {
+      setSelectedShipment(refreshed)
+      setLoadingEvents(true)
+      const eventsRes = await getShipmentEvents(refreshed.id)
+      setLoadingEvents(false)
+      if (eventsRes.success) {
+        setEvents(eventsRes.data || [])
+      }
+    }
+  }
+
+  const handleSyncTracking = async () => {
+    if (!selectedShipment) return
+    setSyncingId(selectedShipment.id)
+    const res = await syncShipmentTracking(selectedShipment.id)
+    setSyncingId(null)
+    if (!res.success) {
+      toast.error(res.error || 'Failed to sync with AfterShip')
+      return
+    }
+    toast.success('Sync with AfterShip successful!')
+
+    if (res.data) {
+      const updatedShipments = shipments.map((s) =>
+        s.id === selectedShipment.id ? res.data : s
+      )
+      setShipments(updatedShipments)
+      setSelectedShipment(res.data)
+      setEditStatus(res.data.status)
+      setEditActive(res.data.active)
+      setEditRawStatus(res.data.raw_status || '')
+      setEditLocation(res.data.last_location || '')
+    }
+
+    setLoadingEvents(true)
+    const eventsRes = await getShipmentEvents(selectedShipment.id)
+    setLoadingEvents(false)
+    if (eventsRes.success) {
+      setEvents(eventsRes.data || [])
     }
   }
 
@@ -283,6 +375,97 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Quick Action Controls */}
+            <div className="flex gap-2 mb-6 border-b border-white/10 pb-4">
+              <button
+                onClick={handleSyncTracking}
+                disabled={syncingId === selectedShipment.id}
+                className="flex-1 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncingId === selectedShipment.id ? 'animate-spin' : ''}`} />
+                {syncingId === selectedShipment.id ? 'Syncing...' : 'Sync AfterShip'}
+              </button>
+              <button
+                onClick={() => setShowStatusEdit(!showStatusEdit)}
+                className="flex-1 px-3 py-2 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 text-xs font-semibold text-blue-400 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Palette className="w-3.5 h-3.5" />
+                {showStatusEdit ? 'Close Editor' : 'Update Status'}
+              </button>
+            </div>
+
+            {/* Inline Manual Update Form */}
+            {showStatusEdit && (
+              <form onSubmit={handleManualStatusUpdate} className="mb-6 p-4 rounded-lg bg-white/5 border border-white/10 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                <h5 className="text-xs font-bold text-white uppercase tracking-wider">Manually Update Shipment</h5>
+                
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Status</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded bg-[#0b1329] border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500 font-sans"
+                  >
+                    {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                      <option key={key} value={key} className="bg-[#0b1329] text-white">{cfg.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Active Status</span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editActive}
+                      onChange={(e) => setEditActive(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    <span className="ml-2 text-xs text-gray-300">{editActive ? 'Active' : 'Closed'}</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Location (Optional)</label>
+                  <input
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    placeholder="e.g. Johannesburg Hub"
+                    className="w-full px-2.5 py-1.5 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Status Description / Reason</label>
+                  <input
+                    value={editRawStatus}
+                    onChange={(e) => setEditRawStatus(e.target.value)}
+                    placeholder="e.g. Package sorted at sorting facility"
+                    className="w-full px-2.5 py-1.5 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowStatusEdit(false)}
+                    className="px-2.5 py-1.5 rounded border border-white/10 text-[10px] text-white hover:bg-white/5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updatingStatus}
+                    className="px-2.5 py-1.5 rounded bg-blue-600 text-white text-[10px] font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {updatingStatus && <RefreshCw className="w-3 h-3 animate-spin" />}
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            )}
 
             {loadingEvents ? (
               <div className="flex items-center justify-center py-12 text-gray-400">

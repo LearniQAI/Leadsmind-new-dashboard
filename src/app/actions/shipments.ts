@@ -3,7 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { detectCourier } from '@/lib/courier/detect'
 import { createTracking } from '@/lib/courier/aftership'
-import { normaliseStatus } from '@/lib/courier/normalise'
+import { normaliseStatus, NormalStatus } from '@/lib/courier/normalise'
 import { sendShipmentRegistered } from '@/lib/courier/emails'
 
 export async function createShipment(
@@ -311,5 +311,166 @@ export async function confirmReceiptAction(shipmentId: string, token: string) {
 export async function generateShipmentTokenAction(shipmentId: string) {
   const secret = process.env.ENCRYPTION_KEY || 'courier-secret'
   return createHmac('sha256', secret).update(shipmentId).digest('hex')
+}
+
+export async function updateShipmentStatus(
+  shipmentId: string,
+  payload: {
+    status: NormalStatus
+    active: boolean
+    raw_status?: string
+    location?: string
+  }
+) {
+  const supabase = createAdminClient()
+  const now = new Date().toISOString()
+
+  const { data: shipment, error: fetchErr } = await supabase
+    .from('courier_shipments')
+    .select('*')
+    .eq('id', shipmentId)
+    .maybeSingle()
+
+  if (fetchErr || !shipment) {
+    return { success: false, error: 'Shipment not found' }
+  }
+
+  const { error: updateErr } = await supabase
+    .from('courier_shipments')
+    .update({
+      status: payload.status,
+      active: payload.active,
+      raw_status: payload.raw_status || 'Manually updated by admin',
+      last_location: payload.location || shipment.last_location,
+      updated_at: now
+    })
+    .eq('id', shipmentId)
+
+  if (updateErr) {
+    return { success: false, error: updateErr.message }
+  }
+
+  await supabase.from('shipment_events').insert({
+    shipment_id: shipmentId,
+    workspace_id: shipment.workspace_id,
+    normalised_status: payload.status,
+    raw_status: payload.raw_status || 'Manually updated by admin',
+    location: payload.location || null,
+    occurred_at: now
+  })
+
+  try {
+    const { data: brand } = await supabase
+      .from('courier_brand_settings')
+      .select('recipient_alerts_disabled')
+      .eq('workspace_id', shipment.workspace_id)
+      .maybeSingle()
+
+    if (!brand?.recipient_alerts_disabled && payload.status !== shipment.status) {
+      const { sendStatusUpdate } = await import('@/lib/courier/emails')
+      const { isUrgent } = await import('@/lib/courier/normalise')
+      await sendStatusUpdate(
+        { ...shipment, status: payload.status },
+        payload.status,
+        { location: payload.location, urgent: isUrgent(payload.status) }
+      )
+    }
+  } catch (e) {
+    console.error('[Manual update status-email error]:', e)
+  }
+
+  return { success: true }
+}
+
+export async function syncShipmentTracking(shipmentId: string) {
+  const supabase = createAdminClient()
+  
+  const { data: shipment, error: fetchErr } = await supabase
+    .from('courier_shipments')
+    .select('*')
+    .eq('id', shipmentId)
+    .maybeSingle()
+
+  if (fetchErr || !shipment) {
+    return { success: false, error: 'Shipment not found' }
+  }
+
+  if (!shipment.courier_slug) {
+    return { success: false, error: 'No courier detected/assigned for this shipment yet' }
+  }
+
+  try {
+    const { getTracking } = await import('@/lib/courier/aftership')
+    const aftership = await getTracking(shipment.courier_slug, shipment.tracking_number)
+    
+    if (!aftership) {
+      return { success: false, error: 'No tracking data returned from AfterShip' }
+    }
+
+    const rawStatus = aftership.tag || null
+    const { normaliseStatus } = await import('@/lib/courier/normalise')
+    const normal = normaliseStatus(rawStatus)
+    const location = aftership.checkpoints?.[0]?.location || null
+    const estDelivery = aftership.expected_delivery || null
+
+    const now = new Date().toISOString()
+
+    const closed = normal === 'DELIVERED' || normal === 'RETURNED'
+    const { error: updateErr } = await supabase
+      .from('courier_shipments')
+      .update({
+        status: normal,
+        raw_status: rawStatus,
+        last_location: location || shipment.last_location,
+        estimated_delivery: estDelivery || shipment.estimated_delivery,
+        active: !closed,
+        last_polled_at: now,
+        updated_at: now
+      })
+      .eq('id', shipmentId)
+
+    if (updateErr) {
+      return { success: false, error: updateErr.message }
+    }
+
+    await supabase.from('shipment_events').insert({
+      shipment_id: shipmentId,
+      workspace_id: shipment.workspace_id,
+      normalised_status: normal,
+      raw_status: rawStatus || 'Polled status',
+      location: location,
+      occurred_at: now
+    })
+
+    try {
+      const { data: brand } = await supabase
+        .from('courier_brand_settings')
+        .select('recipient_alerts_disabled')
+        .eq('workspace_id', shipment.workspace_id)
+        .maybeSingle()
+
+      if (!brand?.recipient_alerts_disabled && normal !== shipment.status) {
+        const { sendStatusUpdate } = await import('@/lib/courier/emails')
+        const { isUrgent } = await import('@/lib/courier/normalise')
+        await sendStatusUpdate(
+          { ...shipment, status: normal },
+          normal,
+          { location, urgent: isUrgent(normal) }
+        )
+      }
+    } catch (e) {
+      console.error('[Poll update status-email error]:', e)
+    }
+
+    const { data: updatedShipment } = await supabase
+      .from('courier_shipments')
+      .select('*')
+      .eq('id', shipmentId)
+      .single()
+
+    return { success: true, data: updatedShipment }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Error syncing from AfterShip' }
+  }
 }
 
