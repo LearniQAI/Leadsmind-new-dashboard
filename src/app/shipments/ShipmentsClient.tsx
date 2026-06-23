@@ -332,15 +332,58 @@ export default function ShipmentsClient({ initialShipments, brandSettings, works
                             {s.courier_slug || 'auto-detect'}
                           </span>
                         </td>
-                        <td className="p-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${status.bg} ${status.text}`}>
-                            <Icon className="w-3 h-3" /> {status.label}
-                          </span>
-                          {s.received_confirmed_at && (
-                            <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30 uppercase tracking-wider">
-                              <CheckCircle className="w-2.5 h-2.5" /> Confirmed
-                            </span>
-                          )}
+                         <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={s.status}
+                              onChange={async (e) => {
+                                const newStatus = e.target.value
+                                const isClosed = newStatus === 'DELIVERED' || newStatus === 'RETURNED'
+                                const loadingToast = toast.loading('Updating status...')
+                                const res = await updateShipmentStatus(s.id, {
+                                  status: newStatus as any,
+                                  active: !isClosed,
+                                  raw_status: `Manually set to ${newStatus} by admin`,
+                                  location: s.last_location || undefined
+                                })
+                                toast.dismiss(loadingToast)
+                                if (!res.success) {
+                                  toast.error(res.error || 'Failed to update status')
+                                  return
+                                }
+                                toast.success(`Status updated to ${newStatus}!`)
+                                
+                                const updated = shipments.map((item) =>
+                                  item.id === s.id
+                                    ? { ...item, status: newStatus, active: !isClosed }
+                                    : item
+                                )
+                                setShipments(updated)
+                                if (selectedShipment?.id === s.id) {
+                                  setSelectedShipment({ ...selectedShipment, status: newStatus, active: !isClosed })
+                                  setLoadingEvents(true)
+                                  const eventsRes = await getShipmentEvents(s.id)
+                                  setLoadingEvents(false)
+                                  if (eventsRes.success) {
+                                    setEvents(eventsRes.data || [])
+                                  }
+                                }
+                              }}
+                              className={`px-2.5 py-1 rounded-full text-xs font-semibold bg-[#0b1329] border border-white/10 text-white focus:outline-none focus:border-blue-500 cursor-pointer font-sans`}
+                            >
+                              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                                <option key={key} value={key} className="bg-[#0b1329] text-white">
+                                  {cfg.label}
+                                </option>
+                              ))}
+                            </select>
+
+                            {s.received_confirmed_at && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30 uppercase tracking-wider">
+                                <CheckCircle className="w-2.5 h-2.5" /> Confirmed
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="p-4 text-gray-400">
                           {new Date(s.created_at).toLocaleDateString()}
