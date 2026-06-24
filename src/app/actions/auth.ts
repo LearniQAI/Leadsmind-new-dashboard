@@ -216,13 +216,19 @@ export async function notifyUpdate(email: string, updateTitle: string, updateDet
  * Resolves a username (first name) or email prefix to the registered email address.
  */
 export async function getEmailByUsername(username: string) {
- const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
- );
-
  try {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey || serviceKey === 'your_supabase_service_role_key' || serviceKey.startsWith('your_')) {
+   console.warn('[getEmailByUsername] SUPABASE_SERVICE_ROLE_KEY is missing or using placeholder');
+   return { success: false, error: 'Username login is currently unavailable. Please sign in using your email address.' };
+  }
+
+  const supabaseAdmin = createClient(
+   process.env.NEXT_PUBLIC_SUPABASE_URL!,
+   serviceKey,
+   { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
   const cleanUsername = username.trim();
   if (!cleanUsername) {
    return { success: false, error: 'Username is empty' };
