@@ -65,23 +65,6 @@ export async function dispatchWebhook(
   data: Record<string, any>
 ): Promise<void> {
   try {
-    // Fetch all active webhooks for this workspace from webhook_endpoints
-    const { data: webhooks, error } = await supabase
-      .from('webhook_endpoints')
-      .select('id, url, events, secret')
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true)
-
-    if (error || !webhooks || webhooks.length === 0) return
-
-    // Filter webhooks that match the event type
-    const activeWebhooks = webhooks.filter((w) => {
-      const evs = w.events || []
-      return evs.includes(event) || evs.includes('*') || evs.includes('all')
-    })
-
-    if (activeWebhooks.length === 0) return
-
     const payload: WebhookPayload = {
       event,
       event_id: `evt_${crypto.randomUUID().replace(/-/g, '').slice(0, 26)}`,
@@ -93,11 +76,32 @@ export async function dispatchWebhook(
 
     const payloadString = JSON.stringify(payload)
 
-    // Fire to all registered webhook URLs in parallel
-    const fires = activeWebhooks.map(async (webhook) => {
+    // 1) Fetch all active webhooks for this workspace from webhook_endpoints
+    const { data: webhooks, error: webhooksError } = await supabase
+      .from('webhook_endpoints')
+      .select('id, url, events, secret')
+      .eq('workspace_id', workspaceId)
+      .eq('is_active', true)
+
+    let activeWebhooks = []
+    if (!webhooksError && webhooks) {
+      activeWebhooks = webhooks.filter((w) => {
+        const evs = w.events || []
+        return evs.includes(event) || evs.includes('*') || evs.includes('all')
+      })
+    }
+
+    // 2) Fetch Zapier REST Hooks subscriptions for this event
+    const { data: zapierSubs } = await supabase
+      .from('webhook_subscriptions')
+      .select('id, target_url')
+      .eq('workspace_id', workspaceId)
+      .eq('event', event)
+
+    // 3) Fire legacy/custom webhooks in parallel
+    const legacyFires = activeWebhooks.map(async (webhook) => {
       const startTime = Date.now()
       try {
-        // Generate HMAC signature using webhook secret
         const secret = webhook.secret || process.env.WEBHOOK_SIGNING_SECRET || 'leadsmind_webhook_secret'
         const signature = crypto
           .createHmac('sha256', secret)
@@ -152,8 +156,31 @@ export async function dispatchWebhook(
       }
     })
 
+    // 4) Fire Zapier webhooks in parallel
+    const zapierFires = (zapierSubs || []).map(async (sub) => {
+      try {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 10000) // 10s timeout
+
+        await fetch(sub.target_url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'LeadsMind-Zapier-Webhook/1.0',
+            'x-leadsmind-event': event,
+          },
+          body: payloadString,
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeout)
+      } catch (err: any) {
+        console.error(`[zapier-webhook-dispatch] Failed to send to ${sub.target_url}:`, err.message)
+      }
+    })
+
     // Fire all without waiting (non-blocking)
-    Promise.allSettled(fires).catch(() => {})
+    Promise.allSettled([...legacyFires, ...zapierFires]).catch(() => {})
 
   } catch (err) {
     console.error('[webhook-dispatcher]', err)

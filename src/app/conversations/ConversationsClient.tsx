@@ -202,10 +202,10 @@ export default function ConversationsClient({ initialConversations }: { initialC
 
   const activeConv = consolidatedConversations.find(c => c.id === activeConvId);
 
-  const handleSend = async (text: string, targetConvId: string) => {
+  const handleSend = async (text: string, targetConvId: string, audioUrl?: string, transcript?: string) => {
     if (!targetConvId) return;
     setIsSending(true);
-    const res = await sendMessage(targetConvId, text);
+    const res = await sendMessage(targetConvId, text, audioUrl, transcript);
     if (res.error) {
       toast.error(res.error);
     } else {

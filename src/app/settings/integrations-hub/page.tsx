@@ -146,7 +146,7 @@ export default function IntegrationsHubPage() {
             <div className="flex flex-col gap-3 mb-8">
               {[
                 { name: 'Zapier', shortName: 'ZAP', color: '#ff4a00',
-                  desc: 'Connect LeadsMind to 5,000+ apps via Zapier triggers and actions', status: 'coming_soon', category: 'automation' },
+                  desc: 'Connect LeadsMind to 5,000+ apps via Zapier triggers and actions', status: 'available', category: 'automation' },
                 { name: 'Make.com', shortName: 'MK', color: '#6d00cc',
                   desc: 'Build advanced workflows and scenarios', status: 'coming_soon', category: 'automation' },
               ].map(item => renderIntegrationCard(item as any))}

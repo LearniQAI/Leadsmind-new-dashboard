@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 
 interface ConversationThreadProps {
   conversation: any;
-  onSendMessage: (text: string, targetConvId: string) => void;
+  onSendMessage: (text: string, targetConvId: string, audioUrl?: string, transcript?: string) => void;
   isSending: boolean;
   onTogglePanel?: () => void;
 }
@@ -236,7 +236,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
 
       {/* Input Area */}
       <MessageInput 
-        onSend={async (text, isNote) => {
+        onSend={async (text, isNote, audioUrl, transcript) => {
           if (isNote) {
             setIsNoteSending(true);
             const res = await sendInternalNote(conversation.id, text, 'Agent');
@@ -249,7 +249,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
             setIsNoteSending(false);
           } else {
             const target = availablePlatforms.find((p: any) => p.platform === selectedPlatform) || availablePlatforms[0];
-            onSendMessage(text, target?.conversationId || conversation.id);
+            onSendMessage(text, target?.conversationId || conversation.id, audioUrl, transcript);
           }
         }}
         disabled={isSending || isNoteSending}
