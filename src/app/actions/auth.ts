@@ -211,3 +211,43 @@ export async function notifyUpdate(email: string, updateTitle: string, updateDet
   return { success: false };
  }
 }
+
+/**
+ * Resolves a username (first name) or email prefix to the registered email address.
+ */
+export async function getEmailByUsername(username: string) {
+ const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+ );
+
+ try {
+  const cleanUsername = username.trim();
+  if (!cleanUsername) {
+   return { success: false, error: 'Username is empty' };
+  }
+
+  // Find user by first_name matching the username, or email starting with username@
+  const { data, error } = await supabaseAdmin
+   .from('users')
+   .select('email')
+   .or(`first_name.ilike.${cleanUsername},email.ilike.${cleanUsername}@%`)
+   .limit(1)
+   .maybeSingle();
+
+  if (error) {
+   console.error('[getEmailByUsername] DB query error:', error.message);
+   return { success: false, error: error.message };
+  }
+
+  if (!data) {
+   return { success: false, error: 'User not found' };
+  }
+
+  return { success: true, email: data.email };
+ } catch (err: any) {
+  console.error('[getEmailByUsername] Unexpected error:', err.message);
+  return { success: false, error: err.message };
+ }
+}

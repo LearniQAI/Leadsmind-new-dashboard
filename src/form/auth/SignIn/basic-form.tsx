@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { WorkspacePicker } from "@/components/auth/WorkspacePicker";
 import { Workspace } from "@/types/workspace.types";
-import { setActiveWorkspace, notifySignIn } from "@/app/actions/auth";
+import { setActiveWorkspace, notifySignIn, getEmailByUsername } from "@/app/actions/auth";
 
 const SignInBasicForm = () => {
  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -32,12 +32,25 @@ const SignInBasicForm = () => {
  const onSubmit = async (values: ISignInForm) => {
   setIsLoading(true);
   try {
-   // Step 1: Authenticate
-   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    // The UI uses 'name' for Email or Username, we map it to email for Supabase
-    email: values.name,
-    password: values.password,
-   });
+    let emailToUse = values.name.trim();
+
+    // Resolve username to email if it does not look like an email address
+    if (!emailToUse.includes('@')) {
+     const resolveRes = await getEmailByUsername(emailToUse);
+     if (resolveRes.success && resolveRes.email) {
+      emailToUse = resolveRes.email;
+     } else {
+      toast.error("Incorrect email/username or password. Please try again.");
+      setIsLoading(false);
+      return;
+     }
+    }
+
+    // Step 1: Authenticate
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+     email: emailToUse,
+     password: values.password,
+    });
 
    if (authError) {
     toast.error("Incorrect email or password. Please try again.");
@@ -170,7 +183,7 @@ const SignInBasicForm = () => {
     <div className="from__input-box">
      <div className="form__input-title flex justify-between">
       <label htmlFor="passwordInput">Password</label>
-      <Link href="/auth/auth-forgot-password-basic">
+      <Link href="/auth/forgot-password-basic">
        <small>Forgot Password?</small>
       </Link>
      </div>

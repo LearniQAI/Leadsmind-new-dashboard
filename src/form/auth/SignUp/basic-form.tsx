@@ -169,7 +169,7 @@ const SignUpBasicForm = () => {
         <div className="from__input-box">
           <div className="form__input-title flex justify-between">
             <label htmlFor="passwordInput">Password</label>
-            <Link href="/auth/auth-forgot-password-basic">
+            <Link href="/auth/forgot-password-basic">
               <small>Forgot Password?</small>
             </Link>
           </div>
