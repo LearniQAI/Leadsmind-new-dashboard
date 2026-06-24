@@ -2,14 +2,15 @@ import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-cbc';
 
-// Helper to derive a stable 32-byte key from whatever client secrets are present
+const encryptionKeyEnv = process.env.ENCRYPTION_KEY;
+if (!encryptionKeyEnv) {
+  throw new Error("ENCRYPTION_KEY env var is required");
+}
+
+const key = crypto.createHash('sha256').update(encryptionKeyEnv).digest();
+
 function getEncryptionKey(): Buffer {
-  const secret = process.env.ENCRYPTION_KEY || 
-                 process.env.GOOGLE_CLIENT_SECRET || 
-                 process.env.SUPABASE_SERVICE_ROLE_KEY || 
-                 'leadsmind-fallback-hex-secret-key-32b';
-  
-  return crypto.createHash('sha256').update(secret).digest();
+  return key;
 }
 
 /**
