@@ -2,15 +2,12 @@ import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-cbc';
 
-const encryptionKeyEnv = process.env.ENCRYPTION_KEY;
-if (!encryptionKeyEnv) {
-  throw new Error("ENCRYPTION_KEY env var is required");
-}
-
-const key = crypto.createHash('sha256').update(encryptionKeyEnv).digest();
-
 function getEncryptionKey(): Buffer {
-  return key;
+  const encryptionKeyEnv = process.env.ENCRYPTION_KEY;
+  if (!encryptionKeyEnv) {
+    throw new Error("ENCRYPTION_KEY env var is required");
+  }
+  return crypto.createHash('sha256').update(encryptionKeyEnv).digest();
 }
 
 /**
