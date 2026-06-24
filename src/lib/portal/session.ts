@@ -103,16 +103,6 @@ export async function getPortalSession(): Promise<PortalSession | null> {
   if (!activeContact) {
     activeContact = contacts[0];
     activeWorkspaceId = activeContact.workspace_id;
-    try {
-      cookieStore.set('active_workspace_id', activeWorkspaceId, {
-        maxAge: 60 * 60 * 24 * 30,
-        path: '/',
-        httpOnly: true,
-        sameSite: 'lax',
-      });
-    } catch {
-      // Ignore client/server set-cookie limits in server components
-    }
   }
 
   const branding = await fetchBranding(activeWorkspaceId);

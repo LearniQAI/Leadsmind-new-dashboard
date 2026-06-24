@@ -151,18 +151,6 @@ export async function getCurrentWorkspace(existingUser?: any): Promise<Workspace
 
   if (membership) {
    workspaceId = membership.workspace_id;
-   // Persist the cookie for future requests
-   const cookieStore = cookies();
-   try {
-    cookieStore.set('active_workspace_id', workspaceId!, {
-     maxAge: 60 * 60 * 24 * 30,
-     path: '/',
-     httpOnly: true,
-     sameSite: 'lax',
-    });
-   } catch {
-    // Cookie set may fail in Server Components — ignore
-   }
   }
  }
 
