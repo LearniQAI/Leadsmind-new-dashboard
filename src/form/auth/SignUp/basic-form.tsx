@@ -34,7 +34,7 @@ const SignUpBasicForm = () => {
         password: values.password,
         options: {
           data: { full_name: values.name },
-          emailRedirectTo: 'https://www.leadsmind.io/auth/callback?next=/welcome',
+          emailRedirectTo: 'https://www.leadsmind.io/auth/callback?next=/',
         },
       });
 
@@ -87,7 +87,7 @@ const SignUpBasicForm = () => {
       }
 
       toast.success('Account created! Welcome to LeadsMind.');
-      router.push('/welcome');
+      router.push('/');
       router.refresh();
     } catch (error) {
       console.error('[SignupForm] Unexpected error:', error);

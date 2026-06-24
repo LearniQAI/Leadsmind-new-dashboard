@@ -1,7 +1,7 @@
 import { sendEmail } from '@/lib/email';
 
 export async function sendVerificationEmail(email: string, token: string) {
-  const verificationLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?token_hash=${token}&type=signup&next=/welcome`;
+  const verificationLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?token_hash=${token}&type=signup&next=/`;
   
   await sendEmail({
     to: email,
