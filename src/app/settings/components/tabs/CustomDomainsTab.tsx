@@ -74,7 +74,7 @@ export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string
           value={hostname}
           onChange={(e) => setHostname(e.target.value)}
           placeholder="app.yourdomain.com"
-          className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm"
+          className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm"
         />
         <button
           type="submit"

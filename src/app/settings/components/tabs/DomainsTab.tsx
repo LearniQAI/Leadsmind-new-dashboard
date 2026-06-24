@@ -154,7 +154,7 @@ export default function DomainsTab() {
                     onChange={(e) => setNewDomainName(e.target.value)}
                     placeholder="e.g. company.com"
                     disabled={isRegistering}
-                    className="flex-1 bg-n600 border border-white/5 rounded-xl px-4 py-2.5 text-t1 font-bold focus:border-accent/50 transition-all outline-none text-sm placeholder:text-t3 placeholder:font-normal"
+                    className="flex-1 min-w-0 bg-n600 border border-white/5 rounded-xl px-4 py-2.5 text-t1 font-bold focus:border-accent/50 transition-all outline-none text-sm placeholder:text-t3 placeholder:font-normal"
                   />
                   <button
                     type="submit"
