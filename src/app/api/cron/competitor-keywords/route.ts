@@ -4,15 +4,13 @@ import { triggerCompetitorKeywordsWeekly } from '@/app/actions/seo';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
+  if (req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const { searchParams } = new URL(req.url);
-    const key = searchParams.get('key');
-
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && key !== cronSecret) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid cron access key.' }, { status: 401 });
-    }
-
     const result = await triggerCompetitorKeywordsWeekly();
     if ('error' in result) {
       return NextResponse.json({ success: false, error: result.error }, { status: 500 });

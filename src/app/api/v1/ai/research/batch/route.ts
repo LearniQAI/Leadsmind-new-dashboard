@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/server/database/datasource';
 import { ResearchAgent } from '@/server/services/ai/ResearchAgent';
+import { requireAuth } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +9,11 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const authResult = await requireAuth(req);
+  if (authResult instanceof NextResponse) return authResult;
+  const user = authResult;
+
   try {
     const body = await req.json();
     const { contactIds, workspaceId, domain } = body;

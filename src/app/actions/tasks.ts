@@ -2,6 +2,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser, getCurrentProfile, getUserRole } from '@/lib/auth';
+import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 export { getUserRole };
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
@@ -316,13 +317,34 @@ export async function toggleTaskAssignee(taskId: string, userId: string) {
 
 export async function deleteTask(taskId: string) {
   try {
+    const supabase = await createServerClient();
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new UnauthorizedError();
+    }
+
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) {
+      throw new ForbiddenError('No active workspace');
+    }
+
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!membership) {
+      throw new ForbiddenError('Not a member of this workspace');
+    }
+
     const role = await getUserRole();
     if (role !== 'admin' && role !== 'manager') {
       return { error: 'Authorization Failure: Only Admins/Managers can decommission objectives' };
     }
 
-    const workspaceId = await getCurrentWorkspaceId();
-    const supabase = await createServerClient();
     const { error } = await supabase.from('tasks').delete().eq('id', taskId).eq('workspace_id', workspaceId);
     if (error) throw error;
     revalidatePath('/tasks');

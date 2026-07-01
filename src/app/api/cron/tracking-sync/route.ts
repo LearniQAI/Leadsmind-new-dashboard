@@ -5,9 +5,10 @@ import { syncShipmentTracking } from '@/app/actions/shipments'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
+  if (req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const supabase = createAdminClient()

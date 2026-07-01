@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth/requireAuth';
 
 export async function POST(req: NextRequest) {
+  const authResult = await requireAuth(req);
+  if (authResult instanceof NextResponse) return authResult;
+  const user = authResult;
+
   try {
     const body = await req.json();
     const { slug, title, event } = body;

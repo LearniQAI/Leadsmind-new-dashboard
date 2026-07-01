@@ -6,6 +6,12 @@ import { sendEmail } from '@/lib/email';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
+  if (req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   return handleBriefingCron();
 }
 

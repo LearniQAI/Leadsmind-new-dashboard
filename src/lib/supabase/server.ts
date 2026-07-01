@@ -40,12 +40,14 @@ export const createServerClient = async () => {
 
 export const createAdminClient = () => {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const isPlaceholder = !serviceKey || serviceKey === 'your_supabase_service_role_key' || serviceKey.startsWith('your_');
-  const activeKey = isPlaceholder ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! : serviceKey;
+
+  if (!serviceKey || serviceKey.startsWith('your_')) {
+    throw new Error('[FATAL] SUPABASE_SERVICE_ROLE_KEY is not configured')
+  }
 
   return _createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    activeKey,
+    serviceKey,
     {
       auth: {
         autoRefreshToken: false,

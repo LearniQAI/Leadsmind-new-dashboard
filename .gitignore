@@ -21,6 +21,11 @@ TestTabile.tsx
 # misc
 .DS_Store
 *.pem
+scratch/
+fix_datepickers.js
+push.ps1
+remove_italics.ps1
+run_queries.js
 
 # debug
 npm-debug.log*
@@ -28,6 +33,10 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+.env
+.env.local
+.env.production
+.env.development
 .env*.local
 
 # vercel
