@@ -6,12 +6,10 @@ import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  // Simple check for Cron authorization headers
-  const authHeader = request.headers.get('authorization');
-  const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}` || process.env.NODE_ENV === 'development';
-
-  if (!isCron) {
-    return new NextResponse('Unauthorized', { status: 401 });
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
+  if (request.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const supabase = createAdminClient();

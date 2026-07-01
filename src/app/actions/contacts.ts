@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 
 export async function getContact(id: string) {
  const workspaceId = await getCurrentWorkspaceId();
@@ -281,6 +282,27 @@ export async function createContact(values: any) {
 
 export async function updateContact(id: string, values: any) {
  const supabase = await createServerClient();
+
+ const { data: { user }, error: userError } = await supabase.auth.getUser();
+ if (userError || !user) {
+  throw new UnauthorizedError();
+ }
+
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) {
+  throw new ForbiddenError('No active workspace');
+ }
+
+ const { data: membership } = await supabase
+  .from('workspace_members')
+  .select('id')
+  .eq('workspace_id', workspaceId)
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+ if (!membership) {
+  throw new ForbiddenError('Not a member of this workspace');
+ }
  
  const payload = {
   first_name: values.firstName,
@@ -296,6 +318,7 @@ export async function updateContact(id: string, values: any) {
   .from('contacts')
   .update(payload)
   .eq('id', id)
+  .eq('workspace_id', workspaceId)
   .select()
   .single();
 
@@ -315,10 +338,33 @@ export async function updateContact(id: string, values: any) {
 
 export async function deleteContact(id: string) {
  const supabase = await createServerClient();
+
+ const { data: { user }, error: userError } = await supabase.auth.getUser();
+ if (userError || !user) {
+  throw new UnauthorizedError();
+ }
+
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) {
+  throw new ForbiddenError('No active workspace');
+ }
+
+ const { data: membership } = await supabase
+  .from('workspace_members')
+  .select('id')
+  .eq('workspace_id', workspaceId)
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+ if (!membership) {
+  throw new ForbiddenError('Not a member of this workspace');
+ }
+
  const { error } = await supabase
   .from('contacts')
   .delete()
-  .eq('id', id);
+  .eq('id', id)
+  .eq('workspace_id', workspaceId);
 
  if (error) return { success: false, error: error.message };
  
@@ -468,10 +514,33 @@ export async function createNote(values: { contactId: string; content: string })
 
 export async function deleteNote(id: string, contactId: string) {
  const supabase = await createServerClient();
+
+ const { data: { user }, error: userError } = await supabase.auth.getUser();
+ if (userError || !user) {
+  throw new UnauthorizedError();
+ }
+
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) {
+  throw new ForbiddenError('No active workspace');
+ }
+
+ const { data: membership } = await supabase
+  .from('workspace_members')
+  .select('id')
+  .eq('workspace_id', workspaceId)
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+ if (!membership) {
+  throw new ForbiddenError('Not a member of this workspace');
+ }
+
  const { error } = await supabase
   .from('contact_notes')
   .delete()
-  .eq('id', id);
+  .eq('id', id)
+  .eq('workspace_id', workspaceId);
 
  if (error) return { success: false, error: error.message };
  
@@ -518,10 +587,33 @@ export async function toggleTaskStatus(id: string, contactId: string, currentSta
 
 export async function deleteTask(id: string) {
  const supabase = await createServerClient();
+
+ const { data: { user }, error: userError } = await supabase.auth.getUser();
+ if (userError || !user) {
+  throw new UnauthorizedError();
+ }
+
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) {
+  throw new ForbiddenError('No active workspace');
+ }
+
+ const { data: membership } = await supabase
+  .from('workspace_members')
+  .select('id')
+  .eq('workspace_id', workspaceId)
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+ if (!membership) {
+  throw new ForbiddenError('Not a member of this workspace');
+ }
+
  const { error } = await supabase
   .from('contact_tasks')
   .delete()
-  .eq('id', id);
+  .eq('id', id)
+  .eq('workspace_id', workspaceId);
 
  if (error) return { success: false, error: error.message };
  

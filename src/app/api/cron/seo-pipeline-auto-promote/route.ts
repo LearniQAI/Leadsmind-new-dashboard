@@ -5,16 +5,13 @@ import { runPipelineAutomation, runRevenueRollup } from '@/app/actions/seo';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
+  if (req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const { searchParams } = new URL(req.url);
-    const key = searchParams.get('key');
-
-    // Secure authentication check via environment key if configured
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && key !== cronSecret) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid cron access key.' }, { status: 401 });
-    }
-
     // 1. Run pipeline auto-promotion logic (moves stages and flags stuck items)
     console.log('[SEO Pipeline Cron] Executing auto promote and stuck flag routine...');
     const promoteResult = await runPipelineAutomation();
