@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export default async function InvoicesPage() {
  const user = await requireAuth();
  const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) redirect('/login');
+ if (!workspaceId) redirect('/auth/signin-basic');
  
  const invoices = await getInvoices(workspaceId);
 

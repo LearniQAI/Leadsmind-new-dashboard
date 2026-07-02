@@ -19,7 +19,7 @@ export default async function ContactBriefPage({ params }: PageProps) {
 
   await requireAuth();
   const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) redirect('/login');
+  if (!workspaceId) redirect('/auth/signin-basic');
 
   const supabase = await createServerClient();
 

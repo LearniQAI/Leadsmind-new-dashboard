@@ -70,7 +70,7 @@ const nav_menus_list: TNavMenuType[] = [
    { link: "/team", title: "Team" },
    { link: "/team-details", title: "Team Details" },
    { link: "/faq", title: "FAQ" },
-   { link: "/login", title: "Login" },
+   { link: "/auth/signin-basic", title: "Login" },
    { link: "/register", title: "Register" },
    { link: "/error-page", title: "404 Page" },
   ],

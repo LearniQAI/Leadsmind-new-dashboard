@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export default async function TagsPage() {
  await requireAuth();
  const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) redirect('/login');
+ if (!workspaceId) redirect('/auth/signin-basic');
 
  const tags = await getWorkspaceTags(workspaceId);
 

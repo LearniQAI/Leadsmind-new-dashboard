@@ -78,10 +78,7 @@ const SignInBasicForm = () => {
 
    if (wsError) {
     console.error("[LoginForm] Error fetching workspaces:", wsError);
-    toast.success("Logged in successfully!");
-    setTimeout(() => {
-     window.location.href = next || "/dashboard";
-    }, 100);
+    toast.error("Unable to load your workspace. Please try again.");
     return;
    }
 
@@ -112,11 +109,8 @@ const SignInBasicForm = () => {
     });
 
    if (formattedWorkspaces.length === 0) {
-    console.warn("[LoginForm] No workspaces found — redirecting to dashboard to auto-create");
-    toast.success("Logged in! Setting up your workspace...");
-    setTimeout(() => {
-     window.location.href = next || "/dashboard";
-    }, 100);
+    toast.error("No workspace found for this account.");
+    window.location.href = "/auth/signin-basic?error=no_workspace";
     return;
    }
 
