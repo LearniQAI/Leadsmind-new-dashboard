@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 export default async function ResearchPortalPage() {
   await requireAuth();
   const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) redirect('/login');
+  if (!workspaceId) redirect('/auth/signin-basic');
 
   const supabase = await createServerClient();
 

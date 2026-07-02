@@ -9,7 +9,7 @@ import BlogCommentsClient from './BlogCommentsClient';
 export default async function BlogCommentsPage() {
   await requireAuth();
   const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) redirect('/login');
+  if (!workspaceId) redirect('/auth/signin-basic');
 
   const supabase = await createServerClient();
 

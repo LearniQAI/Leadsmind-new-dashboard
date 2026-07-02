@@ -15,7 +15,7 @@ interface PropertyDealPageProps {
 export default async function PropertyDealPage({ params }: PropertyDealPageProps) {
   await requireAuth();
   const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) redirect('/login');
+  if (!workspaceId) redirect('/auth/signin-basic');
 
   const dealRes = await getPropertyDeal(params.id);
   if (!dealRes.success || !dealRes.deal) {

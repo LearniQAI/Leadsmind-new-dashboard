@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export default async function ProposalsPage() {
  const user = await requireAuth();
  const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) redirect('/login');
+ if (!workspaceId) redirect('/auth/signin-basic');
 
  const proposals = await getQuotes(workspaceId);
 

@@ -9,7 +9,7 @@ import HrmDashboardClient from "@/components/pagesUI/hrm/HrmDashboardClient";
 const HrmDashboardMain = async () => {
  const user = await requireAuth();
  const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) redirect('/login');
+ if (!workspaceId) redirect('/auth/signin-basic');
 
  const supabase = await createServerClient();
 
