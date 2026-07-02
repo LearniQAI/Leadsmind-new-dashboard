@@ -49,7 +49,7 @@ export async function updateProduct(id: string, updates: any) {
   const { data, error } = await supabase
    .from('products')
    .update({ ...updates, updated_at: new Date().toISOString() })
-   .eq('id', id)
+   .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
    .select()
    .single();
 
@@ -64,7 +64,7 @@ export async function updateProduct(id: string, updates: any) {
 export async function deleteProduct(id: string) {
  try {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('products').delete().eq('id', id);
+  const { error } = await supabase.from('products').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
   if (error) throw error;
   revalidatePath('/products');
   return { success: true };

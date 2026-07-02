@@ -88,7 +88,7 @@ export default function PartialSubmissionsPage({ params }: { params: { id: strin
       description: 'Are you sure you want to discard this incomplete submission?',
       confirmLabel: 'Discard',
       onConfirm: async () => {
-        const { error } = await supabase.from('form_partial_submissions').delete().eq('id', id);
+        const { error } = await supabase.from('form_partial_submissions').delete().eq('id', id).eq('workspace_id', workspaceId);
         if (error) {
           toast.error('Failed to delete incomplete submission');
           return;

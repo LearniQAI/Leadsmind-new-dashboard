@@ -91,7 +91,7 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
         if (!path.startsWith('http') && !path.startsWith('draft://')) {
           await supabase.storage.from('media').remove([path]);
         }
-        await supabase.from('media_files').delete().eq('id', fileId);
+        await supabase.from('media_files').delete().eq('id', fileId).eq('workspace_id', workspaceId);
         setFiles(prev => prev.filter(f => f.id !== fileId));
       },
       {

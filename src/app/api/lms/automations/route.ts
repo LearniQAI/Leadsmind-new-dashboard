@@ -98,7 +98,7 @@ export async function PATCH(req: NextRequest) {
     const { data: rule, error } = await supabaseAdmin
       .from('lms_automation_rules')
       .update(updatePayload)
-      .eq('id', id)
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single();
 
@@ -122,7 +122,7 @@ export async function DELETE(req: NextRequest) {
     const { error } = await supabaseAdmin
       .from('lms_automation_rules')
       .delete()
-      .eq('id', id);
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (error) throw error;
 

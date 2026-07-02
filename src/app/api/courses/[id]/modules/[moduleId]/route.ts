@@ -96,7 +96,7 @@ export async function PUT(
     const { data: updatedModule, error: updateErr } = await supabase
       .from('modules')
       .update(updateData)
-      .eq('id', moduleId)
+      .eq("id", moduleId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single();
 
@@ -143,7 +143,7 @@ export async function DELETE(
     const { error: deleteErr } = await supabase
       .from('modules')
       .delete()
-      .eq('id', moduleId);
+      .eq("id", moduleId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (deleteErr) throw deleteErr;
 

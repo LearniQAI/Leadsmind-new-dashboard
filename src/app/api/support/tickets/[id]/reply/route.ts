@@ -17,6 +17,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
 
     const supabase = await createServerClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new UnauthorizedError();
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) throw new ForbiddenError('No active workspace');
     
     // Auth Check
     const { data: { session } } = await supabase.auth.getSession();
@@ -29,7 +34,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { data: ticket, error: ticketError } = await clientDb
       .from('support_tickets')
       .select('*, contact:contacts(*)')
-      .eq('id', params.id)
+      .eq("id", params.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .single();
 
     if (ticketError || !ticket) {

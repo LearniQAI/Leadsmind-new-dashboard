@@ -120,7 +120,7 @@ export async function PATCH(req: NextRequest) {
     const { data, error } = await supabase
       .from('employees')
       .update(body)
-      .eq('id', id)
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single()
 
@@ -141,7 +141,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: Only admins and HR can delete employees' }, { status: 403 })
     }
 
-    const { error } = await supabase.from('employees').delete().eq('id', id)
+    const { error } = await supabase.from('employees').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
   } catch (err: any) {

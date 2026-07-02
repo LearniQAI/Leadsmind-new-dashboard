@@ -83,7 +83,7 @@ export async function updateLeadStatus(leadId: string, status: string) {
   const { error } = await supabase
     .from('lead_finder_results')
     .update({ qualification_status: status })
-    .eq('id', leadId);
+    .eq("id", leadId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
   if (error) return { success: false, error: error.message };
 
@@ -116,12 +116,12 @@ export async function addLeadTag(leadId: string, tag: string) {
   if (!userId) return { success: false, error: 'Unauthorized' };
 
   // Get current tags
-  const { data: lead } = await supabase.from('lead_finder_results').select('smart_tags').eq('id', leadId).single();
+  const { data: lead } = await supabase.from('lead_finder_results').select('smart_tags').eq("id", leadId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId).single();
   const tags = lead?.smart_tags || [];
   
   if (!tags.includes(tag)) {
     const newTags = [...tags, tag];
-    await supabase.from('lead_finder_results').update({ smart_tags: newTags }).eq('id', leadId);
+    await supabase.from('lead_finder_results').update({ smart_tags: newTags }).eq("id", leadId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
     await logActivity(supabase, leadId, userId, 'tag_added', `Added smart tag: ${tag}`, { tag });
   }
 
@@ -135,11 +135,11 @@ export async function removeLeadTag(leadId: string, tag: string) {
   const userId = userData?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
-  const { data: lead } = await supabase.from('lead_finder_results').select('smart_tags').eq('id', leadId).single();
+  const { data: lead } = await supabase.from('lead_finder_results').select('smart_tags').eq("id", leadId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId).single();
   const tags = lead?.smart_tags || [];
   
   const newTags = tags.filter((t: string) => t !== tag);
-  await supabase.from('lead_finder_results').update({ smart_tags: newTags }).eq('id', leadId);
+  await supabase.from('lead_finder_results').update({ smart_tags: newTags }).eq("id", leadId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
   await logActivity(supabase, leadId, userId, 'tag_removed', `Removed smart tag: ${tag}`, { tag });
 
   revalidatePath(`/lead-finder/lead/${leadId}`);
@@ -225,7 +225,7 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
       status: 'added_to_crm',
       qualification_status: 'Contacted'
     })
-    .eq('id', leadId);
+    .eq("id", leadId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
   if (updateError) console.error('Failed to update lead status:', updateError);
 

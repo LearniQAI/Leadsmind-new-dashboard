@@ -107,7 +107,7 @@ export async function PATCH(req: NextRequest) {
         ...body,
         updated_at: new Date().toISOString()
       })
-      .eq('id', id)
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single()
 
@@ -136,7 +136,7 @@ export async function DELETE(req: NextRequest) {
     const { error } = await supabase
       .from('reputation_campaigns')
       .delete()
-      .eq('id', id)
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
 
     if (error) throw error
 

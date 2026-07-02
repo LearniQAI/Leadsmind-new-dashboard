@@ -36,7 +36,7 @@ export async function updateCourseEmailTemplate(
         onboarding_email_body: payload.onboarding_email_body,
         updated_at: new Date().toISOString()
       })
-      .eq('id', courseId);
+      .eq("id", courseId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (updateErr) throw updateErr;
 

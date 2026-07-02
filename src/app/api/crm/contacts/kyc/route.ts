@@ -482,7 +482,7 @@ export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
-  const { error } = await supabase.from('kyc_checks').delete().eq('id', id)
+  const { error } = await supabase.from('kyc_checks').delete().eq('id', id).eq('workspace_id', workspaceId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }

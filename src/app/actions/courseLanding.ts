@@ -100,7 +100,7 @@ export async function updateCourseLandingSettings(courseId: string, settings: an
         landing_page_settings: updatedSettings,
         updated_at: new Date().toISOString()
       })
-      .eq('id', courseId);
+      .eq("id", courseId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (updateErr) throw updateErr;
 
@@ -156,7 +156,7 @@ export async function updateCourseSlug(courseId: string, slug: string) {
         slug: sanitizedSlug,
         updated_at: new Date().toISOString()
       })
-      .eq('id', courseId);
+      .eq("id", courseId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (updateErr) throw updateErr;
 

@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     if (new Date(codeRow.expires_at).getTime() < Date.now()) {
       // Delete expired code
-      await adminSupabase.from('oauth_authorization_codes').delete().eq('id', codeRow.id)
+      await adminSupabase.from('oauth_authorization_codes').delete().eq('id', codeRow.id).eq('workspace_id', codeRow.workspace_id)
       return NextResponse.json({ error: 'invalid_grant', error_description: 'Authorization code has expired' }, { status: 400 })
     }
 
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Delete the code to prevent reuse
-    await adminSupabase.from('oauth_authorization_codes').delete().eq('id', codeRow.id)
+    await adminSupabase.from('oauth_authorization_codes').delete().eq('id', codeRow.id).eq('workspace_id', codeRow.workspace_id)
 
     // Generate tokens
     const accessToken = 'at_' + randomBytes(32).toString('hex')
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Delete old token
-    await adminSupabase.from('oauth_access_tokens').delete().eq('id', tokenRow.id)
+    await adminSupabase.from('oauth_access_tokens').delete().eq('id', tokenRow.id).eq('workspace_id', tokenRow.workspace_id)
 
     // Generate new tokens
     const newAccessToken = 'at_' + randomBytes(32).toString('hex')

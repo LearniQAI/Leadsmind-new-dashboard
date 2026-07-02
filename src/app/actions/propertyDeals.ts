@@ -86,7 +86,7 @@ export async function updatePropertyDealContacts(
       contact_id: buyerId, // For backwards compatibility
       updated_at: new Date().toISOString()
     })
-    .eq('id', id);
+    .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
   if (error) {
     return { success: false, error: error.message };

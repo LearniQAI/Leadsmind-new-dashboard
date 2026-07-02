@@ -55,7 +55,7 @@ export async function rollbackPostVersion(postId: string, versionId: string) {
     const { data: version, error: vErr } = await supabase
       .from('blog_post_versions')
       .select('*')
-      .eq('id', versionId)
+      .eq("id", versionId).eq("workspace_id", wsId).eq('workspace_id', wsId)
       .single();
 
     if (vErr || !version) throw new Error(vErr?.message || 'Version not found.');
@@ -70,7 +70,7 @@ export async function rollbackPostVersion(postId: string, versionId: string) {
         summary: version.summary,
         updated_at: new Date().toISOString()
       })
-      .eq('id', postId)
+      .eq("id", postId).eq("workspace_id", wsId).eq('workspace_id', wsId)
       .select()
       .single();
 

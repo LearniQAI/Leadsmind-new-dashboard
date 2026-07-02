@@ -32,7 +32,7 @@ export async function expandSocialPostToBlog(payload: {
 
   try {
     // Update state to processing
-    await supabase.from('blog_social_imports').update({ status: 'processing', updated_at: new Date().toISOString() }).eq('id', job.id);
+    await supabase.from('blog_social_imports').update({ status: 'processing', updated_at: new Date().toISOString() }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
 
     const prompt = `You are an elite research blogger. Expand the following short social media post from ${payload.platform} into a highly engaging, professional informational article of 800 to 1,200 words.
 Preserve all key concepts, facts, and underlying claims of the source text, but enrich them with thorough explanations, case analyses, and strategic summaries.
@@ -113,7 +113,7 @@ Social post source text:
       status: 'completed',
       post_id: post.id,
       updated_at: new Date().toISOString()
-    }).eq('id', job.id);
+    }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
 
     revalidatePath('/blog');
     revalidatePath('/blog/manage');
@@ -126,7 +126,7 @@ Social post source text:
       status: 'failed',
       error_message: err.message || 'Expansion orchestration pipeline failure.',
       updated_at: new Date().toISOString()
-    }).eq('id', job.id);
+    }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
 
     return { error: err.message || 'Social expansion pipeline aborted.' };
   }

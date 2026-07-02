@@ -20,6 +20,11 @@ export async function POST(req: NextRequest) {
 
     const supabase = await createServerClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new UnauthorizedError();
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) throw new ForbiddenError('No active workspace');
+
     // Find the calendar connection associated with this channel ID
     // We assume the channel ID is stored in the connection's credentials/metadata
     const { data: connection } = await supabase
@@ -56,7 +61,7 @@ export async function POST(req: NextRequest) {
       .update({
         updated_at: new Date().toISOString(),
       })
-      .eq('id', connection.id);
+      .eq("id", connection.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     return new NextResponse('OK', { status: 200 });
   } catch (error) {

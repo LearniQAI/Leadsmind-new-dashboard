@@ -103,7 +103,7 @@ export async function POST(req: Request) {
     if (jErr) return NextResponse.json({ error: `Failed to initialize job: ${jErr.message}` }, { status: 500 });
 
     try {
-      await supabase.from('blog_social_imports').update({ status: 'processing', updated_at: new Date().toISOString() }).eq('id', job.id);
+      await supabase.from('blog_social_imports').update({ status: 'processing', updated_at: new Date().toISOString() }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
 
       // 2. Universal Speech Processing (Whisper API Ingestion)
       const whisperFormData = new FormData();
@@ -204,7 +204,7 @@ Verbal Transcript:
         status: 'completed',
         post_id: post.id,
         updated_at: new Date().toISOString()
-      }).eq('id', job.id);
+      }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
 
       revalidatePath('/blog');
       revalidatePath('/blog/manage');
@@ -217,7 +217,7 @@ Verbal Transcript:
         status: 'failed',
         error_message: err.message || 'Voice orchestration pipeline failure.',
         updated_at: new Date().toISOString()
-      }).eq('id', job.id);
+      }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
 
       return NextResponse.json({ error: err.message || 'Voice ingestion pipeline failed.' }, { status: 500 });
     }

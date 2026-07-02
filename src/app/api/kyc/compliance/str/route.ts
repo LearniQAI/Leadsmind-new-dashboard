@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
           anomalies: anomalies || [],
           updated_at: new Date().toISOString()
         })
-        .eq('id', id)
+        .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
         .select()
         .single();
 

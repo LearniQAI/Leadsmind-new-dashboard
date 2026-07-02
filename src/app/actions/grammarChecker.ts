@@ -406,7 +406,7 @@ export async function checkGrammarAndStyle(documentId: string, text: string) {
       await supabase.from('content_studio_documents').update({
         grammar_score: overallScore,
         grammar_issues_count: matches.length
-      }).eq('id', documentId);
+      }).eq("id", documentId).eq("workspace_id", wsId).eq('workspace_id', wsId);
     }
 
     return {

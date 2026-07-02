@@ -171,7 +171,7 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    const { error } = await supabase.from('time_entries').delete().eq('id', id)
+    const { error } = await supabase.from('time_entries').delete().eq('id', id).eq('workspace_id', existing.workspace_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
   } catch (err: any) {

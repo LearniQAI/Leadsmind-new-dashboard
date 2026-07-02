@@ -520,11 +520,11 @@ export async function deleteTaskAttachment(attachmentId: string) {
     if (role === 'viewer') return { error: 'Read-only access' };
 
     const supabase = await createServerClient();
-    const { data: attachment } = await supabase.from('task_attachments').select('*').eq('id', attachmentId).single();
+    const { data: attachment } = await supabase.from('task_attachments').select('*').eq("id", attachmentId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId).single();
     if (!attachment) return { error: 'Not found' };
 
     await supabase.storage.from('task-attachments').remove([attachment.file_path]);
-    await supabase.from('task_attachments').delete().eq('id', attachmentId);
+    await supabase.from('task_attachments').delete().eq("id", attachmentId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     revalidatePath('/tasks');
     return { success: true };

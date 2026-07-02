@@ -199,7 +199,7 @@ async function processInboundComplianceAndWindow(
         opted_out: true,
         opt_out_date: new Date().toISOString()
       })
-      .eq('id', contactId);
+      .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     // Insert internal compliance note
     await supabase.from('messages').insert({
@@ -220,7 +220,7 @@ async function processInboundComplianceAndWindow(
         opted_out: false,
         opt_out_date: null
       })
-      .eq('id', contactId);
+      .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     // Insert internal compliance note
     await supabase.from('messages').insert({
@@ -242,7 +242,7 @@ async function processInboundComplianceAndWindow(
         last_customer_message_at: new Date().toISOString(),
         last_message_at: new Date().toISOString()
       })
-      .eq('id', conversationId);
+      .eq("id", conversationId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
   }
 }
 
