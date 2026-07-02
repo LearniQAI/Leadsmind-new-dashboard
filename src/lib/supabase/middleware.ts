@@ -145,7 +145,8 @@ export async function updateSession(request: NextRequest) {
  
  // Define what should be public (landing pages, etc. if any)
  // For now, only /auth, /privacy-policy, /terms, and /unauthenticated/ are public.
- const isPublicPage = isAuthPage || 
+const isPublicPage = isAuthPage || 
+            request.nextUrl.pathname === '/login' || 
             request.nextUrl.pathname.startsWith('/_next') || 
             request.nextUrl.pathname.startsWith('/api') ||
             request.nextUrl.pathname === '/favicon.ico' ||
