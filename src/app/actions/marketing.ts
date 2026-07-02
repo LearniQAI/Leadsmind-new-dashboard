@@ -240,7 +240,7 @@ export async function getAdCampaigns() {
 export async function updateFunnel(id: string, updates: any) {
  try {
   const supabase = await createServerClient();
-  const { data, error } = await supabase.from('funnels').update(updates).eq('id', id).select().single();
+  const { data, error } = await supabase.from('funnels').update(updates).eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId).select().single();
   if (error) throw error;
   return { data };
  } catch (error: any) { return { error: error.message }; }
@@ -249,7 +249,7 @@ export async function updateFunnel(id: string, updates: any) {
 export async function deleteFunnelAction(id: string) {
  try {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('funnels').delete().eq('id', id);
+  const { error } = await supabase.from('funnels').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
   if (error) throw error;
   return { success: true };
  } catch (error: any) { return { error: error.message }; }
@@ -307,7 +307,7 @@ export async function updateCampaign(id: string, updates: any) {
    }
   }
 
-  const { data, error } = await supabase.from('email_campaigns').update(updates).eq('id', id).select().single();
+  const { data, error } = await supabase.from('email_campaigns').update(updates).eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId).select().single();
   if (error) throw error;
   
   // Count matching contacts for the user's peace of mind
@@ -346,7 +346,7 @@ export async function updateCampaign(id: string, updates: any) {
 export async function deleteCampaignAction(id: string) {
  try {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('email_campaigns').delete().eq('id', id);
+  const { error } = await supabase.from('email_campaigns').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
   if (error) throw error;
   return { success: true };
  } catch (error: any) { return { error: error.message }; }
@@ -385,7 +385,7 @@ export async function updateForm(id: string, updates: any) {
   const { data, error } = await supabase
    .from('forms')
    .update(payload)
-   .eq('id', id)
+   .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
    .select()
    .single();
 
@@ -397,7 +397,7 @@ export async function updateForm(id: string, updates: any) {
 export async function deleteFormAction(id: string) {
  try {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('forms').delete().eq('id', id);
+  const { error } = await supabase.from('forms').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
   if (error) throw error;
   return { success: true };
  } catch (error: any) { return { error: error.message }; }

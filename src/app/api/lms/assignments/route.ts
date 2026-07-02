@@ -159,7 +159,7 @@ export async function PATCH(req: NextRequest) {
         graded_at: new Date().toISOString(),
         graded_by_user_id: user.id
       })
-      .eq('id', submissionId)
+      .eq("id", submissionId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single();
 

@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
     const { data: matchedInvoice } = await supabase
       .from('invoices')
       .select('id, workspace_id, status, total_amount, contact_id, invoice_number')
-      .eq('id', m_payment_id)
+      .eq("id", m_payment_id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .maybeSingle()
 
     if (matchedInvoice && matchedInvoice.status !== 'paid') {
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
           payment_method: 'payfast',
           updated_at: new Date().toISOString(),
         })
-        .eq('id', matchedInvoice.id)
+        .eq("id", matchedInvoice.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
 
       // 2. Record double-entry revenue to accounting module
       try {
@@ -308,7 +308,7 @@ export async function POST(req: NextRequest) {
         const { data: contact } = await supabase
           .from("contacts")
           .select("referred_by_affiliate_id, referred_programme_id")
-          .eq("id", contactId)
+          .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
           .single();
 
         if (contact?.referred_by_affiliate_id && contact?.referred_programme_id) {

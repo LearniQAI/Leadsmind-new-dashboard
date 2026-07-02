@@ -308,7 +308,7 @@ export async function offerWaitlistSpot(waitlistId: string) {
     offered_at: new Date().toISOString(),
     offer_expires_at: expiresAt
    })
-   .eq('id', waitlistId)
+   .eq("id", waitlistId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
    .select('*, contact:contacts(first_name, last_name, email), appointment:appointments(title)')
    .single();
 

@@ -112,7 +112,7 @@ export async function scanOriginality(documentId: string, text: string) {
     const { error: deductErr } = await supabase
       .from('workspaces')
       .update({ ai_credits: newCredits })
-      .eq('id', wsId);
+      .eq("id", wsId).eq("workspace_id", wsId).eq('workspace_id', wsId);
 
     if (deductErr) {
       return { error: 'Credit deduction failed. Scan aborted.' };
@@ -317,7 +317,7 @@ export async function scanOriginality(documentId: string, text: string) {
       await supabase.from('content_studio_documents').update({
         plagiarism_score: originalityScore,
         plagiarism_checked_at: new Date().toISOString()
-      }).eq('id', documentId);
+      }).eq("id", documentId).eq("workspace_id", wsId).eq('workspace_id', wsId);
     }
 
     return {

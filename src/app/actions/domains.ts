@@ -184,7 +184,7 @@ export async function verifySenderDomain(domainId: string) {
         dmarc_status: dmarcVerified,
         verified_at: verifiedAt
       })
-      .eq('id', domainId)
+      .eq("id", domainId).eq("workspace_id", id).eq('workspace_id', id)
       .select()
       .single();
 
@@ -306,7 +306,7 @@ export async function updateDomainRouting(domainId: string, routingConfig: any) 
         routing_config: routingConfig,
         updated_at: new Date().toISOString()
       })
-      .eq('id', domainId)
+      .eq("id", domainId).eq("workspace_id", id).eq('workspace_id', id)
       .select()
       .single();
 
@@ -323,7 +323,7 @@ export async function deleteDomain(domainId: string) {
     const { error } = await supabase
       .from('domain_configurations')
       .delete()
-      .eq('id', domainId);
+      .eq("id", domainId).eq("workspace_id", id).eq('workspace_id', id);
 
     if (error) throw error;
     revalidatePath('/settings/domains');

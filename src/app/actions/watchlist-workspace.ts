@@ -2,10 +2,16 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 import { revalidatePath } from 'next/cache';
 
 export async function createWatchlist(name: string, monitoringType: string, criteria: any) {
   const supabase = await createServerClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new UnauthorizedError();
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) throw new ForbiddenError('No active workspace');
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
@@ -54,7 +60,11 @@ export async function getAlerts() {
 
 export async function deleteWatchlist(id: string) {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('lead_watchlists').delete().eq('id', id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new UnauthorizedError();
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) throw new ForbiddenError('No active workspace');
+  const { error } = await supabase.from('lead_watchlists').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) return { success: false, error: error.message };
   revalidatePath('/lead-finder/watchlists');
   return { success: true };
@@ -62,7 +72,11 @@ export async function deleteWatchlist(id: string) {
 
 export async function toggleWatchlistStatus(id: string, isActive: boolean) {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('lead_watchlists').update({ is_active: isActive }).eq('id', id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new UnauthorizedError();
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) throw new ForbiddenError('No active workspace');
+  const { error } = await supabase.from('lead_watchlists').update({ is_active: isActive }).eq("id", id).eq("workspace_id", workspaceId);
   if (error) return { success: false, error: error.message };
   revalidatePath('/lead-finder/watchlists');
   return { success: true };
@@ -70,7 +84,11 @@ export async function toggleWatchlistStatus(id: string, isActive: boolean) {
 
 export async function markAlertRead(id: string) {
   const supabase = await createServerClient();
-  await supabase.from('lead_alerts').update({ is_read: true }).eq('id', id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new UnauthorizedError();
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) throw new ForbiddenError('No active workspace');
+  await supabase.from('lead_alerts').update({ is_read: true }).eq("id", id).eq("workspace_id", workspaceId);
   revalidatePath('/lead-finder/watchlists');
   return { success: true };
 }

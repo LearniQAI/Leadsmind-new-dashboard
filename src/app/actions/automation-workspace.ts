@@ -43,14 +43,14 @@ export async function getAutomationDashboardData() {
 
 export async function toggleWorkflowActive(workflowId: string, currentState: boolean) {
   const supabase = await createServerClient();
-  await supabase.from('workflows').update({ is_active: !currentState }).eq('id', workflowId);
+  await supabase.from('workflows').update({ is_active: !currentState }).eq("id", workflowId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
   revalidatePath('/automation');
   return { success: true };
 }
 
 export async function deleteWorkflow(workflowId: string) {
   const supabase = await createServerClient();
-  await supabase.from('workflows').delete().eq('id', workflowId);
+  await supabase.from('workflows').delete().eq("id", workflowId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
   revalidatePath('/automation');
   return { success: true };
 }

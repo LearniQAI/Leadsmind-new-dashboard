@@ -227,7 +227,7 @@ export async function confirmReceiptAction(shipmentId: string, token: string) {
   const { data: shipment, error: fetchErr } = await supabase
     .from('courier_shipments')
     .select('*')
-    .eq('id', shipmentId)
+    .eq("id", shipmentId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
     .maybeSingle()
 
   if (fetchErr || !shipment) {
@@ -328,7 +328,7 @@ export async function updateShipmentStatus(
   const { data: shipment, error: fetchErr } = await supabase
     .from('courier_shipments')
     .select('*')
-    .eq('id', shipmentId)
+    .eq("id", shipmentId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
     .maybeSingle()
 
   if (fetchErr || !shipment) {

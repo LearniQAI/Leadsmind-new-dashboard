@@ -401,7 +401,7 @@ export async function addTag(contactId: string, tag: string) {
       tags: [...tags, tag],
       updated_at: new Date().toISOString()
     })
-    .eq('id', contactId);
+    .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
   if (updateError) {
     console.error(`[contacts] Error updating tags for ${contactId}:`, updateError);
@@ -454,7 +454,7 @@ export async function bulkRemoveTag(ids: string[], tag: string) {
     const { data: contact, error: fetchError } = await supabase
       .from('contacts')
       .select('tags')
-      .eq('id', id)
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .single();
 
     if (fetchError || !contact) {
@@ -469,7 +469,7 @@ export async function bulkRemoveTag(ids: string[], tag: string) {
         tags,
         updated_at: new Date().toISOString()
       })
-      .eq('id', id);
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
     
     if (updateError) {
       console.error(`[contacts] Error removing tag from ${id}:`, updateError);
@@ -576,7 +576,7 @@ export async function toggleTaskStatus(id: string, contactId: string, currentSta
  const { error } = await supabase
   .from('contact_tasks')
   .update({ status: newStatus })
-  .eq('id', id);
+  .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
  if (error) return { success: false, error: error.message };
  

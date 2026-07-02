@@ -66,7 +66,7 @@ export async function saveStrDraft(
           anomalies: payload.anomalies,
           updated_at: new Date().toISOString()
         })
-        .eq('id', reportId)
+        .eq("id", reportId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
         .select()
         .single();
 
@@ -181,7 +181,7 @@ export async function finalizeAndFileStr(
         json_payload: jsonPayload,
         updated_at: new Date().toISOString()
       })
-      .eq('id', reportId)
+      .eq("id", reportId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single();
 

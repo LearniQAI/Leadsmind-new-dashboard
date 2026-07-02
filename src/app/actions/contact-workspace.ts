@@ -116,7 +116,7 @@ export async function updateContactStatus(contactId: string, status: string) {
   const { error } = await supabase
     .from('lead_contacts')
     .update({ status })
-    .eq('id', contactId);
+    .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
   if (error) return { success: false, error: error.message };
 
@@ -192,7 +192,7 @@ export async function assignContactToPipeline(contactId: string) {
     .update({ 
       status: 'Qualified' 
     })
-    .eq('id', contactId);
+    .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
   if (error) console.error('Failed to update lead contact status:', error);
 

@@ -55,7 +55,7 @@ export async function DELETE(req: NextRequest) {
   const { error } = await supabase
     .from('workspace_api_keys')
     .update({ revoked: true })
-    .eq('id', id)
+    .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }

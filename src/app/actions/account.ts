@@ -3,7 +3,8 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { profileSchema, passwordSchema, ProfileFormValues, PasswordFormValues } from '@/lib/validations/account.schema';
-import { getUser } from '@/lib/auth';
+import { getUser, getCurrentWorkspaceId } from '@/lib/auth';
+import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 import { generateAvatarPng } from '@/lib/avatar/generateAvatarPng';
 
 export async function updateProfile(values: ProfileFormValues) {
@@ -14,6 +15,8 @@ export async function updateProfile(values: ProfileFormValues) {
  if (!validated.success) return { success: false, error: 'Invalid data' };
 
  const supabase = await createServerClient();
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) throw new ForbiddenError('No active workspace');
  
  const { error } = await supabase
   .from('users')
@@ -27,7 +30,7 @@ export async function updateProfile(values: ProfileFormValues) {
    profile_photo_url: values.profilePhotoUrl || null,
    identity_color: values.identityColor || '#3b82f6',
   })
-  .eq('id', user.id);
+  .eq("id", user.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
  if (error) return { success: false, error: error.message };
 

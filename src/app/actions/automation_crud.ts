@@ -52,7 +52,7 @@ export async function updateWorkflow(id: string, updates: any) {
   const { data, error } = await supabase
    .from('workflows')
    .update(updates)
-   .eq('id', id)
+   .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
    .select()
    .single();
 
@@ -87,7 +87,7 @@ export async function updateWorkflow(id: string, updates: any) {
 export async function deleteWorkflow(id: string) {
  try {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('workflows').delete().eq('id', id);
+  const { error } = await supabase.from('workflows').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
   if (error) throw error;
   revalidatePath('/automations');
   return { success: true };
