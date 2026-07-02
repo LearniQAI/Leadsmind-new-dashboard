@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchHelpArticles } from '@/app/actions/help';
 import { getEmailDiagnostics, getAutomationStatus, getInvoiceSettings } from '@/app/actions/diagnostics';
+import { requireAuth } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  const authResult = await requireAuth(req);
+  if (authResult instanceof NextResponse) return authResult;
+  const user = authResult;
+
   try {
     const body = await req.json();
     const { message, history } = body;

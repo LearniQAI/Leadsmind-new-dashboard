@@ -98,11 +98,16 @@ export async function dispatchWebhook(
       .eq('workspace_id', workspaceId)
       .eq('event', event)
 
+    const signingSecret = process.env.WEBHOOK_SIGNING_SECRET
+    if (!signingSecret) {
+      throw new Error('[FATAL] WEBHOOK_SIGNING_SECRET is not set')
+    }
+
     // 3) Fire legacy/custom webhooks in parallel
     const legacyFires = activeWebhooks.map(async (webhook) => {
       const startTime = Date.now()
       try {
-        const secret = webhook.secret || process.env.WEBHOOK_SIGNING_SECRET || 'leadsmind_webhook_secret'
+        const secret = webhook.secret || signingSecret
         const signature = crypto
           .createHmac('sha256', secret)
           .update(payloadString)

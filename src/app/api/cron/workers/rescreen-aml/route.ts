@@ -4,6 +4,12 @@ import { runRescreening } from '../../../../../../workers/rescreen-aml';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
+  if (req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   return handleCronTrigger(req);
 }
 
@@ -12,16 +18,13 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleCronTrigger(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
+  if (req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    // 1. Basic security validation (secret cron authorization token)
-    const authHeader = req.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      console.warn('[AML Rescreen HTTP Cron] Unauthorized trigger attempt.');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // 2. Execute rescreening pipeline
     const result = await runRescreening();
 

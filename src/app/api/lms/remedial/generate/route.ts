@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateRemedialAssignment } from '../../../../../../libs/services/src/ai/remedial-prompter';
+import { requireAuth } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
+  const authResult = await requireAuth(req);
+  if (authResult instanceof NextResponse) return authResult;
+  const user = authResult;
+
   try {
     const { contactId, courseId, lessonId, enrollmentId } = await req.json();
 

@@ -14,17 +14,15 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
+  if (req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   return await Observability.traceWorker('campaign_dispatch_worker', {}, async () => {
     try {
-      const { searchParams } = new URL(req.url);
-    const key = searchParams.get('key');
-
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && key !== cronSecret) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const workerId = `worker_${crypto.randomUUID()}`;
+      const workerId = `worker_${crypto.randomUUID()}`;
     const batchSize = 50;
 
     // 1. Acquire Jobs with Atomic Lock
