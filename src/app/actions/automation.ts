@@ -1,6 +1,7 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
+import { getCurrentWorkspaceId } from '@/lib/auth';
 
 /**
  * Calculates and updates the lead score for a contact.
@@ -10,15 +11,16 @@ export async function calculateLeadScore(contactId: string, eventType: string = 
   const supabase = await createServerClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new UnauthorizedError();
+  if (!user) throw new Error('Unauthorized');
   const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) throw new ForbiddenError('No active workspace');
+  if (!workspaceId) throw new Error('No active workspace');
   
   // 1. Fetch current score
   const { data: contact, error: fetchError } = await supabase
    .from('contacts')
    .select('lead_score')
-   .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+   .eq('id', contactId)
+   .eq('workspace_id', workspaceId)
    .single();
 
   if (fetchError) throw fetchError;
@@ -39,7 +41,8 @@ export async function calculateLeadScore(contactId: string, eventType: string = 
     lead_score: newScore,
     last_activity_at: new Date().toISOString()
    })
-   .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+   .eq('id', contactId)
+   .eq('workspace_id', workspaceId);
 
   if (updateError) throw updateError;
 
@@ -72,6 +75,8 @@ export async function getAutomationLogsForContact(contactId: string) {
 export async function triggerAutomation(contactId: string, event: 'course_completed' | 'form_submitted' | 'ticket_created' | 'project_started') {
   try {
     const supabase = await createServerClient();
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { success: false, error: 'Unauthorized' };
     
     let tag = '';
     let description = '';
@@ -97,10 +102,10 @@ export async function triggerAutomation(contactId: string, event: 'course_comple
 
     if (tag) {
       // 1. Add Tag to Contact
-      const { data: contact } = await supabase.from('contacts').select('tags').eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId).single();
+      const { data: contact } = await supabase.from('contacts').select('tags').eq('id', contactId).eq('workspace_id', workspaceId).single();
       const currentTags = contact?.tags || [];
       if (!currentTags.includes(tag)) {
-        await supabase.from('contacts').update({ tags: [...currentTags, tag] }).eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+        await supabase.from('contacts').update({ tags: [...currentTags, tag] }).eq('id', contactId).eq('workspace_id', workspaceId);
       }
 
       // 2. Log Activity
@@ -108,7 +113,7 @@ export async function triggerAutomation(contactId: string, event: 'course_comple
         contact_id: contactId,
         type: 'edit',
         description: description,
-        workspace_id: (await supabase.from('contacts').select('workspace_id').eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId).single()).data?.workspace_id
+        workspace_id: workspaceId
       });
     }
 

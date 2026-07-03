@@ -43,14 +43,38 @@ export async function getAutomationDashboardData() {
 
 export async function toggleWorkflowActive(workflowId: string, currentState: boolean) {
   const supabase = await createServerClient();
-  await supabase.from('workflows').update({ is_active: !currentState }).eq("id", workflowId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) throw new Error('No active workspace');
+
+  await supabase
+    .from('workflows')
+    .update({ is_active: !currentState })
+    .eq('id', workflowId)
+    .eq('workspace_id', workspaceId);
+
   revalidatePath('/automation');
   return { success: true };
 }
 
 export async function deleteWorkflow(workflowId: string) {
   const supabase = await createServerClient();
-  await supabase.from('workflows').delete().eq("id", workflowId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) throw new Error('No active workspace');
+
+  await supabase
+    .from('workflows')
+    .delete()
+    .eq('id', workflowId)
+    .eq('workspace_id', workspaceId);
+
   revalidatePath('/automation');
   return { success: true };
 }
