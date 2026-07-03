@@ -7,13 +7,46 @@ ADD COLUMN IF NOT EXISTS quiz_mastery_level TEXT,
 ADD COLUMN IF NOT EXISTS total_booking_credits INTEGER DEFAULT 0;
 
 -- 2. Unified Activity Ledger (Add Quiz/Booking Types)
+-- 2. Unified Activity Ledger (Add Quiz/Booking Types)
 DO $$ 
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'activity_type_ext') THEN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_enum e
+        JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typname = 'activity_type' AND e.enumlabel = 'quiz_passed'
+    ) THEN
         ALTER TYPE activity_type ADD VALUE 'quiz_passed';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_enum e
+        JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typname = 'activity_type' AND e.enumlabel = 'quiz_failed'
+    ) THEN
         ALTER TYPE activity_type ADD VALUE 'quiz_failed';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_enum e
+        JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typname = 'activity_type' AND e.enumlabel = 'certificate_issued'
+    ) THEN
         ALTER TYPE activity_type ADD VALUE 'certificate_issued';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_enum e
+        JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typname = 'activity_type' AND e.enumlabel = 'booking_scheduled'
+    ) THEN
         ALTER TYPE activity_type ADD VALUE 'booking_scheduled';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_enum e
+        JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typname = 'activity_type' AND e.enumlabel = 'booking_noshow'
+    ) THEN
         ALTER TYPE activity_type ADD VALUE 'booking_noshow';
     END IF;
 END $$;

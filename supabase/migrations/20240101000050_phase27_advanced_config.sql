@@ -61,33 +61,33 @@ DECLARE
     v_matches INTEGER;
 BEGIN
     -- Get quiz configuration
-    SELECT q.*, sub.answers INTO v_quiz, v_answers 
+    SELECT q.* INTO v_quiz
     FROM lms_quiz_submissions sub
     JOIN lms_quizzes q ON q.id = sub.quiz_id
+    WHERE sub.id = p_submission_id;
+
+    SELECT sub.answers INTO v_answers
+    FROM lms_quiz_submissions sub
     WHERE sub.id = p_submission_id;
 
     FOR v_q IN SELECT id, correct_answer, points, type, options FROM lms_questions WHERE quiz_id = v_quiz.id LOOP
         v_total_points := v_total_points + v_q.points;
         v_ans := v_answers->v_q.id::text;
-        
-        -- Single Choice / True-False
+
         IF v_q.type IN ('multiple_choice', 'true_false') THEN
             IF v_ans::text = v_q.correct_answer::text THEN
                 v_scored_points := v_scored_points + v_q.points;
             ELSIF v_quiz.negative_marking THEN
-                v_scored_points := v_scored_points - (v_q.points * 0.25); -- Deduct 25% for wrong
+                v_scored_points := v_scored_points - (v_q.points * 0.25);
             END IF;
-            
-        -- Multiple Answers
+
         ELSIF v_q.type = 'multiple_answers' THEN
             IF v_ans::jsonb = v_q.correct_answer::jsonb THEN
                 v_scored_points := v_scored_points + v_q.points;
             ELSIF v_quiz.partial_scoring THEN
-                -- Simple partial logic: if student got 50% of IDs match, give 50% points
-                -- (In production, this would be a more precise set intersection)
+                NULL;
             END IF;
 
-        -- Short Answer
         ELSIF v_q.type = 'short_answer' THEN
             v_keywords := string_to_array(v_q.correct_answer->>0, ',');
             v_matches := 0;
@@ -100,7 +100,6 @@ BEGIN
         END IF;
     END LOOP;
 
-    -- Avoid negative total scores
     IF v_scored_points < 0 THEN v_scored_points := 0; END IF;
 
     IF v_total_points > 0 THEN
@@ -108,13 +107,13 @@ BEGIN
     ELSE
         v_final_score := 0;
     END IF;
-    
-    UPDATE lms_quiz_submissions 
-    SET 
+
+    UPDATE lms_quiz_submissions
+    SET
         score = v_final_score,
-        status = CASE 
-            WHEN v_final_score >= v_quiz.passing_score THEN 'passed' 
-            ELSE 'failed' 
+        status = CASE
+            WHEN v_final_score >= v_quiz.passing_score THEN 'passed'
+            ELSE 'failed'
         END,
         graded_at = now()
     WHERE id = p_submission_id;

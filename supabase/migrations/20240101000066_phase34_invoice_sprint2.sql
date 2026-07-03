@@ -75,4 +75,5 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- $$);
 
 -- 4. Storage Bucket Configuration (Manual step reminder)
-...
+-- Create a storage bucket named 'invoice-attachments' in the Supabase dashboard
+-- and set appropriate access policies for authenticated workspace members.

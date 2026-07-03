@@ -40,7 +40,6 @@ ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'
 ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES auth.users(id);
 
 -- 4. QUOTES TABLE
-ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
 CREATE TABLE IF NOT EXISTS public.quotes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
@@ -54,9 +53,10 @@ CREATE TABLE IF NOT EXISTS public.quotes (
     total_amount DECIMAL(10, 2) DEFAULT 0.00,
     currency TEXT DEFAULT 'USD',
     notes TEXT,
-    terms TEXT,
+    terms TEXT, 
     expiry_date TIMESTAMPTZ,
     assigned_to UUID REFERENCES auth.users(id),
+    metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -82,29 +82,30 @@ CREATE TABLE IF NOT EXISTS public.invoice_items (
     )
 );
 
--- 6. CUSTOM FIELDS (Industry specific)
+-- 6. CUSTOM FIELD DEFINITIONS (Industry specific)
 CREATE TABLE IF NOT EXISTS public.invoice_custom_fields (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
-    target_type TEXT NOT NULL, -- 'invoice', 'quote'
-    label TEXT NOT NULL,
-    field_type TEXT NOT NULL DEFAULT 'text', -- 'text', 'number', 'date', 'dropdown', 'checkbox', 'url'
-    options JSONB, -- For dropdowns
+    name TEXT NOT NULL,
+    field_type TEXT NOT NULL DEFAULT 'text', -- 'text', 'number', 'date', 'select', 'checkbox'
+    options JSONB DEFAULT '[]'::jsonb, -- for 'select' type fields
     is_required BOOLEAN DEFAULT false,
-    show_on_pdf BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT now()
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Custom fields values
+-- 6a. CUSTOM FIELD VALUES
 CREATE TABLE IF NOT EXISTS public.invoice_custom_field_values (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
     field_id UUID NOT NULL REFERENCES public.invoice_custom_fields(id) ON DELETE CASCADE,
     invoice_id UUID REFERENCES public.invoices(id) ON DELETE CASCADE,
     quote_id UUID REFERENCES public.quotes(id) ON DELETE CASCADE,
     value TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     CONSTRAINT value_parent_check CHECK (
-        (invoice_id IS NOT NULL AND quote_id IS NULL) OR 
+        (invoice_id IS NOT NULL AND quote_id IS NULL) OR
         (invoice_id IS NULL AND quote_id IS NOT NULL)
     )
 );
@@ -152,6 +153,7 @@ CREATE POLICY "Workspace access for invoice attachments" ON public.invoice_attac
 
 -- 9. TRIGGERS
 CREATE TRIGGER update_invoice_settings_updated_at BEFORE UPDATE ON invoice_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_invoice_custom_fields_updated_at BEFORE UPDATE ON invoice_custom_fields FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_quotes_updated_at BEFORE UPDATE ON quotes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

@@ -2,8 +2,8 @@
 -- Enhancing external integration and identity consistency
 
 -- 1. Add API Key support to workspaces
-ALTER TABLE public.workspaces ADD COLUMN IF NOT EXISTS api_key TEXT UNIQUE DEFAULT 'lm_sk_' || encode(gen_random_bytes(24), 'hex');
-
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+ALTER TABLE public.workspaces ADD COLUMN IF NOT EXISTS api_key TEXT UNIQUE DEFAULT 'lm_sk_' || encode(extensions.gen_random_bytes(24), 'hex');
 -- 2. Fix Permission Denied for 'users' table
 -- Ensure workspace members can view each other's profiles
 DROP POLICY IF EXISTS "Users can view team member profiles" ON public.users;

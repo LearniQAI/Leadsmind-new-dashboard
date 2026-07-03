@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS webhook_dead_letters (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     provider TEXT NOT NULL,
     payload JSONB NOT NULL,
     error TEXT NOT NULL,

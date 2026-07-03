@@ -97,17 +97,17 @@ ALTER TABLE public.quiz_attempts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Workspace owners can manage courses"
 ON public.courses FOR ALL
 TO authenticated
-USING (workspace_id = (SELECT workspace_id FROM profiles WHERE id = auth.uid()));
+USING (public.check_workspace_access(workspace_id));
 
 CREATE POLICY "Workspace owners can manage modules"
 ON public.modules FOR ALL
 TO authenticated
-USING (EXISTS (SELECT 1 FROM public.courses WHERE id = modules.course_id AND workspace_id = (SELECT workspace_id FROM profiles WHERE id = auth.uid())));
+USING (EXISTS (SELECT 1 FROM public.courses WHERE id = modules.course_id AND public.check_workspace_access(workspace_id)));
 
 CREATE POLICY "Workspace owners can manage lessons"
 ON public.lessons FOR ALL
 TO authenticated
-USING (EXISTS (SELECT 1 FROM public.modules m JOIN public.courses c ON m.course_id = c.id WHERE m.id = lessons.module_id AND c.workspace_id = (SELECT workspace_id FROM profiles WHERE id = auth.uid())));
+USING (EXISTS (SELECT 1 FROM public.modules m JOIN public.courses c ON m.course_id = c.id WHERE m.id = lessons.module_id AND public.check_workspace_access(c.workspace_id)));
 
 -- Students can view enrolled courses
 CREATE POLICY "Students can view enrolled courses"

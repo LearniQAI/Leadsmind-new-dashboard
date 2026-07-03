@@ -14,7 +14,7 @@ ALTER TABLE public.reputation_settings ENABLE ROW LEVEL SECURITY;
 -- Policies
 DO $$ 
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view reputation settings in their workspace') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view reputation settings in their workspace' AND tablename = 'reputation_settings') THEN
         CREATE POLICY "Users can view reputation settings in their workspace"
             ON public.reputation_settings FOR SELECT
             USING (workspace_id IN (
@@ -22,7 +22,7 @@ BEGIN
             ));
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can insert reputation settings in their workspace') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can insert reputation settings in their workspace' AND tablename = 'reputation_settings') THEN
         CREATE POLICY "Users can insert reputation settings in their workspace"
             ON public.reputation_settings FOR INSERT
             WITH CHECK (workspace_id IN (
@@ -30,7 +30,7 @@ BEGIN
             ));
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update reputation settings in their workspace') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update reputation settings in their workspace' AND tablename = 'reputation_settings') THEN
         CREATE POLICY "Users can update reputation settings in their workspace"
             ON public.reputation_settings FOR UPDATE
             USING (workspace_id IN (
@@ -47,4 +47,4 @@ DROP TRIGGER IF EXISTS update_reputation_settings_updated_at ON public.reputatio
 CREATE TRIGGER update_reputation_settings_updated_at
     BEFORE UPDATE ON public.reputation_settings
     FOR EACH ROW
-    EXECUTE FUNCTION update_modified_column();
+    EXECUTE FUNCTION update_updated_at_column();
