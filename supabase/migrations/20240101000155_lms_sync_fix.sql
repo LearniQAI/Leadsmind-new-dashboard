@@ -12,9 +12,10 @@ BEGIN
             ALTER TABLE lms_quizzes RENAME COLUMN moduleid TO module_id;
         END IF;
 
-        -- Fix Foreign Key
+        -- Fix Foreign Key (drop both possible naming variants so reruns are safe)
         ALTER TABLE lms_quizzes DROP CONSTRAINT IF EXISTS lms_quizzes_moduleid_fkey;
-        
+        ALTER TABLE lms_quizzes DROP CONSTRAINT IF EXISTS lms_quizzes_module_id_fkey;
+
         -- Check if it should reference 'modules'
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'modules') THEN
             ALTER TABLE lms_quizzes ADD CONSTRAINT lms_quizzes_module_id_fkey FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE SET NULL;

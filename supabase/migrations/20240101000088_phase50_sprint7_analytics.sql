@@ -3,7 +3,7 @@
 -- 1. Create form_analytics_events table
 -- Used to store raw tracking events (viewed, focused, completed, abandoned)
 CREATE TABLE IF NOT EXISTS public.form_analytics_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
     form_id UUID NOT NULL REFERENCES public.forms(id) ON DELETE CASCADE,
     session_id TEXT NOT NULL,
@@ -22,7 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_form_analytics_events_session ON public.form_anal
 
 -- 2. Create form_analytics_aggregates table (for fast dashboard loading)
 CREATE TABLE IF NOT EXISTS public.form_analytics_aggregates (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
     form_id UUID NOT NULL REFERENCES public.forms(id) ON DELETE CASCADE,
     variant_id TEXT,
@@ -48,18 +48,12 @@ CREATE INDEX IF NOT EXISTS idx_form_analytics_aggregates_form_date ON public.for
 ALTER TABLE public.form_analytics_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.form_analytics_aggregates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow workspace users to read analytics aggregates" ON public.form_analytics_aggregates;
 CREATE POLICY "Allow workspace users to read analytics aggregates"
   ON public.form_analytics_aggregates FOR SELECT
-  USING (
-    workspace_id IN (
-      SELECT workspace_id FROM public.workspace_users WHERE user_id = auth.uid()
-    )
-  );
+  USING (public.check_workspace_access(workspace_id));
 
+DROP POLICY IF EXISTS "Allow workspace users to read analytics events" ON public.form_analytics_events;
 CREATE POLICY "Allow workspace users to read analytics events"
   ON public.form_analytics_events FOR SELECT
-  USING (
-    workspace_id IN (
-      SELECT workspace_id FROM public.workspace_users WHERE user_id = auth.uid()
-    )
-  );
+  USING (public.check_workspace_access(workspace_id));

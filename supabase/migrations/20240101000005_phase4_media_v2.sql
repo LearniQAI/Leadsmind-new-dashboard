@@ -23,7 +23,7 @@ ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (
   bucket_id = 'media' AND
-  (storage.foldername(name))[1] = (SELECT workspace_id::text FROM profiles WHERE id = auth.uid())
+  public.check_workspace_access((storage.foldername(name))[1]::uuid)
 );
 
 CREATE POLICY "Users can view media in their workspace"
@@ -31,7 +31,7 @@ ON storage.objects FOR SELECT
 TO authenticated
 USING (
   bucket_id = 'media' AND
-  (storage.foldername(name))[1] = (SELECT workspace_id::text FROM profiles WHERE id = auth.uid())
+  public.check_workspace_access((storage.foldername(name))[1]::uuid)
 );
 
 CREATE POLICY "Users can update media in their workspace"
@@ -39,7 +39,7 @@ ON storage.objects FOR UPDATE
 TO authenticated
 USING (
   bucket_id = 'media' AND
-  (storage.foldername(name))[1] = (SELECT workspace_id::text FROM profiles WHERE id = auth.uid())
+  public.check_workspace_access((storage.foldername(name))[1]::uuid)
 );
 
 CREATE POLICY "Users can delete media in their workspace"
@@ -47,7 +47,7 @@ ON storage.objects FOR DELETE
 TO authenticated
 USING (
   bucket_id = 'media' AND
-  (storage.foldername(name))[1] = (SELECT workspace_id::text FROM profiles WHERE id = auth.uid())
+  public.check_workspace_access((storage.foldername(name))[1]::uuid)
 );
 
 -- Table to track file metadata and virtual folders
@@ -76,22 +76,22 @@ ALTER TABLE public.media_files ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view media_files in their workspace"
 ON public.media_files FOR SELECT
 TO authenticated
-USING (workspace_id = (SELECT workspace_id FROM profiles WHERE id = auth.uid()));
+USING (public.check_workspace_access(workspace_id));
 
 CREATE POLICY "Users can insert media_files in their workspace"
 ON public.media_files FOR INSERT
 TO authenticated
-WITH CHECK (workspace_id = (SELECT workspace_id FROM profiles WHERE id = auth.uid()));
+WITH CHECK (public.check_workspace_access(workspace_id));
 
 CREATE POLICY "Users can update media_files in their workspace"
 ON public.media_files FOR UPDATE
 TO authenticated
-USING (workspace_id = (SELECT workspace_id FROM profiles WHERE id = auth.uid()));
+USING (public.check_workspace_access(workspace_id));
 
 CREATE POLICY "Users can delete media_files in their workspace"
 ON public.media_files FOR DELETE
 TO authenticated
-USING (workspace_id = (SELECT workspace_id FROM profiles WHERE id = auth.uid()));
+USING (public.check_workspace_access(workspace_id));
 
 -- Global Search Index on media_files
 -- (In a real app, we might use pg_trgm or full-text search)
@@ -116,7 +116,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.contacts c
     WHERE c.id = contact_documents.contact_id
-    AND c.workspace_id = (SELECT workspace_id FROM profiles WHERE id = auth.uid())
+    AND public.check_workspace_access(c.workspace_id)
   )
 );
 
@@ -127,7 +127,7 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.contacts c
     WHERE c.id = contact_documents.contact_id
-    AND c.workspace_id = (SELECT workspace_id FROM profiles WHERE id = auth.uid())
+    AND public.check_workspace_access(c.workspace_id)
   )
 );
 

@@ -140,10 +140,23 @@ ALTER TABLE price_list_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE portal_accounts ENABLE ROW LEVEL SECURITY;
 
 -- Standard Workspace RLS Policies (Simplified for brevity)
+DROP POLICY IF EXISTS "Workspace access for quotes" ON quotes;
 CREATE POLICY "Workspace access for quotes" ON quotes FOR ALL USING (workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Workspace access for retainers" ON retainers;
 CREATE POLICY "Workspace access for retainers" ON retainers FOR ALL USING (workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Workspace access for retainer_ledger" ON retainer_ledger_entries;
 CREATE POLICY "Workspace access for retainer_ledger" ON retainer_ledger_entries FOR ALL USING (workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Workspace access for time_entries" ON time_entries;
 CREATE POLICY "Workspace access for time_entries" ON time_entries FOR ALL USING (workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Workspace access for expenses" ON expenses;
 CREATE POLICY "Workspace access for expenses" ON expenses FOR ALL USING (workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Workspace access for price_lists" ON price_lists;
 CREATE POLICY "Workspace access for price_lists" ON price_lists FOR ALL USING (workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Workspace access for price_list_items" ON price_list_items;
 CREATE POLICY "Workspace access for price_list_items" ON price_list_items FOR ALL USING (price_list_id IN (SELECT id FROM price_lists WHERE workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid())));

@@ -1,7 +1,7 @@
 -- Sprint 6: Blog Analytics & Comments Framework
 -- Table: blog_settings
 CREATE TABLE IF NOT EXISTS public.blog_settings (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
     workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
     comments_engine TEXT DEFAULT 'native' CHECK (comments_engine IN ('none', 'native', 'disqus')),
     disqus_shortname TEXT,
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.blog_settings (
 
 -- Table: blog_comments
 CREATE TABLE IF NOT EXISTS public.blog_comments (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
     workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
     post_id UUID NOT NULL REFERENCES public.blog_posts(id) ON DELETE CASCADE,
     author_name TEXT NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.blog_comments (
 
 -- Table: blog_pageviews
 CREATE TABLE IF NOT EXISTS public.blog_pageviews (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
     workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
     post_id UUID NOT NULL REFERENCES public.blog_posts(id) ON DELETE CASCADE,
     visitor_id TEXT NOT NULL, -- Anonymous hashed visitor ID
