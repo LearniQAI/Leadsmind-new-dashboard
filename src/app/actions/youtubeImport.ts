@@ -224,7 +224,7 @@ export async function initializeYoutubeImportJob(videoUrl: string) {
 
   try {
     // 2. Transcribing Phase
-    await supabase.from('blog_import_jobs').update({ status: 'transcribing', updated_at: new Date().toISOString() }).eq('id', job.id);
+    await supabase.from('blog_import_jobs').update({ status: 'transcribing', updated_at: new Date().toISOString() }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
     
     let transcript = '';
     let whisperCost = 0.0;
@@ -247,7 +247,7 @@ export async function initializeYoutubeImportJob(videoUrl: string) {
     }
 
     // 3. Generating Phase
-    await supabase.from('blog_import_jobs').update({ status: 'generating', updated_at: new Date().toISOString() }).eq('id', job.id);
+    await supabase.from('blog_import_jobs').update({ status: 'generating', updated_at: new Date().toISOString() }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
     
     const { blog, costUsd: gptCost } = await transformTranscriptToBlog(transcript, video.title);
 
@@ -291,7 +291,7 @@ export async function initializeYoutubeImportJob(videoUrl: string) {
       gpt_cost_usd: gptCost,
       zar_cost: zarCost,
       updated_at: new Date().toISOString()
-    }).eq('id', job.id);
+    }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
 
     revalidatePath('/blog');
     revalidatePath('/blog/manage');
@@ -303,7 +303,7 @@ export async function initializeYoutubeImportJob(videoUrl: string) {
       status: 'failed',
       error_message: err.message || 'Orchestration pipeline failure.',
       updated_at: new Date().toISOString()
-    }).eq('id', job.id);
+    }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
     
     return { error: err.message || 'Job compilation pipeline aborted.' };
   }

@@ -262,7 +262,7 @@ export async function updateModule(
   const { data: updatedModule, error } = await supabase
    .from('modules')
    .update(updatePayload)
-   .eq('id', moduleId)
+   .eq("id", moduleId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
    .select()
    .single();
 
@@ -284,7 +284,7 @@ export async function deleteModule(moduleId: string) {
   const { data: moduleObj, error: moduleErr } = await supabase
    .from('modules')
    .select('id, course_id, courses!inner(workspace_id)')
-   .eq('id', moduleId)
+   .eq("id", moduleId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
    .single();
 
   if (moduleErr || !moduleObj) return { error: 'Module not found' };
@@ -297,7 +297,7 @@ export async function deleteModule(moduleId: string) {
   const { error } = await supabase
    .from('modules')
    .delete()
-   .eq('id', moduleId);
+   .eq("id", moduleId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
   if (error) throw error;
   return { success: true };
@@ -414,7 +414,7 @@ export async function updateLesson(
   const { data: updatedLesson, error } = await supabase
    .from('lessons')
    .update(updatePayload)
-   .eq('id', lessonId)
+   .eq("id", lessonId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
    .select()
    .single();
 
@@ -436,7 +436,7 @@ export async function deleteLesson(lessonId: string) {
   const { data: lessonObj, error: lessonErr } = await supabase
    .from('lessons')
    .select('id, module_id, modules!inner(course_id, courses!inner(workspace_id))')
-   .eq('id', lessonId)
+   .eq("id", lessonId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
    .single();
 
   if (lessonErr || !lessonObj) return { error: 'Lesson not found' };
@@ -449,7 +449,7 @@ export async function deleteLesson(lessonId: string) {
   const { error } = await supabase
    .from('lessons')
    .delete()
-   .eq('id', lessonId);
+   .eq("id", lessonId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
   if (error) throw error;
   return { success: true };

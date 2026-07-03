@@ -64,7 +64,7 @@ export async function PATCH(req: NextRequest) {
     const { data, error } = await supabase
       .from('lena_knowledge_base')
       .update({ ...body, updated_at: new Date().toISOString() })
-      .eq('id', id)
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single();
 
@@ -88,7 +88,7 @@ export async function DELETE(req: NextRequest) {
     const { error } = await supabase
       .from('lena_knowledge_base')
       .delete()
-      .eq('id', id);
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

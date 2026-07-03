@@ -3,18 +3,77 @@ import MetaData from "@/hooks/useMetaData";
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import React from "react";
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId, requireAuth } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import HomeDashboardClient from "@/components/pagesUI/apps/home/HomeDashboardClient";
+import { cookies } from 'next/headers';
+import { WorkspaceSync } from '@/components/auth/WorkspaceSync';
+import { DashboardWorkspacePicker } from '@/components/auth/DashboardWorkspacePicker';
 
 import { AttributionEngine } from '@/lib/analytics/AttributionEngine';
 
 const Home = async () => {
   const user = await requireAuth();
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) redirect('/login');
 
   const supabase = await createServerClient();
+  const cookieStore = cookies();
+  const activeWorkspaceId = cookieStore.get('active_workspace_id')?.value ?? null;
+
+  const { data: memberships, error: membershipError } = await supabase
+    .from('workspace_members')
+    .select(`
+      role,
+      workspace_id,
+      workspaces (
+        id, name, slug, logo_url, owner_id, plan_tier, created_at
+      )
+    `)
+    .eq('user_id', user.id);
+
+  if (membershipError) {
+    redirect('/auth/signin-basic?error=no_workspace');
+  }
+
+  type RawWorkspace = {
+    id: string;
+    name: string;
+    slug: string;
+    logo_url: string | null;
+    owner_id: string;
+    plan_tier: 'free' | 'pro' | 'enterprise';
+    created_at: string;
+  };
+
+  const workspaces = (memberships ?? [])
+    .filter((membership) => membership.workspaces)
+    .map((membership) => {
+      const workspace = membership.workspaces as unknown as RawWorkspace;
+      return {
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+        logoUrl: workspace.logo_url,
+        ownerId: workspace.owner_id,
+        plan: workspace.plan_tier,
+        createdAt: workspace.created_at,
+        role: membership.role,
+      };
+    });
+
+  if (workspaces.length === 0) {
+    redirect('/auth/signin-basic?error=no_workspace');
+  }
+
+  const workspace = activeWorkspaceId
+    ? workspaces.find((item) => item.id === activeWorkspaceId) ?? null
+    : null;
+
+  if (workspaces.length > 1 && !workspace) {
+    return <DashboardWorkspacePicker workspaces={workspaces} />;
+  }
+
+  const resolvedWorkspace = workspace ?? workspaces[0];
+  const workspaceId = resolvedWorkspace.id;
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -49,6 +108,7 @@ const Home = async () => {
   return (
     <>
       <MetaData pageTitle="Main Dashboard">
+        <WorkspaceSync workspaceId={workspaceId} />
         <Wrapper>
           <HomeDashboardClient
             stats={{

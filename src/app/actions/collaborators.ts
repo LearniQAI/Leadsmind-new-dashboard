@@ -144,7 +144,7 @@ export async function acceptFormInvitation(collabId: string): Promise<InviteActi
     const { data: existing } = await adminSupabase
       .from('form_collaborators')
       .select('id, status, form_id, email')
-      .eq('id', collabId)
+      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .single();
 
     if (!existing) return { error: 'Invitation not found.' };
@@ -154,7 +154,7 @@ export async function acceptFormInvitation(collabId: string): Promise<InviteActi
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ status: 'active' })
-      .eq('id', collabId);
+      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (error) throw error;
 
@@ -173,7 +173,7 @@ export async function declineFormInvitation(collabId: string): Promise<InviteAct
     const { data: existing } = await adminSupabase
       .from('form_collaborators')
       .select('id, status')
-      .eq('id', collabId)
+      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .single();
 
     if (!existing) return { error: 'Invitation not found.' };
@@ -182,7 +182,7 @@ export async function declineFormInvitation(collabId: string): Promise<InviteAct
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ status: 'declined' })
-      .eq('id', collabId);
+      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (error) throw error;
 
@@ -275,7 +275,7 @@ export async function removeFormCollaborator(collabId: string, formId: string) {
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ status: 'removed' })
-      .eq('id', collabId);
+      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (error) throw error;
     
@@ -293,7 +293,7 @@ export async function updateFormCollaboratorRole(collabId: string, role: 'editor
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ role })
-      .eq('id', collabId);
+      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (error) throw error;
 

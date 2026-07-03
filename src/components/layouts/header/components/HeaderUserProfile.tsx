@@ -26,7 +26,7 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
     try {
       await handleLogout();
       toast.success("Logged out successfully");
-      window.location.href = '/login';
+      window.location.href = '/auth/signin-basic';
     } catch (error) {
       toast.error("Failed to log out. Please try again.");
       setIsLoggingOut(false);

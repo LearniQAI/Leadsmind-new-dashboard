@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
 
     if (slipErr) {
       // rollback run record if payslips fail
-      await supabase.from('payroll_runs').delete().eq('id', run.id)
+      await supabase.from('payroll_runs').delete().eq("id", run.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       return NextResponse.json({ error: slipErr.message }, { status: 500 })
     }
 
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
       const { data: workspace } = await supabase
         .from('workspaces')
         .select('owner_id, name')
-        .eq('id', workspaceId)
+        .eq("id", workspaceId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
         .single()
 
       if (workspace?.owner_id) {
@@ -193,7 +193,7 @@ export async function PATCH(req: NextRequest) {
     const { data, error } = await supabase
       .from('payroll_runs')
       .update(body)
-      .eq('id', id)
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single()
 
@@ -214,7 +214,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: Insufficient privileges' }, { status: 403 })
     }
 
-    const { error } = await supabase.from('payroll_runs').delete().eq('id', id)
+    const { error } = await supabase.from('payroll_runs').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
   } catch (err: any) {

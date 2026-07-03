@@ -54,7 +54,7 @@ export async function analyzeContentSEO(params: {
     const { error: deductErr } = await supabase
       .from('workspaces')
       .update({ ai_credits: newCredits })
-      .eq('id', wsId);
+      .eq("id", wsId).eq("workspace_id", wsId).eq('workspace_id', wsId);
 
     if (deductErr) {
       return { error: 'Credit deduction failed. SEO scan aborted.' };
@@ -867,7 +867,7 @@ export async function analyzeContentSEO(params: {
         seo_score: seoScore,
         seo_target_keyword: params.primaryKeyword,
         meta_description: params.metaDescription
-      }).eq('id', params.documentId);
+      }).eq("id", params.documentId).eq("workspace_id", wsId).eq('workspace_id', wsId);
     }
 
     return {

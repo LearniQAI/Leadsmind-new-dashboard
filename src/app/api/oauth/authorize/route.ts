@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   if (!user) {
     // Redirect to login page
-    const loginUrl = new URL('/login', req.nextUrl.origin)
+    const loginUrl = new URL('/auth/signin-basic', req.nextUrl.origin)
     loginUrl.searchParams.set('next', req.nextUrl.pathname + req.nextUrl.search)
     return NextResponse.redirect(loginUrl)
   }

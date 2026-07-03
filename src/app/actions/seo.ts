@@ -173,7 +173,7 @@ export async function deleteTrackedKeyword(id: string) {
     const { error } = await supabase
       .from('seo_tracked_keywords')
       .delete()
-      .eq('id', id);
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (error) throw error;
 
@@ -211,7 +211,7 @@ export async function updatePipelineStatus(id: string, status: 'Idea' | 'Researc
     const { data, error } = await supabase
       .from('seo_content_pipeline')
       .update({ status })
-      .eq('id', id)
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single();
 
@@ -263,7 +263,7 @@ export async function updatePipelineItemCost(id: string, cost: number) {
     const { data, error } = await supabase
       .from('seo_content_pipeline')
       .update({ cost })
-      .eq('id', id)
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single();
 
@@ -329,7 +329,7 @@ export async function deletePipelineItem(id: string) {
     const { error } = await supabase
       .from('seo_content_pipeline')
       .delete()
-      .eq('id', id);
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (error) throw error;
 

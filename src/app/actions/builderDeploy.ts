@@ -64,7 +64,7 @@ export async function publishPageStatic(pageId: string) {
         is_published: true,
         published_at: new Date().toISOString()
       })
-      .eq('id', pageId);
+      .eq("id", pageId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (updateError) throw updateError;
 
@@ -73,7 +73,7 @@ export async function publishPageStatic(pageId: string) {
       await supabase
         .from('websites')
         .update({ is_published: true })
-        .eq('id', website.id);
+        .eq("id", website.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
     }
 
     // 5. Try to upload to Supabase Storage bucket 'published-sites' (fallback gracefully if bucket is missing)
@@ -161,7 +161,7 @@ export async function verifyDomainSSL(domainId: string) {
         verified,
         updated_at: new Date().toISOString()
       })
-      .eq('id', domainId)
+      .eq("id", domainId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select()
       .single();
 
@@ -238,7 +238,7 @@ export async function deleteSubdirectoryPage(pageId: string) {
       const { error: pageDeleteError } = await supabase
         .from('pages')
         .delete()
-        .eq('id', pageId);
+        .eq("id", pageId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
       
       if (pageDeleteError) throw pageDeleteError;
     }
@@ -267,7 +267,7 @@ export async function renameSubdirectoryPage(pageId: string, newName: string, ne
     const { error: pageUpdateErr } = await supabase
       .from('pages')
       .update({ name: newName })
-      .eq('id', pageId);
+      .eq("id", pageId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (pageUpdateErr) throw pageUpdateErr;
 
@@ -279,7 +279,7 @@ export async function renameSubdirectoryPage(pageId: string, newName: string, ne
           name: newName,
           path: cleanPath
         })
-        .eq('id', page.website_page_id);
+        .eq("id", page.website_page_id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
       if (routeUpdateErr) throw routeUpdateErr;
     }
@@ -325,7 +325,7 @@ export async function restorePageRevision(versionId: string) {
         content: version.content,
         updated_at: new Date().toISOString()
       })
-      .eq('id', version.page_id);
+      .eq("id", version.page_id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
 
     if (updateError) throw updateError;
     return { success: true, pageId: version.page_id };

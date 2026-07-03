@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export default async function AffiliatesPage() {
   await requireAuth();
   const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) redirect('/login');
+  if (!workspaceId) redirect('/auth/signin-basic');
 
   const supabase = await createServerClient();
   const [programmesRes, affiliatesRes, commissionsRes, workspaceRes, payoutsRes] = await Promise.all([

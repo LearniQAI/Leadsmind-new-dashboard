@@ -246,7 +246,11 @@ export async function convertToInvoice(quoteId: string) {
 
 export async function deleteInvoice(id: string) {
  const supabase = await createServerClient();
- const { error } = await supabase.from('invoices').delete().eq('id', id);
+ const { data: { user } } = await supabase.auth.getUser();
+ if (!user) throw new UnauthorizedError();
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) throw new ForbiddenError('No active workspace');
+ const { error } = await supabase.from('invoices').delete().eq('id', id).eq('workspace_id', workspaceId);
  if (error) return { success: false, error: error.message };
   safeRevalidatePath('/invoices');
   return { success: true };
@@ -395,7 +399,11 @@ export async function updateInvoiceStatus(id: string, status: string) {
 
 export async function deleteQuote(id: string) {
  const supabase = await createServerClient();
- const { error } = await supabase.from('quotes').delete().eq('id', id);
+ const { data: { user } } = await supabase.auth.getUser();
+ if (!user) throw new UnauthorizedError();
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) throw new ForbiddenError('No active workspace');
+ const { error } = await supabase.from('quotes').delete().eq('id', id).eq('workspace_id', workspaceId);
  if (error) return { success: false, error: error.message };
   safeRevalidatePath('/quotes');
   return { success: true };

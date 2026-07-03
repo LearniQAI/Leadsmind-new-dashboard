@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest) {
     const { data, error } = await supabase
       .from('lena_conversations')
       .update(updates)
-      .eq('id', id)
+      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
       .select(`
         *,
         assigned_agent:lena_agents(id, display_name, avatar_url, role_label)
