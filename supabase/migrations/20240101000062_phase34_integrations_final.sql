@@ -53,7 +53,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 5. Trigger for Booking Outcomes
-DROP TRIGGER IF EXISTS tr_integ_booking_outcome ON bookings;
+DROP TRIGGER IF EXISTS tr_integ_booking_outcome ON appointments;
 CREATE TRIGGER tr_integ_booking_outcome
-AFTER UPDATE ON bookings
+AFTER UPDATE ON appointments
 FOR EACH ROW EXECUTE FUNCTION fn_integ_handle_booking_outcome();

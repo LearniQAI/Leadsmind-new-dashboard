@@ -1,6 +1,6 @@
 -- Campaign Dispatch Queue
 CREATE TABLE IF NOT EXISTS campaign_dispatch_queue (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     campaign_id UUID NOT NULL REFERENCES email_campaigns(id) ON DELETE CASCADE,
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,

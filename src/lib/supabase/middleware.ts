@@ -144,20 +144,20 @@ export async function updateSession(request: NextRequest) {
  const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
  
  // Define what should be public (landing pages, etc. if any)
- // For now, only /auth, /privacy-policy, /terms, and /unauthenticated/ are public.
-const isPublicPage = isAuthPage || 
-            request.nextUrl.pathname === '/login' || 
-            request.nextUrl.pathname.startsWith('/_next') || 
-            request.nextUrl.pathname.startsWith('/api') ||
-            request.nextUrl.pathname === '/favicon.ico' ||
-            request.nextUrl.pathname === '/privacy-policy' ||
-            request.nextUrl.pathname === '/terms' ||
-            request.nextUrl.pathname.startsWith('/unauthenticated') ||
-            request.nextUrl.pathname.startsWith('/book')
+ const isPublicPage =
+   request.nextUrl.pathname === '/' ||
+   isAuthPage ||
+   request.nextUrl.pathname.startsWith('/_next') ||
+   request.nextUrl.pathname.startsWith('/api') ||
+   request.nextUrl.pathname === '/favicon.ico' ||
+   request.nextUrl.pathname === '/privacy-policy' ||
+   request.nextUrl.pathname === '/terms' ||
+   request.nextUrl.pathname.startsWith('/unauthenticated') ||
+   request.nextUrl.pathname.startsWith('/book')
 
- // 1. If user is logged in and tries to access auth pages, redirect to root
+ // If user is logged in and tries to access auth pages, redirect to dashboard
  if (user && isAuthPage) {
-  return NextResponse.redirect(new URL('/', request.url))
+  return NextResponse.redirect(new URL('/dashboard', request.url))
  }
 
  // 2. If user is NOT logged in and tries to access ANY page that isn't public, redirect to login

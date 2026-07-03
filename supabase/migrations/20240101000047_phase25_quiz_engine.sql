@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS lms_quizzes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id UUID NOT NULL,
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    moduleId UUID REFERENCES course_modules(id) ON DELETE SET NULL, -- Optional: quiz can be part of a module
+    module_id UUID REFERENCES public.modules(id) ON DELETE SET NULL, -- Optional: quiz can be part of a module
     title TEXT NOT NULL,
     description TEXT,
     passing_score INTEGER DEFAULT 80, -- Percentage

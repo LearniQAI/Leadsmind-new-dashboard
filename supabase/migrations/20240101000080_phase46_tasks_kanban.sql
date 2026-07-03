@@ -61,9 +61,11 @@ ALTER TABLE task_assignees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_tag_assignments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Workspace access for tasks" ON tasks;
 CREATE POLICY "Workspace access for tasks" ON tasks
     FOR ALL USING (public.check_workspace_access(workspace_id));
 
+DROP POLICY IF EXISTS "Workspace access for task_assignees" ON task_assignees;
 CREATE POLICY "Workspace access for task_assignees" ON task_assignees
     FOR ALL USING (
         EXISTS (
@@ -73,9 +75,11 @@ CREATE POLICY "Workspace access for task_assignees" ON task_assignees
         )
     );
 
+DROP POLICY IF EXISTS "Workspace access for task_tags" ON task_tags;
 CREATE POLICY "Workspace access for task_tags" ON task_tags
     FOR ALL USING (public.check_workspace_access(workspace_id));
 
+DROP POLICY IF EXISTS "Workspace access for task_tag_assignments" ON task_tag_assignments;
 CREATE POLICY "Workspace access for task_tag_assignments" ON task_tag_assignments
     FOR ALL USING (
         EXISTS (
@@ -112,6 +116,7 @@ CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON task_comments(task_id);
 ALTER TABLE task_activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_comments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Workspace access for task_activities" ON task_activities;
 CREATE POLICY "Workspace access for task_activities" ON task_activities
     FOR ALL USING (
         EXISTS (
@@ -121,6 +126,7 @@ CREATE POLICY "Workspace access for task_activities" ON task_activities
         )
     );
 
+DROP POLICY IF EXISTS "Workspace access for task_comments" ON task_comments;
 CREATE POLICY "Workspace access for task_comments" ON task_comments
     FOR ALL USING (
         EXISTS (
@@ -130,15 +136,37 @@ CREATE POLICY "Workspace access for task_comments" ON task_comments
         )
     );
 
+DROP TRIGGER IF EXISTS update_task_comments_updated_at ON task_comments;
 CREATE TRIGGER update_task_comments_updated_at BEFORE UPDATE ON task_comments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_tasks_updated_at ON tasks;
 CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Enable Realtime for tasks
--- Note: These might fail if the publication already contains the tables, so we use a safe block if possible
--- But for a migration script, usually we just run them.
-ALTER PUBLICATION supabase_realtime ADD TABLE tasks;
-ALTER PUBLICATION supabase_realtime ADD TABLE task_comments;
-ALTER PUBLICATION supabase_realtime ADD TABLE task_assignees;
+-- Guarded so reruns don't fail if the tables are already in the publication
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'tasks'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE tasks;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'task_comments'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE task_comments;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'task_assignees'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE task_assignees;
+    END IF;
+END $$;
 
 -- 6. NOTIFICATIONS TABLE
 CREATE TABLE IF NOT EXISTS inbox_notifications (
@@ -155,9 +183,11 @@ CREATE TABLE IF NOT EXISTS inbox_notifications (
 CREATE INDEX IF NOT EXISTS idx_inbox_notifications_user_id ON inbox_notifications(user_id);
 ALTER TABLE inbox_notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own notifications" ON inbox_notifications;
 CREATE POLICY "Users can view their own notifications" ON inbox_notifications
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "System can insert notifications" ON inbox_notifications;
 CREATE POLICY "System can insert notifications" ON inbox_notifications
     FOR INSERT WITH CHECK (true);
 

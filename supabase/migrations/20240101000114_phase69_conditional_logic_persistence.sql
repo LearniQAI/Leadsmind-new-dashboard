@@ -27,40 +27,36 @@ CREATE INDEX IF NOT EXISTS idx_form_logic_rules_form_id ON form_logic_rules(form
 -- Enable Row-Level Security
 ALTER TABLE form_logic_rules ENABLE ROW LEVEL SECURITY;
 
--- RLS: users can manage rules for forms they own or collaborate on
+-- RLS: workspace members can manage logic rules for forms in their workspace
+DROP POLICY IF EXISTS form_logic_rules_select ON form_logic_rules;
 CREATE POLICY form_logic_rules_select ON form_logic_rules
   FOR SELECT USING (
     form_id IN (
-      SELECT id FROM forms WHERE created_by = auth.uid()
-      UNION
-      SELECT form_id FROM form_collaborators WHERE user_id = auth.uid()
+      SELECT id FROM forms WHERE public.check_workspace_access(workspace_id)
     )
   );
 
+DROP POLICY IF EXISTS form_logic_rules_insert ON form_logic_rules;
 CREATE POLICY form_logic_rules_insert ON form_logic_rules
   FOR INSERT WITH CHECK (
     form_id IN (
-      SELECT id FROM forms WHERE created_by = auth.uid()
-      UNION
-      SELECT form_id FROM form_collaborators WHERE user_id = auth.uid() AND role IN ('owner', 'editor')
+      SELECT id FROM forms WHERE public.check_workspace_access(workspace_id)
     )
   );
 
+DROP POLICY IF EXISTS form_logic_rules_update ON form_logic_rules;
 CREATE POLICY form_logic_rules_update ON form_logic_rules
   FOR UPDATE USING (
     form_id IN (
-      SELECT id FROM forms WHERE created_by = auth.uid()
-      UNION
-      SELECT form_id FROM form_collaborators WHERE user_id = auth.uid() AND role IN ('owner', 'editor')
+      SELECT id FROM forms WHERE public.check_workspace_access(workspace_id)
     )
   );
 
+DROP POLICY IF EXISTS form_logic_rules_delete ON form_logic_rules;
 CREATE POLICY form_logic_rules_delete ON form_logic_rules
   FOR DELETE USING (
     form_id IN (
-      SELECT id FROM forms WHERE created_by = auth.uid()
-      UNION
-      SELECT form_id FROM form_collaborators WHERE user_id = auth.uid() AND role IN ('owner', 'editor')
+      SELECT id FROM forms WHERE public.check_workspace_access(workspace_id)
     )
   );
 

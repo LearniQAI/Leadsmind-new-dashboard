@@ -80,7 +80,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 9. AI ADVISOR ENGINE
 CREATE TABLE public.accountant_ai_alerts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
     type TEXT NOT NULL, -- 'tax_deduction', 'compliance_warning', 'financial_health'
     title TEXT NOT NULL,
@@ -94,7 +94,7 @@ CREATE TABLE public.accountant_ai_alerts (
 );
 
 CREATE TABLE public.compliance_deadlines (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
@@ -116,7 +116,7 @@ CREATE POLICY "Workspace owners can manage their deadlines" ON public.compliance
 
 -- 10. BUSINESS STRATEGY & GOALS
 CREATE TABLE public.business_goals (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
     type TEXT NOT NULL, -- 'revenue_target', 'hiring_plan', 'capital_purchase'
     title TEXT NOT NULL,

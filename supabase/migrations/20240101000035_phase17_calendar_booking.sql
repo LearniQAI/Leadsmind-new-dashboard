@@ -54,12 +54,15 @@ ALTER TABLE booking_calendars ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE booking_slot_analytics ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Workspace access for calendars" ON booking_calendars;
 CREATE POLICY "Workspace access for calendars" ON booking_calendars
     FOR ALL USING (check_workspace_access(workspace_id));
 
+DROP POLICY IF EXISTS "Workspace access for appointments" ON appointments;
 CREATE POLICY "Workspace access for appointments" ON appointments
     FOR ALL USING (check_workspace_access(workspace_id));
 
+DROP POLICY IF EXISTS "Workspace access for booking analytics" ON booking_slot_analytics;
 CREATE POLICY "Workspace access for booking analytics" ON booking_slot_analytics
     FOR ALL USING (check_workspace_access(workspace_id));
 
@@ -124,12 +127,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS tr_booking_analytics ON appointments;
 CREATE TRIGGER tr_booking_analytics
 AFTER INSERT OR UPDATE ON appointments
 FOR EACH ROW EXECUTE FUNCTION fn_update_booking_analytics();
 
 -- 6. Indexes
-CREATE INDEX idx_calendars_workspace ON booking_calendars(workspace_id);
-CREATE INDEX idx_appointments_calendar ON appointments(calendar_id);
-CREATE INDEX idx_appointments_workspace ON appointments(workspace_id);
-CREATE INDEX idx_appointments_start_time ON appointments(start_time);
+CREATE INDEX IF NOT EXISTS idx_calendars_workspace ON booking_calendars(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_calendar ON appointments(calendar_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_workspace ON appointments(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_start_time ON appointments(start_time);

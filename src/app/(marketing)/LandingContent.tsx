@@ -105,7 +105,7 @@ const LandingContent = ({ user }: { user?: any }) => {
         unifies your team, and turns leads into loyal advocates.
        </p>
        <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-        <Link href="/auth/signup-basic">
+        <Link href="/dashboard">
          <Button className="h-16 px-10 text-lg bg-primary hover:bg-primary/90 border-none group shadow-2xl shadow-primary/30 font-black uppercase tracking-widest">
           Claim Your Free Trial <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
          </Button>
