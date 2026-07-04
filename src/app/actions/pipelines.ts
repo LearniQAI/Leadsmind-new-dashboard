@@ -128,10 +128,11 @@ export async function getPipelineOpportunities(pipelineId: string) {
 
 export async function updateDealStage(dealId: string, stageId: string, position: number) {
   const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
   const { data: dealBefore } = await supabase
     .from('opportunities')
     .select('workspace_id, contact_id, status')
-    .eq("id", dealId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+    .eq("id", dealId).eq("workspace_id", workspaceId)
     .single();
 
   const { error } = await supabase
@@ -142,7 +143,7 @@ export async function updateDealStage(dealId: string, stageId: string, position:
       stage_entered_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq("id", dealId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+    .eq("id", dealId).eq("workspace_id", workspaceId);
 
   if (error) return { success: false, error: error.message };
 
@@ -195,6 +196,7 @@ export async function updateOpportunity(id: string, values: any) {
   console.log(`>>> [CRITICAL DEBUG] Values:`, JSON.stringify(values, null, 2));
   
   const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
   
   const { data: dealBefore } = await supabase
     .from('opportunities')
@@ -219,7 +221,7 @@ export async function updateOpportunity(id: string, values: any) {
   const { data, error } = await supabase
     .from('opportunities')
     .update(payload)
-    .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+    .eq("id", id).eq("workspace_id", workspaceId)
     .select()
     .single();
 
@@ -287,7 +289,8 @@ export async function updateOpportunity(id: string, values: any) {
 
 export async function deleteOpportunity(id: string) {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('opportunities').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+  const workspaceId = await getCurrentWorkspaceId();
+  const { error } = await supabase.from('opportunities').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) return { success: false, error: error.message };
   revalidatePath('/pipelines');
   return { success: true };
@@ -295,6 +298,7 @@ export async function deleteOpportunity(id: string) {
 
 export async function updateStageOrder(pipelineId: string, stages: { id: string, position: number }[]) {
   const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
   
   const { error } = await supabase.rpc('update_stage_positions', {
     stage_updates: stages
@@ -306,7 +310,7 @@ export async function updateStageOrder(pipelineId: string, stages: { id: string,
       await supabase
         .from('pipeline_stages')
         .update({ position: stage.position })
-        .eq("id", stage.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+        .eq("id", stage.id).eq("workspace_id", workspaceId);
     }
   }
 
@@ -316,11 +320,12 @@ export async function updateStageOrder(pipelineId: string, stages: { id: string,
 
 export async function updateStage(id: string, name: string) {
   const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
   console.log(`[SERVER DEBUG] Updating stage ${id} name to "${name}"`);
   const { error } = await supabase
     .from('pipeline_stages')
     .update({ name, updated_at: new Date().toISOString() })
-    .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+    .eq("id", id).eq("workspace_id", workspaceId);
 
   if (error) {
     console.error(`[SERVER DEBUG] Update error:`, error);
@@ -332,7 +337,8 @@ export async function updateStage(id: string, name: string) {
 
 export async function deleteStage(id: string) {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('pipeline_stages').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+  const workspaceId = await getCurrentWorkspaceId();
+  const { error } = await supabase.from('pipeline_stages').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) return { success: false, error: error.message };
   revalidatePath('/pipelines');
   return { success: true };
@@ -363,7 +369,7 @@ export async function updatePipelineStages(pipelineId: string, stages: { id: str
           name: stage.name,
           position: i,
           updated_at: new Date().toISOString()
-        }).eq("id", stage.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+        }).eq("id", stage.id).eq("workspace_id", workspaceId);
         if (updError) throw updError;
       }
     }

@@ -94,9 +94,13 @@ export async function PATCH(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
+    const workspaceId = searchParams.get('workspaceId') || await getCurrentWorkspaceId()
 
     if (!id) {
       return NextResponse.json({ error: 'Campaign ID required' }, { status: 400 })
+    }
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 })
     }
 
     const body = await req.json()
@@ -107,7 +111,7 @@ export async function PATCH(req: NextRequest) {
         ...body,
         updated_at: new Date().toISOString()
       })
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", id).eq("workspace_id", workspaceId)
       .select()
       .single()
 
@@ -128,15 +132,19 @@ export async function DELETE(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
+    const workspaceId = searchParams.get('workspaceId') || await getCurrentWorkspaceId()
 
     if (!id) {
       return NextResponse.json({ error: 'Campaign ID required' }, { status: 400 })
+    }
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 })
     }
 
     const { error } = await supabase
       .from('reputation_campaigns')
       .delete()
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", id).eq("workspace_id", workspaceId)
 
     if (error) throw error
 

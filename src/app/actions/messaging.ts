@@ -268,7 +268,7 @@ export async function sendMessage(conversationId: string, content: string, audio
   const { data: conv } = await supabase
    .from('conversations')
    .select('platform, external_thread_id, contacts(id, email, phone, first_name)')
-   .eq("id", targetConvId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+    .eq("id", targetConvId).eq("workspace_id", workspaceId)
    .single();
 
   let messageFailed = false;
@@ -316,7 +316,7 @@ export async function sendMessage(conversationId: string, content: string, audio
         text: content,
        });
      }
-     await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+    await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId);
     } catch (emailErr: any) {
      console.error('[messaging] Failed to send actual email:', emailErr);
      messageFailed = true;
@@ -339,7 +339,7 @@ export async function sendMessage(conversationId: string, content: string, audio
       text: content,
      });
      
-     await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+    await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId);
     } catch (bridgeErr: any) {
      console.error('[messaging] Failed to send to SMS Bridge:', bridgeErr);
      messageFailed = true;
@@ -396,7 +396,7 @@ export async function sendMessage(conversationId: string, content: string, audio
     }
 
     if (res && res.success) {
-      await supabase.from('messages').update({ status: 'sent', external_id: res.externalId }).eq("id", msgData.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      await supabase.from('messages').update({ status: 'sent', external_id: res.externalId }).eq("id", msgData.id).eq("workspace_id", workspaceId);
     } else {
       messageFailed = true;
       errorMessage = res?.error || 'Failed to dispatch via MetaAdapter';
@@ -407,7 +407,8 @@ export async function sendMessage(conversationId: string, content: string, audio
    }
   } else {
     // Just mark as sent for other platforms for now
-    await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+    await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId);
+    await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId);
   }
 
   // Log the activity to the CRM timeline feed if it is a voice note and sending succeeded
@@ -436,9 +437,9 @@ export async function sendMessage(conversationId: string, content: string, audio
     }
   }
 
-  if (messageFailed) {
+    if (messageFailed) {
     if (msgData) {
-      await supabase.from('messages').update({ status: 'failed', metadata: { error_message: errorMessage } }).eq("id", msgData.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      await supabase.from('messages').update({ status: 'failed', metadata: { error_message: errorMessage } }).eq("id", msgData.id).eq("workspace_id", workspaceId);
     }
     return { error: errorMessage };
   }
@@ -577,10 +578,11 @@ export async function createQuickReply(shortcut: string, message: string) {
 export async function deleteQuickReply(id: string) {
  try {
   const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase
    .from('quick_replies')
    .delete()
-   .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+   .eq("id", id).eq("workspace_id", workspaceId);
 
   if (error) throw error;
   return { success: true };
@@ -592,6 +594,7 @@ export async function deleteQuickReply(id: string) {
 export async function updateContactConsent(contactId: string, optedIn: boolean, optedOut: boolean) {
  try {
   const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase
    .from('contacts')
    .update({
@@ -599,7 +602,7 @@ export async function updateContactConsent(contactId: string, optedIn: boolean, 
      opted_out: optedOut,
      opt_out_date: optedOut ? new Date().toISOString() : null
    })
-   .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+   .eq("id", contactId).eq("workspace_id", workspaceId);
 
   if (error) throw error;
   return { success: true };

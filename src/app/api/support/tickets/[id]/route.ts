@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getCurrentWorkspaceId } from '@/lib/auth';
+import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -16,7 +18,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     );
 
     const [ticketRes, messagesRes, attachmentsRes] = await Promise.all([
-      supabase.from('support_tickets').select('*, contact:contacts(*)').eq("id", params.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId).single(),
+      supabase.from('support_tickets').select('*, contact:contacts(*)').eq("id", params.id).eq("workspace_id", workspaceId).single(),
       supabase.from('support_ticket_messages').select('*').eq('ticket_id', params.id).order('created_at', { ascending: true }),
       supabase.from('ticket_attachments').select('*').eq('ticket_id', params.id)
     ]);
@@ -53,9 +55,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   try {
     const body = await req.json();
     const { status, assigned_to, priority } = body;
-    
+
     const supabase = await createServerClient();
-    
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new UnauthorizedError();
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) throw new ForbiddenError('No active workspace');
+
     const updates: any = {};
     if (status) updates.status = status;
     if (assigned_to !== undefined) updates.assigned_to = assigned_to;
@@ -64,7 +71,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const { data, error } = await supabase
       .from('support_tickets')
       .update(updates)
-      .eq("id", params.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", params.id).eq("workspace_id", workspaceId)
       .select('*, contact:contacts(*)')
       .single();
 
@@ -88,7 +95,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         const { data: u } = await supabaseAdmin
           .from('users')
           .select('email')
-          .eq("id", agentId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+          .eq("id", agentId).eq("workspace_id", workspaceId)
           .single();
         if (u) agentEmail = u.email;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useTransition } from 'react';
+import React, { useState, useEffect, useRef, useTransition, useMemo } from 'react';
 import { Headphones, Send, Clock, Paperclip, CheckCircle2, ShieldAlert, Star, AlertCircle, FileText, ArrowLeft, Plus } from 'lucide-react';
 import { createPortalSupportTicket, replyToSupportTicket, submitCSATRating } from '@/app/actions/portal';
 import { createClient } from '@/lib/supabase/client';
@@ -32,7 +32,7 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
 
   const [isPending, startTransition] = useTransition();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // Load thread messages for active ticket
   useEffect(() => {
@@ -62,7 +62,7 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
     }
 
     loadThread();
-  }, [selectedTicket]);
+  }, [selectedTicket, supabase]);
 
   // Scroll to bottom on new messages
   useEffect(() => {

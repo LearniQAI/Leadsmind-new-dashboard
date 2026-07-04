@@ -68,11 +68,13 @@ export async function createTask(taskData: any) {
 
 export async function updateTaskStatus(taskId: string, status: string) {
   const supabase = await createServerClient();
-  
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'Unauthorized' };
+
   const updates: any = { status, updated_at: new Date().toISOString() };
   if (status === 'Completed') updates.completed_at = new Date().toISOString();
 
-  const { error } = await supabase.from('crm_tasks').update(updates).eq("id", taskId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+  const { error } = await supabase.from('crm_tasks').update(updates).eq("id", taskId).eq("workspace_id", workspaceId);
   if (error) return { success: false, error: error.message };
   
   revalidatePath('/tasks');

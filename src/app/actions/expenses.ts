@@ -73,10 +73,11 @@ export async function updateExpense(id: string, updates: Partial<{
 }>) {
  try {
   const supabase = await createServerClient();
+    const workspaceId = await getCurrentWorkspaceId();
   const { data, error } = await supabase
    .from('accounting_transactions')
    .update({ ...updates, updated_at: new Date().toISOString() })
-   .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+     .eq("id", id).eq("workspace_id", workspaceId)
    .select()
    .single();
 
@@ -91,7 +92,8 @@ export async function updateExpense(id: string, updates: Partial<{
 export async function deleteExpense(id: string) {
  try {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('accounting_transactions').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+    const workspaceId = await getCurrentWorkspaceId();
+    const { error } = await supabase.from('accounting_transactions').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
   revalidatePath('/finance/expenses');
   return { success: true };

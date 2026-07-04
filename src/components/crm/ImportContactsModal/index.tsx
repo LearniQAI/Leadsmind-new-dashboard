@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -53,13 +53,13 @@ export function ImportContactsModal({ isOpen: controlledOpen, onOpenChange: cont
     }
   };
 
-  const handleParsed = (contacts: ParsedContact[]) => {
+  const handleParsed = useCallback((contacts: ParsedContact[]) => {
     setParsedContacts(contacts);
-  };
+  }, []);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     setParsedContacts([]);
-  };
+  }, []);
 
   const executeImport = async () => {
     const validContacts = parsedContacts.filter(c => c.status === 'valid');

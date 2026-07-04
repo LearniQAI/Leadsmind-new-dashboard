@@ -9,6 +9,37 @@ import { useEditor } from '@craftjs/core';
 import { createClient } from '@/lib/supabase/client';
 import { useParams } from 'next/navigation';
 
+// Mock data for the builder preview
+const mockPosts = [
+  {
+    title: '10 Tips for High-Converting Landing Pages',
+    excerpt: 'Discover the secrets to building pages that actually scale your revenue in 2024.',
+    date: 'Oct 12, 2024',
+    author: 'Alex Rivera',
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop',
+    category: 'Marketing',
+    readTime: '5 min read'
+  },
+  {
+    title: 'Mastering Sales Funnel Automation',
+    excerpt: 'How to put your sales processes on autopilot without losing the human touch.',
+    date: 'Sep 28, 2024',
+    author: 'Jordan Smith',
+    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2340&auto=format&fit=crop',
+    category: 'Automation',
+    readTime: '4 min read'
+  },
+  {
+    title: 'The Future of AI in SaaS Growth',
+    excerpt: 'Exploring how artificial intelligence is reshaping the landscape of software sales.',
+    date: 'Sep 15, 2024',
+    author: 'Taylor Chen',
+    image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2532&auto=format&fit=crop',
+    category: 'Technology',
+    readTime: '6 min read'
+  }
+];
+
 export interface BlogFeedProps {
  columns: number;
  postCount: number;
@@ -43,37 +74,6 @@ export const BlogFeed = ({
  
  const [posts, setPosts] = React.useState<any[]>([]);
  const [loading, setLoading] = React.useState(!enabled);
-
- // Mock data for the builder preview
- const mockPosts = [
-   {
-     title: '10 Tips for High-Converting Landing Pages',
-     excerpt: 'Discover the secrets to building pages that actually scale your revenue in 2024.',
-     date: 'Oct 12, 2024',
-     author: 'Alex Rivera',
-     image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop',
-     category: 'Marketing',
-     readTime: '5 min read'
-   },
-   {
-     title: 'Mastering Sales Funnel Automation',
-     excerpt: 'How to put your sales processes on autopilot without losing the human touch.',
-     date: 'Sep 28, 2024',
-     author: 'Jordan Smith',
-     image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2340&auto=format&fit=crop',
-     category: 'Automation',
-     readTime: '4 min read'
-   },
-   {
-     title: 'The Future of AI in SaaS Growth',
-     excerpt: 'Exploring how artificial intelligence is reshaping the landscape of software sales.',
-     date: 'Sep 15, 2024',
-     author: 'Taylor Chen',
-     image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2532&auto=format&fit=crop',
-     category: 'Technology',
-     readTime: '6 min read'
-   }
- ];
 
  React.useEffect(() => {
   if (enabled) {

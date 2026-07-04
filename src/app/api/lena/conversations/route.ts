@@ -42,8 +42,12 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get('id');
+    const workspaceId = req.nextUrl.searchParams.get('workspaceId');
     if (!id) {
       return NextResponse.json({ error: 'id required' }, { status: 400 });
+    }
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'workspaceId required' }, { status: 400 });
     }
 
     const body = await req.json();
@@ -72,7 +76,7 @@ export async function PATCH(req: NextRequest) {
     const { data, error } = await supabase
       .from('lena_conversations')
       .update(updates)
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", id).eq("workspace_id", workspaceId)
       .select(`
         *,
         assigned_agent:lena_agents(id, display_name, avatar_url, role_label)

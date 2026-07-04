@@ -250,10 +250,11 @@ export async function searchHelpArticles(query: string) {
 export async function logSearchClick(logId: string, articleId: string) {
   try {
     const supabase = await createServerClient();
+    const wsId = await getCurrentWorkspaceId();
     const { error } = await supabase
       .from('help_search_log')
       .update({ selected_article_id: articleId, clicked_at: new Date().toISOString() })
-      .eq("id", logId).eq("workspace_id", wsId).eq('workspace_id', wsId);
+      .eq("id", logId).eq("workspace_id", wsId);
     if (error) throw error;
     return { success: true };
   } catch (error: any) {
@@ -265,6 +266,7 @@ export async function logSearchClick(logId: string, articleId: string) {
 export async function submitHelpFeedback(articleId: string, isHelpful: boolean) {
   try {
     const supabase = await createServerClient();
+    const wsId = await getCurrentWorkspaceId();
     const { data: current } = await supabase.from('help_articles').select('helpful_yes, helpful_no').eq("id", articleId).eq("workspace_id", wsId).eq('workspace_id', wsId).single();
     if (!current) throw new Error('Help article not found');
 
@@ -272,7 +274,7 @@ export async function submitHelpFeedback(articleId: string, isHelpful: boolean) 
       ? { helpful_yes: (current.helpful_yes || 0) + 1 }
       : { helpful_no: (current.helpful_no || 0) + 1 };
 
-    const { error } = await supabase.from('help_articles').update(updates).eq("id", articleId).eq("workspace_id", wsId).eq('workspace_id', wsId);
+    const { error } = await supabase.from('help_articles').update(updates).eq("id", articleId).eq("workspace_id", wsId);
     if (error) throw error;
 
     return { success: true };

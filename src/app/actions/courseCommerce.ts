@@ -44,7 +44,7 @@ export async function updateCoursePricing(
         enrolment_cap: payload.enrolment_cap || null,
         updated_at: new Date().toISOString()
       })
-      .eq("id", courseId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      .eq("id", courseId).eq("workspace_id", workspaceId);
 
     if (updateErr) throw updateErr;
 

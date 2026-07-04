@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { validateSlot, getRoundRobinAssignee, updateRoundRobinStats } from './scheduling';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 
+
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
@@ -120,7 +121,7 @@ export async function createAppointment(payload: {
        await supabase.from('appointments').update({ 
          meeting_link: internalLink,
          meeting_mode: 'internal_meet' 
-       }).eq("id", data.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      }).eq("id", data.id).eq("workspace_id", workspaceId);
        data.meeting_link = internalLink;
     }
 
@@ -218,6 +219,7 @@ export async function logParticipantJoin(
     const { data: log, error } = await supabase
       .from('meet_attendance_logs')
       .insert({
+                
         workspace_id: apt.workspace_id,
         appointment_id: appointmentId,
         participant_name: participantName,
@@ -240,10 +242,11 @@ export async function logParticipantJoin(
 export async function logParticipantLeave(logId: string) {
   try {
     const supabase = await createServerClient();
+    const workspaceId = await getCurrentWorkspaceId();
     const { data: log } = await supabase
       .from('meet_attendance_logs')
       .select('joined_at')
-      .eq("id", logId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", logId).eq("workspace_id", workspaceId)
       .single();
 
     if (!log) throw new Error('Attendance log not found');
@@ -258,7 +261,7 @@ export async function logParticipantLeave(logId: string) {
         left_at: leftAt.toISOString(),
         duration_seconds: duration
       })
-      .eq("id", logId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      .eq("id", logId).eq("workspace_id", workspaceId);
 
     return { success: true };
   } catch (err: any) {
@@ -339,7 +342,7 @@ export async function createInstantMeeting(payload: { title?: string; durationMi
       .update({ 
         meeting_link: internalLink 
       })
-      .eq("id", data.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", data.id).eq("workspace_id", workspaceId)
       .select()
       .single();
 

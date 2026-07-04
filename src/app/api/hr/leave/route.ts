@@ -206,7 +206,9 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
+  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
 
   try {
     const { role } = await getUserAccessInfo()
@@ -220,7 +222,7 @@ export async function PATCH(req: NextRequest) {
     const { data: existing } = await supabase
       .from('leave_requests')
       .select('*, employees(first_name, last_name, email, annual_leave_used, sick_leave_used)')
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", id).eq("workspace_id", workspaceId)
       .single()
 
     // Add actioned timestamp
@@ -231,7 +233,7 @@ export async function PATCH(req: NextRequest) {
     const { data, error } = await supabase
       .from('leave_requests')
       .update(body)
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", id).eq("workspace_id", workspaceId)
       .select('*, employees(first_name, last_name, email)')
       .single()
 
@@ -249,14 +251,14 @@ export async function PATCH(req: NextRequest) {
           .update({
             annual_leave_used: (existing.employees?.annual_leave_used ?? 0) + existing.days_count
           })
-          .eq("id", existing.employee_id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+          .eq("id", existing.employee_id).eq("workspace_id", workspaceId)
       } else if (existing.leave_type === 'sick') {
         await supabase
           .from('employees')
           .update({
             sick_leave_used: (existing.employees?.sick_leave_used ?? 0) + existing.days_count
           })
-          .eq("id", existing.employee_id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+          .eq("id", existing.employee_id).eq("workspace_id", workspaceId)
       }
 
       // Send approval email
@@ -310,7 +312,9 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
+  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
 
   try {
     const { role } = await getUserAccessInfo()
@@ -318,7 +322,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: Only admins and HR can delete leave records' }, { status: 403 })
     }
 
-    const { error } = await supabase.from('leave_requests').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+    const { error } = await supabase.from('leave_requests').delete().eq("id", id).eq("workspace_id", workspaceId)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
   } catch (err: any) {

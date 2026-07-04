@@ -107,7 +107,9 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
+  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
 
   try {
     const { role } = await getUserAccessInfo()
@@ -120,7 +122,7 @@ export async function PATCH(req: NextRequest) {
     const { data, error } = await supabase
       .from('employees')
       .update(body)
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", id).eq("workspace_id", workspaceId)
       .select()
       .single()
 
@@ -133,7 +135,9 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
+  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
 
   try {
     const { role } = await getUserAccessInfo()
@@ -141,7 +145,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: Only admins and HR can delete employees' }, { status: 403 })
     }
 
-    const { error } = await supabase.from('employees').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+    const { error } = await supabase.from('employees').delete().eq("id", id).eq("workspace_id", workspaceId)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
   } catch (err: any) {

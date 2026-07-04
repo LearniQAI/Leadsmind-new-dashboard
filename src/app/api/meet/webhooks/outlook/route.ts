@@ -23,11 +23,6 @@ export async function POST(req: NextRequest) {
 
     const supabase = await createServerClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new UnauthorizedError();
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) throw new ForbiddenError('No active workspace');
-
     for (const notification of notifications) {
       const subscriptionId = notification.subscriptionId;
       if (!subscriptionId) continue;
@@ -67,7 +62,7 @@ export async function POST(req: NextRequest) {
         .update({
           updated_at: new Date().toISOString(),
         })
-        .eq("id", connection.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+        .eq("id", connection.id).eq("workspace_id", connection.workspace_id);
     }
 
     return new NextResponse('OK', { status: 200 });

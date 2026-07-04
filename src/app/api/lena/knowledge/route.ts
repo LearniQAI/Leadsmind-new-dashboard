@@ -56,15 +56,19 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get('id');
+    const workspaceId = req.nextUrl.searchParams.get('workspaceId');
     if (!id) {
       return NextResponse.json({ error: 'id required' }, { status: 400 });
+    }
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'workspaceId required' }, { status: 400 });
     }
     const body = await req.json();
 
     const { data, error } = await supabase
       .from('lena_knowledge_base')
       .update({ ...body, updated_at: new Date().toISOString() })
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", id).eq("workspace_id", workspaceId)
       .select()
       .single();
 
@@ -81,14 +85,18 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get('id');
+    const workspaceId = req.nextUrl.searchParams.get('workspaceId');
     if (!id) {
       return NextResponse.json({ error: 'id required' }, { status: 400 });
+    }
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'workspaceId required' }, { status: 400 });
     }
 
     const { error } = await supabase
       .from('lena_knowledge_base')
       .delete()
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      .eq("id", id).eq("workspace_id", workspaceId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

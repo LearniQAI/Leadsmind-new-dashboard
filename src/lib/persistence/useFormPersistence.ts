@@ -95,7 +95,7 @@ export function useFormPersistence({
     };
 
     checkRecovery();
-  }, [formId, sessionId]);
+  }, [formId, sessionId, isInitialized, progressPercent]);
 
   // 3. Initialize save engine
   useEffect(() => {
@@ -133,7 +133,7 @@ export function useFormPersistence({
       progressPercent,
       userEmail
     );
-  }, [values, stepIndex, progressPercent, steps]);
+  }, [values, stepIndex, progressPercent, steps, isInitialized]);
 
   const onConfirmResume = () => {
     if (!recoverableData) return;

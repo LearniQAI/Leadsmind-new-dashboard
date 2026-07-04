@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Plus,
@@ -89,13 +89,6 @@ export default function WebsiteManager() {
   const router = useRouter();
   const supabase = createClient();
 
-  useEffect(() => {
-    if (workspace?.id) {
-      fetchWebsites();
-    }
-    fetchTemplates();
-  }, [workspace?.id]);
-
   const fetchTemplates = async () => {
     setTemplateError(null);
     try {
@@ -107,15 +100,15 @@ export default function WebsiteManager() {
     }
   };
 
-  const fetchWebsites = async () => {
+  const fetchWebsites = useCallback(async () => {
     if (!workspace?.id) return;
 
     try {
       const { data, error } = await supabase
         .from('websites')
         .select(`
-          *, 
-          workspace:workspaces!inner(slug, id), 
+          *,
+          workspace:workspaces!inner(slug, id),
           website_pages(id, pages(id))
         `)
         .eq('workspace_id', workspace.id)
@@ -133,7 +126,14 @@ export default function WebsiteManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [workspace?.id, supabase]);
+
+  useEffect(() => {
+    if (workspace?.id) {
+      fetchWebsites();
+    }
+    fetchTemplates();
+  }, [workspace?.id, fetchWebsites]);
 
   const filteredWebsites = useMemo(() => {
     let result = [...websites];

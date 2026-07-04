@@ -140,11 +140,12 @@ export async function inviteFormCollaborator({
 export async function acceptFormInvitation(collabId: string): Promise<InviteActionResponse> {
   try {
     const adminSupabase = createAdminClient();
+    const workspaceId = await getCurrentWorkspaceId();
 
     const { data: existing } = await adminSupabase
       .from('form_collaborators')
       .select('id, status, form_id, email')
-      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", collabId).eq("workspace_id", workspaceId)
       .single();
 
     if (!existing) return { error: 'Invitation not found.' };
@@ -154,7 +155,7 @@ export async function acceptFormInvitation(collabId: string): Promise<InviteActi
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ status: 'active' })
-      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      .eq("id", collabId).eq("workspace_id", workspaceId);
 
     if (error) throw error;
 
@@ -169,11 +170,12 @@ export async function acceptFormInvitation(collabId: string): Promise<InviteActi
 export async function declineFormInvitation(collabId: string): Promise<InviteActionResponse> {
   try {
     const adminSupabase = createAdminClient();
+    const workspaceId = await getCurrentWorkspaceId();
 
     const { data: existing } = await adminSupabase
       .from('form_collaborators')
       .select('id, status')
-      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", collabId).eq("workspace_id", workspaceId)
       .single();
 
     if (!existing) return { error: 'Invitation not found.' };
@@ -182,7 +184,7 @@ export async function declineFormInvitation(collabId: string): Promise<InviteAct
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ status: 'declined' })
-      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      .eq("id", collabId).eq("workspace_id", workspaceId);
 
     if (error) throw error;
 
@@ -272,10 +274,11 @@ export async function getFormCollaborators(formId: string) {
 export async function removeFormCollaborator(collabId: string, formId: string) {
   try {
     const adminSupabase = createAdminClient();
+    const workspaceId = await getCurrentWorkspaceId();
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ status: 'removed' })
-      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      .eq("id", collabId).eq("workspace_id", workspaceId);
 
     if (error) throw error;
     
@@ -290,10 +293,11 @@ export async function removeFormCollaborator(collabId: string, formId: string) {
 export async function updateFormCollaboratorRole(collabId: string, role: 'editor' | 'viewer', formId: string) {
   try {
     const adminSupabase = createAdminClient();
+    const workspaceId = await getCurrentWorkspaceId();
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ role })
-      .eq("id", collabId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      .eq("id", collabId).eq("workspace_id", workspaceId);
 
     if (error) throw error;
 

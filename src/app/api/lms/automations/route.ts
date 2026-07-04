@@ -72,9 +72,13 @@ export async function PATCH(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+    const workspaceId = searchParams.get('workspaceId');
 
     if (!id) {
       return NextResponse.json({ error: 'Missing rule id parameter' }, { status: 400 });
+    }
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Missing workspaceId parameter' }, { status: 400 });
     }
 
     const body = await req.json();
@@ -98,7 +102,7 @@ export async function PATCH(req: NextRequest) {
     const { data: rule, error } = await supabaseAdmin
       .from('lms_automation_rules')
       .update(updatePayload)
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", id).eq("workspace_id", workspaceId)
       .select()
       .single();
 
@@ -114,15 +118,19 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+    const workspaceId = searchParams.get('workspaceId');
 
     if (!id) {
       return NextResponse.json({ error: 'Missing rule id parameter' }, { status: 400 });
+    }
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Missing workspaceId parameter' }, { status: 400 });
     }
 
     const { error } = await supabaseAdmin
       .from('lms_automation_rules')
       .delete()
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      .eq("id", id).eq("workspace_id", workspaceId);
 
     if (error) throw error;
 

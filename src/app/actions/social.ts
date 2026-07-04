@@ -162,10 +162,11 @@ export async function createSocialPost(postData: {
 export async function publishSocialPost(postId: string) {
  try {
   const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase
    .from('social_posts')
    .update({ status: 'published', published_at: new Date().toISOString() })
-   .eq("id", postId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+  .eq("id", postId).eq("workspace_id", workspaceId);
 
   if (error) throw error;
   return { success: true };

@@ -226,7 +226,8 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
 
 export async function deleteSavedSearch(id: string) {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('lead_finder_searches').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+  const workspaceId = await getCurrentWorkspaceId();
+  const { error } = await supabase.from('lead_finder_searches').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) return { success: false, error: error.message };
   revalidatePath('/lead-finder/saved');
   return { success: true };
@@ -234,7 +235,8 @@ export async function deleteSavedSearch(id: string) {
 
 export async function toggleSearchAlert(id: string, enabled: boolean) {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('lead_finder_searches').update({ alerts_enabled: enabled }).eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+  const workspaceId = await getCurrentWorkspaceId();
+  const { error } = await supabase.from('lead_finder_searches').update({ alerts_enabled: enabled }).eq("id", id).eq("workspace_id", workspaceId);
   if (error) return { success: false, error: error.message };
   revalidatePath('/lead-finder/saved');
   return { success: true };

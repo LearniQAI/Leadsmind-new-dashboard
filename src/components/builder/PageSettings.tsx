@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useBuilder } from './BuilderContext';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,14 @@ export const PageSettings = () => {
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [generatingAI, setGeneratingAI] = useState(false);
 
+  const fetchRevisions = useCallback(async () => {
+    if (!pageId) return;
+    const res = await getPageRevisions(pageId as string);
+    if (res.success && res.versions) {
+      setRevisions(res.versions);
+    }
+  }, [pageId]);
+
   useEffect(() => {
     async function loadPageDetails() {
       if (!pageId) return;
@@ -45,7 +53,7 @@ export const PageSettings = () => {
         .select('name, seo_title, seo_description, og_image_url, type, author, category, tags, excerpt')
         .eq('id', pageId)
         .single();
-      
+
       if (data) {
         setSettings({
           name: data.name || '',
@@ -62,15 +70,7 @@ export const PageSettings = () => {
       fetchRevisions();
     }
     loadPageDetails();
-  }, [pageId]);
-
-  const fetchRevisions = async () => {
-    if (!pageId) return;
-    const res = await getPageRevisions(pageId as string);
-    if (res.success && res.versions) {
-      setRevisions(res.versions);
-    }
-  };
+  }, [pageId, fetchRevisions]);
 
   const handleSave = async () => {
     if (!pageId) return;

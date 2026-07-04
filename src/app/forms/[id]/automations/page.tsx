@@ -116,7 +116,7 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
       confirmLabel: 'Delete',
       onConfirm: async () => {
         try {
-          const { error } = await supabase.from('workflows').delete().eq('id', id).eq('workspace_id', workspaceId);
+          const { error } = await supabase.from('workflows').delete().eq('id', id).eq('workspace_id', form.workspace_id);
           if (error) throw error;
 
           setWorkflows(prev => prev.filter(w => w.id !== id));
