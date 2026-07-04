@@ -59,7 +59,7 @@ export function ManualTextTab({ onParsed, onClear }: ManualTextTabProps) {
     });
 
     onParsed(contacts);
-  }, [text]);
+  }, [text, onParsed, onClear]);
 
   return (
     <div className="space-y-3">

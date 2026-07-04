@@ -225,11 +225,12 @@ export async function addBeneficialOwner(
  */
 export async function deleteBeneficialOwner(id: string, parentContactId: string) {
   const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
 
   const { error } = await supabase
     .from('beneficial_owners')
     .delete()
-    .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+    .eq("id", id).eq("workspace_id", workspaceId);
 
   if (error) {
     return { success: false, error: error.message };

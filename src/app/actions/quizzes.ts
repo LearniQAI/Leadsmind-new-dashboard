@@ -63,14 +63,14 @@ export async function upsertQuiz(quizData: any) {
       const { data: existing } = await supabase
         .from('lms_quizzes')
         .select('id')
-        .eq("id", quizData.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+        .eq("id", quizData.id).eq("workspace_id", workspaceId)
         .maybeSingle();
 
       if (existing) {
         result = await supabase
           .from('lms_quizzes')
           .update(payload)
-          .eq("id", quizData.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+          .eq("id", quizData.id).eq("workspace_id", workspaceId)
           .select()
           .single();
       } else {
@@ -153,7 +153,7 @@ export async function upsertQuestion(questionData: any) {
       result = await supabase
         .from('lms_questions')
         .update(payload)
-        .eq("id", questionData.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+        .eq("id", questionData.id).eq("workspace_id", workspaceId)
         .select()
         .single();
     } else {
@@ -207,7 +207,7 @@ export async function upsertQuizOption(optionData: any) {
       result = await supabase
         .from('lms_quiz_options')
         .update(payload)
-        .eq("id", optionData.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+        .eq("id", optionData.id).eq("workspace_id", workspaceId)
         .select()
         .single();
     } else {
@@ -260,7 +260,7 @@ export async function upsertQuizExplanation(explanationData: any) {
       result = await supabase
         .from('lms_quiz_explanations')
         .update(payload)
-        .eq("id", explanationData.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+        .eq("id", explanationData.id).eq("workspace_id", workspaceId)
         .select()
         .single();
     } else {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, 
   Users, 
@@ -78,7 +78,7 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
   const [isUploading, setIsUploading] = useState(false);
 
   // Load B2B data
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [ownerRes, contacts] = await Promise.all([
@@ -99,11 +99,11 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
     } finally {
       setLoading(false);
     }
-  };
+  }, [contact.id]);
 
   useEffect(() => {
     loadData();
-  }, [contact.id]);
+  }, [loadData]);
 
   // CIPC Search trigger
   const handleCipcSearch = async (e: React.FormEvent) => {

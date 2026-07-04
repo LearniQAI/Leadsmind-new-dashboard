@@ -168,7 +168,7 @@ export const LeadScoringEngine = {
           lead_score_explanation: finalExplanation,
           tags: newTags
         })
-        .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+        .eq("id", contactId).eq("workspace_id", workspaceId);
 
       // Check and update crm_contacts if it exists
       await supabase
@@ -178,7 +178,7 @@ export const LeadScoringEngine = {
           lead_score_explanation: finalExplanation,
           tags: newTags
         })
-        .eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+        .eq("id", contactId).eq("workspace_id", workspaceId);
 
       console.log(`[LeadScoringEngine] Score updated for contact ${contactId}: ${finalScore} points (Adjustment: ${scoreAdjustment})`);
     } catch (err: any) {

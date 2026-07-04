@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Shield, CheckCircle, XCircle, Clock, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -136,7 +136,7 @@ export default function VerificationTab({
   const [expandedCheck, setExpandedCheck] = useState<string | null>(null)
   const [grossIncome, setGrossIncome] = useState<number>(45000)
 
-  const fetchChecks = async () => {
+  const fetchChecks = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/crm/contacts/kyc?contactId=${contactId}`)
@@ -147,9 +147,9 @@ export default function VerificationTab({
     } finally {
       setLoading(false)
     }
-  }
+  }, [contactId])
 
-  useEffect(() => { fetchChecks() }, [contactId])
+  useEffect(() => { fetchChecks() }, [fetchChecks])
 
   const getLatestCheck = (checkType: string) =>
     checks.find(c => c.check_type === checkType)

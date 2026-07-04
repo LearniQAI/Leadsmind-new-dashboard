@@ -49,7 +49,7 @@ export async function cancelRegistration(registrationId: string) {
   const { data: reg } = await supabase
     .from('class_registrations')
     .select('class_session_id')
-    .eq("id", registrationId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+    .eq("id", registrationId).eq("workspace_id", workspaceId)
     .single();
 
   if (!reg) return { success: false, error: 'Registration not found' };

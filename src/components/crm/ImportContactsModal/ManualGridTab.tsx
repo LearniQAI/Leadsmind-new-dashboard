@@ -47,7 +47,7 @@ export function ManualGridTab({ onParsed, onClear }: ManualGridTabProps) {
     });
 
     onParsed(contacts);
-  }, [rows]);
+  }, [rows, onParsed, onClear]);
 
   const updateField = (index: number, field: keyof GridRow, value: string) => {
     setRows(prev => prev.map((row, idx) => idx === index ? { ...row, [field]: value } : row));

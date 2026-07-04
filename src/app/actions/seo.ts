@@ -170,10 +170,11 @@ export async function addTrackedKeyword(keyword: string, targetUrl?: string) {
 export async function deleteTrackedKeyword(id: string) {
   try {
     const supabase = await createServerClient();
+    const workspaceId = await getActiveWorkspaceId();
     const { error } = await supabase
       .from('seo_tracked_keywords')
       .delete()
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      .eq("id", id).eq("workspace_id", workspaceId);
 
     if (error) throw error;
 
@@ -208,10 +209,11 @@ export async function getContentPipeline() {
 export async function updatePipelineStatus(id: string, status: 'Idea' | 'Research' | 'Approved' | 'Outlined' | 'Writing' | 'Review' | 'Scheduled' | 'Published' | 'Indexing' | 'ranking_11_50') {
   try {
     const supabase = await createServerClient();
+    const workspaceId = await getActiveWorkspaceId();
     const { data, error } = await supabase
       .from('seo_content_pipeline')
       .update({ status })
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", id).eq("workspace_id", workspaceId)
       .select()
       .single();
 
@@ -260,10 +262,11 @@ export async function addPipelineItem(keyword: string, status: 'Idea' | 'Researc
 export async function updatePipelineItemCost(id: string, cost: number) {
   try {
     const supabase = await createServerClient();
+    const workspaceId = await getActiveWorkspaceId();
     const { data, error } = await supabase
       .from('seo_content_pipeline')
       .update({ cost })
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", id).eq("workspace_id", workspaceId)
       .select()
       .single();
 
@@ -326,10 +329,11 @@ export async function getRevenueAttributionMetrics() {
 export async function deletePipelineItem(id: string) {
   try {
     const supabase = await createServerClient();
+    const workspaceId = await getActiveWorkspaceId();
     const { error } = await supabase
       .from('seo_content_pipeline')
       .delete()
-      .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+      .eq("id", id).eq("workspace_id", workspaceId);
 
     if (error) throw error;
 

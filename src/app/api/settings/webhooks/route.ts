@@ -36,11 +36,13 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
+  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
   const { error } = await supabase
     .from('workspace_webhooks')
     .delete()
-    .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+    .eq("id", id).eq("workspace_id", workspaceId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }

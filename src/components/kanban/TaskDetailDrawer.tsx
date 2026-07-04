@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDebounce } from 'react-use';
 import { 
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription 
@@ -44,19 +44,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
   const [members, setMembers] = useState<any[]>([]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-  useEffect(() => {
-    if (taskId && open) {
-      loadTaskDetails();
-      loadMembers();
-    }
-  }, [taskId, open]);
-
-  async function loadMembers() {
-    const res = await getAssignableMembers();
-    if (res.data) setMembers(res.data);
-  }
-
-  async function loadTaskDetails() {
+  const loadTaskDetails = useCallback(async () => {
     const [taskRes, roleRes] = await Promise.all([
       getTaskDetails(taskId!),
       getUserRole()
@@ -68,6 +56,18 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
     }
     if (roleRes) setRole(roleRes);
     setLoading(false);
+  }, [taskId]);
+
+  useEffect(() => {
+    if (taskId && open) {
+      loadTaskDetails();
+      loadMembers();
+    }
+  }, [taskId, open, loadTaskDetails]);
+
+  async function loadMembers() {
+    const res = await getAssignableMembers();
+    if (res.data) setMembers(res.data);
   }
 
   // Auto-save Title

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   getConnectedPlatforms, 
@@ -102,7 +102,7 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
     }
   };
 
-  const loadConnections = async () => {
+  const loadConnections = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getConnectedPlatforms();
@@ -146,13 +146,13 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [targetPlatform]);
 
   useEffect(() => {
     if (open) {
       loadConnections();
     }
-  }, [open]);
+  }, [open, loadConnections]);
 
   const handleDisconnect = async (platform: string) => {
     const res = await disconnectPlatform(platform);

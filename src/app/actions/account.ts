@@ -30,7 +30,7 @@ export async function updateProfile(values: ProfileFormValues) {
    profile_photo_url: values.profilePhotoUrl || null,
    identity_color: values.identityColor || '#3b82f6',
   })
-  .eq("id", user.id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+  .eq("id", user.id).eq("workspace_id", workspaceId);
 
  if (error) return { success: false, error: error.message };
 

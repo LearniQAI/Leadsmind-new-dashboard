@@ -132,12 +132,13 @@ export default function BookingModal({
   }, [isOpen, initialAppointment, initialDate, form, calendars, allAppointments]);
 
   // Sync default meeting mode when calendar changes
+  const watchedCalendarId = form.watch('calendarId');
   useEffect(() => {
-    const selectedCal = calendars.find(c => c.id === form.watch('calendarId'));
+    const selectedCal = calendars.find(c => c.id === watchedCalendarId);
     if (selectedCal && !initialAppointment) {
       form.setValue('meetingMode', selectedCal.meeting_mode || 'internal_meet');
     }
-  }, [form.watch('calendarId'), calendars, initialAppointment, form]);
+  }, [watchedCalendarId, calendars, initialAppointment, form]);
 
   const handleSearchContacts = async (query: string) => {
     if (query.length < 1) {

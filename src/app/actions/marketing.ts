@@ -240,7 +240,8 @@ export async function getAdCampaigns() {
 export async function updateFunnel(id: string, updates: any) {
  try {
   const supabase = await createServerClient();
-  const { data, error } = await supabase.from('funnels').update(updates).eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId).select().single();
+  const workspaceId = await getCurrentWorkspaceId();
+  const { data, error } = await supabase.from('funnels').update(updates).eq("id", id).eq("workspace_id", workspaceId).select().single();
   if (error) throw error;
   return { data };
  } catch (error: any) { return { error: error.message }; }
@@ -249,7 +250,8 @@ export async function updateFunnel(id: string, updates: any) {
 export async function deleteFunnelAction(id: string) {
  try {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('funnels').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+  const workspaceId = await getCurrentWorkspaceId();
+  const { error } = await supabase.from('funnels').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
   return { success: true };
  } catch (error: any) { return { error: error.message }; }
@@ -258,7 +260,7 @@ export async function deleteFunnelAction(id: string) {
 export async function updateCampaign(id: string, updates: any) {
  try {
   const supabase = await createServerClient();
-  
+  let workspaceId = await getCurrentWorkspaceId();
   // If moving status to sent or scheduled, enforce Domain Verification rules
   if (updates.status === 'sent' || updates.status === 'scheduled') {
    const { data: campaign, error: campaignError } = await supabase
@@ -271,8 +273,8 @@ export async function updateCampaign(id: string, updates: any) {
     throw new Error('Email campaign not found.');
    }
 
-   let fromEmail = updates.from_email || campaign.from_email;
-   const workspaceId = campaign.workspace_id;
+  let fromEmail = updates.from_email || campaign.from_email;
+  workspaceId = campaign.workspace_id;
    
    // Default to Leadsmind address if not set
    if (!fromEmail) {
@@ -307,7 +309,7 @@ export async function updateCampaign(id: string, updates: any) {
    }
   }
 
-  const { data, error } = await supabase.from('email_campaigns').update(updates).eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId).select().single();
+  const { data, error } = await supabase.from('email_campaigns').update(updates).eq("id", id).eq("workspace_id", workspaceId).select().single();
   if (error) throw error;
   
   // Count matching contacts for the user's peace of mind
@@ -346,7 +348,8 @@ export async function updateCampaign(id: string, updates: any) {
 export async function deleteCampaignAction(id: string) {
  try {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('email_campaigns').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+  const workspaceId = await getCurrentWorkspaceId();
+  const { error } = await supabase.from('email_campaigns').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
   return { success: true };
  } catch (error: any) { return { error: error.message }; }
@@ -355,6 +358,7 @@ export async function deleteCampaignAction(id: string) {
 export async function updateForm(id: string, updates: any) {
  try {
   const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
 
   // Build a clean update payload — only include columns that exist in the schema
   const payload: Record<string, any> = { updated_at: new Date().toISOString() };
@@ -385,7 +389,7 @@ export async function updateForm(id: string, updates: any) {
   const { data, error } = await supabase
    .from('forms')
    .update(payload)
-   .eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+    .eq("id", id).eq("workspace_id", workspaceId)
    .select()
    .single();
 
@@ -397,7 +401,8 @@ export async function updateForm(id: string, updates: any) {
 export async function deleteFormAction(id: string) {
  try {
   const supabase = await createServerClient();
-  const { error } = await supabase.from('forms').delete().eq("id", id).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+  const workspaceId = await getCurrentWorkspaceId();
+  const { error } = await supabase.from('forms').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
   return { success: true };
  } catch (error: any) { return { error: error.message }; }

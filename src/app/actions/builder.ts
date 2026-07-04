@@ -308,7 +308,8 @@ export async function handlePageFormSubmission(pageId: string, workspaceId: stri
           last_name: lastName || undefined,
           phone: phone || undefined,
           updated_at: new Date().toISOString()
-        }).eq("id", contactId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId);
+        }).eq("id", contactId).eq("workspace_id", workspaceId);
+          
       } else {
         const { data: newContact, error: contactError } = await supabase
           .from('contacts')

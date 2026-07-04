@@ -184,7 +184,7 @@ export async function verifySenderDomain(domainId: string) {
         dmarc_status: dmarcVerified,
         verified_at: verifiedAt
       })
-      .eq("id", domainId).eq("workspace_id", id).eq('workspace_id', id)
+      .eq("id", domainId).eq("workspace_id", workspaceId)
       .select()
       .single();
 
@@ -299,6 +299,9 @@ export async function getDomains(workspaceId: string) {
 
 export async function updateDomainRouting(domainId: string, routingConfig: any) {
   try {
+    const workspaceId = await getActiveWorkspaceId();
+    if (!workspaceId) return { success: false, error: 'No workspace active' };
+
     const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('domain_configurations')
@@ -306,7 +309,7 @@ export async function updateDomainRouting(domainId: string, routingConfig: any) 
         routing_config: routingConfig,
         updated_at: new Date().toISOString()
       })
-      .eq("id", domainId).eq("workspace_id", id).eq('workspace_id', id)
+      .eq("id", domainId).eq("workspace_id", workspaceId)
       .select()
       .single();
 
@@ -319,11 +322,14 @@ export async function updateDomainRouting(domainId: string, routingConfig: any) 
 
 export async function deleteDomain(domainId: string) {
   try {
+    const workspaceId = await getActiveWorkspaceId();
+    if (!workspaceId) return { success: false, error: 'No workspace active' };
+
     const supabase = await createServerClient();
     const { error } = await supabase
       .from('domain_configurations')
       .delete()
-      .eq("id", domainId).eq("workspace_id", id).eq('workspace_id', id);
+      .eq("id", domainId).eq("workspace_id", workspaceId);
 
     if (error) throw error;
     revalidatePath('/settings/domains');

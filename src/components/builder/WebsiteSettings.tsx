@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,27 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
 
   const supabase = createClient();
 
+  const fetchDomains = useCallback(async () => {
+    if (!website?.id) return;
+    const { data } = await supabase
+      .from('builder_published_domains')
+      .select('*')
+      .eq('website_id', website.id);
+    if (data) setDomains(data);
+  }, [website?.id, supabase]);
+
+  const fetchWebhooks = useCallback(async () => {
+    if (!website?.workspace_id) return;
+    const { data } = await supabase
+      .from('workspace_builder_settings')
+      .select('settings')
+      .eq('workspace_id', website.workspace_id)
+      .maybeSingle();
+    if (data?.settings?.webhooks) {
+      setWebhooks(data.settings.webhooks);
+    }
+  }, [website?.workspace_id, supabase]);
+
   useEffect(() => {
     if (website) {
       setLocalSettings({
@@ -54,28 +75,7 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
       fetchDomains();
       fetchWebhooks();
     }
-  }, [website]);
-
-  const fetchDomains = async () => {
-    if (!website?.id) return;
-    const { data } = await supabase
-      .from('builder_published_domains')
-      .select('*')
-      .eq('website_id', website.id);
-    if (data) setDomains(data);
-  };
-
-  const fetchWebhooks = async () => {
-    if (!website?.workspace_id) return;
-    const { data } = await supabase
-      .from('workspace_builder_settings')
-      .select('settings')
-      .eq('workspace_id', website.workspace_id)
-      .maybeSingle();
-    if (data?.settings?.webhooks) {
-      setWebhooks(data.settings.webhooks);
-    }
-  };
+  }, [website, fetchDomains, fetchWebhooks]);
 
   const handleAddDomain = async () => {
     if (!newDomain) return;

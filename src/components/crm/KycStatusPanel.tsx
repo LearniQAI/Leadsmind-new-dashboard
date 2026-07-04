@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Shield, 
@@ -101,7 +101,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
   // Fetch all KYC checks, consent record, and documents
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       // 1. Fetch contact record directly to sync FICA states
       const { data: updatedContact } = await supabase
@@ -153,7 +153,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
     } catch (err) {
       console.error('Error fetching KYC details:', err);
     }
-  };
+  }, [contact.id, supabase]);
 
   useEffect(() => {
     setLoading(true);
@@ -165,7 +165,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
         setCurrentUser(data.user);
       }
     });
-  }, [contact.id, supabase]);
+  }, [contact.id, supabase, fetchData]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

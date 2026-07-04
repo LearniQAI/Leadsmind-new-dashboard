@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useTransition } from 'react';
+import React, { useState, useRef, useEffect, useTransition, useCallback } from 'react';
 import { FileText, Download, UploadCloud, AlertCircle, CheckCircle2, Lock, PenTool, Calendar, ShieldCheck, HelpCircle, Shield, Upload, Loader2, Camera, Scan, ShieldAlert } from 'lucide-react';
 import { generateSignedDocumentUrl, uploadClientDocument, signPortalProposal } from '@/app/actions/documents';
 import { createClient } from '@/lib/supabase/client';
@@ -43,7 +43,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
   const supabase = React.useMemo(() => createClient(), []);
 
-  const loadFicaDocs = async () => {
+  const loadFicaDocs = useCallback(async () => {
     setLoadingFica(true);
     try {
       const { data, error } = await supabase
@@ -59,11 +59,11 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
     } finally {
       setLoadingFica(false);
     }
-  };
+  }, [contactId, supabase]);
 
   useEffect(() => {
     loadFicaDocs();
-  }, [contactId, supabase]);
+  }, [loadFicaDocs]);
 
   // E-Sign States
   const [selectedProposal, setSelectedProposal] = useState<any | null>(null);

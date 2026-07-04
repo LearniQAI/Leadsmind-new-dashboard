@@ -143,6 +143,11 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: Instructor access required' }, { status: 403 });
     }
 
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No active workspace context' }, { status: 400 });
+    }
+
     const body = await req.json();
     const { submissionId, gradeStatus, feedbackComments } = body;
 
@@ -159,7 +164,7 @@ export async function PATCH(req: NextRequest) {
         graded_at: new Date().toISOString(),
         graded_by_user_id: user.id
       })
-      .eq("id", submissionId).eq("workspace_id", workspaceId).eq('workspace_id', workspaceId)
+      .eq("id", submissionId).eq("workspace_id", workspaceId)
       .select()
       .single();
 
