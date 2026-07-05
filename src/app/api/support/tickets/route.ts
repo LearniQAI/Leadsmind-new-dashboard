@@ -3,6 +3,8 @@ import { createServerClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
