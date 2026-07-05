@@ -1,0 +1,121 @@
+/* LeadsMind marketing landing page — scoped animations & utilities.
+   Prefixed with `lm-` to avoid collisions with the rest of the app. */
+
+@keyframes lm-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes lm-float-delayed {
+  0%, 100% { transform: translateY(-10px); }
+  50% { transform: translateY(12px); }
+}
+
+@keyframes lm-mesh-shift {
+  0% { background-position: 0% 0%, 100% 100%, 50% 50%; }
+  50% { background-position: 20% 30%, 70% 60%, 40% 70%; }
+  100% { background-position: 0% 0%, 100% 100%, 50% 50%; }
+}
+
+@keyframes lm-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); }
+}
+
+@keyframes lm-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes lm-shimmer {
+  from { transform: translateX(-150%) skewX(-20deg); }
+  to { transform: translateX(150%) skewX(-20deg); }
+}
+
+@keyframes lm-bob {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes lm-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.lm-float { animation: lm-float 6s ease-in-out infinite; }
+.lm-float-delayed { animation: lm-float-delayed 7s ease-in-out infinite; }
+.lm-bob { animation: lm-bob 4s ease-in-out infinite; }
+
+.lm-mesh-bg {
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.35), transparent 45%),
+    radial-gradient(circle at 80% 30%, rgba(124, 58, 237, 0.28), transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(8, 145, 178, 0.22), transparent 50%);
+  background-size: 140% 140%, 140% 140%, 140% 140%;
+  animation: lm-mesh-shift 18s ease-in-out infinite;
+}
+
+.lm-dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.lm-dot-grid-light {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.lm-badge-glow {
+  animation: lm-pulse-glow 2.4s ease-in-out infinite;
+}
+
+.lm-gradient-text {
+  background-image: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #0891B2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lm-glass {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.lm-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.lm-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transform: translateX(-150%) skewX(-20deg);
+  transition: transform 0.1s;
+}
+
+.lm-shimmer:hover::after {
+  animation: lm-shimmer 1s ease forwards;
+}
+
+.lm-marquee-track {
+  animation: lm-marquee 28s linear infinite;
+}
+
+.lm-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+.lm-typing-dot {
+  animation: lm-blink 1.4s ease-in-out infinite;
+}
+
+.lm-scrollbar::-webkit-scrollbar { width: 6px; }
+.lm-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.lm-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }

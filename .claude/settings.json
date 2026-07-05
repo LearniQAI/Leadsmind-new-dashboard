@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(wc -l /tmp_tsc_out.txt)",
+      "Bash(grep -c \"error TS\" /tmp_tsc_out.txt)",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(node -e \"console.log\\('next:', require\\('next/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\('eslint-config-next:', require\\('eslint-config-next/package.json'\\).version\\)\")"
+    ]
+  }
+}

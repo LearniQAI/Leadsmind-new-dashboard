@@ -5,6 +5,8 @@ import { refinitivService } from '@/server/services/refinitiv'
 import { xdsService } from '@/server/services/xds'
 import { kycRiskEngine } from '@/server/services/kycRiskEngine'
 
+export const dynamic = 'force-dynamic';
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!

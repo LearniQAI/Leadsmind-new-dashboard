@@ -1,0 +1,6 @@
+scratch/
+scripts/db-checks/
+node_modules/.cache
+.next/cache
+*.log
+*.sql

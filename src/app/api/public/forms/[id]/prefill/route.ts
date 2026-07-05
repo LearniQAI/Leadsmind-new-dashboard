@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { corsResponse, corsError, getAdminSupabase } from '../../_lib/cors';
 import { verifyPrefillToken } from '@/lib/builder/tokens';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
