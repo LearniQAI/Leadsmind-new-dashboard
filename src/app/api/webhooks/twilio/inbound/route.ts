@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/shared/logger';
 
 export const runtime = 'nodejs';
 
@@ -18,18 +19,18 @@ export async function POST(req: NextRequest) {
     const body = formData.get('Body') as string;
     let messageSid = String(formData.get('MessageSid') || '').trim();
     if (!messageSid) {
-      console.error('[Twilio Inbound] Missing MessageSid. Cannot guarantee idempotency.');
+      logger.error({}, 'webhook.twilio_inbound.message_sid.missing');
       try {
         await supabaseAdmin.from('webhook_dead_letters').insert({
            provider: 'twilio_inbound', payload: payloadObj, error: 'Missing MessageSid', error_type: 'validation_failed', retry_state: 'dropped'
         });
       } catch (dbErr: any) {
-        console.error(JSON.stringify({ level: 'CRITICAL', message: 'DB dead-letter insert failed', provider: 'twilio_inbound', originalError: 'Missing MessageSid' }));
+        logger.error({ err: dbErr, provider: 'twilio_inbound' }, 'webhook.twilio_inbound.dead_letter_insert.failed');
       }
       return new NextResponse('<Response></Response>', { status: 200, headers: { 'Content-Type': 'text/xml' } });
     }
 
-    console.log(`[Twilio Inbound] Received SMS from ${fromPhone}: "${body}"`);
+    logger.info({ fromPhone }, 'webhook.twilio_inbound.sms_received');
 
     if (!fromPhone || !body) {
       return new NextResponse('<Response></Response>', {
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (existingMsg) {
-      console.warn(`[Twilio Inbound] Duplicate message skipped: ${messageSid}`);
+      logger.warn({ messageSid }, 'webhook.twilio_inbound.duplicate_message_skipped');
       return new NextResponse('<Response></Response>', { status: 200, headers: { 'Content-Type': 'text/xml' } });
     }
 
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!contact) {
-      console.warn(`[Twilio Inbound] No contact found for ${fromPhone}. Cannot route email.`);
+      logger.warn({ fromPhone }, 'webhook.twilio_inbound.contact_not_found');
       return new NextResponse('<Response></Response>', { status: 200, headers: { 'Content-Type': 'text/xml' } });
     }
 
@@ -110,7 +111,7 @@ Reply with ONLY the matching course UUID. If there is no clear match, reply with
               }
             }
           } catch (err) {
-            console.error('[Twilio Inbound] OpenAI course resolution failed:', err);
+            logger.error({ err, contactId: contact.id }, 'webhook.twilio_inbound.openai_course_resolution.failed');
           }
         }
 
@@ -231,7 +232,7 @@ Reply with ONLY the matching course UUID. If there is no clear match, reply with
 
     // 5. Send Email via Resend if we found a target
     if (targetEmail) {
-      console.log(`[Twilio Inbound] Relaying SMS back to email: ${targetEmail}`);
+      logger.info({ targetEmail }, 'webhook.twilio_inbound.email_relay.start');
       try {
         const { Resend } = await import('resend');
         const resend = new Resend(process.env.RESEND_API_KEY!);
@@ -247,19 +248,19 @@ Reply with ONLY the matching course UUID. If there is no clear match, reply with
           text: body,
         });
         
-        console.log('[Twilio Inbound] Successfully relayed SMS to email via Resend.');
+        logger.info({ targetEmail }, 'webhook.twilio_inbound.email_relay.success');
       } catch (emailErr: any) {
-        console.error('[Twilio Inbound] Failed to send email via Resend:', emailErr);
+        logger.error({ err: emailErr, targetEmail }, 'webhook.twilio_inbound.email_relay.failed');
         try {
           await supabaseAdmin.from('webhook_dead_letters').insert({
               provider: 'resend_outbound_relay', payload: { to: targetEmail, body }, error: String(emailErr.message), error_type: 'operational_failure', retry_state: 'dropped'
           });
         } catch(dbErr: any) {
-          console.error(JSON.stringify({ level: 'CRITICAL', message: 'DB dead-letter insert failed', provider: 'resend_outbound_relay', originalError: String(emailErr.message), dbError: dbErr.message }));
+          logger.error({ err: dbErr, provider: 'resend_outbound_relay' }, 'webhook.twilio_inbound.dead_letter_insert.failed');
         }
       }
     } else {
-      console.log(`[Twilio Inbound] No previous sender_email found in conversation. SMS logged but not relayed via email.`);
+      logger.info({}, 'webhook.twilio_inbound.no_relay_target');
     }
 
     // Twilio requires TwiML XML response
@@ -270,14 +271,14 @@ Reply with ONLY the matching course UUID. If there is no clear match, reply with
       },
     });
   } catch (error: any) {
-    console.error('[Twilio Inbound] Unhandled error:', error);
-    
+    logger.error({ err: error }, 'webhook.twilio_inbound.failed');
+
     try {
       await supabaseAdmin.from('webhook_dead_letters').insert({
          provider: 'twilio_inbound', payload: payloadObj, error: error.message, error_type: 'infrastructure_failure', retry_state: 'pending'
       });
     } catch (dbErr: any) {
-      console.error(JSON.stringify({ level: 'CRITICAL', message: 'DB dead-letter insert failed', provider: 'twilio_inbound', originalError: error.message, dbError: dbErr.message }));
+      logger.error({ err: dbErr, provider: 'twilio_inbound' }, 'webhook.twilio_inbound.dead_letter_insert.failed');
     }
 
     // Transient infrastructure failure -> return 500 so Twilio invokes retry backoff

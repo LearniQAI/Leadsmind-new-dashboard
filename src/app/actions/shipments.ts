@@ -5,6 +5,7 @@ import { detectCourier } from '@/lib/courier/detect'
 import { createTracking } from '@/lib/courier/aftership'
 import { normaliseStatus, NormalStatus } from '@/lib/courier/normalise'
 import { sendShipmentRegistered } from '@/lib/courier/emails'
+import { logger } from '@/shared/logger'
 
 export async function createShipment(
   workspaceId: string,
@@ -100,7 +101,10 @@ export async function createShipment(
     .select('*')
     .single()
 
-  if (error) return { success: false, error: error.message }
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'shipments.create.failed')
+    return { success: false, error: 'Failed to create shipment.' }
+  }
 
   // Increment tracking quota
   if (quota) {
@@ -128,7 +132,7 @@ export async function createShipment(
   try {
     await sendShipmentRegistered(shipment)
   } catch (e) {
-    console.error('[Action register email error]:', e)
+    logger.error({ err: e, workspaceId, shipmentId: shipment.id }, 'shipments.register_email.failed')
   }
 
   return { success: true, data: shipment }
@@ -142,7 +146,10 @@ export async function getShipmentEvents(shipmentId: string) {
     .eq('shipment_id', shipmentId)
     .order('occurred_at', { ascending: false })
 
-  if (error) return { success: false, error: error.message }
+  if (error) {
+    logger.error({ err: error, shipmentId }, 'shipments.events.fetch.failed')
+    return { success: false, error: 'Failed to fetch shipment events.' }
+  }
   return { success: true, data }
 }
 
@@ -165,7 +172,10 @@ export async function updateTrackingBrand(workspaceId: string, brandSettings: an
       onConflict: 'workspace_id'
     })
 
-  if (error) return { success: false, error: error.message }
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'shipments.brand_settings.update.failed')
+    return { success: false, error: 'Failed to update tracking brand.' }
+  }
   return { success: true }
 }
 
@@ -194,7 +204,8 @@ export async function uploadBrandLogo(formData: FormData) {
       })
 
     if (uploadError) {
-      return { success: false, error: uploadError.message }
+      logger.error({ err: uploadError, workspaceId }, 'shipments.brand_logo.upload.failed')
+      return { success: false, error: 'Failed to upload logo.' }
     }
 
     const { data: publicData } = supabase.storage
@@ -207,7 +218,8 @@ export async function uploadBrandLogo(formData: FormData) {
 
     return { success: true, publicUrl: publicData.publicUrl }
   } catch (err: any) {
-    return { success: false, error: err.message || 'Error uploading file' }
+    logger.error({ err, workspaceId }, 'shipments.brand_logo.upload_action.failed')
+    return { success: false, error: 'Error uploading file' }
   }
 }
 
@@ -250,7 +262,8 @@ export async function confirmReceiptAction(shipmentId: string, token: string) {
     .eq('id', shipmentId)
 
   if (updateErr) {
-    return { success: false, error: updateErr.message }
+    logger.error({ err: updateErr, shipmentId }, 'shipments.receipt_confirmation.update.failed')
+    return { success: false, error: 'Failed to confirm receipt.' }
   }
 
   await supabase.from('shipment_events').insert({
@@ -302,7 +315,7 @@ export async function confirmReceiptAction(shipmentId: string, token: string) {
       })
     }
   } catch (e) {
-    console.error('[confirmReceiptAction notification error]:', e)
+    logger.error({ err: e, shipmentId }, 'shipments.receipt_confirmation.notification.failed')
   }
 
   return { success: true }
@@ -347,7 +360,8 @@ export async function updateShipmentStatus(
     .eq('id', shipmentId)
 
   if (updateErr) {
-    return { success: false, error: updateErr.message }
+    logger.error({ err: updateErr, shipmentId }, 'shipments.manual_status_update.update.failed')
+    return { success: false, error: 'Failed to update shipment status.' }
   }
 
   await supabase.from('shipment_events').insert({
@@ -376,7 +390,7 @@ export async function updateShipmentStatus(
       )
     }
   } catch (e) {
-    console.error('[Manual update status-email error]:', e)
+    logger.error({ err: e, shipmentId }, 'shipments.manual_status_update.notification.failed')
   }
 
   return { success: true }
@@ -430,7 +444,8 @@ export async function syncShipmentTracking(shipmentId: string) {
       .eq('id', shipmentId)
 
     if (updateErr) {
-      return { success: false, error: updateErr.message }
+      logger.error({ err: updateErr, shipmentId }, 'shipments.poll_update.update.failed')
+      return { success: false, error: 'Failed to sync shipment status.' }
     }
 
     await supabase.from('shipment_events').insert({
@@ -459,7 +474,7 @@ export async function syncShipmentTracking(shipmentId: string) {
         )
       }
     } catch (e) {
-      console.error('[Poll update status-email error]:', e)
+      logger.error({ err: e, shipmentId }, 'shipments.poll_update.notification.failed')
     }
 
     const { data: updatedShipment } = await supabase
@@ -470,7 +485,8 @@ export async function syncShipmentTracking(shipmentId: string) {
 
     return { success: true, data: updatedShipment }
   } catch (err: any) {
-    return { success: false, error: err.message || 'Error syncing from AfterShip' }
+    logger.error({ err, shipmentId }, 'shipments.aftership_sync.failed')
+    return { success: false, error: 'Error syncing from AfterShip' }
   }
 }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/server/database/datasource';
 import { ResearchAgent } from '@/server/services/ai/ResearchAgent';
 import { sendEmail } from '@/lib/email';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ async function handleBriefingCron() {
     const startRange = new Date(now.getTime() + 115 * 60 * 1000);
     const endRange = new Date(now.getTime() + 120 * 60 * 1000);
 
-    console.log(`[Pre-Meeting Brief Cron] Scanning appointments from ${startRange.toISOString()} to ${endRange.toISOString()}`);
+    logger.info({ startRange: startRange.toISOString(), endRange: endRange.toISOString() }, 'cron.pre_meeting_brief.scan_start');
 
     // Query appointments scheduled 2 hours ahead
     const upcomingAppointments = await db('appointments')
@@ -34,7 +35,7 @@ async function handleBriefingCron() {
       .where('start_time', '<=', endRange.toISOString())
       .where({ status: 'scheduled' });
 
-    console.log(`[Pre-Meeting Brief Cron] Found ${upcomingAppointments.length} upcoming appointments.`);
+    logger.info({ count: upcomingAppointments.length }, 'cron.pre_meeting_brief.appointments_found');
 
     const results = [];
 
@@ -64,7 +65,7 @@ async function handleBriefingCron() {
         const companyName = domainPart.charAt(0).toUpperCase() + domainPart.slice(1);
 
         // Trigger background research & enrichment lookup
-        console.log(`[Pre-Meeting Brief Cron] Enriching contact ${contactName} for briefing...`);
+        logger.info({ contactId: contact.id, appointmentId: appointment.id }, 'cron.pre_meeting_brief.enrichment_start');
         const report = await ResearchAgent.enrichContact(
           contact.id,
           contactName,
@@ -120,13 +121,13 @@ async function handleBriefingCron() {
 
         results.push({ appointmentId: appointment.id, contactName, sentTo: agentEmail });
       } catch (innerErr: any) {
-        console.error(`Error processing brief for appointment ${appointment.id}:`, innerErr.message);
+        logger.error({ err: innerErr, appointmentId: appointment.id }, 'cron.pre_meeting_brief.appointment_processing.failed');
       }
     }
 
     return NextResponse.json({ success: true, processedCount: results.length, briefings: results });
   } catch (error: any) {
-    console.error('[Pre-Meeting Brief Cron] Exception:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logger.error({ err: error }, 'cron.pre_meeting_brief.failed');
+    return NextResponse.json({ error: 'Pre-meeting brief processing failed.' }, { status: 500 });
   }
 }

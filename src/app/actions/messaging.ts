@@ -8,6 +8,8 @@ import { encrypt, decrypt } from '@/lib/encryption';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { EmailAutomationService } from '@/lib/automations/EmailAutomationService';
 import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
 
@@ -24,8 +26,7 @@ export async function getMetaAuthUrl(targetPlatform?: string) {
 
 	const scope = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_manage_posts,instagram_manage_messages,instagram_content_publishing,whatsapp_business_messaging,whatsapp_business_management,business_management';
 	const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${stateStr}`;
-	console.log('[Meta OAuth Scope]', scope);
-	console.log('[Meta OAuth URL]', url);
+	logger.info({ scope, workspaceId }, 'messaging.meta_oauth.url_generated');
 	return url;
 }
 
@@ -41,7 +42,7 @@ async function validateMetaPlatformCredentials(platform: string, data: any) {
 
   // If it's a mock token or mock ID, skip validation and return mock values
   if (token.startsWith('mock_') || id.startsWith('mock_')) {
-    console.log(`[Validation] Skipping validation for mock connection on ${platform}`);
+    logger.info({ platform }, 'messaging.platform_validation.mock_skip');
     return {
       name: platform === 'facebook' ? (data.pageName || 'LeadsMind Page') :
             platform === 'instagram' ? 'ig_leadsmind' : 'LeadsMind WhatsApp Business',
@@ -77,7 +78,8 @@ async function validateMetaPlatformCredentials(platform: string, data: any) {
     }
     throw new Error('Unsupported platform validation');
   } catch (err: any) {
-    throw new Error(`Meta API Validation Failed: ${err.message}`);
+    logger.error({ err, platform }, 'messaging.meta_platform_credentials.validation_failed');
+    throw new Error('Meta API validation failed. Please check your credentials.');
   }
 }
 
@@ -132,7 +134,8 @@ export async function connectPlatformManually(platform: string, data: any) {
     if (error) throw error;
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || 'Failed to save connection' };
+    logger.error({ err: error, platform }, 'messaging.platform_connection.save.failed');
+    return { error: 'Failed to save connection' };
   }
 }
 
@@ -149,8 +152,9 @@ export async function getTikTokAuthUrl() {
 }
 
 export async function getConnectedPlatforms() {
+ let workspaceId: string | null = null;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return [];
 
   const supabase = await createServerClient();
@@ -162,14 +166,15 @@ export async function getConnectedPlatforms() {
   if (error) throw error;
   return data || [];
  } catch (error) {
-  console.error('[messaging] Error fetching platforms:', error);
+  logger.error({ err: error, workspaceId }, 'messaging.platforms.fetch.failed');
   return [];
  }
 }
 
 export async function disconnectPlatform(platform: string) {
+ let workspaceId: string | null = null;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -182,7 +187,8 @@ export async function disconnectPlatform(platform: string) {
   if (error) throw error;
   return { success: true };
  } catch (error: any) {
-  return { error: error.message || 'Failed to disconnect platform' };
+  logger.error({ err: error, workspaceId, platform }, 'messaging.platform.disconnect.failed');
+  return { error: 'Failed to disconnect platform' };
  }
 }
 
@@ -201,8 +207,9 @@ async function resolveConversationIds(conversationId: string): Promise<string[]>
 }
 
 export async function getConversations() {
+ let workspaceId: string | null = null;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -229,7 +236,8 @@ export async function getConversations() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message || 'Failed to fetch conversations' };
+  logger.error({ err: error, workspaceId }, 'messaging.conversations.fetch.failed');
+  return { error: 'Failed to fetch conversations' };
  }
 }
 
@@ -307,7 +315,7 @@ export async function sendMessage(conversationId: string, content: string, audio
             message: content || undefined
           });
         } catch (emailErr) {
-          console.error('[messaging] sendVoiceNoteEmail failed:', emailErr);
+          logger.error({ err: emailErr, workspaceId, conversationId: targetConvId }, 'messaging.voice_note_email.send.failed');
         }
       } else {
        await sendEmail({
@@ -318,9 +326,9 @@ export async function sendMessage(conversationId: string, content: string, audio
      }
     await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId);
     } catch (emailErr: any) {
-     console.error('[messaging] Failed to send actual email:', emailErr);
+     logger.error({ err: emailErr, workspaceId, conversationId: targetConvId }, 'messaging.email.send.failed');
      messageFailed = true;
-     errorMessage = emailErr.message || 'Failed to send email';
+     errorMessage = 'Failed to send email';
     }
    } else {
      messageFailed = true;
@@ -341,9 +349,9 @@ export async function sendMessage(conversationId: string, content: string, audio
      
     await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId);
     } catch (bridgeErr: any) {
-     console.error('[messaging] Failed to send to SMS Bridge:', bridgeErr);
+     logger.error({ err: bridgeErr, workspaceId, conversationId: targetConvId }, 'messaging.sms_bridge.send.failed');
      messageFailed = true;
-     errorMessage = bridgeErr.message || 'Failed to route via SMS Bridge';
+     errorMessage = 'Failed to route via SMS Bridge';
     }
    } else {
      messageFailed = true;
@@ -398,8 +406,9 @@ export async function sendMessage(conversationId: string, content: string, audio
     if (res && res.success) {
       await supabase.from('messages').update({ status: 'sent', external_id: res.externalId }).eq("id", msgData.id).eq("workspace_id", workspaceId);
     } else {
+      logger.error({ err: res?.error, workspaceId, conversationId: targetConvId, platform: conv!.platform }, 'messaging.meta_adapter.dispatch.failed');
       messageFailed = true;
-      errorMessage = res?.error || 'Failed to dispatch via MetaAdapter';
+      errorMessage = 'Failed to dispatch message';
     }
    } else {
      messageFailed = true;
@@ -432,7 +441,7 @@ export async function sendMessage(conversationId: string, content: string, audio
           }
         );
       } catch (actErr) {
-        console.error('[messaging] Failed to log voice activity:', actErr);
+        logger.error({ err: actErr, workspaceId, conversationId: targetConvId }, 'messaging.voice_activity.log.failed');
       }
     }
   }
@@ -446,7 +455,8 @@ export async function sendMessage(conversationId: string, content: string, audio
 
   return { success: true };
  } catch (error: any) {
-  return { error: error.message || 'Failed to send message' };
+  logger.error({ err: error, conversationId: targetConvId }, 'messaging.message.send.failed');
+  return { error: 'Failed to send message' };
  }
 }
 
@@ -478,7 +488,8 @@ export async function sendInternalNote(conversationId: string, content: string, 
 
   return { success: true, data: msgData };
  } catch (error: any) {
-  return { error: error.message || 'Failed to save note' };
+  logger.error({ err: error, conversationId: targetConvId }, 'messaging.internal_note.save.failed');
+  return { error: 'Failed to save note' };
  }
 }
 
@@ -495,7 +506,8 @@ export async function updateConversationAssignment(conversationId: string, assig
   if (error) throw error;
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, conversationId }, 'messaging.conversation_assignment.update.failed');
+  return { error: 'Failed to update assignment.' };
  }
 }
 
@@ -512,7 +524,8 @@ export async function updateConversationStatus(conversationId: string, status: s
   if (error) throw error;
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, conversationId, status }, 'messaging.conversation_status.update.failed');
+  return { error: 'Failed to update status.' };
  }
 }
 
@@ -529,13 +542,15 @@ export async function updateConversationTags(conversationId: string, tags: strin
   if (error) throw error;
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, conversationId }, 'messaging.conversation_tags.update.failed');
+  return { error: 'Failed to update tags.' };
  }
 }
 
 export async function getQuickReplies() {
+ let workspaceId: string | null = null;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -548,7 +563,8 @@ export async function getQuickReplies() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workspaceId }, 'messaging.quick_replies.fetch.failed');
+  return { error: 'Failed to fetch quick replies.' };
  }
 }
 
@@ -571,14 +587,16 @@ export async function createQuickReply(shortcut: string, message: string) {
   if (error) throw error;
   return { success: true, data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, shortcut }, 'messaging.quick_reply.create.failed');
+  return { error: 'Failed to create quick reply.' };
  }
 }
 
 export async function deleteQuickReply(id: string) {
+ let workspaceId: string | null = null;
  try {
   const supabase = await createServerClient();
-  const workspaceId = await getCurrentWorkspaceId();
+  workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase
    .from('quick_replies')
    .delete()
@@ -587,14 +605,16 @@ export async function deleteQuickReply(id: string) {
   if (error) throw error;
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workspaceId, quickReplyId: id }, 'messaging.quick_reply.delete.failed');
+  return { error: 'Failed to delete quick reply.' };
  }
 }
 
 export async function updateContactConsent(contactId: string, optedIn: boolean, optedOut: boolean) {
+ let workspaceId: string | null = null;
  try {
   const supabase = await createServerClient();
-  const workspaceId = await getCurrentWorkspaceId();
+  workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase
    .from('contacts')
    .update({
@@ -607,7 +627,8 @@ export async function updateContactConsent(contactId: string, optedIn: boolean, 
   if (error) throw error;
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workspaceId, contactId }, 'messaging.contact_consent.update.failed');
+  return { error: 'Failed to update consent.' };
  }
 }
 
@@ -642,7 +663,7 @@ export async function getMetaOauthToken() {
       status: data.status
     };
   } catch (err) {
-    console.error('[messaging actions] getMetaOauthToken error:', err);
+    logger.error({ err }, 'messaging.meta_oauth_token.fetch.failed');
     return null;
   }
 }
@@ -670,7 +691,7 @@ export async function fetchMetaBusinesses() {
       ...list
     ];
   } catch (err: any) {
-    console.error('[Meta API] Error fetching businesses:', err);
+    logger.error({ err }, 'messaging.meta_api.businesses.fetch.failed');
     return [{ id: 'personal', name: 'Personal Profile (No Business)' }];
   }
 }
@@ -709,7 +730,7 @@ export async function fetchMetaPages(businessId: string) {
       access_token: p.access_token
     }));
   } catch (err: any) {
-    console.error('[Meta API] Error fetching pages:', err);
+    logger.error({ err, businessId }, 'messaging.meta_api.pages.fetch.failed');
     throw err;
   }
 }
@@ -743,7 +764,7 @@ export async function fetchMetaInstagramAccounts(pageId: string, pageAccessToken
 
     return [{ id: igId, username }];
   } catch (err: any) {
-    console.error('[Meta API] Error fetching Instagram accounts:', err);
+    logger.error({ err, pageId }, 'messaging.meta_api.instagram_accounts.fetch.failed');
     return [];
   }
 }
@@ -773,7 +794,7 @@ export async function fetchMetaWhatsAppAccounts(businessId: string) {
       name: w.name
     }));
   } catch (err: any) {
-    console.error('[Meta API] Error fetching WhatsApp Business Accounts:', err);
+    logger.error({ err, businessId }, 'messaging.meta_api.whatsapp_accounts.fetch.failed');
     return [];
   }
 }
@@ -804,7 +825,7 @@ export async function fetchWhatsAppPhoneNumbers(wabaId: string) {
       verified_name: p.verified_name || 'WhatsApp Business Line'
     }));
   } catch (err: any) {
-    console.error('[Meta API] Error fetching WhatsApp Phone Numbers:', err);
+    logger.error({ err, wabaId }, 'messaging.meta_api.whatsapp_phone_numbers.fetch.failed');
     return [];
   }
 }
@@ -820,8 +841,9 @@ export async function saveMetaConnections(data: {
   phoneNumberId?: string | null;
   whatsappPhoneNumber?: string | null;
 }, targetPlatform?: 'facebook' | 'instagram' | 'whatsapp' | null) {
+  let workspaceId: string | null = null;
   try {
-    const workspaceId = await getCurrentWorkspaceId();
+    workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
     const oauth = await getMetaOauthToken();
@@ -838,7 +860,8 @@ export async function saveMetaConnections(data: {
           throw new Error(errData.error?.message || 'Invalid Facebook Page access');
         }
       } catch (err: any) {
-        return { error: `Facebook Page Validation Failed: ${err.message}` };
+        logger.error({ err, workspaceId, pageId: data.pageId }, 'messaging.meta_connections.page_validation.failed');
+        return { error: 'Facebook Page validation failed. Please check your credentials.' };
       }
     }
 
@@ -953,6 +976,7 @@ export async function saveMetaConnections(data: {
 
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || 'Failed to save Meta connections' };
+    logger.error({ err: error, workspaceId }, 'messaging.meta_connections.save.failed');
+    return { error: 'Failed to save Meta connections' };
   }
 }

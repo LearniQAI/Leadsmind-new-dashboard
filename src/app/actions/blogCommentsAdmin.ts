@@ -3,12 +3,14 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
+import { UnauthorizedError, toClientError } from '@/shared/errors/AppError';
 
 export async function updateCommentStatus(commentId: string, status: 'approved' | 'spam' | 'rejected' | 'pending') {
   try {
     const supabase = await createServerClient();
     const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) throw new Error('Unauthorized');
+    if (!workspaceId) throw new UnauthorizedError();
 
     const { error } = await supabase.from('blog_comments')
       .update({ status })
@@ -19,8 +21,9 @@ export async function updateCommentStatus(commentId: string, status: 'approved' 
     revalidatePath('/blog/comments');
     return { success: true };
   } catch (err: any) {
-    console.error('[Action updateCommentStatus Error]:', err);
-    return { error: err.message || 'Failed to update comment' };
+    logger.error({ err, commentId }, 'blog_comments.status_update.failed');
+    const clientError = toClientError(err);
+    return { error: clientError.error };
   }
 }
 
@@ -28,7 +31,7 @@ export async function deleteComment(commentId: string) {
   try {
     const supabase = await createServerClient();
     const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) throw new Error('Unauthorized');
+    if (!workspaceId) throw new UnauthorizedError();
 
     const { error } = await supabase.from('blog_comments')
       .delete()
@@ -39,8 +42,9 @@ export async function deleteComment(commentId: string) {
     revalidatePath('/blog/comments');
     return { success: true };
   } catch (err: any) {
-    console.error('[Action deleteComment Error]:', err);
-    return { error: err.message || 'Failed to delete comment' };
+    logger.error({ err, commentId }, 'blog_comments.delete.failed');
+    const clientError = toClientError(err);
+    return { error: clientError.error };
   }
 }
 
@@ -56,22 +60,24 @@ export async function updateBlogSettings(payload: {
   sa_city?: string;
   sa_area?: string;
 }) {
+  let workspaceId: string | null = null;
   try {
     const supabase = await createServerClient();
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) throw new Error('Unauthorized');
+    workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) throw new UnauthorizedError();
 
     const { error } = await supabase.from('blog_settings')
       .upsert({
         workspace_id: workspaceId,
         ...payload
       }, { onConflict: 'workspace_id' });
-      
+
     if (error) throw error;
     revalidatePath('/blog/comments');
     return { success: true };
   } catch (err: any) {
-    console.error('[Action updateBlogSettings Error]:', err);
-    return { error: err.message || 'Failed to update settings' };
+    logger.error({ err, workspaceId }, 'blog_settings.update.failed');
+    const clientError = toClientError(err);
+    return { error: clientError.error };
   }
 }

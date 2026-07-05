@@ -3,6 +3,8 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
+import { DatabaseError, toClientError } from '@/shared/errors/AppError';
 
 // Helper to generate OpenAI embeddings for search matching
 async function generateEmbedding(text: string): Promise<number[] | null> {
@@ -24,7 +26,7 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
     const body = await res.json();
     return body.data[0].embedding;
   } catch (err) {
-    console.error('Embedding error:', err);
+    logger.error({ err }, 'forum.embedding.generate.failed');
     return null;
   }
 }
@@ -56,7 +58,7 @@ export async function createForumPost(board: string, title: string, content: str
       if (workspaces && workspaces.length > 0) {
         wsId = workspaces[0].id;
       } else {
-        throw new Error('No workspaces configured in the database bedrock.');
+        throw new DatabaseError('No workspaces configured in the database bedrock.');
       }
     }
 
@@ -149,15 +151,16 @@ export async function createForumPost(board: string, title: string, content: str
           });
       }
     } catch (moderationErr) {
-      console.error('LENA Forum Moderator listener failed:', moderationErr);
+      logger.error({ err: moderationErr, postId: post.id }, 'forum.post.moderation_listener.failed');
     }
 
     revalidatePath('/community/forums');
     return { success: true, post };
 
   } catch (error: any) {
-    console.error('Error creating forum post:', error);
-    return { error: error.message };
+    logger.error({ err: error, board }, 'forum.post.create.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -178,7 +181,7 @@ export async function getForumPosts(board: string) {
       if (workspaces && workspaces.length > 0) {
         wsId = workspaces[0].id;
       } else {
-        throw new Error('No active workspace configured.');
+        throw new DatabaseError('No active workspace configured.');
       }
     }
 
@@ -192,8 +195,9 @@ export async function getForumPosts(board: string) {
     if (error) throw error;
     return { data: posts || [] };
   } catch (error: any) {
-    console.error('Error fetching forum posts:', error);
-    return { error: error.message };
+    logger.error({ err: error, board }, 'forum.posts.fetch.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -222,8 +226,9 @@ export async function getPostDetails(postId: string) {
 
     return { data: { post, comments: comments || [] } };
   } catch (error: any) {
-    console.error('Error fetching post details:', error);
-    return { error: error.message };
+    logger.error({ err: error, postId }, 'forum.post_details.fetch.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -260,7 +265,8 @@ export async function addCommentToPost(postId: string, content: string, visitorN
     revalidatePath('/community/forums');
     return { success: true, comment };
   } catch (error: any) {
-    console.error('Error adding comment:', error);
-    return { error: error.message };
+    logger.error({ err: error, postId }, 'forum.comment.add.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }

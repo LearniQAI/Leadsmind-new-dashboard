@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { Resend } from 'resend';
+import { logger } from '@/shared/logger';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -162,7 +163,7 @@ export async function POST(req: Request) {
         }
       });
     } catch (err) {
-      console.error('Failed to log CRM activity:', err);
+      logger.error({ err, ticketId }, 'webhook.support_inbound.crm_activity_log.failed');
     }
 
     // 2. Notify agents/owner of customer reply (via Email and In-App)
@@ -190,12 +191,12 @@ export async function POST(req: Request) {
         ));
       }
     } catch (e) {
-      console.error('Failed to notify agents of customer reply:', e);
+      logger.error({ err: e, ticketId }, 'webhook.support_inbound.agent_notification.failed');
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Webhook error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logger.error({ err: error }, 'webhook.support_inbound.failed');
+    return NextResponse.json({ error: 'Support ticket webhook processing failed.' }, { status: 500 });
   }
 }

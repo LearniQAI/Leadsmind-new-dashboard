@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 export async function createWatchlist(name: string, monitoringType: string, criteria: any) {
   const supabase = await createServerClient();
@@ -23,8 +24,11 @@ export async function createWatchlist(name: string, monitoringType: string, crit
     criteria
   });
 
-  if (error) return { success: false, error: error.message };
-  
+  if (error) {
+    logger.error({ err: error, userId }, 'watchlist_workspace.watchlist.create.failed');
+    return { success: false, error: 'Failed to create watchlist.' };
+  }
+
   revalidatePath('/lead-finder/watchlists');
   return { success: true };
 }
@@ -39,7 +43,10 @@ export async function getWatchlists() {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error }, 'watchlist_workspace.watchlists.fetch.failed');
+    return { success: false, error: 'Failed to fetch watchlists.' };
+  }
   return { success: true, data };
 }
 
@@ -54,7 +61,10 @@ export async function getAlerts() {
     .order('created_at', { ascending: false })
     .limit(50);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error }, 'watchlist_workspace.alerts.fetch.failed');
+    return { success: false, error: 'Failed to fetch alerts.' };
+  }
   return { success: true, data };
 }
 
@@ -65,7 +75,10 @@ export async function deleteWatchlist(id: string) {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) throw new ForbiddenError('No active workspace');
   const { error } = await supabase.from('lead_watchlists').delete().eq("id", id).eq("workspace_id", workspaceId);
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId, watchlistId: id }, 'watchlist_workspace.watchlist.delete.failed');
+    return { success: false, error: 'Failed to delete watchlist.' };
+  }
   revalidatePath('/lead-finder/watchlists');
   return { success: true };
 }
@@ -77,7 +90,10 @@ export async function toggleWatchlistStatus(id: string, isActive: boolean) {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) throw new ForbiddenError('No active workspace');
   const { error } = await supabase.from('lead_watchlists').update({ is_active: isActive }).eq("id", id).eq("workspace_id", workspaceId);
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId, watchlistId: id }, 'watchlist_workspace.status.toggle.failed');
+    return { success: false, error: 'Failed to toggle watchlist status.' };
+  }
   revalidatePath('/lead-finder/watchlists');
   return { success: true };
 }

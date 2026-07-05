@@ -4,6 +4,7 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getPortalSession } from '@/lib/portal/session';
 import { getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 /**
  * Client approval server action to confirm a milestone task
@@ -45,7 +46,8 @@ export async function approveProjectMilestone(taskId: string) {
       .eq('id', taskId);
 
     if (updateErr) {
-      return { success: false, error: 'Failed to record milestone approval: ' + updateErr.message };
+      logger.error({ err: updateErr, taskId }, 'projects.milestone.approve.failed');
+      return { success: false, error: 'Failed to record milestone approval.' };
     }
 
     // 4. Log the confirmation inside contact activities CRM logs
@@ -61,13 +63,14 @@ export async function approveProjectMilestone(taskId: string) {
       const { triggerWorkflows } = await import('@/lib/automation/executor');
       await triggerWorkflows(workspace.id, 'milestone_approved', contact.id);
     } catch (triggerErr: any) {
-      console.error('[approveProjectMilestone] Failed to trigger workflows:', triggerErr.message);
+      logger.error({ err: triggerErr, taskId }, 'projects.milestone.workflow_trigger.failed');
     }
 
     revalidatePath('/portal/projects');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    logger.error({ err, taskId }, 'projects.milestone.approve_action.failed');
+    return { success: false, error: 'An unexpected error occurred.' };
   }
 }
 
@@ -137,13 +140,15 @@ export async function saveProjectSettings(projectId: string, settings: {
       .eq('id', projectId);
 
     if (updateErr) {
-      return { success: false, error: 'Failed to save settings: ' + updateErr.message };
+      logger.error({ err: updateErr, projectId }, 'projects.settings.save.failed');
+      return { success: false, error: 'Failed to save settings.' };
     }
 
     revalidatePath(`/settings`);
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    logger.error({ err, projectId }, 'projects.settings.save_action.failed');
+    return { success: false, error: 'An unexpected error occurred.' };
   }
 }
 
@@ -188,12 +193,14 @@ export async function saveWorkspaceProjectSettings(workspaceId: string, settings
       .eq('id', workspaceId);
 
     if (updateErr) {
-      return { success: false, error: 'Failed to save settings: ' + updateErr.message };
+      logger.error({ err: updateErr, workspaceId }, 'projects.workspace_settings.save.failed');
+      return { success: false, error: 'Failed to save settings.' };
     }
 
     revalidatePath(`/settings`);
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    logger.error({ err, workspaceId }, 'projects.workspace_settings.save_action.failed');
+    return { success: false, error: 'An unexpected error occurred.' };
   }
 }

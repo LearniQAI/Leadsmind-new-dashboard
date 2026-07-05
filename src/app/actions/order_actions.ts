@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 export async function updateOrderStatus(orderId: string, status: string) {
  try {
@@ -22,7 +23,8 @@ export async function updateOrderStatus(orderId: string, status: string) {
   revalidatePath('/orders');
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, orderId }, 'order_actions.status.update.failed');
+  return { error: 'Failed to update order status.' };
  }
 }
 
@@ -42,6 +44,7 @@ export async function deleteOrder(orderId: string) {
   revalidatePath('/orders');
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, orderId }, 'order_actions.delete.failed');
+  return { error: 'Failed to delete order.' };
  }
 }

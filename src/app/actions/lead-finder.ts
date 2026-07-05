@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
 import { EnrichmentEngine } from '@/lib/lead-finder/EnrichmentEngine';
+import { logger } from '@/shared/logger';
 
 export async function searchGooglePlaces(params: {
   searchType: string;
@@ -16,7 +17,7 @@ export async function searchGooglePlaces(params: {
   const API_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
 
   if (!API_KEY) {
-    console.error('[LeadFinder] Missing Google Places API Key.');
+    logger.error({}, 'lead_finder.google_places.api_key_missing');
     return { success: false, error: 'Google API key is not configured.' };
   }
 
@@ -41,8 +42,8 @@ export async function searchGooglePlaces(params: {
     const data = await response.json();
     
     if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
-      console.error('[LeadFinder] Google API Error:', data.error_message || data.status);
-      throw new Error(data.error_message || 'API quota exceeded or billing disabled.');
+      logger.error({ status: data.status, errorMessage: data.error_message }, 'lead_finder.google_places.api_error');
+      throw new Error('Google Places search is temporarily unavailable. Please try again later.');
     }
 
     if (data.status === 'ZERO_RESULTS') {
@@ -85,8 +86,8 @@ export async function searchGooglePlaces(params: {
 
     return { success: true, data: enrichedResults };
   } catch (error: any) {
-    console.error('[LeadFinder] Search error:', error);
-    return { success: false, error: error.message || 'Failed to search places' };
+    logger.error({ err: error }, 'lead_finder.google_places.search.failed');
+    return { success: false, error: 'Failed to search places' };
   }
 }
 
@@ -127,8 +128,8 @@ export async function saveLeadSearchAndResults(
       .single();
 
     if (searchError) {
-      console.error('[LeadFinder] Error saving search:', searchError);
-      return { success: false, error: searchError.message };
+      logger.error({ err: searchError, workspaceId }, 'lead_finder.search.save.failed');
+      return { success: false, error: 'Failed to save search.' };
     }
 
     // 2. Save Results
@@ -159,16 +160,16 @@ export async function saveLeadSearchAndResults(
         .upsert(resultsToInsert, { onConflict: 'search_id, place_id' });
 
       if (resultsError) {
-        console.error('[LeadFinder] Error saving results:', resultsError);
-        return { success: false, error: resultsError.message };
+        logger.error({ err: resultsError, workspaceId, searchId: searchRecord.id }, 'lead_finder.results.save.failed');
+        return { success: false, error: 'Failed to save results.' };
       }
     }
 
     revalidatePath('/lead-finder/saved');
     return { success: true, searchId: searchRecord.id };
   } catch (error: any) {
-    console.error('[LeadFinder] Fatal error saving search:', error);
-    return { success: false, error: error.message || 'Database connection error' };
+    logger.error({ err: error, workspaceId }, 'lead_finder.search_and_results.save.failed');
+    return { success: false, error: 'Database connection error' };
   }
 }
 
@@ -183,7 +184,10 @@ export async function getSavedSearches() {
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false });
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'lead_finder.saved_searches.fetch.failed');
+    return { success: false, error: 'Failed to fetch saved searches.' };
+  }
   return { success: true, data };
 }
 
@@ -215,8 +219,8 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
         .update({ status: 'added_to_crm' })
         .eq('place_id', lead.place_id);
     } else {
-      console.error('[LeadFinder] Failed to add contact:', contactError);
-      return { success: false, error: contactError.message };
+      logger.error({ err: contactError, workspaceId }, 'lead_finder.add_to_crm.failed');
+      return { success: false, error: 'Failed to add contact to CRM.' };
     }
   }
 
@@ -228,7 +232,10 @@ export async function deleteSavedSearch(id: string) {
   const supabase = await createServerClient();
   const workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase.from('lead_finder_searches').delete().eq("id", id).eq("workspace_id", workspaceId);
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId, searchId: id }, 'lead_finder.saved_search.delete.failed');
+    return { success: false, error: 'Failed to delete saved search.' };
+  }
   revalidatePath('/lead-finder/saved');
   return { success: true };
 }
@@ -237,7 +244,10 @@ export async function toggleSearchAlert(id: string, enabled: boolean) {
   const supabase = await createServerClient();
   const workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase.from('lead_finder_searches').update({ alerts_enabled: enabled }).eq("id", id).eq("workspace_id", workspaceId);
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId, searchId: id }, 'lead_finder.search_alert.toggle.failed');
+    return { success: false, error: 'Failed to update alert setting.' };
+  }
   revalidatePath('/lead-finder/saved');
   return { success: true };
 }

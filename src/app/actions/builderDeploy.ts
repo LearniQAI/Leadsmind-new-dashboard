@@ -4,18 +4,21 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { renderCraftToHtml } from '@/lib/builder/renderer';
+import { logger } from '@/shared/logger';
+import { NotFoundError, toClientError } from '@/shared/errors/AppError';
 
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { success: false, error: 'No active workspace' };
-    
+
     const supabase = await createServerClient();
     const data = await action(supabase, workspaceId);
     return { success: true, ...data as any };
   } catch (err: any) {
-    console.error('[BuilderDeployAction Error]:', err.message);
-    return { success: false, error: err.message || 'Operation failed' };
+    logger.error({ err }, 'builder_deploy.action.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -32,7 +35,10 @@ export async function publishPageStatic(pageId: string) {
       .eq('workspace_id', workspaceId)
       .single();
 
-    if (pageError || !page) throw pageError || new Error('Page not found');
+    if (pageError || !page) {
+      if (pageError) logger.error({ err: pageError, pageId, workspaceId }, 'builder_deploy.page.fetch.failed');
+      throw new NotFoundError('Page');
+    }
 
     const website = page.website_page?.website;
     const config = website?.config || {};
@@ -89,7 +95,7 @@ export async function publishPageStatic(pageId: string) {
           upsert: true
         });
     } catch (storageErr) {
-      console.warn('[Storage Upload Warning]: Storage bucket fallback triggered.', storageErr);
+      logger.warn({ err: storageErr, workspaceId, pageId }, 'builder_deploy.storage_upload.fallback');
     }
 
     revalidatePath(`/websites`);

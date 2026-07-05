@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { sendEmail } from '@/lib/email';
 import { SignJWT } from 'jose';
 import crypto from 'crypto';
+import { logger } from '@/shared/logger';
 
 const secret = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback_secret_key_leadsmind_jwt_passwordless_token'
@@ -29,8 +30,8 @@ export async function inviteContactToPortal(contactId: string) {
     .single();
 
   if (fetchErr) {
-    console.error('[inviteContactToPortal] fetch error:', fetchErr);
-    return { success: false, error: `Contact fetch query error: ${fetchErr.message} (Code: ${fetchErr.code})` };
+    logger.error({ err: fetchErr, contactId }, 'portal.invite.contact_fetch.failed');
+    return { success: false, error: 'Failed to fetch contact.' };
   }
   if (!contact) {
     return { success: false, error: 'Contact not found in database (null record).' };
@@ -48,7 +49,7 @@ export async function inviteContactToPortal(contactId: string) {
     .single();
 
   if (wsErr) {
-    console.error('[inviteContactToPortal] workspace fetch error:', wsErr);
+    logger.error({ err: wsErr, contactId }, 'portal.invite.workspace_fetch.failed');
   }
 
   // Verify that the authenticated user is a member of this contact's workspace
@@ -60,11 +61,11 @@ export async function inviteContactToPortal(contactId: string) {
     .maybeSingle();
 
   if (memberErr) {
-    console.error('[inviteContactToPortal] membership check error:', memberErr);
-    return { success: false, error: `Workspace membership query error: ${memberErr.message}` };
+    logger.error({ err: memberErr, contactId }, 'portal.invite.membership_check.failed');
+    return { success: false, error: 'Failed to verify workspace membership.' };
   }
   if (!membership) {
-    return { success: false, error: `Permission denied: User ${user.email} is not a member of contact's workspace (${contact.workspace_id}).` };
+    return { success: false, error: 'Permission denied: not a member of this workspace.' };
   }
 
   const plan = workspace?.plan_tier || workspace?.plan || 'free';
@@ -82,7 +83,8 @@ export async function inviteContactToPortal(contactId: string) {
     .eq('id', contactId);
 
   if (updateErr) {
-    return { success: false, error: 'Failed to enable portal access: ' + updateErr.message };
+    logger.error({ err: updateErr, contactId }, 'portal.invite.access_enable.failed');
+    return { success: false, error: 'Failed to enable portal access.' };
   }
 
   // 3. Generate token for magic link
@@ -123,7 +125,7 @@ export async function inviteContactToPortal(contactId: string) {
       `
     });
   } catch (err: any) {
-    console.error('Failed to send portal invitation email:', err.message);
+    logger.error({ err, contactId }, 'portal.invite.email.send.failed');
   }
 
   // 5. Log activity
@@ -156,8 +158,8 @@ export async function revokeContactPortalAccess(contactId: string) {
     .single();
 
   if (fetchErr) {
-    console.error('[revokeContactPortalAccess] fetch error:', fetchErr);
-    return { success: false, error: `Contact fetch query error: ${fetchErr.message}` };
+    logger.error({ err: fetchErr, contactId }, 'portal.revoke.contact_fetch.failed');
+    return { success: false, error: 'Failed to fetch contact.' };
   }
   if (!contact) {
     return { success: false, error: 'Contact not found (null record).' };
@@ -172,11 +174,11 @@ export async function revokeContactPortalAccess(contactId: string) {
     .maybeSingle();
 
   if (memberErr) {
-    console.error('[revokeContactPortalAccess] membership check error:', memberErr);
-    return { success: false, error: `Workspace membership query error: ${memberErr.message}` };
+    logger.error({ err: memberErr, contactId }, 'portal.revoke.membership_check.failed');
+    return { success: false, error: 'Failed to verify workspace membership.' };
   }
   if (!membership) {
-    return { success: false, error: `Permission denied: User ${user.email} is not a member of contact's workspace (${contact.workspace_id}).` };
+    return { success: false, error: 'Permission denied: not a member of this workspace.' };
   }
 
   const { error: updateErr } = await adminClient
@@ -188,7 +190,8 @@ export async function revokeContactPortalAccess(contactId: string) {
     .eq('id', contactId);
 
   if (updateErr) {
-    return { success: false, error: 'Failed to revoke portal access: ' + updateErr.message };
+    logger.error({ err: updateErr, contactId }, 'portal.revoke.access_update.failed');
+    return { success: false, error: 'Failed to revoke portal access.' };
   }
 
   // Log activity
@@ -218,8 +221,8 @@ export async function impersonateContact(contactId: string, reason: string = 'Ad
     .single();
 
   if (fetchErr) {
-    console.error('[impersonateContact] fetch error:', fetchErr);
-    return { success: false, error: `Contact fetch query error: ${fetchErr.message}` };
+    logger.error({ err: fetchErr, contactId }, 'portal.impersonate.contact_fetch.failed');
+    return { success: false, error: 'Failed to fetch contact.' };
   }
   if (!contact) {
     return { success: false, error: 'Contact not found (null record).' };
@@ -235,8 +238,8 @@ export async function impersonateContact(contactId: string, reason: string = 'Ad
     .maybeSingle();
 
   if (memberErr) {
-    console.error('[impersonateContact] membership check error:', memberErr);
-    return { success: false, error: `Workspace membership query error: ${memberErr.message}` };
+    logger.error({ err: memberErr, contactId }, 'portal.impersonate.membership_check.failed');
+    return { success: false, error: 'Failed to verify workspace membership.' };
   }
   if (!membership) {
     return { success: false, error: 'Permission denied: Requires admin access' };
@@ -424,7 +427,8 @@ export async function submitCSATRating(ticketId: string, rating: number, comment
     .eq('id', ticketId);
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error, ticketId }, 'portal.csat_rating.submit.failed');
+    return { success: false, error: 'Failed to submit rating.' };
   }
 
   // Log activity
@@ -476,7 +480,8 @@ export async function updatePortalProfile(values: {
     .eq('id', session.contact.id);
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error, contactId: session.contact.id }, 'portal.profile.update.failed');
+    return { success: false, error: 'Failed to update profile.' };
   }
 
   revalidatePath('/portal/profile');
@@ -501,7 +506,8 @@ export async function updatePortalPassword(password: string) {
     .eq('id', session.contact.id);
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error, contactId: session.contact.id }, 'portal.password.update.failed');
+    return { success: false, error: 'Failed to update password.' };
   }
 
   // Log activity
@@ -571,7 +577,8 @@ export async function requestEmailChange(newEmail: string) {
       `
     });
   } catch (err: any) {
-    return { success: false, error: 'Failed to deliver verification email: ' + err.message };
+    logger.error({ err, contactId: session.contact.id }, 'portal.email_verification.send.failed');
+    return { success: false, error: 'Failed to deliver verification email.' };
   }
 
   return { success: true };
@@ -610,7 +617,8 @@ export async function verifyEmailChange(token: string) {
     .eq('id', request.contact_id);
 
   if (updateErr) {
-    return { success: false, error: 'Failed to update email address: ' + updateErr.message };
+    logger.error({ err: updateErr, contactId: request.contact_id }, 'portal.email_verification.contact_update.failed');
+    return { success: false, error: 'Failed to update email address.' };
   }
 
   // Log activity
@@ -640,7 +648,8 @@ export async function acceptPopiaConsent(ipAddress: string) {
     .eq('id', session.contact.id);
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error, contactId: session.contact.id }, 'portal.popia_consent.accept.failed');
+    return { success: false, error: 'Failed to record consent.' };
   }
 
   // Log activity
@@ -739,7 +748,8 @@ export async function requestCopyOfData() {
       html: report
     });
   } catch (err: any) {
-    return { success: false, error: 'Email delivery failed: ' + err.message };
+    logger.error({ err, contactId: session.contact.id }, 'portal.popia_sar.email.send.failed');
+    return { success: false, error: 'Email delivery failed.' };
   }
 
   // 4. Log activity

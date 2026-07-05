@@ -1,6 +1,7 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 
 export async function getTerritoryMapData() {
@@ -16,7 +17,10 @@ export async function getTerritoryMapData() {
     .select('*')
     .limit(200); // Simulate query limits
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error }, 'territory_workspace.map_data.fetch.failed');
+    return { success: false, error: 'Failed to fetch territory data.' };
+  }
 
   if (!leads || leads.length === 0) return { success: true, data: { territories: [], networks: [], leads: [] } };
 

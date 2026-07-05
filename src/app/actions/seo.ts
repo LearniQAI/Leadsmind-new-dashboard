@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId as getWsId, getCurrentWorkspace } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 async function getActiveWorkspaceId() {
   const id = await getWsId();
@@ -37,7 +38,8 @@ export async function getGoogleAuthUrl() {
 
     return { data: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.google.auth.url.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -57,7 +59,8 @@ export async function getSeoProject() {
     if (error && error.code !== 'PGRST116') throw error;
     return { data: data || null };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.seo.project.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -106,7 +109,8 @@ export async function updateSeoProjectDomain(domainUrl: string) {
     revalidatePath('/settings');
     return { data: result.data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'update.seo.project.domain.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -127,7 +131,8 @@ export async function getTrackedKeywords() {
     if (error) throw error;
     return { data: data || [] };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.tracked.keywords.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -163,7 +168,8 @@ export async function addTrackedKeyword(keyword: string, targetUrl?: string) {
     revalidatePath('/settings');
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'add.tracked.keyword.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -181,7 +187,8 @@ export async function deleteTrackedKeyword(id: string) {
     revalidatePath('/settings');
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'delete.tracked.keyword.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -202,7 +209,8 @@ export async function getContentPipeline() {
     if (error) throw error;
     return { data: data || [] };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.content.pipeline.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -222,7 +230,8 @@ export async function updatePipelineStatus(id: string, status: 'Idea' | 'Researc
     revalidatePath('/settings');
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'update.pipeline.status.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -255,7 +264,8 @@ export async function addPipelineItem(keyword: string, status: 'Idea' | 'Researc
     revalidatePath('/settings');
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'add.pipeline.item.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -275,7 +285,8 @@ export async function updatePipelineItemCost(id: string, cost: number) {
     revalidatePath('/settings');
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'update.pipeline.item.cost.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -288,7 +299,8 @@ export async function runPipelineAutomation() {
     revalidatePath('/settings');
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'run.pipeline.automation.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -302,7 +314,8 @@ export async function runRevenueRollup() {
     revalidatePath('/settings');
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'run.revenue.rollup.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -322,7 +335,8 @@ export async function getRevenueAttributionMetrics() {
     if (error) throw error;
     return { data: data || [] };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.revenue.attribution.metrics.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -340,7 +354,8 @@ export async function deletePipelineItem(id: string) {
     revalidatePath('/settings');
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'delete.pipeline.item.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -385,7 +400,8 @@ export async function getSeoMetricsSummary() {
       }
     };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.seo.metrics.summary.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -435,7 +451,8 @@ export async function updateSeoProjectCompetitors(competitorDomains: string[], g
     revalidatePath('/settings');
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'update.seo.project.competitors.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -468,7 +485,7 @@ export async function triggerDataForSeoSync() {
     const syncLogs: any[] = [];
 
     if (useMock) {
-      console.log('DataForSEO credentials missing. Utilizing robust mock fallback engine...');
+      logger.info({}, 'seo.dataforseo_sync.mock_fallback');
       
       for (const kw of keywords) {
         const keyword = kw.keyword;
@@ -510,7 +527,7 @@ export async function triggerDataForSeoSync() {
         });
       }
     } else {
-      console.log(`Connecting to DataForSEO Live Advanced organic endpoint for ${keywords.length} keywords...`);
+      logger.info({ keywordCount: keywords.length }, 'seo.dataforseo_sync.live_endpoint_connect');
       const auth = Buffer.from(`${dataForSeoEmail}:${dataForSeoPassword}`).toString('base64');
       
       const tasks = keywords.map(kw => ({
@@ -614,7 +631,8 @@ export async function triggerDataForSeoSync() {
     revalidatePath('/settings');
     return { success: true, count: syncLogs.length, data: syncLogs };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'trigger.data.for.seo.sync.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -639,7 +657,7 @@ export async function triggerCompetitorKeywordsWeekly() {
     const competitorKeywordLogs: any[] = [];
 
     if (useMock) {
-      console.log('DataForSEO credentials missing. Mocking weekly competitor organic keyword scan...');
+      logger.info({}, 'seo.competitor_keywords_weekly.mock_fallback');
       
       const mockKeywords = [
         'crm software cape town', 'sales pipeline software', 'leads builder tools',
@@ -665,7 +683,7 @@ export async function triggerCompetitorKeywordsWeekly() {
         });
       });
     } else {
-      console.log(`Connecting to DataForSEO Domain Organic Keywords endpoint for ${project.competitor_domains.length} competitor(s)...`);
+      logger.info({ competitorCount: project.competitor_domains.length }, 'seo.competitor_keywords_weekly.live_endpoint_connect');
       const auth = Buffer.from(`${dataForSeoEmail}:${dataForSeoPassword}`).toString('base64');
       
       for (const comp of project.competitor_domains) {
@@ -687,7 +705,7 @@ export async function triggerCompetitorKeywordsWeekly() {
 
         const resJson = await response.json();
         if (!response.ok) {
-          console.error(`Weekly scan failed for competitor ${comp}:`, resJson.status_message);
+          logger.error({ competitor: comp, statusMessage: resJson.status_message }, 'seo.competitor_keywords_weekly.scan_failed');
           continue;
         }
 
@@ -718,7 +736,8 @@ export async function triggerCompetitorKeywordsWeekly() {
     revalidatePath('/settings');
     return { success: true, count: competitorKeywordLogs.length, data: competitorKeywordLogs };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'trigger.competitor.keywords.weekly.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -788,7 +807,8 @@ export async function getCompetitorGapAnalysis() {
 
     return { data: gaps };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.competitor.gap.analysis.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -801,11 +821,11 @@ export async function triggerSiteHealthCrawl(projectId: string, domainUrl: strin
     const { crawlLocalDomain, fetchPageSpeedMetrics, calculateHealthScore } = await import('@/lib/seo-crawler');
 
     // 1. Run Onsite Crawler
-    console.log(`Starting Technical Onsite Crawl for domain: ${domainUrl}`);
+    logger.info({ domainUrl }, 'seo.site_health_crawl.onsite_crawl.start');
     const crawlResult = await crawlLocalDomain(domainUrl, 10);
-    
+
     // 2. Fetch Core Web Vitals targets from PageSpeed Insights API
-    console.log(`Fetching weekly Core Web Vitals for domain: ${domainUrl}`);
+    logger.info({ domainUrl }, 'seo.site_health_crawl.core_web_vitals.fetch');
     const psMetrics = await fetchPageSpeedMetrics(domainUrl);
     
     // 3. Compute Composite Health Score
@@ -885,8 +905,8 @@ export async function triggerSiteHealthCrawl(projectId: string, domainUrl: strin
     revalidatePath('/settings');
     return { data };
   } catch (error: any) {
-    console.error('triggerSiteHealthCrawl server action failed:', error);
-    return { error: error.message };
+    logger.error({ err: error, projectId, domainUrl }, 'seo.site_health_crawl.trigger.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -904,6 +924,7 @@ export async function getLatestSiteHealthCrawl(projectId: string) {
     if (error && error.code !== 'PGRST116') throw error;
     return { data: data || null };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.latest.site.health.crawl.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }

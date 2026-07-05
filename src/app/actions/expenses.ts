@@ -3,6 +3,8 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 export async function getExpensesLive() {
  try {
@@ -19,7 +21,7 @@ export async function getExpensesLive() {
   if (error) throw error;
   return { data: data || [] };
  } catch (error: any) {
-  console.error('[expenses] fetch error:', error);
+  logger.error({ err: error }, 'expenses.list.fetch.failed');
   return { data: [] };
  }
 }
@@ -33,8 +35,9 @@ export async function createExpense(expense: {
  vendor?: string;
  notes?: string;
 }) {
+ let workspaceId: string | null = null;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace' };
 
   const supabase = await createServerClient();
@@ -58,7 +61,9 @@ export async function createExpense(expense: {
   revalidatePath('/finance/expenses');
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workspaceId }, 'expenses.create.failed');
+  const clientError = toClientError(error);
+  return { error: clientError.error };
  }
 }
 
@@ -85,7 +90,9 @@ export async function updateExpense(id: string, updates: Partial<{
   revalidatePath('/finance/expenses');
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, expenseId: id }, 'expenses.update.failed');
+  const clientError = toClientError(error);
+  return { error: clientError.error };
  }
 }
 
@@ -98,6 +105,8 @@ export async function deleteExpense(id: string) {
   revalidatePath('/finance/expenses');
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, expenseId: id }, 'expenses.delete.failed');
+  const clientError = toClientError(error);
+  return { error: clientError.error };
  }
 }

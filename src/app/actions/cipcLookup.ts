@@ -5,6 +5,8 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { cipcService, CIPCCompany } from '@/../server/services/cipc';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 function safeRevalidatePath(path: string) {
   try {
@@ -22,7 +24,9 @@ export async function searchCIPC(query: string): Promise<{ success: boolean; dat
     const data = await cipcService.searchCompany(query);
     return { success: true, data };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, query }, 'cipc.search.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -50,7 +54,8 @@ export async function getBeneficialOwners(parentContactId: string) {
   ]);
 
   if (ownersRes.error) {
-    return { success: false, error: ownersRes.error.message };
+    logger.error({ err: ownersRes.error, parentContactId }, 'cipc.beneficial_owners.fetch.failed');
+    return { success: false, error: 'Failed to fetch beneficial owners.' };
   }
 
   return { 
@@ -145,7 +150,7 @@ export async function linkCIPCDirectors(
         });
 
       if (taskError) {
-        console.error('[Verification Router] Error spawning task:', taskError.message);
+        logger.error({ err: taskError, workspaceId, ownerId }, 'cipc.verification_task.spawn.failed');
       }
     }
 
@@ -165,7 +170,9 @@ export async function linkCIPCDirectors(
     safeRevalidatePath(`/contacts/${parentContactId}`);
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, workspaceId, parentContactId }, 'cipc.directors.link.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -196,7 +203,8 @@ export async function addBeneficialOwner(
     });
 
   if (linkError) {
-    return { success: false, error: linkError.message };
+    logger.error({ err: linkError, workspaceId, parentContactId }, 'cipc.beneficial_owner.link.failed');
+    return { success: false, error: 'Failed to link beneficial owner.' };
   }
 
   // 2. If share percentage is > 25% or role is director, flag EDD
@@ -212,7 +220,7 @@ export async function addBeneficialOwner(
       }, { onConflict: 'contact_id' });
 
     if (eddError) {
-      console.error('[EDD Trigger] Error setting EDD flag:', eddError.message);
+      logger.error({ err: eddError, workspaceId, parentContactId }, 'cipc.edd_flag.set.failed');
     }
   }
 
@@ -233,7 +241,8 @@ export async function deleteBeneficialOwner(id: string, parentContactId: string)
     .eq("id", id).eq("workspace_id", workspaceId);
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId, id }, 'cipc.beneficial_owner.delete.failed');
+    return { success: false, error: 'Failed to remove beneficial owner.' };
   }
 
   safeRevalidatePath(`/contacts/${parentContactId}`);
@@ -260,7 +269,8 @@ export async function updateEddStatus(contactId: string, requiresEdd: boolean) {
     }, { onConflict: 'contact_id' });
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId, contactId }, 'cipc.edd_status.update.failed');
+    return { success: false, error: 'Failed to update EDD status.' };
   }
 
   safeRevalidatePath(`/contacts/${contactId}`);
@@ -288,7 +298,8 @@ export async function uploadBeneficialOwnershipForm(contactId: string, filename:
     });
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId, contactId }, 'cipc.ownership_form.upload.failed');
+    return { success: false, error: 'Failed to upload beneficial ownership form.' };
   }
 
   safeRevalidatePath(`/contacts/${contactId}`);

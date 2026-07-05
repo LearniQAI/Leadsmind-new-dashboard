@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { logger } from '@/shared/logger'
 
 async function processQuotaRefill() {
   const supabase = createAdminClient()
@@ -51,7 +52,8 @@ export async function GET(req: Request) {
     const resetCount = await processQuotaRefill()
     return NextResponse.json({ success: true, resetCount })
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+    logger.error({ err }, 'cron.quota_refill.failed')
+    return NextResponse.json({ success: false, error: 'Quota refill failed.' }, { status: 500 })
   }
 }
 
@@ -60,6 +62,7 @@ export async function POST(req: Request) {
     const resetCount = await processQuotaRefill()
     return NextResponse.json({ success: true, resetCount })
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+    logger.error({ err }, 'cron.quota_refill.failed')
+    return NextResponse.json({ success: false, error: 'Quota refill failed.' }, { status: 500 })
   }
 }

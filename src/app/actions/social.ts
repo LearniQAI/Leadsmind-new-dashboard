@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
 
 export async function getSocialAccounts() {
   try {
@@ -17,7 +18,8 @@ export async function getSocialAccounts() {
     if (error) throw error
     return { data: data || [] }
   } catch (error: any) {
-    return { error: error.message, data: [] }
+    logger.error({ err: error }, 'social.accounts.fetch.failed')
+    return { error: 'Failed to fetch social accounts.', data: [] }
   }
 }
 
@@ -36,7 +38,8 @@ export async function getSocialPosts() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'social.posts.fetch.failed');
+  return { error: 'Failed to fetch social posts.' };
  }
 }
 
@@ -46,8 +49,9 @@ export async function createSocialPost(postData: {
   media_urls?: string[];
   scheduled_at?: string;
 }) {
+  let workspaceId: string | null = null;
   try {
-    const workspaceId = await getCurrentWorkspaceId();
+    workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
     const supabase = await createServerClient();
@@ -141,7 +145,8 @@ export async function createSocialPost(postData: {
         });
 
       } catch (err: any) {
-        results[platform] = { error: err.message };
+        logger.error({ err, workspaceId, platform }, 'social.post.platform_publish.failed');
+        results[platform] = { error: `Failed to publish to ${platform}.` };
       }
     }
 
@@ -155,7 +160,8 @@ export async function createSocialPost(postData: {
 
     return { success: true, results };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, workspaceId }, 'social.post.create.failed');
+    return { error: 'Failed to create social post.' };
   }
 }
 
@@ -171,7 +177,8 @@ export async function publishSocialPost(postId: string) {
   if (error) throw error;
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, postId }, 'social.post.publish.failed');
+  return { error: 'Failed to publish social post.' };
  }
 }
 

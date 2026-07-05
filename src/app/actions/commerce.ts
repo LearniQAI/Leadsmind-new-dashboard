@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 export async function getProducts() {
  try {
@@ -19,7 +20,8 @@ export async function getProducts() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.products.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -39,7 +41,8 @@ export async function createProduct(productData: any) {
   revalidatePath('/products');
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'create.product.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -58,7 +61,8 @@ export async function updateProduct(id: string, updates: any) {
   revalidatePath('/products');
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'update.product.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -71,6 +75,7 @@ export async function deleteProduct(id: string) {
   revalidatePath('/products');
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'delete.product.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }

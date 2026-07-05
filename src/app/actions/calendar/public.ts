@@ -7,6 +7,7 @@ import { addMinutes, parseISO } from 'date-fns';
 import { logPopiaConsent } from '@/lib/calendar/popia';
 import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/calendar/payfast';
 import { syncBookingToExternal } from '@/lib/calendar/calendarSync';
+import { logger } from '@/shared/logger';
 
 /**
  * Public action to book an appointment or redirect to checkout
@@ -38,7 +39,10 @@ export async function bookAppointment(
     .eq('id', calendarId)
     .single();
 
-  if (calError || !calendar) return { success: false, error: 'Calendar configuration not found' };
+  if (calError || !calendar) {
+    if (calError) logger.error({ err: calError, calendarId }, 'calendar.public_booking.calendar_fetch.failed');
+    return { success: false, error: 'Calendar configuration not found' };
+  }
 
   // 3. Validate Slot is still available
   const date = slot.split('T')[0];
@@ -60,7 +64,10 @@ export async function bookAppointment(
     .select()
     .single();
 
-  if (contactError || !contact) return { success: false, error: 'Failed to synchronize contact details' };
+  if (contactError || !contact) {
+    if (contactError) logger.error({ err: contactError, calendarId, workspaceId: calendar.workspace_id }, 'calendar.public_booking.contact_sync.failed');
+    return { success: false, error: 'Failed to synchronize contact details' };
+  }
 
   // 5. Generate and Vault Cryptographic POPIA Consent
   const popiaHash = await logPopiaConsent(contact.id, calendar.workspace_id, leadData.email);
@@ -100,7 +107,7 @@ export async function bookAppointment(
     try {
       assigneeId = await getRoundRobinAssignee(calendarId, calendar.workspace_id);
     } catch (rrErr) {
-      console.warn('[public-booking] Round robin allocation failed, falling back:', rrErr);
+      logger.warn({ err: rrErr, calendarId }, 'calendar.public_booking.round_robin.fallback');
     }
   }
 
@@ -129,7 +136,10 @@ export async function bookAppointment(
     .select()
     .single();
 
-  if (aptError || !appointment) return { success: false, error: 'Failed to record appointment' };
+  if (aptError || !appointment) {
+    if (aptError) logger.error({ err: aptError, calendarId, workspaceId: calendar.workspace_id }, 'calendar.public_booking.appointment_create.failed');
+    return { success: false, error: 'Failed to record appointment' };
+  }
 
   // Generate Internal meeting links if appropriate
   if (calendar.meeting_mode === 'internal_meet' || (calendar.meeting_mode === 'custom_link' && !calendar.custom_link)) {
@@ -156,14 +166,14 @@ export async function bookAppointment(
   try {
     await syncBookingToExternal(appointment.id);
   } catch (syncErr) {
-    console.error('[public-booking] Syncing external calendar failed:', syncErr);
+    logger.error({ err: syncErr, appointmentId: appointment.id }, 'calendar.public_booking.external_sync.failed');
   }
 
   // Auto-create Support Ticket if support calendar
   try {
     await createSupportTicket(appointment.id);
   } catch (supportErr) {
-    console.error('[public-booking] Support ticket creation error:', supportErr);
+    logger.error({ err: supportErr, appointmentId: appointment.id }, 'calendar.public_booking.support_ticket.failed');
   }
 
   return { success: true, appointmentId: appointment.id };

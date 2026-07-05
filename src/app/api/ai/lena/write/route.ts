@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/requireAuth';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +37,7 @@ Generate professional business copy in isiXhosa. Avoid stiff, robotic translatio
     if (!openAiKey || openAiKey === 'sk_mock_key' || openAiKey.includes('PLACEHOLDER') || openAiKey.startsWith('sk-proj-O15jtbs')) {
       // If key is present but mock/sandbox run, or we want a predictable fallback
       // (Note: we bypass standard execution if we want to guarantee mock output in sandbox mode)
-      console.log('--- LENA AI WRITER SANDBOX/TEST MODE ---');
+      logger.info({ userId: user.id, language }, 'ai.lena_write.sandbox_mode');
       
       let mockResponse = '';
       const langLower = language.toLowerCase();
@@ -80,7 +81,7 @@ Generate professional business copy in isiXhosa. Avoid stiff, robotic translatio
 
     return NextResponse.json({ success: true, text: resultText });
   } catch (err: any) {
-    console.error('[LENA WRITE API ERROR]:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err, userId: user.id }, 'ai.lena_write.generate.failed');
+    return NextResponse.json({ error: 'Failed to generate copy.' }, { status: 500 });
   }
 }

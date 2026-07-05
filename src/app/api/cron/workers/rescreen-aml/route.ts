@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runRescreening } from '../../../../../../workers/rescreen-aml';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,7 @@ async function handleCronTrigger(req: NextRequest) {
       rescreenedCount: result.count,
     });
   } catch (err: any) {
-    console.error('[AML Rescreen HTTP Cron] Internal error:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'cron.aml_rescreen.failed');
+    return NextResponse.json({ error: 'AML rescreening job failed.' }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 export async function applyRetainerToInvoice(invoiceId: string, contactId: string, workspaceId: string) {
   const supabase = await createServerClient();
@@ -44,7 +45,10 @@ export async function applyRetainerToInvoice(invoiceId: string, contactId: strin
       invoice_id: invoiceId
     });
 
-  if (ledgerError) return { success: false, error: ledgerError.message };
+  if (ledgerError) {
+    logger.error({ err: ledgerError, workspaceId, contactId, invoiceId }, 'retainers.ledger_entry.insert.failed');
+    return { success: false, error: 'Failed to apply retainer credit.' };
+  }
 
   const { error: retUpdateError } = await supabase
     .from('retainers')
@@ -53,7 +57,10 @@ export async function applyRetainerToInvoice(invoiceId: string, contactId: strin
     })
     .eq('id', retainer.id);
 
-  if (retUpdateError) return { success: false, error: retUpdateError.message };
+  if (retUpdateError) {
+    logger.error({ err: retUpdateError, workspaceId, contactId }, 'retainers.balance.update.failed');
+    return { success: false, error: 'Failed to update retainer balance.' };
+  }
 
   // 5. Update Invoice (Assuming we have a field for balance_due or similar)
   // For now, we'll mark as paid if fully covered, or just log the credit
@@ -85,7 +92,7 @@ export async function applyRetainerToInvoice(invoiceId: string, contactId: strin
           }
         }).catch(() => {});
       } catch (e) {
-        console.error('[webhook-dispatch-error-retainer]', e);
+        logger.error({ err: e, workspaceId, invoiceId }, 'retainers.apply_to_invoice.webhook_dispatch.failed');
       }
     }
   }

@@ -2,10 +2,13 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 export async function getConversionAnalytics() {
+ let workspaceId: string | null = null;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -18,13 +21,16 @@ export async function getConversionAnalytics() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workspaceId }, 'analytics.conversion.fetch.failed');
+  const clientError = toClientError(error);
+  return { error: clientError.error };
  }
 }
 
 export async function getDashboardStats() {
+ let workspaceId: string | null = null;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -46,7 +52,9 @@ export async function getDashboardStats() {
    }
   };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workspaceId }, 'analytics.dashboard_stats.fetch.failed');
+  const clientError = toClientError(error);
+  return { error: clientError.error };
  }
 }
 
@@ -189,7 +197,8 @@ export async function getSupportAnalytics() {
     };
 
   } catch (error: any) {
-    console.error('Error fetching support metrics analytics:', error);
-    return { error: error.message };
+    logger.error({ err: error }, 'analytics.support_metrics.fetch.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }

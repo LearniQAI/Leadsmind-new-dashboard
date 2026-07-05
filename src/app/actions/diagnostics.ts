@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
 
 // 1. Get email configuration and DNS verified states
 export async function getEmailDiagnostics() {
@@ -34,8 +35,8 @@ export async function getEmailDiagnostics() {
       sandbox_mode: !isResendConfigured
     };
   } catch (error: any) {
-    console.error('Error fetching email diagnostics:', error);
-    return { error: error.message };
+    logger.error({ err: error }, 'diagnostics.email.fetch.failed');
+    return { error: 'Failed to fetch email diagnostics.' };
   }
 }
 
@@ -53,7 +54,7 @@ export async function getAutomationStatus() {
       .eq('workspace_id', wsId);
       
     if (error && error.code !== 'PGRST116') {
-      console.warn('Workflows fetch warning:', error.message);
+      logger.warn({ err: error, workspaceId: wsId }, 'diagnostics.workflows.fetch.warning');
     }
     
     const list = workflows || [];
@@ -72,8 +73,8 @@ export async function getAutomationStatus() {
       status: (list.length > 0 && mockErrors.length === 0) ? 'healthy' : (list.length === 0 ? 'inactive' : 'warning')
     };
   } catch (error: any) {
-    console.error('Error fetching automation status:', error);
-    return { error: error.message };
+    logger.error({ err: error }, 'diagnostics.automation_status.fetch.failed');
+    return { error: 'Failed to fetch automation status.' };
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
 
 // FUNNELS
 export async function getFunnels() {
@@ -19,7 +20,8 @@ export async function getFunnels() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.funnels.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -74,7 +76,8 @@ export async function createFunnel(name: string) {
 
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'create.funnel.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -94,7 +97,8 @@ export async function getEmailCampaigns() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.email.campaigns.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -118,7 +122,8 @@ export async function createEmailCampaign(name: string) {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'create.email.campaign.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -138,7 +143,8 @@ export async function getForms() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.forms.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -154,7 +160,8 @@ export async function getForm(id: string) {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.form.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -179,7 +186,8 @@ export async function createForm(name: string) {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'create.form.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -211,7 +219,8 @@ export async function getReviews() {
 
   return { data: mapped };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.reviews.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -231,7 +240,8 @@ export async function getAdCampaigns() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.ad.campaigns.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -244,7 +254,10 @@ export async function updateFunnel(id: string, updates: any) {
   const { data, error } = await supabase.from('funnels').update(updates).eq("id", id).eq("workspace_id", workspaceId).select().single();
   if (error) throw error;
   return { data };
- } catch (error: any) { return { error: error.message }; }
+ } catch (error: any) {
+   logger.error({ err: error }, 'update.funnel.failed');
+   return { error: 'Operation failed. Please try again.' };
+ }
 }
 
 export async function deleteFunnelAction(id: string) {
@@ -254,7 +267,10 @@ export async function deleteFunnelAction(id: string) {
   const { error } = await supabase.from('funnels').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
   return { success: true };
- } catch (error: any) { return { error: error.message }; }
+ } catch (error: any) {
+   logger.error({ err: error }, 'delete.funnel.action.failed');
+   return { error: 'Operation failed. Please try again.' };
+ }
 }
 
 export async function updateCampaign(id: string, updates: any) {
@@ -342,7 +358,10 @@ export async function updateCampaign(id: string, updates: any) {
   }
 
   return { data, matchedContactsCount };
- } catch (error: any) { return { error: error.message }; }
+ } catch (error: any) {
+   logger.error({ err: error }, 'update.campaign.failed');
+   return { error: 'Operation failed. Please try again.' };
+ }
 }
 
 export async function deleteCampaignAction(id: string) {
@@ -352,7 +371,10 @@ export async function deleteCampaignAction(id: string) {
   const { error } = await supabase.from('email_campaigns').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
   return { success: true };
- } catch (error: any) { return { error: error.message }; }
+ } catch (error: any) {
+   logger.error({ err: error }, 'delete.campaign.action.failed');
+   return { error: 'Operation failed. Please try again.' };
+ }
 }
 
 export async function updateForm(id: string, updates: any) {
@@ -395,7 +417,10 @@ export async function updateForm(id: string, updates: any) {
 
   if (error) throw error;
   return { data };
- } catch (error: any) { return { error: error.message }; }
+ } catch (error: any) {
+   logger.error({ err: error }, 'update.form.failed');
+   return { error: 'Operation failed. Please try again.' };
+ }
 }
 
 export async function deleteFormAction(id: string) {
@@ -405,7 +430,10 @@ export async function deleteFormAction(id: string) {
   const { error } = await supabase.from('forms').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
   return { success: true };
- } catch (error: any) { return { error: error.message }; }
+ } catch (error: any) {
+   logger.error({ err: error }, 'delete.form.action.failed');
+   return { error: 'Operation failed. Please try again.' };
+ }
 }
 
 export async function duplicateFunnelAction(id: string) {
@@ -475,7 +503,10 @@ export async function duplicateFunnelAction(id: string) {
   }
 
   return { data: duplicate };
- } catch (error: any) { return { error: error.message }; }
+ } catch (error: any) {
+   logger.error({ err: error }, 'duplicate.funnel.action.failed');
+   return { error: 'Operation failed. Please try again.' };
+ }
 }
 
 export async function getWorkspaceApiKey() {
@@ -493,7 +524,8 @@ export async function getWorkspaceApiKey() {
   if (error) throw error;
   return { apiKey: data.api_key };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.workspace.api.key.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -525,6 +557,7 @@ export async function sendTestEmailAction(campaignId: string, testEmail: string,
 
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'send.test.email.action.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }

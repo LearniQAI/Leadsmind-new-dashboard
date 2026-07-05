@@ -1,6 +1,7 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 export async function getContactDocuments(contactId: string) {
  const supabase = await createServerClient();
@@ -11,7 +12,7 @@ export async function getContactDocuments(contactId: string) {
   .order('created_at', { ascending: false });
 
  if (error) {
-  console.error('[media] Error fetching documents:', error);
+  logger.error({ err: error, contactId }, 'media.contact_documents.fetch.failed');
   return [];
  }
  return data || [];

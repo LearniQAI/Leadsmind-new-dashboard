@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { publishEvent } from "@/lib/events/EventBus";
 import crypto from 'crypto'
 import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
+import { logger } from '@/shared/logger';
 
 function verifyPayFastSignature(
   payload: Record<string, string>,
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     if (payload.signature && passphrase) {
       const isValid = verifyPayFastSignature(payload, passphrase)
       if (!isValid) {
-        console.warn('[PayFast Webhook] Invalid signature — rejecting')
+        logger.warn({}, 'webhook.payfast.signature.invalid')
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
       }
     }
@@ -64,11 +65,11 @@ export async function POST(req: NextRequest) {
       '0.0.0.0'
     )
     if (process.env.NODE_ENV === 'production' && !payfastIPs.includes(clientIP)) {
-      console.warn(`[PayFast Webhook] Rejected from IP: ${clientIP}`)
+      logger.warn({ clientIP }, 'webhook.payfast.ip_rejected')
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    console.log("[PayFast Webhook] Received payment notification:", payload);
+    logger.info({ payload }, 'webhook.payfast.received');
 
     const {
       payment_status,
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
 
     // Check if the payment status is COMPLETE
     if (payment_status !== "COMPLETE") {
-      console.log(`[PayFast Webhook] Ignored non-COMPLETE status: ${payment_status}`);
+      logger.info({ paymentStatus: payment_status }, 'webhook.payfast.non_complete_ignored');
       return NextResponse.json({ received: true, status: "ignored" });
     }
 
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
     // 1. Resolve Workspace ID
     const workspaceId = custom_str1 || process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID;
     if (!workspaceId) {
-      console.error("[PayFast Webhook] Missing workspace_id");
+      logger.error({}, 'webhook.payfast.workspace_id.missing');
       return NextResponse.json({ error: "Missing workspace_id" }, { status: 400 });
     }
 
@@ -129,7 +130,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!contactId) {
-      console.error("[PayFast Webhook] Could not resolve contact for email:", email_address);
+      logger.error({ email: email_address, workspaceId }, 'webhook.payfast.contact_resolve.failed');
       return NextResponse.json({ error: "Could not resolve contact" }, { status: 400 });
     }
 
@@ -168,7 +169,7 @@ export async function POST(req: NextRequest) {
           payload.amount_fee || '0'
         );
       } catch (ledgerErr) {
-        console.error('[PayFast Webhook] Failed to log revenue journal entries:', ledgerErr);
+        logger.error({ err: ledgerErr, invoiceId: matchedInvoice.id }, 'webhook.payfast.revenue_ledger.failed');
       }
 
       // 4. Log contact activity
@@ -237,10 +238,10 @@ export async function POST(req: NextRequest) {
                   fromNumber: from,
                 } : undefined,
               }).catch((err) => {
-                console.error('[PayFast Webhook] Failed to send WhatsApp message:', err);
+                logger.error({ err, invoiceId: matchedInvoice.id }, 'webhook.payfast.whatsapp_send.failed');
               });
             } catch (smsErr) {
-              console.error('[PayFast Webhook] SMS integration failed:', smsErr);
+              logger.error({ err: smsErr, invoiceId: matchedInvoice.id }, 'webhook.payfast.sms_integration.failed');
             }
           }
         }
@@ -263,8 +264,9 @@ export async function POST(req: NextRequest) {
         })
       } catch {}
 
-      console.log(
-        `[PayFast Webhook] Invoice ${matchedInvoice.id} marked as paid — R${payload.amount_gross}`
+      logger.info(
+        { invoiceId: matchedInvoice.id, amount: payload.amount_gross },
+        'webhook.payfast.invoice.paid'
       )
     }
     // ── END INVOICE PAYMENT HANDLING ─────────────────────────
@@ -336,12 +338,12 @@ export async function POST(req: NextRequest) {
         }
       }
     } catch (affError) {
-      console.error('[affiliate-conversion-payfast-error]', affError);
+      logger.error({ err: affError, contactId }, 'webhook.payfast.affiliate_conversion.failed');
     }
 
     return NextResponse.json({ success: true, processed: true });
   } catch (err: any) {
-    console.error("[PayFast Webhook] Exception occurred:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'webhook.payfast.failed');
+    return NextResponse.json({ error: 'PayFast webhook processing failed.' }, { status: 500 });
   }
 }

@@ -3,6 +3,8 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
+import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 
@@ -25,7 +27,7 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
     const body = await res.json();
     return body.data[0].embedding;
   } catch (err) {
-    console.error('Embedding creation error:', err);
+    logger.error({ err }, 'help.embedding.generate.failed');
     return null;
   }
 }
@@ -241,8 +243,8 @@ export async function searchHelpArticles(query: string) {
     };
 
   } catch (error: any) {
-    console.error('[Search Help Articles Error]:', error);
-    return { error: error.message, data: [], searchLogId: null };
+    logger.error({ err: error, query }, 'help.articles.search.failed');
+    return { error: 'Search failed. Please try again.', data: [], searchLogId: null };
   }
 }
 
@@ -258,7 +260,8 @@ export async function logSearchClick(logId: string, articleId: string) {
     if (error) throw error;
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, logId, articleId }, 'help.search_click.log.failed');
+    return { error: 'Failed to log click.' };
   }
 }
 
@@ -268,7 +271,7 @@ export async function submitHelpFeedback(articleId: string, isHelpful: boolean) 
     const supabase = await createServerClient();
     const wsId = await getCurrentWorkspaceId();
     const { data: current } = await supabase.from('help_articles').select('helpful_yes, helpful_no').eq("id", articleId).eq("workspace_id", wsId).eq('workspace_id', wsId).single();
-    if (!current) throw new Error('Help article not found');
+    if (!current) throw new NotFoundError('Help article');
 
     const updates = isHelpful 
       ? { helpful_yes: (current.helpful_yes || 0) + 1 }
@@ -279,7 +282,9 @@ export async function submitHelpFeedback(articleId: string, isHelpful: boolean) 
 
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, articleId }, 'help.feedback.submit.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -295,7 +300,8 @@ export async function getHelpArticle(slug: string) {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, slug }, 'help.article.fetch.failed');
+    return { error: 'Failed to fetch article.' };
   }
 }
 
@@ -823,7 +829,7 @@ export async function seedHelpArticles() {
           video_url: 'https://iframe.videodelivery.net/fc1a4f009e53094c4892c53f080f55cf' // default placeholder Cloudflare stream
         });
         if (error) {
-          console.error(`Seeding error on slug ${article.slug}:`, error.message);
+          logger.error({ err: error, slug: article.slug }, 'help.articles.seed_article.failed');
         } else {
           seededCount++;
         }
@@ -834,8 +840,8 @@ export async function seedHelpArticles() {
     return { success: true, count: seededCount, message: `Successfully seeded ${seededCount} new articles.` };
 
   } catch (error: any) {
-    console.error('[Seeding Error]:', error);
-    return { error: error.message };
+    logger.error({ err: error }, 'help.articles.seed.failed');
+    return { error: 'Failed to seed articles.' };
   }
 }
 
@@ -846,9 +852,10 @@ export async function createSupportTicketFromLena(payload: {
   diagnostics: any;
   screenLocation: string;
 }) {
+  let wsId: string | null = null;
   try {
-    const wsId = await getCurrentWorkspaceId();
-    if (!wsId) throw new Error('No active workspace context');
+    wsId = await getCurrentWorkspaceId();
+    if (!wsId) throw new ValidationError('No active workspace context');
     const user = await getUser();
     const supabase = await createServerClient();
     
@@ -882,8 +889,9 @@ ${payload.history.map(m => `[${m.role.toUpperCase()}]: ${m.content}`).join('\n')
     return { success: true, ticketId: ticket.id };
 
   } catch (error: any) {
-    console.error('Failed to register support escalation ticket:', error);
-    return { error: error.message };
+    logger.error({ err: error, workspaceId: wsId }, 'help.support_ticket.escalation.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -923,7 +931,7 @@ export async function getContextualArticles(pathname: string) {
 
     return { data: articles };
   } catch (error: any) {
-    console.error('Error fetching contextual help articles:', error);
-    return { error: error.message };
+    logger.error({ err: error, pathname }, 'help.contextual_articles.fetch.failed');
+    return { error: 'Failed to fetch contextual articles.' };
   }
 }

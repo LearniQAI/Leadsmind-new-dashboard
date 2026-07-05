@@ -2,6 +2,8 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 /**
  * Saves/updates course custom welcome onboarding email templates in public.courses.
@@ -42,7 +44,8 @@ export async function updateCourseEmailTemplate(
 
     return { success: true };
   } catch (error: any) {
-    console.error('[updateCourseEmailTemplate Error]:', error);
-    return { error: error.message || 'Failed to update email templates' };
+    logger.error({ err: error, courseId }, 'course_emails.template.update.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }

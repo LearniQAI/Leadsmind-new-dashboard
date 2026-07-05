@@ -2,6 +2,8 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
+import { UnauthorizedError, ForbiddenError, toClientError } from '@/shared/errors/AppError';
 
 /**
  * Calculates and updates the lead score for a contact.
@@ -11,9 +13,9 @@ export async function calculateLeadScore(contactId: string, eventType: string = 
   const supabase = await createServerClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Unauthorized');
+  if (!user) throw new UnauthorizedError();
   const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) throw new Error('No active workspace');
+  if (!workspaceId) throw new ForbiddenError('No active workspace');
   
   // 1. Fetch current score
   const { data: contact, error: fetchError } = await supabase
@@ -48,8 +50,9 @@ export async function calculateLeadScore(contactId: string, eventType: string = 
 
   return { success: true, newScore };
  } catch (error: any) {
-  console.error('[automation] Lead score error:', error);
-  return { success: false, error: error.message };
+  logger.error({ err: error, contactId }, 'automation.lead_score.update.failed');
+  const clientError = toClientError(error);
+  return { success: false, error: clientError.error };
  }
 }
 
@@ -62,7 +65,7 @@ export async function getAutomationLogsForContact(contactId: string) {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('[automation] Error fetching logs:', error);
+    logger.error({ err: error, contactId }, 'automation.logs.fetch.failed');
     return [];
   }
   return data || [];
@@ -119,7 +122,7 @@ export async function triggerAutomation(contactId: string, event: 'course_comple
 
     return { success: true };
   } catch (err) {
-    console.error('[automation] Trigger error:', err);
+    logger.error({ err, contactId, event }, 'automation.trigger.failed');
     return { success: false };
   }
 }

@@ -1,6 +1,7 @@
 'use server';
 
 import OpenAI from 'openai';
+import { logger } from '@/shared/logger';
 
 const openai = new OpenAI({
  apiKey: process.env.OPENAI_API_KEY,
@@ -26,7 +27,7 @@ export async function getAIChatResponse(messages: { role: 'user' | 'assistant' |
 
   return { content: response.choices[0].message.content };
  } catch (error: any) {
-  console.error('OpenAI Error:', error);
-  return { error: error.message || 'Failed to get AI response' };
+  logger.error({ err: error }, 'ai.chat_response.failed');
+  return { error: 'Failed to get AI response' };
  }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { syncShipmentTracking } from '@/app/actions/shipments'
+import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,8 @@ export async function GET(req: NextRequest) {
     .eq('active', true)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    logger.error({ err: error }, 'cron.tracking_sync.shipments_fetch.failed')
+    return NextResponse.json({ error: 'Failed to fetch active shipments.' }, { status: 500 })
   }
 
   if (!shipments || shipments.length === 0) {
@@ -32,7 +34,8 @@ export async function GET(req: NextRequest) {
       const res = await syncShipmentTracking(s.id)
       results.push({ id: s.id, success: res.success, error: res.error || null })
     } catch (err: any) {
-      results.push({ id: s.id, success: false, error: err.message })
+      logger.error({ err, shipmentId: s.id }, 'cron.tracking_sync.shipment_sync.failed')
+      results.push({ id: s.id, success: false, error: 'Sync failed.' })
     }
   }
 

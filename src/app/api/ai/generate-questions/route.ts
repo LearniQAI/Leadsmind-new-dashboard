@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/shared/logger';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -162,6 +163,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: createdQuestions });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'ai.generate_questions.failed');
+    return NextResponse.json({ error: 'Failed to generate quiz questions.' }, { status: 500 });
   }
 }

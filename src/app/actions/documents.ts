@@ -3,6 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getPortalSession } from '@/lib/portal/session';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 /**
  * Generates a time-limited 24-hour signed download URL for vaulted documents
@@ -62,12 +63,14 @@ export async function generateSignedDocumentUrl(fileId: string) {
       .createSignedUrl(file.path, 86400);
 
     if (signedErr || !signedData) {
-      return { success: false, error: 'Failed to generate signed link: ' + signedErr?.message };
+      logger.error({ err: signedErr, fileId }, 'documents.signed_url.generate.failed');
+      return { success: false, error: 'Failed to generate signed link.' };
     }
 
     return { success: true, url: signedData.signedUrl };
   } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    logger.error({ err, fileId }, 'documents.signed_url.action.failed');
+    return { success: false, error: 'An unexpected error occurred.' };
   }
 }
 
@@ -97,7 +100,8 @@ export async function uploadClientDocument(formData: FormData) {
       .upload(storagePath, file, { upsert: true });
 
     if (uploadError) {
-      return { success: false, error: 'File upload storage failure: ' + uploadError.message };
+      logger.error({ err: uploadError, contactId: contact.id }, 'documents.client_upload.storage.failed');
+      return { success: false, error: 'File upload storage failure.' };
     }
 
     // 2. Register file metadata in media_files
@@ -115,7 +119,8 @@ export async function uploadClientDocument(formData: FormData) {
       .single();
 
     if (dbError || !mediaFile) {
-      return { success: false, error: 'Failed to log file metadata: ' + dbError?.message };
+      logger.error({ err: dbError, contactId: contact.id }, 'documents.client_upload.metadata_log.failed');
+      return { success: false, error: 'Failed to log file metadata.' };
     }
 
     // 3. Link file registration in contact_documents
@@ -128,7 +133,8 @@ export async function uploadClientDocument(formData: FormData) {
       });
 
     if (linkErr) {
-      return { success: false, error: 'Failed to link document in vault ledger: ' + linkErr.message };
+      logger.error({ err: linkErr, contactId: contact.id }, 'documents.client_upload.vault_link.failed');
+      return { success: false, error: 'Failed to link document in vault ledger.' };
     }
 
     // 4. Log confirmation inside contact activities CRM logs
@@ -142,7 +148,8 @@ export async function uploadClientDocument(formData: FormData) {
     revalidatePath('/portal/documents');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    logger.error({ err }, 'documents.client_upload.action.failed');
+    return { success: false, error: 'An unexpected error occurred.' };
   }
 }
 
@@ -185,7 +192,8 @@ export async function signPortalProposal(proposalId: string, signatureData: stri
       .eq('id', proposalId);
 
     if (updateErr) {
-      return { success: false, error: 'Failed to record signature: ' + updateErr.message };
+      logger.error({ err: updateErr, proposalId }, 'documents.proposal_signature.record.failed');
+      return { success: false, error: 'Failed to record signature.' };
     }
 
     // 3. Log confirmation inside contact activities CRM logs
@@ -199,6 +207,7 @@ export async function signPortalProposal(proposalId: string, signatureData: stri
     revalidatePath('/portal/documents');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    logger.error({ err, proposalId }, 'documents.proposal_signature.action.failed');
+    return { success: false, error: 'An unexpected error occurred.' };
   }
 }

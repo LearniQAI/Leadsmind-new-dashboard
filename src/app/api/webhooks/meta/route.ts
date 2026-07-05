@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { decrypt } from '@/lib/encryption';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,11 +18,11 @@ export async function GET(req: Request) {
   const challenge = url.searchParams.get('hub.challenge');
 
   if (mode === 'subscribe' && token === process.env.META_WEBHOOK_VERIFY_TOKEN) {
-    console.log('[Meta Webhook] Verification successful.');
+    logger.info({}, 'webhook.meta.verification.success');
     return new Response(challenge || '', { status: 200 });
   }
 
-  console.error('[Meta Webhook] Verification failed. Token mismatch.');
+  logger.warn({}, 'webhook.meta.verification.token_mismatch');
   return new Response('Forbidden', { status: 403 });
 }
 
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const payload = await req.json();
-    console.log('[Meta Webhook] Received payload:', JSON.stringify(payload));
+    logger.info({ payload }, 'webhook.meta.received');
 
     const objectType = payload.object;
 
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
         for (const messagingEvent of entry.messaging || []) {
           // If it is an echo message (message sent from our own page), ignore to prevent infinite loop
           if (messagingEvent.message?.is_echo) {
-            console.log('[Meta Webhook] Skipping Facebook Messenger echo message.');
+            logger.info({}, 'webhook.meta.facebook.echo_skipped');
             continue;
           }
 
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
                 .update({ status: 'delivered' })
                 .eq('external_id', mid);
             }
-            console.log(`[Meta Webhook] Processed FB delivery webhook for mids:`, mids);
+            logger.info({ mids }, 'webhook.meta.facebook.delivery_processed');
           }
 
           // Handle read status update
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
                 .eq('conversation_id', conv.id)
                 .eq('direction', 'outbound')
                 .eq('status', 'delivered');
-              console.log(`[Meta Webhook] Processed FB read webhook watermark for: ${senderId}`);
+              logger.info({ senderId }, 'webhook.meta.facebook.read_processed');
             }
           }
 
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
         for (const messagingEvent of entry.messaging || []) {
           // Ignore echo messages
           if (messagingEvent.message?.is_echo) {
-            console.log('[Meta Webhook] Skipping Instagram DM echo message.');
+            logger.info({}, 'webhook.meta.instagram.echo_skipped');
             continue;
           }
 
@@ -102,7 +103,7 @@ export async function POST(req: Request) {
                 .update({ status: 'delivered' })
                 .eq('external_id', mid);
             }
-            console.log(`[Meta Webhook] Processed IG delivery webhook for mids:`, mids);
+            logger.info({ mids }, 'webhook.meta.instagram.delivery_processed');
           }
 
           // Handle read status update
@@ -122,7 +123,7 @@ export async function POST(req: Request) {
                 .eq('conversation_id', conv.id)
                 .eq('direction', 'outbound')
                 .eq('status', 'delivered');
-              console.log(`[Meta Webhook] Processed IG read webhook for: ${senderId}`);
+              logger.info({ senderId }, 'webhook.meta.instagram.read_processed');
             }
           }
 
@@ -158,9 +159,9 @@ export async function POST(req: Request) {
                 .eq('external_id', extId);
               
               if (updErr) {
-                console.error(`[Meta Webhook] Database update error for status ${msgStatus}:`, updErr.message);
+                logger.error({ err: updErr, msgStatus, extId }, 'webhook.meta.whatsapp.status_update.failed');
               } else {
-                console.log(`[Meta Webhook] Processed WhatsApp status: ${msgStatus} for msg: ${extId}`);
+                logger.info({ msgStatus, extId }, 'webhook.meta.whatsapp.status_processed');
               }
             }
 
@@ -176,8 +177,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {
-    console.error('[Meta Webhook] Processing Error:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logger.error({ err: error }, 'webhook.meta.processing.failed');
+    return NextResponse.json({ error: 'Webhook processing failed.' }, { status: 500 });
   }
 }
 
@@ -266,7 +267,7 @@ async function handleFacebookMessengerMessage(messagingEvent: any) {
     .maybeSingle();
 
   if (!connection) {
-    console.error(`[Meta Webhook] No Facebook connection found for page_id: ${recipientId}`);
+    logger.error({ pageId: recipientId }, 'webhook.meta.facebook.connection_not_found');
     return;
   }
 
@@ -281,7 +282,7 @@ async function handleFacebookMessengerMessage(messagingEvent: any) {
     .maybeSingle();
 
   if (existingMsg) {
-    console.log(`[Meta Webhook] Duplicate Facebook message skipped: ${messageId}`);
+    logger.info({ messageId }, 'webhook.meta.facebook.duplicate_message_skipped');
     return;
   }
 
@@ -403,7 +404,7 @@ async function handleInstagramDMMessage(messagingEvent: any) {
     .maybeSingle();
 
   if (!connection) {
-    console.error(`[Meta Webhook] No Instagram connection found for instagram_id: ${recipientId}`);
+    logger.error({ instagramId: recipientId }, 'webhook.meta.instagram.connection_not_found');
     return;
   }
 
@@ -418,7 +419,7 @@ async function handleInstagramDMMessage(messagingEvent: any) {
     .maybeSingle();
 
   if (existingMsg) {
-    console.log(`[Meta Webhook] Duplicate Instagram message skipped: ${messageId}`);
+    logger.info({ messageId }, 'webhook.meta.instagram.duplicate_message_skipped');
     return;
   }
 
@@ -538,7 +539,7 @@ async function handleWhatsAppMessage(message: any, metadata: any, webhookContact
     .maybeSingle();
 
   if (!connection) {
-    console.error(`[Meta Webhook] No WhatsApp connection found for phone_number_id: ${recipientPhoneId}`);
+    logger.error({ phoneNumberId: recipientPhoneId }, 'webhook.meta.whatsapp.connection_not_found');
     return;
   }
 
@@ -553,7 +554,7 @@ async function handleWhatsAppMessage(message: any, metadata: any, webhookContact
     .maybeSingle();
 
   if (existingMsg) {
-    console.log(`[Meta Webhook] Duplicate WhatsApp message skipped: ${messageId}`);
+    logger.info({ messageId }, 'webhook.meta.whatsapp.duplicate_message_skipped');
     return;
   }
 
@@ -664,7 +665,7 @@ async function handleWhatsAppMessage(message: any, metadata: any, webhookContact
             msgMetadata.media_url = mediaJson.url;
           }
         } catch (fetchErr: any) {
-          console.error('[Meta Webhook] Failed to fetch live media URL:', fetchErr.message);
+          logger.error({ err: fetchErr, mediaId: mediaObj.id }, 'webhook.meta.whatsapp.media_fetch.failed');
         }
       }
       

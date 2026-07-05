@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 export async function convertQuoteToInvoice(quoteId: string) {
   const supabase = await createServerClient();
@@ -44,23 +45,29 @@ export async function convertQuoteToInvoice(quoteId: string) {
     .select()
     .single();
 
-  if (invoiceError) return { success: false, error: invoiceError.message };
+  if (invoiceError) {
+    logger.error({ err: invoiceError, quoteId }, 'quotes.convert_to_invoice.insert.failed');
+    return { success: false, error: 'Failed to create invoice.' };
+  }
 
   const { error: updateError } = await supabase
     .from('quotes')
-    .update({ 
+    .update({
       status: 'converted',
-      converted_invoice_id: invoice.id 
+      converted_invoice_id: invoice.id
     })
     .eq('id', quoteId);
 
-  if (updateError) return { success: false, error: updateError.message };
+  if (updateError) {
+    logger.error({ err: updateError, quoteId }, 'quotes.convert_to_invoice.update.failed');
+    return { success: false, error: 'Failed to update quote status.' };
+  }
 
   try {
     revalidatePath('/invoices');
     revalidatePath('/quotes');
   } catch (e) {
-    console.warn('revalidatePath warning:', e);
+    logger.warn({ err: e }, 'quotes.revalidate_path.failed');
   }
   return { success: true, invoiceId: invoice.id };
 }
@@ -74,11 +81,14 @@ export async function updateQuoteStatus(id: string, status: string) {
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, quoteId: id }, 'quotes.status.update.failed');
+    return { success: false, error: 'Failed to update quote status.' };
+  }
   try {
     revalidatePath('/quotes');
   } catch (e) {
-    console.warn('revalidatePath warning:', e);
+    logger.warn({ err: e }, 'quotes.revalidate_path.failed');
   }
   return { success: true, data };
 }
@@ -90,11 +100,14 @@ export async function deleteQuote(id: string) {
     .delete()
     .eq('id', id);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, quoteId: id }, 'quotes.delete.failed');
+    return { success: false, error: 'Failed to delete quote.' };
+  }
   try {
     revalidatePath('/quotes');
   } catch (e) {
-    console.warn('revalidatePath warning:', e);
+    logger.warn({ err: e }, 'quotes.revalidate_path.failed');
   }
   return { success: true };
 }
@@ -107,11 +120,14 @@ export async function saveQuote(data: any) {
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error }, 'quotes.save.failed');
+    return { success: false, error: 'Failed to save quote.' };
+  }
   try {
     revalidatePath('/quotes');
   } catch (e) {
-    console.warn('revalidatePath warning:', e);
+    logger.warn({ err: e }, 'quotes.revalidate_path.failed');
   }
   return { success: true, data: quote };
 }
@@ -145,11 +161,14 @@ export async function updateQuote(id: string, data: any) {
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, quoteId: id }, 'quotes.update.failed');
+    return { success: false, error: 'Failed to update quote.' };
+  }
   try {
     revalidatePath('/quotes');
   } catch (e) {
-    console.warn('revalidatePath warning:', e);
+    logger.warn({ err: e }, 'quotes.revalidate_path.failed');
   }
   return { success: true, data: quote };
 }

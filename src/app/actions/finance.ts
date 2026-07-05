@@ -5,6 +5,8 @@ import { stripe } from '@/lib/stripe';
 import { revalidatePath } from 'next/cache';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 function safeRevalidatePath(path: string) {
   try {
@@ -30,7 +32,7 @@ export async function getInvoices(workspaceId: string, contactId?: string) {
  const { data, error } = await query.order('created_at', { ascending: false });
 
  if (error) {
-  console.error('[finance] Error fetching invoices:', error);
+  logger.error({ err: error, workspaceId }, 'finance.invoices.fetch.failed');
   return [];
  }
  return data || [];
@@ -45,7 +47,7 @@ export async function getInvoiceById(id: string) {
   .single();
 
  if (error) {
-  console.error('[finance] Error fetching invoice by id:', error);
+  logger.error({ err: error, invoiceId: id }, 'finance.invoice.fetch.failed');
   return null;
  }
  return data;
@@ -60,7 +62,7 @@ export async function getInvoiceSettings(workspaceId: string) {
   .single();
 
  if (error) {
-  console.error('[finance] Error fetching invoice settings:', error);
+  logger.error({ err: error, workspaceId }, 'finance.invoice_settings.fetch.failed');
   return null;
  }
  return data.invoice_settings;
@@ -75,7 +77,7 @@ export async function getContactsForInvoicing(workspaceId: string) {
   .order('first_name', { ascending: true });
 
  if (error) {
-  console.error('[finance] Error fetching contacts for invoicing:', error);
+  logger.error({ err: error, workspaceId }, 'finance.contacts_for_invoicing.fetch.failed');
   return [];
  }
  return data || [];
@@ -90,7 +92,7 @@ export async function getProducts(workspaceId: string) {
   .order('name', { ascending: true });
 
  if (error) {
-  console.error('[finance] Error fetching products:', error);
+  logger.error({ err: error, workspaceId }, 'finance.products.fetch.failed');
   return [];
  }
  return data || [];
@@ -110,7 +112,7 @@ export async function getQuotes(workspaceId: string, contactId?: string) {
  const { data, error } = await query.order('created_at', { ascending: false });
 
  if (error) {
-  console.error('[finance] Error fetching quotes:', error);
+  logger.error({ err: error, workspaceId }, 'finance.quotes.fetch.failed');
   return [];
  }
  return data || [];
@@ -125,7 +127,9 @@ export async function saveInvoice(data: any) {
   .single();
 
  if (error) {
-  return { success: false, error: error.message };
+  logger.error({ err: error }, 'finance.invoice.save.failed');
+  const clientError = toClientError(error);
+  return { success: false, error: clientError.error };
  }
 
   if (invoice) {
@@ -134,7 +138,9 @@ export async function saveInvoice(data: any) {
       dispatchWebhook(invoice.workspace_id, 'invoice.created', {
         invoice: { id: invoice.id, number: invoice.invoice_number, amount: invoice.total_amount ?? invoice.amount, currency: invoice.currency || 'ZAR', status: invoice.status, contact_id: invoice.contact_id },
       }).catch(() => {});
-    } catch (e) { console.error('[webhook-dispatch-invoice-created-error]', e); }
+    } catch (e) {
+      logger.error({ err: e, invoiceId: invoice.id }, 'finance.invoice.create_webhook_dispatch.failed');
+    }
   }
 
  return { success: true, data: invoice };
@@ -150,7 +156,9 @@ export async function updateInvoice(id: string, data: any) {
   .single();
 
  if (error) {
-  return { success: false, error: error.message };
+  logger.error({ err: error, invoiceId: id }, 'finance.invoice.update.failed');
+  const clientError = toClientError(error);
+  return { success: false, error: clientError.error };
  }
  return { success: true, data: invoice };
 }
@@ -164,7 +172,9 @@ export async function saveQuote(data: any) {
   .single();
 
  if (error) {
-  return { success: false, error: error.message };
+  logger.error({ err: error }, 'finance.quote.save.failed');
+  const clientError = toClientError(error);
+  return { success: false, error: clientError.error };
  }
  return { success: true, data: quote };
 }
@@ -179,7 +189,9 @@ export async function updateQuote(id: string, data: any) {
   .single();
 
  if (error) {
-  return { success: false, error: error.message };
+  logger.error({ err: error, quoteId: id }, 'finance.quote.update.failed');
+  const clientError = toClientError(error);
+  return { success: false, error: clientError.error };
  }
  return { success: true, data: quote };
 }
@@ -195,7 +207,8 @@ export async function convertToInvoice(quoteId: string) {
   .single();
 
  if (fetchError || !quote) {
-  return { success: false, error: fetchError?.message || 'Quote not found' };
+  if (fetchError) logger.error({ err: fetchError, quoteId }, 'finance.quote_to_invoice.fetch.failed');
+  return { success: false, error: 'Quote not found' };
  }
 
  // 2. Check if already converted
@@ -225,7 +238,8 @@ export async function convertToInvoice(quoteId: string) {
   .single();
 
  if (insertError) {
-  return { success: false, error: insertError.message };
+  logger.error({ err: insertError, quoteId }, 'finance.quote_to_invoice.insert.failed');
+  return { success: false, error: 'Failed to convert quote to invoice.' };
  }
 
  // 4. Update quote status
@@ -240,7 +254,9 @@ export async function convertToInvoice(quoteId: string) {
       dispatchWebhook(invoice.workspace_id, 'invoice.created', {
         invoice: { id: invoice.id, number: invoice.invoice_number, amount: invoice.total_amount ?? invoice.amount, currency: invoice.currency || 'ZAR', status: invoice.status, contact_id: invoice.contact_id },
       }).catch(() => {});
-    } catch (e) { console.error('[webhook-dispatch-invoice-created-error]', e); }
+    } catch (e) {
+      logger.error({ err: e, invoiceId: invoice.id }, 'finance.quote_to_invoice.webhook_dispatch.failed');
+    }
   }
 
  return { success: true, data: invoice };
@@ -253,7 +269,10 @@ export async function deleteInvoice(id: string) {
  const workspaceId = await getCurrentWorkspaceId();
  if (!workspaceId) throw new ForbiddenError('No active workspace');
  const { error } = await supabase.from('invoices').delete().eq('id', id).eq('workspace_id', workspaceId);
- if (error) return { success: false, error: error.message };
+ if (error) {
+  logger.error({ err: error, workspaceId, invoiceId: id }, 'finance.invoice.delete.failed');
+  return { success: false, error: 'Failed to delete invoice.' };
+ }
   safeRevalidatePath('/invoices');
   return { success: true };
 }
@@ -268,10 +287,10 @@ export async function updateInvoiceStatus(id: string, status: string) {
       if (res.success && res.data) {
         data = res.data;
       } else {
-        console.error('[finance] Attribution Engine failed, falling back to simple update:', res.error);
+        logger.error({ err: res.error, invoiceId: id }, 'finance.invoice_status.attribution_engine.failed');
       }
     } catch (err) {
-      console.error('[finance] Failed to load AttributionEngine:', err);
+      logger.error({ err, invoiceId: id }, 'finance.invoice_status.attribution_engine.load_failed');
     }
   }
 
@@ -283,7 +302,10 @@ export async function updateInvoiceStatus(id: string, status: string) {
      .eq('id', id)
      .select('*, contact:contacts(*)')
      .single();
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      logger.error({ err: error, invoiceId: id }, 'finance.invoice_status.update.failed');
+      return { success: false, error: 'Failed to update invoice status.' };
+    }
     data = updatedData;
   }
 
@@ -307,7 +329,7 @@ export async function updateInvoiceStatus(id: string, status: string) {
         }
       }).catch(() => {});
     } catch (e) {
-      console.error('[webhook-dispatch-error-fallback]', e);
+      logger.error({ err: e, invoiceId: id }, 'finance.invoice_paid.webhook_dispatch.failed');
     }
 
     // Auto-create courier shipment if shipping address is present
@@ -361,7 +383,7 @@ export async function updateInvoiceStatus(id: string, status: string) {
         }
       }
     } catch (err) {
-      console.error('[finance-auto-shipment]', err)
+      logger.error({ err, invoiceId: id }, 'finance.invoice_paid.auto_shipment.failed');
     }
 
     // Affiliate Commission Conversion
@@ -391,7 +413,7 @@ export async function updateInvoiceStatus(id: string, status: string) {
         }
       }
     } catch (affError) {
-      console.error('[affiliate-conversion-invoice-error]', affError);
+      logger.error({ err: affError, invoiceId: id }, 'finance.invoice_paid.affiliate_conversion.failed');
     }
   }
 
@@ -406,7 +428,10 @@ export async function deleteQuote(id: string) {
  const workspaceId = await getCurrentWorkspaceId();
  if (!workspaceId) throw new ForbiddenError('No active workspace');
  const { error } = await supabase.from('quotes').delete().eq('id', id).eq('workspace_id', workspaceId);
- if (error) return { success: false, error: error.message };
+ if (error) {
+  logger.error({ err: error, workspaceId, quoteId: id }, 'finance.quote.delete.failed');
+  return { success: false, error: 'Failed to delete quote.' };
+ }
   safeRevalidatePath('/quotes');
   return { success: true };
 }
@@ -419,7 +444,10 @@ export async function updateQuoteStatus(id: string, status: string) {
   .eq('id', id)
   .select()
   .single();
- if (error) return { success: false, error: error.message };
+ if (error) {
+  logger.error({ err: error, quoteId: id }, 'finance.quote_status.update.failed');
+  return { success: false, error: 'Failed to update quote status.' };
+ }
   safeRevalidatePath('/quotes');
   return { success: true, data };
 }
@@ -493,7 +521,10 @@ export async function writeOffInvoice(invoiceId: string, workspaceId: string, am
       logged_by: user?.id
     });
 
-  if (writeOffError) return { success: false, error: writeOffError.message };
+  if (writeOffError) {
+    logger.error({ err: writeOffError, invoiceId, workspaceId }, 'finance.invoice.write_off.record_failed');
+    return { success: false, error: 'Failed to record write-off.' };
+  }
 
   // 2. Update invoice status
   const { error: updateError } = await supabase
@@ -501,7 +532,10 @@ export async function writeOffInvoice(invoiceId: string, workspaceId: string, am
     .update({ status: 'written_off' })
     .eq('id', invoiceId);
 
-  if (updateError) return { success: false, error: updateError.message };
+  if (updateError) {
+    logger.error({ err: updateError, invoiceId, workspaceId }, 'finance.invoice.write_off.status_update_failed');
+    return { success: false, error: 'Failed to update invoice status.' };
+  }
 
   safeRevalidatePath('/invoices');
   return { success: true };
@@ -548,8 +582,8 @@ export async function createInvoiceCheckoutSession(invoiceId: string) {
 
     return { url: session.url };
   } catch (err: any) {
-    console.error('[finance] stripe checkout error:', err);
-    return { error: err.message || 'Failed to create checkout session' };
+    logger.error({ err, invoiceId }, 'finance.invoice_checkout.stripe.failed');
+    return { error: 'Failed to create checkout session' };
   }
 }
 
@@ -612,8 +646,8 @@ export async function generateInvoicePayFastUrl(
 
     return { url: redirectUrl };
   } catch (err: any) {
-    console.error('[finance] payfast checkout generation error:', err);
-    return { error: err.message || 'Failed to create PayFast checkout URL' };
+    logger.error({ err, invoiceId }, 'finance.invoice_checkout.payfast.failed');
+    return { error: 'Failed to create PayFast checkout URL' };
   }
 }
 
@@ -629,7 +663,8 @@ export async function saveInvoiceSettings(workspaceId: string, settings: any) {
       .single();
 
     if (fetchError || !workspace) {
-      return { error: fetchError?.message || 'Workspace not found' };
+      if (fetchError) logger.error({ err: fetchError, workspaceId }, 'finance.invoice_settings.workspace_fetch.failed');
+      return { error: 'Workspace not found' };
     }
 
     const currentSettings = workspace.invoice_settings || {};
@@ -644,14 +679,15 @@ export async function saveInvoiceSettings(workspaceId: string, settings: any) {
       .eq('id', workspaceId);
 
     if (updateError) {
-      return { error: updateError.message };
+      logger.error({ err: updateError, workspaceId }, 'finance.invoice_settings.update.failed');
+      return { error: 'Failed to save settings' };
     }
 
     safeRevalidatePath('/settings');
     return { success: true };
   } catch (err: any) {
-    console.error('[finance] save settings error:', err);
-    return { error: err.message || 'Failed to save settings' };
+    logger.error({ err, workspaceId }, 'finance.invoice_settings.save.failed');
+    return { error: 'Failed to save settings' };
   }
 }
 

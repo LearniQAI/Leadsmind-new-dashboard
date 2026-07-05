@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 export interface ErasureReceipt {
   receiptId: string;
@@ -48,7 +49,7 @@ export async function invokeRightToErasure(contactId: string): Promise<{ success
       .select('id');
 
     if (cancelError) {
-      console.error('[POPIA] Error cancelling workflow executions:', cancelError);
+      logger.error({ err: cancelError, workspaceId, contactId }, 'popia.erasure.cancel_executions.failed');
     }
 
     const purgedExecutionsCount = cancelledExecutions?.length || 0;
@@ -61,7 +62,7 @@ export async function invokeRightToErasure(contactId: string): Promise<{ success
       .select('id');
 
     if (queueDeleteError) {
-      console.error('[POPIA] Error deleting queue items:', queueDeleteError);
+      logger.error({ err: queueDeleteError, workspaceId, contactId }, 'popia.erasure.delete_queue_items.failed');
     }
 
     const purgedQueueCount = deletedQueueItems?.length || 0;
@@ -77,8 +78,8 @@ export async function invokeRightToErasure(contactId: string): Promise<{ success
 
     let suppressionStatus = 'Success';
     if (suppressionError) {
-      console.error('[POPIA] Error adding to suppression list:', suppressionError);
-      suppressionStatus = `Failed: ${suppressionError.message}`;
+      logger.error({ err: suppressionError, workspaceId, contactId }, 'popia.erasure.suppression_list.failed');
+      suppressionStatus = 'Failed';
     }
 
     // 5. Anonymize contacts table record
@@ -100,8 +101,8 @@ export async function invokeRightToErasure(contactId: string): Promise<{ success
       .eq('id', contactId);
 
     if (contactAnonError) {
-      console.error('[POPIA] Error anonymizing contact:', contactAnonError);
-      return { success: false, error: `Failed to anonymize contact: ${contactAnonError.message}` };
+      logger.error({ err: contactAnonError, workspaceId, contactId }, 'popia.erasure.anonymize_contact.failed');
+      return { success: false, error: 'Failed to anonymize contact.' };
     }
 
     // 6. Anonymize matching CRM contacts (crm_contacts table) if they exist
@@ -133,7 +134,7 @@ export async function invokeRightToErasure(contactId: string): Promise<{ success
         if (!crmAnonError) {
           crmAnonymized = true;
         } else {
-          console.error('[POPIA] Error anonymizing CRM contacts:', crmAnonError);
+          logger.error({ err: crmAnonError, workspaceId, contactId }, 'popia.erasure.anonymize_crm_contacts.failed');
         }
       }
     }
@@ -168,8 +169,8 @@ export async function invokeRightToErasure(contactId: string): Promise<{ success
       data: receipt
     };
   } catch (err: any) {
-    console.error('[POPIA] Unhandled error during right to erasure:', err);
-    return { success: false, error: err.message || 'Internal server error during erasure procedure.' };
+    logger.error({ err, workspaceId, contactId }, 'popia.erasure.failed');
+    return { success: false, error: 'Internal server error during erasure procedure.' };
   }
 }
 
@@ -190,7 +191,7 @@ export async function unsubscribeEmail(email: string, workspaceId: string): Prom
       );
 
     if (suppressionError) {
-      console.error('[Unsubscribe] Suppression list error:', suppressionError);
+      logger.error({ err: suppressionError, workspaceId }, 'popia.unsubscribe.suppression_list.failed');
     }
 
     // 2. Mark contacts as invalid
@@ -201,7 +202,7 @@ export async function unsubscribeEmail(email: string, workspaceId: string): Prom
       .eq('email', email);
 
     if (contactsError) {
-      console.error('[Unsubscribe] Contacts update error:', contactsError);
+      logger.error({ err: contactsError, workspaceId }, 'popia.unsubscribe.contacts_update.failed');
     }
 
     const { error: crmContactsError } = await supabase
@@ -211,7 +212,7 @@ export async function unsubscribeEmail(email: string, workspaceId: string): Prom
       .eq('email', email);
 
     if (crmContactsError) {
-      console.error('[Unsubscribe] CRM Contacts update error:', crmContactsError);
+      logger.error({ err: crmContactsError, workspaceId }, 'popia.unsubscribe.crm_contacts_update.failed');
     }
 
     // 3. Log activity if a contact matches
@@ -235,7 +236,7 @@ export async function unsubscribeEmail(email: string, workspaceId: string): Prom
 
     return { success: true };
   } catch (err: any) {
-    console.error('[Unsubscribe] Unhandled error:', err);
-    return { success: false, error: err.message || 'Internal server error processing unsubscribe.' };
+    logger.error({ err, workspaceId }, 'popia.unsubscribe.failed');
+    return { success: false, error: 'Internal server error processing unsubscribe.' };
   }
 }

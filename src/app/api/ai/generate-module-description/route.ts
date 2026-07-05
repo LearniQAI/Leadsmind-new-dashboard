@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/requireAuth';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ Use natural corporate South African terms where applicable. Avoid fluff. Organiz
     const openAiKey = process.env.OPENAI_API_KEY;
     if (!openAiKey || openAiKey === 'sk_mock_key' || openAiKey.includes('PLACEHOLDER') || openAiKey.startsWith('sk-proj-O15jtbs')) {
       // Mock Sandbox fallbacks for development / testing without OpenAI API keys
-      console.log('--- LENA AI MODULE DESCRIPTION GENERATOR - SANDBOX MODE ---');
+      logger.info({ userId: user.id }, 'ai.module_description.sandbox_mode');
 
       const lessonsList = lessons && lessons.length > 0 
         ? lessons.map((l: any) => `- ${typeof l === 'string' ? l : l.title || 'Untitled Lesson'}`).join('\n')
@@ -77,7 +78,7 @@ Format as readable Markdown.`
 
     return NextResponse.json({ success: true, text: resultText });
   } catch (err: any) {
-    console.error('[LENA MODULE DESCRIPTION API ERROR]:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err, userId: user.id }, 'ai.module_description.generate.failed');
+    return NextResponse.json({ error: 'Failed to generate module description.' }, { status: 500 });
   }
 }

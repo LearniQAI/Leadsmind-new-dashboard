@@ -2,6 +2,8 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 /**
  * Seeds the 5 core automation templates directly to the user dashboard canvas.
@@ -109,14 +111,15 @@ export async function seedCourseBlueprints(courseId: string) {
         });
 
       if (error) {
-        console.error(`[Seed Blueprints] Failed seeding rule: ${blueprint.name}`, error);
+        logger.error({ err: error, workspaceId, ruleName: blueprint.name }, 'course_blueprints.seed_rule.failed');
         throw error;
       }
     }
 
     return { success: true };
   } catch (err: any) {
-    console.error('[Seed Blueprints] Error seeding blueprints:', err);
-    return { error: err.message };
+    logger.error({ err, courseId }, 'course_blueprints.seed.failed');
+    const clientError = toClientError(err);
+    return { error: clientError.error };
   }
 }

@@ -5,8 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 
 import { Pipeline, PipelineStage, Opportunity } from '@/types/crm';
-
-console.log('>>> [CRITICAL DEBUG] Pipelines Actions File Loaded');
+import { logger } from '@/shared/logger';
 
 export async function createPipeline({ name, stages }: { name: string, stages: string[] }) {
   const workspaceId = await getCurrentWorkspaceId();
@@ -21,7 +20,10 @@ export async function createPipeline({ name, stages }: { name: string, stages: s
     .select()
     .single();
 
-  if (pError) return { success: false, error: pError.message };
+  if (pError) {
+    logger.error({ err: pError, workspaceId }, 'pipelines.pipeline.create.failed');
+    return { success: false, error: 'Failed to create pipeline.' };
+  }
 
   // 2. Create Stages
   const stagePayloads = stages.map((s, i) => ({
@@ -35,7 +37,10 @@ export async function createPipeline({ name, stages }: { name: string, stages: s
     .from('pipeline_stages')
     .insert(stagePayloads);
 
-  if (sError) return { success: false, error: sError.message };
+  if (sError) {
+    logger.error({ err: sError, workspaceId, pipelineId: pipeline.id }, 'pipelines.stages.create.failed');
+    return { success: false, error: 'Failed to create pipeline stages.' };
+  }
 
   revalidatePath('/pipelines');
   return { success: true, data: pipeline as Pipeline };
@@ -44,8 +49,6 @@ export async function createPipeline({ name, stages }: { name: string, stages: s
 export async function createOpportunity(values: any) {
   const workspaceId = await getCurrentWorkspaceId();
   const supabase = await createServerClient();
-
-  console.log(`[SERVER DEBUG] Creating strategic deal:`, values);
 
   const { data, error } = await supabase
     .from('opportunities')
@@ -62,8 +65,8 @@ export async function createOpportunity(values: any) {
     .single();
 
   if (error) {
-    console.error(`[SERVER DEBUG] Create deal error:`, error);
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId }, 'pipelines.opportunity.create.failed');
+    return { success: false, error: 'Failed to create opportunity.' };
   }
 
   try {
@@ -71,7 +74,9 @@ export async function createOpportunity(values: any) {
     dispatchWebhook(workspaceId, 'deal.created', {
       deal: { id: data.id, title: data.title, value: data.value, currency: data.currency || 'USD', status: data.status, stage_id: data.stage_id, contact_id: data.contact_id },
     }).catch(() => {});
-  } catch (e) { console.error('[webhook-dispatch-deal-created-error]', e); }
+  } catch (e) {
+    logger.error({ err: e, workspaceId, opportunityId: data.id }, 'pipelines.opportunity.create_webhook_dispatch.failed');
+  }
   
   revalidatePath('/pipelines');
   return { success: true, data: data as Opportunity };
@@ -88,7 +93,10 @@ export async function getPipelines() {
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: true });
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'pipelines.pipelines.fetch.failed');
+    return { success: false, error: 'Failed to fetch pipelines.' };
+  }
   return { success: true, data: data as Pipeline[] };
 }
 
@@ -100,7 +108,10 @@ export async function getPipelineStages(pipelineId: string) {
     .eq('pipeline_id', pipelineId)
     .order('position', { ascending: true });
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, pipelineId }, 'pipelines.stages.fetch.failed');
+    return { success: false, error: 'Failed to fetch pipeline stages.' };
+  }
   return { success: true, data: data as PipelineStage[] };
 }
 
@@ -122,7 +133,10 @@ export async function getPipelineOpportunities(pipelineId: string) {
     .in('stage_id', stageIds)
     .order('position', { ascending: true });
 
-  if (oppError) return { success: false, error: oppError.message };
+  if (oppError) {
+    logger.error({ err: oppError, workspaceId, pipelineId }, 'pipelines.opportunities.fetch.failed');
+    return { success: false, error: 'Failed to fetch opportunities.' };
+  }
   return { success: true, data: opportunities as Opportunity[] };
 }
 
@@ -145,7 +159,10 @@ export async function updateDealStage(dealId: string, stageId: string, position:
     })
     .eq("id", dealId).eq("workspace_id", workspaceId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId, dealId }, 'pipelines.deal_stage.update.failed');
+    return { success: false, error: 'Failed to update deal stage.' };
+  }
 
   const { data: stage } = await supabase
     .from('pipeline_stages')
@@ -183,18 +200,15 @@ export async function updateDealStage(dealId: string, stageId: string, position:
         }).catch(() => {});
       }
     } catch (e) {
-      console.error('[webhook-dispatch-deal-won-error]', e);
+      logger.error({ err: e, workspaceId: dealBefore.workspace_id, dealId }, 'pipelines.deal_won.webhook_dispatch.failed');
     }
   }
-  
+
   revalidatePath('/pipelines');
   return { success: true };
 }
 
 export async function updateOpportunity(id: string, values: any) {
-  console.log(`>>> [CRITICAL DEBUG] updateOpportunity CALLED for ID: ${id}`);
-  console.log(`>>> [CRITICAL DEBUG] Values:`, JSON.stringify(values, null, 2));
-  
   const supabase = await createServerClient();
   const workspaceId = await getCurrentWorkspaceId();
   
@@ -206,7 +220,6 @@ export async function updateOpportunity(id: string, values: any) {
   const prevStageId = dealBefore?.stage_id;
   const prevStatus = dealBefore?.status;
   
-  // Explicitly log the payload we are about to send to Supabase
   const payload = {
     contact_id: values.contact_id || null,
     stage_id: values.stage_id,
@@ -215,8 +228,6 @@ export async function updateOpportunity(id: string, values: any) {
     status: values.status || 'open',
     updated_at: new Date().toISOString()
   };
-  
-  console.log(`>>> [CRITICAL DEBUG] Supabase Payload:`, JSON.stringify(payload, null, 2));
 
   const { data, error } = await supabase
     .from('opportunities')
@@ -226,8 +237,8 @@ export async function updateOpportunity(id: string, values: any) {
     .single();
 
   if (error) {
-    console.error(`>>> [CRITICAL DEBUG] Supabase Error:`, error);
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId, opportunityId: id }, 'pipelines.opportunity.update.failed');
+    return { success: false, error: 'Failed to update opportunity.' };
   }
 
   // Check if status is updated to 'won' OR if stage has been updated to 'won'
@@ -261,7 +272,7 @@ export async function updateOpportunity(id: string, values: any) {
           }
         }).catch(() => {});
       } catch (e) {
-        console.error('[webhook-dispatch-deal-won-update-error]', e);
+        logger.error({ err: e, workspaceId: data.workspace_id, opportunityId: id }, 'pipelines.deal_won_update.webhook_dispatch.failed');
       }
     }
 
@@ -278,11 +289,11 @@ export async function updateOpportunity(id: string, values: any) {
           deal: { id: data.id, title: data.title, value: data.value, status: 'lost' },
         }).catch(() => {});
       }
-    } catch (e) { console.error('[webhook-dispatch-deal-update-error]', e); }
+    } catch (e) {
+      logger.error({ err: e, workspaceId: data.workspace_id, opportunityId: id }, 'pipelines.opportunity_update.webhook_dispatch.failed');
+    }
   }
-  
-  console.log(`>>> [CRITICAL DEBUG] Supabase Success! Returned data:`, JSON.stringify(data, null, 2));
-  
+
   revalidatePath('/pipelines');
   return { success: true, data: data as Opportunity };
 }
@@ -291,7 +302,10 @@ export async function deleteOpportunity(id: string) {
   const supabase = await createServerClient();
   const workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase.from('opportunities').delete().eq("id", id).eq("workspace_id", workspaceId);
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId, opportunityId: id }, 'pipelines.opportunity.delete.failed');
+    return { success: false, error: 'Failed to delete opportunity.' };
+  }
   revalidatePath('/pipelines');
   return { success: true };
 }
@@ -321,15 +335,14 @@ export async function updateStageOrder(pipelineId: string, stages: { id: string,
 export async function updateStage(id: string, name: string) {
   const supabase = await createServerClient();
   const workspaceId = await getCurrentWorkspaceId();
-  console.log(`[SERVER DEBUG] Updating stage ${id} name to "${name}"`);
   const { error } = await supabase
     .from('pipeline_stages')
     .update({ name, updated_at: new Date().toISOString() })
     .eq("id", id).eq("workspace_id", workspaceId);
 
   if (error) {
-    console.error(`[SERVER DEBUG] Update error:`, error);
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId, stageId: id }, 'pipelines.stage.update.failed');
+    return { success: false, error: 'Failed to update stage.' };
   }
   revalidatePath('/pipelines');
   return { success: true };
@@ -339,7 +352,10 @@ export async function deleteStage(id: string) {
   const supabase = await createServerClient();
   const workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase.from('pipeline_stages').delete().eq("id", id).eq("workspace_id", workspaceId);
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId, stageId: id }, 'pipelines.stage.delete.failed');
+    return { success: false, error: 'Failed to delete stage.' };
+  }
   revalidatePath('/pipelines');
   return { success: true };
 }
@@ -349,14 +365,12 @@ export async function updatePipelineStages(pipelineId: string, stages: { id: str
   if (!workspaceId) return { success: false, error: 'Unauthorized' };
   const supabase = await createServerClient();
 
-  console.log(`[SERVER DEBUG] Bulk updating stages for pipeline ${pipelineId}:`, stages);
   try {
     for (let i = 0; i < stages.length; i++) {
       const stage = stages[i];
       const isNew = stage.id.startsWith('new-');
 
       if (isNew) {
-        console.log(`[SERVER DEBUG] Inserting new stage: ${stage.name}`);
         const { error: insError } = await supabase.from('pipeline_stages').insert({
           workspace_id: workspaceId,
           pipeline_id: pipelineId,
@@ -377,8 +391,8 @@ export async function updatePipelineStages(pipelineId: string, stages: { id: str
     revalidatePath('/pipelines');
     return { success: true };
   } catch (err: any) {
-    console.error(`[SERVER DEBUG] Bulk update error:`, err);
-    return { success: false, error: err.message };
+    logger.error({ err, workspaceId, pipelineId }, 'pipelines.stages.bulk_update.failed');
+    return { success: false, error: 'Failed to update pipeline stages.' };
   }
 }
 

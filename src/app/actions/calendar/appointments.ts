@@ -5,19 +5,21 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { validateSlot, getRoundRobinAssignee, updateRoundRobinStats } from './scheduling';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
-
+import { logger } from '@/shared/logger';
+import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
 
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { success: false, error: 'No active workspace' };
-    
+
     const supabase = await createServerClient();
     const data = await action(supabase, workspaceId);
     return { success: true, data };
   } catch (err: any) {
-    console.error('[CalendarAppointmentAction Error]:', err.message);
-    return { success: false, error: err.message || 'Operation failed' };
+    logger.error({ err }, 'calendar.appointment_action.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -56,7 +58,7 @@ export async function createAppointment(payload: {
       .eq('id', payload.calendarId)
       .single();
 
-    if (calError || !calendar) throw new Error('Calendar Engine not found');
+    if (calError || !calendar) throw new NotFoundError('Calendar');
 
     // 2. Determine Effective Meeting Mode (Override vs Default)
     const effectiveMode = payload.meetingMode || calendar.meeting_mode || 'internal_meet';
@@ -82,7 +84,7 @@ export async function createAppointment(payload: {
     if (!payload.skipValidation) {
       const validation = await validateSlot(payload.calendarId, payload.startTime, payload.endTime);
       if (!validation.available) {
-        throw new Error(validation.reason);
+        throw new ValidationError(validation.reason);
       }
     }
 
@@ -126,7 +128,7 @@ export async function createAppointment(payload: {
     }
 
     // 8. Notification Orchestration
-    console.log(`[Notification]: Triggering confirmation for ${payload.title} via ${effectiveMode}`);
+    logger.info({ title: payload.title, effectiveMode }, 'calendar.appointment.confirmation_notification.triggered');
     
     // 9. Post-Insert Engine Updates
     if (calendar.calendar_type === 'round_robin' && assigneeId) {
@@ -137,7 +139,7 @@ export async function createAppointment(payload: {
     try {
       await createSupportTicket(data.id);
     } catch (supportErr) {
-      console.error('[appointments] Support ticket creation error:', supportErr);
+      logger.error({ err: supportErr, appointmentId: data.id }, 'calendar.appointment.support_ticket.failed');
     }
 
     revalidatePath('/calendar');
@@ -194,7 +196,9 @@ export async function getAppointmentById(id: string) {
     if (error) throw error;
     return { success: true, data };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, appointmentId: id }, 'calendar.appointment.get.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -214,7 +218,7 @@ export async function logParticipantJoin(
       .eq('id', appointmentId)
       .single();
 
-    if (!apt) throw new Error('Appointment not found');
+    if (!apt) throw new NotFoundError('Appointment');
 
     const { data: log, error } = await supabase
       .from('meet_attendance_logs')
@@ -232,7 +236,9 @@ export async function logParticipantJoin(
     if (error) throw error;
     return { success: true, logId: log.id };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, appointmentId }, 'calendar.participant_join.log.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -249,7 +255,7 @@ export async function logParticipantLeave(logId: string) {
       .eq("id", logId).eq("workspace_id", workspaceId)
       .single();
 
-    if (!log) throw new Error('Attendance log not found');
+    if (!log) throw new NotFoundError('Attendance log');
 
     const leftAt = new Date();
     const joinedAt = new Date(log.joined_at);
@@ -265,7 +271,9 @@ export async function logParticipantLeave(logId: string) {
 
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, logId }, 'calendar.participant_leave.log.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -302,7 +310,9 @@ export async function getMeetingAnalytics() {
       }
     };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err }, 'calendar.meeting_analytics.fetch.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 

@@ -3,6 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId, getUserRole } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';
+import { logger } from '@/shared/logger';
 
 /**
  * Resolves the contact_id for the currently logged-in user email.
@@ -42,7 +43,7 @@ export async function getOrCreateStudentContact(workspaceId: string) {
     .single();
 
   if (error) {
-    console.error('[StudentEnrollments] Failed to create contact:', error);
+    logger.error({ err: error, workspaceId }, 'student_enrollments.contact.create.failed');
     return null;
   }
   return newContact?.id || null;
@@ -52,6 +53,7 @@ export async function getOrCreateStudentContact(workspaceId: string) {
  * Enrolls a student in a course.
  */
 export async function enrollStudent(courseId: string) {
+  let workspaceId: string | null = null;
   try {
     const user = await getUser();
     if (!user) return { error: 'Not authenticated' };
@@ -69,7 +71,7 @@ export async function enrollStudent(courseId: string) {
       return { error: 'Course not found' };
     }
 
-    const workspaceId = course.workspace_id;
+    workspaceId = course.workspace_id;
     if (!workspaceId) return { error: 'Course does not belong to a workspace' };
 
     // Check user role specifically in the course's workspace to block course admins from self-enrolling
@@ -122,11 +124,14 @@ export async function enrollStudent(courseId: string) {
       dispatchWebhook(workspaceId, 'course.enrolment', {
         enrolment: { contact_id: contactId, course_id: courseId, enrolled_at: new Date().toISOString() },
       }).catch(() => {});
-    } catch (e) { console.error('[webhook-dispatch-course-enrolment-error]', e); }
+    } catch (e) {
+      logger.error({ err: e, workspaceId, contactId, courseId }, 'student_enrollments.enrolment.webhook_dispatch.failed');
+    }
 
     return { success: true };
   } catch (err: any) {
-    return { error: err.message };
+    logger.error({ err, workspaceId, courseId }, 'student_enrollments.enroll.failed');
+    return { error: 'Failed to enroll in course.' };
   }
 }
 
@@ -182,7 +187,8 @@ export async function getMyEnrollments() {
 
     return { data: activeEnrollments };
   } catch (err: any) {
-    return { error: err.message };
+    logger.error({ err }, 'student_enrollments.my_enrollments.fetch.failed');
+    return { error: 'Failed to fetch enrollments.' };
   }
 }
 
@@ -219,7 +225,8 @@ export async function getMarketplaceCourses(overrideWorkspaceId?: string) {
 
     return { data: courses || [] };
   } catch (err: any) {
-    return { error: err.message };
+    logger.error({ err }, 'student_enrollments.marketplace_courses.fetch.failed');
+    return { error: 'Failed to fetch marketplace courses.' };
   }
 }
 
@@ -315,7 +322,8 @@ export async function getEnrolledCoursesWithProgress() {
 
     return { data: coursesWithProgress };
   } catch (err: any) {
-    return { error: err.message };
+    logger.error({ err }, 'student_enrollments.courses_with_progress.fetch.failed');
+    return { error: 'Failed to fetch course progress.' };
   }
 }
 
@@ -392,7 +400,7 @@ export async function createCourseCheckoutSession(courseId: string) {
 
     return { url: session.url };
   } catch (err: any) {
-    console.error('[StudentEnrollments] createCourseCheckoutSession error:', err);
-    return { error: err.message || 'Failed to create checkout session' };
+    logger.error({ err, courseId }, 'student_enrollments.checkout_session.create.failed');
+    return { error: 'Failed to create checkout session' };
   }
 }

@@ -8,6 +8,8 @@ import { cookies } from 'next/headers';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { SignJWT, jwtVerify } from 'jose';
 import { ENFORCE_PLAN_LIMITS } from '@/lib/config/flags';
+import { logger } from '@/shared/logger';
+import { ValidationError, DatabaseError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 
 const JWT_SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback_secret_key_leadsmind_jwt_affiliate_token'
@@ -40,12 +42,12 @@ async function checkPlanGateForProgrammeCreation(workspaceId: string) {
     .single();
 
   if (wsError || !workspace) {
-    throw new Error('Workspace not found or unauthorized access.');
+    throw new ValidationError('Workspace not found or unauthorized access.');
   }
 
   const tier = workspace.plan_tier || 'free';
   if (!['growth', 'agency'].includes(tier)) {
-    throw new Error('Affiliate program creation is only available on Growth and Agency plans.');
+    throw new ValidationError('Affiliate program creation is only available on Growth and Agency plans.');
   }
 
   if (tier === 'growth') {
@@ -55,9 +57,9 @@ async function checkPlanGateForProgrammeCreation(workspaceId: string) {
       .select('id', { count: 'exact', head: true })
       .eq('workspace_id', workspaceId);
 
-    if (countError) throw new Error('Failed to verify programme limit.');
+    if (countError) throw new DatabaseError('Failed to verify programme limit.');
     if (count && count >= 1) {
-      throw new Error('Growth plan is limited to 1 affiliate programme. Upgrade to Agency for unlimited programmes.');
+      throw new ValidationError('Growth plan is limited to 1 affiliate programme. Upgrade to Agency for unlimited programmes.');
     }
   }
 }
@@ -80,9 +82,9 @@ async function checkPlanGateForAffiliateLimit(workspaceId: string) {
       .select('id', { count: 'exact', head: true })
       .eq('workspace_id', workspaceId);
 
-    if (countError) throw new Error('Failed to verify affiliate limits.');
+    if (countError) throw new DatabaseError('Failed to verify affiliate limits.');
     if (count && count >= 50) {
-      throw new Error('Growth plan is limited to 50 affiliates. Upgrade to Agency for unlimited affiliates.');
+      throw new ValidationError('Growth plan is limited to 50 affiliates. Upgrade to Agency for unlimited affiliates.');
     }
   }
 }
@@ -120,8 +122,9 @@ export async function createProgramme(workspaceId: string, data: any) {
     revalidatePath('/settings/integrations');
     return { success: true, data: programme };
   } catch (err: any) {
-    console.error('[Affiliates Action] createProgramme error:', err);
-    return { success: false, error: err.message };
+    logger.error({ err, workspaceId }, 'affiliates.programme.create.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -137,7 +140,9 @@ export async function getProgrammes(workspaceId: string) {
     if (error) throw error;
     return { success: true, data };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, workspaceId }, 'affiliates.programme.list.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -153,7 +158,9 @@ export async function getProgrammeById(id: string) {
     if (error) throw error;
     return { success: true, data };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, programmeId: id }, 'affiliates.programme.get.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -184,7 +191,9 @@ export async function updateProgramme(id: string, data: any) {
     if (error) throw error;
     return { success: true, data: programme };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, programmeId: id }, 'affiliates.programme.update.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -199,7 +208,9 @@ export async function deleteProgramme(id: string) {
     if (error) throw error;
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, programmeId: id }, 'affiliates.programme.delete.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -282,7 +293,7 @@ export async function applyToProgramme(
     }
 
     if (!isUnique) {
-      throw new Error('Failed to generate a unique referral code. Please try again.');
+      throw new DatabaseError('Failed to generate a unique referral code. Please try again.');
     }
 
     // 5. Determine initial status based on approval mode
@@ -334,7 +345,7 @@ export async function applyToProgramme(
           config: customConfig || undefined
         });
       } catch (err) {
-        console.error(`[Affiliate Sequence Error] Failed to schedule email for Day ${daysOffset}:`, err);
+        logger.error({ err, daysOffset }, 'affiliates.welcome_email.schedule.failed');
       }
     };
 
@@ -405,8 +416,9 @@ export async function applyToProgramme(
 
     return { success: true, data: affiliate };
   } catch (err: any) {
-    console.error('[Affiliates Action] applyToProgramme error:', err);
-    return { success: false, error: err.message };
+    logger.error({ err, programmeId }, 'affiliates.apply.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -438,7 +450,7 @@ export async function approveAffiliate(affiliateId: string) {
         { affiliate_id: affiliate.id, email_type: 'day7', send_at: day7.toISOString(), status: 'pending' }
       ]);
     } catch (e) {
-      console.error('[Affiliate Queue Error]', e);
+      logger.error({ err: e, affiliateId }, 'affiliates.onboarding_queue.failed');
     }
     
     // Send approval notification email
@@ -461,12 +473,14 @@ export async function approveAffiliate(affiliateId: string) {
         config: customConfig || undefined
       });
     } catch (e) {
-      console.error('[Affiliate Notification Error]', e);
+      logger.error({ err: e, affiliateId }, 'affiliates.approval_notification.failed');
     }
 
     return { success: true, data: affiliate };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, affiliateId }, 'affiliates.approve.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -501,12 +515,14 @@ export async function rejectAffiliate(affiliateId: string) {
         config: customConfig || undefined
       });
     } catch (e) {
-      console.error('[Affiliate Notification Error]', e);
+      logger.error({ err: e, affiliateId }, 'affiliates.rejection_notification.failed');
     }
 
     return { success: true, data: affiliate };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, affiliateId }, 'affiliates.reject.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -564,8 +580,8 @@ export async function loginAffiliate(email: string, passwordPlain: string) {
 
     return { success: true };
   } catch (err: any) {
-    console.error('[Affiliate Auth] loginAffiliate error:', err);
-    return { success: false, error: err.message || 'Authentication failed' };
+    logger.error({ err, email }, 'affiliates.login.failed');
+    return { success: false, error: 'Authentication failed' };
   }
 }
 
@@ -574,7 +590,8 @@ export async function logoutAffiliate() {
     cookies().delete('lm_affiliate_token');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err }, 'affiliates.logout.failed');
+    return { success: false, error: 'Failed to log out. Please try again.' };
   }
 }
 
@@ -614,7 +631,9 @@ export async function suspendAffiliate(affiliateId: string) {
     if (error) throw error;
     return { success: true, data: affiliate };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, affiliateId }, 'affiliates.suspend.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -629,7 +648,9 @@ export async function deleteAffiliate(affiliateId: string) {
     if (error) throw error;
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, affiliateId }, 'affiliates.delete.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -692,7 +713,9 @@ export async function requestPayout(amount: number, method: string) {
     revalidatePath('/affiliate-portal');
     return { success: true, data: payout };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err }, 'affiliates.payout.request.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -717,7 +740,9 @@ export async function updatePayoutSettings(payoutMethod: string, payoutDetails: 
     revalidatePath('/affiliate-portal');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err }, 'affiliates.payout_settings.update.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -739,7 +764,9 @@ export async function getDecryptedPayoutDetails() {
       return { success: true, data: affiliate.payout_details };
     }
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err }, 'affiliates.payout_details.decrypt.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -754,7 +781,7 @@ export async function approvePayout(payoutId: string, reference: string) {
       .eq('id', payoutId)
       .single();
 
-    if (getError || !payout) throw new Error('Payout not found');
+    if (getError || !payout) throw new NotFoundError('Payout');
 
     // 2. Update payout status to paid
     const { error: updateError } = await supabase
@@ -780,7 +807,9 @@ export async function approvePayout(payoutId: string, reference: string) {
     revalidatePath('/affiliates');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, payoutId }, 'affiliates.payout.approve.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -795,7 +824,7 @@ export async function rejectPayout(payoutId: string) {
       .eq('id', payoutId)
       .single();
 
-    if (getError || !payout) throw new Error('Payout not found');
+    if (getError || !payout) throw new NotFoundError('Payout');
 
     // 2. Update payout status to failed (rejected)
     const { error: updateError } = await supabase
@@ -812,7 +841,9 @@ export async function rejectPayout(payoutId: string) {
     revalidatePath('/affiliates');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, payoutId }, 'affiliates.payout.reject.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -828,7 +859,9 @@ export async function updateCommissionStatus(commissionId: string, status: 'pend
     revalidatePath('/affiliates');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, commissionId }, 'affiliates.commission.status_update.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 
@@ -868,7 +901,9 @@ export async function getDecryptedPayoutBatch(payoutIds: string[]) {
 
     return { success: true, data: result };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, payoutIds }, 'affiliates.payout_batch.decrypt.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error, code: clientError.code };
   }
 }
 

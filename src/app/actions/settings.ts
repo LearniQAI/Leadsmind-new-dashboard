@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId as getWsId, getCurrentWorkspace } from '@/lib/aut
 import { sendEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
 import { createHash, randomBytes } from 'crypto';
+import { logger } from '@/shared/logger';
 
 async function getActiveWorkspaceId() {
   const id = await getWsId();
@@ -16,7 +17,7 @@ async function getActiveWorkspaceId() {
 
 // Audit Trail Stub
 async function logAdminAction(action: string, targetId: string, details: any) {
-  console.log(`[AUDIT] Action: ${action}, Target: ${targetId}, Details:`, details);
+  logger.info({ action, targetId, details }, 'settings.audit.admin_action');
   // This can be expanded to write to an 'audit_logs' table
 }
 
@@ -36,7 +37,8 @@ export async function getWorkspaceBranding() {
   if (error && error.code !== 'PGRST116') throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.workspace.branding.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -73,7 +75,8 @@ export async function updateWorkspaceBranding(updates: any) {
   if (queryResult.error) throw queryResult.error;
   return { data: queryResult.data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'update.workspace.branding.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -100,7 +103,7 @@ export async function verifyCustomDomainCname(customDomain: string) {
       );
       sslStatus = dnsVerified ? 'active' : 'failed';
     } catch (dnsErr: any) {
-      console.warn('[CNAME verification DNS lookup fail]:', dnsErr.message);
+      logger.warn({ err: dnsErr, workspaceId, domain: cleanDomain }, 'settings.cname_verification.dns_lookup_failed');
       sslStatus = 'failed';
     }
 
@@ -140,8 +143,8 @@ export async function verifyCustomDomainCname(customDomain: string) {
 
     return { success: true, sslStatus, dnsVerified };
   } catch (error: any) {
-    console.error('[verifyCustomDomainCname Error]:', error);
-    return { error: error.message };
+    logger.error({ err: error, domain: customDomain }, 'settings.custom_domain_cname.verify.failed');
+    return { error: 'Failed to verify custom domain.' };
   }
 }
 
@@ -172,13 +175,14 @@ export async function getWorkspaceMembers() {
    .eq('workspace_id', workspaceId);
 
   if (error) {
-    console.error('[getWorkspaceMembers] Error:', error);
+    logger.error({ err: error, workspaceId }, 'settings.workspace_members.fetch.failed');
     throw error;
   }
   
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.workspace.members.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -196,18 +200,20 @@ export async function getWorkspaceInvitations() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.workspace.invitations.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
 export async function inviteTeamMember(
- email: string, 
- role: string = 'member', 
+ email: string,
+ role: string = 'member',
  permissions: string[] = ['dashboard'],
  options?: { directCreate?: boolean; fullName?: string; password?: string }
 ) {
+ let workspaceId: string | null = null;
  try {
-  const workspaceId = await getActiveWorkspaceId();
+  workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
@@ -236,7 +242,10 @@ export async function inviteTeamMember(
     user_metadata: { full_name: options.fullName }
    });
 
-   if (authError) return { error: authError.message };
+   if (authError) {
+     logger.error({ err: authError, workspaceId }, 'settings.team_member.auth_create.failed');
+     return { error: 'Failed to create user account.' };
+   }
 
    // 1.5 Create user profile record in public.users
    const { error: profileError } = await adminSupabase
@@ -248,7 +257,7 @@ export async function inviteTeamMember(
      last_name: options.fullName?.split(' ').slice(1).join(' ') || '',
     });
 
-   if (profileError) console.error('Error creating user profile:', profileError);
+   if (profileError) logger.error({ err: profileError, workspaceId }, 'settings.team_member.profile_create.failed');
 
    // 2. Insert into workspace_members via Admin to bypass RLS
    const { error: memberError } = await adminSupabase
@@ -260,7 +269,10 @@ export async function inviteTeamMember(
      permissions
     });
 
-   if (memberError) return { error: memberError.message };
+   if (memberError) {
+     logger.error({ err: memberError, workspaceId }, 'settings.team_member.member_insert.failed');
+     return { error: 'Failed to add member to workspace.' };
+   }
 
    revalidatePath('/settings');
    return { data: authData.user };
@@ -279,7 +291,10 @@ export async function inviteTeamMember(
     .select()
     .single();
 
-   if (error) return { error: error.message };
+   if (error) {
+     logger.error({ err: error, workspaceId }, 'settings.team_invitation.insert.failed');
+     return { error: 'Failed to create invitation.' };
+   }
 
    revalidatePath('/settings');
 
@@ -314,7 +329,8 @@ export async function inviteTeamMember(
    return { data };
   }
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workspaceId }, 'settings.team_member.invite.failed');
+  return { error: 'Failed to invite team member.' };
  }
 }
 
@@ -322,7 +338,7 @@ export async function updateMemberPermissions(memberId: string, role: string, pe
   try {
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) {
-      console.error('[updateMemberPermissions] No active workspace found');
+      logger.error({ memberId }, 'settings.member_permissions.no_workspace');
       return { error: 'No workspace active' };
     }
 
@@ -339,16 +355,14 @@ export async function updateMemberPermissions(memberId: string, role: string, pe
       .single();
 
     if (checkError || !currentMember) {
-      console.error('[updateMemberPermissions] Security check failed:', checkError);
+      logger.error({ err: checkError, workspaceId, memberId }, 'settings.member_permissions.security_check.failed');
       return { error: 'Unauthorized: Could not verify permissions' };
     }
 
     if (currentMember.role !== 'admin' && currentMember.role !== 'owner') {
-      console.error('[updateMemberPermissions] Unauthorized role:', currentMember.role);
+      logger.warn({ workspaceId, memberId, role: currentMember.role }, 'settings.member_permissions.unauthorized_role');
       return { error: 'Unauthorized: Insufficient privileges' };
     }
-
-    console.log(`[updateMemberPermissions] Updating member ${memberId} in workspace ${workspaceId} to role ${role} with permissions:`, permissions);
 
     const { error: updateError } = await adminClient
       .from('workspace_members')
@@ -360,23 +374,16 @@ export async function updateMemberPermissions(memberId: string, role: string, pe
       .eq('workspace_id', workspaceId);
 
     if (updateError) {
-      console.error('[updateMemberPermissions] Update error details:', {
-        message: updateError.message,
-        code: updateError.code,
-        details: updateError.details,
-        hint: updateError.hint
-      });
+      logger.error({ err: updateError, workspaceId, memberId }, 'settings.member_permissions.update.failed');
       throw updateError;
     }
-
-    console.log(`[updateMemberPermissions] Successfully updated member ${memberId}`);
 
     revalidatePath('/settings');
     await logAdminAction('UPDATE_PERMISSIONS', memberId, { role, permissions });
     return { success: true };
   } catch (error: any) {
-    console.error('[updateMemberPermissions] Caught error:', error);
-    return { error: error.message };
+    logger.error({ err: error, memberId }, 'settings.member_permissions.update_action.failed');
+    return { error: 'Failed to update member permissions.' };
   }
 }
 
@@ -413,7 +420,8 @@ export async function deleteMember(memberId: string) {
     await logAdminAction('DELETE_MEMBER', memberId, { workspaceId });
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'delete.member.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -450,7 +458,8 @@ export async function removeInvitation(invitationId: string) {
     await logAdminAction('REMOVE_INVITATION', invitationId, { workspaceId });
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'remove.invitation.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -469,7 +478,8 @@ export async function getWebhooks() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.webhooks.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -490,7 +500,8 @@ export async function createWebhook(url: string, events: string[]) {
   revalidatePath('/settings');
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'create.webhook.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -510,7 +521,8 @@ export async function deleteWebhook(id: string) {
   revalidatePath('/settings');
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'delete.webhook.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -531,7 +543,8 @@ export async function getWebhookLogs(webhookId: string) {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.webhook.logs.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -552,7 +565,8 @@ export async function getWorkspaceApiKey() {
   if (error) throw error;
   return { data: data.api_key };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.workspace.api.key.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -573,7 +587,8 @@ export async function generateWorkspaceApiKey() {
   if (error) throw error;
   return { data: data.api_key };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'generate.workspace.api.key.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -601,7 +616,8 @@ export async function updateWorkspaceLogo(logoUrl: string) {
 
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'update.workspace.logo.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -627,8 +643,8 @@ export async function testEmailConnection() {
 
   return { success: true };
  } catch (error: any) {
-  console.error('[testEmailConnection] Error:', error.message);
-  return { error: error.message };
+  logger.error({ err: error }, 'settings.email_connection.test.failed');
+  return { error: 'Failed to send test email.' };
  }
 }
 
@@ -647,7 +663,8 @@ export async function getOAuthClients() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.oauth.clients.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -678,7 +695,8 @@ export async function createOAuthClient(name: string, redirectUris: string[], sc
   revalidatePath('/settings');
   return { data, clientSecret }; // Return raw secret once for user copy
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'create.oauth.client.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -698,7 +716,8 @@ export async function deleteOAuthClient(clientId: string) {
   revalidatePath('/settings');
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'delete.oauth.client.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 

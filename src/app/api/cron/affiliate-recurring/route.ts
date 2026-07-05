@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -23,7 +24,8 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (fetchErr) {
-      return NextResponse.json({ error: fetchErr.message }, { status: 500 })
+      logger.error({ err: fetchErr }, 'cron.affiliate_recurring.commissions_fetch.failed')
+      return NextResponse.json({ error: 'Failed to fetch recurring commissions.' }, { status: 500 })
     }
 
     // Group by (affiliate_id, programme_id, source_id, source_type) to find the latest monthly entry
@@ -111,7 +113,7 @@ export async function GET(req: NextRequest) {
         .single()
 
       if (insErr) {
-        console.error('[Affiliate Recurring Cron] Insert Error:', insErr)
+        logger.error({ err: insErr, affiliateId: comm.affiliate_id }, 'cron.affiliate_recurring.commission_insert.failed')
         continue
       }
 
@@ -154,8 +156,8 @@ export async function GET(req: NextRequest) {
       processed
     })
   } catch (err: any) {
-    console.error('[Affiliate Recurring Cron Error]', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'cron.affiliate_recurring.failed')
+    return NextResponse.json({ error: 'Recurring commission processing failed.' }, { status: 500 })
   }
 }
 

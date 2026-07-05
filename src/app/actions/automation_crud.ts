@@ -4,6 +4,8 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 export async function createWorkflow(data: { name: string; trigger_type: string; description?: string }) {
  try {
@@ -36,13 +38,15 @@ export async function createWorkflow(data: { name: string; trigger_type: string;
        <p style="font-size: 12px; color: #666;">This is an automated notification from your LeadsMind Dashboard.</p>
       </div>
      `
-   }).catch(err => console.error('Failed to send automation creation email:', err));
+   }).catch(err => logger.error({ err, workspaceId }, 'automation.workflow.create_email.failed'));
   }
 
   revalidatePath('/automations');
   return { data: workflow };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'automation.workflow.create.failed');
+  const clientError = toClientError(error);
+  return { error: clientError.error };
  }
 }
 
@@ -78,13 +82,15 @@ export async function updateWorkflow(id: string, updates: any) {
        <p style="font-size: 12px; color: #666;">This is an automated notification from your LeadsMind Dashboard.</p>
       </div>
      `
-   }).catch(err => console.error('Failed to send automation update email:', err));
+   }).catch(err => logger.error({ err, workflowId: id }, 'automation.workflow.update_email.failed'));
   }
 
   revalidatePath('/automations');
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workflowId: id }, 'automation.workflow.update.failed');
+  const clientError = toClientError(error);
+  return { error: clientError.error };
  }
 }
 
@@ -99,6 +105,8 @@ export async function deleteWorkflow(id: string) {
   revalidatePath('/automations');
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workflowId: id }, 'automation.workflow.delete.failed');
+  const clientError = toClientError(error);
+  return { error: clientError.error };
  }
 }

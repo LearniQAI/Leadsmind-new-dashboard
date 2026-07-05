@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 const slugify = (t: string) => t.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '').replace(/\-\-+/g, '-').replace(/^-+/, '').replace(/-+$/, '');
 
@@ -14,7 +15,8 @@ export async function getCategories() {
     if (error) throw error;
     return { data: data || [] };
   } catch (err: any) {
-    return { error: err.message || 'Fetch categories failed' };
+    logger.error({ err: err }, 'get.categories.failed');
+    return { error: 'Fetch categories failed' };
   }
 }
 
@@ -27,7 +29,8 @@ export async function createCategory(name: string) {
     revalidatePath('/blog');
     return { data };
   } catch (err: any) {
-    return { error: err.message || 'Category creation failed' };
+    logger.error({ err: err }, 'create.category.failed');
+    return { error: 'Category creation failed' };
   }
 }
 
@@ -43,7 +46,8 @@ export async function getPosts(filters?: { status?: string; categoryId?: string;
     if (error) throw error;
     return { data: data || [] };
   } catch (err: any) {
-    return { error: err.message || 'Fetch posts failed' };
+    logger.error({ err: err }, 'get.posts.failed');
+    return { error: 'Fetch posts failed' };
   }
 }
 
@@ -55,7 +59,8 @@ export async function getPostDetails(postId: string) {
     if (error) throw error;
     return { data };
   } catch (err: any) {
-    return { error: err.message || 'Fetch post details failed' };
+    logger.error({ err: err }, 'get.post.details.failed');
+    return { error: 'Fetch post details failed' };
   }
 }
 
@@ -90,7 +95,8 @@ export async function createPost(postData: { title: string; category_id?: string
     revalidatePath('/blog');
     return { data };
   } catch (err: any) {
-    return { error: err.message || 'Create post failed' };
+    logger.error({ err: err }, 'create.post.failed');
+    return { error: 'Create post failed' };
   }
 }
 
@@ -125,7 +131,8 @@ export async function updatePost(postId: string, updates: any) {
     if (data.slug) revalidatePath(`/blog/${data.slug}`);
     return { data };
   } catch (err: any) {
-    return { error: err.message || 'Update post failed' };
+    logger.error({ err: err }, 'update.post.failed');
+    return { error: 'Update post failed' };
   }
 }
 
@@ -138,7 +145,8 @@ export async function deletePost(postId: string) {
     revalidatePath('/blog');
     return { success: true };
   } catch (err: any) {
-    return { error: err.message || 'Delete post failed' };
+    logger.error({ err: err }, 'delete.post.failed');
+    return { error: 'Delete post failed' };
   }
 }
 
@@ -157,6 +165,7 @@ export async function checkAndPublishScheduledPosts() {
     data.forEach(p => revalidatePath(`/blog/${p.slug}`));
     return { success: true, count: data.length };
   } catch (err: any) {
-    return { error: err.message || 'Scheduled release check failed' };
+    logger.error({ err: err }, 'check.and.publish.scheduled.posts.failed');
+    return { error: 'Scheduled release check failed' };
   }
 }

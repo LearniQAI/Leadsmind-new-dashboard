@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { PlatformObservabilityEngine } from '@/lib/production/PlatformObservabilityEngine';
+import { logger } from '@/shared/logger';
 
 export async function getSystemHealthData() {
   const supabase = await createServerClient();
@@ -47,6 +48,9 @@ export async function submitPlatformFeedback(feedbackData: any) {
     ...feedbackData
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'production_workspace.platform_feedback.submit.failed');
+    return { success: false, error: 'Failed to submit feedback.' };
+  }
   return { success: true };
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
+import { logger } from '@/shared/logger';
 
 export async function getContact(id: string) {
  const workspaceId = await getCurrentWorkspaceId();
@@ -22,8 +23,8 @@ export async function getContact(id: string) {
  const { data, error } = await query.single();
 
  if (error) {
-  console.error(`[contacts] Error fetching contact ${id}:`, error);
-  return { success: false, error: error.message };
+  logger.error({ err: error, contactId: id }, 'contacts.get.failed');
+  return { success: false, error: 'Failed to fetch contact.' };
  }
  return { success: true, data };
 }
@@ -36,7 +37,10 @@ export async function getContactActivities(contactId: string) {
   .eq('contact_id', contactId)
   .order('created_at', { ascending: false });
 
- if (error) return { success: false, error: error.message };
+ if (error) {
+  logger.error({ err: error, contactId }, 'contacts.activities.fetch.failed');
+  return { success: false, error: 'Failed to fetch activities.' };
+ }
  return { success: true, data };
 }
 
@@ -48,7 +52,10 @@ export async function getContactNotes(contactId: string) {
   .eq('contact_id', contactId)
   .order('created_at', { ascending: false });
 
- if (error) return { success: false, error: error.message };
+ if (error) {
+  logger.error({ err: error, contactId }, 'contacts.notes.fetch.failed');
+  return { success: false, error: 'Failed to fetch notes.' };
+ }
  return { success: true, data };
 }
 
@@ -60,7 +67,10 @@ export async function getContactTasks(contactId: string) {
   .eq('contact_id', contactId)
   .order('due_date', { ascending: true });
 
- if (error) return { success: false, error: error.message };
+ if (error) {
+  logger.error({ err: error, contactId }, 'contacts.tasks.fetch.failed');
+  return { success: false, error: 'Failed to fetch tasks.' };
+ }
  return { success: true, data };
 }
 
@@ -172,7 +182,8 @@ export async function createRegistryTag(name: string) {
 
   if (error) {
     if (error.code === '23505') return { success: false, error: 'Tag already exists' };
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId }, 'contacts.registry_tag.create.failed');
+    return { success: false, error: 'Failed to create tag.' };
   }
 
   revalidatePath('/contacts/tags');
@@ -191,7 +202,10 @@ export async function checkDuplicateContact(email: string) {
     .eq('email', email)
     .maybeSingle();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'contacts.duplicate_check.failed');
+    return { success: false, error: 'Failed to check for duplicate contact.' };
+  }
   return { success: true, exists: !!data, contact: data };
 }
 
@@ -212,7 +226,7 @@ export async function createContact(values: any) {
       referredProgrammeId = attr.programmeId;
     }
   } catch (e) {
-    console.error('[contacts-create-resolve-attribution-error]', e);
+    logger.error({ err: e, workspaceId }, 'contacts.create.attribution_resolution.failed');
   }
 
   const payload: any = {
@@ -250,7 +264,10 @@ export async function createContact(values: any) {
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'contacts.create.failed');
+    return { success: false, error: 'Failed to create contact.' };
+  }
 
   try {
     const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
@@ -264,7 +281,7 @@ export async function createContact(values: any) {
       }
     }).catch(() => {});
   } catch (e) {
-    console.error('[webhook-dispatch-contact-created-error]', e);
+    logger.error({ err: e, workspaceId, contactId: data.id }, 'contacts.create.webhook_dispatch.failed');
   }
   
   // Automated Audit Log for creation
@@ -322,14 +339,19 @@ export async function updateContact(id: string, values: any) {
   .select()
   .single();
 
- if (error) return { success: false, error: error.message };
+ if (error) {
+  logger.error({ err: error, workspaceId, contactId: id }, 'contacts.update.failed');
+  return { success: false, error: 'Failed to update contact.' };
+ }
 
  try {
   const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
   dispatchWebhook(data.workspace_id, 'contact.updated', {
    contact: { id: data.id, first_name: data.first_name, last_name: data.last_name, email: data.email, phone: data.phone },
   }).catch(() => {});
- } catch (e) { console.error('[webhook-dispatch-contact-updated-error]', e); }
+ } catch (e) {
+  logger.error({ err: e, contactId: id }, 'contacts.update.webhook_dispatch.failed');
+ }
  
  revalidatePath('/contacts');
  revalidatePath(`/contacts/${id}`);
@@ -366,8 +388,11 @@ export async function deleteContact(id: string) {
   .eq('id', id)
   .eq('workspace_id', workspaceId);
 
- if (error) return { success: false, error: error.message };
- 
+ if (error) {
+  logger.error({ err: error, workspaceId, contactId: id }, 'contacts.delete.failed');
+  return { success: false, error: 'Failed to delete contact.' };
+ }
+
  revalidatePath('/contacts');
  return { success: true };
 }
@@ -385,8 +410,8 @@ export async function addTag(contactId: string, tag: string) {
     .single();
 
   if (fetchError) {
-    console.error(`[contacts] Error fetching tags for ${contactId}:`, fetchError);
-    return { success: false, error: fetchError.message };
+    logger.error({ err: fetchError, contactId }, 'contacts.add_tag.fetch.failed');
+    return { success: false, error: 'Failed to fetch contact tags.' };
   }
 
   if (!contact) {
@@ -405,8 +430,8 @@ export async function addTag(contactId: string, tag: string) {
     .eq("id", contactId).eq("workspace_id", workspaceId);
 
   if (updateError) {
-    console.error(`[contacts] Error updating tags for ${contactId}:`, updateError);
-    return { success: false, error: updateError.message };
+    logger.error({ err: updateError, contactId }, 'contacts.add_tag.update.failed');
+    return { success: false, error: 'Failed to add tag.' };
   }
   
   revalidatePath(`/contacts/${contactId}`);
@@ -439,7 +464,10 @@ export async function bulkAddTag(ids: string[], tag: string): Promise<{ success:
     }));
 
     const { error: logError } = await supabase.from('contact_activities').insert(activities);
-    if (logError) return { success: false, error: logError.message };
+    if (logError) {
+      logger.error({ err: logError, workspaceId }, 'contacts.bulk_add_tag.activity_log.failed');
+      return { success: false, error: 'Failed to log tag activity.' };
+    }
   }
 
   revalidatePath('/contacts');
@@ -459,7 +487,7 @@ export async function bulkRemoveTag(ids: string[], tag: string) {
       .single();
 
     if (fetchError || !contact) {
-      console.error(`[contacts] Error fetching tags for ${id}:`, fetchError);
+      if (fetchError) logger.error({ err: fetchError, contactId: id }, 'contacts.bulk_remove_tag.fetch.failed');
       continue; // Or return error
     }
 
@@ -473,8 +501,8 @@ export async function bulkRemoveTag(ids: string[], tag: string) {
       .eq("id", id).eq("workspace_id", workspaceId);
     
     if (updateError) {
-      console.error(`[contacts] Error removing tag from ${id}:`, updateError);
-      return { success: false, error: updateError.message };
+      logger.error({ err: updateError, contactId: id }, 'contacts.bulk_remove_tag.update.failed');
+      return { success: false, error: 'Failed to remove tag.' };
     }
   }
 
@@ -499,8 +527,11 @@ export async function createNote(values: { contactId: string; content: string })
   .select()
   .single();
 
- if (error) return { success: false, error: error.message };
- 
+ if (error) {
+  logger.error({ err: error, workspaceId, contactId: values.contactId }, 'contacts.note.create.failed');
+  return { success: false, error: 'Failed to add note.' };
+ }
+
  // Log activity
  await supabase.from('contact_activities').insert({
   workspace_id: workspaceId,
@@ -543,8 +574,11 @@ export async function deleteNote(id: string, contactId: string) {
   .eq('id', id)
   .eq('workspace_id', workspaceId);
 
- if (error) return { success: false, error: error.message };
- 
+ if (error) {
+  logger.error({ err: error, workspaceId, noteId: id }, 'contacts.note.delete.failed');
+  return { success: false, error: 'Failed to delete note.' };
+ }
+
  revalidatePath(`/contacts/${contactId}`);
  return { success: true };
 }
@@ -564,8 +598,11 @@ export async function createTask(values: { contactId: string; title: string }) {
   .select()
   .single();
 
- if (error) return { success: false, error: error.message };
- 
+ if (error) {
+  logger.error({ err: error, workspaceId, contactId: values.contactId }, 'contacts.task.create.failed');
+  return { success: false, error: 'Failed to create task.' };
+ }
+
  revalidatePath(`/contacts/${values.contactId}`);
  return { success: true, data };
 }
@@ -580,8 +617,11 @@ export async function toggleTaskStatus(id: string, contactId: string, currentSta
   .update({ status: newStatus })
   .eq("id", id).eq("workspace_id", workspaceId);
 
- if (error) return { success: false, error: error.message };
- 
+ if (error) {
+  logger.error({ err: error, workspaceId, taskId: id }, 'contacts.task.status_toggle.failed');
+  return { success: false, error: 'Failed to update task status.' };
+ }
+
  revalidatePath(`/contacts/${contactId}`);
  return { success: true };
 }
@@ -617,8 +657,11 @@ export async function deleteTask(id: string) {
   .eq('id', id)
   .eq('workspace_id', workspaceId);
 
- if (error) return { success: false, error: error.message };
- 
+ if (error) {
+  logger.error({ err: error, workspaceId, taskId: id }, 'contacts.task.delete.failed');
+  return { success: false, error: 'Failed to delete task.' };
+ }
+
  return { success: true };
 }
 
@@ -635,6 +678,9 @@ export async function searchContacts(query: string) {
     .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
     .limit(10);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'contacts.search.failed');
+    return { success: false, error: 'Search failed. Please try again.' };
+  }
   return { success: true, data };
 }

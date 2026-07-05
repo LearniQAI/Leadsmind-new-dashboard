@@ -3,6 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth';
 import { getOrCreateStudentContact } from './studentEnrollments';
+import { logger } from '@/shared/logger';
 
 /**
  * Marks a lesson complete for the student.
@@ -103,7 +104,7 @@ export async function markLessonComplete(courseId: string, lessonId: string) {
         });
       }
     } catch (telemetryErr) {
-      console.error('[Student Progress Telemetry Hook Error]:', telemetryErr);
+      logger.error({ err: telemetryErr, workspaceId, contactId, courseId }, 'student_progress.telemetry_hook.failed');
     }
 
     // Calculate updated percentage
@@ -127,12 +128,13 @@ export async function markLessonComplete(courseId: string, lessonId: string) {
       const { evaluateStudentStruggle } = await import('../../../libs/core/src/analytics/struggle-processor');
       await evaluateStudentStruggle(contactId, courseId, workspaceId);
     } catch (struggleErr) {
-      console.error('[Struggle processor trigger error]:', struggleErr);
+      logger.error({ err: struggleErr, workspaceId, contactId, courseId }, 'student_progress.struggle_processor.failed');
     }
 
     return { success: true, progressPercentage: percentage };
   } catch (err: any) {
-    return { error: err.message };
+    logger.error({ err, courseId, lessonId }, 'student_progress.mark_lesson_complete.failed');
+    return { error: 'Failed to mark lesson complete.' };
   }
 }
 
@@ -178,7 +180,8 @@ export async function markLessonIncomplete(courseId: string, lessonId: string) {
 
     return { success: true, progressPercentage: percentage };
   } catch (err: any) {
-    return { error: err.message };
+    logger.error({ err, courseId, lessonId }, 'student_progress.mark_lesson_incomplete.failed');
+    return { error: 'Failed to mark lesson incomplete.' };
   }
 }
 
@@ -206,7 +209,8 @@ export async function getCompletedLessons(courseId: string) {
     if (error) throw error;
     return { data: (progressList || []).map((p: any) => p.lesson_id) };
   } catch (err: any) {
-    return { error: err.message };
+    logger.error({ err, courseId }, 'student_progress.completed_lessons.fetch.failed');
+    return { error: 'Failed to fetch completed lessons.' };
   }
 }
 
@@ -256,11 +260,12 @@ export async function submitQuizAttempt(payload: {
       const { evaluateStudentStruggle } = await import('../../../libs/core/src/analytics/struggle-processor');
       await evaluateStudentStruggle(contactId, payload.courseId, workspaceId);
     } catch (struggleErr) {
-      console.error('[Struggle processor trigger error]:', struggleErr);
+      logger.error({ err: struggleErr, workspaceId, contactId, courseId: payload.courseId }, 'student_progress.struggle_processor.failed');
     }
 
     return { success: true };
   } catch (err: any) {
-    return { error: err.message };
+    logger.error({ err, courseId: payload.courseId, lessonId: payload.lessonId }, 'student_progress.quiz_attempt.submit.failed');
+    return { error: 'Failed to submit quiz attempt.' };
   }
 }

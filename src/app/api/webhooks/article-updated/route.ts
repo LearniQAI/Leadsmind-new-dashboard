@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/requireAuth';
+import { logger } from '@/shared/logger';
 
 export async function POST(req: NextRequest) {
   const authResult = await requireAuth(req);
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { slug, title, event } = body;
 
-    console.log(`[Article Updated Webhook] Event: ${event}, Article: "${title}" (${slug})`);
+    logger.info({ event, slug, title }, 'webhook.article_updated.received');
 
     const sitemapUrl = 'https://www.leadsmind.io/sitemap-articles.xml';
     
@@ -21,14 +22,20 @@ export async function POST(req: NextRequest) {
     const pingPromises = [
       fetch(googlePingUrl)
         .then(res => ({ engine: 'Google', status: res.status }))
-        .catch(err => ({ engine: 'Google', error: err.message })),
+        .catch(err => {
+          logger.warn({ err, engine: 'Google' }, 'webhook.article_updated.sitemap_ping.failed');
+          return { engine: 'Google', error: 'Ping failed' };
+        }),
       fetch(bingPingUrl)
         .then(res => ({ engine: 'Bing', status: res.status }))
-        .catch(err => ({ engine: 'Bing', error: err.message }))
+        .catch(err => {
+          logger.warn({ err, engine: 'Bing' }, 'webhook.article_updated.sitemap_ping.failed');
+          return { engine: 'Bing', error: 'Ping failed' };
+        })
     ];
 
     const pingResults = await Promise.all(pingPromises);
-    console.log('[Article Updated Webhook] Ping Results:', pingResults);
+    logger.info({ pingResults }, 'webhook.article_updated.ping_results');
 
     return NextResponse.json({
       success: true,
@@ -36,7 +43,7 @@ export async function POST(req: NextRequest) {
       ping_results: pingResults
     });
   } catch (err: any) {
-    console.error('[Article Updated Webhook Exception]:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'webhook.article_updated.failed');
+    return NextResponse.json({ error: 'Article update webhook failed.' }, { status: 500 });
   }
 }

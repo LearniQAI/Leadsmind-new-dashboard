@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { encrypt, decrypt } from '@/lib/encryption'
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig'
 import { sendEmail } from '@/lib/email'
+import { logger } from '@/shared/logger'
 
 export async function getEmailProvider(workspaceId: string) {
   if (!workspaceId) return { success: false, error: 'Workspace ID is required' }
@@ -16,7 +17,8 @@ export async function getEmailProvider(workspaceId: string) {
     .maybeSingle()
 
   if (error) {
-    return { success: false, error: error.message }
+    logger.error({ err: error, workspaceId }, 'email_providers.get.failed')
+    return { success: false, error: 'Failed to fetch email provider settings.' }
   }
 
   if (!data) {
@@ -30,7 +32,7 @@ export async function getEmailProvider(workspaceId: string) {
       maskedKey = `••••••••••••${rawKey.slice(-4)}`
     }
   } catch (err) {
-    console.error('Failed to decrypt key for masking:', err)
+    logger.error({ err, workspaceId }, 'email_providers.key_decrypt.failed')
   }
 
   return {
@@ -82,7 +84,8 @@ export async function saveEmailProvider(
     })
 
   if (error) {
-    return { success: false, error: error.message }
+    logger.error({ err: error, workspaceId }, 'email_providers.save.failed')
+    return { success: false, error: 'Failed to save email provider settings.' }
   }
 
   return { success: true }
@@ -125,7 +128,7 @@ export async function verifyEmailProvider(workspaceId: string) {
 
     return { success: true }
   } catch (err: any) {
-    console.error('Email provider verification failed:', err)
-    return { success: false, error: err.message || 'Failed to send test verification email' }
+    logger.error({ err, workspaceId }, 'email_providers.verify.failed')
+    return { success: false, error: 'Failed to send test verification email' }
   }
 }

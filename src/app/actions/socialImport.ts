@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const ZAR_EXCHANGE_RATE = 18.5;
@@ -28,7 +29,10 @@ export async function expandSocialPostToBlog(payload: {
     status: 'queued'
   }).select().single();
 
-  if (jErr) return { error: `Failed to queue social job: ${jErr.message}` };
+  if (jErr) {
+    logger.error({ err: jErr, workspaceId: wsId }, 'social_import.job.queue.failed');
+    return { error: 'Failed to queue social import job.' };
+  }
 
   try {
     // Update state to processing
@@ -74,7 +78,8 @@ Social post source text:
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`GPT-4o-mini expansion failed: ${errText}`);
+      logger.error({ errText, workspaceId: wsId }, 'social_import.openai_expansion.request_failed');
+      throw new Error('AI expansion request failed.');
     }
 
     const result = await response.json();
@@ -106,7 +111,10 @@ Social post source text:
       target_keyword: 'optimised'
     }).select().single();
 
-    if (pErr) throw new Error(`Failed to publish draft post: ${pErr.message}`);
+    if (pErr) {
+      logger.error({ err: pErr, workspaceId: wsId }, 'social_import.draft_post.publish_failed');
+      throw new Error('Failed to publish draft post.');
+    }
 
     // Update job log to completed
     await supabase.from('blog_social_imports').update({
@@ -121,20 +129,21 @@ Social post source text:
     return { data: { postId: post.id } };
 
   } catch (err: any) {
-    console.error('[Social Post Expansion Failed]:', err);
+    logger.error({ err, workspaceId: wsId, jobId: job.id }, 'social_import.expansion.failed');
     await supabase.from('blog_social_imports').update({
       status: 'failed',
       error_message: err.message || 'Expansion orchestration pipeline failure.',
       updated_at: new Date().toISOString()
     }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
 
-    return { error: err.message || 'Social expansion pipeline aborted.' };
+    return { error: 'Social expansion pipeline aborted.' };
   }
 }
 
 export async function getVoiceNoteRecords() {
+  let wsId: string | null = null;
   try {
-    const wsId = await getCurrentWorkspaceId();
+    wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
     const supabase = await createServerClient();
 
@@ -170,6 +179,7 @@ export async function getVoiceNoteRecords() {
     if (error) throw error;
     return { data: data || [] };
   } catch (err: any) {
-    return { error: err.message || 'Fetch voice notes failed' };
+    logger.error({ err, workspaceId: wsId }, 'social_import.voice_notes.fetch.failed');
+    return { error: 'Fetch voice notes failed' };
   }
 }
