@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import CrmDashboardMainArea from "@/components/pagesUI/dashboard/crm-dashboard/CrmDashboardMainArea";
 import MetaData from "@/hooks/useMetaData";

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import EmplyeeDashboardMainArea from "@/components/pagesUI/dashboard/employee-dashboard/EmplyeeDashboardMainArea";
 import MetaData from "@/hooks/useMetaData";

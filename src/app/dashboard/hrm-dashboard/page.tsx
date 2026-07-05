@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
 import React from "react";
