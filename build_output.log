@@ -1,0 +1,239 @@
+
+> leadsmind@1.1 build
+> cross-env NODE_OPTIONS=--max-old-space-size=4096 next build
+
+   ▲ Next.js 14.0.3
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+./src/app/ai-studio/research/ResearchPortalClient.tsx
+44:6  Warning: React Hook useEffect has a missing dependency: 'supabase'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/campaigns/[id]/builder/EmailBuilderClient.tsx
+448:6  Warning: React Hook useEffect has missing dependencies: 'addBlock' and 'updateBlockContent'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/community/forums/ForumsClient.tsx
+53:6  Warning: React Hook useEffect has a missing dependency: 'fetchPosts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/community/page.tsx
+56:6  Warning: React Hook useEffect has a missing dependency: 'fetchPosts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/content-studio/ContentStudioWorkspaceClient.tsx
+839:6  Warning: React Hook useEffect has a missing dependency: 'runGrammarCheck'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+845:36  Warning: The ref value 'checkTimerRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'checkTimerRef.current' to a variable inside the effect, and use that variable in the cleanup function.  react-hooks/exhaustive-deps
+
+./src/app/courses/[id]/automations/AutomationsClient.tsx
+53:6  Warning: React Hook useEffect has a missing dependency: 'loadRules'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/courses/[id]/components/CourseAnalyticsTab.tsx
+36:6  Warning: React Hook useEffect has a missing dependency: 'fetchAnalytics'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/courses/[id]/components/CourseLandingForm.tsx
+57:6  Warning: React Hook useEffect has a missing dependency: 'slug'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+84:6  Warning: React Hook useEffect has a missing dependency: 'syncPreview'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+265:79  Warning: Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+
+./src/app/courses/[id]/components/CourseSubmissionsTab.tsx
+38:6  Warning: React Hook useEffect has a missing dependency: 'fetchSubmissions'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/courses/[id]/components/LessonCreatorModal.tsx
+159:6  Warning: React Hook useEffect has a missing dependency: 'fetchOrCreateQuiz'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/courses/[id]/components/QuizBuilder.tsx
+52:6  Warning: React Hook useEffect has a missing dependency: 'loadQuestions'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/courses/[id]/CourseWorkspaceClient.tsx
+69:6  Warning: React Hook useEffect has a missing dependency: 'refreshWorkspace'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/courses/[id]/learn/components/QuizPlayer.tsx
+121:6  Warning: React Hook useEffect has a missing dependency: 'loadQuizData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+138:6  Warning: React Hook useEffect has a missing dependency: 'handleCompleteQuiz'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/courses/[id]/quiz/[quizId]/QuizAnalyticsConsole.tsx
+26:6  Warning: React Hook useEffect has a missing dependency: 'loadSubmissions'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/courses/[id]/quiz/[quizId]/QuizWorkbenchClient.tsx
+90:6  Warning: React Hook useEffect has missing dependencies: 'loadQuestions' and 'loadSettings'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/finance/connected-accounts/page.tsx
+54:43  Warning: React Hook useEffect has a missing dependency: 'fetchConnections'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/finance/page.tsx
+60:6  Warning: React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/finance/reconciliation/page.tsx
+72:6  Warning: React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/finance/reports/page.tsx
+77:6  Warning: React Hook useEffect has a missing dependency: 'fetchContactsForCompliance'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+261:6  Warning: React Hook useEffect has missing dependencies: 'generateCashFlowReport', 'generatePLReport', and 'generateVatReport'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/finance/transactions/page.tsx
+86:6  Warning: React Hook useEffect has a missing dependency: 'fetchTransactions'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/builder/[id]/components/FormBuilderContext.tsx
+145:6  Warning: React Hook useEffect has a missing dependency: 'state.formId'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/builder/[id]/components/RuntimeStore.tsx
+75:6  Warning: React Hook useEffect has a missing dependency: 'evalOptions'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+142:6  Warning: React Hook useCallback has a missing dependency: 'evalOptions'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/ab-testing/page.tsx
+27:6  Warning: React Hook useEffect has a missing dependency: 'supabase'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/analytics/page.tsx
+35:6  Warning: React Hook useEffect has a missing dependency: 'supabase'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/automations/components/ExecutionLogs.tsx
+53:6  Warning: React Hook useEffect has a missing dependency: 'loadLogs'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/automations/components/WorkflowEditor.tsx
+68:6  Warning: React Hook useEffect has a missing dependency: 'supabase'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/automations/page.tsx
+65:6  Warning: React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/governance/components/AuditLogsViewer.tsx
+39:6  Warning: React Hook useEffect has a missing dependency: 'loadLogs'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/governance/components/BetaHealthDashboard.tsx
+33:6  Warning: React Hook useEffect has a missing dependency: 'runVerificationSuite'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/governance/components/CollaborationIndicator.tsx
+120:6  Warning: React Hook useEffect has a missing dependency: 'isOwner'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+128:6  Warning: React Hook useEffect has missing dependencies: 'channel', 'userEmail', and 'userInitials'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/governance/components/DiagnosticsDashboard.tsx
+46:6  Warning: React Hook useEffect has a missing dependency: 'loadDiagnostics'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/governance/components/PublishControls.tsx
+62:6  Warning: React Hook useEffect has a missing dependency: 'runValidation'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/governance/components/VersionHistoryTimeline.tsx
+60:6  Warning: React Hook useEffect has a missing dependency: 'loadHistory'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/governance/page.tsx
+39:6  Warning: React Hook useEffect has a missing dependency: 'loadForm'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/realtime/components/CollabActivityFeed.tsx
+53:6  Warning: React Hook useEffect has a missing dependency: 'loadHistoricalLogs'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/realtime/components/CollabPresenceList.tsx
+58:6  Warning: React Hook useEffect has a missing dependency: 'syncPresence'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/forms/[id]/realtime/components/RealtimeNotificationHandler.tsx
+49:6  Warning: React Hook useEffect has a missing dependency: 'onGovernanceTriggered'. Either include it or remove the dependency array. If 'onGovernanceTriggered' changes too often, find the parent component that defines it and wrap that definition in useCallback.  react-hooks/exhaustive-deps
+
+./src/app/hr/employees/page.tsx
+79:6  Warning: React Hook useEffect has missing dependencies: 'fetchEmployees' and 'fetchMembers'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/hr/leave/page.tsx
+84:6  Warning: React Hook useEffect has a missing dependency: 'fetchLeaveData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/hr/page.tsx
+115:6  Warning: React Hook useEffect has a missing dependency: 'fetchHRData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/hr/payroll/page.tsx
+106:6  Warning: React Hook useEffect has a missing dependency: 'fetchPayrollData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/hr/time-tracking/page.tsx
+83:6  Warning: React Hook useEffect has a missing dependency: 'fetchTimeData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/inventory/page.tsx
+69:6  Warning: React Hook useEffect has a missing dependency: 'fetchInventory'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/layout.tsx
+77:7  Warning: Custom fonts not added in `pages/_document.js` will only load for a single page. This is discouraged. See: https://nextjs.org/docs/messages/no-page-custom-font  @next/next/no-page-custom-font
+
+./src/app/public/forms/[id]/usePublicForm.ts
+61:9  Warning: The 'logicRules' logical expression could make the dependencies of useEffect Hook (at line 93) change on every render. To fix this, wrap the initialization of 'logicRules' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+144:6  Warning: React Hook useEffect has a missing dependency: 'workspaceId'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+170:6  Warning: React Hook useEffect has missing dependencies: 'formId' and 'workspaceId'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/settings/components/tabs/AiCreditsTab.tsx
+39:6  Warning: React Hook useEffect has a missing dependency: 'loadCredits'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/settings/components/tabs/CustomDomainsTab.tsx
+32:32  Warning: React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/settings/components/tabs/EmailProviderTab.tsx
+45:6  Warning: React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/settings/developer/page.tsx
+130:6  Warning: React Hook useEffect has missing dependencies: 'fetchApiKeys', 'fetchWebhookLogs', and 'fetchWebhooks'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/settings/lena-chat/components/AgentsTab.tsx
+51:6  Warning: React Hook useEffect has a missing dependency: 'fetchAgents'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/settings/lena-chat/components/ConversationsTab.tsx
+110:6  Warning: React Hook useEffect has missing dependencies: 'fetchAgentsList' and 'fetchConversations'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+120:6  Warning: React Hook useEffect has a missing dependency: 'selectedConv'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/settings/lena-chat/components/KnowledgeBaseTab.tsx
+47:6  Warning: React Hook useEffect has a missing dependency: 'fetchArticles'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/student/courses/[id]/components/LiveHelpWidget.tsx
+43:6  Warning: React Hook useEffect has a missing dependency: 'supabase'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+49:6  Warning: React Hook useEffect has a missing dependency: 'fetchLiveHelpData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+60:6  Warning: React Hook useEffect has missing dependencies: 'activeSession' and 'fetchChats'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+66:6  Warning: React Hook useEffect has a missing dependency: 'fetchRecordings'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/student/courses/[id]/StudentPlayerClient.tsx
+214:6  Warning: React Hook useEffect has a missing dependency: 'handleToggleComplete'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/widget/reviews/ReviewsWidgetClient.tsx
+33:6  Warning: React Hook useEffect has a missing dependency: 'startAutoPlay'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/workspaces/[id]/experts/components/SessionDetailsModal.tsx
+30:6  Warning: React Hook useEffect has a missing dependency: 'fetchDetails'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/workspaces/[id]/experts/components/SessionsTab.tsx
+28:6  Warning: React Hook useEffect has a missing dependency: 'fetchSessions'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/workspaces/[id]/experts/components/SlotsTab.tsx
+25:6  Warning: React Hook useEffect has a missing dependency: 'fetchSlots'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/builder/BuilderEditor.tsx
+165:8  Warning: React Hook React.useEffect has a missing dependency: 'handleSaveDraft'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+396:8  Warning: React Hook React.useEffect has a missing dependency: 'type'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/builder/MediaVaultModal.tsx
+102:6  Warning: React Hook useEffect has a missing dependency: 'handleSearchUnsplash'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/conversations/ContactInfoPanel.tsx
+154:13  Warning: img elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+
+./src/components/conversations/ConversationList.tsx
+152:21  Warning: img elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+
+./src/components/kanban/RichTextEditor.tsx
+44:32  Warning: Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+
+./src/components/kanban/TaskDetailDrawer.tsx
+307:29  Warning: img elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+Missing STRIPE_SECRET_KEY environment variable. Stripe checkout will fail if attempted.
+ti [Error]: The OPENAI_API_KEY environment variable is missing or empty; either provide it, or instantiate the OpenAI client with an apiKey option, like new OpenAI({ apiKey: 'My API Key' }).
+    at new dY (C:\Users\User\Leadsmind-new-dashboard\.next\server\chunks\21369.js:19:30797)
+    at 271729 (C:\Users\User\Leadsmind-new-dashboard\.next\server\app\api\lms\remedial\generate\route.js:1:2436)
+    at t (C:\Users\User\Leadsmind-new-dashboard\.next\server\webpack-runtime.js:1:143)
+    at 824718 (C:\Users\User\Leadsmind-new-dashboard\.next\server\app\api\lms\remedial\generate\route.js:1:1019)
+    at t (C:\Users\User\Leadsmind-new-dashboard\.next\server\webpack-runtime.js:1:143)
+    at r (C:\Users\User\Leadsmind-new-dashboard\.next\server\app\api\lms\remedial\generate\route.js:29:1999)
+    at C:\Users\User\Leadsmind-new-dashboard\.next\server\app\api\lms\remedial\generate\route.js:29:2052
+    at t.X (C:\Users\User\Leadsmind-new-dashboard\.next\server\webpack-runtime.js:1:2440)
+    at C:\Users\User\Leadsmind-new-dashboard\.next\server\app\api\lms\remedial\generate\route.js:29:2012
+    at Object.<anonymous> (C:\Users\User\Leadsmind-new-dashboard\.next\server\app\api\lms\remedial\generate\route.js:29:2081)
+
+> Build error occurred
+Error: Failed to collect page data for /api/lms/remedial/generate
+    at C:\Users\User\Leadsmind-new-dashboard\node_modules\next\dist\build\utils.js:1217:15
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  type: 'Error'
+}
