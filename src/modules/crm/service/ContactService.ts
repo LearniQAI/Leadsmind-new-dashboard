@@ -205,20 +205,10 @@ export class ContactService {
     }, "contacts.addTag");
   }
 
-  /**
-   * Loop-based by default (safe, no DB dependency). If you've created the
-   * `bulk_add_tag` Postgres function, swap the loop below for
-   * `await this.repo.bulkAddTagViaRpc(ids, tag, workspaceId);` for an
-   * atomic, single-round-trip version — see ContactRepository for details.
-   */
   async bulkAddTag(ids: string[], tag: string, workspaceId: string) {
     return toResult(async () => {
-      for (const id of ids) {
-        const tags = await this.repo.getTags(id, workspaceId);
-        if (!tags.includes(tag)) {
-          await this.repo.setTags(id, workspaceId, [...tags, tag]);
-        }
-      }
+      logger.info({ count: ids.length, tag, workspaceId }, "contact.bulkAddTag");
+      await this.repo.bulkAddTagRpc(ids, tag, workspaceId);
       await this.repo.logActivitiesBulk(
         ids.map((id) => ({
           workspace_id: workspaceId,
@@ -231,16 +221,10 @@ export class ContactService {
     }, "contacts.bulkAddTag");
   }
 
-  /**
-   * Falls back to a scoped per-row loop if you haven't created a
-   * `bulk_remove_tag` RPC yet — see ContactRepository for the RPC version.
-   */
   async bulkRemoveTag(ids: string[], tag: string, workspaceId: string) {
     return toResult(async () => {
-      for (const id of ids) {
-        const tags = await this.repo.getTags(id, workspaceId);
-        await this.repo.setTags(id, workspaceId, tags.filter((t) => t !== tag));
-      }
+      logger.info({ count: ids.length, tag, workspaceId }, "contact.bulkRemoveTag");
+      await this.repo.bulkRemoveTagRpc(ids, tag, workspaceId);
     }, "contacts.bulkRemoveTag");
   }
 
@@ -261,11 +245,7 @@ export class ContactService {
   async globalRenameTag(workspaceId: string, oldTag: string, newTag: string) {
     return toResult(async () => {
       await this.repo.renameRegistryTag(workspaceId, oldTag, newTag);
-      const contacts = await this.repo.findByTag(workspaceId, oldTag);
-      for (const c of contacts) {
-        const renamed = (c.tags ?? []).map((t) => (t === oldTag ? newTag : t));
-        await this.repo.setTags(c.id, workspaceId, Array.from(new Set(renamed)));
-      }
+      await this.repo.globalRenameTagRpc(workspaceId, oldTag, newTag);
     }, "contacts.globalRenameTag");
   }
 
