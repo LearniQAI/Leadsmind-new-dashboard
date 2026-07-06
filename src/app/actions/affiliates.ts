@@ -30,6 +30,15 @@ function verifyPassword(password: string, hashWithSalt: string): boolean {
   return timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(verifyHash, 'hex'));
 }
 
+// Confirms the caller has an authenticated Supabase session. Workspace-membership
+// scoping is enforced by RLS policies on the affiliate_* tables, so this only
+// needs to reject anonymous/unauthenticated callers.
+async function requireAuthenticatedUser(supabase: Awaited<ReturnType<typeof createServerClient>>) {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  return user;
+}
+
 // --- Plan Gate Helpers ---
 
 async function checkPlanGateForProgrammeCreation(workspaceId: string) {
@@ -96,6 +105,9 @@ export async function createProgramme(workspaceId: string, data: any) {
     await checkPlanGateForProgrammeCreation(workspaceId);
 
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     const { data: programme, error } = await supabase
       .from('affiliate_programmes')
       .insert({
@@ -131,6 +143,9 @@ export async function createProgramme(workspaceId: string, data: any) {
 export async function getProgrammes(workspaceId: string) {
   try {
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     const { data, error } = await supabase
       .from('affiliate_programmes')
       .select('*')
@@ -149,6 +164,9 @@ export async function getProgrammes(workspaceId: string) {
 export async function getProgrammeById(id: string) {
   try {
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     const { data, error } = await supabase
       .from('affiliate_programmes')
       .select('*')
@@ -167,6 +185,9 @@ export async function getProgrammeById(id: string) {
 export async function updateProgramme(id: string, data: any) {
   try {
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     const { data: programme, error } = await supabase
       .from('affiliate_programmes')
       .update({
@@ -200,6 +221,9 @@ export async function updateProgramme(id: string, data: any) {
 export async function deleteProgramme(id: string) {
   try {
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     const { error } = await supabase
       .from('affiliate_programmes')
       .delete()
@@ -425,6 +449,9 @@ export async function applyToProgramme(
 export async function approveAffiliate(affiliateId: string) {
   try {
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     const { data: affiliate, error } = await supabase
       .from('affiliates')
       .update({
@@ -487,6 +514,9 @@ export async function approveAffiliate(affiliateId: string) {
 export async function rejectAffiliate(affiliateId: string) {
   try {
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     const { data: affiliate, error } = await supabase
       .from('affiliates')
       .update({
@@ -621,6 +651,9 @@ export async function getAuthenticatedAffiliate() {
 export async function suspendAffiliate(affiliateId: string) {
   try {
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     const { data: affiliate, error } = await supabase
       .from('affiliates')
       .update({ status: 'suspended' })
@@ -640,6 +673,9 @@ export async function suspendAffiliate(affiliateId: string) {
 export async function deleteAffiliate(affiliateId: string) {
   try {
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     // Hard delete. clicks/commissions/payouts cascade via FK; parent_affiliate_id -> null.
     const { error } = await supabase
       .from('affiliates')
@@ -773,7 +809,9 @@ export async function getDecryptedPayoutDetails() {
 export async function approvePayout(payoutId: string, reference: string) {
   try {
     const supabase = await createServerClient();
-    
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     // 1. Get payout details
     const { data: payout, error: getError } = await supabase
       .from('affiliate_payouts')
@@ -816,7 +854,9 @@ export async function approvePayout(payoutId: string, reference: string) {
 export async function rejectPayout(payoutId: string) {
   try {
     const supabase = await createServerClient();
-    
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     // 1. Get payout details
     const { data: payout, error: getError } = await supabase
       .from('affiliate_payouts')
@@ -850,6 +890,9 @@ export async function rejectPayout(payoutId: string) {
 export async function updateCommissionStatus(commissionId: string, status: 'pending' | 'approved' | 'reversed' | 'paid') {
   try {
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     const { error } = await supabase
       .from('affiliate_commissions')
       .update({ status })
@@ -868,6 +911,9 @@ export async function updateCommissionStatus(commissionId: string, status: 'pend
 export async function getDecryptedPayoutBatch(payoutIds: string[]) {
   try {
     const supabase = await createServerClient();
+    const user = await requireAuthenticatedUser(supabase);
+    if (!user) return { success: false, error: 'Unauthorized' };
+
     const { data: payouts, error: payoutsError } = await supabase
       .from('affiliate_payouts')
       .select('*, affiliate:affiliates(full_name, email, payout_details)')

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { encrypt } from '@/lib/encryption'
+import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
@@ -89,9 +90,9 @@ export async function GET(req: Request) {
 
     if (!page) throw new Error('No Facebook Page found.')
 
-    console.log('[Meta OAuth] Page found:', page?.id, page?.name)
-    console.log('[Meta OAuth] instagram_business_account from page:', JSON.stringify(page?.instagram_business_account))
-    console.log('[Meta OAuth] whatsapp_business_account from page:', JSON.stringify(page?.whatsapp_business_account))
+    logger.info({ pageId: page?.id, pageName: page?.name }, 'meta_oauth.page.found')
+    logger.info({ igAccount: page?.instagram_business_account }, 'meta_oauth.instagram_business_account.from_page')
+    logger.info({ wabaAccount: page?.whatsapp_business_account }, 'meta_oauth.whatsapp_business_account.from_page')
 
     // STEP 2 - Always save Facebook:
     await supabase.from('platform_connections').upsert({
@@ -109,16 +110,16 @@ export async function GET(req: Request) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'workspace_id,platform' })
 
-    console.log('[Meta OAuth] Facebook saved successfully')
+    logger.info({}, 'meta_oauth.facebook.saved')
 
     // STEP 3 - Try to save Instagram (non-fatal if fails):
-    console.log('[Meta OAuth] Attempting Instagram/WhatsApp discovery, userToken present:', !!userToken)
+    logger.info({ hasUserToken: !!userToken }, 'meta_oauth.instagram_whatsapp_discovery.attempting')
     const igIdDirect = page?.instagram_business_account?.id
-    console.log('[Meta OAuth] Starting Instagram discovery, igIdDirect:', igIdDirect)
+    logger.info({ igIdDirect }, 'meta_oauth.instagram_discovery.starting')
     let igId = igIdDirect
     let igUsername = null
 
-    console.log('[Meta OAuth] igId after attempt 1:', igId)
+    logger.info({ igId }, 'meta_oauth.instagram.attempt_1')
 
     if (!igId) {
       try {
@@ -127,8 +128,8 @@ export async function GET(req: Request) {
         )
         const igData = await igRes.json()
         igId = igData?.instagram_business_account?.id
-      } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
-      console.log('[Meta OAuth] igId after attempt 2:', igId)
+      } catch (err: any) { logger.error({ err: err.message }, 'meta_oauth.discovery.failed') }
+      logger.info({ igId }, 'meta_oauth.instagram.attempt_2')
     }
 
     if (!igId) {
@@ -142,7 +143,7 @@ export async function GET(req: Request) {
             `https://graph.facebook.com/v18.0/${biz.id}/instagram_accounts?fields=id,username&access_token=${userToken}`
           )
           const igData = await igRes.json()
-          console.log('[Meta OAuth] IG accounts for biz', biz.id, ':', JSON.stringify(igData))
+          logger.info({ bizId: biz.id, igData }, 'meta_oauth.instagram_accounts.for_business')
           if (igData.data?.[0]) {
             igId = igData.data[0].id
             igUsername = igData.data[0].username
@@ -150,10 +151,10 @@ export async function GET(req: Request) {
           }
         }
       } catch (err: any) {
-        console.error('[Meta OAuth] Instagram attempt 3 error:', err.message)
+        logger.error({ err: err.message }, 'meta_oauth.instagram.attempt_3_failed')
       }
     }
-    console.log('[Meta OAuth] igId after attempt 3:', igId)
+    logger.info({ igId }, 'meta_oauth.instagram.attempt_3')
 
     if (!igId) {
       try {
@@ -162,11 +163,11 @@ export async function GET(req: Request) {
           `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account{id,username}&access_token=${userToken}`
         )
         const pageDetail = await pageDetailRes.json()
-        console.log('[Meta OAuth] Page detail with IG (userToken):', JSON.stringify(pageDetail))
+        logger.info({ pageDetail }, 'meta_oauth.instagram.page_detail_user_token')
         igId = pageDetail?.instagram_business_account?.id
         igUsername = pageDetail?.instagram_business_account?.username
       } catch (err: any) {
-        console.error('[Meta OAuth] Instagram attempt 4 userToken error:', err.message)
+        logger.error({ err: err.message }, 'meta_oauth.instagram.attempt_4_failed')
       }
     }
 
@@ -177,14 +178,14 @@ export async function GET(req: Request) {
           `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account{id,username}&access_token=${page.access_token}`
         )
         const pageDetail = await pageDetailRes.json()
-        console.log('[Meta OAuth] Page detail with IG (pageToken):', JSON.stringify(pageDetail))
+        logger.info({ pageDetail }, 'meta_oauth.instagram.page_detail_page_token')
         igId = pageDetail?.instagram_business_account?.id
         igUsername = pageDetail?.instagram_business_account?.username
       } catch (err: any) {
-        console.error('[Meta OAuth] Instagram attempt 5 pageToken error:', err.message)
+        logger.error({ err: err.message }, 'meta_oauth.instagram.attempt_5_failed')
       }
     }
-    console.log('[Meta OAuth] igId after attempt 4/5:', igId)
+    logger.info({ igId }, 'meta_oauth.instagram.attempt_4_5')
 
     if (igId) {
       if (!igUsername) {
@@ -194,10 +195,10 @@ export async function GET(req: Request) {
           )
           const igProfile = await igProfileRes.json()
           igUsername = igProfile.username ?? null
-        } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
+        } catch (err: any) { logger.error({ err: err.message }, 'meta_oauth.instagram.username_discovery_failed') }
       }
 
-      console.log('[Meta OAuth] Saving Instagram, igId:', igId, 'username:', igUsername)
+      logger.info({ igId, igUsername }, 'meta_oauth.instagram.saving')
       await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
         platform: 'instagram',
@@ -214,14 +215,14 @@ export async function GET(req: Request) {
         last_sync_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'workspace_id,platform' })
-      console.log('[Meta OAuth] Instagram saved successfully')
+      logger.info({}, 'meta_oauth.instagram.saved')
     }
 
     // STEP 4 - Try to save WhatsApp (non-fatal if fails):
-    console.log('[Meta OAuth] Starting WhatsApp discovery')
+    logger.info({}, 'meta_oauth.whatsapp_discovery.starting')
     let wabaId = page?.whatsapp_business_account?.id
     let wabaName = page?.whatsapp_business_account?.name
-    console.log('[Meta OAuth] wabaId from page:', wabaId)
+    logger.info({ wabaId }, 'meta_oauth.whatsapp.from_page')
 
     if (!wabaId) {
       try {
@@ -230,11 +231,11 @@ export async function GET(req: Request) {
           `https://graph.facebook.com/v18.0/${page.id}?fields=whatsapp_business_account{id,name,phone_numbers{id,display_phone_number}}&access_token=${userToken}`
         )
         const waPageData = await waPageRes.json()
-        console.log('[Meta OAuth] WA from page direct (userToken):', JSON.stringify(waPageData))
+        logger.info({ waPageData }, 'meta_oauth.whatsapp.page_direct_user_token')
         wabaId = waPageData?.whatsapp_business_account?.id
         wabaName = waPageData?.whatsapp_business_account?.name
       } catch (err: any) {
-        console.error('[Meta OAuth] WhatsApp page direct userToken error:', err.message)
+        logger.error({ err: err.message }, 'meta_oauth.whatsapp.page_direct_user_token_failed')
       }
     }
 
@@ -245,14 +246,14 @@ export async function GET(req: Request) {
           `https://graph.facebook.com/v18.0/${page.id}?fields=whatsapp_business_account{id,name,phone_numbers{id,display_phone_number}}&access_token=${page.access_token}`
         )
         const waPageData = await waPageRes.json()
-        console.log('[Meta OAuth] WA from page direct (pageToken):', JSON.stringify(waPageData))
+        logger.info({ waPageData }, 'meta_oauth.whatsapp.page_direct_page_token')
         wabaId = waPageData?.whatsapp_business_account?.id
         wabaName = waPageData?.whatsapp_business_account?.name
       } catch (err: any) {
-        console.error('[Meta OAuth] WhatsApp page direct pageToken error:', err.message)
+        logger.error({ err: err.message }, 'meta_oauth.whatsapp.page_direct_page_token_failed')
       }
     }
-    console.log('[Meta OAuth] wabaId after page direct:', wabaId)
+    logger.info({ wabaId }, 'meta_oauth.whatsapp.after_page_direct')
 
     if (!wabaId) {
       try {
@@ -269,8 +270,8 @@ export async function GET(req: Request) {
           wabaId = wabaData.data?.[0]?.id
           wabaName = wabaData.data?.[0]?.name
         }
-      } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
-      console.log('[Meta OAuth] wabaId after business fallback:', wabaId)
+      } catch (err: any) { logger.error({ err: err.message }, 'meta_oauth.whatsapp.business_fallback_1_failed') }
+      logger.info({ wabaId }, 'meta_oauth.whatsapp.after_business_fallback_1')
     }
 
     if (!wabaId) {
@@ -284,7 +285,7 @@ export async function GET(req: Request) {
             `https://graph.facebook.com/v18.0/${biz.id}/owned_whatsapp_business_accounts?access_token=${userToken}`
           )
           const wabaData = await wabaRes.json()
-          console.log('[Meta OAuth] WABA for biz', biz.id, ':', JSON.stringify(wabaData))
+          logger.info({ bizId: biz.id, wabaData }, 'meta_oauth.whatsapp.waba_for_business')
           if (wabaData.data?.[0]) {
             wabaId = wabaData.data[0].id
             wabaName = wabaData.data[0].name
@@ -292,10 +293,10 @@ export async function GET(req: Request) {
           }
         }
       } catch (err: any) {
-        console.error('[Meta OAuth] WhatsApp business fallback error:', err.message)
+        logger.error({ err: err.message }, 'meta_oauth.whatsapp.business_fallback_2_failed')
       }
     }
-    console.log('[Meta OAuth] wabaId after business fallback:', wabaId)
+    logger.info({ wabaId }, 'meta_oauth.whatsapp.after_business_fallback_2')
 
     if (wabaId) {
       try {
@@ -306,7 +307,7 @@ export async function GET(req: Request) {
         const phone = phoneData.data?.[0]
 
         if (phone) {
-          console.log('[Meta OAuth] Saving WhatsApp, wabaId:', wabaId, 'phone:', phone?.id)
+          logger.info({ wabaId, phoneId: phone?.id }, 'meta_oauth.whatsapp.saving')
           await supabase.from('platform_connections').upsert({
             workspace_id: workspaceId,
             platform: 'whatsapp',
@@ -322,9 +323,9 @@ export async function GET(req: Request) {
             last_sync_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }, { onConflict: 'workspace_id,platform' })
-          console.log('[Meta OAuth] WhatsApp saved successfully')
+          logger.info({}, 'meta_oauth.whatsapp.saved')
         }
-      } catch (err: any) { console.error('[Meta OAuth] Discovery error:', err.message) }
+      } catch (err: any) { logger.error({ err: err.message }, 'meta_oauth.whatsapp.phone_discovery_failed') }
     }
 
     // STEP 5 - Redirect to success:
@@ -341,7 +342,7 @@ export async function GET(req: Request) {
     )
 
   } catch (err: any) {
-    console.error('[Meta OAuth Callback Error]', err.message)
+    logger.error({ err: err.message }, 'meta_oauth.callback.failed')
     return NextResponse.redirect(
       `${REDIRECT_BASE}/settings/integrations?meta_oauth=1&error=${encodeURIComponent(err.message)}`
     )

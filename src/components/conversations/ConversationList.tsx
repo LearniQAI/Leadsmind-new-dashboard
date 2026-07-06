@@ -149,7 +149,7 @@ export function ConversationList({
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#eef2ff] font-bold text-[12px] shrink-0 font-space-grotesk overflow-hidden mt-0.5">
                   {conv.contacts?.avatar_url ? (
-                    <img src={conv.contacts.avatar_url} className="w-full h-full object-cover" />
+                    <img src={conv.contacts.avatar_url} alt={conv.contacts?.first_name || 'Contact avatar'} className="w-full h-full object-cover" />
                   ) : (
                     conv.contacts?.first_name?.[0] || 'U'
                   )}

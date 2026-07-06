@@ -36,6 +36,9 @@ export const FailureMonitor = {
     });
 
     this.privateEnabled = true;
-    console.log('[FailureMonitor] Global error instrumentation active.');
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log('[FailureMonitor] Global error instrumentation active.');
+    }
   }
 };

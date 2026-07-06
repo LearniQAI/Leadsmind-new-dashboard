@@ -16,10 +16,12 @@ export async function updateCourseEmailTemplate(
   }
 ) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
 
     // Verify workspace ownership
     const { data: course, error: fetchErr } = await supabase

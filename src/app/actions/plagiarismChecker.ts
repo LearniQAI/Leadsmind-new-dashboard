@@ -52,9 +52,12 @@ function calculateJaccard(setA: Set<string>, setB: Set<string>): number {
 
 export async function scanOriginality(documentId: string, text: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
-    const supabase = await createServerClient();
 
     // 1. Credit Check Guard: Retrieve current credits
     const { data: ws, error: wsErr } = await supabase
@@ -400,9 +403,12 @@ Example output format:
 
 export async function getWorkspaceCredits() {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { data: 100 };
+
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No workspace context' };
-    const supabase = await createServerClient();
     const { data } = await supabase
       .from('workspaces')
       .select('ai_credits')
@@ -416,9 +422,12 @@ export async function getWorkspaceCredits() {
 
 export async function scanSnippetOriginality(textSnippet: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
-    const supabase = await createServerClient();
 
     const matches: PlagiarismMatch[] = [];
     const cleanText = textSnippet.trim();

@@ -1,6 +1,6 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient, createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
@@ -10,6 +10,10 @@ import { toClientError } from '@/shared/errors/AppError';
  */
 export async function seedCourseBlueprints(courseId: string) {
   try {
+    const authClient = await createServerClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No active workspace found' };
 

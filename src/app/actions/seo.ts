@@ -5,10 +5,18 @@ import { getCurrentWorkspaceId as getWsId, getCurrentWorkspace } from '@/lib/aut
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 
+// Resolves the active workspace for the current request, but only for an
+// authenticated caller. Nearly every action in this file routes through this
+// helper (directly or via getSeoProject), so gating auth here centrally
+// protects them instead of repeating the check in each function.
 async function getActiveWorkspaceId() {
+  const supabase = await createServerClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+
   const id = await getWsId();
   if (id) return id;
-  
+
   const ws = await getCurrentWorkspace();
   return ws?.id || null;
 }
@@ -815,8 +823,19 @@ export async function getCompetitorGapAnalysis() {
 // Phase 4: Technical Onsite Health Crawler Server Actions
 export async function triggerSiteHealthCrawl(projectId: string, domainUrl: string) {
   try {
+    const workspaceId = await getActiveWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
     const supabase = await createServerClient();
-    
+
+    const { data: project } = await supabase
+      .from('seo_projects')
+      .select('id')
+      .eq('id', projectId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (!project) return { error: 'SEO project not found.' };
+
     // Dynamically import crawler module to prevent bundler parser failures on client components
     const { crawlLocalDomain, fetchPageSpeedMetrics, calculateHealthScore } = await import('@/lib/seo-crawler');
 
@@ -912,7 +931,19 @@ export async function triggerSiteHealthCrawl(projectId: string, domainUrl: strin
 
 export async function getLatestSiteHealthCrawl(projectId: string) {
   try {
+    const workspaceId = await getActiveWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
     const supabase = await createServerClient();
+
+    const { data: project } = await supabase
+      .from('seo_projects')
+      .select('id')
+      .eq('id', projectId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (!project) return { error: 'SEO project not found.' };
+
     const { data, error } = await supabase
       .from('seo_site_health_crawls')
       .select('*')

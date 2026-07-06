@@ -68,7 +68,10 @@ export function StageSettingsModal({
     if (!editName.trim()) return setEditingId(null);
 
     setIsProcessing(true);
-    console.log(`[DEBUG] Renaming stage ${id} to "${editName.trim()}"`);
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log(`[DEBUG] Renaming stage ${id} to "${editName.trim()}"`);
+    }
     const res = await updateStage(id, editName.trim());
     if (res.success) {
       setStages(prev => prev.map(s => s.id === id ? { ...s, name: editName.trim() } : s));
@@ -76,6 +79,7 @@ export function StageSettingsModal({
       toast.success('Stage synchronized');
       router.refresh();
     } else {
+      // eslint-disable-next-line no-console
       console.error(`[DEBUG] Rename failure:`, res.error);
       toast.error('Failed to rename stage');
     }
@@ -109,7 +113,10 @@ export function StageSettingsModal({
     const tempId = `new-${Date.now()}`;
     const newStage = { id: tempId, name: newStageName.trim(), position: stages.length };
 
-    console.log(`[DEBUG] Adding new stage:`, newStage);
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log(`[DEBUG] Adding new stage:`, newStage);
+    }
 
     // Using updatePipelineStages which already handles 'new-' prefixed IDs
     const res = await updatePipelineStages(pipelineId, [...stages, newStage]);

@@ -22,7 +22,7 @@ export default async function ContactsPage() {
       .select('*')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false }),
-    getWorkspaceTags(workspaceId),
+    getWorkspaceTags(),
     supabase
       .from('workspace_members')
       .select('user_id, user:users(first_name, last_name)')

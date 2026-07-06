@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 export const LeadScoringEngine = {
   /**
@@ -21,7 +22,7 @@ export const LeadScoringEngine = {
         .single();
 
       if (cErr || !contact) {
-        console.warn(`[LeadScoringEngine] Contact ${contactId} not found. Skipping scoring update.`);
+        logger.warn({ contactId }, 'lead_scoring_engine.contact.not_found');
         return;
       }
 
@@ -45,9 +46,9 @@ export const LeadScoringEngine = {
           .eq('status', 'running');
 
         if (cancelErr) {
-          console.error('[LeadScoringEngine] Failed to cancel workflow executions:', cancelErr.message);
+          logger.error({ err: cancelErr.message }, 'lead_scoring_engine.cancel_workflow_executions.failed');
         } else {
-          console.log(`[LeadScoringEngine] Active sequences cancelled for contact ${contactId}`);
+          logger.info({ contactId }, 'lead_scoring_engine.active_sequences.cancelled');
         }
 
         // Notify sales admins/owner (account rep)
@@ -180,9 +181,9 @@ export const LeadScoringEngine = {
         })
         .eq("id", contactId).eq("workspace_id", workspaceId);
 
-      console.log(`[LeadScoringEngine] Score updated for contact ${contactId}: ${finalScore} points (Adjustment: ${scoreAdjustment})`);
+      logger.info({ contactId, finalScore, scoreAdjustment }, 'lead_scoring_engine.score.updated');
     } catch (err: any) {
-      console.error('[LeadScoringEngine] Unexpected execution error:', err.message);
+      logger.error({ err: err.message }, 'lead_scoring_engine.track_scoring_event.failed');
     }
   },
 
@@ -228,7 +229,7 @@ export const LeadScoringEngine = {
       }
       return consecutive;
     } catch (err) {
-      console.error('[LeadScoringEngine] calculateConsecutiveUnopened failed:', err);
+      logger.error({ err }, 'lead_scoring_engine.calculate_consecutive_unopened.failed');
       return 0;
     }
   }

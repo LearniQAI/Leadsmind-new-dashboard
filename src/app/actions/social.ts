@@ -6,9 +6,12 @@ import { logger } from '@/shared/logger';
 
 export async function getSocialAccounts() {
   try {
+    const supabase = await createServerClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { data: [] }
+
     const workspaceId = await getCurrentWorkspaceId()
     if (!workspaceId) return { data: [] }
-    const supabase = await createServerClient()
     const { data, error } = await supabase
       .from('platform_connections')
       .select('platform, status, credentials')
@@ -25,10 +28,13 @@ export async function getSocialAccounts() {
 
 export async function getSocialPosts() {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('social_posts')
    .select('*')
@@ -51,10 +57,13 @@ export async function createSocialPost(postData: {
 }) {
   let workspaceId: string | null = null;
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const results: any = {};
 
     for (const platform of postData.platforms) {
@@ -168,7 +177,12 @@ export async function createSocialPost(postData: {
 export async function publishSocialPost(postId: string) {
  try {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
   const { error } = await supabase
    .from('social_posts')
    .update({ status: 'published', published_at: new Date().toISOString() })

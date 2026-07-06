@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,7 +8,7 @@ export async function POST(req: NextRequest) {
     const resourceState = req.headers.get('x-goog-resource-state');
     const resourceId = req.headers.get('x-goog-resource-id');
 
-    console.log(`[google-webhook] Received push notification. Channel: ${channelId}, State: ${resourceState}`);
+    logger.info({ channelId, resourceState }, 'google_webhook.push_notification.received');
 
     // If it's a sync confirmation message, we just return OK
     if (resourceState === 'sync') {
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (!connection) {
-      console.warn(`[google-webhook] No connection matching channel ID ${channelId}`);
+      logger.warn({ channelId }, 'google_webhook.connection.not_found');
       // return 200 anyway so Google doesn't retry indefinitely
       return new NextResponse('OK', { status: 200 });
     }
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
 
     return new NextResponse('OK', { status: 200 });
   } catch (error) {
-    console.error('[google-webhook] Webhook parsing error:', error);
+    logger.error({ err: error }, 'google_webhook.parsing.failed');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -17,6 +17,7 @@ export function IntegrationsList() {
       const platforms = await getConnectedPlatforms();
       setConnectedPlatforms(platforms || []);
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
     } finally {
       setIsLoading(false);
@@ -30,16 +31,23 @@ export function IntegrationsList() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
-      console.log('[IntegrationsList] URL params on mount:', window.location.search)
-      console.log('[IntegrationsList] meta_oauth:', params.get('meta_oauth'))
-      console.log('[IntegrationsList] needs_instagram:', params.get('needs_instagram'))
-      console.log('[IntegrationsList] needs_whatsapp:', params.get('needs_whatsapp'))
-      
+      if (process.env.NODE_ENV === 'development') {
+        /* eslint-disable no-console */
+        console.log('[IntegrationsList] URL params on mount:', window.location.search)
+        console.log('[IntegrationsList] meta_oauth:', params.get('meta_oauth'))
+        console.log('[IntegrationsList] needs_instagram:', params.get('needs_instagram'))
+        console.log('[IntegrationsList] needs_whatsapp:', params.get('needs_whatsapp'))
+        /* eslint-enable no-console */
+      }
+
       if (params.get('meta_oauth') === '1') {
         const needsInstagram = params.get('needs_instagram') === 'true'
         const needsWhatsapp = params.get('needs_whatsapp') === 'true'
-        console.log('[IntegrationsList] needsInstagram:', needsInstagram, 'needsWhatsapp:', needsWhatsapp)
-        
+        if (process.env.NODE_ENV === 'development') {
+          // eslint-disable-next-line no-console
+          console.log('[IntegrationsList] needsInstagram:', needsInstagram, 'needsWhatsapp:', needsWhatsapp)
+        }
+
         window.history.replaceState({}, '', window.location.pathname)
         fetchPlatforms()
         

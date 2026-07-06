@@ -143,22 +143,34 @@ export default function StudentPlayerClient({
       // Expose SCORM API 1.2
       (window as any).API = {
         LMSInitialize: (param: string) => {
-          console.log("[SCORM 1.2] LMSInitialize");
+          if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log("[SCORM 1.2] LMSInitialize");
+          }
           return "true";
         },
         LMSFinish: (param: string) => {
-          console.log("[SCORM 1.2] LMSFinish");
+          if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log("[SCORM 1.2] LMSFinish");
+          }
           return "true";
         },
         LMSGetValue: (element: string) => {
-          console.log("[SCORM 1.2] LMSGetValue:", element);
+          if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log("[SCORM 1.2] LMSGetValue:", element);
+          }
           if (element === "cmi.core.lesson_status") {
             return completedLessonIds.includes(activeLesson.id) ? "completed" : "incomplete";
           }
           return "";
         },
         LMSSetValue: (element: string, value: string) => {
-          console.log("[SCORM 1.2] LMSSetValue:", element, "to", value);
+          if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log("[SCORM 1.2] LMSSetValue:", element, "to", value);
+          }
           if (element === "cmi.core.lesson_status" && (value === "completed" || value === "passed")) {
             handleToggleComplete(activeLesson.id);
             toast.success("SCORM package completed!");
@@ -176,22 +188,34 @@ export default function StudentPlayerClient({
       // Expose SCORM API 2004
       (window as any).API_1484_11 = {
         Initialize: (param: string) => {
-          console.log("[SCORM 2004] Initialize");
+          if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log("[SCORM 2004] Initialize");
+          }
           return "true";
         },
         Terminate: (param: string) => {
-          console.log("[SCORM 2004] Terminate");
+          if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log("[SCORM 2004] Terminate");
+          }
           return "true";
         },
         GetValue: (element: string) => {
-          console.log("[SCORM 2004] GetValue:", element);
+          if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log("[SCORM 2004] GetValue:", element);
+          }
           if (element === "cmi.completion_status") {
             return completedLessonIds.includes(activeLesson.id) ? "completed" : "incomplete";
           }
           return "";
         },
         SetValue: (element: string, value: string) => {
-          console.log("[SCORM 2004] SetValue:", element, "to", value);
+          if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log("[SCORM 2004] SetValue:", element, "to", value);
+          }
           if ((element === "cmi.completion_status" || element === "cmi.success_status") && (value === "completed" || value === "passed")) {
             handleToggleComplete(activeLesson.id);
             toast.success("SCORM package completed!");
@@ -306,7 +330,10 @@ export default function StudentPlayerClient({
     if (restore === 'true' && videoElement && t) {
       const seconds = parseFloat(t);
       if (!isNaN(seconds) && seconds > 0) {
-        console.log(`[State Restoration] Seeking video to ${seconds}s`);
+        if (process.env.NODE_ENV === 'development') {
+          // eslint-disable-next-line no-console
+          console.log(`[State Restoration] Seeking video to ${seconds}s`);
+        }
         videoElement.currentTime = seconds;
         
         const name = enrollment?.contact?.first_name || 'Student';

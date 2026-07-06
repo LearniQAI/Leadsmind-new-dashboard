@@ -19,10 +19,12 @@ export interface ErasureReceipt {
 }
 
 export async function invokeRightToErasure(contactId: string): Promise<{ success: boolean; data?: ErasureReceipt; error?: string }> {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'No active workspace found.' };
-
-  const supabase = await createServerClient();
 
   try {
     // 1. Fetch contact details before erasure to get the email and verify it belongs to workspace

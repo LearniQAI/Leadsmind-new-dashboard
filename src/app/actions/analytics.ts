@@ -8,10 +8,13 @@ import { toClientError } from '@/shared/errors/AppError';
 export async function getConversionAnalytics() {
  let workspaceId: string | null = null;
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('conversion_events')
    .select('*')
@@ -30,11 +33,13 @@ export async function getConversionAnalytics() {
 export async function getDashboardStats() {
  let workspaceId: string | null = null;
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
-  
   // Fetch counts from various tables for the "System Audit" / Dashboard
   const [leads, orders, tasks, conversations] = await Promise.all([
    supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
@@ -61,6 +66,8 @@ export async function getDashboardStats() {
 export async function getSupportAnalytics() {
   try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
 
     // 1. Zero-Result Search Log
     const { data: zeroResults, error: zErr } = await supabase

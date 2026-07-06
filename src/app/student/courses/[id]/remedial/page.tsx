@@ -7,6 +7,7 @@ import { requireAuth } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { generateRemedialAssignment } from '../../../../../../libs/services/src/ai/remedial-prompter';
 import RemedialClient from './RemedialClient';
+import { logger } from '@/shared/logger';
 
 interface RemedialPageProps {
   params: {
@@ -77,7 +78,7 @@ export default async function RemedialPage({ params, searchParams }: RemedialPag
 
   // If none exists, trigger AI generation immediately
   if (!assignment) {
-    console.log('[Remedial Page] No assignment found, generating via AI prompter...');
+    logger.info({ courseId, lessonId }, 'remedial_page.assignment.generating');
     const result = await generateRemedialAssignment(contactId, courseId, lessonId, enrollment.id);
     if (result.success && result.assignment) {
       assignment = result.assignment;

@@ -34,10 +34,13 @@ async function getActiveWorkspaceId() {
 
 export async function getSenderDomains() {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('sender_domains')
       .select('*')
@@ -54,6 +57,10 @@ export async function getSenderDomains() {
 
 export async function registerSenderDomain(domainName: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
@@ -62,7 +69,6 @@ export async function registerSenderDomain(domainName: string) {
       return { error: 'Invalid domain name format.' };
     }
 
-    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('sender_domains')
       .insert({
@@ -93,10 +99,13 @@ export async function registerSenderDomain(domainName: string) {
 
 export async function deleteSenderDomain(domainId: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { error } = await supabase
       .from('sender_domains')
       .delete()
@@ -115,10 +124,13 @@ export async function deleteSenderDomain(domainId: string) {
 
 export async function verifySenderDomain(domainId: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { data: domain, error: fetchError } = await supabase
       .from('sender_domains')
       .select('*')
@@ -240,6 +252,18 @@ export async function addDomain(
   domainType: 'apex' | 'subdomain' | 'wildcard' = 'subdomain'
 ) {
   try {
+    const supabaseAuth = await createServerClient();
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Unauthorized' };
+
+    const { data: member } = await supabaseAuth
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!member) return { success: false, error: 'Forbidden' };
+
     await checkPlanGateForCustomDomain(workspaceId);
 
     const cleanHostname = hostname.trim().toLowerCase();
@@ -292,6 +316,17 @@ export async function addDomain(
 export async function getDomains(workspaceId: string) {
   try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Unauthorized' };
+
+    const { data: member } = await supabase
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!member) return { success: false, error: 'Forbidden' };
+
     const { data, error } = await supabase
       .from('domain_configurations')
       .select('*')
@@ -308,10 +343,13 @@ export async function getDomains(workspaceId: string) {
 
 export async function updateDomainRouting(domainId: string, routingConfig: any) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { success: false, error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('domain_configurations')
       .update({
@@ -332,10 +370,13 @@ export async function updateDomainRouting(domainId: string, routingConfig: any) 
 
 export async function deleteDomain(domainId: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { success: false, error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { error } = await supabase
       .from('domain_configurations')
       .delete()

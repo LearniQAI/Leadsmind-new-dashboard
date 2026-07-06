@@ -7,10 +7,13 @@ import { logger } from '@/shared/logger';
 // FUNNELS
 export async function getFunnels() {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('funnels')
    .select('*')
@@ -27,10 +30,13 @@ export async function getFunnels() {
 
 export async function createFunnel(name: string) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   // 1. Create Funnel record
   const { data, error } = await supabase
    .from('funnels')
@@ -84,10 +90,13 @@ export async function createFunnel(name: string) {
 // CAMPAIGNS
 export async function getEmailCampaigns() {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('email_campaigns')
    .select('*, template:email_templates(name)')
@@ -104,10 +113,13 @@ export async function getEmailCampaigns() {
 
 export async function createEmailCampaign(name: string) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('email_campaigns')
    .insert({
@@ -130,10 +142,13 @@ export async function createEmailCampaign(name: string) {
 // FORMS
 export async function getForms() {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('forms')
    .select('*, submissions:form_submissions(count)')
@@ -151,10 +166,17 @@ export async function getForms() {
 export async function getForm(id: string) {
  try {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
   const { data, error } = await supabase
    .from('forms')
    .select('*')
    .eq('id', id)
+   .eq('workspace_id', workspaceId)
    .single();
 
   if (error) throw error;
@@ -167,10 +189,13 @@ export async function getForm(id: string) {
 
 export async function createForm(name: string) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('forms')
    .insert({
@@ -194,10 +219,13 @@ export async function createForm(name: string) {
 // REVIEWS / REPUTATION
 export async function getReviews() {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('reputation_reviews')
    .select('*')
@@ -227,10 +255,13 @@ export async function getReviews() {
 // ADS
 export async function getAdCampaigns() {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('ad_campaigns')
    .select('*')
@@ -250,6 +281,9 @@ export async function getAdCampaigns() {
 export async function updateFunnel(id: string, updates: any) {
  try {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   const { data, error } = await supabase.from('funnels').update(updates).eq("id", id).eq("workspace_id", workspaceId).select().single();
   if (error) throw error;
@@ -263,6 +297,9 @@ export async function updateFunnel(id: string, updates: any) {
 export async function deleteFunnelAction(id: string) {
  try {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase.from('funnels').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
@@ -276,6 +313,9 @@ export async function deleteFunnelAction(id: string) {
 export async function updateCampaign(id: string, updates: any) {
  try {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   let workspaceId = await getCurrentWorkspaceId();
   // If moving status to sent or scheduled, enforce Domain Verification rules
   if (updates.status === 'sent' || updates.status === 'scheduled') {
@@ -367,6 +407,9 @@ export async function updateCampaign(id: string, updates: any) {
 export async function deleteCampaignAction(id: string) {
  try {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase.from('email_campaigns').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
@@ -380,6 +423,9 @@ export async function deleteCampaignAction(id: string) {
 export async function updateForm(id: string, updates: any) {
  try {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
 
   // Build a clean update payload — only include columns that exist in the schema
@@ -426,6 +472,9 @@ export async function updateForm(id: string, updates: any) {
 export async function deleteFormAction(id: string) {
  try {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   const { error } = await supabase.from('forms').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
@@ -438,15 +487,19 @@ export async function deleteFormAction(id: string) {
 
 export async function duplicateFunnelAction(id: string) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   // 1. Fetch original funnel
   const { data: original, error: fetchError } = await supabase
    .from('funnels')
    .select('*')
    .eq('id', id)
+   .eq('workspace_id', workspaceId)
    .single();
 
   if (fetchError) throw fetchError;
@@ -511,10 +564,13 @@ export async function duplicateFunnelAction(id: string) {
 
 export async function getWorkspaceApiKey() {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('workspaces')
    .select('api_key')
@@ -531,14 +587,18 @@ export async function getWorkspaceApiKey() {
 
 export async function sendTestEmailAction(campaignId: string, testEmail: string, compiledHtml: string) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data: campaign, error } = await supabase
    .from('email_campaigns')
    .select('subject, from_name, from_email')
    .eq('id', campaignId)
+   .eq('workspace_id', workspaceId)
    .single();
 
   if (error || !campaign) throw new Error('Campaign not found');

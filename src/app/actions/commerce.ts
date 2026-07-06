@@ -7,10 +7,13 @@ import { logger } from '@/shared/logger';
 
 export async function getProducts() {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('products')
    .select('*')
@@ -27,10 +30,13 @@ export async function getProducts() {
 
 export async function createProduct(productData: any) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('products')
    .insert({ ...productData, workspace_id: workspaceId })
@@ -49,7 +55,12 @@ export async function createProduct(productData: any) {
 export async function updateProduct(id: string, updates: any) {
  try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
   const { data, error } = await supabase
    .from('products')
    .update({ ...updates, updated_at: new Date().toISOString() })
@@ -69,7 +80,12 @@ export async function updateProduct(id: string, updates: any) {
 export async function deleteProduct(id: string) {
  try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
     const { error } = await supabase.from('products').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
   revalidatePath('/products');

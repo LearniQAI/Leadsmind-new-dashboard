@@ -86,7 +86,10 @@ export function OpportunityModal({
       value: parseFloat(formData.value) || 0,
     };
 
-    console.log(`[TACTICAL DEBUG] Syncing deal. Action: ${opportunity ? 'UPDATE' : 'CREATE'}, Payload:`, payload);
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log(`[TACTICAL DEBUG] Syncing deal. Action: ${opportunity ? 'UPDATE' : 'CREATE'}, Payload:`, payload);
+    }
 
     const res = opportunity 
       ? await updateOpportunity(opportunity.id, payload)

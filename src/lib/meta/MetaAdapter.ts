@@ -1,4 +1,5 @@
 import { decrypt } from '@/lib/encryption';
+import { logger } from '@/shared/logger';
 
 export class MetaAdapter {
   private credentials: any;
@@ -14,13 +15,13 @@ export class MetaAdapter {
     recipientId: string,
     text: string
   ): Promise<{ success: boolean; externalId?: string; error?: string }> {
-    console.log(`[MetaAdapter] Dispatching Facebook Messenger to PSID ${recipientId}`);
+    logger.info({ recipientId }, 'meta_adapter.facebook.dispatching');
 
     const pageId = this.credentials?.page_id || '';
     const encryptedToken = this.credentials?.page_access_token_encrypted || '';
 
     if (pageId.startsWith('mock_') || !encryptedToken) {
-      console.log('[MetaAdapter] Mock Facebook Messenger Dispatch Successful.');
+      logger.info({}, 'meta_adapter.facebook.mock_dispatch_successful');
       return { success: true, externalId: `mock_fb_out_${Date.now()}` };
     }
 
@@ -50,7 +51,7 @@ export class MetaAdapter {
 
       return { success: true, externalId: data.message_id };
     } catch (e: any) {
-      console.error('[MetaAdapter] Facebook Messenger Error:', e.message);
+      logger.error({ err: e.message }, 'meta_adapter.facebook.failed');
       return { success: false, error: e.message };
     }
   }
@@ -62,13 +63,13 @@ export class MetaAdapter {
     recipientId: string,
     text: string
   ): Promise<{ success: boolean; externalId?: string; error?: string }> {
-    console.log(`[MetaAdapter] Dispatching Instagram DM to IGSID ${recipientId}`);
+    logger.info({ recipientId }, 'meta_adapter.instagram.dispatching');
 
     const instagramId = this.credentials?.instagram_id || '';
     const encryptedToken = this.credentials?.page_access_token_encrypted || '';
 
     if (instagramId.startsWith('mock_') || !encryptedToken) {
-      console.log('[MetaAdapter] Mock Instagram DM Dispatch Successful.');
+      logger.info({}, 'meta_adapter.instagram.mock_dispatch_successful');
       return { success: true, externalId: `mock_ig_out_${Date.now()}` };
     }
 
@@ -98,7 +99,7 @@ export class MetaAdapter {
 
       return { success: true, externalId: data.message_id };
     } catch (e: any) {
-      console.error('[MetaAdapter] Instagram DM Error:', e.message);
+      logger.error({ err: e.message }, 'meta_adapter.instagram.failed');
       return { success: false, error: e.message };
     }
   }
@@ -108,13 +109,13 @@ export class MetaAdapter {
     text: string,
     audioUrl?: string
   ): Promise<{ success: boolean; externalId?: string; error?: string }> {
-    console.log(`[MetaAdapter] Dispatching WhatsApp to ${to}`);
+    logger.info({ to }, 'meta_adapter.whatsapp.dispatching');
 
     const phoneNumberId = this.credentials?.phone_number_id || '';
     const encryptedToken = this.credentials?.access_token_encrypted || this.credentials?.system_user_access_token_encrypted || '';
 
     if (phoneNumberId.startsWith('mock_') || !encryptedToken) {
-      console.log('[MetaAdapter] Mock WhatsApp Dispatch Successful.');
+      logger.info({}, 'meta_adapter.whatsapp.mock_dispatch_successful');
       return { success: true, externalId: `mock_wa_out_${Date.now()}` };
     }
 
@@ -171,7 +172,7 @@ export class MetaAdapter {
 
       return { success: true, externalId: textResId };
     } catch (e: any) {
-      console.error('[MetaAdapter] WhatsApp Error:', e.message);
+      logger.error({ err: e.message }, 'meta_adapter.whatsapp.failed');
       return { success: false, error: e.message };
     }
   }

@@ -62,7 +62,10 @@ export default function HelpVideoPlayer({ videoUrl, chapters = [] }: HelpVideoPl
     if (isPlaying) {
       video.pause();
     } else {
-      video.play().catch(err => console.log('Playback error:', err));
+      video.play().catch(err => {
+        // eslint-disable-next-line no-console
+        console.error('Playback error:', err);
+      });
     }
     setIsPlaying(!isPlaying);
   };
@@ -93,7 +96,10 @@ export default function HelpVideoPlayer({ videoUrl, chapters = [] }: HelpVideoPl
       video.currentTime = startTime;
       setCurrentTime(startTime);
       if (!isPlaying) {
-        video.play().catch(err => console.log(err));
+        video.play().catch(err => {
+          // eslint-disable-next-line no-console
+          console.error('Playback error:', err);
+        });
         setIsPlaying(true);
       }
     }

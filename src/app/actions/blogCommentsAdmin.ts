@@ -9,6 +9,9 @@ import { UnauthorizedError, toClientError } from '@/shared/errors/AppError';
 export async function updateCommentStatus(commentId: string, status: 'approved' | 'spam' | 'rejected' | 'pending') {
   try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new UnauthorizedError();
+
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) throw new UnauthorizedError();
 
@@ -30,6 +33,9 @@ export async function updateCommentStatus(commentId: string, status: 'approved' 
 export async function deleteComment(commentId: string) {
   try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new UnauthorizedError();
+
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) throw new UnauthorizedError();
 
@@ -63,6 +69,9 @@ export async function updateBlogSettings(payload: {
   let workspaceId: string | null = null;
   try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new UnauthorizedError();
+
     workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) throw new UnauthorizedError();
 

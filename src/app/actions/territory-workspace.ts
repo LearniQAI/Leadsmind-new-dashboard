@@ -1,13 +1,18 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 import { logger } from '@/shared/logger';
 
 
 export async function getTerritoryMapData() {
   const supabase = await createServerClient();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData?.user?.id) return { success: false, error: 'Unauthorized' };
+  const { data: userData, error: authError } = await supabase.auth.getUser();
+  if (authError || !userData?.user?.id) return { success: false, error: 'Unauthorized' };
+
+  const cookieStore = cookies();
+  const workspaceId = cookieStore.get('active_workspace_id')?.value;
+  if (!workspaceId) return { success: false, error: 'No active workspace' };
 
   // Fetch a broad sample of leads to simulate the "map viewport"
   // In a real map, you'd query by bounding box using PostGIS, 

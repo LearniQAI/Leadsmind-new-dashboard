@@ -6,6 +6,8 @@ import { logger } from '@/shared/logger';
 
 export async function applyRetainerToInvoice(invoiceId: string, contactId: string, workspaceId: string) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
 
   // 1. Fetch invoice total
   const { data: invoice, error: invError } = await supabase
@@ -103,6 +105,9 @@ export async function applyRetainerToInvoice(invoiceId: string, contactId: strin
 
 export async function getRetainerBalance(contactId: string, workspaceId: string) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return 0;
+
   const { data, error } = await supabase
     .from('retainers')
     .select('amount_remaining')

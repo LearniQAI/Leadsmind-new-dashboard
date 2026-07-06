@@ -11,11 +11,17 @@ import { logger } from '@/shared/logger';
  */
 export async function getPropertyDeal(id: string) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No active workspace' };
 
   const { data: deal, error: dealError } = await supabase
     .from('opportunities')
     .select('*, stage:pipeline_stages(*)')
     .eq('id', id)
+    .eq('workspace_id', workspaceId)
     .single();
 
   if (dealError || !deal) {
@@ -79,7 +85,11 @@ export async function updatePropertyDealContacts(
   sellerId: string | null
 ) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No active workspace' };
 
   const { error } = await supabase
     .from('opportunities')
@@ -108,11 +118,14 @@ export async function dispatchFundsDeclaration(
   buyerId: string,
   phone: string
 ) {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'No active workspace' };
 
   const token = crypto.randomBytes(16).toString('hex');
-  const supabase = await createServerClient();
 
   const { error } = await supabase
     .from('source_of_funds_declarations')
@@ -145,14 +158,16 @@ export async function createConveyancingShare(
   attorneyName: string,
   attorneyEmail: string
 ) {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'No active workspace' };
 
   const token = crypto.randomBytes(16).toString('hex');
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiration
-
-  const supabase = await createServerClient();
 
   const { error } = await supabase
     .from('conveyancing_shares')
@@ -325,10 +340,13 @@ export async function submitFundsDeclaration(
  * Retrieve list of all contacts in the active workspace.
  */
 export async function getWorkspaceContacts() {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return [];
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return [];
 
-  const supabase = await createServerClient();
   const { data } = await supabase
     .from('contacts')
     .select('id, first_name, last_name, email, phone')

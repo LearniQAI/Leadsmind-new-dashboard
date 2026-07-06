@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
 import { createTasksFromTranscript } from './crossConnect';
+import { logger } from '@/shared/logger';
 
 export interface DiarizedSentence {
   speaker: string;
@@ -28,7 +29,7 @@ export async function processMeetingAudio(
 
     if (!appointment) throw new Error('Appointment details not found');
 
-    console.log(`[transcription] Initializing audio sweep for appt: ${appointmentId}. Audio URL: ${audioUrl}`);
+    logger.info({ appointmentId, audioUrl }, 'transcription.audio_sweep.initializing');
 
     let transcriptText = 'Howzit. Thanks for setting up the session. We need to look over the LeadsMind automation settings. Okay, cool, let\'s hook the CRM webhooks up. Great, let\'s touch base next week. Bye!';
     let diarizedContent: DiarizedSentence[] = [
@@ -66,7 +67,7 @@ export async function processMeetingAudio(
           }));
         }
       } catch (err) {
-        console.warn('[transcription] AssemblyAI request failed, falling back to mock SA transcript:', err);
+        logger.warn({ err }, 'transcription.assemblyai.failed_using_mock');
       }
     }
 
@@ -98,7 +99,7 @@ export async function processMeetingAudio(
           summary = aiData.choices[0].message.content;
         }
       } catch (err) {
-        console.warn('[transcription] GPT summarizer failed, using default summary:', err);
+        logger.warn({ err }, 'transcription.gpt_summarizer.failed_using_default');
       }
     }
 
@@ -117,7 +118,7 @@ export async function processMeetingAudio(
     try {
       await createTasksFromTranscript(appointmentId);
     } catch (taskErr) {
-      console.error('[transcription] Task sync failed:', taskErr);
+      logger.error({ err: taskErr }, 'transcription.task_sync.failed');
     }
 
     // 4. CRM Timeline Sync: Log meeting summary as activity
@@ -157,13 +158,13 @@ export async function processMeetingAudio(
           `,
         });
       } catch (mailErr) {
-        console.error('[transcription] Email dispatch failed:', mailErr);
+        logger.error({ err: mailErr }, 'transcription.email_dispatch.failed');
       }
     }
 
     return { success: true, summary };
   } catch (error: any) {
-    console.error('[transcription] Processing error:', error);
+    logger.error({ err: error }, 'transcription.processing.failed');
     return { success: false, error: error.message };
   }
 }

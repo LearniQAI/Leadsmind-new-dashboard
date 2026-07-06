@@ -6,6 +6,8 @@ import { logger } from '@/shared/logger';
 
 export async function convertQuoteToInvoice(quoteId: string) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
 
   // 1. Fetch quote data
   const { data: quote, error: quoteError } = await supabase
@@ -74,6 +76,9 @@ export async function convertQuoteToInvoice(quoteId: string) {
 
 export async function updateQuoteStatus(id: string, status: string) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const { data, error } = await supabase
     .from('quotes')
     .update({ status, updated_at: new Date().toISOString() })
@@ -95,6 +100,9 @@ export async function updateQuoteStatus(id: string, status: string) {
 
 export async function deleteQuote(id: string) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const { error } = await supabase
     .from('quotes')
     .delete()
@@ -114,6 +122,9 @@ export async function deleteQuote(id: string) {
 
 export async function saveQuote(data: any) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const { data: quote, error } = await supabase
     .from('quotes')
     .insert(data)
@@ -134,6 +145,9 @@ export async function saveQuote(data: any) {
 
 export async function getQuoteById(id: string) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return null;
+
   const { data, error } = await supabase
     .from('quotes')
     .select('*, contact:contacts(*)')
@@ -146,6 +160,9 @@ export async function getQuoteById(id: string) {
 
 export async function updateQuote(id: string, data: any) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   // Filter out any potential invalid columns
   const { amount_due, amount_paid, custom_field_values, invoice_number, due_date, ...validData } = data;
   
@@ -175,6 +192,9 @@ export async function updateQuote(id: string, data: any) {
 
 export async function getQuotes(workspaceId: string) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return [];
+
   const { data, error } = await supabase
     .from('quotes')
     .select('*, contact:contacts(*)')

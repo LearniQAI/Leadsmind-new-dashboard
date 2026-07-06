@@ -30,9 +30,12 @@ export async function analyzeContentSEO(params: {
   seoProfile?: string;
 }) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
-    const supabase = await createServerClient();
 
     // 1. Credit Deduction Guard (Charge 3 AI credits)
     const { data: ws, error: wsErr } = await supabase

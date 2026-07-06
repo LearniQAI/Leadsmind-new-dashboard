@@ -1,6 +1,8 @@
 // Observability & Tracing Layer
 // Integrates with Sentry (if configured) or falls back to structured JSON logging for Vercel/Datadog.
 
+import { logger } from '@/shared/logger';
+
 export type AlertSeverity = 'info' | 'warning' | 'error' | 'critical';
 
 interface TraceContext {
@@ -18,13 +20,8 @@ export const Observability = {
    * Log an operational event with structured tracing
    */
   logEvent: (name: string, context: TraceContext = {}) => {
-    const payload = {
-      timestamp: new Date().toISOString(),
-      event: name,
-      ...context
-    };
-    console.log(JSON.stringify(payload));
-    
+    logger.info({ ...context }, name);
+
     // Sentry.addBreadcrumb({ category: 'ops', message: name, data: context });
   },
 
@@ -36,17 +33,15 @@ export const Observability = {
     const stack = typeof error === 'string' ? undefined : error.stack;
 
     const payload = {
-      level: severity.toUpperCase(),
-      timestamp: new Date().toISOString(),
       error: errorMessage,
       stack,
       ...context
     };
 
     if (severity === 'critical' || severity === 'error') {
-      console.error(JSON.stringify(payload));
+      logger.error(payload, `observability.${severity}`);
     } else {
-      console.warn(JSON.stringify(payload));
+      logger.warn(payload, `observability.${severity}`);
     }
 
     // if (process.env.NEXT_PUBLIC_SENTRY_DSN) {

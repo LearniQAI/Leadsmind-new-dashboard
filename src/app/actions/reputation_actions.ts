@@ -9,10 +9,13 @@ import { logger } from '@/shared/logger';
 
 export async function respondToReview(reviewId: string, response: string) {
   try {
+   const supabase = await createServerClient();
+   const { data: { user }, error: authError } = await supabase.auth.getUser();
+   if (authError || !user) return { error: 'Unauthorized' };
+
    const workspaceId = await getCurrentWorkspaceId();
    if (!workspaceId) return { error: 'No workspace active' };
 
-   const supabase = await createServerClient();
    const { data, error } = await supabase
     .from('reputation_reviews')
     .update({
@@ -36,10 +39,13 @@ export async function respondToReview(reviewId: string, response: string) {
 
 export async function deleteReview(reviewId: string) {
   try {
+   const supabase = await createServerClient();
+   const { data: { user }, error: authError } = await supabase.auth.getUser();
+   if (authError || !user) return { error: 'Unauthorized' };
+
    const workspaceId = await getCurrentWorkspaceId();
    if (!workspaceId) return { error: 'No workspace active' };
 
-   const supabase = await createServerClient();
    const { error } = await supabase
     .from('reputation_reviews')
     .delete()
@@ -59,10 +65,13 @@ export async function deleteReview(reviewId: string) {
 export async function getReputationSettings() {
   let workspaceId: string | null = null;
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('reputation_settings')
       .select('*')
@@ -81,10 +90,12 @@ export async function getReputationSettings() {
 export async function saveReputationSettings(updates: { google_review_url: string; facebook_review_url: string }) {
   let workspaceId: string | null = null;
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
 
     // Check if settings record already exists
     const { data: existing } = await supabase
@@ -244,16 +255,19 @@ export async function submitPrivateFeedback(workspaceId: string, reviewerName: s
 export async function sendReviewRequest(contactId: string, channel: 'email' | 'sms' | 'whatsapp') {
   let workspaceId: string | null = null;
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
 
     // Fetch contact details
     const { data: contact, error: contactError } = await supabase
       .from('contacts')
       .select('*')
       .eq('id', contactId)
+      .eq('workspace_id', workspaceId)
       .single();
 
     if (contactError || !contact) {
@@ -437,11 +451,13 @@ async function scrapeDocssaReviews(url: string): Promise<any[]> {
 export async function syncReviewsAction() {
   let workspaceId: string | null = null;
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
-    
     // 1. Fetch reputation settings for the active workspace
     const { data: settings, error: settingsError } = await supabase
       .from('reputation_settings')

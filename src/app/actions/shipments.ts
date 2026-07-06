@@ -1,11 +1,30 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createServerClient } from '@/lib/supabase/server'
 import { detectCourier } from '@/lib/courier/detect'
 import { createTracking } from '@/lib/courier/aftership'
 import { normaliseStatus, NormalStatus } from '@/lib/courier/normalise'
 import { sendShipmentRegistered } from '@/lib/courier/emails'
 import { logger } from '@/shared/logger'
+
+// Confirms the caller is an authenticated member of the given workspace.
+// Used by the dashboard-facing shipment actions below (createAdminClient bypasses
+// RLS, so these need an explicit membership check before touching another
+// workspace's data).
+async function requireWorkspaceMember(workspaceId: string): Promise<boolean> {
+  const supabase = await createServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return false
+
+  const { data: member } = await supabase
+    .from('workspace_members')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  return !!member
+}
 
 export async function createShipment(
   workspaceId: string,
@@ -140,6 +159,17 @@ export async function createShipment(
 
 export async function getShipmentEvents(shipmentId: string) {
   const supabase = createAdminClient()
+
+  const { data: shipment } = await supabase
+    .from('courier_shipments')
+    .select('workspace_id')
+    .eq('id', shipmentId)
+    .maybeSingle()
+
+  if (!shipment || !(await requireWorkspaceMember(shipment.workspace_id))) {
+    return { success: false, error: 'Unauthorized' }
+  }
+
   const { data, error } = await supabase
     .from('shipment_events')
     .select('*')
@@ -154,6 +184,10 @@ export async function getShipmentEvents(shipmentId: string) {
 }
 
 export async function updateTrackingBrand(workspaceId: string, brandSettings: any) {
+  if (!(await requireWorkspaceMember(workspaceId))) {
+    return { success: false, error: 'Unauthorized' }
+  }
+
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('courier_brand_settings')
@@ -186,6 +220,10 @@ export async function uploadBrandLogo(formData: FormData) {
 
   if (!file || !workspaceId) {
     return { success: false, error: 'File and workspaceId are required' }
+  }
+
+  if (!(await requireWorkspaceMember(workspaceId))) {
+    return { success: false, error: 'Unauthorized' }
   }
 
   const timestamp = Date.now()
@@ -346,6 +384,10 @@ export async function updateShipmentStatus(
 
   if (fetchErr || !shipment) {
     return { success: false, error: 'Shipment not found' }
+  }
+
+  if (!(await requireWorkspaceMember(shipment.workspace_id))) {
+    return { success: false, error: 'Unauthorized' }
   }
 
   const { error: updateErr } = await supabase

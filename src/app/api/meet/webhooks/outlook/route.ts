@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +9,7 @@ export async function POST(req: NextRequest) {
     // 1. Outlook Webhook Validation Challenge
     const validationToken = req.nextUrl.searchParams.get('validationToken');
     if (validationToken) {
-      console.log('[outlook-webhook] Responding to subscription validation request.');
+      logger.info({}, 'outlook_webhook.validation.responding');
       return new NextResponse(validationToken, {
         status: 200,
         headers: { 'Content-Type': 'text/plain' },
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = await req.json();
-    console.log('[outlook-webhook] Received notifications:', JSON.stringify(payload));
+    logger.info({ payload }, 'outlook_webhook.notifications.received');
 
     const notifications = payload?.value || [];
     if (notifications.length === 0) {
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (!connection) {
-        console.warn(`[outlook-webhook] No connection found for subscription: ${subscriptionId}`);
+        logger.warn({ subscriptionId }, 'outlook_webhook.connection.not_found');
         continue;
       }
 
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     return new NextResponse('OK', { status: 200 });
   } catch (error) {
-    console.error('[outlook-webhook] Webhook error:', error);
+    logger.error({ err: error }, 'outlook_webhook.failed');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -284,9 +284,12 @@ function assessReadability(text: string) {
 
 export async function checkGrammarAndStyle(documentId: string, text: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
-    const supabase = await createServerClient();
 
     let matches: any[] = [];
     let isExternalApiSuccess = false;

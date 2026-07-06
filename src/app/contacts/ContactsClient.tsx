@@ -176,7 +176,7 @@ export default function ContactsClient({ initialContacts, initialTags, owners = 
         <div className="flex-1 overflow-y-auto common-scrollbar">
           <ContactTable
             contacts={filteredContacts}
-            onSelectContact={(id) => console.log('Select', id)}
+            onSelectContact={() => {}}
             selectedIds={selectedIds}
             onToggleOne={toggleOne}
             onToggleAll={toggleAll}

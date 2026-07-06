@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email';
 import { createAdminClient } from '@/lib/supabase/server';
 import { SpamValidator } from '@/lib/intelligence/SpamValidator';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { logger } from '@/shared/logger';
 
 export interface EmailActionConfig {
   templateType: 'confirmation' | 'notification' | 'recovery' | 'welcome' | 'custom_followup' | 'voice_note' | 'voice_note_notification';
@@ -60,7 +61,7 @@ export const EmailAutomationService = {
     // Spam Check: Gate outbound delivery if score < 50
     const spamResult = SpamValidator.validateEmailContent(subject, bodyText);
     if (!spamResult.passed) {
-      console.warn(`[EmailAutomation] Outbound email blocked by Spam Validator. Score: ${spamResult.score}. Triggers: ${spamResult.triggers.join(', ')}`);
+      logger.warn({ score: spamResult.score, triggers: spamResult.triggers }, 'email_automation.outbound.blocked_by_spam_validator');
       
       // Log blocked activity in contact activities
       const cId = variables.contactId || variables.contact_id || variables.id;
@@ -90,7 +91,7 @@ export const EmailAutomationService = {
 
     if (dbContact && dbContact.is_invalid_email) {
       if (dbContact.phone) {
-        console.log(`[EmailAutomation] Email ${emailTrimmed} is invalid. Redirecting to WhatsApp for phone ${dbContact.phone}`);
+        logger.info({ email: emailTrimmed, phone: dbContact.phone }, 'email_automation.invalid_email.redirected_to_whatsapp');
 
         // Log redirect in activities
         await supabase.from('contact_activities').insert({

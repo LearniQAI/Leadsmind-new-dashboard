@@ -89,7 +89,10 @@ export const exportToPDF = (target: string | RefObject<HTMLElement>, fileName: s
  const element = getElement(target);
  if (!element) return;
  
- console.log(`PDF export requested for ${fileName}, but falling back to print.`);
- window.print(); 
+ if (process.env.NODE_ENV === 'development') {
+  // eslint-disable-next-line no-console
+  console.log(`PDF export requested for ${fileName}, but falling back to print.`);
+ }
+ window.print();
 };
 

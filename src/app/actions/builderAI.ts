@@ -7,10 +7,13 @@ import { toClientError } from '@/shared/errors/AppError';
 
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Unauthorized' };
+
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { success: false, error: 'No active workspace' };
 
-    const supabase = await createServerClient();
     const data = await action(supabase, workspaceId);
     return { success: true, ...data as any };
   } catch (err: any) {

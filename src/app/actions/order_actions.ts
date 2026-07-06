@@ -7,10 +7,13 @@ import { logger } from '@/shared/logger';
 
 export async function updateOrderStatus(orderId: string, status: string) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('orders')
    .update({ status, updated_at: new Date().toISOString() })
@@ -30,10 +33,13 @@ export async function updateOrderStatus(orderId: string, status: string) {
 
 export async function deleteOrder(orderId: string) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { error } = await supabase
    .from('orders')
    .delete()

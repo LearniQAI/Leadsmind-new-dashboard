@@ -2,12 +2,26 @@
 
 import OpenAI from 'openai';
 import { logger } from '@/shared/logger';
+import { createServerClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
 const openai = new OpenAI({
  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function getAIChatResponse(messages: { role: 'user' | 'assistant' | 'system', content: string }[]) {
+ const supabase = await createServerClient();
+ const { data: { user }, error: authError } = await supabase.auth.getUser();
+ if (authError || !user) {
+  return { error: 'Unauthorized' };
+ }
+
+ const cookieStore = cookies();
+ const workspaceId = cookieStore.get('active_workspace_id')?.value;
+ if (!workspaceId) {
+  return { error: 'No active workspace' };
+ }
+
  if (!process.env.OPENAI_API_KEY) {
   return { error: 'OpenAI API key not configured' };
  }

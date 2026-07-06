@@ -1,5 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { refreshGoogleToken } from './refreshToken';
+import { logger } from '@/shared/logger';
 
 /**
  * Service to interact with Gmail API using OAuth tokens.
@@ -15,14 +16,14 @@ export async function getGmailService(workspaceId: string) {
   .single();
 
  if (error || !connection) {
-  console.error(`[gmail-service] Connection not found for workspace ${workspaceId}:`, error);
+  logger.error({ err: error, workspaceId }, 'gmail_service.connection.not_found');
   throw new Error('Gmail is not connected for this workspace');
  }
 
- console.log('[gmail-service] Found connection. Checking token status...');
+ logger.info({ workspaceId }, 'gmail_service.connection.found');
  // Ensure token is fresh
  const accessToken = await refreshGoogleToken(connection.id, connection.credentials);
- console.log('[gmail-service] Token ready.');
+ logger.info({ workspaceId }, 'gmail_service.token.ready');
 
  return {
   /**

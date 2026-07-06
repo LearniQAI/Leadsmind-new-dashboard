@@ -17,12 +17,16 @@ export const BundleLoader = {
       return importFn();
     }
 
-    console.log(`[BundleLoader] Lazy loading dynamic package chunk: ${moduleName}`);
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log(`[BundleLoader] Lazy loading dynamic package chunk: ${moduleName}`);
+    }
     try {
       const importedModule = await importFn();
       this.privateLoadedModules.add(moduleName);
       return importedModule;
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error(`[BundleLoader] Failed to dynamically import "${moduleName}":`, err);
       throw err;
     }
