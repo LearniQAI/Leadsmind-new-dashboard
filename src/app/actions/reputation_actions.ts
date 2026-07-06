@@ -5,13 +5,17 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
 import { sendSMS } from '@/lib/sms';
+import { logger } from '@/shared/logger';
 
 export async function respondToReview(reviewId: string, response: string) {
   try {
+   const supabase = await createServerClient();
+   const { data: { user }, error: authError } = await supabase.auth.getUser();
+   if (authError || !user) return { error: 'Unauthorized' };
+
    const workspaceId = await getCurrentWorkspaceId();
    if (!workspaceId) return { error: 'No workspace active' };
 
-   const supabase = await createServerClient();
    const { data, error } = await supabase
     .from('reputation_reviews')
     .update({
@@ -28,16 +32,20 @@ export async function respondToReview(reviewId: string, response: string) {
    revalidatePath('/reputation');
    return { data };
   } catch (error: any) {
-   return { error: error.message };
+   logger.error({ err: error, reviewId }, 'reputation.review.respond.failed');
+   return { error: 'Failed to submit response.' };
   }
 }
 
 export async function deleteReview(reviewId: string) {
   try {
+   const supabase = await createServerClient();
+   const { data: { user }, error: authError } = await supabase.auth.getUser();
+   if (authError || !user) return { error: 'Unauthorized' };
+
    const workspaceId = await getCurrentWorkspaceId();
    if (!workspaceId) return { error: 'No workspace active' };
 
-   const supabase = await createServerClient();
    const { error } = await supabase
     .from('reputation_reviews')
     .delete()
@@ -48,17 +56,22 @@ export async function deleteReview(reviewId: string) {
    revalidatePath('/reputation');
    return { success: true };
   } catch (error: any) {
-   return { error: error.message };
+   logger.error({ err: error, reviewId }, 'reputation.review.delete.failed');
+   return { error: 'Failed to delete review.' };
   }
 }
 
 // Fetch reputation settings for the active workspace
 export async function getReputationSettings() {
+  let workspaceId: string | null = null;
   try {
-    const workspaceId = await getCurrentWorkspaceId();
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
+    workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('reputation_settings')
       .select('*')
@@ -68,17 +81,21 @@ export async function getReputationSettings() {
     if (error && error.code !== 'PGRST116') throw error;
     return { data: data || null };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, workspaceId }, 'reputation.settings.fetch.failed');
+    return { error: 'Failed to fetch reputation settings.' };
   }
 }
 
 // Save reputation settings for the active workspace
 export async function saveReputationSettings(updates: { google_review_url: string; facebook_review_url: string }) {
+  let workspaceId: string | null = null;
   try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
+    workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
 
     // Check if settings record already exists
     const { data: existing } = await supabase
@@ -117,13 +134,14 @@ export async function saveReputationSettings(updates: { google_review_url: strin
       try {
         await syncReviewsAction();
       } catch (syncErr) {
-        console.error('[saveReputationSettings] Auto-sync reviews failed:', syncErr);
+        logger.error({ err: syncErr, workspaceId }, 'reputation.settings.auto_sync.failed');
       }
     }
 
     return { success: true, data: result.data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, workspaceId }, 'reputation.settings.save.failed');
+    return { error: 'Failed to save reputation settings.' };
   }
 }
 
@@ -161,8 +179,8 @@ export async function getPublicReputationSettings(workspaceId: string) {
       }
     };
   } catch (error: any) {
-    console.error('[getPublicReputationSettings] Error:', error);
-    return { error: error.message };
+    logger.error({ err: error, workspaceId }, 'reputation.public_settings.fetch.failed');
+    return { error: 'Failed to fetch settings.' };
   }
 }
 
@@ -223,28 +241,33 @@ export async function submitPrivateFeedback(workspaceId: string, reviewerName: s
         });
       }
     } catch (mailErr) {
-      console.error('[submitPrivateFeedback] Alert email send failed:', mailErr);
+      logger.error({ err: mailErr, workspaceId }, 'reputation.private_feedback.alert_email.failed');
     }
 
     return { success: true, data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, workspaceId }, 'reputation.private_feedback.submit.failed');
+    return { error: 'Failed to submit feedback.' };
   }
 }
 
 // Trigger a review campaign email/SMS/WhatsApp to a contact
 export async function sendReviewRequest(contactId: string, channel: 'email' | 'sms' | 'whatsapp') {
+  let workspaceId: string | null = null;
   try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
+    workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
 
     // Fetch contact details
     const { data: contact, error: contactError } = await supabase
       .from('contacts')
       .select('*')
       .eq('id', contactId)
+      .eq('workspace_id', workspaceId)
       .single();
 
     if (contactError || !contact) {
@@ -339,7 +362,8 @@ export async function sendReviewRequest(contactId: string, channel: 'email' | 's
 
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, workspaceId, contactId }, 'reputation.review_request.send.failed');
+    return { error: 'Failed to send review request.' };
   }
 }
 
@@ -359,7 +383,7 @@ async function extractPlaceIdFromUrl(url: string): Promise<string | null> {
       const resolvedMatch = resolvedUrl.match(/[?&]placeid=([^&"'\s\)]+)/i);
       if (resolvedMatch) return resolvedMatch[1];
     } catch (e) {
-      console.error('Error resolving Google redirect URL:', e);
+      logger.error({ err: e, url }, 'reputation.google_redirect_url.resolve.failed');
     }
   }
 
@@ -385,7 +409,7 @@ async function extractPlaceIdFromUrl(url: string): Promise<string | null> {
       }
     }
   } catch (e) {
-    console.error('Error fetching custom URL HTML:', e);
+    logger.error({ err: e, url }, 'reputation.custom_url_html.fetch.failed');
   }
 
   return null;
@@ -418,19 +442,22 @@ async function scrapeDocssaReviews(url: string): Promise<any[]> {
     
     return reviews;
   } catch (e) {
-    console.error('Error scraping docssa reviews:', e);
+    logger.error({ err: e, url }, 'reputation.docssa_reviews.scrape.failed');
     return [];
   }
 }
 
 // Sync Google reviews for the active workspace
 export async function syncReviewsAction() {
+  let workspaceId: string | null = null;
   try {
-    const workspaceId = await getCurrentWorkspaceId();
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
+    workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
-    
     // 1. Fetch reputation settings for the active workspace
     const { data: settings, error: settingsError } = await supabase
       .from('reputation_settings')
@@ -552,7 +579,7 @@ export async function syncReviewsAction() {
         : 'All reviews are already up to date.'
     };
   } catch (error: any) {
-    console.error('[syncReviewsAction] Error:', error);
-    return { error: error.message || 'Server error' };
+    logger.error({ err: error, workspaceId }, 'reputation.reviews_sync.failed');
+    return { error: 'Server error' };
   }
 }

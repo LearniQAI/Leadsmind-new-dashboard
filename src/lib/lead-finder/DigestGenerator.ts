@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 export class DigestGenerator {
   /**
@@ -42,7 +43,7 @@ export class DigestGenerator {
       });
 
       // In production: trigger Resend / email API here.
-      console.log(`[DigestGenerator] Generated digest for user ${userId}. Total Alerts: ${userAlerts.length}`);
+      logger.info({ userId, totalAlerts: userAlerts.length }, 'digest_generator.digest.generated');
     }
   }
 }

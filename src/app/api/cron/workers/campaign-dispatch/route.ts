@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/email';
 import { PredictiveIntelligence } from '@/lib/intelligence/PredictiveIntelligence';
 import { Observability } from '@/lib/observability';
+import { logger } from '@/shared/logger';
 import crypto from 'crypto';
 
 const supabaseAdmin = createClient(
@@ -32,7 +33,7 @@ export async function GET(req: Request) {
     });
 
     if (lockErr) {
-      console.error('[Campaign Worker] Failed to acquire jobs:', lockErr.message);
+      logger.error({ err: lockErr }, 'cron.campaign_dispatch.jobs_acquire.failed');
       return NextResponse.json({ error: 'Lock acquisition failed' }, { status: 500 });
     }
 
@@ -136,7 +137,7 @@ export async function GET(req: Request) {
     if (updates.length > 0) {
       const { error: upsertErr } = await supabaseAdmin.from('campaign_dispatch_queue').upsert(updates, { onConflict: 'id' });
       if (upsertErr) {
-         console.error(JSON.stringify({ level: 'CRITICAL', message: 'Failed to update queue status', worker_id: workerId, error: upsertErr.message }));
+         logger.error({ err: upsertErr, workerId }, 'cron.campaign_dispatch.queue_status_update.failed');
       }
     }
 
@@ -151,7 +152,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, processed: jobs.length, sent: sentCount });
   } catch (error: any) {
     Observability.captureError(error, 'critical', { provider: 'worker' });
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logger.error({ err: error }, 'cron.campaign_dispatch.failed');
+    return NextResponse.json({ error: 'Campaign dispatch worker failed.' }, { status: 500 });
   }
   });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/shared/logger';
 
 const supabaseAdmin = createClient(
  process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
  try {
   event = stripe.webhooks.constructEvent(payload, signature, process.env.STRIPE_WEBHOOK_SECRET!);
  } catch (err: any) {
-  console.error(`[Stripe Webhook] Error: ${err.message}`);
+  logger.error({ err }, 'webhook.stripe.verification.failed');
   return NextResponse.json({ error: 'Verification failed' }, { status: 400 });
  }
 
@@ -41,12 +42,12 @@ export async function POST(req: NextRequest) {
           });
 
         if (error) {
-          console.error(`[Stripe Webhook] Course enrollment insert error: ${error.message}`);
+          logger.error({ err: error, contactId, courseId }, 'webhook.stripe.enrollment_insert.failed');
         } else {
-          console.log(`[Stripe Webhook] Successfully enrolled contact ${contactId} in course ${courseId}`);
+          logger.info({ contactId, courseId }, 'webhook.stripe.enrollment.success');
         }
       } else {
-        console.log(`[Stripe Webhook] Contact ${contactId} is already enrolled in course ${courseId}`);
+        logger.info({ contactId, courseId }, 'webhook.stripe.enrollment.already_exists');
       }
     } else if (invoiceId) {
     const { error } = await supabaseAdmin
@@ -60,14 +61,14 @@ export async function POST(req: NextRequest) {
      .eq('id', invoiceId);
      
     if (error) {
-     console.error(`[Stripe Webhook] Invoice database update error: ${error.message}`);
+     logger.error({ err: error, invoiceId }, 'webhook.stripe.invoice_update.failed');
     } else {
-     console.log(`[Stripe Webhook] Invoice ${invoiceId} successfully marked as paid`);
+     logger.info({ invoiceId }, 'webhook.stripe.invoice.paid');
      try {
        const { AttributionEngine } = await import('@/lib/analytics/AttributionEngine');
        await AttributionEngine.trackInvoicePayment(invoiceId);
      } catch (aeError) {
-       console.error(`[Stripe Webhook] AttributionEngine failed:`, aeError);
+       logger.error({ err: aeError, invoiceId }, 'webhook.stripe.attribution_engine.failed');
      }
     }
    } else if (workspaceId && tierId) {
@@ -81,9 +82,9 @@ export async function POST(req: NextRequest) {
      .eq('id', workspaceId);
      
     if (error) {
-     console.error(`[Stripe Webhook] Database update error: ${error.message}`);
+     logger.error({ err: error, workspaceId, tierId }, 'webhook.stripe.workspace_update.failed');
     } else {
-     console.log(`[Stripe Webhook] Updated workspace ${workspaceId} to tier ${tierId}`);
+     logger.info({ workspaceId, tierId }, 'webhook.stripe.workspace.tier_updated');
     }
    }
   }

@@ -16,7 +16,7 @@ export default async function TagsPage() {
  const workspaceId = await getCurrentWorkspaceId();
  if (!workspaceId) redirect('/auth/signin-basic');
 
- const tags = await getWorkspaceTags(workspaceId);
+ const tags = await getWorkspaceTags();
 
  return (
   <MetaData pageTitle="Manage Tags">

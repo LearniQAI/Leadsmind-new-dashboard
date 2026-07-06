@@ -3,13 +3,17 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 export async function updateOrderStatus(orderId: string, status: string) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('orders')
    .update({ status, updated_at: new Date().toISOString() })
@@ -22,16 +26,20 @@ export async function updateOrderStatus(orderId: string, status: string) {
   revalidatePath('/orders');
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, orderId }, 'order_actions.status.update.failed');
+  return { error: 'Failed to update order status.' };
  }
 }
 
 export async function deleteOrder(orderId: string) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { error } = await supabase
    .from('orders')
    .delete()
@@ -42,6 +50,7 @@ export async function deleteOrder(orderId: string) {
   revalidatePath('/orders');
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, orderId }, 'order_actions.delete.failed');
+  return { error: 'Failed to delete order.' };
  }
 }

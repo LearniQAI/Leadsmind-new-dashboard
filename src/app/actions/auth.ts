@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email';
 import { sendPasswordResetEmail } from '@/lib/auth-emails';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/shared/logger';
 
 function slugify(text: string) {
  return text
@@ -44,7 +45,7 @@ export async function setupWorkspace(payload: {
    );
 
   if (userError) {
-   console.warn('[setupWorkspace] User upsert warning:', userError.message);
+   logger.warn({ err: userError, userId: payload.userId }, 'auth.setup_workspace.user_upsert.warning');
   }
 
   // 2. Check if user already has a workspace
@@ -76,7 +77,7 @@ export async function setupWorkspace(payload: {
    .single();
 
   if (workspaceError) {
-   console.error('[setupWorkspace] Workspace creation error:', workspaceError);
+   logger.error({ err: workspaceError, userId: payload.userId }, 'auth.setup_workspace.workspace_create.failed');
    return { success: false, error: 'Failed to create workspace' };
   }
 
@@ -86,7 +87,7 @@ export async function setupWorkspace(payload: {
    .insert({ workspace_id: workspace.id, user_id: payload.userId, role: 'admin' });
 
   if (memberError) {
-   console.warn('[setupWorkspace] Member insert warning:', memberError.message);
+   logger.warn({ err: memberError, workspaceId: workspace.id }, 'auth.setup_workspace.member_insert.warning');
   }
 
   revalidatePath('/dashboard', 'layout');
@@ -99,12 +100,12 @@ export async function setupWorkspace(payload: {
     html: `<h1>Welcome to LeadsMind</h1><p>Hi ${payload.firstName}, your workspace <strong>${payload.workspaceName}</strong> is ready.</p>`
    });
   } catch (emailErr) {
-   console.error('[setupWorkspace] Welcome email failed:', emailErr);
+   logger.error({ err: emailErr, email: payload.email }, 'auth.setup_workspace.welcome_email.failed');
   }
 
   return { success: true, workspaceId: workspace.id };
  } catch (err) {
-  console.error('[setupWorkspace] Unexpected error:', err);
+  logger.error({ err, userId: payload.userId }, 'auth.setup_workspace.failed');
   return { success: false, error: 'An unexpected error occurred during workspace setup' };
  }
 }
@@ -143,15 +144,18 @@ export async function forgotPassword(email: string) {
 
   return { success: true };
  } catch (error: any) {
-  console.error('[forgotPassword] Error:', error.message);
-  return { success: false, error: error.message };
+  logger.error({ err: error, email }, 'auth.forgot_password.failed');
+  return { success: false, error: 'Unable to process password reset request. Please try again.' };
  }
 }
 
 export async function resetPassword(password: string) {
  const supabase = await createServerClient();
  const { error } = await supabase.auth.updateUser({ password });
- if (error) return { success: false, error: error.message };
+ if (error) {
+  logger.error({ err: error }, 'auth.reset_password.failed');
+  return { success: false, error: 'Failed to reset password. Please try again.' };
+ }
  return { success: true };
 }
 
@@ -181,7 +185,7 @@ export async function notifySignIn(email: string) {
   });
   return { success: true };
  } catch (err) {
-  console.error('[notifySignIn] Error:', err);
+  logger.error({ err, email }, 'auth.notify_sign_in.failed');
   return { success: false };
  }
 }
@@ -207,7 +211,7 @@ export async function notifyUpdate(email: string, updateTitle: string, updateDet
   });
   return { success: true };
  } catch (err) {
-  console.error('[notifyUpdate] Error:', err);
+  logger.error({ err, email }, 'auth.notify_update.failed');
   return { success: false };
  }
 }
@@ -219,7 +223,7 @@ export async function getEmailByUsername(username: string) {
  try {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey || serviceKey === 'your_supabase_service_role_key' || serviceKey.startsWith('your_')) {
-   console.warn('[getEmailByUsername] SUPABASE_SERVICE_ROLE_KEY is missing or using placeholder');
+   logger.warn({}, 'auth.get_email_by_username.service_key_missing');
    return { success: false, error: 'Username login is currently unavailable. Please sign in using your email address.' };
   }
 
@@ -243,8 +247,8 @@ export async function getEmailByUsername(username: string) {
    .maybeSingle();
 
   if (error) {
-   console.error('[getEmailByUsername] DB query error:', error.message);
-   return { success: false, error: error.message };
+   logger.error({ err: error, username: cleanUsername }, 'auth.get_email_by_username.query.failed');
+   return { success: false, error: 'Unable to look up username. Please try again.' };
   }
 
   if (!data) {
@@ -253,7 +257,7 @@ export async function getEmailByUsername(username: string) {
 
   return { success: true, email: data.email };
  } catch (err: any) {
-  console.error('[getEmailByUsername] Unexpected error:', err.message);
-  return { success: false, error: err.message };
+  logger.error({ err, username }, 'auth.get_email_by_username.failed');
+  return { success: false, error: 'Unable to look up username. Please try again.' };
  }
 }

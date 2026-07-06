@@ -1,28 +1,30 @@
 
 
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createServerClient } from './supabase/server';
 import { cookies } from 'next/headers';
+import { logger } from '@/shared/logger';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Session & User
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getSession() {
+export const getSession = cache(async () => {
  const supabase = await createServerClient();
  try {
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
+
   if (userError || !user) return null;
   return session;
  } catch (error) {
   console.error('[auth] Error fetching session:', error);
   return null;
  }
-}
+});
 
-export async function getUser() {
+export const getUser = cache(async () => {
  const supabase = await createServerClient();
  try {
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -31,7 +33,7 @@ export async function getUser() {
  } catch (error) {
    return null;
  }
-}
+});
 
 export async function requireAuth() {
  const user = await getUser();
@@ -54,7 +56,7 @@ export interface UserProfile {
  createdAt: string;
 }
 
-export async function getCurrentProfile(existingUser?: any): Promise<UserProfile | null> {
+export const getCurrentProfile = cache(async (existingUser?: any): Promise<UserProfile | null> => {
  const user = existingUser || await getUser();
  if (!user) return null;
 
@@ -98,7 +100,7 @@ export async function getCurrentProfile(existingUser?: any): Promise<UserProfile
   avatarUrl: data.avatar_url ?? null,
   createdAt: data.created_at,
  };
-}
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Workspace
@@ -119,7 +121,7 @@ export async function getCurrentWorkspaceId(): Promise<string | null> {
  return cookieStore.get('active_workspace_id')?.value ?? null;
 }
 
-export async function getCurrentWorkspace(existingUser?: any): Promise<Workspace | null> {
+export const getCurrentWorkspace = cache(async (existingUser?: any): Promise<Workspace | null> => {
  const user = existingUser || await getUser();
  if (!user) return null;
 
@@ -155,22 +157,24 @@ export async function getCurrentWorkspace(existingUser?: any): Promise<Workspace
  }
 
  if (!workspaceId) {
-  // Auto-create a workspace as a last resort
+  // Auto-create a workspace as a last resort. Uses the setup_workspace RPC
+  // so workspace creation + membership insert happen atomically (previously
+  // two sequential, non-transactional inserts with no rollback on failure).
   const email = user.email ?? 'user';
   const name = `${(user.user_metadata?.full_name ?? email.split('@')[0])}'s Workspace`;
-  const slug = `${email.split('@')[0].replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now().toString(36)}`;
+  const slug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-') || 'workspace';
 
-  const { data: ws } = await supabase
-   .from('workspaces')
-   .insert({ name, slug, owner_id: user.id, plan_tier: 'free' })
-   .select()
-   .single();
+  const { data: newWorkspaceId, error: setupError } = await supabase.rpc('setup_workspace', {
+   p_user_id: user.id,
+   p_workspace_name: name,
+   p_slug: slug,
+  });
 
-  if (ws) {
-   await supabase
-    .from('workspace_members')
-    .insert({ workspace_id: ws.id, user_id: user.id, role: 'admin' });
-   workspaceId = ws.id;
+  if (setupError) {
+   logger.error({ err: setupError, userId: user.id }, 'workspace.setup.failed');
+  } else {
+   logger.info({ workspaceId: newWorkspaceId, userId: user.id }, 'workspace.setup.success');
+   workspaceId = newWorkspaceId;
   }
  }
 
@@ -196,7 +200,7 @@ export async function getCurrentWorkspace(existingUser?: any): Promise<Workspace
   plan: data.plan_tier as 'free' | 'pro' | 'enterprise' | 'agency',
   createdAt: data.created_at,
  };
-}
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Role & Memberships
@@ -207,7 +211,7 @@ export async function getUserRole(): Promise<string | null> {
  return info.role;
 }
 
-export async function getUserAccessInfo(): Promise<{ role: string | null; permissions: string[] }> {
+export const getUserAccessInfo = cache(async (): Promise<{ role: string | null; permissions: string[] }> => {
   const user = await getUser();
   if (!user) return { role: null, permissions: [] };
 
@@ -232,7 +236,7 @@ export async function getUserAccessInfo(): Promise<{ role: string | null; permis
   const permissions = Array.isArray(data.permissions) ? data.permissions : [];
   
   return { role: data.role, permissions };
-}
+});
 
 export async function requireAdmin() {
  const role = await getUserRole();
@@ -241,7 +245,7 @@ export async function requireAdmin() {
  }
 }
 
-export async function getUserWorkspaces() {
+export const getUserWorkspaces = cache(async () => {
  const user = await getUser();
  if (!user) return [];
 
@@ -278,7 +282,7 @@ export async function getUserWorkspaces() {
    logoUrl: item.workspaces!.logo_url,
    role: item.role,
   }));
-}
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Logout

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/email';
 import { SpamValidator } from '@/lib/intelligence/SpamValidator';
 import { PredictiveIntelligence } from '@/lib/intelligence/PredictiveIntelligence';
+import { logger } from '@/shared/logger';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,7 +47,7 @@ export async function GET(req: Request) {
       // 1.5 Run Spam Validator Gate
       const spamResult = SpamValidator.validateEmailContent(campaign.subject || '', campaign.body_html || '');
       if (!spamResult.passed) {
-        console.warn(`[Campaign Cron] Campaign ${campaign.id} blocked by Spam Validator. Score: ${spamResult.score}. Triggers: ${spamResult.triggers.join(', ')}`);
+        logger.warn({ campaignId: campaign.id, score: spamResult.score, triggers: spamResult.triggers }, 'cron.campaign_send.spam_validator.blocked');
         await supabaseAdmin
           .from('email_campaigns')
           .update({ 
@@ -81,7 +82,7 @@ export async function GET(req: Request) {
       try {
          segmentObj = (typeof campaign.segment === 'object' && campaign.segment !== null) ? campaign.segment : {};
       } catch (e) {
-         console.error('[Campaign Cron] Segment payload corruption detected.');
+         logger.error({ err: e, campaignId: campaign.id }, 'cron.campaign_send.segment_payload.corrupted');
       }
       
       const CHUNK_SIZE = 1000; // Batch insert 1000 queue jobs at a time
@@ -101,7 +102,7 @@ export async function GET(req: Request) {
          .range(currentOffset, currentOffset + CHUNK_SIZE - 1);
          
       if (contactErr) {
-         console.error('[Campaign Cron] DB pagination error:', contactErr.message);
+         logger.error({ err: contactErr, campaignId: campaign.id }, 'cron.campaign_send.contact_pagination.failed');
          continue;
       }
       const contacts = pagedData || [];
@@ -140,7 +141,7 @@ export async function GET(req: Request) {
 
         const { error: insertErr } = await supabaseAdmin.from('campaign_dispatch_queue').insert(queueRecords);
         if (insertErr) {
-           console.error('[Campaign Cron] Failed to enqueue chunk:', insertErr.message);
+           logger.error({ err: insertErr, campaignId: campaign.id }, 'cron.campaign_send.enqueue_chunk.failed');
            continue;
         }
       }
@@ -157,8 +158,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, processed: processedCount });
   } catch (error: any) {
-    console.error('[Email Campaign Cron API] Failed:', error.message);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    logger.error({ err: error }, 'cron.campaign_send.failed');
+    return NextResponse.json({ success: false, error: 'Campaign send processing failed.' }, { status: 500 });
   }
 }
 

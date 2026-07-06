@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { scanForAbandonment } from '../../../../../libs/workers/src/crons/abandonment-scanner';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,8 +20,8 @@ export async function GET(req: NextRequest) {
       result
     });
   } catch (err: any) {
-    console.error('[API Cron Abandonment Scanner] Error:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'cron.abandonment_scanner.failed');
+    return NextResponse.json({ error: 'Abandonment scan failed.' }, { status: 500 });
   }
 }
 

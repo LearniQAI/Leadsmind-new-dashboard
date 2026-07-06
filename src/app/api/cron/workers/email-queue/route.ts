@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processEmailQueue, processDelayedActions } from '../../../../../../libs/infra/src/queues/email-queue';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,8 +23,8 @@ export async function GET(req: NextRequest) {
       actions: actionsResult
     });
   } catch (err: any) {
-    console.error('[API Cron Email Queue] Error running queue:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'cron.email_queue.failed');
+    return NextResponse.json({ error: 'Email queue processing failed.' }, { status: 500 });
   }
 }
 

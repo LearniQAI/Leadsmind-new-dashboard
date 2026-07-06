@@ -6,10 +6,12 @@ import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 export { getUserRole };
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
+import { logger } from '@/shared/logger';
 
 export async function getTasks() {
+  let workspaceId: string | null = null;
   try {
-    const workspaceId = await getCurrentWorkspaceId();
+    workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
     const supabase = await createServerClient();
@@ -38,8 +40,8 @@ export async function getTasks() {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    console.error('Error fetching tasks:', error);
-    return { error: error.message || 'Failed to fetch tasks' };
+    logger.error({ err: error, workspaceId }, 'tasks.list.fetch.failed');
+    return { error: 'Failed to fetch tasks' };
   }
 }
 
@@ -74,7 +76,8 @@ export async function getTaskDetails(taskId: string) {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.task.details.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -125,7 +128,8 @@ export async function createTask(taskData: {
     revalidatePath('/tasks');
     return { data: task };
   } catch (error: any) {
-    return { error: error.message || 'Failed to create task' };
+    logger.error({ err: error }, 'create.task.failed');
+    return { error: 'Failed to create task' };
   }
 }
 
@@ -189,7 +193,8 @@ export async function updateTask(taskId: string, updates: any) {
     revalidatePath('/tasks');
     return { data };
   } catch (error: any) {
-    return { error: error.message || 'Failed to update task' };
+    logger.error({ err: error }, 'update.task.failed');
+    return { error: 'Failed to update task' };
   }
 }
 
@@ -252,7 +257,7 @@ export async function addTaskComment(taskId: string, content: string, mentions: 
                   <a href="${process.env.NEXT_PUBLIC_APP_URL}/tasks?taskId=${taskId}" style="display: inline-block; background: #6c47ff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 20px;">View Discussion</a>
                 </div>
               `
-            }).catch(console.error);
+            }).catch(err => logger.error({ err, taskId }, 'tasks.mention_email.send.failed'));
           }
         }
       }
@@ -261,7 +266,8 @@ export async function addTaskComment(taskId: string, content: string, mentions: 
     revalidatePath('/tasks');
     return { data: comment };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'add.task.comment.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -311,7 +317,8 @@ export async function toggleTaskAssignee(taskId: string, userId: string) {
     revalidatePath('/tasks');
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'toggle.task.assignee.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -350,7 +357,8 @@ export async function deleteTask(taskId: string) {
     revalidatePath('/tasks');
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'delete.task.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -373,7 +381,8 @@ export async function getAssignableMembers() {
     if (error) throw error;
     return { data: memberships };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.assignable.members.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -385,7 +394,8 @@ export async function getWorkspaceTags() {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.workspace.tags.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -435,7 +445,8 @@ export async function uploadTaskAttachment(taskId: string, formData: FormData) {
     revalidatePath('/tasks');
     return { data: attachment };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'upload.task.attachment.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -503,14 +514,14 @@ export async function sendDailyBriefing() {
               </p>
             </div>
           `
-        }).catch(err => console.error(`Failed to send briefing to ${user.email}:`, err));
+        }).catch(err => logger.error({ err, userId: user.id }, 'tasks.daily_briefing.email.send.failed'));
       }
     }
 
     return { success: true };
   } catch (error: any) {
-    console.error('[sendDailyBriefing] Error:', error);
-    return { error: error.message };
+    logger.error({ err: error }, 'tasks.daily_briefing.failed');
+    return { error: 'Failed to send daily briefing.' };
   }
 }
 
@@ -530,7 +541,8 @@ export async function deleteTaskAttachment(attachmentId: string) {
     revalidatePath('/tasks');
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'delete.task.attachment.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -541,6 +553,7 @@ export async function getAttachmentUrl(filePath: string) {
     if (error) throw error;
     return { url: data.signedUrl };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.attachment.url.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }

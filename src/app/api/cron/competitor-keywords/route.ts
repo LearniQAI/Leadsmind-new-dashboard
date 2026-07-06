@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { triggerCompetitorKeywordsWeekly } from '@/app/actions/seo';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +19,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, result });
   } catch (error: any) {
-    console.error('[Competitor Keywords Cron Sync API] Failed:', error.message);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    logger.error({ err: error }, 'cron.competitor_keywords.failed');
+    return NextResponse.json({ success: false, error: 'Competitor keywords sync failed.' }, { status: 500 });
   }
 }
 

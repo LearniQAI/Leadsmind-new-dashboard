@@ -1,4 +1,5 @@
 import { addHours, parseISO } from 'date-fns';
+import { logger } from '@/shared/logger';
 
 export interface OutagePeriod {
   start: string; // ISO string
@@ -17,7 +18,7 @@ export async function getEskomOutages(
   const apiKey = process.env.ESKOMSEPUSH_API_KEY;
 
   if (!apiKey) {
-    console.log('[eskomsepush] Sandbox simulator active: generating mock load-shedding outage slots.');
+    logger.info({}, 'eskomsepush.sandbox_simulator.active');
     return generateMockOutages(startDate, endDate, suburbId);
   }
 
@@ -51,7 +52,7 @@ export async function getEskomOutages(
 
     return outages;
   } catch (err) {
-    console.error('[eskomsepush] Error fetching load-shedding data, falling back to mock:', err);
+    logger.error({ err }, 'eskomsepush.fetch_outages.failed_using_mock');
     return generateMockOutages(startDate, endDate, suburbId);
   }
 }

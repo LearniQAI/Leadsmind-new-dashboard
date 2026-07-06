@@ -6,6 +6,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
+import { logger } from '@/shared/logger';
 
 const execAsync = promisify(exec);
 export const dynamic = 'force-dynamic';
@@ -30,7 +31,7 @@ async function extractAudioFromVideo(videoFile: File): Promise<File> {
   try {
     // Run FFmpeg to strip video and convert audio to mp3
     const command = `ffmpeg -y -i "${inputPath}" -vn -acodec libmp3lame -q:a 4 "${outputPath}"`;
-    console.log(`[FFmpeg Extraction] Executing command: ${command}`);
+    logger.info({ command }, 'voice_import.ffmpeg.executing');
     await execAsync(command);
 
     if (!fs.existsSync(outputPath)) {
@@ -48,14 +49,14 @@ async function extractAudioFromVideo(videoFile: File): Promise<File> {
 
     return mp3File;
   } catch (err: any) {
-    console.error('[FFmpeg Extraction Failed]:', err);
+    logger.error({ err }, 'voice_import.ffmpeg.extraction_failed');
     // Cleanup input if exists
     try { fs.unlinkSync(inputPath); } catch {}
     try { fs.unlinkSync(outputPath); } catch {}
-    
+
     // Fall back to original file if size is under 25MB
     if (videoFile.size <= 25 * 1024 * 1024) {
-      console.log('[FFmpeg Fallback] File is under 25MB. Processing video file directly with Whisper.');
+      logger.info({}, 'voice_import.ffmpeg.fallback_direct_whisper');
       return videoFile;
     }
     
@@ -83,11 +84,11 @@ export async function POST(req: Request) {
 
     let fileToProcess = file;
     if (isVideo) {
-      console.log(`[Voice Import] Video file detected: ${file.name} (${file.type}). Extracting audio...`);
+      logger.info({ fileName: file.name, fileType: file.type }, 'voice_import.video_detected.extracting_audio');
       try {
         fileToProcess = await extractAudioFromVideo(file);
       } catch (extractError: any) {
-        console.error('[Voice Import] Video extraction failed:', extractError);
+        logger.error({ err: extractError }, 'voice_import.video_extraction.failed');
         return NextResponse.json({ error: extractError.message || 'Failed to extract audio from video.' }, { status: 400 });
       }
     }
@@ -212,7 +213,7 @@ Verbal Transcript:
       return NextResponse.json({ success: true, postId: post.id });
 
     } catch (err: any) {
-      console.error('[Voice Import Pipeline Failed]:', err);
+      logger.error({ err }, 'voice_import.pipeline.failed');
       await supabase.from('blog_social_imports').update({
         status: 'failed',
         error_message: err.message || 'Voice orchestration pipeline failure.',

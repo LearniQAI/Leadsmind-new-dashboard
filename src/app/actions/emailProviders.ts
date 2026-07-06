@@ -1,12 +1,34 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createServerClient } from '@/lib/supabase/server'
 import { encrypt, decrypt } from '@/lib/encryption'
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig'
 import { sendEmail } from '@/lib/email'
+import { logger } from '@/shared/logger'
+
+// Confirms the caller is an authenticated member of the given workspace.
+// These actions use createAdminClient (bypasses RLS) and take workspaceId
+// directly from the client, so membership must be verified explicitly.
+async function requireWorkspaceMember(workspaceId: string): Promise<boolean> {
+  const authClient = await createServerClient()
+  const { data: { user }, error } = await authClient.auth.getUser()
+  if (error || !user) return false
+
+  const { data: member } = await authClient
+    .from('workspace_members')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  return !!member
+}
 
 export async function getEmailProvider(workspaceId: string) {
   if (!workspaceId) return { success: false, error: 'Workspace ID is required' }
+  if (!(await requireWorkspaceMember(workspaceId))) {
+    return { success: false, error: 'Unauthorized' }
+  }
 
   const supabase = createAdminClient()
   const { data, error } = await supabase
@@ -16,7 +38,8 @@ export async function getEmailProvider(workspaceId: string) {
     .maybeSingle()
 
   if (error) {
-    return { success: false, error: error.message }
+    logger.error({ err: error, workspaceId }, 'email_providers.get.failed')
+    return { success: false, error: 'Failed to fetch email provider settings.' }
   }
 
   if (!data) {
@@ -30,7 +53,7 @@ export async function getEmailProvider(workspaceId: string) {
       maskedKey = `••••••••••••${rawKey.slice(-4)}`
     }
   } catch (err) {
-    console.error('Failed to decrypt key for masking:', err)
+    logger.error({ err, workspaceId }, 'email_providers.key_decrypt.failed')
   }
 
   return {
@@ -58,6 +81,9 @@ export async function saveEmailProvider(
   if (!payload.fromEmail) {
     return { success: false, error: 'From Email is required' }
   }
+  if (!(await requireWorkspaceMember(workspaceId))) {
+    return { success: false, error: 'Unauthorized' }
+  }
 
   const supabase = createAdminClient()
 
@@ -82,7 +108,8 @@ export async function saveEmailProvider(
     })
 
   if (error) {
-    return { success: false, error: error.message }
+    logger.error({ err: error, workspaceId }, 'email_providers.save.failed')
+    return { success: false, error: 'Failed to save email provider settings.' }
   }
 
   return { success: true }
@@ -90,6 +117,9 @@ export async function saveEmailProvider(
 
 export async function verifyEmailProvider(workspaceId: string) {
   if (!workspaceId) return { success: false, error: 'Workspace ID is required' }
+  if (!(await requireWorkspaceMember(workspaceId))) {
+    return { success: false, error: 'Unauthorized' }
+  }
 
   const supabase = createAdminClient()
   const config = await getWorkspaceEmailConfig(workspaceId)
@@ -125,7 +155,7 @@ export async function verifyEmailProvider(workspaceId: string) {
 
     return { success: true }
   } catch (err: any) {
-    console.error('Email provider verification failed:', err)
-    return { success: false, error: err.message || 'Failed to send test verification email' }
+    logger.error({ err, workspaceId }, 'email_providers.verify.failed')
+    return { success: false, error: 'Failed to send test verification email' }
   }
 }

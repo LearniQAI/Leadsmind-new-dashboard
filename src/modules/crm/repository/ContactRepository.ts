@@ -1,4 +1,5 @@
-import { AppError } from '@/shared/errors/AppError';
+import { AppError, DatabaseError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
 export class ContactRepository {
   constructor(private db: any) {}
@@ -151,6 +152,42 @@ export class ContactRepository {
       .eq('id', contactId)
       .eq('workspace_id', workspaceId);
     if (error) throw new Error(error.message);
+  }
+
+  async bulkAddTagRpc(ids: string[], tag: string, workspaceId: string): Promise<void> {
+    const { error } = await this.db.rpc('bulk_add_tag', {
+      p_ids: ids,
+      p_tag: tag,
+      p_workspace_id: workspaceId,
+    });
+    if (error) {
+      logger.error({ err: error, workspaceId }, 'contact.bulkAddTag.failed');
+      throw new DatabaseError('Failed to add tag to contacts');
+    }
+  }
+
+  async bulkRemoveTagRpc(ids: string[], tag: string, workspaceId: string): Promise<void> {
+    const { error } = await this.db.rpc('bulk_remove_tag', {
+      p_ids: ids,
+      p_tag: tag,
+      p_workspace_id: workspaceId,
+    });
+    if (error) {
+      logger.error({ err: error, workspaceId }, 'contact.bulkRemoveTag.failed');
+      throw new DatabaseError('Failed to remove tag from contacts');
+    }
+  }
+
+  async globalRenameTagRpc(workspaceId: string, oldTag: string, newTag: string): Promise<void> {
+    const { error } = await this.db.rpc('global_rename_tag', {
+      p_old: oldTag,
+      p_new: newTag,
+      p_workspace_id: workspaceId,
+    });
+    if (error) {
+      logger.error({ err: error, workspaceId }, 'contact.renameTag.failed');
+      throw new DatabaseError('Failed to rename tag');
+    }
   }
 
   async logActivity(

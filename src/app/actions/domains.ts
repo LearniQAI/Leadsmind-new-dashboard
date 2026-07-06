@@ -6,6 +6,8 @@ import { revalidatePath } from 'next/cache';
 import dns from 'dns';
 import { randomBytes } from 'crypto';
 import { ENFORCE_PLAN_LIMITS } from '@/lib/config/flags';
+import { logger } from '@/shared/logger';
+import { ValidationError, toClientError } from '@/shared/errors/AppError';
 
 // --- Promisified DNS TXT Resolver helper ---
 async function getDnsTxtRecords(hostname: string): Promise<string[][]> {
@@ -13,7 +15,7 @@ async function getDnsTxtRecords(hostname: string): Promise<string[][]> {
     dns.resolveTxt(hostname, (err, records) => {
       if (err) {
         // Log error and return empty array if record doesn't exist
-        console.warn(`[DNS Resolve] Failed to resolve TXT for ${hostname}:`, err.code);
+        logger.warn({ err, hostname }, 'domains.dns_txt_resolve.failed');
         resolve([]);
       } else {
         resolve(records || []);
@@ -32,10 +34,13 @@ async function getActiveWorkspaceId() {
 
 export async function getSenderDomains() {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('sender_domains')
       .select('*')
@@ -45,12 +50,17 @@ export async function getSenderDomains() {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'domains.sender_domains.fetch.failed');
+    return { error: 'Failed to fetch sender domains.' };
   }
 }
 
 export async function registerSenderDomain(domainName: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
@@ -59,7 +69,6 @@ export async function registerSenderDomain(domainName: string) {
       return { error: 'Invalid domain name format.' };
     }
 
-    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('sender_domains')
       .insert({
@@ -82,16 +91,21 @@ export async function registerSenderDomain(domainName: string) {
     revalidatePath('/settings');
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, domainName }, 'domains.sender_domain.register.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
 export async function deleteSenderDomain(domainId: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { error } = await supabase
       .from('sender_domains')
       .delete()
@@ -103,16 +117,20 @@ export async function deleteSenderDomain(domainId: string) {
     revalidatePath('/settings');
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, domainId }, 'domains.sender_domain.delete.failed');
+    return { error: 'Failed to delete sender domain.' };
   }
 }
 
 export async function verifySenderDomain(domainId: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { data: domain, error: fetchError } = await supabase
       .from('sender_domains')
       .select('*')
@@ -138,7 +156,7 @@ export async function verifySenderDomain(domainId: string) {
     let dmarcVerified = false;
 
     if (isMockBypass) {
-      console.log(`[DNS Verify] Mocking DNS lookup for sandbox domain: ${domainName}`);
+      logger.info({ domainName }, 'domains.dns_verify.mock_bypass');
       spfVerified = true;
       dkimVerified = true;
       dmarcVerified = true;
@@ -200,7 +218,8 @@ export async function verifySenderDomain(domainId: string) {
       } 
     };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, domainId }, 'domains.sender_domain.verify.failed');
+    return { error: 'Failed to verify sender domain.' };
   }
 }
 
@@ -216,12 +235,12 @@ async function checkPlanGateForCustomDomain(workspaceId: string) {
     .single();
 
   if (wsError || !workspace) {
-    throw new Error('Workspace not found or unauthorized access.');
+    throw new ValidationError('Workspace not found or unauthorized access.');
   }
 
   const tier = workspace.plan_tier || 'free';
   if (!['starter', 'growth', 'agency', 'enterprise'].includes(tier)) {
-    throw new Error('Custom domains are only available on Starter, Growth, Agency, and Enterprise plans.');
+    throw new ValidationError('Custom domains are only available on Starter, Growth, Agency, and Enterprise plans.');
   }
 }
 
@@ -233,6 +252,18 @@ export async function addDomain(
   domainType: 'apex' | 'subdomain' | 'wildcard' = 'subdomain'
 ) {
   try {
+    const supabaseAuth = await createServerClient();
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Unauthorized' };
+
+    const { data: member } = await supabaseAuth
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!member) return { success: false, error: 'Forbidden' };
+
     await checkPlanGateForCustomDomain(workspaceId);
 
     const cleanHostname = hostname.trim().toLowerCase();
@@ -276,14 +307,26 @@ export async function addDomain(
     revalidatePath('/settings/domains');
     return { success: true, data: domainConfig };
   } catch (err: any) {
-    console.error('[Domains Action] addDomain error:', err);
-    return { success: false, error: err.message };
+    logger.error({ err, workspaceId, hostname }, 'domains.custom_domain.add.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
 export async function getDomains(workspaceId: string) {
   try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Unauthorized' };
+
+    const { data: member } = await supabase
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!member) return { success: false, error: 'Forbidden' };
+
     const { data, error } = await supabase
       .from('domain_configurations')
       .select('*')
@@ -293,16 +336,20 @@ export async function getDomains(workspaceId: string) {
     if (error) throw error;
     return { success: true, data };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, workspaceId }, 'domains.custom_domains.fetch.failed');
+    return { success: false, error: 'Failed to fetch domains.' };
   }
 }
 
 export async function updateDomainRouting(domainId: string, routingConfig: any) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { success: false, error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('domain_configurations')
       .update({
@@ -316,16 +363,20 @@ export async function updateDomainRouting(domainId: string, routingConfig: any) 
     if (error) throw error;
     return { success: true, data };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, domainId }, 'domains.routing.update.failed');
+    return { success: false, error: 'Failed to update domain routing.' };
   }
 }
 
 export async function deleteDomain(domainId: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Unauthorized' };
+
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) return { success: false, error: 'No workspace active' };
 
-    const supabase = await createServerClient();
     const { error } = await supabase
       .from('domain_configurations')
       .delete()
@@ -335,6 +386,7 @@ export async function deleteDomain(domainId: string) {
     revalidatePath('/settings/domains');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, domainId }, 'domains.custom_domain.delete.failed');
+    return { success: false, error: 'Failed to delete domain.' };
   }
 }

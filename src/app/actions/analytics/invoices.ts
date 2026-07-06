@@ -5,6 +5,22 @@ import { createServerClient } from '@/lib/supabase/server';
 export async function getInvoiceAnalytics(workspaceId: string) {
   const supabase = await createServerClient();
 
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { total_collected: 0, total_overdue: 0, bad_debt_total: 0 };
+  }
+
+  const { data: member } = await supabase
+    .from('workspace_members')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!member) {
+    return { total_collected: 0, total_overdue: 0, bad_debt_total: 0 };
+  }
+
   const { data, error } = await supabase.rpc('get_invoice_metrics', {
     target_workspace_id: workspaceId
   });

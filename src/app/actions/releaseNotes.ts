@@ -1,6 +1,7 @@
   'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 export async function getReleaseNotesForRoute(pathname: string) {
   try {
@@ -21,13 +22,13 @@ export async function getReleaseNotesForRoute(pathname: string) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('[getReleaseNotesForRoute Error]:', error);
-      return { data: [], error: error.message };
+      logger.error({ err: error, pathname }, 'release_notes.fetch.failed');
+      return { data: [], error: 'Failed to fetch release notes.' };
     }
 
     return { data: data || [], error: null };
   } catch (err: any) {
-    console.error('[getReleaseNotesForRoute Exception]:', err);
-    return { data: [], error: err.message };
+    logger.error({ err, pathname }, 'release_notes.fetch_action.failed');
+    return { data: [], error: 'Failed to fetch release notes.' };
   }
 }

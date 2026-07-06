@@ -3,13 +3,17 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 export async function getProducts() {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('products')
    .select('*')
@@ -19,16 +23,20 @@ export async function getProducts() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.products.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
 export async function createProduct(productData: any) {
  try {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('products')
    .insert({ ...productData, workspace_id: workspaceId })
@@ -39,14 +47,20 @@ export async function createProduct(productData: any) {
   revalidatePath('/products');
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'create.product.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
 export async function updateProduct(id: string, updates: any) {
  try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
   const { data, error } = await supabase
    .from('products')
    .update({ ...updates, updated_at: new Date().toISOString() })
@@ -58,19 +72,26 @@ export async function updateProduct(id: string, updates: any) {
   revalidatePath('/products');
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'update.product.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
 export async function deleteProduct(id: string) {
  try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
     const { error } = await supabase.from('products').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;
   revalidatePath('/products');
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'delete.product.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/shared/logger';
 
 export const runtime = 'nodejs';
 
@@ -11,7 +12,7 @@ const supabaseAdmin = createClient(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    console.log('[Deliverability Webhook] Received payload:', JSON.stringify(body));
+    logger.info({ body }, 'webhook.email_deliverability.received');
 
     let eventType: 'open' | 'click' | 'reply' | 'bounce' | 'complaint' | null = null;
     let campaignId: string | null = null;
@@ -83,13 +84,13 @@ export async function POST(req: NextRequest) {
 
     // Validation
     if (!eventType || !campaignId) {
-      console.warn('[Deliverability Webhook] Missing eventType or campaignId. Payload skipped.');
+      logger.warn({}, 'webhook.email_deliverability.payload.invalid');
       try {
         await supabaseAdmin.from('webhook_dead_letters').insert({
            provider: 'email_deliverability', payload: body, error: 'Missing eventType or campaignId', error_type: 'validation_failed', retry_state: 'dropped'
         });
       } catch (dbErr: any) {
-        console.error(JSON.stringify({ level: 'CRITICAL', message: 'DB dead-letter insert failed', provider: 'email_deliverability', originalError: 'Missing eventType or campaignId' }));
+        logger.error({ err: dbErr, provider: 'email_deliverability' }, 'webhook.email_deliverability.dead_letter_insert.failed');
       }
       return NextResponse.json({ received: true, status: 'ignored' });
     }
@@ -102,13 +103,13 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (campaignError || !campaign) {
-      console.error(`[Deliverability Webhook] Campaign not found for ID: ${campaignId}`);
+      logger.error({ err: campaignError, campaignId }, 'webhook.email_deliverability.campaign_lookup.failed');
       try {
         await supabaseAdmin.from('webhook_dead_letters').insert({
            provider: 'email_deliverability', payload: body, error: `Campaign not found: ${campaignId}`, error_type: 'validation_failed', retry_state: 'dropped'
         });
       } catch (dbErr: any) {
-        console.error(JSON.stringify({ level: 'CRITICAL', message: 'DB dead-letter insert failed', provider: 'email_deliverability', originalError: `Campaign not found: ${campaignId}` }));
+        logger.error({ err: dbErr, campaignId, provider: 'email_deliverability' }, 'webhook.email_deliverability.dead_letter_insert.failed');
       }
       return NextResponse.json({ received: true, error: 'Campaign reference not found.' }, { status: 200 });
     }
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
       });
 
     if (logError) {
-      console.error('[Deliverability Webhook] Failed to insert tracking log:', logError.message);
+      logger.error({ err: logError, campaignId }, 'webhook.email_deliverability.tracking_log_insert.failed');
       throw logError; // Bubble up to 500 to retry
     }
 
@@ -137,7 +138,7 @@ export async function POST(req: NextRequest) {
       LeadScoringEngine.trackScoringEvent(contactId, eventType, {
         linkUrl: linkUrl || undefined,
         campaignId: campaignId
-      }).catch(err => console.error('[Deliverability Webhook] Scoring trigger failed:', err));
+      }).catch(err => logger.error({ err, contactId }, 'webhook.email_deliverability.scoring_trigger.failed'));
     }
 
     // 4. Atomically increment stats counter in email_campaigns via postgres RPC
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (rpcError) {
-      console.error('[Deliverability Webhook] RPC metric increment failed:', rpcError.message);
+      logger.error({ err: rpcError, campaignId }, 'webhook.email_deliverability.metric_increment.failed');
       // Removed unsafe select()->update() fallback to prevent analytics race conditions.
       // Metrics MUST be updated atomically via RPC.
       // For now, we will log this as an infrastructure failure, but let the webhook complete so the bounce state is processed
@@ -156,7 +157,7 @@ export async function POST(req: NextRequest) {
            provider: 'email_deliverability', payload: body, error: `RPC increment failed: ${rpcError.message}`, error_type: 'infrastructure_failure', retry_state: 'dropped'
         });
       } catch (dbErr: any) {
-        console.error(JSON.stringify({ level: 'CRITICAL', message: 'DB dead-letter insert failed', provider: 'email_deliverability', originalError: rpcError.message, dbError: dbErr.message }));
+        logger.error({ err: dbErr, campaignId, provider: 'email_deliverability' }, 'webhook.email_deliverability.dead_letter_insert.failed');
       }
     }
 
@@ -284,14 +285,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ received: true, status: 'processed' });
   } catch (error: any) {
-    console.error('[Deliverability Webhook] Unhandled exception:', error.message);
+    logger.error({ err: error }, 'webhook.email_deliverability.failed');
     try {
       // Body may not be defined if parsing failed
       await supabaseAdmin.from('webhook_dead_letters').insert({
          provider: 'email_deliverability', payload: { error: error.message }, error: error.message, error_type: 'infrastructure_failure', retry_state: 'pending'
       });
     } catch(dbErr: any) {
-      console.error(JSON.stringify({ level: 'CRITICAL', message: 'DB dead-letter insert failed', provider: 'email_deliverability', originalError: error.message, dbError: dbErr.message }));
+      logger.error({ err: dbErr, provider: 'email_deliverability' }, 'webhook.email_deliverability.dead_letter_insert.failed');
     }
     // Transient infrastructure failure -> return 500 to trigger webhook retry
     return NextResponse.json({ error: 'Infrastructure failure' }, { status: 500 });

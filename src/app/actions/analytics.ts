@@ -2,13 +2,19 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 export async function getConversionAnalytics() {
+ let workspaceId: string | null = null;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
+  workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('conversion_events')
    .select('*')
@@ -18,17 +24,22 @@ export async function getConversionAnalytics() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workspaceId }, 'analytics.conversion.fetch.failed');
+  const clientError = toClientError(error);
+  return { error: clientError.error };
  }
 }
 
 export async function getDashboardStats() {
+ let workspaceId: string | null = null;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' };
+
+  workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
-  const supabase = await createServerClient();
-  
   // Fetch counts from various tables for the "System Audit" / Dashboard
   const [leads, orders, tasks, conversations] = await Promise.all([
    supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
@@ -46,13 +57,17 @@ export async function getDashboardStats() {
    }
   };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error, workspaceId }, 'analytics.dashboard_stats.fetch.failed');
+  const clientError = toClientError(error);
+  return { error: clientError.error };
  }
 }
 
 export async function getSupportAnalytics() {
   try {
     const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
 
     // 1. Zero-Result Search Log
     const { data: zeroResults, error: zErr } = await supabase
@@ -189,7 +204,8 @@ export async function getSupportAnalytics() {
     };
 
   } catch (error: any) {
-    console.error('Error fetching support metrics analytics:', error);
-    return { error: error.message };
+    logger.error({ err: error }, 'analytics.support_metrics.fetch.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }

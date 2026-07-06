@@ -151,7 +151,7 @@ export function ContactInfoPanel({ contact, conversation }: ContactInfoPanelProp
       <div className="p-6 flex flex-col items-center text-center border-b border-white/5">
         <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[#eef2ff] font-bold text-xl mb-3 font-space-grotesk overflow-hidden shadow-2xl">
           {contact.avatar_url ? (
-            <img src={contact.avatar_url} className="w-full h-full object-cover" />
+            <img src={contact.avatar_url} alt={contact.first_name || 'Contact avatar'} className="w-full h-full object-cover" />
           ) : (
             contact.first_name?.[0] || 'U'
           )}

@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { logger } from '@/shared/logger'
 
 interface SendEmailProps {
  to: string | string[]
@@ -22,12 +23,7 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, c
  const fromName = config?.fromName || 'LeadsMind'
  
  if (!apiKey || apiKey === 're_123' || apiKey.includes('PLACEHOLDER')) {
-  console.log('\n================== EMAIL MOCKED ==================');
-  console.log('To:', to);
-  console.log('Subject:', subject);
-  console.log('Scheduled At:', scheduledAt);
-  console.log('Tags:', config?.tags);
-  console.log('==================================================\n');
+  logger.info({ to, subject, scheduledAt, tags: config?.tags }, 'email.mocked');
   return { id: 'mock_' + Date.now() };
  }
 
@@ -46,13 +42,13 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, c
   } as any)
 
   if (error) {
-   console.error('Resend API Error:', error);
+   logger.error({ err: error }, 'email.resend_api.failed');
    throw new Error(error.message || 'Failed to send email via Resend');
   }
 
   return data;
  } catch (error: any) {
-  console.error('Email service exception:', error);
+  logger.error({ err: error }, 'email.service.exception');
   throw new Error(error.message || 'Email service error');
  }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { runGscSync } from '../../../../../workers/gsc-sync';
+import { logger } from '@/shared/logger';
 
 // Mark as dynamic to avoid static generation build failures
 export const dynamic = 'force-dynamic';
@@ -20,8 +21,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, result });
   } catch (error: any) {
-    console.error('[GSC Cron Sync API] Failed:', error.message);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    logger.error({ err: error }, 'cron.gsc_sync.failed');
+    return NextResponse.json({ success: false, error: 'GSC sync failed.' }, { status: 500 });
   }
 }
 

@@ -6,6 +6,8 @@ import { stripe as defaultStripe } from '@/lib/stripe';
 import Stripe from 'stripe';
 import { getOrCreateStudentContact } from './studentEnrollments';
 import { getPortalSession } from '@/lib/portal/session';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 /**
  * Saves/updates course pricing settings in public.courses.
@@ -50,8 +52,9 @@ export async function updateCoursePricing(
 
     return { success: true };
   } catch (error: any) {
-    console.error('[updateCoursePricing Error]:', error);
-    return { error: error.message || 'Failed to update pricing settings' };
+    logger.error({ err: error, courseId }, 'course_commerce.pricing.update.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -81,7 +84,7 @@ export async function getWorkspacePaymentIntegration() {
 
     return { connected: false };
   } catch (error) {
-    console.error('[getWorkspacePaymentIntegration Error]:', error);
+    logger.error({ err: error }, 'course_commerce.payment_integration.fetch.failed');
     return { connected: false };
   }
 }
@@ -186,8 +189,9 @@ export async function createDirectCourseCheckoutSession(courseId: string) {
 
     return { url: session.url };
   } catch (err: any) {
-    console.error('[createDirectCourseCheckoutSession Error]:', err);
-    return { error: err.message || 'Failed to create direct checkout session' };
+    logger.error({ err, courseId }, 'course_commerce.direct_checkout.create.failed');
+    const clientError = toClientError(err);
+    return { error: clientError.error };
   }
 }
 
@@ -268,7 +272,7 @@ export async function verifyLessonAccess(courseId: string, lessonId: string) {
 
     return { allowed: true };
   } catch (error: any) {
-    console.error('[verifyLessonAccess Error]:', error);
+    logger.error({ err: error, courseId, lessonId }, 'course_commerce.lesson_access.verify.failed');
     return { allowed: false, reason: 'internal_error' };
   }
 }
@@ -346,7 +350,8 @@ export async function createCoursePayFastCheckout(courseId: string) {
 
     return { url: redirectUrl };
   } catch (err: any) {
-    console.error('[createCoursePayFastCheckout Error]:', err);
-    return { error: err.message || 'Failed to create PayFast checkout URL' };
+    logger.error({ err, courseId }, 'course_commerce.payfast_checkout.create.failed');
+    const clientError = toClientError(err);
+    return { error: clientError.error };
   }
 }

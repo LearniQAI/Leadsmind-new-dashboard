@@ -3,18 +3,21 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { success: false, error: 'No active workspace' };
-    
+
     const supabase = await createServerClient();
     const data = await action(supabase, workspaceId);
     return { success: true, data };
   } catch (err: any) {
-    console.error('[CalendarCoreAction Error]:', err.message);
-    return { success: false, error: err.message || 'Operation failed' };
+    logger.error({ err }, 'calendar.core_action.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -118,7 +121,7 @@ export async function getPublicCalendarBySlug(slug: string) {
         .single();
 
     if (error) {
-        console.error('[getPublicCalendarBySlug Error]:', error.message);
+        logger.error({ err: error, slug }, 'calendar.public_calendar.fetch.failed');
         return null;
     }
     return data;

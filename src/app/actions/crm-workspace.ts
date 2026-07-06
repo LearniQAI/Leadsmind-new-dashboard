@@ -6,6 +6,9 @@ import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 
 export async function getCRMDashboardData() {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'Unauthorized' };
 
@@ -40,6 +43,9 @@ export async function getCRMDashboardData() {
 
 export async function getCRMPipelines() {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'Unauthorized' };
 

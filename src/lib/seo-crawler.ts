@@ -1,3 +1,5 @@
+import { logger } from '@/shared/logger';
+
 interface CrawlResult {
   pagesCrawled: number;
   isHttps: boolean;
@@ -118,10 +120,10 @@ export async function crawlLocalDomain(domainUrl: string, limit = 10): Promise<C
         args: ['--no-sandbox', '--disable-setuid-sandbox']
       });
       usePuppeteer = true;
-      console.log('Puppeteer engine initialized successfully for crawling.');
+      logger.info({}, 'seo_crawler.puppeteer.initialized');
     }
   } catch (e) {
-    console.log('Puppeteer check: not configured or headless support missing. Running standard Cheerio parser.');
+    logger.info({ err: e }, 'seo_crawler.puppeteer.unavailable_using_cheerio');
   }
 
   try {
@@ -139,7 +141,7 @@ export async function crawlLocalDomain(domainUrl: string, limit = 10): Promise<C
       if (visited.has(normalizedUrl)) continue;
       visited.add(normalizedUrl);
 
-      console.log(`Crawling: ${normalizedUrl} (${result.pagesCrawled + 1}/${limit})`);
+      logger.info({ url: normalizedUrl, page: result.pagesCrawled + 1, limit }, 'seo_crawler.crawling');
 
       let html = '';
       let status = 200;
@@ -341,15 +343,15 @@ export async function fetchPageSpeedMetrics(domainUrl: string): Promise<{
       return { score, fcp, lcp, cls, tbt };
     };
 
-    console.log(`Querying PageSpeed Insights Strategy: desktop for ${target}`);
+    logger.info({ target, strategy: 'desktop' }, 'seo_crawler.pagespeed_insights.querying');
     const desktop = await fetchStrategy('desktop');
 
-    console.log(`Querying PageSpeed Insights Strategy: mobile for ${target}`);
+    logger.info({ target, strategy: 'mobile' }, 'seo_crawler.pagespeed_insights.querying');
     const mobile = await fetchStrategy('mobile');
 
     return { desktop, mobile };
   } catch (err) {
-    console.error('Failed querying PageSpeed Insights API. Using robust simulated target metrics...', err);
+    logger.error({ err }, 'seo_crawler.pagespeed_insights.failed_using_simulated');
     // Return simulated metrics based on domain hash to prevent failures
     const hash = target.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return {

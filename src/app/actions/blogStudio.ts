@@ -3,6 +3,8 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
+import { NotFoundError, DatabaseError, toClientError } from '@/shared/errors/AppError';
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 
@@ -27,7 +29,9 @@ export async function createPostVersion(payload: {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, postId: payload.postId }, 'blog_studio.post_version.create.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -43,7 +47,9 @@ export async function getPostVersions(postId: string) {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, postId }, 'blog_studio.post_versions.fetch.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -62,7 +68,7 @@ export async function rollbackPostVersion(postId: string, versionId: string) {
       .eq("workspace_id", wsId)
       .single();
 
-    if (vErr || !version) throw new Error(vErr?.message || 'Version not found.');
+    if (vErr || !version) throw new NotFoundError('Version');
 
     // Overwrite post
     const { data: post, error: pErr } = await supabase
@@ -84,7 +90,9 @@ export async function rollbackPostVersion(postId: string, versionId: string) {
     revalidatePath(`/blog/editor/${postId}`);
     return { data: post };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, postId, versionId }, 'blog_studio.post_version.rollback.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -98,7 +106,7 @@ export async function clonePost(postId: string) {
       .eq('id', postId)
       .single();
 
-    if (oErr || !original) throw new Error(oErr?.message || 'Original post not found.');
+    if (oErr || !original) throw new NotFoundError('Post');
 
     const randomSlugSuffix = Math.floor(Math.random() * 10000);
     const { author, category, created_at, updated_at, id, ...cloneData } = original;
@@ -121,7 +129,9 @@ export async function clonePost(postId: string) {
     revalidatePath('/blog/manage');
     return { data: clone };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error, postId }, 'blog_studio.post.clone.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -198,7 +208,8 @@ Output MUST be a strict, valid JSON object matching this structure:
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`GPT-4o-mini brief expansion failed: ${errText}`);
+      logger.error({ errText, workspaceId: wsId }, 'blog_studio.ai_brief.openai_request.failed');
+      throw new DatabaseError('AI brief generation failed. Please try again.');
     }
 
     const result = await response.json();
@@ -229,7 +240,10 @@ Output MUST be a strict, valid JSON object matching this structure:
       target_keyword: payload.keywords.split(',')[0]?.trim() || 'optimised'
     }).select().single();
 
-    if (pErr) throw new Error(`Brief draft saving failed: ${pErr.message}`);
+    if (pErr) {
+      logger.error({ err: pErr, workspaceId: wsId }, 'blog_studio.ai_brief.draft_save.failed');
+      throw new DatabaseError('Failed to save the generated draft.');
+    }
 
     revalidatePath('/blog');
     revalidatePath('/blog/manage');
@@ -237,8 +251,9 @@ Output MUST be a strict, valid JSON object matching this structure:
     return { data: { postId: post.id } };
 
   } catch (err: any) {
-    console.error('[AI Brief Generation Failed]:', err);
-    return { error: err.message || 'AI Brief compilation aborted.' };
+    logger.error({ err, workspaceId: wsId }, 'blog_studio.ai_brief.generate.failed');
+    const clientError = toClientError(err);
+    return { error: clientError.error };
   }
 }
 
@@ -294,7 +309,8 @@ export async function inlineAiEdit(payload: {
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`OpenAI Copilot call failed: ${errText}`);
+      logger.error({ errText, action: payload.action }, 'blog_studio.inline_ai.openai_request.failed');
+      throw new DatabaseError('Inline AI processing failed.');
     }
 
     const result = await response.json();
@@ -303,8 +319,9 @@ export async function inlineAiEdit(payload: {
     return { data: formattedText };
 
   } catch (error: any) {
-    console.error('[Inline AI Copilot Failed]:', error);
-    return { error: error.message || 'Inline AI processing failed.' };
+    logger.error({ err: error, action: payload.action }, 'blog_studio.inline_ai.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 

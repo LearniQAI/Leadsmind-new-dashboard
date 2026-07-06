@@ -6,6 +6,7 @@ import { profileSchema, passwordSchema, ProfileFormValues, PasswordFormValues } 
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth';
 import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 import { generateAvatarPng } from '@/lib/avatar/generateAvatarPng';
+import { logger } from '@/shared/logger';
 
 export async function updateProfile(values: ProfileFormValues) {
  const user = await getUser();
@@ -32,7 +33,10 @@ export async function updateProfile(values: ProfileFormValues) {
   })
   .eq("id", user.id).eq("workspace_id", workspaceId);
 
- if (error) return { success: false, error: error.message };
+ if (error) {
+  logger.error({ err: error, userId: user.id, workspaceId }, 'account.profile.update.failed');
+  return { success: false, error: 'Failed to update profile. Please try again.' };
+ }
 
  // Compile and upload new fallback initials avatar
  try {
@@ -55,7 +59,7 @@ export async function updateProfile(values: ProfileFormValues) {
     });
   }
  } catch (avatarErr) {
-  console.error('[Avatar Auto Generator Fallback Failed]:', avatarErr);
+  logger.error({ err: avatarErr, userId: user.id }, 'account.avatar.fallback.failed');
  }
 
  revalidatePath('/', 'layout');
@@ -75,7 +79,10 @@ export async function updatePassword(values: PasswordFormValues) {
   password: values.newPassword,
  });
 
- if (error) return { success: false, error: error.message };
+ if (error) {
+  logger.error({ err: error, userId: user.id }, 'account.password.update.failed');
+  return { success: false, error: 'Failed to update password. Please try again.' };
+ }
 
  return { success: true };
 }

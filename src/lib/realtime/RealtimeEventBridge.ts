@@ -76,7 +76,10 @@ class EventBridge {
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`[EventBridge] Connected to form channel: ${formId}`);
+          if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log(`[EventBridge] Connected to form channel: ${formId}`);
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
           console.warn('[EventBridge] Channel disconnected, retrying connection...');
           setTimeout(() => this.reconnect(formId), this.reconnectInterval);

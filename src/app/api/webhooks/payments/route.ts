@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/shared/logger';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
       event = JSON.parse(payload);
     }
   } catch (err: any) {
-    console.error(`[Payment Webhook Verification Failed]: ${err.message}`);
+    logger.error({ err }, 'webhook.payments.signature_verification.failed');
     return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 });
   }
 
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
           .eq('id', existing.id);
 
         if (updateErr) {
-          console.error(`[Payment Webhook] Failed to update enrollment ${existing.id}: ${updateErr.message}`);
+          logger.error({ err: updateErr, enrollmentId: existing.id }, 'webhook.payments.enrollment_update.failed');
         }
       } else {
         // Insert new enrollment
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
           });
 
         if (insertErr) {
-          console.error(`[Payment Webhook] Failed to insert enrollment: ${insertErr.message}`);
+          logger.error({ err: insertErr, courseId, contactId }, 'webhook.payments.enrollment_insert.failed');
         }
       }
 
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
         courseId
       });
 
-      console.log(`[Payment Webhook] Session completed: Contact ${contactId} enrolled in ${courseId}`);
+      logger.info({ contactId, courseId }, 'webhook.payments.session_completed');
     }
   }
 
@@ -138,7 +139,7 @@ export async function POST(req: NextRequest) {
         .eq('metadata->>stripe_subscription_id', subscriptionId); // Matching metadata if stored
 
       if (updateErr) {
-        console.warn(`[Payment Webhook] Match by subscription_id failed, attempting metadata check`);
+        logger.warn({ err: updateErr, subscriptionId }, 'webhook.payments.subscription_match.failed');
       }
     }
   }
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
       .eq('metadata->>stripe_subscription_id', subscriptionId);
 
     if (cancelErr) {
-      console.error(`[Payment Webhook] Cancellation update error: ${cancelErr.message}`);
+      logger.error({ err: cancelErr, subscriptionId }, 'webhook.payments.subscription_cancel.failed');
     }
 
     // Hook telemetry triggers

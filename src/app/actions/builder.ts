@@ -4,6 +4,8 @@ import { createServerClient } from '@/lib/supabase/server';
 import { requireAuth, getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { BUILDER_TEMPLATES } from '@/lib/builder/templates';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 /**
  * --- HELPER: STANDARD ACTION WRAPPER ---
@@ -17,8 +19,9 @@ async function executeAction<T>(action: (supabase: any, workspaceId: string) => 
     const data = await action(supabase, workspaceId);
     return { success: true, ...data as any };
   } catch (err: any) {
-    console.error('[BuilderAction Error]:', err.message);
-    return { success: false, error: err.message || 'Operation failed' };
+    logger.error({ err }, 'builder.action.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -346,8 +349,9 @@ export async function handlePageFormSubmission(pageId: string, workspaceId: stri
 
     return { success: true };
   } catch (error: any) {
-    console.error('[builder] Form submission error:', error);
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId, pageId }, 'builder.form_submission.failed');
+    const clientError = toClientError(error);
+    return { success: false, error: clientError.error };
   }
 }
 

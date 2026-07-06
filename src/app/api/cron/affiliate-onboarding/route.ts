@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,8 +25,8 @@ export async function GET(request: Request) {
     .limit(50); // limit batch to 50 at a time to prevent timeout
 
   if (fetchError) {
-    console.error('Error fetching affiliate email queue:', fetchError);
-    return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    logger.error({ err: fetchError }, 'cron.affiliate_onboarding.queue_fetch.failed');
+    return NextResponse.json({ error: 'Failed to fetch affiliate email queue.' }, { status: 500 });
   }
 
   const processedCount = { sent: 0, failed: 0 };
@@ -124,7 +125,7 @@ export async function GET(request: Request) {
         .eq('id', item.id);
       processedCount.sent++;
     } catch (sendErr) {
-      console.error(`Failed to send onboarding email ${item.id}:`, sendErr);
+      logger.error({ err: sendErr, queueItemId: item.id }, 'cron.affiliate_onboarding.email_send.failed');
       await supabase
         .from('affiliate_email_queue')
         .update({ status: 'failed' })

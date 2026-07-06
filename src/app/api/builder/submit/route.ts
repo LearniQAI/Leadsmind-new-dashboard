@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { handlePageFormSubmission } from '@/app/actions/builder';
+import { validateExternalUrl, UrlValidationError } from '@/lib/security/validateUrl';
 
 export async function POST(request: Request) {
   try {
@@ -45,8 +46,17 @@ export async function POST(request: Request) {
       const activeWebhooks = webhooks.filter((w: any) => w.active && (!w.events || w.events.includes('form_submission')));
       
       for (const hook of activeWebhooks) {
+        let validUrl: URL;
+        try {
+          validUrl = validateExternalUrl(hook.url);
+        } catch (e) {
+          const message = e instanceof UrlValidationError ? e.message : 'Invalid URL.';
+          console.error(`[Webhook Dispatch Error] Rejected ${hook.url}: ${message}`);
+          continue;
+        }
+
         // Run in background without blocking current request execution
-        fetch(hook.url, {
+        fetch(validUrl.toString(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -56,7 +66,8 @@ export async function POST(request: Request) {
             workspaceId,
             timestamp: new Date().toISOString(),
             data: formData
-          })
+          }),
+          signal: AbortSignal.timeout(5000),
         }).catch(err => {
           console.error(`[Webhook Dispatch Error] Failed for ${hook.url}:`, err.message);
         });

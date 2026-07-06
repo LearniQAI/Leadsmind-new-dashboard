@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkAndPublishScheduledPosts } from '@/app/actions/blog';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +19,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, result });
   } catch (error: any) {
-    console.error('[Blog Publish Cron API] Failed:', error.message);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    logger.error({ err: error }, 'cron.blog_publish.failed');
+    return NextResponse.json({ success: false, error: 'Scheduled publish check failed.' }, { status: 500 });
   }
 }
 

@@ -7,6 +7,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
+import { logger } from '@/shared/logger';
 
 const execAsync = promisify(exec);
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
@@ -22,7 +23,7 @@ async function transcribeYoutubeAudioWithYtDlp(videoId: string): Promise<{ trans
   // Download audio using yt-dlp (best audio formatted to mp3)
   const command = `yt-dlp -f "ba" -x --audio-format mp3 -o "${tempDir}/${videoId}.%(ext)s" "https://www.youtube.com/watch?v=${videoId}"`;
   
-  console.log(`[yt-dlp fallback] Executing command: ${command}`);
+  logger.info({ videoId }, 'youtube_import.yt_dlp_fallback.execute');
   await execAsync(command);
   
   if (!fs.existsSync(outputPath)) {
@@ -38,7 +39,7 @@ async function transcribeYoutubeAudioWithYtDlp(videoId: string): Promise<{ trans
   whisperFormData.append('file', file);
   whisperFormData.append('model', 'whisper-1');
 
-  console.log(`[yt-dlp fallback] Uploading audio to Whisper API...`);
+  logger.info({ videoId }, 'youtube_import.yt_dlp_fallback.whisper_upload');
   const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${OPENAI_KEY}` },
@@ -49,12 +50,13 @@ async function transcribeYoutubeAudioWithYtDlp(videoId: string): Promise<{ trans
   try {
     fs.unlinkSync(outputPath);
   } catch (err) {
-    console.error(`Failed to delete temp file ${outputPath}:`, err);
+    logger.error({ err, outputPath }, 'youtube_import.temp_file.delete_failed');
   }
 
   if (!whisperResponse.ok) {
     const errText = await whisperResponse.text();
-    throw new Error(`Whisper transcription failed: ${errText}`);
+    logger.error({ errText, videoId }, 'youtube_import.whisper_transcription.request_failed');
+    throw new Error('Whisper transcription failed.');
   }
 
   const { text: rawTranscript } = await whisperResponse.json();
@@ -101,7 +103,8 @@ export async function fetchVideoMetadata(url: string) {
       }
     };
   } catch (error: any) {
-    return { error: error.message || 'Failed to resolve YouTube metadata.' };
+    logger.error({ err: error, url }, 'youtube_import.metadata.resolve.failed');
+    return { error: 'Failed to resolve YouTube metadata.' };
   }
 }
 
@@ -183,7 +186,8 @@ Output MUST be a valid JSON object matching this exact structure:
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`GPT-4o-mini generation failed: ${errText}`);
+    logger.error({ errText, videoTitle }, 'youtube_import.openai_generation.request_failed');
+    throw new Error('AI blog generation failed.');
   }
 
   const result = await response.json();
@@ -220,7 +224,10 @@ export async function initializeYoutubeImportJob(videoUrl: string) {
     status: 'queued'
   }).select().single();
 
-  if (jErr) return { error: `Failed to queue job: ${jErr.message}` };
+  if (jErr) {
+    logger.error({ err: jErr, workspaceId: wsId }, 'youtube_import.job.queue.failed');
+    return { error: 'Failed to queue import job.' };
+  }
 
   try {
     // 2. Transcribing Phase
@@ -232,14 +239,14 @@ export async function initializeYoutubeImportJob(videoUrl: string) {
     try {
       transcript = await scrapeClosedCaptions(video.videoId);
     } catch (scrapeErr: any) {
-      console.log(`[YouTube Captions Scrape Failed]: ${scrapeErr.message || scrapeErr}. Attempting yt-dlp fallback...`);
+      logger.warn({ err: scrapeErr, videoId: video.videoId }, 'youtube_import.captions_scrape.failed');
       try {
         const fallbackRes = await transcribeYoutubeAudioWithYtDlp(video.videoId);
         transcript = fallbackRes.transcript;
         whisperCost = fallbackRes.whisperCost;
-        console.log(`[yt-dlp fallback] Successfully transcribed audio via Whisper.`);
+        logger.info({ videoId: video.videoId }, 'youtube_import.yt_dlp_fallback.transcribe_success');
       } catch (fallbackErr: any) {
-        console.error(`[yt-dlp audio extraction failed]:`, fallbackErr);
+        logger.error({ err: fallbackErr, videoId: video.videoId }, 'youtube_import.audio_extraction.failed');
         // Final fallback to mock
         whisperCost = 0.036; // Default standard 6-minute mock audio cost ($0.006 * 6)
         transcript = `This is a high-fidelity, optimised video transcription transcript generated via Whisper audio processing pipeline fallback. In this session, we discuss the complete organisation, and dynamic centre workflows to ensure all resources are optimised for maximum conversion performance and user engagement across the platform, improving colour alignment.`;
@@ -278,7 +285,10 @@ export async function initializeYoutubeImportJob(videoUrl: string) {
       target_keyword: 'optimised'
     }).select().single();
 
-    if (pErr) throw new Error(`Draft publication failed: ${pErr.message}`);
+    if (pErr) {
+      logger.error({ err: pErr, workspaceId: wsId }, 'youtube_import.draft_post.publish_failed');
+      throw new Error('Draft publication failed.');
+    }
 
     // 5. Complete Job & Update Cost Telemetry Ledger
     const totalUsd = whisperCost + gptCost;
@@ -298,13 +308,13 @@ export async function initializeYoutubeImportJob(videoUrl: string) {
 
     return { data: { jobId: job.id, postId: post.id } };
   } catch (err: any) {
-    console.error('[YouTube Import Processing Failed]:', err);
+    logger.error({ err, workspaceId: wsId, jobId: job.id }, 'youtube_import.processing.failed');
     await supabase.from('blog_import_jobs').update({
       status: 'failed',
       error_message: err.message || 'Orchestration pipeline failure.',
       updated_at: new Date().toISOString()
     }).eq("id", job.id).eq("workspace_id", wsId).eq('workspace_id', wsId);
-    
-    return { error: err.message || 'Job compilation pipeline aborted.' };
+
+    return { error: 'Job compilation pipeline aborted.' };
   }
 }

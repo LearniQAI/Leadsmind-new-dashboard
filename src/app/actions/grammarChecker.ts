@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import OpenAI from 'openai';
+import { logger } from '@/shared/logger';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -283,9 +284,12 @@ function assessReadability(text: string) {
 
 export async function checkGrammarAndStyle(documentId: string, text: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
-    const supabase = await createServerClient();
 
     let matches: any[] = [];
     let isExternalApiSuccess = false;
@@ -337,7 +341,7 @@ export async function checkGrammarAndStyle(documentId: string, text: string) {
         }
       }
     } catch (e) {
-      console.warn('LanguageTool check error, falling back to local engine:', e);
+      logger.warn({ err: e, documentId }, 'grammar_checker.language_tool.fallback');
     }
 
     // Use local fallback rules if LanguageTool is offline
@@ -365,7 +369,7 @@ export async function checkGrammarAndStyle(documentId: string, text: string) {
         });
         tone = response.choices[0].message.content?.trim() || 'Professional';
       } catch (err) {
-        console.error('OpenAI Tone Classification Failed:', err);
+        logger.error({ err, documentId }, 'grammar_checker.tone_classification.failed');
       }
     }
 
@@ -416,6 +420,7 @@ export async function checkGrammarAndStyle(documentId: string, text: string) {
       }
     };
   } catch (err: any) {
-    return { error: err.message || 'Grammar check failed' };
+    logger.error({ err, documentId }, 'grammar_checker.check.failed');
+    return { error: 'Grammar check failed' };
   }
 }

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 /**
  * Creates a support ticket in public.support_tickets if the appointment belongs to a support calendar.
@@ -15,7 +16,7 @@ export async function createSupportTicket(appointmentId: string): Promise<any | 
       .single();
 
     if (apptError || !appointment) {
-      console.error(`[crossConnect] Appointment not found: ${appointmentId}`, apptError);
+      logger.error({ err: apptError, appointmentId }, 'cross_connect.appointment.not_found');
       return null;
     }
 
@@ -36,7 +37,7 @@ export async function createSupportTicket(appointmentId: string): Promise<any | 
       .maybeSingle();
 
     if (existingTicket) {
-      console.log(`[crossConnect] Support ticket already exists for appointment ${appointmentId}`);
+      logger.info({ appointmentId }, 'cross_connect.support_ticket.already_exists');
       return existingTicket;
     }
 
@@ -63,14 +64,14 @@ Calendar Name: ${calendar?.name || 'N/A'}`;
       .single();
 
     if (ticketError) {
-      console.error('[crossConnect] Failed to create support ticket:', ticketError);
+      logger.error({ err: ticketError }, 'cross_connect.support_ticket.create_failed');
       return null;
     }
 
-    console.log(`[crossConnect] Created support ticket ${ticket.id} for appointment ${appointmentId}`);
+    logger.info({ ticketId: ticket.id, appointmentId }, 'cross_connect.support_ticket.created');
     return ticket;
   } catch (err: any) {
-    console.error('[crossConnect] Error in createSupportTicket:', err);
+    logger.error({ err }, 'cross_connect.create_support_ticket.failed');
     return null;
   }
 }
@@ -90,7 +91,7 @@ export async function createTasksFromTranscript(appointmentId: string): Promise<
       .single();
 
     if (!appointment) {
-      console.error(`[crossConnect] Appointment not found for task sync: ${appointmentId}`);
+      logger.error({ appointmentId }, 'cross_connect.appointment.not_found_for_task_sync');
       return;
     }
 
@@ -102,13 +103,13 @@ export async function createTasksFromTranscript(appointmentId: string): Promise<
       .maybeSingle();
 
     if (!transcript) {
-      console.warn(`[crossConnect] No transcript found for appointment: ${appointmentId}`);
+      logger.warn({ appointmentId }, 'cross_connect.transcript.not_found');
       return;
     }
 
     const transcriptText = transcript.transcript_text;
     if (!transcriptText) {
-      console.warn(`[crossConnect] Transcript text is empty for appointment: ${appointmentId}`);
+      logger.warn({ appointmentId }, 'cross_connect.transcript.empty');
       return;
     }
 
@@ -152,7 +153,7 @@ Output ONLY the raw JSON array, without any markdown formatting or code blocks.`
           actionItems = JSON.parse(text);
         }
       } catch (err) {
-        console.warn('[crossConnect] GPT action items extraction failed, using fallback parser:', err);
+        logger.warn({ err }, 'cross_connect.gpt_action_items.failed_using_fallback');
       }
     }
 
@@ -203,12 +204,12 @@ Output ONLY the raw JSON array, without any markdown formatting or code blocks.`
       if (!error) {
         count++;
       } else {
-        console.error('[crossConnect] Failed to insert contact task:', error);
+        logger.error({ err: error }, 'cross_connect.contact_task.insert_failed');
       }
     }
 
-    console.log(`[crossConnect] Synced ${count} tasks for appointment ${appointmentId}`);
+    logger.info({ count, appointmentId }, 'cross_connect.tasks.synced');
   } catch (err: any) {
-    console.error('[crossConnect] Error in createTasksFromTranscript:', err);
+    logger.error({ err }, 'cross_connect.create_tasks_from_transcript.failed');
   }
 }

@@ -5,6 +5,8 @@ import { getCurrentWorkspaceId, getUserAccessInfo } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { ficTransformer } from '@/../server/services/ficTransformer';
 import crypto from 'crypto';
+import { logger } from '@/shared/logger';
+import { ForbiddenError, toClientError } from '@/shared/errors/AppError';
 
 function safeRevalidatePath(path: string) {
   try {
@@ -29,7 +31,7 @@ export interface STRDraftPayload {
 async function checkCompliancePrivileges() {
   const { role } = await getUserAccessInfo();
   if (!role || !['admin', 'compliance'].includes(role)) {
-    throw new Error('Access Denied: Restricted to Compliance Officers and Administrators');
+    throw new ForbiddenError('Access Denied: Restricted to Compliance Officers and Administrators');
   }
   return role;
 }
@@ -95,8 +97,9 @@ export async function saveStrDraft(
       return { success: true, report: data };
     }
   } catch (err: any) {
-    console.error('[saveStrDraft Error]:', err);
-    return { success: false, error: err.message };
+    logger.error({ err, reportId, contactId: payload.contactId }, 'compliance.str_draft.save.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -123,6 +126,7 @@ export async function finalizeAndFileStr(
       .single();
 
     if (reportErr || !report) {
+      if (reportErr) logger.error({ err: reportErr, reportId, workspaceId }, 'compliance.str_report.fetch.failed');
       return { success: false, error: 'STR report draft not found' };
     }
 
@@ -138,6 +142,7 @@ export async function finalizeAndFileStr(
       .single();
 
     if (contactErr || !contact) {
+      if (contactErr) logger.error({ err: contactErr, contactId: report.contact_id, workspaceId }, 'compliance.str_report.contact_fetch.failed');
       return { success: false, error: 'Subject contact record not found' };
     }
 
@@ -199,7 +204,7 @@ export async function finalizeAndFileStr(
       }, { onConflict: 'contact_id' });
 
     if (riskRatingErr) {
-      console.warn('[finalizeAndFileStr Warning] Failed to update kyc_risk_ratings:', riskRatingErr.message);
+      logger.warn({ err: riskRatingErr, workspaceId, contactId: report.contact_id }, 'compliance.str_report.risk_rating_update.failed');
     }
 
     // 6. Fetch the latest FICA consent record to enforce entity linkage
@@ -232,14 +237,15 @@ export async function finalizeAndFileStr(
       });
 
     if (docErr) {
-      console.warn('[finalizeAndFileStr Warning] Failed to log document audit record:', docErr.message);
+      logger.warn({ err: docErr, workspaceId, contactId: report.contact_id }, 'compliance.str_report.document_audit_log.failed');
     }
 
     safeRevalidatePath('/admin/compliance');
     return { success: true, report: updatedReport };
   } catch (err: any) {
-    console.error('[finalizeAndFileStr Error]:', err);
-    return { success: false, error: err.message };
+    logger.error({ err, reportId }, 'compliance.str_report.finalize.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -262,7 +268,7 @@ export async function getStrReports(): Promise<any[]> {
     if (error) throw error;
     return data || [];
   } catch (err) {
-    console.error('[getStrReports Error]:', err);
+    logger.error({ err }, 'compliance.str_reports.list.failed');
     return [];
   }
 }
@@ -283,7 +289,7 @@ export async function getStrReportDetails(reportId: string): Promise<any | null>
     if (error) throw error;
     return data;
   } catch (err) {
-    console.error('[getStrReportDetails Error]:', err);
+    logger.error({ err, reportId }, 'compliance.str_report.details.fetch.failed');
     return null;
   }
 }
@@ -338,7 +344,9 @@ export async function previewStrSerialization(
     const json = ficTransformer.serializeToJson(inputPayload);
     return { success: true, xml, json };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    logger.error({ err, contactId: payload.contactId }, 'compliance.str_report.preview.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
   }
 }
 

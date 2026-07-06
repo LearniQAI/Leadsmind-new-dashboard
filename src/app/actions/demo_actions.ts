@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/shared/logger';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +31,7 @@ export async function sendDemoLead(apiKey: string) {
     const data = await response.json();
     return data;
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'demo_actions.demo_lead.send.failed');
+    return { error: 'Failed to send demo lead.' };
   }
 }

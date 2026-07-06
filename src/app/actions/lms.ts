@@ -2,6 +2,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
 
 export async function getCourses() {
  try {
@@ -18,7 +19,8 @@ export async function getCourses() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.courses.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -38,7 +40,8 @@ export async function getCourse(courseId: string) {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.course.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -61,7 +64,8 @@ export async function createCourse(title: string) {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'create.course.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -81,7 +85,8 @@ export async function getForumPosts() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.forum.posts.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -108,7 +113,8 @@ export async function enrollStudent(courseId: string, contactId: string) {
 
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'enroll.student.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -117,7 +123,8 @@ export async function updateProgress(contactId: string, lessonId: string, comple
   // Progress tracking logic
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'update.progress.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -148,7 +155,8 @@ export async function getModules(courseId: string) {
   if (modulesErr) throw modulesErr;
   return { data: modules };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.modules.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -209,7 +217,8 @@ export async function createModule(
   if (error) throw error;
   return { data: module };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'create.module.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -269,7 +278,8 @@ export async function updateModule(
   if (error) throw error;
   return { data: updatedModule };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'update.module.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -302,7 +312,8 @@ export async function deleteModule(moduleId: string) {
   if (error) throw error;
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'delete.module.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -365,7 +376,8 @@ export async function createLesson(
   if (error) throw error;
   return { data: lesson };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'create.lesson.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -421,7 +433,8 @@ export async function updateLesson(
   if (error) throw error;
   return { data: updatedLesson };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'update.lesson.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -454,7 +467,8 @@ export async function deleteLesson(lessonId: string) {
   if (error) throw error;
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'delete.lesson.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -482,7 +496,8 @@ export async function getStudentCourseProgress(courseId: string) {
   if (error) throw error;
   return { data: data || [] };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'get.student.course.progress.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -599,7 +614,8 @@ export async function completeLessonAction(lessonId: string) {
 
   return { success: true };
  } catch (error: any) {
-  return { error: error.message };
+  logger.error({ err: error }, 'complete.lesson.action.failed');
+  return { error: 'Operation failed. Please try again.' };
  }
 }
 
@@ -762,6 +778,7 @@ export async function getCourseAnalytics(courseId: string) {
       }
     };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.course.analytics.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }

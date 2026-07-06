@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 export interface BusySlot {
   start: string; // ISO string
@@ -78,7 +79,7 @@ export async function refreshUserCalendarToken(
 
     return newAccessToken;
   } catch (error) {
-    console.error(`[calendar-refresh] Error refreshing ${provider} token:`, error);
+    logger.error({ err: error, provider }, 'calendar_refresh.token_refresh.failed');
     // Mark status as error on refresh failure
     const supabase = await createServerClient();
     await supabase
@@ -169,10 +170,10 @@ export async function getExternalBusySlots(
         }
       }
     } catch (err) {
-      console.warn(`[calendar-sync] Failed to sync ${conn.provider} for user ${userId}:`, err);
+      logger.warn({ err, provider: conn.provider, userId }, 'calendar_sync.sync.failed');
       // fallback to mock busy slot if in mock mode/sandbox env without client secrets
       if (!process.env.GOOGLE_CLIENT_ID && !process.env.OUTLOOK_CLIENT_ID) {
-        console.log('[calendar-sync] Sandboxed execution: providing simulated external block.');
+        logger.info({}, 'calendar_sync.sandboxed.simulated_block');
         // Add a mock block from 13:00 to 14:00 today to demonstrate sync logic works
         const todayStr = new Date().toISOString().split('T')[0];
         busySlots.push({
@@ -292,7 +293,7 @@ export async function syncBookingToExternal(appointmentId: string): Promise<bool
         }
       }
     } catch (err) {
-      console.error(`[calendar-sync] Outbound sync failed for connection ${conn.id}:`, err);
+      logger.error({ err, connectionId: conn.id }, 'calendar_sync.outbound_sync.failed');
     }
   }
 

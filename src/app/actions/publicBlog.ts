@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
 
 /**
  * Fetch all published blog posts in the active workspace or default workspace.
@@ -41,8 +42,8 @@ export async function getPublicBlogPosts(filters?: { categoryId?: string; search
     if (error) throw error;
     return { data: data || [] };
   } catch (error: any) {
-    console.error('[BlogAction getPublicBlogPosts Error]:', error);
-    return { error: error.message || 'Failed to fetch public posts' };
+    logger.error({ err: error }, 'public_blog.posts.fetch.failed');
+    return { error: 'Failed to fetch public posts' };
   }
 }
 
@@ -80,8 +81,8 @@ export async function getPublicBlogPost(slug: string, preview = false) {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    console.error('[BlogAction getPublicBlogPost Error]:', error);
-    return { error: error.message || 'Failed to fetch public post' };
+    logger.error({ err: error, slug }, 'public_blog.post.fetch.failed');
+    return { error: 'Failed to fetch public post' };
   }
 }
 
@@ -107,8 +108,8 @@ export async function getPublicCategories() {
     if (error) throw error;
     return { data: data || [] };
   } catch (error: any) {
-    console.error('[BlogAction getPublicCategories Error]:', error);
-    return { error: error.message || 'Failed to fetch categories' };
+    logger.error({ err: error }, 'public_blog.categories.fetch.failed');
+    return { error: 'Failed to fetch categories' };
   }
 }
 
@@ -153,8 +154,8 @@ export async function subscribeToNewsletter(email: string, workspaceId?: string,
 
     return { success: true, message: 'Success! You have subscribed to our insights newsletter.' };
   } catch (error: any) {
-    console.error('[subscribeToNewsletter Error]:', error);
-    return { error: error.message || 'Failed to capture subscriber' };
+    logger.error({ err: error }, 'public_blog.newsletter.subscribe.failed');
+    return { error: 'Failed to capture subscriber' };
   }
 }
 
@@ -185,7 +186,7 @@ export async function recordPageview(payload: {
     if (error) throw error;
     return { success: true };
   } catch (err) {
-    console.error('[BlogAction recordPageview Error]:', err);
+    logger.error({ err, postId: payload.postId }, 'public_blog.pageview.record.failed');
     return { success: false };
   }
 }
@@ -210,8 +211,8 @@ export async function submitComment(payload: {
     if (error) throw error;
     return { success: true };
   } catch (err: any) {
-    console.error('[BlogAction submitComment Error]:', err);
-    return { error: err.message || 'Failed to submit comment' };
+    logger.error({ err, postId: payload.postId }, 'public_blog.comment.submit.failed');
+    return { error: 'Failed to submit comment' };
   }
 }
 
@@ -226,8 +227,8 @@ export async function getPostComments(postId: string) {
     if (error) throw error;
     return { data: data || [] };
   } catch (err: any) {
-    console.error('[BlogAction getPostComments Error]:', err);
-    return { error: err.message || 'Failed to fetch comments' };
+    logger.error({ err, postId }, 'public_blog.comments.fetch.failed');
+    return { error: 'Failed to fetch comments' };
   }
 }
 
@@ -255,7 +256,7 @@ export async function getBlogSettings(workspaceId: string) {
 
     return { data: { ...defaultSettings, ...data } };
   } catch (err: any) {
-    console.error('[BlogAction getBlogSettings Error]:', err);
+    logger.error({ err, workspaceId }, 'public_blog.settings.fetch.failed');
     return { data: { comments_engine: 'native', analytics_enabled: true, disqus_shortname: undefined, layout_style: 'minimal', header_style: 'sticky-slim', sidebar_style: 'standard', lead_capture_style: 'newsletter', sa_province: '', sa_city: '', sa_area: '' } };
   }
 }

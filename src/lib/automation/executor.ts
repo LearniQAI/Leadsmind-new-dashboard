@@ -3,6 +3,7 @@ import { AutomationActions } from "./actions_registry";
 import { isWithinBusinessHours, nextWindowOpen, BusinessHoursConfig } from "./business_hours";
 import { resolveWinningBranch } from "./condition_evaluator";
 import { cyrb53 } from "@/lib/utils";
+import { logger } from "@/shared/logger";
 
 /**
  * Trigger point for all automations.
@@ -39,7 +40,7 @@ async function startWorkflowExecution(workflow: any, contactId: string) {
  });
 
  if (error) {
-  console.error("[executor] Enrollment RPC Failed:", error);
+  logger.error({ err: error }, "executor.enrollment_rpc.failed");
   return;
  }
 
@@ -47,7 +48,7 @@ async function startWorkflowExecution(workflow: any, contactId: string) {
  if (executionId) {
   await processNextStep(executionId);
  } else {
-  console.log(`[executor] Workflow ${workflow.id} for contact ${contactId} was either queued or skipped due to rules.`);
+  logger.info({ workflowId: workflow.id, contactId }, "executor.workflow.queued_or_skipped");
  }
 }
 
@@ -75,7 +76,7 @@ export async function processNextStep(executionId: string) {
    context: { ...execution.context, termination_reason: 'goal_achieved' }
   }).eq("id", executionId);
   
-  console.log(`[executor] Termination: Contact ${execution.contact_id} met goal for workflow ${execution.workflow_id}`);
+  logger.info({ contactId: execution.contact_id, workflowId: execution.workflow_id }, "executor.termination.goal_met");
   return;
  }
 
@@ -228,7 +229,7 @@ export async function processNextStep(executionId: string) {
    const winner = resolveWinningBranch(branches, contact);
    const chosenBranch = winner?.name ?? 'Default';
 
-   console.log(`[executor] Route matched branch: ${chosenBranch} for contact ${execution.contact_id}`);
+   logger.info({ chosenBranch, contactId: execution.contact_id }, "executor.route.branch_matched");
    
    await updateLog({ 
     status: 'completed', 
@@ -322,7 +323,7 @@ export async function processNextStep(executionId: string) {
   }
 
  } catch (err: any) {
-  console.error(`[executor] Step failed (${step.type}):`, err);
+  logger.error({ err, stepType: step.type }, "executor.step.failed");
   await updateLog({ status: 'failed', error_message: err.message, completed_at: new Date().toISOString() });
 
   await supabase.from("workflow_executions").update({ 

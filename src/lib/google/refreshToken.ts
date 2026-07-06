@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 /**
  * Refreshes the Google Access Token if it's expired or about to expire.
@@ -9,13 +10,13 @@ export async function refreshGoogleToken(connectionId: string, credentials: any)
 
  // If token is still valid (with 5 minute buffer), return current credentials
  if (expiresAt && Date.now() < (expiresAt - 300000)) {
-  console.log('[google-refresh] Token still valid.');
+  logger.info({}, 'google_refresh.token.still_valid');
   return accessToken;
  }
 
- console.log('[google-refresh] Token expired or expiring soon. Refreshing...');
+ logger.info({}, 'google_refresh.token.expiring_refreshing');
  if (!refreshToken) {
-  console.error('[google-refresh] Missing refresh token!');
+  logger.error({}, 'google_refresh.refresh_token.missing');
   throw new Error('No refresh token available. User must re-connect Gmail.');
  }
 
@@ -32,7 +33,7 @@ export async function refreshGoogleToken(connectionId: string, credentials: any)
   });
 
   const data = await response.json();
-  console.log('[google-refresh] Google refresh response:', JSON.stringify(data));
+  logger.info({ ok: response.ok, status: response.status }, 'google_refresh.response');
 
   if (!response.ok) {
    throw new Error(data.error_description || 'Failed to refresh Google token');
@@ -57,7 +58,7 @@ export async function refreshGoogleToken(connectionId: string, credentials: any)
 
   return newAccessToken;
  } catch (error) {
-  console.error('[google-refresh] Error:', error);
+  logger.error({ err: error }, 'google_refresh.token_refresh.failed');
   throw error;
  }
 }

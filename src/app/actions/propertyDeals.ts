@@ -4,21 +4,29 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import crypto from 'crypto';
+import { logger } from '@/shared/logger';
 
 /**
  * Fetch a property deal's details, contacts (buyer & seller), and status logs.
  */
 export async function getPropertyDeal(id: string) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No active workspace' };
 
   const { data: deal, error: dealError } = await supabase
     .from('opportunities')
     .select('*, stage:pipeline_stages(*)')
     .eq('id', id)
+    .eq('workspace_id', workspaceId)
     .single();
 
   if (dealError || !deal) {
-    return { success: false, error: dealError?.message || 'Opportunity not found' };
+    if (dealError) logger.error({ err: dealError, dealId: id }, 'property_deals.deal.fetch.failed');
+    return { success: false, error: 'Opportunity not found' };
   }
 
   const buyerId = deal.buyer_id || deal.contact_id;
@@ -77,7 +85,11 @@ export async function updatePropertyDealContacts(
   sellerId: string | null
 ) {
   const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No active workspace' };
 
   const { error } = await supabase
     .from('opportunities')
@@ -90,7 +102,8 @@ export async function updatePropertyDealContacts(
     .eq("id", id).eq("workspace_id", workspaceId);
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId, dealId: id }, 'property_deals.contacts.update.failed');
+    return { success: false, error: 'Failed to update deal contacts.' };
   }
 
   revalidatePath(`/deals/property/${id}`);
@@ -105,11 +118,14 @@ export async function dispatchFundsDeclaration(
   buyerId: string,
   phone: string
 ) {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'No active workspace' };
 
   const token = crypto.randomBytes(16).toString('hex');
-  const supabase = await createServerClient();
 
   const { error } = await supabase
     .from('source_of_funds_declarations')
@@ -123,11 +139,12 @@ export async function dispatchFundsDeclaration(
     });
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId, dealId }, 'property_deals.funds_declaration.dispatch.failed');
+    return { success: false, error: 'Failed to dispatch funds declaration.' };
   }
 
   // Simulated WhatsApp API trigger
-  console.log(`[WhatsApp SIMULATION] Sent funds declaration form link to cash buyer (${phone}). URL: /portal/funds-declaration/${token}`);
+  logger.info({ dealId, buyerId }, 'property_deals.funds_declaration.whatsapp_simulation_sent');
 
   revalidatePath(`/deals/property/${dealId}`);
   return { success: true, token };
@@ -141,14 +158,16 @@ export async function createConveyancingShare(
   attorneyName: string,
   attorneyEmail: string
 ) {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'No active workspace' };
 
   const token = crypto.randomBytes(16).toString('hex');
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiration
-
-  const supabase = await createServerClient();
 
   const { error } = await supabase
     .from('conveyancing_shares')
@@ -162,7 +181,8 @@ export async function createConveyancingShare(
     });
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId, dealId }, 'property_deals.conveyancing_share.create.failed');
+    return { success: false, error: 'Failed to create conveyancing share.' };
   }
 
   revalidatePath(`/deals/property/${dealId}`);
@@ -309,7 +329,8 @@ export async function submitFundsDeclaration(
     .eq('token', token);
 
   if (error) {
-    return { success: false, error: error.message };
+    logger.error({ err: error }, 'property_deals.funds_declaration.submit.failed');
+    return { success: false, error: 'Failed to submit funds declaration.' };
   }
 
   return { success: true };
@@ -319,10 +340,13 @@ export async function submitFundsDeclaration(
  * Retrieve list of all contacts in the active workspace.
  */
 export async function getWorkspaceContacts() {
+  const supabase = await createServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return [];
+
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return [];
 
-  const supabase = await createServerClient();
   const { data } = await supabase
     .from('contacts')
     .select('id, first_name, last_name, email, phone')

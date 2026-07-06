@@ -304,7 +304,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
                       <div key={a.user_id} className="flex items-center gap-2 bg-primary/10 border border-primary/20 pl-1 pr-3 py-1 rounded-full group transition-all">
                         <div className="w-6 h-6 rounded-full overflow-hidden border-2 border-[#080f28] bg-white/5 flex items-center justify-center">
                           {a.profile?.avatar_url ? (
-                            <img src={a.profile.avatar_url} className="w-full h-full object-cover" />
+                            <img src={a.profile.avatar_url} alt={a.profile?.first_name || 'Assignee avatar'} className="w-full h-full object-cover" />
                           ) : (
                             <span className="text-[8px] text-primary">{a.profile?.first_name?.[0]}</span>
                           )}

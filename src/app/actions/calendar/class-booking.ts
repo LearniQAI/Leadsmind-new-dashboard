@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 /**
  * --- LEAMSMIND CLASS BOOKING ENGINE ---
@@ -28,8 +29,8 @@ export async function registerForClass(classSessionId: string, contactId: string
   });
 
   if (error) {
-    console.error('[ClassBooking Error]:', error.message);
-    return { success: false, error: error.message };
+    logger.error({ err: error, workspaceId, classSessionId, contactId }, 'calendar.class_registration.failed');
+    return { success: false, error: 'Unable to register for this class. Please try again.' };
   }
 
   revalidatePath('/apps/calendar');
@@ -61,7 +62,10 @@ export async function cancelRegistration(registrationId: string) {
     .eq('id', registrationId)
     .eq('workspace_id', workspaceId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId, registrationId }, 'calendar.class_registration.cancel.failed');
+    return { success: false, error: 'Unable to cancel registration. Please try again.' };
+  }
 
   // 3. Trigger the promotion engine to offer the seat to the next person
   await promoteWaitlist(reg.class_session_id);

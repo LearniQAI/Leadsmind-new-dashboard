@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import OpenAI from 'openai';
+import { logger } from '@/shared/logger';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -51,9 +52,12 @@ function calculateJaccard(setA: Set<string>, setB: Set<string>): number {
 
 export async function scanOriginality(documentId: string, text: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
-    const supabase = await createServerClient();
 
     // 1. Credit Check Guard: Retrieve current credits
     const { data: ws, error: wsErr } = await supabase
@@ -237,7 +241,7 @@ export async function scanOriginality(documentId: string, text: string) {
             }
           }
         } catch (e) {
-          console.error('Serper API check failed for phrase:', phrase, e);
+          logger.error({ err: e, phrase }, 'plagiarism_checker.serper_api.check_failed');
         }
       }
 
@@ -245,7 +249,7 @@ export async function scanOriginality(documentId: string, text: string) {
         webScore = Math.max(0, 100 - Math.round((webMatchesCount / phrasesToSearch.length) * 100));
       }
     } else {
-      console.warn('Serper.dev API Key missing. Web plagiarism check bypassed.');
+      logger.warn({}, 'plagiarism_checker.serper_api.key_missing');
     }
 
     // Deduplicate matches sharing same offset & length (prefer internal matches over web matches)
@@ -329,7 +333,8 @@ export async function scanOriginality(documentId: string, text: string) {
       },
     };
   } catch (err: any) {
-    return { error: err.message || 'Plagiarism scan failed' };
+    logger.error({ err }, 'plagiarism_checker.scan.failed');
+    return { error: 'Plagiarism scan failed' };
   }
 }
 
@@ -391,15 +396,19 @@ Example output format:
       data: parsed.options || []
     };
   } catch (err: any) {
-    return { error: err.message || 'Paraphrase generation failed.' };
+    logger.error({ err }, 'plagiarism_checker.paraphrase.failed');
+    return { error: 'Paraphrase generation failed.' };
   }
 }
 
 export async function getWorkspaceCredits() {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { data: 100 };
+
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No workspace context' };
-    const supabase = await createServerClient();
     const { data } = await supabase
       .from('workspaces')
       .select('ai_credits')
@@ -413,9 +422,12 @@ export async function getWorkspaceCredits() {
 
 export async function scanSnippetOriginality(textSnippet: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
-    const supabase = await createServerClient();
 
     const matches: PlagiarismMatch[] = [];
     const cleanText = textSnippet.trim();
@@ -447,6 +459,7 @@ export async function scanSnippetOriginality(textSnippet: string) {
 
     return { data: { matches } };
   } catch (err: any) {
-    return { error: err.message || 'Snippet scan failed' };
+    logger.error({ err }, 'plagiarism_checker.snippet_scan.failed');
+    return { error: 'Snippet scan failed' };
   }
 }

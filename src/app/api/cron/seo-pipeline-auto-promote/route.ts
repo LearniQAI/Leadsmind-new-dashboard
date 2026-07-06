@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { runPipelineAutomation, runRevenueRollup } from '@/app/actions/seo';
+import { logger } from '@/shared/logger';
 
 // Mark as dynamic to avoid static generation build failures
 export const dynamic = 'force-dynamic';
@@ -13,19 +14,19 @@ export async function GET(req: Request) {
 
   try {
     // 1. Run pipeline auto-promotion logic (moves stages and flags stuck items)
-    console.log('[SEO Pipeline Cron] Executing auto promote and stuck flag routine...');
+    logger.info({}, 'cron.seo_pipeline_auto_promote.promote.start');
     const promoteResult = await runPipelineAutomation();
     if (promoteResult.error) {
-      console.error('[SEO Pipeline Cron] Promotion error:', promoteResult.error);
-      return NextResponse.json({ success: false, error: `Promotion failed: ${promoteResult.error}` }, { status: 500 });
+      logger.error({ err: promoteResult.error }, 'cron.seo_pipeline_auto_promote.promote.failed');
+      return NextResponse.json({ success: false, error: 'Pipeline promotion failed.' }, { status: 500 });
     }
 
     // 2. Run revenue rollup logic (aggregates closed revenue/RPV/ROI)
-    console.log('[SEO Pipeline Cron] Executing revenue attribution rollup routine...');
+    logger.info({}, 'cron.seo_pipeline_auto_promote.rollup.start');
     const rollupResult = await runRevenueRollup();
     if (rollupResult.error) {
-      console.error('[SEO Pipeline Cron] Rollup error:', rollupResult.error);
-      return NextResponse.json({ success: false, error: `Rollup failed: ${rollupResult.error}` }, { status: 500 });
+      logger.error({ err: rollupResult.error }, 'cron.seo_pipeline_auto_promote.rollup.failed');
+      return NextResponse.json({ success: false, error: 'Revenue rollup failed.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -33,8 +34,8 @@ export async function GET(req: Request) {
       message: 'SEO Content Pipeline automation and Revenue Rollup executed successfully.'
     });
   } catch (error: any) {
-    console.error('[SEO Pipeline Cron API] Failed:', error.message);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    logger.error({ err: error }, 'cron.seo_pipeline_auto_promote.failed');
+    return NextResponse.json({ success: false, error: 'SEO pipeline automation failed.' }, { status: 500 });
   }
 }
 

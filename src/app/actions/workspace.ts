@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getUser } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { logger } from '@/shared/logger';
 
 function slugify(text: string) {
  return text
@@ -37,7 +38,7 @@ export async function createWorkspace(name: string) {
    .single();
 
   if (workspaceError) {
-   console.error('[createWorkspace] Error:', workspaceError);
+   logger.error({ err: workspaceError, userId: user.id }, 'workspace.create.failed');
    return { success: false, error: 'Failed to create workspace' };
   }
 
@@ -51,7 +52,7 @@ export async function createWorkspace(name: string) {
    });
 
   if (memberError) {
-   console.error('[createWorkspace] Member error:', memberError);
+   logger.error({ err: memberError, workspaceId: workspace.id, userId: user.id }, 'workspace.create.member_insert.failed');
   }
 
   // Set as active workspace
@@ -64,7 +65,7 @@ export async function createWorkspace(name: string) {
   revalidatePath('/', 'layout');
   return { success: true, workspaceId: workspace.id };
  } catch (err) {
-  console.error('[createWorkspace] Unexpected error:', err);
+  logger.error({ err, userId: user.id }, 'workspace.create_action.failed');
   return { success: false, error: 'An unexpected error occurred' };
  }
 }
@@ -136,7 +137,7 @@ export async function saveWorkspaceKycSettings(
     revalidatePath('/settings');
     return { success: true };
   } catch (err: any) {
-    console.error('[saveWorkspaceKycSettings Error]:', err);
-    return { error: err.message || 'Failed to save KYC settings' };
+    logger.error({ err, workspaceId }, 'workspace.kyc_settings.save.failed');
+    return { error: 'Failed to save KYC settings' };
   }
 }

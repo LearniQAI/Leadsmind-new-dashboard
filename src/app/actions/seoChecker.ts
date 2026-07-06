@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
 
 export interface SeoMetric {
   name: string;
@@ -29,9 +30,12 @@ export async function analyzeContentSEO(params: {
   seoProfile?: string;
 }) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
-    const supabase = await createServerClient();
 
     // 1. Credit Deduction Guard (Charge 3 AI credits)
     const { data: ws, error: wsErr } = await supabase
@@ -114,7 +118,7 @@ export async function analyzeContentSEO(params: {
           }
         }
       } catch (e) {
-        console.error("Serper.dev fetch error:", e);
+        logger.error({ err: e }, 'seo_checker.serper_api.fetch_failed');
       }
     }
 
@@ -880,6 +884,7 @@ export async function analyzeContentSEO(params: {
       }
     };
   } catch (err: any) {
-    return { error: err.message || 'SEO scoring failed' };
+    logger.error({ err }, 'seo_checker.scoring.failed');
+    return { error: 'SEO scoring failed' };
   }
 }

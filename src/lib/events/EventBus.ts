@@ -1,4 +1,5 @@
 import { triggerWorkflows } from "@/lib/automation/executor";
+import { logger } from "@/shared/logger";
 
 export const EVENT_TRIGGERS = {
   STUDENT_ENROLLED_COURSE: 'student_enrolled_course',
@@ -34,10 +35,10 @@ export async function publishEvent(
   contactId: string,
   payload: any = {}
 ) {
-  console.log(`[EventBus] Publishing event "${eventType}" for contact ${contactId} in workspace ${workspaceId}`);
-  
+  logger.info({ eventType, contactId, workspaceId }, "event_bus.publishing");
+
   // Non-blocking asynchronous trigger
   triggerWorkflows(workspaceId, eventType, contactId).catch((err) => {
-    console.error(`[EventBus] triggerWorkflows failed for event "${eventType}":`, err);
+    logger.error({ err, eventType }, "event_bus.trigger_workflows.failed");
   });
 }

@@ -4,6 +4,7 @@ import { verifyPayFastSignature } from '@/lib/calendar/payfast';
 import { parseISO, addMinutes } from 'date-fns';
 import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
+import { logger } from '@/shared/logger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,12 +15,12 @@ export async function POST(req: NextRequest) {
       payload[key] = value.toString();
     });
 
-    console.log('[payfast-webhook] Received ITN notification:', JSON.stringify(payload));
+    logger.info({ payload }, 'payfast_webhook.itn.received');
 
     // 2. Signature Validation
     const isValid = verifyPayFastSignature(payload);
     if (!isValid && process.env.NODE_ENV === 'production') {
-      console.warn('[payfast-webhook] Invalid PayFast signature!');
+      logger.warn({}, 'payfast_webhook.signature.invalid');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (!lease || lease.status !== 'holding') {
-        console.warn(`[payfast-webhook] Lease not found or already processed: ${leaseId}`);
+        logger.warn({ leaseId }, 'payfast_webhook.lease.not_found_or_processed');
         return new NextResponse('OK', { status: 200 });
       }
 
@@ -165,7 +166,7 @@ export async function POST(req: NextRequest) {
                 payload.amount_fee || '0'
               );
             } catch (ledgerErr) {
-              console.error('[payfast-webhook] Failed to log revenue journal entries:', ledgerErr);
+              logger.error({ err: ledgerErr }, 'payfast_webhook.revenue_journal.failed');
             }
           }
 
@@ -186,13 +187,13 @@ export async function POST(req: NextRequest) {
             });
 
           // 8. Simulate Receipts via WhatsApp and Email
-          console.log(`[payfast-webhook] Notification: Receipt invoice ${invoiceNumber} sent to ${contact.email} and WhatsApp ${contact.phone || 'N/A'}`);
+          logger.info({ invoiceNumber, email: contact.email, phone: contact.phone || 'N/A' }, 'payfast_webhook.receipt.notified');
 
           // Auto-create Support Ticket if support calendar
           try {
             await createSupportTicket(appointment.id);
           } catch (supportErr) {
-            console.error('[payfast-webhook] Support ticket creation error:', supportErr);
+            logger.error({ err: supportErr }, 'payfast_webhook.support_ticket.failed');
           }
         }
       }
@@ -200,7 +201,7 @@ export async function POST(req: NextRequest) {
 
     return new NextResponse('OK', { status: 200 });
   } catch (error) {
-    console.error('[payfast-webhook] Processing failure:', error);
+    logger.error({ err: error }, 'payfast_webhook.processing.failed');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

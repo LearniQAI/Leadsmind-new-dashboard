@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 export const PredictiveIntelligence = {
   /**
@@ -20,7 +21,7 @@ export const PredictiveIntelligence = {
         .gte('timestamp', ninetyDaysAgo.toISOString());
 
       if (error) {
-        console.warn(`[PredictiveIntelligence] Error querying email_tracking_logs: ${error.message}. Falling back to default hour.`);
+        logger.warn({ err: error.message }, 'predictive_intelligence.query_tracking_logs.failed_using_default');
         return 9;
       }
 
@@ -48,7 +49,7 @@ export const PredictiveIntelligence = {
 
       return optimalHour;
     } catch (err: any) {
-      console.error(`[PredictiveIntelligence] Exception in evaluateHistoricalOpens: ${err.message}. Falling back to default hour.`);
+      logger.error({ err: err.message }, 'predictive_intelligence.evaluate_historical_opens.failed_using_default');
       return 9;
     }
   },
@@ -75,7 +76,7 @@ export const PredictiveIntelligence = {
     const areaId = contact.load_shedding_area || contact.region || contact.timezone || null;
 
     if (!areaId) {
-      console.log(`[PredictiveIntelligence] No load shedding area ID resolved for contact ${contact.id}. Scheduled at optimal hour: ${targetDate.toISOString()}`);
+      logger.info({ contactId: contact.id, scheduledAt: targetDate.toISOString() }, 'predictive_intelligence.load_shedding_area.unresolved');
       return targetDate;
     }
 
@@ -84,7 +85,7 @@ export const PredictiveIntelligence = {
     const eskomToken = process.env.ESKOM_API_KEY || process.env.ESKOM_TOKEN;
 
     if (!eskomToken || eskomToken === 'mock_key' || eskomToken.includes('PLACEHOLDER') || areaId === 'mock-shedding-area') {
-      console.log(`[PredictiveIntelligence] Mock mode active. Generating load shedding events for area ${areaId}`);
+      logger.info({ areaId }, 'predictive_intelligence.mock_mode.active');
       // Simulate an overlapping load shedding event: starts 30 mins before targetDate, ends 2.5 hours later
       const mockStart = new Date(targetDate.getTime() - 30 * 60 * 1000);
       const mockEnd = new Date(targetDate.getTime() + 150 * 60 * 1000);
@@ -106,10 +107,10 @@ export const PredictiveIntelligence = {
           const data = await res.json();
           events = data.events || [];
         } else {
-          console.warn(`[PredictiveIntelligence] EskomSePush API returned status ${res.status}. Falling back to default time.`);
+          logger.warn({ status: res.status }, 'predictive_intelligence.eskomsepush.non_ok_status');
         }
       } catch (err: any) {
-        console.error(`[PredictiveIntelligence] Failed to fetch EskomSePush events: ${err.message}. Falling back to default time.`);
+        logger.error({ err: err.message }, 'predictive_intelligence.eskomsepush.fetch_failed');
       }
     }
 
@@ -141,7 +142,7 @@ export const PredictiveIntelligence = {
     }
 
     if (iterations > 0) {
-      console.log(`[PredictiveIntelligence] Campaign send for contact ${contact.id} shifted forward by ${iterations} load-shedding block(s) to ${finalSendTime.toISOString()}`);
+      logger.info({ contactId: contact.id, iterations, finalSendTime: finalSendTime.toISOString() }, 'predictive_intelligence.send_time.shifted');
     }
 
     return finalSendTime;

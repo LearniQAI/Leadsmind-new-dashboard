@@ -17,7 +17,7 @@ const ProjectSingleCard = ({ item }: propsType) => {
      <div className="project__wrapper">
       <div className="project__top-content">
        <h5 className="mb-2">
-        <Link href={`/project/project-details/${item.id}`}>
+        <Link href={`/projects/${item.id}`}>
          {item.title}
         </Link>
        </h5>
@@ -50,7 +50,7 @@ const ProjectSingleCard = ({ item }: propsType) => {
         Project Coordinator:
        </span>
        <div>
-        <Link href={`/project/project-details/${item.id}`}>
+        <Link href={`/projects/${item.id}`}>
          <Image
           className="w-[36px] rounded-[50%]"
           src={item.coordinatorAvatar}
@@ -64,7 +64,7 @@ const ProjectSingleCard = ({ item }: propsType) => {
       <div className="project__team">
        <span className="project__meta-title mb-2">Team Leader:</span>
        <div>
-        <Link href={`/project/project-details/${item.id}`}>
+        <Link href={`/projects/${item.id}`}>
          <Image
           className="w-[36px] rounded-[50%]"
           src={item.teamLeaderAvatar}

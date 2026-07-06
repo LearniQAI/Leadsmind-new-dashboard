@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/shared/logger';
 
 /**
  * Automatically logs double-entry journal entries and transactions for a successful payment.
@@ -29,7 +30,7 @@ export async function logRevenueToAccounting(
     const revenueAccountId = await getOrCreateAccount(supabase, workspaceId, '4000', 'Consultation Fee Revenue', 'revenue');
 
     if (!bankAccountId || !revenueAccountId) {
-      console.error('[accounting] Could not resolve core accounting accounts. Aborting ledger logs.');
+      logger.error({ workspaceId }, 'accounting.core_accounts.unresolved');
       return;
     }
 
@@ -50,7 +51,7 @@ export async function logRevenueToAccounting(
       .single();
 
     if (txError || !transaction) {
-      console.error('[accounting] Failed to log revenue transaction:', txError);
+      logger.error({ err: txError }, 'accounting.revenue_transaction.failed');
       return;
     }
 
@@ -118,14 +119,14 @@ export async function logRevenueToAccounting(
             description: `Credit Bank for PayFast Fees for Invoice #${invoiceNum}`
           });
         } else {
-          console.error('[accounting] Failed to log fee transaction:', feeTxError);
+          logger.error({ err: feeTxError }, 'accounting.fee_transaction.failed');
         }
       }
     }
 
-    console.log(`[accounting] Successfully logged revenue journal entries for Invoice #${invoiceNum}`);
+    logger.info({ invoiceNum }, 'accounting.revenue_journal.logged');
   } catch (err: any) {
-    console.error('[accounting] Exception in logRevenueToAccounting:', err);
+    logger.error({ err }, 'accounting.log_revenue.exception');
   }
 }
 
@@ -164,7 +165,7 @@ async function getOrCreateAccount(
       .single();
 
     if (error) {
-      console.warn(`[accounting] Failed to insert account ${code} for workspace ${workspaceId}, finding type fallback:`, error.message);
+      logger.warn({ err: error.message, code, workspaceId }, 'accounting.insert_account.failed_using_fallback');
       // Fallback: search for any account of this type
       const { data: fallback } = await supabase
         .from('chart_of_accounts')
@@ -180,7 +181,7 @@ async function getOrCreateAccount(
 
     return created.id;
   } catch (err: any) {
-    console.error(`[accounting] Error in getOrCreateAccount for ${code}:`, err);
+    logger.error({ err, code }, 'accounting.get_or_create_account.failed');
     return null;
   }
 }

@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 export async function getLeadDetails(leadId: string) {
   const supabase = await createServerClient();
@@ -19,7 +20,10 @@ export async function getLeadDetails(leadId: string) {
     .eq('id', leadId)
     .single();
 
-  if (leadError) return { success: false, error: leadError.message };
+  if (leadError) {
+    logger.error({ err: leadError, leadId }, 'lead_workspace.lead_details.fetch.failed');
+    return { success: false, error: 'Failed to fetch lead details.' };
+  }
 
   // Get Notes
   const { data: notes } = await supabase
@@ -86,7 +90,10 @@ export async function updateLeadStatus(leadId: string, status: string) {
     .update({ qualification_status: status })
     .eq("id", leadId).eq("workspace_id", workspaceId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, leadId, workspaceId }, 'lead_workspace.status.update.failed');
+    return { success: false, error: 'Failed to update status.' };
+  }
 
   await logActivity(supabase, leadId, userId, 'status_change', `Updated status to ${status}`, { status });
   revalidatePath(`/lead-finder/lead/${leadId}`);
@@ -103,7 +110,10 @@ export async function addLeadNote(leadId: string, content: string) {
     .from('lead_notes')
     .insert({ result_id: leadId, user_id: userId, content });
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, leadId }, 'lead_workspace.note.add.failed');
+    return { success: false, error: 'Failed to add note.' };
+  }
 
   await logActivity(supabase, leadId, userId, 'note_added', 'Added a new note');
   revalidatePath(`/lead-finder/lead/${leadId}`);
@@ -199,7 +209,7 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
     .single();
 
   if (contactError) {
-    console.error('Failed to create CRM contact:', contactError);
+    logger.error({ err: contactError, workspaceId }, 'lead_workspace.crm_contact.create.failed');
     return { success: false, error: 'Failed to create contact in CRM' };
   }
 
@@ -217,7 +227,7 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
     });
 
   if (oppError) {
-    console.error('Failed to create opportunity:', oppError);
+    logger.error({ err: oppError, workspaceId, contactId: contact.id }, 'lead_workspace.opportunity.create.failed');
     return { success: false, error: 'Failed to create opportunity' };
   }
 
@@ -230,7 +240,7 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
     })
     .eq("id", leadId).eq("workspace_id", workspaceId);
 
-  if (updateError) console.error('Failed to update lead status:', updateError);
+  if (updateError) logger.error({ err: updateError, leadId, workspaceId }, 'lead_workspace.crm_link_status.update.failed');
 
   await logActivity(supabase, leadId, userId, 'crm_push', 'Pushed lead into CRM Pipeline');
   revalidatePath(`/lead-finder/lead/${leadId}`);

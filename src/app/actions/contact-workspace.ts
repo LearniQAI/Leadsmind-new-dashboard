@@ -4,6 +4,8 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { ContactDiscoveryService } from '@/lib/lead-finder/ContactDiscoveryService';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 export async function discoverAndSaveContacts(leadId: string, businessName: string, website?: string) {
   const supabase = await createServerClient();
@@ -37,8 +39,9 @@ export async function discoverAndSaveContacts(leadId: string, businessName: stri
     return { success: true, count: contacts.length };
 
   } catch (error: any) {
-    console.error('[ContactDiscovery] Error:', error);
-    return { success: false, error: error.message };
+    logger.error({ err: error, leadId }, 'contact_workspace.discover_contacts.failed');
+    const clientError = toClientError(error);
+    return { success: false, error: clientError.error };
   }
 }
 
@@ -56,7 +59,10 @@ export async function getContactDetails(contactId: string) {
     .eq('id', contactId)
     .single();
 
-  if (contactError) return { success: false, error: contactError.message };
+  if (contactError) {
+    logger.error({ err: contactError, contactId }, 'contact_workspace.contact_details.fetch.failed');
+    return { success: false, error: 'Failed to fetch contact details.' };
+  }
 
   const { data: notes } = await supabase
     .from('contact_notes')
@@ -100,7 +106,10 @@ export async function addContactNote(contactId: string, content: string) {
     .from('contact_notes')
     .insert({ contact_id: contactId, user_id: userId, content });
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, contactId }, 'contact_workspace.note.add.failed');
+    return { success: false, error: 'Failed to add note.' };
+  }
 
   await logActivity(supabase, contactId, userId, 'note_added', 'Added a new note');
   revalidatePath(`/lead-finder/contact/${contactId}`);
@@ -119,7 +128,10 @@ export async function updateContactStatus(contactId: string, status: string) {
     .update({ status })
     .eq("id", contactId).eq("workspace_id", workspaceId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, contactId, workspaceId }, 'contact_workspace.status.update.failed');
+    return { success: false, error: 'Failed to update status.' };
+  }
 
   await logActivity(supabase, contactId, userId, 'status_change', `Updated status to ${status}`, { status });
   revalidatePath(`/lead-finder/contact/${contactId}`);
@@ -195,7 +207,7 @@ export async function assignContactToPipeline(contactId: string) {
     })
     .eq("id", contactId).eq("workspace_id", workspaceId);
 
-  if (error) console.error('Failed to update lead contact status:', error);
+  if (error) logger.error({ err: error, contactId, workspaceId }, 'contact_workspace.pipeline_status.update.failed');
 
   await logActivity(supabase, contactId, userId, 'crm_push', 'Pushed contact to CRM Pipeline');
   revalidatePath(`/lead-finder/contact/${contactId}`);

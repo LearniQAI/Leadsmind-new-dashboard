@@ -8,7 +8,10 @@
       "Skill(run)",
       "Skill(run:*)",
       "Bash(node -e \"console.log\\('next:', require\\('next/package.json'\\).version\\)\")",
-      "Bash(node -e \"console.log\\('eslint-config-next:', require\\('eslint-config-next/package.json'\\).version\\)\")"
+      "Bash(node -e \"console.log\\('eslint-config-next:', require\\('eslint-config-next/package.json'\\).version\\)\")",
+      "Bash(node -e \"const pino = require\\('pino'\\); const l = pino\\(\\); l.info\\('pino works'\\)\")",
+      "Bash(grep -c \"console\\\\.\\\\\\(log\\\\|error\\\\|warn\\\\|info\\\\\\)\" src/app/actions/documents.ts)",
+      "Bash(grep -c \"err\\\\.message\\\\|error\\\\.message\" src/app/actions/documents.ts)"
     ]
   }
 }

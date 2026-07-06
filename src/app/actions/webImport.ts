@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { convert } from 'html-to-text';
+import { logger } from '@/shared/logger';
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 
@@ -66,7 +67,8 @@ Legal and copyright requirement: Keep the tone informative and educational. Do n
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`GPT-4o-mini generation failed: ${errText}`);
+    logger.error({ errText, sourceUrl }, 'web_import.openai_generation.request_failed');
+    throw new Error('AI blog generation failed.');
   }
 
   const result = await response.json();
@@ -86,7 +88,7 @@ export async function importWebPageAction(url: string) {
     const targetUrl = checkAndFormatGoogleDocUrl(url);
 
     // Fetch the URL
-    console.log(`[Web Importer] Fetching URL: ${targetUrl}`);
+    logger.info({ targetUrl }, 'web_import.url.fetch_start');
     const response = await fetch(targetUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
@@ -127,7 +129,7 @@ export async function importWebPageAction(url: string) {
     }
 
     // AI synthesis
-    console.log(`[Web Importer] Transforming text to blog...`);
+    logger.info({ url }, 'web_import.text_to_blog.transform_start');
     const blog = await transformScrapedTextToBlog(textContent, url);
 
     // Create HTML body
@@ -160,7 +162,10 @@ export async function importWebPageAction(url: string) {
       target_keyword: 'optimised'
     }).select().single();
 
-    if (pErr) throw new Error(`Failed to save imported post: ${pErr.message}`);
+    if (pErr) {
+      logger.error({ err: pErr, workspaceId: wsId }, 'web_import.blog_post.save_failed');
+      throw new Error('Failed to save imported post.');
+    }
 
     revalidatePath('/blog');
     revalidatePath('/blog/manage');
@@ -168,7 +173,7 @@ export async function importWebPageAction(url: string) {
     return { data: { postId: post.id } };
 
   } catch (err: any) {
-    console.error('[Web Import Action Failed]:', err);
-    return { error: err.message || 'Web import processing aborted due to internal error.' };
+    logger.error({ err, url }, 'web_import.action.failed');
+    return { error: 'Web import processing aborted due to internal error.' };
   }
 }

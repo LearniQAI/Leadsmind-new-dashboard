@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { generateAvatarPng } from '@/lib/avatar/generateAvatarPng';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
     const initials = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase() || 'LM';
     const bgColor = user.identity_color || '#3b82f6';
 
-    console.log(`[Avatar Webhook] Generating preset for User: ${user.id} (${initials}) with BG: ${bgColor}`);
+    logger.info({ userId: user.id, initials, bgColor }, 'webhook.avatar_generator.generating');
     
     // 1. Generate Avatar PNG buffer
     const pngBuffer = await generateAvatarPng(initials, bgColor);
@@ -33,16 +34,16 @@ export async function POST(req: Request) {
       .eq('user_id', user.id);
 
     if (memError) {
-      console.error('[Avatar Webhook] Error fetching user workspaces:', memError);
-      return NextResponse.json({ error: memError.message }, { status: 500 });
+      logger.error({ err: memError, userId: user.id }, 'webhook.avatar_generator.workspaces_fetch.failed');
+      return NextResponse.json({ error: 'Failed to fetch user workspaces.' }, { status: 500 });
     }
 
     // 3. Upload to each workspace avatars bucket path
     let uploadCount = 0;
     for (const m of (memberships || [])) {
       const destinationPath = `${m.workspace_id}/${user.id}/email-avatar.png`;
-      console.log(`[Avatar Webhook] Uploading fallback avatar asset to: avatars/${destinationPath}`);
-      
+      logger.info({ workspaceId: m.workspace_id, destinationPath }, 'webhook.avatar_generator.upload.start');
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(destinationPath, pngBuffer, {
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
         });
 
       if (uploadError) {
-        console.error(`[Avatar Webhook] Failed to upload for workspace ${m.workspace_id}:`, uploadError.message);
+        logger.error({ err: uploadError, workspaceId: m.workspace_id }, 'webhook.avatar_generator.upload.failed');
       } else {
         uploadCount++;
       }
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, uploads: uploadCount });
   } catch (error: any) {
-    console.error('[Avatar Webhook Exception]:', error);
-    return NextResponse.json({ error: error.message || 'Avatar webhook failed' }, { status: 500 });
+    logger.error({ err: error }, 'webhook.avatar_generator.failed');
+    return NextResponse.json({ error: 'Avatar webhook failed.' }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { TaskPriorityEngine } from '@/lib/execution/TaskPriorityEngine';
 import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
+import { logger } from '@/shared/logger';
 
 export async function getTaskDashboardData() {
   const supabase = await createServerClient();
@@ -51,7 +52,10 @@ export async function createTask(taskData: any) {
     ...taskData
   }).select().single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'task_workspace.task.create.failed');
+    return { success: false, error: 'Failed to create task.' };
+  }
 
   await UnifiedActivityEngine.logActivity(
     workspaceId,
@@ -75,7 +79,10 @@ export async function updateTaskStatus(taskId: string, status: string) {
   if (status === 'Completed') updates.completed_at = new Date().toISOString();
 
   const { error } = await supabase.from('crm_tasks').update(updates).eq("id", taskId).eq("workspace_id", workspaceId);
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    logger.error({ err: error, workspaceId, taskId }, 'task_workspace.task_status.update.failed');
+    return { success: false, error: 'Failed to update task status.' };
+  }
   
   revalidatePath('/tasks');
   return { success: true };

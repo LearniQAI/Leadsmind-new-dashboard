@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, text: resultText });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'ai.generate.failed');
+    return NextResponse.json({ error: 'Failed to generate description.' }, { status: 500 });
   }
 }

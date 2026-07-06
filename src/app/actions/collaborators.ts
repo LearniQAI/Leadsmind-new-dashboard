@@ -5,6 +5,8 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
 import type { InviteActionResponse } from '@/types/invitation.types';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 export async function inviteFormCollaborator({
   email,
@@ -89,7 +91,7 @@ export async function inviteFormCollaborator({
       });
 
     if (notifError) {
-      console.error('[inviteFormCollaborator] Notification insert error:', notifError);
+      logger.error({ err: notifError, workspaceId, formId }, 'collaborators.invite.notification.failed');
     }
 
     try {
@@ -122,7 +124,7 @@ export async function inviteFormCollaborator({
         `
       });
     } catch (emailError: any) {
-      console.error('[inviteFormCollaborator] Email sending failed:', emailError);
+      logger.error({ err: emailError, formId, targetEmail }, 'collaborators.invite.email.failed');
       revalidatePath('/forms');
       revalidatePath(`/forms/${formId}/governance`);
       return { success: true, warning: 'Invitation saved but email failed to send. Check Resend config.' };
@@ -132,8 +134,9 @@ export async function inviteFormCollaborator({
     revalidatePath(`/forms/${formId}/governance`);
     return { success: true };
   } catch (error: any) {
-    console.error('[inviteFormCollaborator] Error:', error);
-    return { error: error.message || 'Invitation failed' };
+    logger.error({ err: error, formId }, 'collaborators.invite.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -162,8 +165,9 @@ export async function acceptFormInvitation(collabId: string): Promise<InviteActi
     revalidatePath('/forms');
     return { success: true };
   } catch (error: any) {
-    console.error('[acceptFormInvitation] Error:', error);
-    return { error: error.message || 'Failed to accept invitation' };
+    logger.error({ err: error, collabId }, 'collaborators.invitation.accept.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -191,8 +195,9 @@ export async function declineFormInvitation(collabId: string): Promise<InviteAct
     revalidatePath('/forms');
     return { success: true };
   } catch (error: any) {
-    console.error('[declineFormInvitation] Error:', error);
-    return { error: error.message || 'Failed to decline invitation' };
+    logger.error({ err: error, collabId }, 'collaborators.invitation.decline.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -250,8 +255,9 @@ export async function resendFormInvitation(collabId: string, formId: string): Pr
 
     return { success: true };
   } catch (error: any) {
-    console.error('[resendFormInvitation] Error:', error);
-    return { error: error.message || 'Failed to resend invitation' };
+    logger.error({ err: error, collabId, formId }, 'collaborators.invitation.resend.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -267,7 +273,9 @@ export async function getFormCollaborators(formId: string) {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    return { error: error.message || 'Failed to fetch collaborators' };
+    logger.error({ err: error, formId }, 'collaborators.list.fetch.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -286,7 +294,9 @@ export async function removeFormCollaborator(collabId: string, formId: string) {
     revalidatePath(`/forms/${formId}/governance`);
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || 'Failed to remove collaborator' };
+    logger.error({ err: error, collabId, formId }, 'collaborators.remove.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -305,7 +315,9 @@ export async function updateFormCollaboratorRole(collabId: string, role: 'editor
     revalidatePath(`/forms/${formId}/governance`);
     return { success: true };
   } catch (error: any) {
-    return { error: error.message || 'Failed to update role' };
+    logger.error({ err: error, collabId, formId }, 'collaborators.role_update.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -402,8 +414,9 @@ export async function getUserCollaborations() {
       }
     };
   } catch (error: any) {
-    console.error('[getUserCollaborations] Error:', error);
-    return { error: error.message || 'Failed to fetch collaborations' };
+    logger.error({ err: error }, 'collaborators.user_collaborations.fetch.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -451,7 +464,8 @@ export async function sendInviteNotificationAfterAcceptance(collabId: string) {
 
     return { success: true };
   } catch (error: any) {
-    console.error('[sendInviteNotificationAfterAcceptance] Error:', error);
-    return { error: error.message };
+    logger.error({ err: error, collabId }, 'collaborators.acceptance_notification.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }

@@ -270,8 +270,12 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 hasDeserialized.current = initialContent;
                 setIsLoadingContent(false);
 
-                console.log("[Builder] Content deserialized and stable.");
+                if (process.env.NODE_ENV === 'development') {
+                    // eslint-disable-next-line no-console
+                    console.log("[Builder] Content deserialized and stable.");
+                }
             } catch (err) {
+                // eslint-disable-next-line no-console
                 console.error("[Builder] Deserialization failed:", err);
                 actions.deserialize(BLANK_CANVAS);
                 setIsLoadingContent(false);
@@ -397,8 +401,12 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
 
     // Silence internal CraftJS errors
     React.useEffect(() => {
-        console.log("DEBUG: Editor mode:", type, "PageID:", pageId);
-        console.log("DEBUG: Resolver active:", Object.keys(RESOLVER));
+        if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log("DEBUG: Editor mode:", type, "PageID:", pageId);
+            // eslint-disable-next-line no-console
+            console.log("DEBUG: Resolver active:", Object.keys(RESOLVER));
+        }
 
         const handler = (e: ErrorEvent) => {
             if (e.message.includes("children") || e.message.includes("t is undefined")) {

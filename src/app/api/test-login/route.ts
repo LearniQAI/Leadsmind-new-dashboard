@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentProfile, getCurrentWorkspace, getUserAccessInfo } from '@/lib/auth';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,17 +21,17 @@ export async function GET(request: NextRequest) {
     }
   };
 
-  console.log('[DEBUG ROUTE] Invoking layout functions...');
-  
+  logger.info({}, 'test_login.layout_functions.invoking');
+
   try {
     const profile = await getCurrentProfile(authUser);
-    console.log('[DEBUG ROUTE] Profile fetched:', profile);
+    logger.info({ profile }, 'test_login.profile.fetched');
 
     const workspace = await getCurrentWorkspace(authUser);
-    console.log('[DEBUG ROUTE] Workspace fetched:', workspace);
+    logger.info({ workspace }, 'test_login.workspace.fetched');
 
     const accessInfo = await getUserAccessInfo();
-    console.log('[DEBUG ROUTE] Access info fetched:', accessInfo);
+    logger.info({ accessInfo }, 'test_login.access_info.fetched');
 
     return NextResponse.json({
       success: true,
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       accessInfo
     });
   } catch (err: any) {
-    console.error('[DEBUG ROUTE] Error caught during execution:', err);
+    logger.error({ err }, 'test_login.execution.failed');
     return NextResponse.json({
       success: false,
       error: err.message,

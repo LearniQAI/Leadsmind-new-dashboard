@@ -3,6 +3,8 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { sanitizeSlug } from '@/lib/slug';
+import { logger } from '@/shared/logger';
+import { toClientError } from '@/shared/errors/AppError';
 
 /**
  * Retrieves course landing page data including modules, lessons, and configurations.
@@ -54,8 +56,9 @@ export async function getCourseLandingData(slugOrId: string, preview: boolean = 
       lessons: lessonsRes.data || []
     };
   } catch (error: any) {
-    console.error('[getCourseLandingData Error]:', error);
-    return { error: error.message || 'Failed to resolve course landing data' };
+    logger.error({ err: error, slugOrId }, 'course_landing.data.fetch.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -64,10 +67,12 @@ export async function getCourseLandingData(slugOrId: string, preview: boolean = 
  */
 export async function updateCourseLandingSettings(courseId: string, settings: any) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
 
     // Verify workspace ownership of course
     const { data: course, error: fetchErr } = await supabase
@@ -106,8 +111,9 @@ export async function updateCourseLandingSettings(courseId: string, settings: an
 
     return { success: true, settings: updatedSettings };
   } catch (error: any) {
-    console.error('[updateCourseLandingSettings Error]:', error);
-    return { error: error.message || 'Failed to update course landing page settings' };
+    logger.error({ err: error, courseId }, 'course_landing.settings.update.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }
 
@@ -116,6 +122,10 @@ export async function updateCourseLandingSettings(courseId: string, settings: an
  */
 export async function updateCourseSlug(courseId: string, slug: string) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Unauthorized' };
+
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
@@ -123,8 +133,6 @@ export async function updateCourseSlug(courseId: string, slug: string) {
     if (!sanitizedSlug) {
       return { error: 'Slug cannot be empty' };
     }
-
-    const supabase = await createServerClient();
 
     // Verify workspace ownership
     const { data: course, error: fetchErr } = await supabase
@@ -162,7 +170,8 @@ export async function updateCourseSlug(courseId: string, slug: string) {
 
     return { success: true, slug: sanitizedSlug };
   } catch (error: any) {
-    console.error('[updateCourseSlug Error]:', error);
-    return { error: error.message || 'Failed to update course URL slug' };
+    logger.error({ err: error, courseId }, 'course_landing.slug.update.failed');
+    const clientError = toClientError(error);
+    return { error: clientError.error };
   }
 }

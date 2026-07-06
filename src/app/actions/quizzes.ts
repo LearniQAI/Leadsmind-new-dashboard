@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { logger } from '@/shared/logger';
 
 // Quiz CRUD actions
 export async function getLessonQuiz(lessonId: string) {
@@ -20,7 +21,8 @@ export async function getLessonQuiz(lessonId: string) {
     if (error) throw error;
     return { data: quiz };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.lesson.quiz.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -40,7 +42,8 @@ export async function getQuizById(quizId: string) {
     if (error) throw error;
     return { data: quiz };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.quiz.by.id.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -91,7 +94,8 @@ export async function upsertQuiz(quizData: any) {
     if (result.error) throw result.error;
     return { data: result.data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'upsert.quiz.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -110,7 +114,8 @@ export async function deleteQuiz(quizId: string) {
     if (error) throw error;
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'delete.quiz.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -133,7 +138,8 @@ export async function getQuizQuestions(quizId: string) {
     if (error) throw error;
     return { data: questions };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.quiz.questions.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -167,7 +173,8 @@ export async function upsertQuestion(questionData: any) {
     if (result.error) throw result.error;
     return { data: result.data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'upsert.question.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -186,7 +193,8 @@ export async function deleteQuestion(questionId: string) {
     if (error) throw error;
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'delete.question.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -221,7 +229,8 @@ export async function upsertQuizOption(optionData: any) {
     if (result.error) throw result.error;
     return { data: result.data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'upsert.quiz.option.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -240,7 +249,8 @@ export async function deleteQuizOption(optionId: string) {
     if (error) throw error;
     return { success: true };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'delete.quiz.option.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -274,7 +284,8 @@ export async function upsertQuizExplanation(explanationData: any) {
     if (result.error) throw result.error;
     return { data: result.data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'upsert.quiz.explanation.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -336,7 +347,8 @@ Response formatting guidelines:
 
     return { text: explanationText };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'generate.explanation.with.lena.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -458,7 +470,8 @@ export async function saveQuizSubmissionAction(
 
     return { data: submission };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'save.quiz.submission.action.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -478,7 +491,8 @@ export async function getQuizSubmissionsAction(quizId: string) {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.quiz.submissions.action.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 
@@ -507,7 +521,8 @@ export async function getStudentQuizSubmissionsAction(quizId: string) {
     if (error) throw error;
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    logger.error({ err: error }, 'get.student.quiz.submissions.action.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }
 

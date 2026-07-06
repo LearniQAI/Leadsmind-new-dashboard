@@ -8,6 +8,7 @@ import { addMinutes, parseISO } from 'date-fns';
 import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/calendar/payfast';
 import { syncBookingToExternal } from '@/lib/calendar/calendarSync';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
+import { logger } from '@/shared/logger';
 
 /**
  * Client Portal booking server action to schedule an appointment slot
@@ -76,7 +77,7 @@ export async function bookAppointmentFromPortal(payload: {
       try {
         assigneeId = await getRoundRobinAssignee(payload.calendarId, workspace.id);
       } catch (rrErr) {
-        console.warn('[portal-booking] Round robin allocation failed, falling back:', rrErr);
+        logger.warn({ err: rrErr, calendarId: payload.calendarId }, 'portal_bookings.round_robin.fallback');
       }
     }
 
@@ -104,7 +105,10 @@ export async function bookAppointmentFromPortal(payload: {
       .select()
       .single();
 
-    if (aptError || !appointment) return { success: false, error: 'Failed to record appointment: ' + aptError?.message };
+    if (aptError || !appointment) {
+      if (aptError) logger.error({ err: aptError, workspaceId: workspace.id }, 'portal_bookings.appointment.create.failed');
+      return { success: false, error: 'Failed to record appointment.' };
+    }
 
     // Generate Meeting link
     if (calendar.meeting_mode === 'internal_meet' || (calendar.meeting_mode === 'custom_link' && !calendar.custom_link)) {
@@ -131,14 +135,14 @@ export async function bookAppointmentFromPortal(payload: {
     try {
       await syncBookingToExternal(appointment.id);
     } catch (syncErr) {
-      console.error('[portal-booking] Syncing external calendar failed:', syncErr);
+      logger.error({ err: syncErr, appointmentId: appointment.id }, 'portal_bookings.external_sync.failed');
     }
 
     // Auto-create Support Ticket if support calendar
     try {
       await createSupportTicket(appointment.id);
     } catch (supportErr) {
-      console.error('[portal-booking] Support ticket creation error:', supportErr);
+      logger.error({ err: supportErr, appointmentId: appointment.id }, 'portal_bookings.support_ticket.failed');
     }
 
     // Insert activity log
@@ -152,7 +156,8 @@ export async function bookAppointmentFromPortal(payload: {
     revalidatePath('/portal/bookings');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    logger.error({ err }, 'portal_bookings.book_appointment.failed');
+    return { success: false, error: 'An unexpected error occurred.' };
   }
 }
 
@@ -208,7 +213,8 @@ export async function cancelAppointmentFromPortal(appointmentId: string) {
       .eq('id', appointmentId);
 
     if (updateErr) {
-      return { success: false, error: 'Failed to update cancellation: ' + updateErr.message };
+      logger.error({ err: updateErr, appointmentId }, 'portal_bookings.cancel.update_failed');
+      return { success: false, error: 'Failed to cancel appointment.' };
     }
 
     // 5. CRM activity log
@@ -222,7 +228,8 @@ export async function cancelAppointmentFromPortal(appointmentId: string) {
     revalidatePath('/portal/bookings');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    logger.error({ err, appointmentId }, 'portal_bookings.cancel_appointment.failed');
+    return { success: false, error: 'An unexpected error occurred.' };
   }
 }
 
@@ -293,14 +300,15 @@ export async function rescheduleAppointmentFromPortal(appointmentId: string, new
       .eq('id', appointmentId);
 
     if (updateErr) {
-      return { success: false, error: 'Failed to save reschedule update: ' + updateErr.message };
+      logger.error({ err: updateErr, appointmentId }, 'portal_bookings.reschedule.update_failed');
+      return { success: false, error: 'Failed to save reschedule update.' };
     }
 
     // 7. Sync with external calendar if required
     try {
       await syncBookingToExternal(appointmentId);
     } catch (syncErr) {
-      console.error('[reschedule] Syncing external calendar failed:', syncErr);
+      logger.error({ err: syncErr, appointmentId }, 'portal_bookings.reschedule.external_sync.failed');
     }
 
     // 8. CRM activity log
@@ -314,6 +322,7 @@ export async function rescheduleAppointmentFromPortal(appointmentId: string, new
     revalidatePath('/portal/bookings');
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    logger.error({ err, appointmentId }, 'portal_bookings.reschedule_appointment.failed');
+    return { success: false, error: 'An unexpected error occurred.' };
   }
 }

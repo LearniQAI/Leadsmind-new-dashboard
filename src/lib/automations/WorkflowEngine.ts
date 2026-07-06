@@ -8,6 +8,7 @@ import { EmailAutomationService } from './EmailAutomationService';
 import { AutomationLogger } from './AutomationLogger';
 import { createAdminClient } from '@/lib/supabase/server';
 import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
+import { logger } from '@/shared/logger';
 
 export interface WorkflowStep {
   id: string;
@@ -84,7 +85,7 @@ export const WorkflowEngine = {
         const goalRules = workflow.goal_rules || [];
         const isGoalMetAtStart = await this.evaluateGoal(goalRules, context.workspaceId, contactId, supabase);
         if (isGoalMetAtStart) {
-          console.log(`[WorkflowEngine] Goal met at start for workflow ${workflowId}, contact ${contactId}. Terminating execution.`);
+          logger.info({ workflowId, contactId }, 'workflow_engine.goal_met_at_start');
           await AutomationLogger.updateExecution(executionId, {
             status: 'completed',
             currentStep: 0,
@@ -105,7 +106,7 @@ export const WorkflowEngine = {
           // Goal Tracking Interceptor: Evaluate goals before running step
           const isGoalMet = await this.evaluateGoal(goalRules, context.workspaceId, contactId, supabase);
           if (isGoalMet) {
-            console.log(`[WorkflowEngine] Goal met before step ${step.id} for workflow ${workflowId}, contact ${contactId}. Terminating execution.`);
+            logger.info({ stepId: step.id, workflowId, contactId }, 'workflow_engine.goal_met_before_step');
             await AutomationLogger.updateExecution(executionId, {
               status: 'completed',
               currentStep: currentIdx,
@@ -159,7 +160,7 @@ export const WorkflowEngine = {
         });
 
       } catch (err: any) {
-        console.error('[WorkflowEngine] Critical runtime failure:', err);
+        logger.error({ err }, 'workflow_engine.critical_runtime_failure');
       }
     })();
   },
@@ -332,7 +333,7 @@ export const WorkflowEngine = {
               }
             );
           } catch (actErr) {
-            console.error('[WorkflowEngine] Failed to log email activity:', actErr);
+            logger.error({ err: actErr }, 'workflow_engine.log_email_activity.failed');
           }
           return { success: true };
         } else {
@@ -354,7 +355,7 @@ export const WorkflowEngine = {
               .single();
 
             if (contact && contact.phone) {
-              console.log(`[WorkflowEngine] Hard bounce detected. Fallback routing to WhatsApp: ${contact.phone}`);
+              logger.info({ phone: contact.phone }, 'workflow_engine.hard_bounce.fallback_to_whatsapp');
 
               // 1. Switch primary channel to 'whatsapp' and set is_invalid_email = true
               const { error: chErr } = await supabase
@@ -421,7 +422,7 @@ export const WorkflowEngine = {
                   }
                 );
               } catch (actErr) {
-                console.error('[WorkflowEngine] Failed to log backup WhatsApp activity:', actErr);
+                logger.error({ err: actErr }, 'workflow_engine.log_backup_whatsapp_activity.failed');
               }
 
               return { success: true };
@@ -487,7 +488,7 @@ export const WorkflowEngine = {
             }
           );
         } catch (actErr) {
-          console.error('[WorkflowEngine] Failed to log WhatsApp activity:', actErr);
+          logger.error({ err: actErr }, 'workflow_engine.log_whatsapp_activity.failed');
         }
 
         return { success: true };

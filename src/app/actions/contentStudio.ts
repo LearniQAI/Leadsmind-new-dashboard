@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/shared/logger';
 
 // Helper to map content types to PRD explicit ENUM values
 function mapContentType(type: string, platform?: string): string {
@@ -60,7 +61,8 @@ export async function getDocuments(filters?: { search?: string; contentType?: st
 
     return { data: data || [] };
   } catch (err: any) {
-    return { error: err.message || 'Fetch documents failed' };
+    logger.error({ err: err }, 'get.documents.failed');
+    return { error: 'Fetch documents failed' };
   }
 }
 
@@ -82,7 +84,8 @@ export async function getDocument(id: string) {
 
     return { data };
   } catch (err: any) {
-    return { error: err.message || 'Fetch document failed' };
+    logger.error({ err: err }, 'get.document.failed');
+    return { error: 'Fetch document failed' };
   }
 }
 
@@ -126,7 +129,8 @@ export async function createDocument(payload: {
     revalidatePath('/content-studio');
     return { data };
   } catch (err: any) {
-    return { error: err.message || 'Create document failed' };
+    logger.error({ err: err }, 'create.document.failed');
+    return { error: 'Create document failed' };
   }
 }
 
@@ -183,7 +187,8 @@ export async function updateDocument(
     revalidatePath(`/content-studio/${id}`);
     return { data };
   } catch (err: any) {
-    return { error: err.message || 'Update document failed' };
+    logger.error({ err: err }, 'update.document.failed');
+    return { error: 'Update document failed' };
   }
 }
 
@@ -204,7 +209,8 @@ export async function deleteDocument(id: string) {
     revalidatePath('/content-studio');
     return { success: true };
   } catch (err: any) {
-    return { error: err.message || 'Delete document failed' };
+    logger.error({ err: err }, 'delete.document.failed');
+    return { error: 'Delete document failed' };
   }
 }
 
@@ -220,7 +226,8 @@ export async function getDocumentVersions(documentId: string) {
     if (error) throw error;
     return { data: data || [] };
   } catch (err: any) {
-    return { error: err.message || 'Fetch document versions failed' };
+    logger.error({ err: err }, 'get.document.versions.failed');
+    return { error: 'Fetch document versions failed' };
   }
 }
 
@@ -260,7 +267,8 @@ export async function createDocumentVersion(
 
     return { data };
   } catch (err: any) {
-    return { error: err.message || 'Save document version failed' };
+    logger.error({ err: err }, 'create.document.version.failed');
+    return { error: 'Save document version failed' };
   }
 }
 
@@ -327,7 +335,8 @@ export async function sendDocumentToContact(contactId: string, subject: string, 
 
     return { success: true };
   } catch (err: any) {
-    return { error: err.message || 'Send message failed' };
+    logger.error({ err: err }, 'send.document.to.contact.failed');
+    return { error: 'Send message failed' };
   }
 }
 
@@ -354,6 +363,7 @@ export async function saveAsContentTemplate(payload: { title: string; body_html:
     if (error) throw error;
     return { data };
   } catch (err: any) {
-    return { error: err.message || 'Save template failed' };
+    logger.error({ err: err }, 'save.as.content.template.failed');
+    return { error: 'Save template failed' };
   }
 }

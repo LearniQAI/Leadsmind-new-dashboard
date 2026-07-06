@@ -1,10 +1,30 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createServerClient } from '@/lib/supabase/server'
 import { detectCourier } from '@/lib/courier/detect'
 import { createTracking } from '@/lib/courier/aftership'
 import { normaliseStatus, NormalStatus } from '@/lib/courier/normalise'
 import { sendShipmentRegistered } from '@/lib/courier/emails'
+import { logger } from '@/shared/logger'
+
+// Confirms the caller is an authenticated member of the given workspace.
+// Used by the dashboard-facing shipment actions below (createAdminClient bypasses
+// RLS, so these need an explicit membership check before touching another
+// workspace's data).
+async function requireWorkspaceMember(workspaceId: string): Promise<boolean> {
+  const supabase = await createServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return false
+
+  const { data: member } = await supabase
+    .from('workspace_members')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  return !!member
+}
 
 export async function createShipment(
   workspaceId: string,
@@ -100,7 +120,10 @@ export async function createShipment(
     .select('*')
     .single()
 
-  if (error) return { success: false, error: error.message }
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'shipments.create.failed')
+    return { success: false, error: 'Failed to create shipment.' }
+  }
 
   // Increment tracking quota
   if (quota) {
@@ -128,7 +151,7 @@ export async function createShipment(
   try {
     await sendShipmentRegistered(shipment)
   } catch (e) {
-    console.error('[Action register email error]:', e)
+    logger.error({ err: e, workspaceId, shipmentId: shipment.id }, 'shipments.register_email.failed')
   }
 
   return { success: true, data: shipment }
@@ -136,17 +159,35 @@ export async function createShipment(
 
 export async function getShipmentEvents(shipmentId: string) {
   const supabase = createAdminClient()
+
+  const { data: shipment } = await supabase
+    .from('courier_shipments')
+    .select('workspace_id')
+    .eq('id', shipmentId)
+    .maybeSingle()
+
+  if (!shipment || !(await requireWorkspaceMember(shipment.workspace_id))) {
+    return { success: false, error: 'Unauthorized' }
+  }
+
   const { data, error } = await supabase
     .from('shipment_events')
     .select('*')
     .eq('shipment_id', shipmentId)
     .order('occurred_at', { ascending: false })
 
-  if (error) return { success: false, error: error.message }
+  if (error) {
+    logger.error({ err: error, shipmentId }, 'shipments.events.fetch.failed')
+    return { success: false, error: 'Failed to fetch shipment events.' }
+  }
   return { success: true, data }
 }
 
 export async function updateTrackingBrand(workspaceId: string, brandSettings: any) {
+  if (!(await requireWorkspaceMember(workspaceId))) {
+    return { success: false, error: 'Unauthorized' }
+  }
+
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('courier_brand_settings')
@@ -165,7 +206,10 @@ export async function updateTrackingBrand(workspaceId: string, brandSettings: an
       onConflict: 'workspace_id'
     })
 
-  if (error) return { success: false, error: error.message }
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'shipments.brand_settings.update.failed')
+    return { success: false, error: 'Failed to update tracking brand.' }
+  }
   return { success: true }
 }
 
@@ -176,6 +220,10 @@ export async function uploadBrandLogo(formData: FormData) {
 
   if (!file || !workspaceId) {
     return { success: false, error: 'File and workspaceId are required' }
+  }
+
+  if (!(await requireWorkspaceMember(workspaceId))) {
+    return { success: false, error: 'Unauthorized' }
   }
 
   const timestamp = Date.now()
@@ -194,7 +242,8 @@ export async function uploadBrandLogo(formData: FormData) {
       })
 
     if (uploadError) {
-      return { success: false, error: uploadError.message }
+      logger.error({ err: uploadError, workspaceId }, 'shipments.brand_logo.upload.failed')
+      return { success: false, error: 'Failed to upload logo.' }
     }
 
     const { data: publicData } = supabase.storage
@@ -207,7 +256,8 @@ export async function uploadBrandLogo(formData: FormData) {
 
     return { success: true, publicUrl: publicData.publicUrl }
   } catch (err: any) {
-    return { success: false, error: err.message || 'Error uploading file' }
+    logger.error({ err, workspaceId }, 'shipments.brand_logo.upload_action.failed')
+    return { success: false, error: 'Error uploading file' }
   }
 }
 
@@ -250,7 +300,8 @@ export async function confirmReceiptAction(shipmentId: string, token: string) {
     .eq('id', shipmentId)
 
   if (updateErr) {
-    return { success: false, error: updateErr.message }
+    logger.error({ err: updateErr, shipmentId }, 'shipments.receipt_confirmation.update.failed')
+    return { success: false, error: 'Failed to confirm receipt.' }
   }
 
   await supabase.from('shipment_events').insert({
@@ -302,7 +353,7 @@ export async function confirmReceiptAction(shipmentId: string, token: string) {
       })
     }
   } catch (e) {
-    console.error('[confirmReceiptAction notification error]:', e)
+    logger.error({ err: e, shipmentId }, 'shipments.receipt_confirmation.notification.failed')
   }
 
   return { success: true }
@@ -335,6 +386,10 @@ export async function updateShipmentStatus(
     return { success: false, error: 'Shipment not found' }
   }
 
+  if (!(await requireWorkspaceMember(shipment.workspace_id))) {
+    return { success: false, error: 'Unauthorized' }
+  }
+
   const { error: updateErr } = await supabase
     .from('courier_shipments')
     .update({
@@ -347,7 +402,8 @@ export async function updateShipmentStatus(
     .eq('id', shipmentId)
 
   if (updateErr) {
-    return { success: false, error: updateErr.message }
+    logger.error({ err: updateErr, shipmentId }, 'shipments.manual_status_update.update.failed')
+    return { success: false, error: 'Failed to update shipment status.' }
   }
 
   await supabase.from('shipment_events').insert({
@@ -376,7 +432,7 @@ export async function updateShipmentStatus(
       )
     }
   } catch (e) {
-    console.error('[Manual update status-email error]:', e)
+    logger.error({ err: e, shipmentId }, 'shipments.manual_status_update.notification.failed')
   }
 
   return { success: true }
@@ -430,7 +486,8 @@ export async function syncShipmentTracking(shipmentId: string) {
       .eq('id', shipmentId)
 
     if (updateErr) {
-      return { success: false, error: updateErr.message }
+      logger.error({ err: updateErr, shipmentId }, 'shipments.poll_update.update.failed')
+      return { success: false, error: 'Failed to sync shipment status.' }
     }
 
     await supabase.from('shipment_events').insert({
@@ -459,7 +516,7 @@ export async function syncShipmentTracking(shipmentId: string) {
         )
       }
     } catch (e) {
-      console.error('[Poll update status-email error]:', e)
+      logger.error({ err: e, shipmentId }, 'shipments.poll_update.notification.failed')
     }
 
     const { data: updatedShipment } = await supabase
@@ -470,7 +527,8 @@ export async function syncShipmentTracking(shipmentId: string) {
 
     return { success: true, data: updatedShipment }
   } catch (err: any) {
-    return { success: false, error: err.message || 'Error syncing from AfterShip' }
+    logger.error({ err, shipmentId }, 'shipments.aftership_sync.failed')
+    return { success: false, error: 'Error syncing from AfterShip' }
   }
 }
 
