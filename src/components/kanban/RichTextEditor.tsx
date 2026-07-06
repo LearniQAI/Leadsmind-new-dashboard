@@ -41,7 +41,7 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
           <ToolbarButton icon={<ListOrdered className="w-3.5 h-3.5" />} />
           <div className="w-[1px] h-4 bg-white/5 mx-1" />
           <ToolbarButton icon={<Link className="w-3.5 h-3.5" />} />
-          <ToolbarButton icon={<Image className="w-3.5 h-3.5" alt="" />} />
+          <ToolbarButton icon={<Image className="w-3.5 h-3.5" />} />
           <div className="flex-1" />
           <ToolbarButton icon={<Maximize2 className="w-3.5 h-3.5" />} />
         </div>

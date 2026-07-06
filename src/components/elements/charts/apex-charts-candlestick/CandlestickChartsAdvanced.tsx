@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import dynamic from 'next/dynamic';
-import dayjs from 'dayjs';
+import { format } from 'date-fns';
 import { ApexOptions } from 'apexcharts';
 
 // Dynamically load react-apexcharts since it doesn't support SSR
@@ -273,7 +273,7 @@ const CandlestickChartsAdvanced = () => {
     type: 'datetime', 
     labels: {
       formatter: function(val) {
-        return dayjs(val).format('MMM DD HH:mm');
+        return format(new Date(val), 'MMM dd HH:mm');
       }
     }
   },

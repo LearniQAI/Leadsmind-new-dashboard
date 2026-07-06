@@ -1,7 +1,7 @@
 "use client";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-import moment from "moment";
+import { format } from "date-fns";
 import { ProductsType } from "@/interface/common.interface";
 import { toast } from "sonner";
 interface CartState {
@@ -28,8 +28,8 @@ export const wishlistSlice = createSlice({
      duration: 1000,
     });
    } else {
-    const now = moment();
-    const orderDate = now.format("MM/DD/YY hh:mm a"); // Format the current date as "MM/DD/YY hh:mm a"
+    const now = new Date();
+    const orderDate = format(now, "MM/dd/yy hh:mm a"); // Format the current date as "MM/DD/YY hh:mm a"
 
     const tempProduct = {
      ...payload,
