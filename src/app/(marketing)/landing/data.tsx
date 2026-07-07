@@ -11,7 +11,7 @@ import {
   Layers,
   MapPinned,
   FileText,
-  Ticket,
+  Headphones,
   Search,
   Banknote,
   CreditCard,
@@ -26,11 +26,9 @@ import {
 } from 'lucide-react';
 
 export const navLinks = [
-  { label: 'Features', href: '#features' },
   { label: 'Modules', href: '#modules' },
+  { label: 'Features', href: '#features' },
   { label: 'Pricing', href: '#pricing' },
-  { label: 'Blog', href: '/blog' },
-  { label: 'Demo', href: '#demo' },
 ];
 
 export const stats = [
@@ -49,24 +47,6 @@ export const trustedLogos = [
   'SAVANNA CO.',
   'KUBERA',
   'ZENITH TRADE',
-];
-
-export const painPoints = [
-  {
-    title: 'Too Many Subscriptions',
-    description:
-      'The average SME pays for 6+ separate tools. CRM here, accounting there, HR somewhere else. The costs add up and nothing talks to each other.',
-  },
-  {
-    title: 'Data Lives in Silos',
-    description:
-      "Your leads don't know about your invoices. Your LMS doesn't know about your contacts. Every tool is an island.",
-  },
-  {
-    title: 'Built for Overseas Markets',
-    description:
-      'Most SaaS tools show USD, use MM/DD/YYYY, and have no understanding of South African business needs.',
-  },
 ];
 
 export type ModuleTab = {
@@ -247,16 +227,19 @@ export const lenaCapabilities = [
     icon: PenSquare,
     title: 'Content Creation',
     description: 'Generates blog posts, emails, and social content in your brand voice.',
+    stat: '10x faster than manual writing',
   },
   {
-    icon: Ticket,
+    icon: Headphones,
     title: 'Customer Support',
     description: 'Handles support tickets with AI responses, escalating when it matters.',
+    stat: '72% of tickets resolved automatically',
   },
   {
     icon: Search,
     title: 'Lead Research',
     description: 'Researches and qualifies leads automatically before your team follows up.',
+    stat: '3x more qualified leads',
   },
 ];
 

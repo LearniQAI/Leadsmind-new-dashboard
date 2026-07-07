@@ -11,6 +11,11 @@ import { createClient } from "@/lib/supabase/client";
 import { WorkspacePicker } from "@/components/auth/WorkspacePicker";
 import { Workspace } from "@/types/workspace.types";
 import { setActiveWorkspace, notifySignIn, getEmailByUsername } from "@/app/actions/auth";
+import { Eye, EyeOff } from "lucide-react";
+
+const inputClass =
+ "w-full px-4 py-3 border-[1.5px] border-[#E2E8F0] rounded-[10px] text-[15px] text-[#0F172A] bg-white outline-none transition-colors duration-150 focus:border-[#4F46E5] focus:ring-4 focus:ring-[#4F46E5]/10 disabled:opacity-60";
+const labelClass = "block text-[13px] font-semibold text-[#374151] mb-1.5";
 
 const SignInBasicForm = () => {
  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -157,45 +162,44 @@ const SignInBasicForm = () => {
  return (
   <>
    <form onSubmit={handleSubmit(onSubmit)}>
-    <div className="from__input-box">
-     <div className="form__input-title">
-      <label htmlFor="nameEmail">Email or Username</label>
+    <div className="flex flex-col gap-3 mb-5">
+     <div className="from__input-box">
+      <label htmlFor="nameEmail" className={labelClass}>Email or Username</label>
+      <div className="form__input">
+       <input
+        className={inputClass}
+        id="nameEmail"
+        type="text"
+        disabled={isLoading}
+        {...register("name", {
+         required: "Email or Username is required",
+        })}
+       />
+       <ErrorMessage error={errors.name} />
+      </div>
      </div>
-     <div className="form__input">
-      <input
-       className="form-control"
-       id="nameEmail"
-       type="text"
-       disabled={isLoading}
-       {...register("name", {
-        required: "Email or Username is required",
-       })}
-      />
-      <ErrorMessage error={errors.name} />
-     </div>
-    </div>
-    <div className="from__input-box">
-     <div className="form__input-title flex justify-between">
-      <label htmlFor="passwordInput">Password</label>
-      <Link href="/auth/forgot-password-basic">
-       <small>Forgot Password?</small>
-      </Link>
-     </div>
-     <div className="form__input">
-      <input
-       className="form-control"
-       type={isPasswordVisible ? "text" : "password"}
-       id="passwordInput"
-       disabled={isLoading}
-       {...register("password", { required: "Password is required" })}
-      />
-      <ErrorMessage error={errors.password} />
-      <div className="pass-icon" onClick={togglePasswordVisibility}>
-       <i
-        className={`fa-sharp fa-light ${
-         isPasswordVisible ? "fa-eye" : "fa-eye-slash"
-        }`}
-       ></i>
+     <div className="from__input-box">
+      <div className="flex justify-between items-center mb-1.5">
+       <label htmlFor="passwordInput" className="text-[13px] font-semibold text-[#374151]">Password</label>
+       <Link href="/auth/forgot-password-basic">
+        <small className="text-xs font-medium text-[#4F46E5] hover:text-[#4338CA] transition-colors">Forgot Password?</small>
+       </Link>
+      </div>
+      <div className="form__input relative">
+       <input
+        className={`${inputClass} pr-11`}
+        type={isPasswordVisible ? "text" : "password"}
+        id="passwordInput"
+        disabled={isLoading}
+        {...register("password", { required: "Password is required" })}
+       />
+       <div
+        className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-[#94A3B8] hover:text-[#4F46E5] transition-colors"
+        onClick={togglePasswordVisibility}
+       >
+        {isPasswordVisible ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
+       </div>
+       <ErrorMessage error={errors.password} />
       </div>
      </div>
     </div>
@@ -206,15 +210,21 @@ const SignInBasicForm = () => {
         <Checkbox
          className="custom-checkbox"
          disabled={isLoading}
+         sx={{ color: "#CBD5E1", "&.Mui-checked": { color: "#4F46E5" } }}
          {...register("rememberMe")}
         />
        }
-       label="Remember Me"
+       label={<span className="text-[13px] font-medium text-[#374151]">Remember Me</span>}
       />
      </div>
     </div>
-    <div className="mb-4">
-     <button className="btn btn-gradient w-full" type="submit" disabled={isLoading}>
+    <div>
+     <button
+      className="w-full rounded-[10px] py-3.5 text-[15px] font-bold text-white shadow-[0_4px_12px_rgba(79,70,229,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(79,70,229,0.4)] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+      style={{ background: "linear-gradient(135deg, #4F46E5, #6366F1)" }}
+      type="submit"
+      disabled={isLoading}
+     >
       {isLoading ? "Signing in..." : "Sign in"}
      </button>
     </div>
