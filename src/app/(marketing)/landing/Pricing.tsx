@@ -3,117 +3,200 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { pricingTiers } from './data';
+
+const cardDelay: Record<string, number> = { starter: 0.1, pro: 0, enterprise: 0.2 };
+
+function CheckIcon({ bg, stroke }: { bg: string; stroke: string }) {
+  return (
+    <div
+      className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+      style={{ background: bg }}
+    >
+      <svg width="10" height="10" viewBox="0 0 10 10">
+        <path d="M2 5l2 2 4-4" stroke={stroke} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
+const valueStatement = [
+  '14-day free trial',
+  'No credit card required',
+  'PayFast & Stripe accepted',
+  'SA support team',
+];
 
 export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: string) => void }) {
   const [isAnnual, setIsAnnual] = useState(false);
 
   return (
-    <section id="pricing" className="py-28 bg-[#0F172A] relative overflow-hidden">
-      <div className="absolute inset-0 lm-dot-grid opacity-30 pointer-events-none" />
+    <section id="pricing" className="relative overflow-hidden bg-white py-28">
+      <div
+        className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 1000px 400px at 50% -50px, rgba(99, 102, 241, 0.06), transparent 70%)' }}
+      />
+
       <div className="container mx-auto px-6 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-14"
+          className="text-center mb-4"
         >
-          <div className="text-[#818CF8] font-bold uppercase tracking-[0.25em] text-xs mb-4">Simple Pricing</div>
-          <h2 className="text-3xl md:text-5xl font-bold !text-white leading-tight mb-4">
+          <span className="inline-block bg-[#EEF2FF] !text-[#4F46E5] border border-[#C7D2FE] font-bold uppercase tracking-[0.1em] text-xs px-4 py-1.5 rounded-full mb-5">
+            Simple Pricing
+          </span>
+          <h2 className="text-[clamp(32px,4vw,52px)] font-extrabold !text-[#0F172A] leading-tight tracking-[-0.02em] mb-4">
             One plan. Every module. No surprises.
           </h2>
-          <p className="!text-white/50 mb-8">Priced in ZAR for South African businesses</p>
+          <p className="text-[16px] !text-[#64748B] mb-8">Priced in ZAR for African businesses</p>
 
-          <div className="inline-flex items-center gap-1 p-1 rounded-full bg-white/5 border border-white/10">
+          <div className="inline-flex items-center gap-0.5 p-1 rounded-full bg-[#F1F5F9] my-8">
             <button
               onClick={() => setIsAnnual(false)}
-              className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
-                !isAnnual ? 'bg-white text-[#0F172A]' : 'text-white/50 hover:text-white'
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
+                !isAnnual ? 'bg-white !text-[#0F172A] shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : '!text-[#64748B] hover:!text-[#0F172A]'
               }`}
             >
               Monthly
             </button>
             <button
               onClick={() => setIsAnnual(true)}
-              className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
-                isAnnual ? 'bg-[#4F46E5] text-white' : 'text-white/50 hover:text-white'
+              className={`flex items-center px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
+                isAnnual ? 'bg-white !text-[#0F172A] shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : '!text-[#64748B] hover:!text-[#0F172A]'
               }`}
             >
-              Annual <span className="text-xs ml-1 opacity-80">(-20%)</span>
+              Annual
+              <span
+                className="!text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-1.5"
+                style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}
+              >
+                -20%
+              </span>
             </button>
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-center">
-          {pricingTiers.map((tier, i) => {
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-[480px] lg:max-w-[1100px] mx-auto items-start">
+          {pricingTiers.map((tier) => {
             const price = isAnnual ? Math.round(tier.monthlyPrice * 0.8) : tier.monthlyPrice;
+            const isPro = tier.id === 'pro';
+            const isEnterprise = tier.id === 'enterprise';
+
             return (
               <motion.div
                 key={tier.id}
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className={`relative rounded-2xl p-8 flex flex-col h-full ${
-                  tier.highlighted
-                    ? 'lm-glass lm-float border-2 border-[#4F46E5] shadow-2xl shadow-[#4F46E5]/30 md:scale-105 z-10'
-                    : 'lm-glass border border-white/10'
-                }`}
+                transition={{ duration: 0.5, delay: cardDelay[tier.id] }}
+                className={isPro ? 'mt-0 lg:-mt-4' : ''}
               >
-                {tier.highlighted && (
-                  <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#4F46E5] text-white text-xs font-bold uppercase tracking-wide px-4 py-1.5 rounded-full shadow-lg shadow-[#4F46E5]/40">
-                    Most Popular
-                  </span>
-                )}
+                <div
+                  className={`relative rounded-[24px] p-9 h-full transition-all duration-300 ${
+                    isPro
+                      ? 'pro-card-glow border border-[rgba(99,102,241,0.3)] shadow-[0_0_0_1px_rgba(99,102,241,0.2),0_24px_60px_rgba(99,102,241,0.2),0_8px_24px_rgba(0,0,0,0.2)]'
+                      : 'bg-white border border-[#E2E8F0] shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] hover:-translate-y-0.5'
+                  }`}
+                  style={isPro ? { background: 'linear-gradient(160deg, #0F172A 0%, #1a1060 40%, #0F172A 100%)' } : undefined}
+                >
+                  {isPro && (
+                    <span
+                      className="absolute -top-px left-1/2 -translate-x-1/2 !text-white text-[11px] font-bold uppercase tracking-[0.08em] px-5 py-1.5 rounded-b-xl shadow-[0_4px_12px_rgba(79,70,229,0.4)]"
+                      style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)' }}
+                    >
+                      Most Popular
+                    </span>
+                  )}
 
-                <h3 className="text-xl font-bold !text-white mb-1">{tier.name}</h3>
-                <p className="!text-white/50 text-sm mb-6">{tier.description}</p>
+                  <h3 className={`text-xl font-extrabold mb-1 ${isPro ? '!text-white mt-5' : '!text-[#0F172A]'}`}>
+                    {tier.name}
+                  </h3>
+                  <p className={`text-sm ${isPro ? '!text-[#94A3B8]' : '!text-[#64748B]'}`}>{tier.description}</p>
 
-                <div className="flex items-baseline gap-1.5 mb-8">
-                  <span className="text-4xl font-bold text-white tabular-nums">R{price.toLocaleString('en-ZA')}</span>
-                  <span className="text-white/40 text-sm">/month</span>
-                </div>
+                  <div
+                    className="my-6 py-6"
+                    style={{ borderTop: `1px solid ${isPro ? 'rgba(255,255,255,0.08)' : '#F1F5F9'}`, borderBottom: `1px solid ${isPro ? 'rgba(255,255,255,0.08)' : '#F1F5F9'}` }}
+                  >
+                    <span
+                      className={`text-[48px] font-black tracking-[-0.02em] tabular-nums ${isPro ? '!text-white' : ''}`}
+                      style={
+                        isEnterprise
+                          ? {
+                              backgroundImage: 'linear-gradient(135deg, #0F172A, #334155)',
+                              WebkitBackgroundClip: 'text',
+                              WebkitTextFillColor: 'transparent',
+                              backgroundClip: 'text',
+                            }
+                          : isPro
+                          ? undefined
+                          : { color: '#0F172A' }
+                      }
+                    >
+                      R{price.toLocaleString('en-ZA')}
+                    </span>
+                    <span className={`text-sm ml-1 ${isPro ? '!text-[#64748B]' : '!text-[#94A3B8]'}`}>/month</span>
+                  </div>
 
-                <ul className="space-y-3.5 mb-8 flex-1">
-                  {tier.features.map((f) => (
-                    <li key={f} className="flex items-start gap-3 text-sm text-white/70">
-                      <span className="w-5 h-5 rounded-full bg-[#4F46E5]/20 text-[#818CF8] flex items-center justify-center shrink-0 mt-0.5">
-                        <Check className="w-3 h-3 stroke-[3px]" />
-                      </span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
+                  <ul className="flex flex-col gap-3.5 mb-7">
+                    {tier.features.map((f) => (
+                      <li
+                        key={f}
+                        className={`flex items-center gap-3 text-sm ${isPro ? '!text-[#CBD5E1]' : '!text-[#475569]'}`}
+                      >
+                        <CheckIcon
+                          bg={isPro ? 'rgba(99, 102, 241, 0.2)' : '#F0FDF4'}
+                          stroke={isPro ? '#818CF8' : '#10B981'}
+                        />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
 
-                {tier.id === 'enterprise' ? (
-                  <Link href="/contact">
-                    <Button className="w-full h-12 rounded-full font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/15">
+                  {tier.id === 'enterprise' ? (
+                    <Link href="/contact">
+                      <Button className="w-full h-[50px] rounded-xl font-bold text-[15px] bg-[#0F172A] hover:bg-[#1E293B] !text-white transition-colors">
+                        {tier.cta}
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button
+                      onClick={() => onSelectTier(tier.id)}
+                      className={`w-full h-[50px] rounded-xl font-bold text-[15px] transition-all ${
+                        isPro
+                          ? 'lm-shimmer !text-white shadow-[0_4px_16px_rgba(79,70,229,0.4)] hover:shadow-[0_8px_24px_rgba(79,70,229,0.5)] hover:-translate-y-px'
+                          : 'bg-[#F1F5F9] hover:bg-[#E2E8F0] !text-[#0F172A]'
+                      }`}
+                      style={isPro ? { background: 'linear-gradient(135deg, #4F46E5, #6366F1)' } : undefined}
+                    >
                       {tier.cta}
                     </Button>
-                  </Link>
-                ) : (
-                  <Button
-                    onClick={() => onSelectTier(tier.id)}
-                    className={`w-full h-12 rounded-full font-semibold ${
-                      tier.highlighted
-                        ? 'lm-shimmer bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white shadow-lg shadow-[#4F46E5]/30'
-                        : 'bg-white/10 hover:bg-white/15 text-white border border-white/15'
-                    }`}
-                  >
-                    {tier.cta}
-                  </Button>
-                )}
+                  )}
+                </div>
               </motion.div>
             );
           })}
         </div>
 
-        <p className="text-center !text-white/30 text-xs mt-12">
-          All prices in ZAR. VAT exclusive. Cancel anytime.
-        </p>
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="text-center mt-12 pt-12 border-t border-[#F1F5F9]"
+        >
+          <p className="!text-[#94A3B8] text-sm mb-4">All prices in ZAR · VAT exclusive · Cancel anytime</p>
+          <div className="flex justify-center gap-8 flex-wrap">
+            {valueStatement.map((item) => (
+              <span key={item} className="flex items-center gap-2 text-[13px] font-medium !text-[#64748B]">
+                <span className="!text-[#10B981]">✓</span> {item}
+              </span>
+            ))}
+          </div>
+        </motion.div>
       </div>
     </section>
   );

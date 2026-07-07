@@ -8,39 +8,103 @@ import { Button } from '@/components/ui/button';
 
 export default function FinalCTA() {
   return (
-    <section className="py-28 bg-[#0F172A] relative overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#4F46E5]/25 rounded-full blur-[150px] pointer-events-none lm-float" />
-      <div className="absolute inset-0 lm-dot-grid opacity-30 pointer-events-none" />
+    <section
+      className="relative overflow-hidden py-24 md:py-[100px] px-6 text-center"
+style={{ background: 'linear-gradient(160deg, #0F172A 0%, #1a1060 40%, #0F172A 100%)' }}
+    >
+      {/* decorative orbs */}
+      <div
+        className="absolute pointer-events-none rounded-full"
+        style={{
+          top: '-80px',
+          left: '-80px',
+          width: '400px',
+          height: '400px',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.12), transparent 70%)',
+        }}
+      />
+      <div
+        className="absolute pointer-events-none rounded-full"
+        style={{
+          bottom: '-80px',
+          right: '-80px',
+          width: '500px',
+          height: '500px',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.08), transparent 70%)',
+        }}
+      />
+      {/* dot grid overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.15) 1px, transparent 1px)',
+          backgroundSize: '32px 32px',
+        }}
+      />
 
-      <div className="container mx-auto px-6 relative z-10 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
+      <div className="container mx-auto relative z-10">
+        <motion.h2
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="font-black !text-white leading-[1.1] tracking-tight mx-auto max-w-3xl"
+          style={{ fontSize: 'clamp(32px, 5vw, 60px)' }}
+        >
+          Ready to run your entire business from{' '}
+          <span
+            style={{
+              backgroundImage: 'linear-gradient(135deg, #818CF8, #C084FC, #60A5FA)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            one platform?
+          </span>
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+          className="!text-white/80 text-lg mx-auto max-w-xl mt-4 mb-10"
         >
-          <h2 className="text-3xl md:text-6xl font-bold !text-white leading-tight mb-6 max-w-3xl mx-auto">
-            Ready to run your entire business from one platform?
-          </h2>
-          <p className="!text-white/50 text-lg mb-10 max-w-xl mx-auto">
-            Join 500+ South African businesses already on LeadsMind.
-          </p>
+          Join 500+ African businesses already on LeadsMind.
+        </motion.p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <Link href="/auth/signup-basic">
-              <Button className="lm-shimmer h-14 px-8 text-base bg-[#4F46E5] hover:bg-[#4F46E5]/90 rounded-full font-semibold shadow-xl shadow-[#4F46E5]/30 group">
-                Start Your Free 14-Day Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
-            <Link href="#demo">
-              <Button variant="ghost" className="h-14 px-8 rounded-full border border-white/20 text-white font-semibold hover:bg-white/5">
-                Book a Demo
-              </Button>
-            </Link>
-          </div>
-
-          <p className="!text-white/30 text-sm">No credit card required. Cancel anytime. ZAR pricing.</p>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-5"
+        >
+          <Link href="/auth/signup-basic">
+            <Button className="lm-shimmer h-14 px-8 text-base bg-white text-[#4F46E5] hover:bg-white hover:-translate-y-0.5 rounded-[14px] font-bold shadow-[0_8px_24px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)] transition-all duration-200 group">
+              Start Your Free 14-Day Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+          <Link href="#demo">
+            <Button
+              variant="ghost"
+              className="h-14 px-8 rounded-[14px] border-2 border-white/40 text-white font-bold bg-transparent backdrop-blur-sm hover:bg-white/10 hover:border-white/70 transition-all duration-200"
+            >
+              Book a Demo
+            </Button>
+          </Link>
         </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, delay: 0.45 }}
+          className="!text-white/60 text-[13px]"
+        >
+          No credit card required. Cancel anytime. ZAR pricing.
+        </motion.p>
       </div>
     </section>
   );

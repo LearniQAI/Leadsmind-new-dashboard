@@ -21,6 +21,7 @@
     "@fullcalendar/timegrid": "^6.1.15",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.2",
+    "@lottiefiles/dotlottie-react": "^0.19.7",
     "@material-tailwind/react": "^2.1.10",
     "@monaco-editor/react": "^4.7.0",
     "@mui/icons-material": "^6.1.4",
