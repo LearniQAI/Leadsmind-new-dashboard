@@ -18,7 +18,7 @@ export default function Testimonials() {
         >
           <div className="text-[#4F46E5] font-bold uppercase tracking-[0.25em] text-xs mb-4">What Clients Say</div>
           <h2 className="text-3xl md:text-5xl font-bold !text-[#0F172A] leading-tight">
-            South African businesses love LeadsMind
+           African businesses love LeadsMind
           </h2>
         </motion.div>
 

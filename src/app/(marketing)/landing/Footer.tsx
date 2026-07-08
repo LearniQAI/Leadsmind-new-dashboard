@@ -3,8 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Linkedin, Twitter, Youtube, Facebook } from 'lucide-react';
+import { Linkedin, Facebook, Instagram } from 'lucide-react';
 import { footerLinks } from './data';
+
+const socialLinks = [
+  { href: 'https://www.facebook.com/share/g/191KYWjq9L/', icon: Facebook, label: 'Facebook' },
+  { href: 'https://www.linkedin.com/in/leadsmind/', icon: Linkedin, label: 'LinkedIn' },
+  { href: 'https://www.instagram.com/leadsmindcrm/', icon: Instagram, label: 'Instagram' },
+];
 
 export default function Footer() {
   return (
@@ -24,10 +30,13 @@ export default function Footer() {
             The all-in-one business operating system for growing African businesses.
           </p>
           <div className="flex gap-2 mt-5">
-            {[Linkedin, Twitter, Youtube, Facebook].map((Icon, i) => (
+            {socialLinks.map(({ href, icon: Icon, label }) => (
               <a
-                key={i}
-                href="#"
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
                 className="w-9 h-9 rounded-[10px] bg-[#F1F5F9] border border-[#E2E8F0] flex items-center justify-center !text-[#64748B] hover:bg-[#4F46E5] hover:border-[#4F46E5] hover:!text-white hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(79,70,229,0.3)] transition-all duration-200"
               >
                 <Icon className="w-4 h-4" />
