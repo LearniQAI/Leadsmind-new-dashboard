@@ -59,18 +59,20 @@ export async function scanOriginality(documentId: string, text: string) {
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
 
-    // 1. Credit Check Guard: Retrieve current credits
-    const { data: ws, error: wsErr } = await supabase
-      .from('workspaces')
-      .select('ai_credits')
-      .eq('id', wsId)
-      .single();
+    // 1. Credit Check Guard: read current balance from ai_usage_credits.
+    // This is just an early UX check (skip work we know will be rejected) —
+    // the atomic RPC deduction below is the real, race-safe gate.
+    const { data: creditRow, error: wsErr } = await supabase
+      .from('ai_usage_credits')
+      .select('plan_monthly_credits, credits_used_this_period, credits_purchased_addon')
+      .eq('workspace_id', wsId)
+      .maybeSingle();
 
-    if (wsErr || !ws) {
+    if (wsErr || !creditRow) {
       return { error: 'Could not fetch workspace credit balance.' };
     }
 
-    const currentCredits = ws.ai_credits ?? 100;
+    const currentCredits = creditRow.plan_monthly_credits + creditRow.credits_purchased_addon - creditRow.credits_used_this_period;
     if (currentCredits < 5) {
       return { error: `Insufficient AI credits. 5 credits required, but you only have ${currentCredits} remaining.` };
     }
@@ -111,16 +113,22 @@ export async function scanOriginality(documentId: string, text: string) {
       }
     }
 
-    // Deduct 5 credits for a new scan
-    const newCredits = currentCredits - 5;
-    const { error: deductErr } = await supabase
-      .from('workspaces')
-      .update({ ai_credits: newCredits })
-      .eq("id", wsId).eq("workspace_id", wsId).eq('workspace_id', wsId);
+    // Deduct 5 credits for a new scan — atomic via RPC (the real gate
+    // against concurrent overspend; the check above is only an early UX
+    // optimization and can be stale by the time we get here).
+    const { data: creditOk, error: deductErr } = await supabase.rpc('deduct_ai_credit', {
+      p_workspace_id: wsId,
+      p_amount: 5,
+    });
 
     if (deductErr) {
       return { error: 'Credit deduction failed. Scan aborted.' };
     }
+    if (!creditOk) {
+      return { error: 'Insufficient AI credits. 5 credits required.' };
+    }
+
+    const newCredits = currentCredits - 5;
 
     const matches: PlagiarismMatch[] = [];
 
@@ -410,11 +418,12 @@ export async function getWorkspaceCredits() {
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No workspace context' };
     const { data } = await supabase
-      .from('workspaces')
-      .select('ai_credits')
-      .eq('id', wsId)
-      .single();
-    return { data: data?.ai_credits ?? 100 };
+      .from('ai_usage_credits')
+      .select('plan_monthly_credits, credits_used_this_period, credits_purchased_addon')
+      .eq('workspace_id', wsId)
+      .maybeSingle();
+    if (!data) return { data: 100 };
+    return { data: data.plan_monthly_credits + data.credits_purchased_addon - data.credits_used_this_period };
   } catch (err) {
     return { data: 100 };
   }

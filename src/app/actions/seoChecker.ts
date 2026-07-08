@@ -37,32 +37,29 @@ export async function analyzeContentSEO(params: {
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
 
-    // 1. Credit Deduction Guard (Charge 3 AI credits)
-    const { data: ws, error: wsErr } = await supabase
-      .from('workspaces')
-      .select('ai_credits')
-      .eq('id', wsId)
-      .single();
+    // 1. Credit Deduction Guard (Charge 3 AI credits) — atomic via RPC so
+    // concurrent requests can't both pass a stale balance check.
+    const { data: creditOk, error: creditErr } = await supabase.rpc('deduct_ai_credit', {
+      p_workspace_id: wsId,
+      p_amount: 3,
+    });
 
-    if (wsErr || !ws) {
-      return { error: 'Could not fetch workspace credit balance.' };
+    if (creditErr) {
+      return { error: 'Could not process AI credit deduction.' };
     }
 
-    const currentCredits = ws.ai_credits ?? 100;
-    if (currentCredits < 3) {
-      return { error: `Insufficient AI credits. 3 credits required, but you only have ${currentCredits} remaining.` };
+    if (!creditOk) {
+      return { error: 'Insufficient AI credits. 3 credits required.' };
     }
 
-    // Deduct 3 credits
-    const newCredits = currentCredits - 3;
-    const { error: deductErr } = await supabase
-      .from('workspaces')
-      .update({ ai_credits: newCredits })
-      .eq("id", wsId).eq("workspace_id", wsId).eq('workspace_id', wsId);
-
-    if (deductErr) {
-      return { error: 'Credit deduction failed. SEO scan aborted.' };
-    }
+    const { data: creditRow } = await supabase
+      .from('ai_usage_credits')
+      .select('plan_monthly_credits, credits_used_this_period, credits_purchased_addon')
+      .eq('workspace_id', wsId)
+      .maybeSingle();
+    const newCredits = creditRow
+      ? creditRow.plan_monthly_credits + creditRow.credits_purchased_addon - creditRow.credits_used_this_period
+      : null;
 
     const primary = params.primaryKeyword.trim().toLowerCase();
     const secondaries = (params.secondaryKeywords || []).map(k => k.trim().toLowerCase()).filter(Boolean);
