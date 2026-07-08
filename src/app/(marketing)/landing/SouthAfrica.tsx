@@ -16,10 +16,10 @@ export default function SouthAfrica() {
           className="max-w-2xl mx-auto text-center mb-16"
         >
           <div className="text-[#4F46E5] font-bold uppercase tracking-[0.25em] text-xs mb-4 flex items-center justify-center gap-2">
-            🇿🇦 Built for SA
+            🇿🇦 Built for Africa
           </div>
           <h2 className="text-3xl md:text-5xl font-bold !text-[#0F172A] leading-tight">
-            Finally, a platform that understands South African business
+            Finally, a platform that understands African business
           </h2>
         </motion.div>
 

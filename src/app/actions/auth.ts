@@ -61,33 +61,20 @@ export async function setupWorkspace(payload: {
    return { success: true, workspaceId: ws?.id || existingMembership.workspace_id };
   }
 
-  // 3. Create workspace
-  const baseSlug = slugify(payload.workspaceName);
-  const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
+  // 3. Create workspace + admin membership atomically via the setup_workspace
+  // RPC (workspace insert + member insert happen in one transaction — no
+  // partial state if either step fails).
+  const slug = slugify(payload.workspaceName);
 
-  const { data: workspace, error: workspaceError } = await supabase
-   .from('workspaces')
-   .insert({
-    name: payload.workspaceName,
-    slug,
-    owner_id: payload.userId,
-    plan_tier: 'free',
-   })
-   .select('id, name')
-   .single();
+  const { data: workspaceId, error: setupError } = await supabase.rpc('setup_workspace', {
+   p_user_id: payload.userId,
+   p_workspace_name: payload.workspaceName,
+   p_slug: slug,
+  });
 
-  if (workspaceError) {
-   logger.error({ err: workspaceError, userId: payload.userId }, 'auth.setup_workspace.workspace_create.failed');
+  if (setupError) {
+   logger.error({ err: setupError, userId: payload.userId }, 'auth.setup_workspace.rpc.failed');
    return { success: false, error: 'Failed to create workspace' };
-  }
-
-  // 4. Add as admin member
-  const { error: memberError } = await supabase
-   .from('workspace_members')
-   .insert({ workspace_id: workspace.id, user_id: payload.userId, role: 'admin' });
-
-  if (memberError) {
-   logger.warn({ err: memberError, workspaceId: workspace.id }, 'auth.setup_workspace.member_insert.warning');
   }
 
   revalidatePath('/dashboard', 'layout');
@@ -103,7 +90,7 @@ export async function setupWorkspace(payload: {
    logger.error({ err: emailErr, email: payload.email }, 'auth.setup_workspace.welcome_email.failed');
   }
 
-  return { success: true, workspaceId: workspace.id };
+  return { success: true, workspaceId };
  } catch (err) {
   logger.error({ err, userId: payload.userId }, 'auth.setup_workspace.failed');
   return { success: false, error: 'An unexpected error occurred during workspace setup' };

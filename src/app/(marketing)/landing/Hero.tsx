@@ -114,8 +114,8 @@ export default function Hero() {
     <section className="w-full bg-white pb-16">
       <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-6">
-          <p className="text-sm font-semibold text-indigo-600 uppercase tracking-widest">
-            Trusted by 500+ South African businesses
+          <p className="text-sm font-semibold text-indigo-300 uppercase tracking-widest">
+            Trusted by 500+ African businesses
           </p>
         </div>
         <div className="w-full max-w-2xl mx-auto px-4 sm:px-0">

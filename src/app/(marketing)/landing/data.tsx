@@ -369,7 +369,7 @@ export const testimonials = [
 
 export const faqs = [
   {
-    q: 'Is LeadsMind built for South African businesses?',
+    q: 'Is LeadsMind built for African businesses?',
     a: 'Yes — ZAR pricing, PayFast integration, POPIA compliance, DD/MM/YYYY dates, and SA phone formats throughout.',
   },
   {
