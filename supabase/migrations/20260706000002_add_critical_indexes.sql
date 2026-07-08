@@ -43,7 +43,7 @@ CREATE INDEX IF NOT EXISTS messages_convo_idx
 -- Speeds up: automation trigger evaluation
 CREATE INDEX IF NOT EXISTS automations_workspace_active_idx
   ON automation_workflows(workspace_id)
-  WHERE is_active = true;
+  WHERE status = 'active';
 
 -- NOTE: IF NOT EXISTS prevents errors on re-run.
 -- To monitor index build progress:
