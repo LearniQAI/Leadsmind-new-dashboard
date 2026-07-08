@@ -18,7 +18,7 @@ const nextConfig = {
         ],
     },
     experimental: {
-        serverComponentsExternalPackages: ["puppeteer", "cheerio", "undici", "@resvg/resvg-js"],
+        serverComponentsExternalPackages: ["puppeteer-core", "@sparticuz/chromium", "cheerio", "undici", "@resvg/resvg-js"],
         outputFileTracingExcludes: {
             '*': [
                 'node_modules/@swc/core-linux-x64-gnu',
