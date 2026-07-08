@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer';
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
 
 /**
  * Generates an A4 Landscape Completion Certificate PDF for a student.
@@ -253,8 +254,9 @@ export async function generateCertificatePDF(payload: {
   `;
 
   const browser = await puppeteer.launch({
+    args: chromium.args,
+    executablePath: await chromium.executablePath(),
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
   try {

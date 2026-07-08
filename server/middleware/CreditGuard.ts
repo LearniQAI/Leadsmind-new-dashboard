@@ -1,6 +1,17 @@
-import { Request, Response, NextFunction } from 'express';
 import { db } from '../database/datasource';
 import { ENFORCE_PLAN_LIMITS } from '@/lib/config/flags';
+
+interface Request {
+  body?: { workspaceId?: string };
+  query?: { workspaceId?: string };
+}
+
+interface Response {
+  status: (code: number) => Response;
+  json: (data: unknown) => Response;
+}
+
+type NextFunction = () => void;
 
 export async function verifyAICreditBalance(req: Request, res: Response, next: NextFunction) {
   // If request has JSON body or searchParams, get workspaceId

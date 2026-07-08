@@ -1,11 +1,20 @@
 "use client";
 
-import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import React, { useState, useEffect } from 'react';
+import { ApexOptions } from 'apexcharts';
+import dynamic from 'next/dynamic';
 import { TrendingUp, Users, Target, MousePointer2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
+
 export const AnalyticsDashboard = ({ data }: { data: any[] }) => {
+ const [isMounted, setIsMounted] = useState(false);
+
+ useEffect(() => {
+  setIsMounted(true);
+ }, []);
+
  // Mock data if none provided
  const chartData = data || [
   { name: 'Opt-in Page', value: 1200, conversion: '100%' },
@@ -15,6 +24,46 @@ export const AnalyticsDashboard = ({ data }: { data: any[] }) => {
  ];
 
  const COLORS = ['#6c47ff', '#8b5cf6', '#a78bfa', '#c4b5fd'];
+
+ const chartOptions: ApexOptions = {
+  chart: {
+   type: 'bar',
+   toolbar: { show: false },
+   foreColor: '#888',
+  },
+  plotOptions: {
+   bar: {
+    distributed: true,
+    borderRadius: 8,
+    borderRadiusApplication: 'end',
+    columnWidth: '55%',
+   },
+  },
+  colors: chartData.map((_, i) => COLORS[i % COLORS.length]),
+  dataLabels: { enabled: false },
+  legend: { show: false },
+  grid: {
+   borderColor: '#ffffff10',
+   strokeDashArray: 3,
+   xaxis: { lines: { show: false } },
+   yaxis: { lines: { show: true } },
+  },
+  xaxis: {
+   categories: chartData.map((d) => d.name),
+   axisBorder: { show: false },
+   axisTicks: { show: false },
+   labels: { style: { colors: '#888', fontSize: '12px' } },
+  },
+  yaxis: {
+   labels: { style: { colors: '#888', fontSize: '12px' } },
+  },
+  tooltip: {
+   theme: 'dark',
+   style: { fontSize: '12px' },
+  },
+ };
+
+ const chartSeries = [{ name: 'Value', data: chartData.map((d) => d.value) }];
 
  return (
   <div className="space-y-6 p-8">
@@ -47,31 +96,11 @@ export const AnalyticsDashboard = ({ data }: { data: any[] }) => {
     </CardHeader>
     <CardContent>
      <div className="h-[300px] w-full mt-4">
-      <ResponsiveContainer width="100%" height="100%">
-       <BarChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
-        <XAxis 
-          dataKey="name" 
-          axisLine={false} 
-          tickLine={false} 
-          tick={{ fill: '#888', fontSize: 12 }} 
-        />
-        <YAxis 
-          axisLine={false} 
-          tickLine={false} 
-          tick={{ fill: '#888', fontSize: 12 }} 
-        />
-        <Tooltip 
-          contentStyle={{ backgroundColor: '#1a1a24', border: '1px solid #ffffff10', borderRadius: '12px' }}
-          itemStyle={{ color: '#fff', fontSize: 12 }}
-        />
-        <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-         {chartData.map((entry, index) => (
-          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-         ))}
-        </Bar>
-       </BarChart>
-      </ResponsiveContainer>
+      {isMounted ? (
+       <Chart options={chartOptions} series={chartSeries} type="bar" height="100%" width="100%" />
+      ) : (
+       <div className="h-full w-full" />
+      )}
      </div>
     </CardContent>
    </Card>

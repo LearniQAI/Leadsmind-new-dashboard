@@ -113,15 +113,15 @@ export async function crawlLocalDomain(domainUrl: string, limit = 10): Promise<C
   let browser: any = null;
 
   try {
-    const puppeteer = require('puppeteer');
-    if (puppeteer) {
-      browser = await puppeteer.launch({
-        headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
-      usePuppeteer = true;
-      logger.info({}, 'seo_crawler.puppeteer.initialized');
-    }
+    const puppeteer = require('puppeteer-core');
+    const chromium = require('@sparticuz/chromium');
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+    usePuppeteer = true;
+    logger.info({}, 'seo_crawler.puppeteer.initialized');
   } catch (e) {
     logger.info({ err: e }, 'seo_crawler.puppeteer.unavailable_using_cheerio');
   }
