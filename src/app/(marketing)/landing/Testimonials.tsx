@@ -6,6 +6,21 @@ import { Quote } from 'lucide-react';
 import { testimonials } from './data';
 import { SectionReveal } from './motion';
 
+const cardContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.16, delayChildren: 0.1 } },
+};
+
+const cardPop = {
+  hidden: { opacity: 0, y: 48, scale: 0.9 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
+
 export default function Testimonials() {
   return (
     <section className="py-28 bg-[#F8FAFC]">
@@ -17,11 +32,19 @@ export default function Testimonials() {
            African businesses love LeadsMind
           </h2>
         </div>
+        </SectionReveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <motion.div
+          variants={cardContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.25 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto"
+        >
           {testimonials.map((t) => (
             <motion.div
               key={t.name}
+              variants={cardPop}
               whileHover={{ y: -6 }}
               className="bg-white rounded-2xl border border-[#E2E8F0] p-8 shadow-sm transition-shadow hover:shadow-xl"
             >
@@ -38,8 +61,7 @@ export default function Testimonials() {
               </div>
             </motion.div>
           ))}
-        </div>
-        </SectionReveal>
+        </motion.div>
       </div>
     </section>
   );

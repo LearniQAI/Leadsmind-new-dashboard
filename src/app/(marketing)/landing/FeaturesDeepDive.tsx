@@ -3,7 +3,53 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { deepFeatures } from './data';
-import { sectionRevealProps } from './motion';
+
+const blockContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.18, delayChildren: 0.05 } },
+};
+
+const iconPop = {
+  hidden: { scale: 0.4, opacity: 0 },
+  show: {
+    scale: 1,
+    opacity: 1,
+    transition: { duration: 0.5, ease: 'backOut' as const },
+  },
+};
+
+const textPop = {
+  hidden: { opacity: 0, y: 28 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
+
+const listContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+};
+
+const listItem = {
+  hidden: { opacity: 0, x: -16 },
+  show: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.4, ease: 'easeOut' as const },
+  },
+};
+
+const visualPop = {
+  hidden: { opacity: 0, scale: 0.9, y: 40 },
+  show: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
 
 function CrmVisual() {
   const cols = [
@@ -107,33 +153,36 @@ export default function FeaturesDeepDive() {
           return (
             <motion.div
               key={f.key}
-              {...sectionRevealProps}
+              variants={blockContainer}
+              initial="hidden"
+              whileInView="show"
               viewport={{ once: true, amount: 0.3 }}
               className={`flex flex-col ${reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 max-w-6xl mx-auto`}
             >
               <div className="flex-1">
-                <div className="w-12 h-12 rounded-xl bg-[#EEF2FF] text-[#4F46E5] flex items-center justify-center mb-6">
+                <motion.div variants={iconPop} className="w-12 h-12 rounded-xl bg-[#EEF2FF] text-[#4F46E5] flex items-center justify-center mb-6">
                   <Icon className="w-6 h-6" />
-                </div>
-                <div className="text-[#4F46E5] font-bold uppercase tracking-[0.2em] text-xs mb-3">{f.tag}</div>
-                <h3 className="text-2xl md:text-3xl font-bold !text-[#0F172A] mb-4 leading-tight">{f.headline}</h3>
-                <p className="!text-[#64748B] leading-relaxed mb-6">{f.body}</p>
-                <ul className="space-y-3">
+                </motion.div>
+                <motion.div variants={textPop} className="text-[#4F46E5] font-bold uppercase tracking-[0.2em] text-xs mb-3">{f.tag}</motion.div>
+                <motion.h3 variants={textPop} className="text-2xl md:text-3xl font-bold !text-[#0F172A] mb-4 leading-tight">{f.headline}</motion.h3>
+                <motion.p variants={textPop} className="!text-[#64748B] leading-relaxed mb-6">{f.body}</motion.p>
+                <motion.ul variants={listContainer} className="space-y-3">
                   {f.features.map((feat) => {
                     const FIcon = feat.icon;
                     return (
-                      <li key={feat.text} className="flex items-center gap-3 text-sm text-[#334155] font-medium">
+                      <motion.li key={feat.text} variants={listItem} className="flex items-center gap-3 text-sm text-[#334155] font-medium">
                         <span className="w-6 h-6 rounded-full bg-[#10B981]/10 text-[#10B981] flex items-center justify-center shrink-0">
                           <FIcon className="w-3.5 h-3.5" />
                         </span>
                         {feat.text}
-                      </li>
+                      </motion.li>
                     );
                   })}
-                </ul>
+                </motion.ul>
               </div>
 
               <motion.div
+                variants={visualPop}
                 whileHover={{ y: -4 }}
                 className="flex-1 w-full rounded-2xl border border-[#E2E8F0] bg-white shadow-xl shadow-[#0F172A]/5 p-2"
               >
