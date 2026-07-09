@@ -478,7 +478,27 @@ export async function getSaaSTiers() {
  ];
 }
 
+// Spark is the free tier and never reaches checkout — it routes straight to signup.
+const PAID_TIER_PRICE_ENV: Record<string, { month: string; year: string }> = {
+ rise: { month: 'STRIPE_RISE_MONTHLY_PRICE_ID', year: 'STRIPE_RISE_ANNUAL_PRICE_ID' },
+ surge: { month: 'STRIPE_SURGE_MONTHLY_PRICE_ID', year: 'STRIPE_SURGE_ANNUAL_PRICE_ID' },
+ infinity: { month: 'STRIPE_INFINITY_MONTHLY_PRICE_ID', year: 'STRIPE_INFINITY_ANNUAL_PRICE_ID' },
+ dynasty: { month: 'STRIPE_DYNASTY_MONTHLY_PRICE_ID', year: 'STRIPE_DYNASTY_ANNUAL_PRICE_ID' },
+};
+
 export async function createCheckoutSession(tierId: string, interval: 'month' | 'year' = 'month') {
+ const tierEnv = PAID_TIER_PRICE_ENV[tierId];
+ if (!tierEnv) {
+  logger.error({ tierId }, 'finance.checkout.unrecognized_tier');
+  return { error: 'Unrecognized pricing tier' };
+ }
+
+ const priceId = process.env[tierEnv[interval]];
+ if (!priceId) {
+  logger.error({ tierId, interval, envVar: tierEnv[interval] }, 'finance.checkout.missing_price_id');
+  return { error: 'This plan is not yet available for checkout' };
+ }
+
  const supabase = await createServerClient();
  const { data: { user } } = await supabase.auth.getUser();
  if (!user) return { error: 'Not authenticated' };
@@ -492,12 +512,10 @@ export async function createCheckoutSession(tierId: string, interval: 'month' | 
 
  if (!membership) return { error: 'No workspace found' };
 
- let priceId = tierId === 'pro' ? process.env.STRIPE_PRO_PRICE_ID : process.env.STRIPE_ENTERPRISE_PRICE_ID;
-
  const session = await stripe.checkout.sessions.create({
   payment_method_types: ['card'],
   mode: 'subscription',
-  line_items: [{ price: priceId!, quantity: 1 }],
+  line_items: [{ price: priceId, quantity: 1 }],
   metadata: { workspaceId: membership.workspace_id, tierId },
   success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
   cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?canceled=true`,

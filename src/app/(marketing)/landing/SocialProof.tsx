@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { stats, trustedLogos } from './data';
 import { useCountUp } from './hooks';
+import { SectionReveal } from './motion';
 
 function Stat({ value, suffix, label, decimals }: any) {
   const { ref, value: animated } = useCountUp(value, { decimals });
@@ -23,16 +23,10 @@ export default function SocialProof() {
 
   return (
     <section className="py-20 bg-white border-b border-[#E2E8F0]">
-      <div className="container mx-auto px-6">
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center text-xs font-bold uppercase tracking-[0.25em] !text-[#64748B] mb-10"
-        >
-          Trusted by growing businesses across South Africa
-        </motion.p>
+      <SectionReveal className="container mx-auto px-6">
+        <p className="text-center text-xs font-bold uppercase tracking-[0.25em] !text-[#64748B] mb-10">
+          Trusted by growing businesses across Africa
+        </p>
 
         <div className="relative overflow-hidden mb-16 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
           <div className="flex w-max lm-marquee-track">
@@ -52,7 +46,7 @@ export default function SocialProof() {
             <Stat key={s.label} {...s} />
           ))}
         </div>
-      </div>
+      </SectionReveal>
     </section>
   );
 }

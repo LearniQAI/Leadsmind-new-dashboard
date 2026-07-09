@@ -180,7 +180,7 @@ export const deepFeatures = [
     icon: Target,
     tag: 'SALES & CRM',
     headline: 'Close more deals. Lose fewer leads.',
-    body: 'Track every contact, manage your pipeline, send proposals, and follow up automatically — all from your CRM dashboard. Built for the way South African sales teams actually work.',
+    body: 'Track every contact, manage your pipeline, send proposals, and follow up automatically — all from your CRM dashboard. Built for the way African sales teams actually work.',
     features: [
       { icon: Users, text: 'Contact management with full activity history' },
       { icon: Layers, text: 'Visual sales pipeline with drag-and-drop' },
@@ -253,17 +253,17 @@ export const saCards = [
   {
     icon: Banknote,
     title: 'ZAR Everywhere',
-    description: 'No USD confusion. Every invoice, report, and dashboard shows South African Rand.',
+    description: 'No USD confusion. Every invoice, report, and dashboard shows African Rand.',
   },
   {
     icon: CreditCard,
     title: 'PayFast Built In',
-    description: 'Accept payments from South African customers via PayFast alongside Stripe for international clients.',
+    description: 'Accept payments from African customers via PayFast alongside Stripe for international clients.',
   },
   {
     icon: ClipboardCheck,
     title: 'POPIA Compliant',
-    description: 'Built with South African data protection requirements in mind from the ground up.',
+    description: 'Built with African data protection requirements in mind from the ground up.',
   },
   {
     icon: CalendarDays,
@@ -291,7 +291,7 @@ export const steps = [
 ];
 
 export type PricingTier = {
-  id: 'starter' | 'pro' | 'enterprise';
+  id: 'spark' | 'rise' | 'surge' | 'infinity' | 'dynasty';
   name: string;
   description: string;
   monthlyPrice: number;
@@ -302,42 +302,91 @@ export type PricingTier = {
 
 export const pricingTiers: PricingTier[] = [
   {
-    id: 'starter',
-    name: 'Starter',
-    description: 'For solo entrepreneurs and small teams',
-    monthlyPrice: 499,
-    features: ['1 workspace', 'CRM & Contacts', 'Invoicing', 'Calendar & Booking', '1 user'],
+    id: 'spark',
+    name: 'Spark',
+    description: 'For solo entrepreneurs just getting started',
+    monthlyPrice: 0,
+    features: [
+      '1,500 contacts',
+      '1 course (LMS)',
+      '3 landing pages/funnels',
+      'Basic CRM',
+      '500 emails/month',
+      '3 basic automation flows',
+      '1 payment gateway',
+    ],
+    cta: 'Get Started Free',
+  },
+  {
+    id: 'rise',
+    name: 'Rise',
+    description: 'For small teams starting to scale',
+    monthlyPrice: 199,
+    features: [
+      '10,000 contacts',
+      'Unlimited courses',
+      'Unlimited landing pages/funnels',
+      'Full CRM',
+      'Unlimited email sends',
+      'Content Studio AI (50/mo)',
+      '1 custom domain',
+      'Removes LeadsMind branding',
+      '5 payment gateways',
+    ],
     cta: 'Start Free Trial',
   },
   {
-    id: 'pro',
-    name: 'Pro',
+    id: 'surge',
+    name: 'Surge',
     description: 'For growing businesses',
-    monthlyPrice: 999,
+    monthlyPrice: 849,
     features: [
-      'Everything in Starter',
-      'LMS & Courses (up to 5 courses)',
-      'HR & Payroll',
-      'Automation & Workflows',
-      'LENA AI Assistant',
-      'Up to 10 users',
+      '25,000 contacts',
+      'Everything in Rise',
+      'WhatsApp + SMS automation',
+      'FB/WhatsApp/IG unified inbox',
+      'Unlimited Content Studio AI',
+      'Live webinars (500 attendees) + evergreen webinars',
+      'Breakout rooms, polls, Q&A',
+      '3 custom domains',
+      'All payment gateways (global) + affiliate management',
+      'Community features',
     ],
     cta: 'Start Free Trial',
     highlighted: true,
   },
   {
-    id: 'enterprise',
-    name: 'Enterprise',
-    description: 'For established businesses',
-    monthlyPrice: 2499,
+    id: 'infinity',
+    name: 'Infinity',
+    description: 'For agencies and established businesses',
+    monthlyPrice: 1795,
     features: [
-      'Everything in Pro',
-      'Unlimited courses',
-      'Unlimited users',
-      'White-label branding',
-      'Custom domain',
-      'Priority SA support',
-      'POPIA compliance tools',
+      'Unlimited contacts',
+      'Everything in Surge',
+      'Live webinars (5,000 attendees)',
+      'Unlimited custom domains + wildcard subdomain routing',
+      'Partial white-label (removes LeadsMind branding, footer credit remains)',
+      'Agency client management, up to 5 sub-workspaces',
+      'Up to 25 team members',
+      'API access + advanced analytics + priority support',
+    ],
+    cta: 'Start Free Trial',
+  },
+  {
+    id: 'dynasty',
+    name: 'Dynasty',
+    description: 'For platforms who resell LeadsMind',
+    monthlyPrice: 7999,
+    features: [
+      'Unlimited contacts, unlimited everything from Infinity',
+      'Live webinars (10,000 attendees)',
+      'Full white-label (zero LeadsMind branding anywhere)',
+      'Custom logo + brand colors',
+      'Resell as your own platform',
+      'Unlimited sub-workspaces + unlimited team members',
+      'Priority support with 24hr SLA',
+      'Dedicated onboarding call + custom support URL',
+      'Mobile app branding add-on',
     ],
     cta: 'Contact Sales',
   },
@@ -360,7 +409,7 @@ export const testimonials = [
   },
   {
     quote:
-      "Finally a platform that uses PayFast and shows ZAR. No more explaining to clients why their invoice is in USD. LeadsMind just gets South Africa.",
+      "Finally a platform that uses PayFast and shows ZAR. No more explaining to clients why their invoice is in USD. LeadsMind just gets Africa.",
     name: 'Thabo N.',
     title: 'Operations Manager — Durban',
     initials: 'TN',
@@ -382,7 +431,7 @@ export const faqs = [
   },
   {
     q: 'What payment methods can I accept from my clients?',
-    a: 'PayFast for South African payments and Stripe for international clients. Both are built in.',
+    a: 'PayFast for African payments and Stripe for international clients. Both are built in.',
   },
   {
     q: 'How many users can I add to my workspace?',

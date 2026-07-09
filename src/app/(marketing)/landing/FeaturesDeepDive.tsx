@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { deepFeatures } from './data';
+import { sectionRevealProps } from './motion';
 
 function CrmVisual() {
   const cols = [
@@ -11,7 +12,7 @@ function CrmVisual() {
     { title: 'Won', color: '#10B981', items: ['Karoo Freight', 'Amanzi Spa'] },
   ];
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {cols.map((c) => (
         <div key={c.title} className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3">
           <div className="flex items-center gap-2 mb-3">
@@ -104,14 +105,13 @@ export default function FeaturesDeepDive() {
           const Icon = f.icon;
           const reverse = f.side === 'left';
           return (
-            <div key={f.key} className={`flex flex-col ${reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 max-w-6xl mx-auto`}>
-              <motion.div
-                initial={{ opacity: 0, x: reverse ? 40 : -40 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-100px' }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="flex-1"
-              >
+            <motion.div
+              key={f.key}
+              {...sectionRevealProps}
+              viewport={{ once: true, amount: 0.3 }}
+              className={`flex flex-col ${reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 max-w-6xl mx-auto`}
+            >
+              <div className="flex-1">
                 <div className="w-12 h-12 rounded-xl bg-[#EEF2FF] text-[#4F46E5] flex items-center justify-center mb-6">
                   <Icon className="w-6 h-6" />
                 </div>
@@ -131,19 +131,15 @@ export default function FeaturesDeepDive() {
                     );
                   })}
                 </ul>
-              </motion.div>
+              </div>
 
               <motion.div
-                initial={{ opacity: 0, x: reverse ? -40 : 40 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-100px' }}
-                transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
                 whileHover={{ y: -4 }}
                 className="flex-1 w-full rounded-2xl border border-[#E2E8F0] bg-white shadow-xl shadow-[#0F172A]/5 p-2"
               >
                 <div className="rounded-xl border border-[#E2E8F0] p-5">{visuals[f.key]}</div>
               </motion.div>
-            </div>
+            </motion.div>
           );
         })}
       </div>

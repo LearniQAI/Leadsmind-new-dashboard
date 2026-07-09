@@ -11,7 +11,14 @@
       "Bash(node -e \"console.log\\('eslint-config-next:', require\\('eslint-config-next/package.json'\\).version\\)\")",
       "Bash(node -e \"const pino = require\\('pino'\\); const l = pino\\(\\); l.info\\('pino works'\\)\")",
       "Bash(grep -c \"console\\\\.\\\\\\(log\\\\|error\\\\|warn\\\\|info\\\\\\)\" src/app/actions/documents.ts)",
-      "Bash(grep -c \"err\\\\.message\\\\|error\\\\.message\" src/app/actions/documents.ts)"
+      "Bash(grep -c \"err\\\\.message\\\\|error\\\\.message\" src/app/actions/documents.ts)",
+      "Bash(git log *)",
+      "Bash(find src/app/api -iname \"*aftership*\" -o -iname \"*courier*\")",
+      "Bash(grep -rli \"aftership\" src/app/api)",
+      "Bash(git mv *)",
+      "Bash(mv \"src/app/\\(marketing\\)/landing/motion.ts\" \"src/app/\\(marketing\\)/landing/motion.tsx\")",
+      "Bash(grep -E \"layout\\\\.tsx|blog[\\\\\\\\\\\\\\\\/]page\\\\.tsx|terms[\\\\\\\\\\\\\\\\/]page\\\\.tsx|privacy-policy[\\\\\\\\\\\\\\\\/]page\\\\.tsx|robots\\\\.ts|sitemap-marketing\")",
+      "Bash(git status *)"
     ]
   }
 }

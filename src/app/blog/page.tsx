@@ -1,8 +1,16 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { getPublicBlogPosts, getPublicCategories, getBlogSettings } from '@/app/actions/publicBlog';
 import PublicBlogClient from './PublicBlogClient';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Blog',
+  description: 'Growth frameworks, CRM playbooks, and business tips for South African small and medium businesses, from the LeadsMind team.',
+  alternates: { canonical: '/blog' },
+  robots: { index: true, follow: true },
+};
 
 export default async function PublicBlogHubPage() {
   // Query all published posts and categories in this workspace

@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { motion } from 'framer-motion';
 import { ArrowRight, Play, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SectionReveal } from './motion';
 
 const HeroAnimation = dynamic(() => import('@/components/landing/HeroAnimation'), {
   ssr: false,
@@ -14,13 +14,6 @@ const HeroAnimation = dynamic(() => import('@/components/landing/HeroAnimation')
       <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
     </div>
   ),
-});
-
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 24 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true },
-  transition: { duration: 0.6, ease: 'easeOut', delay },
 });
 
 const ANIMATED_WORDS = [
@@ -72,24 +65,24 @@ export default function Hero() {
   return (
     <>
     <section className="relative pt-40 pb-16 overflow-hidden bg-white">
-      <div className="container mx-auto px-6 relative z-10 text-center">
-        <motion.div {...fadeUp(0)} className="lm-badge-glow inline-flex items-center gap-2 py-1.5 px-4 rounded-full border border-[#4F46E5]/30 bg-[#4F46E5]/10 text-[#4F46E5] text-xs font-semibold mb-8">
+      <SectionReveal className="container mx-auto px-6 relative z-10 text-center">
+        <div className="lm-badge-glow inline-flex items-center gap-2 py-1.5 px-4 rounded-full border border-[#4F46E5]/30 bg-[#4F46E5]/10 text-[#4F46E5] text-xs font-semibold mb-8">
           <Sparkles className="w-3.5 h-3.5" />
           Now with LENA AI Assistant
-        </motion.div>
+        </div>
 
-        <motion.h1 {...fadeUp(0.1)} className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-7 leading-[1.05] !text-[#0F172A]">
+        <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-7 leading-[1.05] !text-[#0F172A]">
           Your platform for
           <br />
           <AnimatedHeadlineWord />
-        </motion.h1>
+        </h1>
 
-        <motion.p {...fadeUp(0.2)} className="max-w-2xl mx-auto text-lg !text-[#64748B] mb-10 leading-relaxed">
+        <p className="max-w-2xl mx-auto text-lg !text-[#64748B] mb-10 leading-relaxed">
           Everything you need to run and grow your business — CRM, courses, funnels,
-          invoicing, HR, automation, and more. Built for South African businesses.
-        </motion.p>
+          invoicing, HR, automation, and more. Built for African businesses.
+        </p>
 
-        <motion.div {...fadeUp(0.3)} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <Link href="/auth/signup-basic">
             <Button className="lm-shimmer h-14 px-8 text-base bg-[#4F46E5] hover:bg-[#4F46E5]/90 border-none rounded-full font-semibold shadow-xl shadow-[#4F46E5]/30 group">
               Start Free Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -101,18 +94,18 @@ export default function Hero() {
           >
             <Play className="w-4 h-4 fill-current" /> Watch Demo
           </button>
-        </motion.div>
+        </div>
 
-        <motion.div {...fadeUp(0.4)} className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-[#64748B]">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-[#64748B]">
           <span>✓ No credit card required</span>
           <span>✓ ZAR pricing</span>
           <span>✓ SA support</span>
-        </motion.div>
-      </div>
+        </div>
+      </SectionReveal>
     </section>
 
     <section className="w-full bg-white pb-16">
-      <div className="max-w-5xl mx-auto px-6">
+      <SectionReveal className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-6">
           <p className="text-sm font-semibold text-indigo-300 uppercase tracking-widest">
             Trusted by 500+ African businesses
@@ -121,7 +114,7 @@ export default function Hero() {
         <div className="w-full max-w-2xl mx-auto px-4 sm:px-0">
           <HeroAnimation />
         </div>
-      </div>
+      </SectionReveal>
     </section>
     </>
   );
