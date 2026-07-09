@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { pricingTiers } from './data';
-
-const cardDelay: Record<string, number> = { starter: 0.1, pro: 0, enterprise: 0.2 };
+import { SectionReveal } from './motion';
 
 function CheckIcon({ bg, stroke }: { bg: string; stroke: string }) {
   return (
@@ -28,24 +27,22 @@ const valueStatement = [
   'SA support team',
 ];
 
-export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: string) => void }) {
+export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: string, interval: 'month' | 'year') => void }) {
   const [isAnnual, setIsAnnual] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start end', 'end start'] });
+  const backgroundY = useTransform(scrollYProgress, [0, 1], [-60, 60]);
 
   return (
-    <section id="pricing" className="relative overflow-hidden bg-white py-28">
-      <div
+    <section id="pricing" ref={sectionRef} className="relative overflow-hidden bg-white py-28">
+      <motion.div
+        style={{ y: backgroundY, background: 'radial-gradient(ellipse 1000px 400px at 50% -50px, rgba(99, 102, 241, 0.06), transparent 70%)' }}
         className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse 1000px 400px at 50% -50px, rgba(99, 102, 241, 0.06), transparent 70%)' }}
       />
 
       <div className="container mx-auto px-6 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-4"
-        >
+        <SectionReveal>
+        <div className="text-center mb-4">
           <span className="inline-block bg-[#EEF2FF] !text-[#4F46E5] border border-[#C7D2FE] font-bold uppercase tracking-[0.1em] text-xs px-4 py-1.5 rounded-full mb-5">
             Simple Pricing
           </span>
@@ -78,22 +75,18 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
               </span>
             </button>
           </div>
-        </motion.div>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-[480px] lg:max-w-[1100px] mx-auto items-start">
+        <div className="flex flex-col lg:flex-row lg:flex-wrap justify-center gap-6 max-w-[480px] lg:max-w-[1100px] mx-auto items-start">
           {pricingTiers.map((tier) => {
             const price = isAnnual ? Math.round(tier.monthlyPrice * 0.8) : tier.monthlyPrice;
-            const isPro = tier.id === 'pro';
-            const isEnterprise = tier.id === 'enterprise';
+            const isPro = !!tier.highlighted;
+            const isEnterprise = tier.id === 'dynasty';
 
             return (
-              <motion.div
+              <div
                 key={tier.id}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: cardDelay[tier.id] }}
-                className={isPro ? 'mt-0 lg:-mt-4' : ''}
+                className={`w-full lg:flex-none lg:basis-[calc(33.333%-16px)] ${isPro ? 'mt-0 lg:-mt-4' : ''}`}
               >
                 <div
                   className={`relative rounded-[24px] p-9 h-full transition-all duration-300 ${
@@ -156,7 +149,7 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
                     ))}
                   </ul>
 
-                  {tier.id === 'enterprise' ? (
+                  {isEnterprise ? (
                     <Link href="/contact">
                       <Button className="w-full h-[50px] rounded-xl font-bold text-[15px] bg-[#0F172A] hover:bg-[#1E293B] !text-white transition-colors">
                         {tier.cta}
@@ -164,7 +157,7 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
                     </Link>
                   ) : (
                     <Button
-                      onClick={() => onSelectTier(tier.id)}
+                      onClick={() => onSelectTier(tier.id, isAnnual ? 'year' : 'month')}
                       className={`w-full h-[50px] rounded-xl font-bold text-[15px] transition-all ${
                         isPro
                           ? 'lm-shimmer !text-white shadow-[0_4px_16px_rgba(79,70,229,0.4)] hover:shadow-[0_8px_24px_rgba(79,70,229,0.5)] hover:-translate-y-px'
@@ -176,18 +169,12 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
                     </Button>
                   )}
                 </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="text-center mt-12 pt-12 border-t border-[#F1F5F9]"
-        >
+        <div className="text-center mt-12 pt-12 border-t border-[#F1F5F9]">
           <p className="!text-[#94A3B8] text-sm mb-4">All prices in ZAR · VAT exclusive · Cancel anytime</p>
           <div className="flex justify-center gap-8 flex-wrap">
             {valueStatement.map((item) => (
@@ -196,7 +183,8 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
               </span>
             ))}
           </div>
-        </motion.div>
+        </div>
+        </SectionReveal>
       </div>
     </section>
   );

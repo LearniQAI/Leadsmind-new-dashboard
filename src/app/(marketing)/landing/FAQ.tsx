@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { faqs } from './data';
+import { SectionReveal } from './motion';
 
 export default function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
@@ -11,29 +12,20 @@ export default function FAQ() {
   return (
     <section className="py-28 bg-white">
       <div className="container mx-auto px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="max-w-2xl mx-auto text-center mb-16"
-        >
+        <SectionReveal>
+        <div className="max-w-2xl mx-auto text-center mb-16">
           <div className="text-[#4F46E5] font-bold uppercase tracking-[0.25em] text-xs mb-4">FAQ</div>
           <h2 className="text-3xl md:text-5xl font-bold !text-[#0F172A] leading-tight">
             Everything you need to know
           </h2>
-        </motion.div>
+        </div>
 
         <div className="max-w-3xl mx-auto space-y-3">
           {faqs.map((item, i) => {
             const isOpen = open === i;
             return (
-              <motion.div
+              <div
                 key={item.q}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.04 }}
                 className="rounded-xl border border-[#E2E8F0] overflow-hidden bg-white"
               >
                 <button
@@ -63,10 +55,11 @@ export default function FAQ() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.div>
+              </div>
             );
           })}
         </div>
+        </SectionReveal>
       </div>
     </section>
   );

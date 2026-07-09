@@ -5,6 +5,15 @@ import { motion } from 'framer-motion';
 import { CreditCard, Unlink2, Globe, type LucideIcon } from 'lucide-react';
 import { useCountUp } from './hooks';
 
+const cardContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.15 } },
+};
+const cardItem = {
+  hidden: { opacity: 0, y: 40 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: 'easeOut' } },
+};
+
 type ProblemCard = {
   title: string;
   color: string;
@@ -40,8 +49,8 @@ const cards: ProblemCard[] = [
     icon: Globe,
     stat: 0,
     suffix: '',
-    statLabel: 'major SaaS platforms built for South Africa',
-    body: 'Most tools show USD, use MM/DD/YYYY, and have no understanding of South African business. Until now.',
+    statLabel: 'major SaaS platforms built for Africa',
+    body: 'Most tools show USD, use MM/DD/YYYY, and have no understanding of African business. Until now.',
   },
 ];
 
@@ -64,14 +73,11 @@ function StatNumber({ target, suffix, color }: { target: number; suffix: string;
   );
 }
 
-function ProblemCard({ card, index }: { card: ProblemCard; index: number }) {
+function ProblemCard({ card }: { card: ProblemCard }) {
   const Icon = card.icon;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 32 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.3 }}
-      transition={{ duration: 0.6, ease: 'easeOut', delay: index * 0.15 }}
+      variants={cardItem}
       whileHover={{ y: -4 }}
       className="bg-white border border-[#E2E8F0] border-t-4 rounded-2xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.1)] transition-shadow duration-300"
       style={{ borderTopColor: card.color }}
@@ -100,10 +106,10 @@ export default function Problem() {
 
       <div className="container mx-auto px-6 relative z-10 text-center">
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          viewport={{ once: true, amount: 0.4 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
           className="max-w-[700px] mx-auto mb-14"
         >
           <span className="inline-block text-[#EF4444] bg-[#FEF2F2] font-bold uppercase tracking-[0.1em] text-xs px-4 py-1.5 rounded-full mb-5">
@@ -118,11 +124,17 @@ export default function Problem() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1100px] mx-auto text-left">
-          {cards.map((card, i) => (
-            <ProblemCard key={card.title} card={card} index={i} />
+        <motion.div
+          variants={cardContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.3 }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1100px] mx-auto text-left"
+        >
+          {cards.map((card) => (
+            <ProblemCard key={card.title} card={card} />
           ))}
-        </div>
+        </motion.div>
 
         <div className="text-center mt-12">
           <p className="!text-[#64748B] text-[15px] italic mb-4">"There has to be a better way."</p>

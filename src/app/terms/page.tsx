@@ -1,8 +1,11 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 
-export const metadata = {
-  title: 'Terms of Service — LeadsMind',
-  description: 'LeadsMind Terms of Service',
+export const metadata: Metadata = {
+  title: 'Terms of Service',
+  description: 'Terms of Service governing use of the LeadsMind business operating system.',
+  alternates: { canonical: '/terms' },
+  robots: { index: true, follow: true },
 }
 
 export default function TermsPage() {

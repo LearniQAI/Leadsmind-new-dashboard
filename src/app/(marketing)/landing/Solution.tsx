@@ -5,6 +5,15 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Check, ArrowRight } from 'lucide-react';
 import { moduleTabs } from './data';
 
+const tabContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.15 } },
+};
+const tabItem = {
+  hidden: { opacity: 0, y: 40 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: 'easeOut' } },
+};
+
 export default function Solution() {
   const [active, setActive] = useState(0);
   const tab = moduleTabs[active];
@@ -14,10 +23,10 @@ export default function Solution() {
     <section id="modules" className="py-28 bg-white">
       <div className="container mx-auto px-6">
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          viewport={{ once: true, amount: 0.4 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
           className="max-w-2xl mx-auto text-center mb-16"
         >
           <div className="text-[#4F46E5] font-bold uppercase tracking-[0.25em] text-xs mb-4">
@@ -28,8 +37,14 @@ export default function Solution() {
           </h2>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-6xl mx-auto">
-          <div className="lg:col-span-4 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 lm-scrollbar">
+        <motion.div
+          variants={tabContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.3 }}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-6xl mx-auto"
+        >
+          <motion.div variants={tabItem} className="lg:col-span-4 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 lm-scrollbar">
             {moduleTabs.map((m, i) => {
               const MIcon = m.icon;
               const isActive = i === active;
@@ -55,9 +70,9 @@ export default function Solution() {
                 </button>
               );
             })}
-          </div>
+          </motion.div>
 
-          <div className="lg:col-span-8">
+          <motion.div variants={tabItem} className="lg:col-span-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={tab.key}
@@ -113,8 +128,8 @@ export default function Solution() {
                 </a>
               </motion.div>
             </AnimatePresence>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );

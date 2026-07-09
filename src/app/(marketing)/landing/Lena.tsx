@@ -4,6 +4,7 @@ import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bot, User } from 'lucide-react';
 import { lenaCapabilities, lenaChat } from './data';
+import { SectionReveal, sectionRevealProps } from './motion';
 
 function ChatPreview() {
   const [visibleCount, setVisibleCount] = useState(0);
@@ -34,11 +35,8 @@ function ChatPreview() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.4 }}
+      {...sectionRevealProps}
       onViewportEnter={runSequence}
-      transition={{ duration: 0.6, delay: 0.6 }}
       className="lena-chat-shell max-w-[680px] mx-auto rounded-[24px] p-8"
     >
       <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/10">
@@ -114,41 +112,37 @@ export default function Lena() {
       style={{ background: 'linear-gradient(160deg, #0F172A 0%, #1a1060 40%, #0F172A 100%)' }}
     >
       {/* Decorative orbs */}
-      <div
+      <motion.div
+        animate={{ y: [0, -15, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
         className="absolute -top-[100px] -left-[100px] w-[400px] h-[400px] rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle, rgba(99, 102, 241, 0.12), transparent 70%)' }}
       />
-      <div
+      <motion.div
+        animate={{ y: [0, -15, 0] }}
+        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
         className="absolute -bottom-[100px] -right-[100px] w-[500px] h-[500px] rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1), transparent 70%)' }}
       />
       {/* Radial glow behind headline */}
-      <div
+      <motion.div
+        animate={{ y: [0, -15, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] pointer-events-none"
         style={{ background: 'radial-gradient(ellipse 800px 400px at 50% 0%, rgba(99, 102, 241, 0.15), transparent 70%)' }}
       />
 
-      <div className="max-w-[1100px] mx-auto relative z-10">
+      <SectionReveal className="max-w-[1100px] mx-auto relative z-10">
         <div className="max-w-2xl mx-auto text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
+          <div
             className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-5"
             style={{ background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.4)' }}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5] lm-dot-pulse" />
             <span className="text-xs font-bold uppercase tracking-[0.12em] !text-[#A5B4FC]">Powered by AI</span>
-          </motion.div>
+          </div>
 
-          <motion.h2
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-[clamp(36px,5vw,56px)] font-extrabold !text-white leading-[1.15] tracking-[-0.02em] max-w-[700px] mx-auto mb-5"
-          >
+          <h2 className="text-[clamp(36px,5vw,56px)] font-extrabold !text-white leading-[1.15] tracking-[-0.02em] max-w-[700px] mx-auto mb-5">
             Meet{' '}
             <span
               className="bg-clip-text text-transparent"
@@ -158,30 +152,20 @@ export default function Lena() {
             </span>
             <br />
             Your AI Business Assistant
-          </motion.h2>
+          </h2>
 
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-[16px] !text-[#94A3B8] leading-[1.7] max-w-[560px] mx-auto"
-          >
+          <p className="text-[16px] !text-[#94A3B8] leading-[1.7] max-w-[560px] mx-auto">
             LENA is built into every module. She writes content, answers support tickets,
             generates leads, and helps your team work faster — without leaving LeadsMind.
-          </motion.p>
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-[1000px] mx-auto mb-14">
-          {lenaCapabilities.map((c, i) => {
+          {lenaCapabilities.map((c) => {
             const Icon = c.icon;
             return (
               <motion.div
                 key={c.title}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, ease: 'easeOut', delay: 0.3 + i * 0.1 }}
                 whileHover={{ y: -4 }}
                 className="lena-card rounded-[20px] p-8 backdrop-blur-[12px] transition-all duration-300 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.08)] hover:border-[rgba(99,102,241,0.4)] hover:shadow-[0_20px_40px_rgba(99,102,241,0.15)]"
               >
@@ -208,7 +192,7 @@ export default function Lena() {
         </div>
 
         <ChatPreview />
-      </div>
+      </SectionReveal>
     </section>
   );
 }

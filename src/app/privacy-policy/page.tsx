@@ -1,8 +1,11 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 
-export const metadata = {
-  title: 'Privacy Policy — LeadsMind',
-  description: 'LeadsMind Privacy Policy',
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description: 'How LeadsMind collects, uses, and protects your data across the CRM, LMS, invoicing, HR, and automation platform.',
+  alternates: { canonical: '/privacy-policy' },
+  robots: { index: true, follow: true },
 }
 
 export default function PrivacyPolicyPage() {

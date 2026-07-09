@@ -21,13 +21,13 @@ import FinalCTA from './landing/FinalCTA';
 import Footer from './landing/Footer';
 
 const LandingContent = ({ user }: { user?: any }) => {
-  const handleSelectTier = async (tierId: string) => {
-    if (tierId === 'starter') {
+  const handleSelectTier = async (tierId: string, interval: 'month' | 'year') => {
+    if (tierId === 'spark') {
       window.location.href = '/auth/signup-basic';
       return;
     }
 
-    const res = await createCheckoutSession(tierId, 'month');
+    const res = await createCheckoutSession(tierId, interval);
     if (res.error) {
       toast.error(res.error);
       if (res.error === 'Not authenticated') {

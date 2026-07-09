@@ -287,7 +287,7 @@ Full list of every `process.env.*` reference found under `src/` (86 distinct key
 | `POPIA_CONSENT_SALT` | Compliance hashing | **REQUIRED** |
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | All transactional email (`sendEmail`, welcome emails, notifySignIn, password reset) | **REQUIRED** — login/signup emails silently fail without it |
 | `RESEND_WEBHOOK_SECRET` | Verifies Resend webhook callbacks | IMPORTANT |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRO_PRICE_ID` / `STRIPE_ENTERPRISE_PRICE_ID` | Billing checkout + webhooks | IMPORTANT (billing breaks without it) |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_{RISE,SURGE,INFINITY,DYNASTY}_{MONTHLY,ANNUAL}_PRICE_ID` | Billing checkout + webhooks (Spark is free, no Stripe price) | IMPORTANT (billing breaks without it) |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Client-side Stripe.js | IMPORTANT |
 | `PAYFAST_MERCHANT_ID` / `PAYFAST_MERCHANT_KEY` / `PAYFAST_PASSPHRASE` / `PAYFAST_URL` | ZA payment gateway | IMPORTANT for finance module |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_MAPS_API_KEY` / `GOOGLE_PLACES_API_KEY` | Calendar/OAuth + lead-finder maps | IMPORTANT |

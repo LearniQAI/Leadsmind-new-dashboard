@@ -88,7 +88,7 @@ export default function Footer() {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 max-w-[1100px] mx-auto px-6 py-6 border-t border-[#F1F5F9]">
         <p className="text-[13px] !text-[#94A3B8]">© 2026 LeadsMind (Pty) Ltd. Reg. 2026/345498/07</p>
         <p className="text-[13px] !text-[#94A3B8]">
-          Made with <span className="!text-[#EF4444]">❤️</span> in South Africa 🇿🇦
+          Made with <span className="!text-[#EF4444]">❤️</span> in Africa 🌍
         </p>
       </div>
     </footer>
