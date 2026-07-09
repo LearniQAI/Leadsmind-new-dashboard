@@ -8,6 +8,7 @@ import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrolled } from './hooks';
 import { navLinks } from './data';
+import { ArrowRight } from 'lucide-react';
 
 const Brand = () => (
   <Link href="/" className="flex items-center group">
@@ -54,7 +55,7 @@ export default function Navbar({ user }: { user?: any }) {
           ) : (
             <Link href="/auth/signup-basic">
               <Button className="lm-shimmer bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-[#4F46E5]/25">
-                Start Free Trial
+                 Dashboard <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
           )}

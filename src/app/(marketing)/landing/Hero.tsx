@@ -84,7 +84,7 @@ export default function Hero() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <Link href="/auth/signup-basic">
-            <Button className="lm-shimmer h-14 px-8 text-base bg-[#4F46E5] hover:bg-[#4F46E5]/90 border-none rounded-full font-semibold shadow-xl shadow-[#4F46E5]/30 group">
+            <Button className="lm-shimmer h-14 px-8 text-base bg-[#FF8D00] hover:bg-[#FF8D00]/90 border-none rounded-full font-semibold shadow-xl shadow-[#4F46E5]/30 group">
               Start Free Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>

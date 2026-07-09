@@ -6,6 +6,19 @@ import { Bot, User } from 'lucide-react';
 import { lenaCapabilities, lenaChat } from './data';
 import { SectionReveal, sectionRevealProps } from './motion';
 
+const cardContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.15, delayChildren: 0.4 } },
+};
+const cardItem = {
+  hidden: { opacity: 0, y: 40, scale: 0.96 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, ease: 'easeOut' } },
+};
+const iconPop = {
+  hidden: { scale: 0.6, opacity: 0 },
+  show: { scale: 1, opacity: 1, transition: { duration: 0.4, ease: 'backOut', delay: 0.1 } },
+};
+
 function ChatPreview() {
   const [visibleCount, setVisibleCount] = useState(0);
   const [typing, setTyping] = useState(false);
@@ -134,15 +147,25 @@ export default function Lena() {
 
       <SectionReveal className="max-w-[1100px] mx-auto relative z-10">
         <div className="max-w-2xl mx-auto text-center mb-16">
-          <div
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
             className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-5"
             style={{ background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.4)' }}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5] lm-dot-pulse" />
             <span className="text-xs font-bold uppercase tracking-[0.12em] !text-[#A5B4FC]">Powered by AI</span>
-          </div>
+          </motion.div>
 
-          <h2 className="text-[clamp(36px,5vw,56px)] font-extrabold !text-white leading-[1.15] tracking-[-0.02em] max-w-[700px] mx-auto mb-5">
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.15 }}
+            className="text-[clamp(36px,5vw,56px)] font-extrabold !text-white leading-[1.15] tracking-[-0.02em] max-w-[700px] mx-auto mb-5"
+          >
             Meet{' '}
             <span
               className="bg-clip-text text-transparent"
@@ -152,24 +175,39 @@ export default function Lena() {
             </span>
             <br />
             Your AI Business Assistant
-          </h2>
+          </motion.h2>
 
-          <p className="text-[16px] !text-[#94A3B8] leading-[1.7] max-w-[560px] mx-auto">
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.5, ease: 'easeOut', delay: 0.3 }}
+            className="text-[16px] !text-[#94A3B8] leading-[1.7] max-w-[560px] mx-auto"
+          >
             LENA is built into every module. She writes content, answers support tickets,
             generates leads, and helps your team work faster — without leaving LeadsMind.
-          </p>
+          </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-[1000px] mx-auto mb-14">
+        <motion.div
+          variants={cardContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.3 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-[1000px] mx-auto mb-14"
+        >
           {lenaCapabilities.map((c) => {
             const Icon = c.icon;
             return (
               <motion.div
                 key={c.title}
+                variants={cardItem}
                 whileHover={{ y: -4 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                 className="lena-card rounded-[20px] p-8 backdrop-blur-[12px] transition-all duration-300 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.08)] hover:border-[rgba(99,102,241,0.4)] hover:shadow-[0_20px_40px_rgba(99,102,241,0.15)]"
               >
-                <div
+                <motion.div
+                  variants={iconPop}
                   className="w-[52px] h-[52px] rounded-[14px] flex items-center justify-center mb-5"
                   style={{
                     background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
@@ -177,7 +215,7 @@ export default function Lena() {
                   }}
                 >
                   <Icon className="w-6 h-6 text-white" />
-                </div>
+                </motion.div>
                 <h3 className="text-lg font-bold !text-white mb-2">{c.title}</h3>
                 <p className="text-sm !text-[#94A3B8] leading-[1.7]">{c.description}</p>
                 <p
@@ -189,7 +227,7 @@ export default function Lena() {
               </motion.div>
             );
           })}
-        </div>
+        </motion.div>
 
         <ChatPreview />
       </SectionReveal>

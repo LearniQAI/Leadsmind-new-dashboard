@@ -45,7 +45,7 @@ const cards: ProblemCard[] = [
   },
   {
     title: 'Built for Overseas Markets',
-    color: '#8B5CF6',
+    color: '#FF8D00',
     icon: Globe,
     stat: 0,
     suffix: '',

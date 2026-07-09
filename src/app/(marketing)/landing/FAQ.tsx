@@ -6,6 +6,21 @@ import { ChevronDown } from 'lucide-react';
 import { faqs } from './data';
 import { SectionReveal } from './motion';
 
+const listContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+};
+
+const itemPop = {
+  hidden: { opacity: 0, y: 32, scale: 0.95 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
+
 export default function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
 
@@ -19,13 +34,21 @@ export default function FAQ() {
             Everything you need to know
           </h2>
         </div>
+        </SectionReveal>
 
-        <div className="max-w-3xl mx-auto space-y-3">
+        <motion.div
+          variants={listContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.15 }}
+          className="max-w-3xl mx-auto space-y-3"
+        >
           {faqs.map((item, i) => {
             const isOpen = open === i;
             return (
-              <div
+              <motion.div
                 key={item.q}
+                variants={itemPop}
                 className="rounded-xl border border-[#E2E8F0] overflow-hidden bg-white"
               >
                 <button
@@ -55,11 +78,10 @@ export default function FAQ() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
-        </SectionReveal>
+        </motion.div>
       </div>
     </section>
   );

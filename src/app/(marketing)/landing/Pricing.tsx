@@ -27,6 +27,21 @@ const valueStatement = [
   'SA support team',
 ];
 
+const cardContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.14, delayChildren: 0.1 } },
+};
+
+const cardPop = {
+  hidden: { opacity: 0, y: 48, scale: 0.92 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
+
 export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: string, interval: 'month' | 'year') => void }) {
   const [isAnnual, setIsAnnual] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -77,15 +92,22 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:flex-wrap justify-center gap-6 max-w-[480px] lg:max-w-[1100px] mx-auto items-start">
+        <motion.div
+          variants={cardContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.15 }}
+          className="flex flex-col lg:flex-row lg:flex-wrap justify-center gap-6 max-w-[480px] lg:max-w-[1100px] mx-auto items-start"
+        >
           {pricingTiers.map((tier) => {
             const price = isAnnual ? Math.round(tier.monthlyPrice * 0.8) : tier.monthlyPrice;
             const isPro = !!tier.highlighted;
             const isEnterprise = tier.id === 'dynasty';
 
             return (
-              <div
+              <motion.div
                 key={tier.id}
+                variants={cardPop}
                 className={`w-full lg:flex-none lg:basis-[calc(33.333%-16px)] ${isPro ? 'mt-0 lg:-mt-4' : ''}`}
               >
                 <div
@@ -169,10 +191,10 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
                     </Button>
                   )}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
 
         <div className="text-center mt-12 pt-12 border-t border-[#F1F5F9]">
           <p className="!text-[#94A3B8] text-sm mb-4">All prices in ZAR · VAT exclusive · Cancel anytime</p>
