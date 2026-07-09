@@ -93,7 +93,7 @@ style={{ background: 'linear-gradient(160deg, #0F172A 0%, #1a1060 40%, #0F172A 1
         <motion.div variants={popUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-5">
           <Link href="/auth/signup-basic">
             <Button className="lm-shimmer h-14 px-8 text-base bg-white text-[#4F46E5] hover:bg-white hover:-translate-y-0.5 rounded-[14px] font-bold shadow-[0_8px_24px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)] transition-all duration-200 group">
-              Start Your Free 14-Day Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              Start Your Free 30-Day Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
           <Link href="#demo">

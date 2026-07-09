@@ -2,19 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import { ArrowRight, Play, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SectionReveal } from './motion';
-
-const HeroAnimation = dynamic(() => import('@/components/landing/HeroAnimation'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full max-w-2xl mx-auto h-96 flex items-center justify-center">
-      <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-    </div>
-  ),
-});
+import DashboardMarquee from '@/components/landing/DashboardMarquee';
 
 const ANIMATED_WORDS = [
   'online courses',
@@ -105,14 +96,14 @@ export default function Hero() {
     </section>
 
     <section className="w-full bg-white pb-16">
-      <SectionReveal className="max-w-5xl mx-auto px-6">
+      <SectionReveal className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-6">
           <p className="text-sm font-semibold text-indigo-300 uppercase tracking-widest">
             Trusted by 500+ African businesses
           </p>
         </div>
-        <div className="w-full max-w-2xl mx-auto px-4 sm:px-0">
-          <HeroAnimation />
+        <div className="w-full px-4 sm:px-0">
+          <DashboardMarquee />
         </div>
       </SectionReveal>
     </section>
