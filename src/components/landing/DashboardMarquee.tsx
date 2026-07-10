@@ -25,13 +25,13 @@ export default function DashboardMarquee() {
         {duplicatedSlides.map((slide, i) => (
           <div
             key={`${slide.src}-${i}`}
-            className="relative flex-shrink-0 w-[280px] h-[180px] sm:w-[360px] sm:h-[230px] md:w-[420px] md:h-[270px] rounded-xl overflow-hidden border border-gray-200 shadow-sm"
+            className="relative flex-shrink-0 w-[360px] h-[230px] sm:w-[460px] sm:h-[290px] md:w-[560px] md:h-[350px] rounded-xl overflow-hidden border border-gray-200 shadow-sm"
           >
             <Image
               src={slide.src}
               alt={slide.alt}
               fill
-              sizes="(max-width: 640px) 280px, (max-width: 768px) 360px, 420px"
+              sizes="(max-width: 640px) 360px, (max-width: 768px) 460px, 560px"
               className="object-cover"
               priority={i === 0}
             />
