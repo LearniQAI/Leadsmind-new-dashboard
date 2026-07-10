@@ -100,7 +100,9 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
           className="flex flex-col lg:flex-row lg:flex-wrap justify-center gap-6 max-w-[480px] lg:max-w-[1100px] mx-auto items-start"
         >
           {pricingTiers.map((tier) => {
-            const price = isAnnual ? Math.round(tier.monthlyPrice * 0.8) : tier.monthlyPrice;
+            const hasAnnual = tier.price_zar_annual != null && tier.price_zar_annual_monthly_equiv != null;
+            const showAnnual = isAnnual && hasAnnual;
+            const price = showAnnual ? tier.price_zar_annual_monthly_equiv! : tier.monthlyPrice;
             const isPro = !!tier.highlighted;
             const isEnterprise = tier.id === 'dynasty';
 
@@ -127,33 +129,50 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
                     </span>
                   )}
 
-                  <h3 className={`text-xl font-extrabold mb-1 ${isPro ? '!text-white mt-5' : '!text-[#0F172A]'}`}>
-                    {tier.name}
-                  </h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className={`text-xl font-extrabold mb-1 ${isPro ? '!text-white mt-5' : '!text-[#0F172A]'}`}>
+                      {tier.name}
+                    </h3>
+                    {showAnnual && (
+                      <span
+                        className={`!text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${isPro ? 'mt-5' : ''}`}
+                        style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}
+                      >
+                        Save {tier.annual_discount_pct}%
+                      </span>
+                    )}
+                  </div>
                   <p className={`text-sm ${isPro ? '!text-[#94A3B8]' : '!text-[#64748B]'}`}>{tier.description}</p>
 
                   <div
                     className="my-6 py-6"
                     style={{ borderTop: `1px solid ${isPro ? 'rgba(255,255,255,0.08)' : '#F1F5F9'}`, borderBottom: `1px solid ${isPro ? 'rgba(255,255,255,0.08)' : '#F1F5F9'}` }}
                   >
-                    <span
-                      className={`text-[48px] font-black tracking-[-0.02em] tabular-nums ${isPro ? '!text-white' : ''}`}
-                      style={
-                        isEnterprise
-                          ? {
-                              backgroundImage: 'linear-gradient(135deg, #0F172A, #334155)',
-                              WebkitBackgroundClip: 'text',
-                              WebkitTextFillColor: 'transparent',
-                              backgroundClip: 'text',
-                            }
-                          : isPro
-                          ? undefined
-                          : { color: '#0F172A' }
-                      }
-                    >
-                      R{price.toLocaleString('en-ZA')}
-                    </span>
-                    <span className={`text-sm ml-1 ${isPro ? '!text-[#64748B]' : '!text-[#94A3B8]'}`}>/month</span>
+                    <div>
+                      <span
+                        className={`text-[48px] font-black tracking-[-0.02em] tabular-nums ${isPro ? '!text-white' : ''}`}
+                        style={
+                          isEnterprise
+                            ? {
+                                backgroundImage: 'linear-gradient(135deg, #0F172A, #334155)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                backgroundClip: 'text',
+                              }
+                            : isPro
+                            ? undefined
+                            : { color: '#0F172A' }
+                        }
+                      >
+                        R{price.toLocaleString('en-ZA')}
+                      </span>
+                      <span className={`text-sm ml-1 ${isPro ? '!text-[#64748B]' : '!text-[#94A3B8]'}`}>/{showAnnual ? 'mo' : 'month'}</span>
+                    </div>
+                    {showAnnual && (
+                      <div className={`text-xs mt-1.5 ${isPro ? '!text-[#64748B]' : '!text-[#94A3B8]'}`}>
+                        billed R{tier.price_zar_annual!.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year
+                      </div>
+                    )}
                   </div>
 
                   <ul className="flex flex-col gap-3.5 mb-7">

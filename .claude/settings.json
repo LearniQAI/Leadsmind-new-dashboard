@@ -18,7 +18,9 @@
       "Bash(git mv *)",
       "Bash(mv \"src/app/\\(marketing\\)/landing/motion.ts\" \"src/app/\\(marketing\\)/landing/motion.tsx\")",
       "Bash(grep -E \"layout\\\\.tsx|blog[\\\\\\\\\\\\\\\\/]page\\\\.tsx|terms[\\\\\\\\\\\\\\\\/]page\\\\.tsx|privacy-policy[\\\\\\\\\\\\\\\\/]page\\\\.tsx|robots\\\\.ts|sitemap-marketing\")",
-      "Bash(git status *)"
+      "Bash(git status *)",
+      "Bash(grep -riE \"STRIPE_.*PRICE_ID|price_zar|ANNUAL\" .env*)",
+      "Bash(ls .env*)"
     ]
   }
 }

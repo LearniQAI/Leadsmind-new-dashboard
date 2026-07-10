@@ -2,19 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import { ArrowRight, Play, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SectionReveal } from './motion';
-
-const HeroAnimation = dynamic(() => import('@/components/landing/HeroAnimation'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full max-w-2xl mx-auto h-96 flex items-center justify-center">
-      <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-    </div>
-  ),
-});
+import DashboardMarquee from '@/components/landing/DashboardMarquee';
 
 const ANIMATED_WORDS = [
   'online courses',
@@ -64,11 +55,11 @@ function AnimatedHeadlineWord() {
 export default function Hero() {
   return (
     <>
-    <section className="relative pt-40 pb-16 overflow-hidden bg-white">
+    <section className="relative pt-40 pb-5 overflow-hidden bg-white">
       <SectionReveal className="container mx-auto px-6 relative z-10 text-center">
         <div className="lm-badge-glow inline-flex items-center gap-2 py-1.5 px-4 rounded-full border border-[#4F46E5]/30 bg-[#4F46E5]/10 text-[#4F46E5] text-xs font-semibold mb-8">
           <Sparkles className="w-3.5 h-3.5" />
-          Now with LENA AI Assistant
+          Powered by LENA AI Assistant
         </div>
 
         <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-7 leading-[1.05] !text-[#0F172A]">
@@ -96,23 +87,14 @@ export default function Hero() {
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-[#64748B]">
-          <span>✓ No credit card required</span>
-          <span>✓ ZAR pricing</span>
-          <span>✓ SA support</span>
-        </div>
+        
       </SectionReveal>
     </section>
 
-    <section className="w-full bg-white pb-16">
-      <SectionReveal className="max-w-5xl mx-auto px-6">
-        <div className="text-center mb-6">
-          <p className="text-sm font-semibold text-indigo-300 uppercase tracking-widest">
-            Trusted by 500+ African businesses
-          </p>
-        </div>
-        <div className="w-full max-w-2xl mx-auto px-4 sm:px-0">
-          <HeroAnimation />
+    <section className="w-full bg-white pb-4">
+      <SectionReveal className="max-w-6xl mx-auto px-6">
+              <div className="w-full px-4 sm:px-0">
+          <DashboardMarquee />
         </div>
       </SectionReveal>
     </section>

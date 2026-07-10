@@ -295,6 +295,9 @@ export type PricingTier = {
   name: string;
   description: string;
   monthlyPrice: number;
+  price_zar_annual?: number;
+  price_zar_annual_monthly_equiv?: number;
+  annual_discount_pct?: number;
   features: string[];
   cta: string;
   highlighted?: boolean;
@@ -322,6 +325,9 @@ export const pricingTiers: PricingTier[] = [
     name: 'Rise',
     description: 'For small teams starting to scale',
     monthlyPrice: 199,
+    price_zar_annual: 1910.40,
+    price_zar_annual_monthly_equiv: 159,
+    annual_discount_pct: 20,
     features: [
       '10,000 contacts',
       'Unlimited courses',
@@ -340,6 +346,9 @@ export const pricingTiers: PricingTier[] = [
     name: 'Surge',
     description: 'For growing businesses',
     monthlyPrice: 849,
+    price_zar_annual: 8150.40,
+    price_zar_annual_monthly_equiv: 679,
+    annual_discount_pct: 20,
     features: [
       '25,000 contacts',
       'Everything in Rise',
@@ -360,6 +369,9 @@ export const pricingTiers: PricingTier[] = [
     name: 'Infinity',
     description: 'For agencies and established businesses',
     monthlyPrice: 1795,
+    price_zar_annual: 17232.00,
+    price_zar_annual_monthly_equiv: 1436,
+    annual_discount_pct: 20,
     features: [
       'Unlimited contacts',
       'Everything in Surge',
@@ -377,6 +389,9 @@ export const pricingTiers: PricingTier[] = [
     name: 'Dynasty',
     description: 'For platforms who resell LeadsMind',
     monthlyPrice: 7999,
+    price_zar_annual: 76790.40,
+    price_zar_annual_monthly_equiv: 6399,
+    annual_discount_pct: 20,
     features: [
       'Unlimited contacts, unlimited everything from Infinity',
       'Live webinars (10,000 attendees)',
