@@ -91,11 +91,9 @@ export default function Hero() {
       </SectionReveal>
     </section>
 
-    <section className="w-full bg-white pb-4">
-      <SectionReveal className="max-w-6xl mx-auto px-6">
-              <div className="w-full px-4 sm:px-0">
-          <DashboardMarquee />
-        </div>
+    <section className="w-full bg-white pb-4 overflow-hidden">
+      <SectionReveal className="w-full">
+        <DashboardMarquee />
       </SectionReveal>
     </section>
     </>

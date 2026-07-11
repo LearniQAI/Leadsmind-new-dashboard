@@ -4,11 +4,13 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrolled } from './hooks';
 import { navLinks } from './data';
 import { ArrowRight } from 'lucide-react';
+import SolutionsDropdown from './SolutionsDropdown';
+import { modules } from '@/data/modules';
 
 const Brand = () => (
   <Link href="/" className="flex items-center group">
@@ -26,6 +28,7 @@ const Brand = () => (
 export default function Navbar({ user }: { user?: any }) {
   const scrolled = useScrolled(24);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileSolutionsOpen, setMobileSolutionsOpen] = useState(false);
 
   return (
     <nav
@@ -37,6 +40,7 @@ export default function Navbar({ user }: { user?: any }) {
         <Brand />
 
         <div className="hidden lg:flex items-center gap-9 text-sm font-medium text-[#64748B]">
+          <SolutionsDropdown />
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href} className="relative group py-2">
               <span className="group-hover:text-[#0F172A] transition-colors">{link.label}</span>
@@ -53,11 +57,19 @@ export default function Navbar({ user }: { user?: any }) {
               </Button>
             </Link>
           ) : (
-            <Link href="/auth/signup-basic">
-              <Button className="lm-shimmer bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-[#4F46E5]/25">
-                 Dashboard <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
+            <>
+              <Link
+                href="/auth/signin-basic"
+                className="text-sm font-medium text-[#64748B] hover:text-[#0F172A] transition-colors"
+              >
+                Sign in
+              </Link>
+              <Link href="/auth/signup-basic">
+                <Button className="lm-shimmer bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-[#4F46E5]/25">
+                   Dashboard <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            </>
           )}
         </div>
 
@@ -80,6 +92,59 @@ export default function Navbar({ user }: { user?: any }) {
             className="lg:hidden overflow-hidden bg-white border-b border-slate-200/80"
           >
             <div className="container mx-auto px-6 py-6 flex flex-col gap-5">
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setMobileSolutionsOpen((v) => !v)}
+                  aria-expanded={mobileSolutionsOpen}
+                  className="w-full flex items-center justify-between text-[#64748B] hover:text-[#0F172A] font-medium text-base"
+                >
+                  Solutions
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform duration-300 ${mobileSolutionsOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                <AnimatePresence>
+                  {mobileSolutionsOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: 'easeInOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex flex-col gap-1 pt-3 pl-1">
+                        {modules.map((m) => {
+                          const Icon = m.icon;
+                          return (
+                            <Link
+                              key={m.slug}
+                              href={`/solutions/${m.slug}`}
+                              onClick={() => setMobileOpen(false)}
+                              className="flex items-center gap-3 py-2 text-[#334155] font-medium text-sm"
+                            >
+                              <span
+                                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-white"
+                                style={{ backgroundColor: m.color }}
+                              >
+                                <Icon className="w-4 h-4" />
+                              </span>
+                              {m.label}
+                            </Link>
+                          );
+                        })}
+                        <Link
+                          href="/solutions"
+                          onClick={() => setMobileOpen(false)}
+                          className="py-2 text-[#1359FF] font-semibold text-sm"
+                        >
+                          View all modules →
+                        </Link>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
