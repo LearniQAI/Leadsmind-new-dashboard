@@ -114,7 +114,7 @@ export default function Navbar({ user }: { user?: any }) {
                       className="overflow-hidden"
                     >
                       <div className="flex flex-col gap-1 pt-3 pl-1">
-                        {modules.map((m) => {
+                        {modules.filter((m) => m.primary).map((m) => {
                           const Icon = m.icon;
                           return (
                             <Link

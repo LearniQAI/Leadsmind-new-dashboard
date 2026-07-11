@@ -5,21 +5,12 @@ import { motion, animate } from 'framer-motion';
 import {
   Award,
   Zap,
-  Store,
   Target,
   FileText,
-  ShieldCheck,
-  Clock3,
   Clock,
   CalendarCheck,
-  Video,
-  BarChart3,
   MessageSquare,
-  Bot,
-  Inbox,
   Newspaper,
-  LayoutTemplate,
-  FormInput,
   Sparkles,
   Users,
   Percent,
@@ -27,12 +18,17 @@ import {
   CreditCard,
   Link2,
   TrendingUp,
+  Phone,
+  Globe,
+  Mail,
   type LucideIcon,
 } from 'lucide-react';
 
-const PANEL_SHADOW = '0 2px 8px rgba(10,15,61,0.06), 0 24px 48px rgba(10,15,61,0.10)';
+/** Fixed brand accent every hero card's FloatingCard/header/generic badges use —
+ *  module pages no longer vary this by module, only the dropdown tiles do. */
+const ROYAL = '#1359FF';
 
-/** Fade + rise, used for individual rows inside a mock panel (and hero-card content items).
+/** Fade + rise, used for individual rows inside a hero card.
  *  No own initial/animate — inherits its "hidden"/"show" state from the nearest ancestor
  *  whileInView trigger, so rows stagger automatically once that ancestor's transition sets
  *  staggerChildren. */
@@ -41,7 +37,7 @@ const rowVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' as const } },
 };
 
-/** Hero card's own arrival — a livelier overshoot than the section panels, plus it
+/** Hero card's own arrival — a livelier overshoot than section panels, plus it
  *  orchestrates the staggered reveal of its children (which just carry `rowVariants`). */
 const cardEntrance = {
   hidden: { opacity: 0, scale: 0.9, y: 20 },
@@ -52,27 +48,6 @@ const cardEntrance = {
     transition: { duration: 0.5, ease: 'backOut' as const, staggerChildren: 0.12, delayChildren: 0.3 },
   },
 };
-
-/** Shared "floating dashboard panel" shell used across all feature-section visuals. */
-export function MockPanelShell({ accent, children }: { accent?: string; children: React.ReactNode }) {
-  return (
-    <div
-      className="w-full rounded-[20px] border border-[#F1F5F9] bg-white p-2"
-      style={{ boxShadow: PANEL_SHADOW }}
-    >
-      <div
-        className="rounded-2xl border border-[#F1F5F9] p-5"
-        style={
-          accent
-            ? { backgroundImage: `linear-gradient(180deg, ${accent}0F, rgba(255,255,255,0) 70%)` }
-            : undefined
-        }
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
 
 /** Abstract blob composition behind a floating hero card. */
 export function HeroVisual({ color, children }: { color: string; children: React.ReactNode }) {
@@ -258,7 +233,7 @@ function Badge({ color, icon: Icon, children }: { color: string; icon?: LucideIc
   );
 }
 
-/** Status pill with a colored dot indicator — used consistently for any panel's completion/state badge. */
+/** Status pill with a colored dot indicator — used consistently for any card's completion/state badge. */
 function StatusPill({ color, icon: Icon, children }: { color: string; icon?: LucideIcon; children: React.ReactNode }) {
   return (
     <motion.span
@@ -277,115 +252,18 @@ function StatusPill({ color, icon: Icon, children }: { color: string; icon?: Luc
 
 function CrmHeroCard() {
   return (
-    <FloatingCard accent="#1359FF">
-      <HeroCardHeader accent="#1359FF" icon={Target} label="Deal Snapshot" />
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={Target} label="Deal Snapshot" />
       <motion.div variants={rowVariants}>
         <div className="text-sm font-bold text-[#0F172A]">Mokoena Foods</div>
         <div className="text-[11px] text-[#94A3B8] mb-3">Contact · Sipho Dlamini</div>
       </motion.div>
       <div className="flex items-center gap-2 mb-4">
         <Badge color="#FF8A00" icon={Clock}>Proposal stage</Badge>
-        <Badge color="#1359FF" icon={Percent}>70% probability</Badge>
+        <Badge color={ROYAL} icon={Percent}>70% probability</Badge>
       </div>
-      <HeroMetric label="Deal value" color="#1359FF" value={18500} prefix="R " decimals={0} trend="+18% this month" />
+      <HeroMetric label="Deal value" color={ROYAL} value={18500} prefix="R " decimals={0} trend="+18% this month" />
     </FloatingCard>
-  );
-}
-
-function CrmPipelineVisual() {
-  const cols = [
-    { title: 'New', color: '#1359FF', items: ['Mokoena Foods', 'Baobab Studio'] },
-    { title: 'Proposal', color: '#FF8A00', items: ['Ubuntu Fitness'] },
-    { title: 'Won', color: '#34B53A', items: ['Karoo Freight', 'Amanzi Spa'] },
-  ];
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      {cols.map((c) => (
-        <div key={c.title} className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: c.color }} />
-            <span className="text-[11px] font-bold uppercase tracking-wide text-[#64748B]">{c.title}</span>
-          </div>
-          <div className="space-y-2">
-            {c.items.map((it) => (
-              <motion.div
-                key={it}
-                variants={rowVariants}
-                className="rounded-lg bg-white border border-[#E2E8F0] px-2.5 py-2 text-[11px] font-medium text-[#334155] shadow-sm"
-              >
-                {it}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CrmContactsVisual() {
-  const activity = [
-    { label: 'Call logged with Sipho Dlamini', time: '09:14' },
-    { label: 'Proposal PDF sent to Baobab Studio', time: 'Yesterday' },
-    { label: 'Note added — budget confirmed R25k', time: 'Mon' },
-  ];
-  return (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <span className="w-10 h-10 rounded-full bg-[#1359FF]/10 text-[#1359FF] flex items-center justify-center text-xs font-bold">
-          SD
-        </span>
-        <div>
-          <div className="text-sm font-bold text-[#0F172A]">Sipho Dlamini</div>
-          <div className="text-[11px] text-[#94A3B8]">Baobab Studio · Decision maker</div>
-        </div>
-      </div>
-      <div className="space-y-2.5">
-        {activity.map((a) => (
-          <motion.div
-            key={a.label}
-            variants={rowVariants}
-            className="flex items-center justify-between text-[12px] border-b border-[#F1F5F9] pb-2.5"
-          >
-            <span className="text-[#334155]">{a.label}</span>
-            <span className="text-[#94A3B8] shrink-0 ml-3">{a.time}</span>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CrmQuoteVisual() {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="text-sm font-bold text-[#0F172A]">Proposal #Q-1042</div>
-          <div className="text-[11px] text-[#94A3B8]">Baobab Studio</div>
-        </div>
-        <StatusPill color="#FF8A00">Sent</StatusPill>
-      </div>
-      <div className="space-y-2 mb-4">
-        {[
-          ['CRM + Automation setup', 'R 12,500.00'],
-          ['Monthly retainer (3 mo)', 'R 6,000.00'],
-        ].map(([label, amount]) => (
-          <motion.div
-            key={label}
-            variants={rowVariants}
-            className="flex items-center justify-between text-xs text-[#334155] border-b border-[#E2E8F0] pb-2"
-          >
-            <span>{label}</span>
-            <span className="font-semibold tabular-nums">{amount}</span>
-          </motion.div>
-        ))}
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-[#0F172A]">Total</span>
-        <span className="text-lg font-bold text-[#1359FF] tabular-nums">R 18,500.00</span>
-      </div>
-    </div>
   );
 }
 
@@ -393,84 +271,17 @@ function CrmQuoteVisual() {
 
 function LmsHeroCard() {
   return (
-    <FloatingCard accent="#7B3FF2">
-      <HeroCardHeader accent="#7B3FF2" icon={Award} label="Certificate Issued" />
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={Award} label="Certificate Issued" />
       <motion.div variants={rowVariants}>
         <div className="text-sm font-bold text-[#0F172A] mb-1">Digital Marketing 101</div>
         <div className="text-[11px] text-[#94A3B8] mb-3">Thandiwe M. · Passed final quiz at 92%</div>
       </motion.div>
       <div className="flex items-center gap-2">
         <StatusPill color="#34B53A" icon={CheckCircle2}>Auto-generated</StatusPill>
-        <Badge color="#7B3FF2" icon={CreditCard}>Enrolled via checkout</Badge>
+        <Badge color={ROYAL} icon={CreditCard}>Enrolled via checkout</Badge>
       </div>
     </FloatingCard>
-  );
-}
-
-function LmsCourseBuilderVisual() {
-  const lessons = [
-    { title: 'Module 1 — Foundations of Digital Marketing', type: '4 lessons', done: true },
-    { title: 'Module 2 — Paid Social Fundamentals', type: '6 lessons · quiz', done: true },
-    { title: 'Module 3 — Email & Automation', type: '5 lessons · quiz', done: false },
-  ];
-  return (
-    <div className="space-y-2.5">
-      {lessons.map((l) => (
-        <motion.div
-          key={l.title}
-          variants={rowVariants}
-          className="flex items-center gap-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] px-3.5 py-3"
-        >
-          <span
-            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold"
-            style={{
-              backgroundColor: l.done ? '#34B53A18' : '#7B3FF218',
-              color: l.done ? '#34B53A' : '#7B3FF2',
-            }}
-          >
-            {l.done ? '✓' : ''}
-          </span>
-          <div className="min-w-0">
-            <div className="text-[12px] font-semibold text-[#0F172A] truncate">{l.title}</div>
-            <div className="text-[11px] text-[#94A3B8]">{l.type}</div>
-          </div>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-function LmsCertificateVisual() {
-  return (
-    <div>
-      <div className="rounded-xl border border-dashed border-[#7B3FF2]/40 bg-[#7B3FF2]/5 p-4 mb-4 text-center">
-        <Award className="w-6 h-6 text-[#7B3FF2] mx-auto mb-2" />
-        <div className="text-[12px] font-bold text-[#0F172A]">Certificate of Completion</div>
-        <div className="text-[11px] text-[#94A3B8]">Issued automatically to Thandiwe M.</div>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold rounded-lg bg-[#F1F5F9] text-[#64748B] px-2.5 py-1.5">
-          <Store className="w-3 h-3" /> Marketplace listing live
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function LmsAutomationVisual() {
-  const steps = ['Student enrolls in course', 'Welcome email sent instantly', 'Module 1 unlocked automatically'];
-  return (
-    <div className="space-y-3">
-      {steps.map((s, i) => (
-        <motion.div key={s} variants={rowVariants} className="flex items-center gap-3">
-          <span className="w-6 h-6 rounded-full bg-[#7B3FF2]/10 text-[#7B3FF2] flex items-center justify-center shrink-0">
-            <Zap className="w-3 h-3" />
-          </span>
-          <span className="text-[12px] text-[#334155] font-medium">{s}</span>
-          {i < steps.length - 1 && <span className="flex-1" />}
-        </motion.div>
-      ))}
-    </div>
   );
 }
 
@@ -478,8 +289,8 @@ function LmsAutomationVisual() {
 
 function AccountingHeroCard() {
   return (
-    <FloatingCard accent="#FF8A00">
-      <HeroCardHeader accent="#FF8A00" icon={FileText} label="Invoice #INV-1042" />
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={FileText} label="Invoice #INV-1042" />
       <motion.div variants={rowVariants}>
         <div className="text-sm font-bold text-[#0F172A]">Karoo Freight (Pty) Ltd</div>
         <div className="text-[11px] text-[#94A3B8] mb-3">Issued 3 Jul · Due 17 Jul</div>
@@ -498,108 +309,161 @@ function AccountingHeroCard() {
       <motion.div variants={rowVariants} className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
         <StatusPill color="#34B53A" icon={CheckCircle2}>Paid</StatusPill>
         <span className="text-xl">
-          <CountUpValue value={10950} prefix="R " decimals={2} color="#FF8A00" />
+          <CountUpValue value={10950} prefix="R " decimals={2} color={ROYAL} />
         </span>
       </motion.div>
     </FloatingCard>
   );
 }
 
-function AccountingInvoiceVisual() {
+/* ---------------------------- Invoicing ---------------------------- */
+
+function InvoicingHeroCard() {
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="text-sm font-bold text-[#0F172A]">Quote Q-204 → Invoice INV-205</div>
-          <div className="text-[11px] text-[#94A3B8]">Converted in one click</div>
-        </div>
-        <StatusPill color="#FF8A00">Sent</StatusPill>
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={FileText} label="Invoice #INV-2041" />
+      <motion.div variants={rowVariants}>
+        <div className="text-sm font-bold text-[#0F172A]">Ubuntu Fitness Studio</div>
+        <div className="text-[11px] text-[#94A3B8] mb-3">Issued 2 Jul · Due 16 Jul</div>
+      </motion.div>
+      <div className="space-y-1.5 mb-4">
+        <motion.div variants={rowVariants} className="flex items-center justify-between text-[11px] text-[#334155]">
+          <span>Monthly retainer — July</span>
+          <span className="font-semibold tabular-nums">R 4,200.00</span>
+        </motion.div>
+        <motion.div variants={rowVariants} className="flex items-center justify-between text-[11px] text-[#334155]">
+          <span>Reminder 2 of 6 sent</span>
+          <span className="text-[#94A3B8]">via WhatsApp</span>
+        </motion.div>
       </div>
-      <div className="space-y-2 mb-4">
-        {[
-          ['Website care plan (monthly)', 'R 1,800.00'],
-          ['VAT (15%)', 'R 270.00'],
-        ].map(([label, amount]) => (
-          <motion.div
-            key={label}
-            variants={rowVariants}
-            className="flex items-center justify-between text-xs text-[#334155] border-b border-[#E2E8F0] pb-2"
-          >
-            <span>{label}</span>
-            <span className="font-semibold tabular-nums">{amount}</span>
-          </motion.div>
-        ))}
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-[#0F172A]">Total due</span>
-        <span className="text-lg font-bold text-[#FF8A00] tabular-nums">R 2,070.00</span>
-      </div>
-      <div className="mt-4 flex items-center gap-1.5 text-[11px] font-semibold rounded-lg bg-[#F1F5F9] text-[#64748B] px-2.5 py-1.5 w-fit">
-        <FileText className="w-3 h-3" /> Exported as PDF
-      </div>
-    </div>
+      <motion.div variants={rowVariants} className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
+        <StatusPill color="#34B53A" icon={CheckCircle2}>Paid</StatusPill>
+        <span className="text-xl">
+          <CountUpValue value={4200} prefix="R " decimals={2} color={ROYAL} />
+        </span>
+      </motion.div>
+    </FloatingCard>
   );
 }
 
-function AccountingExpensesVisual() {
-  const expenses = [
-    { label: 'Fuel — delivery fleet', category: 'Transport', amount: 'R 1,240.00' },
-    { label: 'Cloud hosting', category: 'Software', amount: 'R 640.00' },
-    { label: 'Office supplies', category: 'Admin', amount: 'R 310.00' },
+/* ---------------------------- Phone & IVR ---------------------------- */
+
+function PhoneIvrHeroCard() {
+  const calls: { name: string; reason: string; answered: boolean }[] = [
+    { name: 'Thabo Baloyi', reason: 'Sales enquiry', answered: true },
+    { name: 'Nomsa Dlamini', reason: 'Support — billing', answered: false },
   ];
   return (
-    <div>
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={Phone} label="Business Line · 021 555 0142" />
       <div className="space-y-2.5 mb-4">
-        {expenses.map((e) => (
+        {calls.map((c) => (
           <motion.div
-            key={e.label}
+            key={c.name}
             variants={rowVariants}
-            className="flex items-center justify-between text-[12px] border-b border-[#F1F5F9] pb-2.5"
+            className="flex items-center justify-between text-[12px] border-b border-[#F1F5F9] pb-2.5 last:border-0 last:pb-0"
           >
             <div>
-              <div className="font-medium text-[#334155]">{e.label}</div>
-              <div className="text-[11px] text-[#94A3B8]">{e.category}</div>
+              <div className="font-semibold text-[#0F172A]">{c.name}</div>
+              <div className="text-[11px] text-[#94A3B8]">{c.reason}</div>
             </div>
-            <span className="font-semibold tabular-nums text-[#334155]">{e.amount}</span>
+            <StatusPill color={c.answered ? '#34B53A' : '#FF8A00'}>{c.answered ? 'Answered' : 'Missed'}</StatusPill>
           </motion.div>
         ))}
       </div>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold rounded-lg bg-[#34B53A]/10 text-[#34B53A] px-2.5 py-1.5 w-fit">
-        <ShieldCheck className="w-3 h-3" /> Reconciled against bank feed
-      </div>
-    </div>
+      <motion.div
+        variants={rowVariants}
+        className="flex items-center gap-1.5 text-[11px] font-semibold rounded-lg bg-[#F1F5F9] text-[#64748B] px-2.5 py-1.5 w-fit"
+      >
+        <CheckCircle2 className="w-3 h-3" /> "Press 2" routed to Support
+      </motion.div>
+    </FloatingCard>
   );
 }
 
-function AccountingLedgerVisual() {
-  const entries = [
-    { account: 'Accounts Receivable', debit: 'R 10,950', credit: '—' },
-    { account: 'Sales Revenue', debit: '—', credit: 'R 9,522' },
-    { account: 'VAT Output', debit: '—', credit: 'R 1,428' },
-  ];
+/* ----------------------- Sales Funnels & Website Builder ----------------------- */
+
+function FunnelsHeroCard() {
   return (
-    <div>
-      <div className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8] mb-3">Journal entry · INV-1042</div>
-      <div className="rounded-xl border border-[#E2E8F0] overflow-hidden mb-4">
-        <div className="grid grid-cols-3 bg-[#F8FAFC] text-[10px] font-bold uppercase tracking-wide text-[#94A3B8] px-3 py-2">
-          <span>Account</span>
-          <span className="text-right">Debit</span>
-          <span className="text-right">Credit</span>
-        </div>
-        {entries.map((e) => (
-          <motion.div
-            key={e.account}
-            variants={rowVariants}
-            className="grid grid-cols-3 px-3 py-2 text-[11px] text-[#334155] border-t border-[#F1F5F9]"
-          >
-            <span>{e.account}</span>
-            <span className="text-right tabular-nums">{e.debit}</span>
-            <span className="text-right tabular-nums">{e.credit}</span>
-          </motion.div>
-        ))}
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={Globe} label="Funnel · Lead Capture" />
+      <motion.div variants={rowVariants}>
+        <div className="text-sm font-bold text-[#0F172A]">Winter Special — Landing Page</div>
+        <div className="text-[11px] text-[#94A3B8] mb-3">Published on your-domain.co.za</div>
+      </motion.div>
+      <div className="flex items-center gap-2 mb-4">
+        <Badge color={ROYAL}>3-step funnel</Badge>
+        <StatusPill color="#34B53A" icon={CheckCircle2}>Live</StatusPill>
       </div>
-      <Badge color="#FF8A00">Standard chart of accounts</Badge>
-    </div>
+      <HeroMetric label="Conversion rate" color={ROYAL} value={24} suffix="%" decimals={0} trend="+6% this week" />
+    </FloatingCard>
+  );
+}
+
+/* ------------------------- Email & WhatsApp Marketing ------------------------- */
+
+function EmailWhatsappHeroCard() {
+  return (
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={Mail} label="Campaign · July Promo" />
+      <div className="space-y-2.5 mb-4">
+        <motion.div variants={rowVariants} className="flex items-center justify-between text-[12px] border-b border-[#F1F5F9] pb-2.5">
+          <span className="flex items-center gap-2 text-[#334155] font-medium">
+            <Mail className="w-3.5 h-3.5 text-[#1359FF]" /> Email — 1,204 sent
+          </span>
+          <StatusPill color="#34B53A">Delivered</StatusPill>
+        </motion.div>
+        <motion.div variants={rowVariants} className="flex items-center justify-between text-[12px]">
+          <span className="flex items-center gap-2 text-[#334155] font-medium">
+            <MessageSquare className="w-3.5 h-3.5 text-[#1359FF]" /> WhatsApp — 620 sent
+          </span>
+          <StatusPill color="#34B53A">Delivered</StatusPill>
+        </motion.div>
+      </div>
+      <HeroMetric label="Open rate" color={ROYAL} value={42} suffix="%" decimals={0} trend="+9% vs last send" />
+    </FloatingCard>
+  );
+}
+
+/* --------------------------- Workflow Automation --------------------------- */
+
+function AutomationHeroCard() {
+  return (
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={Zap} label="Workflow" />
+      <motion.div variants={rowVariants} className="rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 mb-2">
+        <div className="text-[10px] font-bold uppercase tracking-wide text-[#94A3B8]">When</div>
+        <div className="text-[12px] font-semibold text-[#334155]">Deal marked "Won"</div>
+      </motion.div>
+      <motion.div variants={rowVariants} className="rounded-lg bg-[#1359FF]/10 border border-[#1359FF]/20 px-3 py-2 mb-3">
+        <div className="text-[10px] font-bold uppercase tracking-wide text-[#1359FF]">Then</div>
+        <div className="text-[12px] font-semibold text-[#0F172A]">Send invoice + WhatsApp welcome</div>
+      </motion.div>
+      <motion.div variants={rowVariants} className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
+        <span className="text-[11px] text-[#94A3B8]">Status</span>
+        <StatusPill color="#34B53A" icon={CheckCircle2}>Runs automatically</StatusPill>
+      </motion.div>
+    </FloatingCard>
+  );
+}
+
+/* --------------------------------- AI Tools --------------------------------- */
+
+function AiToolsHeroCard() {
+  return (
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={Sparkles} label="AI Content Draft" />
+      <motion.div
+        variants={rowVariants}
+        className="text-[12px] text-[#334155] bg-[#F8FAFC] border border-dashed border-[#1359FF]/30 rounded-lg px-3 py-2.5 mb-4"
+      >
+        "Here's a WhatsApp-ready follow-up for leads that went quiet after a quote — want me to send it now?"
+      </motion.div>
+      <div className="flex items-center gap-2 mb-1">
+        <Badge color={ROYAL}>Tuned for SA English</Badge>
+      </div>
+      <HeroMetric label="Lead score" color={ROYAL} value={87} suffix="/100" decimals={0} />
+    </FloatingCard>
   );
 }
 
@@ -607,10 +471,10 @@ function AccountingLedgerVisual() {
 
 function HrHeroCard() {
   return (
-    <FloatingCard accent="#FF3CAC">
-      <HeroCardHeader accent="#FF3CAC" icon={Users} label="Employee Record" />
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={Users} label="Employee Record" />
       <motion.div variants={rowVariants} className="flex items-center gap-3 mb-3">
-        <span className="w-9 h-9 rounded-full bg-[#FF3CAC]/10 text-[#FF3CAC] flex items-center justify-center text-xs font-bold">
+        <span className="w-9 h-9 rounded-full bg-[#1359FF]/10 text-[#1359FF] flex items-center justify-center text-xs font-bold">
           LN
         </span>
         <div>
@@ -621,85 +485,8 @@ function HrHeroCard() {
       <div className="flex items-center gap-2 mb-4">
         <StatusPill color="#34B53A" icon={CheckCircle2}>Payroll run: Paid</StatusPill>
       </div>
-      <HeroMetric label="Annual leave remaining" color="#FF3CAC" value={14} suffix=" days" decimals={0} />
+      <HeroMetric label="Annual leave remaining" color={ROYAL} value={14} suffix=" days" decimals={0} />
     </FloatingCard>
-  );
-}
-
-function HrPeopleVisual() {
-  const employees = [
-    { name: 'Lindiwe Nkosi', role: 'Sales Associate', docs: 4 },
-    { name: 'Bongani Zulu', role: 'Warehouse Lead', docs: 6 },
-    { name: 'Aisha Patel', role: 'Bookkeeper', docs: 3 },
-  ];
-  return (
-    <div>
-      <div className="space-y-2.5 mb-4">
-        {employees.map((e) => (
-          <motion.div
-            key={e.name}
-            variants={rowVariants}
-            className="flex items-center justify-between text-[12px] border-b border-[#F1F5F9] pb-2.5"
-          >
-            <div>
-              <div className="font-semibold text-[#0F172A]">{e.name}</div>
-              <div className="text-[11px] text-[#94A3B8]">{e.role}</div>
-            </div>
-            <span className="flex items-center gap-1 text-[11px] font-medium text-[#64748B]">
-              <FileText className="w-3 h-3" /> {e.docs} docs
-            </span>
-          </motion.div>
-        ))}
-      </div>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold rounded-lg bg-[#F1F5F9] text-[#64748B] px-2.5 py-1.5 w-fit">
-        <ShieldCheck className="w-3 h-3" /> Formal warning tracked on file
-      </div>
-    </div>
-  );
-}
-
-function HrTimeVisual() {
-  return (
-    <div>
-      <motion.div variants={rowVariants} className="flex items-center justify-between mb-4">
-        <div>
-          <div className="text-sm font-bold text-[#0F172A]">Bongani Zulu</div>
-          <div className="text-[11px] text-[#94A3B8]">Clocked in 07:58 · Clocked out 17:04</div>
-        </div>
-        <Badge color="#FF3CAC">+1.1h overtime</Badge>
-      </motion.div>
-      <motion.div
-        variants={rowVariants}
-        className="flex items-center justify-between text-[12px] border-t border-[#F1F5F9] pt-3"
-      >
-        <span className="text-[#334155] font-medium">Leave request — 22–24 Aug</span>
-        <StatusPill color="#34B53A">Approved</StatusPill>
-      </motion.div>
-    </div>
-  );
-}
-
-function HrPayrollRunVisual() {
-  const shifts = [
-    { day: 'Mon', name: 'Lindiwe Nkosi' },
-    { day: 'Tue', name: 'Bongani Zulu' },
-    { day: 'Wed', name: 'Aisha Patel' },
-  ];
-  return (
-    <div>
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        {shifts.map((s) => (
-          <motion.div key={s.day} variants={rowVariants} className="rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] p-2.5 text-center">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-[#94A3B8] mb-1">{s.day}</div>
-            <div className="text-[11px] font-medium text-[#334155] truncate">{s.name}</div>
-          </motion.div>
-        ))}
-      </div>
-      <div className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
-        <span className="text-[12px] font-medium text-[#334155]">Payroll run — July</span>
-        <StatusPill color="#34B53A">Payslips generated</StatusPill>
-      </div>
-    </div>
   );
 }
 
@@ -707,14 +494,14 @@ function HrPayrollRunVisual() {
 
 function CalendarHeroCard() {
   return (
-    <FloatingCard accent="#14B8A6">
-      <HeroCardHeader accent="#14B8A6" icon={CalendarCheck} label="Booking Confirmed" />
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={CalendarCheck} label="Booking Confirmed" />
       <motion.div variants={rowVariants}>
         <div className="text-sm font-bold text-[#0F172A]">Discovery Call</div>
         <div className="text-[11px] text-[#94A3B8] mb-3">with Naledi Mokoena</div>
       </motion.div>
       <div className="flex items-center gap-2 mb-4">
-        <Badge color="#14B8A6" icon={Clock}>Thu, 14 Aug · 10:00</Badge>
+        <Badge color={ROYAL} icon={Clock}>Thu, 14 Aug · 10:00</Badge>
       </div>
       <motion.div variants={rowVariants} className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
         <span className="text-[11px] text-[#94A3B8]">Status</span>
@@ -724,78 +511,12 @@ function CalendarHeroCard() {
   );
 }
 
-function CalendarBookingVisual() {
-  const slots = ['09:00', '10:30', '13:00', '15:30'];
-  return (
-    <div>
-      <div className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8] mb-3">Available today</div>
-      <div className="grid grid-cols-4 gap-2 mb-4">
-        {slots.map((s) => (
-          <motion.div
-            key={s}
-            variants={rowVariants}
-            className="rounded-lg border border-[#E2E8F0] text-center text-[11px] font-semibold text-[#334155] py-2"
-          >
-            {s}
-          </motion.div>
-        ))}
-      </div>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold rounded-lg bg-[#F1F5F9] text-[#64748B] px-2.5 py-1.5 w-fit">
-        <FormInput className="w-3 h-3" /> Custom intake questions attached
-      </div>
-    </div>
-  );
-}
-
-function CalendarMeetingsVisual() {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 text-[#14B8A6] flex items-center justify-center">
-            <Video className="w-4 h-4" />
-          </span>
-          <div>
-            <div className="text-[12px] font-bold text-[#0F172A]">Discovery Call</div>
-            <div className="text-[11px] text-[#94A3B8]">Starts in 5 min</div>
-          </div>
-        </div>
-        <span className="text-[11px] font-bold text-white bg-[#14B8A6] rounded-lg px-3 py-1.5">Join</span>
-      </div>
-      <div className="flex items-center gap-2 pt-3 border-t border-[#F1F5F9]">
-        <Badge color="#14B8A6">Recording on</Badge>
-        <Badge color="#94A3B8">2 calendars synced</Badge>
-      </div>
-    </div>
-  );
-}
-
-function CalendarReminderVisual() {
-  return (
-    <div>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <motion.div variants={rowVariants} className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-[#94A3B8] mb-1">This week</div>
-          <div className="text-lg font-bold text-[#0F172A]">18 bookings</div>
-        </motion.div>
-        <motion.div variants={rowVariants} className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-[#94A3B8] mb-1">Waitlist</div>
-          <div className="text-lg font-bold text-[#0F172A]">3 waiting</div>
-        </motion.div>
-      </div>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold rounded-lg bg-[#14B8A6]/10 text-[#14B8A6] px-2.5 py-1.5 w-fit">
-        <BarChart3 className="w-3 h-3" /> Cancelled slot auto-filled from waitlist
-      </div>
-    </div>
-  );
-}
-
 /* ----------------------- Communication & Support ----------------------- */
 
 function CommunicationHeroCard() {
   return (
-    <FloatingCard accent="#1359FF">
-      <HeroCardHeader accent="#1359FF" icon={MessageSquare} label="Ticket #482" />
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={MessageSquare} label="Ticket #482" />
       <motion.div variants={rowVariants} className="text-[12px] text-[#334155] bg-[#F8FAFC] rounded-lg px-3 py-2 mb-2">
         "Can I get a refund on my last invoice?"
       </motion.div>
@@ -810,231 +531,22 @@ function CommunicationHeroCard() {
   );
 }
 
-function CommunicationTicketsVisual() {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-[12px] font-bold text-[#0F172A]">Ticket #481 — Login issue</div>
-        <StatusPill color="#FF8A00">Open</StatusPill>
-      </div>
-      <div className="space-y-2 mb-4 text-[11px]">
-        <div className="text-[#334155] bg-[#F8FAFC] rounded-lg px-3 py-2">"I can't reset my password."</div>
-        <div className="text-white bg-[#1359FF] rounded-lg px-3 py-2">Sending a fresh reset link now.</div>
-      </div>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold rounded-lg bg-[#F1F5F9] text-[#64748B] px-2.5 py-1.5 w-fit">
-        <MessageSquare className="w-3 h-3" /> Opened via embedded support widget
-      </div>
-    </div>
-  );
-}
-
-function CommunicationLenaVisual() {
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="w-8 h-8 rounded-lg bg-[#1359FF]/10 text-[#1359FF] flex items-center justify-center">
-          <Bot className="w-4 h-4" />
-        </span>
-        <div className="text-[12px] font-bold text-[#0F172A]">LENA suggests a reply</div>
-      </div>
-      <div className="text-[12px] text-[#334155] bg-[#F8FAFC] border border-dashed border-[#1359FF]/30 rounded-lg px-3 py-2.5 mb-4">
-        "Thanks for flagging this — I've checked your account and issued the refund. You'll see it in 3–5 business days."
-      </div>
-      <Badge color="#1359FF">Personality & knowledge base configured</Badge>
-    </div>
-  );
-}
-
-function CommunicationInboxVisual() {
-  const items = [
-    { icon: MessageSquare, label: 'Ticket #482 — Refund question', time: '2m' },
-    { icon: Inbox, label: 'Email — Invoice query from Baobab Studio', time: '18m' },
-    { icon: MessageSquare, label: 'Ticket #481 — Login issue', time: '1h' },
-  ];
-  return (
-    <div className="space-y-2.5">
-      {items.map((it) => (
-        <motion.div
-          key={it.label}
-          variants={rowVariants}
-          className="flex items-center gap-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] px-3.5 py-3"
-        >
-          <span className="w-7 h-7 rounded-lg bg-[#1359FF]/10 text-[#1359FF] flex items-center justify-center shrink-0">
-            <it.icon className="w-3.5 h-3.5" />
-          </span>
-          <span className="text-[12px] font-medium text-[#334155] flex-1 truncate">{it.label}</span>
-          <span className="text-[11px] text-[#94A3B8] shrink-0">{it.time}</span>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
 /* ------------------------- Content & Marketing ------------------------- */
 
 function ContentHeroCard() {
   return (
-    <FloatingCard accent="#7B3FF2">
-      <HeroCardHeader accent="#7B3FF2" icon={Newspaper} label="Blog Post" />
+    <FloatingCard accent={ROYAL}>
+      <HeroCardHeader accent={ROYAL} icon={Newspaper} label="Blog Post" />
       <motion.div variants={rowVariants}>
         <div className="text-sm font-bold text-[#0F172A] mb-1">5 WhatsApp Templates That Actually Convert</div>
         <div className="text-[11px] text-[#94A3B8] mb-3">4 min read</div>
       </motion.div>
       <div className="flex items-center gap-2 mb-1">
         <StatusPill color="#34B53A" icon={CheckCircle2}>Published</StatusPill>
-        <Badge color="#7B3FF2" icon={Link2}>Sitemap updated</Badge>
+        <Badge color={ROYAL} icon={Link2}>Sitemap updated</Badge>
       </div>
-      <HeroMetric label="SEO score" color="#7B3FF2" value={92} decimals={0} suffix="/100" />
+      <HeroMetric label="SEO score" color={ROYAL} value={92} decimals={0} suffix="/100" />
     </FloatingCard>
-  );
-}
-
-function ContentStudioVisual() {
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="w-8 h-8 rounded-lg bg-[#7B3FF2]/10 text-[#7B3FF2] flex items-center justify-center">
-          <Sparkles className="w-4 h-4" />
-        </span>
-        <div className="text-[12px] font-bold text-[#0F172A]">AI writing assistant</div>
-      </div>
-      <div className="text-[12px] text-[#334155] bg-[#F8FAFC] border border-dashed border-[#7B3FF2]/30 rounded-lg px-3 py-2.5 mb-4">
-        "Here's a tighter intro paragraph for your post — want me to draft the next section?"
-      </div>
-      <div className="flex items-center gap-2">
-        <Badge color="#7B3FF2">12 categories</Badge>
-        <Badge color="#94A3B8">8 comments</Badge>
-      </div>
-    </div>
-  );
-}
-
-function ContentPagesVisual() {
-  const blocks = ['Hero banner', 'Feature grid', 'Testimonial', 'CTA'];
-  return (
-    <div>
-      <div className="rounded-xl border border-[#E2E8F0] p-3 mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <LayoutTemplate className="w-3.5 h-3.5 text-[#7B3FF2]" />
-          <span className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Landing page editor</span>
-        </div>
-        <div className="space-y-1.5">
-          {blocks.map((b) => (
-            <motion.div
-              key={b}
-              variants={rowVariants}
-              className="rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] px-2.5 py-1.5 text-[11px] font-medium text-[#334155]"
-            >
-              {b}
-            </motion.div>
-          ))}
-        </div>
-      </div>
-      <Badge color="#7B3FF2">Funnel: 3 steps · analytics on</Badge>
-    </div>
-  );
-}
-
-function ContentCaptureVisual() {
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="w-8 h-8 rounded-lg bg-[#7B3FF2]/10 text-[#7B3FF2] flex items-center justify-center">
-          <FormInput className="w-4 h-4" />
-        </span>
-        <div className="text-[12px] font-bold text-[#0F172A]">Embedded on: 5 WhatsApp Templates post</div>
-      </div>
-      <div className="space-y-2 mb-4">
-        <motion.div variants={rowVariants} className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-[11px] text-[#94A3B8]">
-          Name
-        </motion.div>
-        <motion.div variants={rowVariants} className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-[11px] text-[#94A3B8]">
-          Email address
-        </motion.div>
-      </div>
-      <div className="text-[11px] font-bold text-white bg-[#7B3FF2] rounded-lg px-6 py-2 text-center w-fit">
-        Get the templates
-      </div>
-    </div>
-  );
-}
-
-/* --------------------------- Automation & Workflows --------------------------- */
-
-function AutomationHeroCard() {
-  return (
-    <FloatingCard accent="#00B2FF">
-      <HeroCardHeader accent="#00B2FF" icon={Zap} label="Workflow" />
-      <motion.div variants={rowVariants} className="rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 mb-2">
-        <div className="text-[10px] font-bold uppercase tracking-wide text-[#94A3B8]">When</div>
-        <div className="text-[12px] font-semibold text-[#334155]">Form submitted</div>
-      </motion.div>
-      <motion.div variants={rowVariants} className="rounded-lg bg-[#00B2FF]/10 border border-[#00B2FF]/20 px-3 py-2 mb-3">
-        <div className="text-[10px] font-bold uppercase tracking-wide text-[#00B2FF]">Then</div>
-        <div className="text-[12px] font-semibold text-[#0F172A]">Create contact</div>
-      </motion.div>
-      <motion.div variants={rowVariants} className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
-        <span className="text-[11px] text-[#94A3B8]">Status</span>
-        <StatusPill color="#34B53A" icon={CheckCircle2}>Runs automatically</StatusPill>
-      </motion.div>
-    </FloatingCard>
-  );
-}
-
-function AutomationBuilderVisual() {
-  return (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <motion.div
-          variants={rowVariants}
-          className="rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 text-[11px] font-semibold text-[#334155]"
-        >
-          Trigger
-        </motion.div>
-        <div className="flex-1 h-px bg-[#E2E8F0]" />
-        <motion.div
-          variants={rowVariants}
-          className="rounded-lg bg-[#00B2FF]/10 border border-[#00B2FF]/20 px-3 py-2 text-[11px] font-semibold text-[#0F172A]"
-        >
-          Action
-        </motion.div>
-      </div>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold rounded-lg bg-[#F1F5F9] text-[#64748B] px-2.5 py-1.5 w-fit">
-        <Clock3 className="w-3 h-3" /> Full execution history logged
-      </div>
-    </div>
-  );
-}
-
-function AutomationTriggersVisual() {
-  const triggers = ['Form submission', 'Course completion'];
-  return (
-    <div className="space-y-2.5">
-      {triggers.map((t) => (
-        <motion.div key={t} variants={rowVariants} className="flex items-center gap-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] px-3.5 py-3">
-          <span className="w-6 h-6 rounded-full bg-[#00B2FF]/10 text-[#00B2FF] flex items-center justify-center shrink-0">
-            <Zap className="w-3 h-3" />
-          </span>
-          <span className="text-[12px] font-medium text-[#334155]">{t}</span>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-function AutomationActionsVisual() {
-  const actions = ['Send email', 'Send WhatsApp message', 'Create task'];
-  return (
-    <div className="space-y-2.5">
-      {actions.map((a) => (
-        <motion.div key={a} variants={rowVariants} className="flex items-center gap-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] px-3.5 py-3">
-          <span className="w-6 h-6 rounded-full bg-[#00B2FF]/10 text-[#00B2FF] flex items-center justify-center shrink-0">
-            <Zap className="w-3 h-3" />
-          </span>
-          <span className="text-[12px] font-medium text-[#334155]">{a}</span>
-        </motion.div>
-      ))}
-    </div>
   );
 }
 
@@ -1043,37 +555,14 @@ export const heroVisuals: Record<string, React.ReactNode> = {
   'crm-hero': <CrmHeroCard />,
   'lms-hero': <LmsHeroCard />,
   'accounting-hero': <AccountingHeroCard />,
+  'invoicing-hero': <InvoicingHeroCard />,
+  'phone-ivr-hero': <PhoneIvrHeroCard />,
+  'funnels-hero': <FunnelsHeroCard />,
+  'email-whatsapp-hero': <EmailWhatsappHeroCard />,
+  'automation-hero': <AutomationHeroCard />,
+  'ai-tools-hero': <AiToolsHeroCard />,
   'hr-hero': <HrHeroCard />,
   'calendar-hero': <CalendarHeroCard />,
   'communication-hero': <CommunicationHeroCard />,
-  'automation-hero': <AutomationHeroCard />,
   'content-hero': <ContentHeroCard />,
-};
-
-/** Feature-section panel content, keyed by ModuleFeatureSection.visualKey */
-export const sectionVisuals: Record<string, React.ReactNode> = {
-  'crm-pipeline': <CrmPipelineVisual />,
-  'crm-contacts': <CrmContactsVisual />,
-  'crm-quote': <CrmQuoteVisual />,
-  'lms-course-builder': <LmsCourseBuilderVisual />,
-  'lms-certificate': <LmsCertificateVisual />,
-  'lms-automation': <LmsAutomationVisual />,
-  'accounting-invoice': <AccountingInvoiceVisual />,
-  'accounting-reports': <AccountingExpensesVisual />,
-  'accounting-ledger': <AccountingLedgerVisual />,
-  'hr-people': <HrPeopleVisual />,
-  'hr-time': <HrTimeVisual />,
-  'hr-payroll': <HrPayrollRunVisual />,
-  'calendar-booking': <CalendarBookingVisual />,
-  'calendar-meetings': <CalendarMeetingsVisual />,
-  'calendar-reminders': <CalendarReminderVisual />,
-  'communication-tickets': <CommunicationTicketsVisual />,
-  'communication-lena': <CommunicationLenaVisual />,
-  'communication-inbox': <CommunicationInboxVisual />,
-  'automation-builder': <AutomationBuilderVisual />,
-  'automation-triggers': <AutomationTriggersVisual />,
-  'automation-actions': <AutomationActionsVisual />,
-  'content-calendar': <ContentStudioVisual />,
-  'content-pages': <ContentPagesVisual />,
-  'content-campaign': <ContentCaptureVisual />,
 };
