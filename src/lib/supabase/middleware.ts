@@ -153,7 +153,8 @@ export async function updateSession(request: NextRequest) {
    request.nextUrl.pathname === '/privacy-policy' ||
    request.nextUrl.pathname === '/terms' ||
    request.nextUrl.pathname.startsWith('/unauthenticated') ||
-   request.nextUrl.pathname.startsWith('/book')
+   request.nextUrl.pathname.startsWith('/book') ||
+   request.nextUrl.pathname.startsWith('/solutions')
 
  // If user is logged in and tries to access auth pages, redirect to dashboard
  if (user && isAuthPage) {

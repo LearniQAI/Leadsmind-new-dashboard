@@ -26,8 +26,6 @@ import {
 } from 'lucide-react';
 
 export const navLinks = [
-  { label: 'Modules', href: '#modules' },
-  { label: 'Features', href: '#features' },
   { label: 'Pricing', href: '#pricing' },
 ];
 
