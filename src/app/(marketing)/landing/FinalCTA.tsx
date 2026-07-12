@@ -27,6 +27,7 @@ interface FinalCTAProps {
   subtext?: string;
   primaryLabel?: string;
   primaryHref?: string;
+  secondaryLabel?: string;
   secondaryHref?: string;
   finePrint?: string;
 }
@@ -36,6 +37,7 @@ export default function FinalCTA({
   subtext = 'Join 500+ African businesses already on LeadsMind.',
   primaryLabel = 'Start Your Free 30-Day Trial',
   primaryHref = '/auth/signup-basic',
+  secondaryLabel = 'Book a Demo',
   secondaryHref = '#demo',
   finePrint = 'No credit card required. Cancel anytime. ZAR pricing.',
 }: FinalCTAProps) {
@@ -122,14 +124,16 @@ style={{ background: 'linear-gradient(160deg, #0F172A 0%, #1a1060 40%, #0F172A 1
               variant="ghost"
               className="h-14 px-8 rounded-[14px] border-2 border-white/40 text-white font-bold bg-transparent backdrop-blur-sm hover:bg-white/10 hover:border-white/70 transition-all duration-200"
             >
-              Book a Demo
+              {secondaryLabel}
             </Button>
           </Link>
         </motion.div>
 
-        <motion.p variants={popUp} className="!text-white/60 text-[13px]">
-          {finePrint}
-        </motion.p>
+        {finePrint && (
+          <motion.p variants={popUp} className="!text-white/60 text-[13px]">
+            {finePrint}
+          </motion.p>
+        )}
       </motion.div>
     </section>
   );
