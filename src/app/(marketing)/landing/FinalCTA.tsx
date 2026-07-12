@@ -21,7 +21,26 @@ const popUp = {
   },
 };
 
-export default function FinalCTA() {
+interface FinalCTAProps {
+  /** Defaults to the homepage's own gradient-highlighted headline. Pass a plain string for reuse elsewhere (e.g. module pages). */
+  headline?: React.ReactNode;
+  subtext?: string;
+  primaryLabel?: string;
+  primaryHref?: string;
+  secondaryLabel?: string;
+  secondaryHref?: string;
+  finePrint?: string;
+}
+
+export default function FinalCTA({
+  headline,
+  subtext = 'Join 500+ African businesses already on LeadsMind.',
+  primaryLabel = 'Start Your Free 30-Day Trial',
+  primaryHref = '/auth/signup-basic',
+  secondaryLabel = 'Book a Demo',
+  secondaryHref = '#demo',
+  finePrint = 'No credit card required. Cancel anytime. ZAR pricing.',
+}: FinalCTAProps) {
   return (
     <section
       className="relative overflow-hidden py-24 md:py-[100px] px-6 text-center"
@@ -73,42 +92,48 @@ style={{ background: 'linear-gradient(160deg, #0F172A 0%, #1a1060 40%, #0F172A 1
           className="font-black !text-white leading-[1.1] tracking-tight mx-auto max-w-3xl"
           style={{ fontSize: 'clamp(32px, 5vw, 60px)' }}
         >
-          Ready to run your entire business from{' '}
-          <span
-            style={{
-              backgroundImage: 'linear-gradient(135deg, #818CF8, #C084FC, #60A5FA)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            one platform?
-          </span>
+          {headline ?? (
+            <>
+              Ready to run your entire business from{' '}
+              <span
+                style={{
+                  backgroundImage: 'linear-gradient(135deg, #818CF8, #C084FC, #60A5FA)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                one platform?
+              </span>
+            </>
+          )}
         </motion.h2>
 
         <motion.p variants={popUp} className="!text-white/80 text-lg mx-auto max-w-xl mt-4 mb-10">
-          Join 500+ African businesses already on LeadsMind.
+          {subtext}
         </motion.p>
 
         <motion.div variants={popUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-5">
-          <Link href="/auth/signup-basic">
+          <Link href={primaryHref}>
             <Button className="lm-shimmer h-14 px-8 text-base bg-white text-[#4F46E5] hover:bg-white hover:-translate-y-0.5 rounded-[14px] font-bold shadow-[0_8px_24px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)] transition-all duration-200 group">
-              Start Your Free 30-Day Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {primaryLabel} <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
-          <Link href="#demo">
+          <Link href={secondaryHref}>
             <Button
               variant="ghost"
               className="h-14 px-8 rounded-[14px] border-2 border-white/40 text-white font-bold bg-transparent backdrop-blur-sm hover:bg-white/10 hover:border-white/70 transition-all duration-200"
             >
-              Book a Demo
+              {secondaryLabel}
             </Button>
           </Link>
         </motion.div>
 
-        <motion.p variants={popUp} className="!text-white/60 text-[13px]">
-          No credit card required. Cancel anytime. ZAR pricing.
-        </motion.p>
+        {finePrint && (
+          <motion.p variants={popUp} className="!text-white/60 text-[13px]">
+            {finePrint}
+          </motion.p>
+        )}
       </motion.div>
     </section>
   );

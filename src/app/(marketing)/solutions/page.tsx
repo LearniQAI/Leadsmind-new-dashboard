@@ -5,7 +5,7 @@ import SolutionsIndexContent from './_components/SolutionsIndexContent';
 export const metadata: Metadata = {
   title: 'All Modules',
   description:
-    'CRM, LMS, accounting, automation, HR, calendar, communication, and content — explore every module in the LeadsMind all-in-one business platform.',
+    'CRM, LMS, accounting, invoicing, phone & IVR, sales funnels & website builder, email & WhatsApp marketing, workflow automation, and AI tools — explore every module in the LeadsMind all-in-one business platform.',
   alternates: { canonical: '/solutions' },
 };
 
