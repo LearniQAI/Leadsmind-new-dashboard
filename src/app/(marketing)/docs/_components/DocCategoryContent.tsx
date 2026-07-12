@@ -7,7 +7,7 @@ import { Check, Info } from 'lucide-react';
 import '../../landing/landing.css';
 import Navbar from '../../landing/Navbar';
 import Footer from '../../landing/Footer';
-import { docCategories, type DocCategory } from '@/data/docs';
+import { docCategories, getDocCategory } from '@/data/docs';
 
 const ROYAL = '#1359FF';
 
@@ -55,7 +55,9 @@ function Sidebar({ activeSlug }: { activeSlug: string }) {
   );
 }
 
-export default function DocCategoryContent({ category, user }: { category: DocCategory; user?: any }) {
+export default function DocCategoryContent({ slug, user }: { slug: string; user?: any }) {
+  const category = getDocCategory(slug);
+  if (!category) return null;
   const Icon = category.icon;
 
   return (

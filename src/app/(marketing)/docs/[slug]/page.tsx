@@ -32,5 +32,5 @@ export default async function DocCategoryPage({ params }: PageProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return <DocCategoryContent category={category} user={user} />;
+  return <DocCategoryContent slug={category.slug} user={user} />;
 }
