@@ -34,9 +34,9 @@ interface TasksToolbarProps {
 }
 
 const SORT_OPTIONS = [
-  { value: 'newest', label: 'NEWEST FIRST' },
-  { value: 'priority', label: 'HIGHEST PRIORITY' },
-  { value: 'due_date', label: 'SOONEST DEADLINE' },
+  { value: 'newest', label: 'Newest first' },
+  { value: 'priority', label: 'Highest priority' },
+  { value: 'due_date', label: 'Soonest deadline' },
 ];
 
 export function TasksToolbar({
@@ -80,33 +80,33 @@ export function TasksToolbar({
         <div className="flex flex-col md:flex-row items-center gap-3 flex-1 max-w-5xl">
           {/* Search */}
           <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 !text-dash-textMuted" />
             <input
               type="text"
-              placeholder="SEARCH OBJECTIVES, ASSETS, OR PERSONNEL..."
+              placeholder="Search objectives, assets, or personnel..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full h-9 bg-white/[0.03] border border-white/5 rounded-lg py-1.5 pl-9 pr-4 text-[11px] font-bold text-white placeholder:text-white/10 focus:outline-none focus:border-primary/40 transition-all uppercase tracking-wider font-space-grotesk"
+              className="w-full h-9 bg-dash-surface border border-dash-border rounded-lg py-1.5 pl-9 pr-4 text-[12px] font-semibold !text-dash-text placeholder:!text-dash-textMuted focus:outline-none focus:border-dash-accent/40 transition-colors"
             />
           </div>
 
           {/* Sort Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 px-3 h-9 rounded-lg bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all shrink-0">
+              <button className="flex items-center gap-2 px-3 h-9 rounded-lg bg-dash-surface border border-dash-border text-[11px] font-semibold !text-dash-textMuted hover:!text-dash-text transition-colors shrink-0">
                 <ArrowUpDown className="w-3 h-3" />
-                <span>SORT: {SORT_OPTIONS.find(o => o.value === sortBy)?.label}</span>
-                <ChevronDown className="w-3 h-3 opacity-20" />
+                <span>Sort: {SORT_OPTIONS.find(o => o.value === sortBy)?.label}</span>
+                <ChevronDown className="w-3 h-3 opacity-40" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-[#0B132C] border-white/10 rounded-xl min-w-[180px] z-[1500]">
+            <DropdownMenuContent className="bg-white border-dash-border rounded-xl min-w-[180px] z-[1500]">
               {SORT_OPTIONS.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
                   onClick={() => onSortChange(option.value as any)}
                   className={cn(
-                    "text-[10px] font-black uppercase tracking-widest py-2.5 px-4 focus:bg-primary/20 focus:text-white transition-colors cursor-pointer font-space-grotesk",
-                    sortBy === option.value ? "text-primary" : "text-white/40"
+                    "text-[12px] font-semibold py-2.5 px-4 focus:bg-dash-accent/20 focus:!text-dash-text transition-colors cursor-pointer",
+                    sortBy === option.value ? "text-dash-accent" : "!text-dash-textMuted"
                   )}
                 >
                   {option.label}
@@ -116,7 +116,7 @@ export function TasksToolbar({
           </DropdownMenu>
 
           {/* View Toggle (Segmented) */}
-          <div className="flex items-center bg-white/5 p-1 rounded-lg border border-white/5 shrink-0">
+          <div className="flex items-center bg-dash-surface p-1 rounded-lg border border-dash-border shrink-0">
             <ViewButton
               active={view === 'kanban'}
               onClick={() => onViewChange('kanban')}
@@ -142,50 +142,50 @@ export function TasksToolbar({
           {onInitializeTask && (
             <button
               onClick={onInitializeTask}
-              className="flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 h-9 rounded-lg bg-dash-accent text-white text-[12px] font-bold shadow-lg shadow-dash-accent/20 hover:bg-dash-accent/90 transition-all active:scale-95"
             >
               <Plus className="w-3 h-3" />
-              <span>NEW TASK</span>
+              <span>New task</span>
             </button>
           )}
         </div>
       </div>
 
       {/* Secondary Row: Filters & Assignees */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-3 border-t border-white/5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-3 border-t border-dash-border">
         <div className="flex flex-wrap items-center gap-6">
           {/* My Tasks Toggle */}
           <button
             onClick={() => onDueTodayToggle(!dueTodayOnly)}
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all border",
+              "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors motion-reduce:transition-none border",
               dueTodayOnly
-                ? "bg-accent/10 border-accent/20 text-accent"
-                : "bg-white/5 border-white/5 text-white/30 hover:text-white/50"
+                ? "bg-dash-accent/10 border-dash-accent/20 text-dash-accent"
+                : "bg-dash-surface border-dash-border !text-dash-textMuted hover:!text-dash-text"
             )}
           >
             <Clock className="w-3 h-3" />
-            <span className="text-[9px] font-black uppercase tracking-[0.15em] font-space-grotesk">DUE TODAY</span>
+            <span className="text-[11px] font-bold">Due today</span>
           </button>
 
           <button
             onClick={() => onHighPriorityToggle(!highPriorityOnly)}
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all border",
+              "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors motion-reduce:transition-none border",
               highPriorityOnly
                 ? "bg-red/10 border-red/20 text-red"
-                : "bg-white/5 border-white/5 text-white/30 hover:text-white/50"
+                : "bg-dash-surface border-dash-border !text-dash-textMuted hover:!text-dash-text"
             )}
           >
             <AlertCircle className="w-3 h-3" />
-            <span className="text-[9px] font-black uppercase tracking-[0.15em] font-space-grotesk">HIGH PRIORITY</span>
+            <span className="text-[11px] font-bold">High priority</span>
           </button>
 
-          <div className="w-[1px] h-4 bg-white/5 hidden md:block" />
+          <div className="w-[1px] h-4 bg-dash-border hidden md:block" />
 
           {/* Personnel Hub */}
           <div className="flex items-center gap-3">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/10 font-space-grotesk">Personnel:</span>
+            <span className="text-[11px] font-bold !text-dash-textMuted">Personnel:</span>
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[300px] xl:max-w-md py-1">
               <button
                 onClick={() => {
@@ -195,10 +195,10 @@ export function TasksToolbar({
                   });
                 }}
                 className={cn(
-                  "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border",
+                  "px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors motion-reduce:transition-none border",
                   selectedAssignees.length === 0 && !myTasksActive
-                    ? "bg-primary/10 border-primary/20 text-primary"
-                    : "bg-white/5 border-white/5 text-white/30 hover:text-white/50"
+                    ? "bg-dash-accent/10 border-dash-accent/20 text-dash-accent"
+                    : "bg-dash-surface border-dash-border !text-dash-textMuted hover:!text-dash-text"
                 )}
               >
                 All
@@ -211,17 +211,17 @@ export function TasksToolbar({
                     key={member.user_id}
                     onClick={() => onAssigneeToggle(member.user_id)}
                     className={cn(
-                      "flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border transition-all shrink-0",
+                      "flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border transition-colors motion-reduce:transition-none shrink-0",
                       isSelected
-                        ? "bg-primary/10 border-primary/20 text-primary shadow-lg shadow-primary/10"
-                        : "bg-white/[0.03] border-white/5 text-white/30 hover:bg-white/5"
+                        ? "bg-dash-accent/10 border-dash-accent/20 text-dash-accent shadow-[0_4px_12px_rgba(19,89,255,0.1)]"
+                        : "bg-dash-surface border-dash-border !text-dash-textMuted hover:bg-dash-border/60"
                     )}
                   >
                     <Avatar className="w-5 h-5">
                       <AvatarImage src={member.user?.avatar_url} />
-                      <AvatarFallback className="text-[7px] bg-white/10">{member.user?.first_name?.[0]}</AvatarFallback>
+                      <AvatarFallback className="text-[7px] bg-dash-border/60">{member.user?.first_name?.[0]}</AvatarFallback>
                     </Avatar>
-                    <span className="text-[9px] font-bold uppercase tracking-widest">{member.user?.first_name}</span>
+                    <span className="text-[11px] font-bold">{member.user?.first_name}</span>
                   </button>
                 );
               })}
@@ -230,12 +230,12 @@ export function TasksToolbar({
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-[9px] font-bold text-white/10 uppercase tracking-[0.2em] font-space-grotesk">
-            Showing {selectedAssignees.length > 0 || searchQuery ? 'Tactical' : 'Global'} View
+          <span className="text-[11px] font-semibold !text-dash-textMuted">
+            Showing {selectedAssignees.length > 0 || searchQuery ? 'Tactical' : 'Global'} view
           </span>
-          <button className="flex items-center gap-2 text-white/10 hover:text-white/40 transition-colors">
+          <button className="flex items-center gap-2 !text-dash-textMuted hover:!text-dash-text transition-colors">
             <Filter className="w-3 h-3" />
-            <span className="text-[9px] font-black uppercase tracking-widest font-space-grotesk">Filters</span>
+            <span className="text-[11px] font-bold">Filters</span>
           </button>
         </div>
       </div>
@@ -248,14 +248,14 @@ function ViewButton({ active, onClick, icon, label }: { active: boolean, onClick
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all",
+        "flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-bold transition-colors motion-reduce:transition-none",
         active
-          ? "bg-primary text-white shadow-lg"
-          : "text-white/20 hover:text-white/50"
+          ? "bg-dash-accent text-white shadow-sm"
+          : "!text-dash-textMuted hover:!text-dash-text"
       )}
     >
       {icon}
-      <span className={cn(active ? "block" : "hidden lg:block")}>{label.toUpperCase()}</span>
+      <span className={cn(active ? "block" : "hidden lg:block")}>{label}</span>
     </button>
   );
 }

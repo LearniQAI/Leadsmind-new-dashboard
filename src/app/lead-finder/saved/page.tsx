@@ -13,22 +13,22 @@ export default function LeadFinderSavedPage() {
             <div>
               <Link 
                 href="/lead-finder" 
-                className="inline-flex items-center gap-2 text-sm font-bold text-t3 hover:text-white transition-colors mb-2"
+                className="inline-flex items-center gap-2 text-sm font-bold !text-dash-textMuted hover:!text-dash-text transition-colors mb-2"
               >
                 <ArrowLeft size={16} /> Back to Search
               </Link>
-              <h1 className="text-3xl font-space font-black text-white flex items-center gap-3">
-                <Clock className="text-accent" />
+              <h1 className="text-3xl font-black !text-dash-text flex items-center gap-3">
+                <Clock className="text-dash-accent" />
                 Saved Searches
               </h1>
-              <p className="text-sm text-t3 mt-1">
+              <p className="text-sm !text-dash-textMuted mt-1">
                 View your previous lead generation queries and their results.
               </p>
             </div>
             
             <Link 
               href="/lead-finder" 
-              className="px-6 py-2.5 bg-accent text-white font-bold uppercase tracking-wider rounded-xl hover:bg-accent-hover transition-colors"
+              className="px-6 py-2.5 bg-dash-accent text-white font-bold tracking-wider rounded-xl hover:bg-dash-accent/90 transition-colors"
             >
               New Search
             </Link>

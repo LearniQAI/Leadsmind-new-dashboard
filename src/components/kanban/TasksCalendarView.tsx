@@ -21,31 +21,31 @@ export function TasksCalendarView({ tasks, onTaskClick, onDateClick }: TasksCale
     return (
       <div className="flex items-center justify-between px-6 mb-8">
         <div className="flex flex-col">
-          <h2 className="text-2xl font-bold text-white font-dm">
+          <h2 className="text-2xl font-bold !text-dash-text">
             {format(currentMonth, 'MMMM yyyy')}
           </h2>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+          <span className="text-[10px] font-black tracking-[0.2em] !text-dash-textMuted">
             Task Scheduling Matrix
           </span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-dash-surface border border-dash-border hover:bg-dash-border/60 transition-all"
           >
-            <ChevronLeft className="w-5 h-5 text-white/40" />
+            <ChevronLeft className="w-5 h-5 !text-dash-textMuted" />
           </button>
           <button
             onClick={() => setCurrentMonth(new Date())}
-            className="px-4 h-10 rounded-xl bg-white/5 border border-white/5 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all"
+            className="px-4 h-10 rounded-xl bg-dash-surface border border-dash-border text-[11px] font-black tracking-widest !text-dash-textMuted hover:!text-dash-text transition-all"
           >
             Today
           </button>
           <button
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-dash-surface border border-dash-border hover:bg-dash-border/60 transition-all"
           >
-            <ChevronRight className="w-5 h-5 text-white/40" />
+            <ChevronRight className="w-5 h-5 !text-dash-textMuted" />
           </button>
         </div>
       </div>
@@ -58,13 +58,13 @@ export function TasksCalendarView({ tasks, onTaskClick, onDateClick }: TasksCale
     for (let i = 0; i < 7; i++) {
       days.push(
         <div key={i} className="py-4 text-center">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+          <span className="text-[10px] font-black tracking-[0.2em] !text-dash-textMuted">
             {date[i]}
           </span>
         </div>
       );
     }
-    return <div className="grid grid-cols-7 border-b border-white/5">{days}</div>;
+    return <div className="grid grid-cols-7 border-b border-dash-border">{days}</div>;
   };
 
   const renderCells = () => {
@@ -91,16 +91,16 @@ export function TasksCalendarView({ tasks, onTaskClick, onDateClick }: TasksCale
             key={day.toString()}
             onClick={() => onDateClick(cloneDay)}
             className={cn(
-              "min-h-[140px] border-r border-b border-white/5 p-3 transition-colors cursor-pointer group/cell",
-              !isSameMonth(day, monthStart) ? "bg-black/20" : "bg-transparent hover:bg-white/[0.02]",
-              isSameDay(day, new Date()) ? "bg-primary/5" : ""
+              "min-h-[140px] border-r border-b border-dash-border p-3 transition-colors cursor-pointer group/cell",
+              !isSameMonth(day, monthStart) ? "bg-dash-surface" : "bg-transparent hover:bg-dash-surface",
+              isSameDay(day, new Date()) ? "bg-dash-accent/5" : ""
             )}
           >
             <div className="flex items-center justify-between mb-3">
               <span className={cn(
                 "text-[13px] font-bold transition-colors",
-                !isSameMonth(day, monthStart) ? "text-white/10" : "text-white/60 group-hover/cell:text-white",
-                isSameDay(day, new Date()) ? "text-primary bg-primary/10 w-7 h-7 rounded-full flex items-center justify-center" : ""
+                !isSameMonth(day, monthStart) ? "!text-dash-textMuted" : "!text-dash-textMuted group-hover/cell:!text-dash-text",
+                isSameDay(day, new Date()) ? "text-dash-accent bg-dash-accent/10 w-7 h-7 rounded-full flex items-center justify-center" : ""
               )}>
                 {formattedDate}
               </span>
@@ -142,12 +142,12 @@ export function TasksCalendarView({ tasks, onTaskClick, onDateClick }: TasksCale
       );
       days = [];
     }
-    return <div className="border-l border-white/5">{rows}</div>;
+    return <div className="border-l border-dash-border">{rows}</div>;
   };
 
   return (
     <div className="w-full px-6 pb-20 overflow-x-auto custom-scrollbar">
-      <div className="min-w-[1000px] bg-white/[0.01] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+      <div className="min-w-[1000px] bg-dash-surface border border-dash-border rounded-3xl overflow-hidden shadow-2xl">
         {renderHeader()}
         {renderDays()}
         {renderCells()}

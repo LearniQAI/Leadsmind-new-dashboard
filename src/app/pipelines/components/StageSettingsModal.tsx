@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PipelineStage } from '@/types/crm';
+import { Layers, GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { updateStageOrder, updateStage, deleteStage, updatePipelineStages } from '@/app/actions/pipelines';
 import { toast } from 'sonner';
@@ -137,16 +138,16 @@ export function StageSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-[#0b0f1a] border-white/5 text-[#eef2ff] max-w-md p-0 overflow-hidden rounded-3xl shadow-2xl z-[1001]">
-        <DialogHeader className="p-6 pb-4 border-b border-white/5">
-          <DialogTitle className="text-xl font-extrabold font-space tracking-tight text-white flex items-center gap-3">
-            <i className="fa-solid fa-layer-group text-[#3b82f6]"></i>
+      <DialogContent className="bg-white border-dash-border !text-dash-text max-w-md p-0 overflow-hidden rounded-3xl shadow-2xl z-[1001]">
+        <DialogHeader className="p-6 pb-4 border-b border-dash-border">
+          <DialogTitle className="text-xl font-extrabold tracking-tight !text-dash-text flex items-center gap-3">
+            <Layers size={18} className="text-dash-accent" />
             Sales Process Settings
           </DialogTitle>
         </DialogHeader>
 
         <div className="p-6">
-          <p className="text-[11px] font-medium text-[#4a5a82] uppercase tracking-[1px] mb-4 font-dm-sans">
+          <p className="text-[11px] font-medium !text-dash-textMuted tracking-[1px] mb-4">
             Reorder stages or edit labels
           </p>
 
@@ -168,10 +169,10 @@ export function StageSettingsModal({
                         <div
                           ref={dragProvided.innerRef}
                           {...dragProvided.draggableProps}
-                          className="flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-xl group hover:border-[#2563eb]/30 transition-all"
+                          className="flex items-center gap-3 p-3 bg-dash-surface border border-dash-border rounded-xl group hover:border-dash-accent/30 transition-all"
                         >
-                          <div {...dragProvided.dragHandleProps} className="text-[#4a5a82] cursor-grab active:cursor-grabbing">
-                            <i className="fa-solid fa-grip-vertical"></i>
+                          <div {...dragProvided.dragHandleProps} className="!text-dash-textMuted cursor-grab active:cursor-grabbing">
+                            <GripVertical size={14} />
                           </div>
 
                           <div className="flex-1">
@@ -182,10 +183,10 @@ export function StageSettingsModal({
                                 onChange={(e) => setEditName(e.target.value)}
                                 onBlur={() => handleRename(stage.id)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleRename(stage.id)}
-                                className="w-full bg-white/10 border border-[#2563eb] rounded-lg px-2 py-1 text-[13px] text-white focus:outline-none"
+                                className="w-full bg-white border border-dash-accent rounded-lg px-2 py-1 text-[13px] !text-dash-text focus:outline-none"
                               />
                             ) : (
-                              <span className="text-[13px] font-bold text-[#eef2ff] font-dm-sans">{stage.name}</span>
+                              <span className="text-[13px] font-bold !text-dash-text">{stage.name}</span>
                             )}
                           </div>
 
@@ -195,15 +196,15 @@ export function StageSettingsModal({
                                 setEditingId(stage.id);
                                 setEditName(stage.name);
                               }}
-                              className="p-2 rounded-lg text-[#4a5a82] hover:text-[#3b82f6] hover:bg-[#3b82f6]/10 transition-all"
+                              className="p-2 rounded-lg !text-dash-textMuted hover:text-dash-accent hover:bg-dash-accent/10 transition-colors"
                             >
-                              <i className="fa-solid fa-pen text-[12px]"></i>
+                              <Pencil size={12} />
                             </button>
                             <button
                               onClick={() => handleDelete(stage.id)}
-                              className="p-2 rounded-lg text-[#4a5a82] hover:text-red-500 hover:bg-red-500/10 transition-all"
+                              className="p-2 rounded-lg !text-dash-textMuted hover:text-red hover:bg-red/10 transition-colors"
                             >
-                              <i className="fa-solid fa-trash text-[12px]"></i>
+                              <Trash2 size={12} />
                             </button>
                           </div>
                         </div>
@@ -216,18 +217,18 @@ export function StageSettingsModal({
             </Droppable>
           </DragDropContext>
 
-          <div className="mt-4 flex items-center gap-2 p-1 bg-white/5 border border-white/10 rounded-xl focus-within:border-[#2563eb]/50 transition-all">
+          <div className="mt-4 flex items-center gap-2 p-1 bg-dash-surface border border-dash-border rounded-xl focus-within:border-dash-accent/50 transition-all">
             <input
               value={newStageName}
               onChange={(e) => setNewStageName(e.target.value)}
               placeholder="Enter stage name..."
-              className="flex-1 bg-transparent px-3 py-2 text-[13px] text-white focus:outline-none"
+              className="flex-1 bg-transparent px-3 py-2 text-[13px] !text-dash-text focus:outline-none"
               onKeyDown={(e) => e.key === 'Enter' && handleAddStage()}
             />
             <button
               onClick={handleAddStage}
               disabled={isProcessing || !newStageName.trim()}
-              className="h-8 px-3 rounded-lg bg-[#2563eb] text-white text-[11px] font-bold hover:bg-[#2563eb]/90 transition-all disabled:opacity-50"
+              className="h-8 px-3 rounded-lg bg-dash-accent text-white text-[11px] font-bold hover:bg-dash-accent/90 transition-all disabled:opacity-50"
             >
               Add Stage
             </button>
@@ -236,7 +237,7 @@ export function StageSettingsModal({
           <div className="mt-8">
             <button
               onClick={onClose}
-              className="w-full h-11 rounded-xl bg-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-bold uppercase tracking-widest transition-all"
+              className="w-full h-11 rounded-xl bg-dash-surface !text-dash-text hover:bg-dash-border/60 text-[12px] font-bold tracking-widest transition-all"
             >
               Close Settings
             </button>

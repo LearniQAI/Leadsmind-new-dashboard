@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Contact, ContactActivity, ContactNote } from '@/types/crm';
 import { cn } from '@/lib/utils';
+import { History, StickyNote, ListChecks, Sparkles, ShieldCheck, Network, type LucideIcon } from 'lucide-react';
 import { ContactTimeline } from './ContactTimeline';
 import { NotesManager } from './NotesManager';
 import { TasksManager } from './TasksManager';
@@ -20,39 +21,39 @@ interface ProfileContentProps {
 export function ProfileContent({ contact, activities, notes, tasks }: ProfileContentProps) {
   const [activeTab, setActiveTab] = useState<'timeline' | 'notes' | 'tasks' | 'intelligence' | 'verification' | 'beneficial_ownership'>('timeline');
 
-  const tabs = [
-    { id: 'timeline', label: 'Timeline', icon: 'fa-clock-rotate-left' },
-    { id: 'notes', label: 'Notes', icon: 'fa-note-sticky' },
-    { id: 'tasks', label: 'Tasks', icon: 'fa-list-check' },
-    { id: 'intelligence', label: 'AI Insights', icon: 'fa-brain' },
-    { id: 'verification', label: 'Verification', icon: 'fa-shield-check' },
-    { id: 'beneficial_ownership', label: 'Beneficial Ownership', icon: 'fa-sitemap' },
+  const tabs: { id: string; label: string; icon: LucideIcon }[] = [
+    { id: 'timeline', label: 'Timeline', icon: History },
+    { id: 'notes', label: 'Notes', icon: StickyNote },
+    { id: 'tasks', label: 'Tasks', icon: ListChecks },
+    { id: 'intelligence', label: 'AI Insights', icon: Sparkles },
+    { id: 'verification', label: 'Verification', icon: ShieldCheck },
+    { id: 'beneficial_ownership', label: 'Beneficial Ownership', icon: Network },
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#080f28] border border-white/5 rounded-[24px] overflow-hidden shadow-xl">
-      <div className="flex items-center px-6 border-b border-white/5 bg-[#080f28]/50 backdrop-blur-xl">
+    <div className="flex-1 flex flex-col bg-white border border-dash-border rounded-2xl overflow-hidden shadow-sm">
+      <div className="flex items-center px-6 border-b border-dash-border bg-white/50 backdrop-blur-xl overflow-x-auto no-scrollbar">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2.5 px-6 py-4 text-[12px] font-bold uppercase tracking-widest transition-all relative",
-              activeTab === tab.id 
-                ? "text-[#3b82f6]" 
-                : "text-[#4a5a82] hover:text-[#eef2ff]"
+              "flex items-center gap-2.5 px-6 py-4 text-[12px] font-bold transition-all relative whitespace-nowrap",
+              activeTab === tab.id
+                ? "text-dash-accent"
+                : "!text-dash-textMuted hover:!text-dash-text"
             )}
           >
-            <i className={cn("fa-solid text-[13px]", tab.icon)}></i>
+            <tab.icon size={13} />
             {tab.label}
             {activeTab === tab.id && (
-              <div className="absolute bottom-0 left-6 right-6 h-[2px] bg-[#2563eb] rounded-t-full shadow-[0_-4px_10px_rgba(37,99,235,0.5)]" />
+              <div className="absolute bottom-0 left-6 right-6 h-[2px] bg-dash-accent rounded-t-full" />
             )}
           </button>
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-8 common-scrollbar bg-[#04091a]/20">
+      <div className="flex-1 overflow-y-auto p-8 common-scrollbar bg-dash-surface/20">
         {activeTab === 'timeline' && (
           <div className="max-w-2xl">
             <ContactTimeline activities={activities} />

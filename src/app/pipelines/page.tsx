@@ -54,7 +54,7 @@ export default async function PipelinesPage({
   return (
     <MetaData pageTitle={`Sales Pipeline | ${activePipeline.name}`}>
       <Wrapper>
-        <div className="flex flex-col h-screen bg-[#04091a] overflow-hidden">
+        <div className="flex flex-col h-screen bg-white overflow-hidden">
           <PipelinesClient 
             pipelines={pipelines}
             activePipeline={activePipeline}

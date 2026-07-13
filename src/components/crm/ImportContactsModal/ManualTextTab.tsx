@@ -64,18 +64,18 @@ export function ManualTextTab({ onParsed, onClear }: ManualTextTabProps) {
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-1.5">
-        <label className="text-[10.5px] font-semibold text-[#94a3c8] uppercase tracking-wider font-dm-sans">
+        <label className="text-[10.5px] font-semibold !text-dash-textMuted tracking-wider">
           Raw Relationship Payload
         </label>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={`Enter one contact per line in one of these formats:\nJohn, Doe, john@example.com, +15550199, lead&saas\nJane, Smith, jane@example.com\nAlice, Johnson`}
-          className="w-full h-[120px] bg-[#080f28] border border-white/5 rounded-xl p-3 text-[12px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:border-[#2563eb] outline-none font-dm-sans common-scrollbar resize-none"
+          className="w-full h-[120px] bg-white border border-dash-border rounded-xl p-3 text-[12px] !text-dash-text placeholder:!text-dash-textMuted focus:border-dash-accent outline-none  common-scrollbar resize-none"
         />
       </div>
-      <div className="text-[10px] text-[#4a5a82] leading-relaxed font-dm-sans px-1">
-        💡 Note: Separate tags using an ampersand (&) in the 5th column. E.g., <code className="text-[#3b82f6]">partner & tech</code>.
+      <div className="text-[10px] !text-dash-textMuted leading-relaxed  px-1">
+        💡 Note: Separate tags using an ampersand (&) in the 5th column. E.g., <code className="text-dash-accent">partner & tech</code>.
       </div>
     </div>
   );

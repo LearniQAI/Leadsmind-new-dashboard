@@ -12,7 +12,7 @@ export default async function TasksPage() {
   if (!success || !data) {
     return (
       <Wrapper>
-        <div className="p-12 text-center text-white">Error loading Revenue Execution system.</div>
+        <div className="p-12 text-center !text-dash-textMuted">Error loading Revenue Execution system.</div>
       </Wrapper>
     );
   }
@@ -26,14 +26,14 @@ export default async function TasksPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-space font-black text-white mb-2 flex items-center gap-3">
+            <h1 className="text-3xl font-black !text-dash-text mb-2 flex items-center gap-3">
               <CheckSquare className="text-accent" size={32} /> Revenue Tasks
             </h1>
-            <p className="text-t3">Operational followups, reminders, and execution tracking.</p>
+            <p className="!text-dash-textMuted">Operational followups, reminders, and execution tracking.</p>
           </div>
           
           <div className="flex items-center gap-3">
-            <Link href="/tasks/dashboard" className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2">
+            <Link href="/tasks/dashboard" className="px-4 py-2 bg-dash-surface hover:bg-dash-border/60 !text-dash-text rounded-xl text-xs font-bold tracking-wider transition-colors flex items-center gap-2">
               <LayoutDashboard size={14} /> Analytics
             </Link>
           </div>

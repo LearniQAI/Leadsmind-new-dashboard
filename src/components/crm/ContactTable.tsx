@@ -10,6 +10,7 @@ import {
   SortingState,
   getPaginationRowModel,
 } from '@tanstack/react-table';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { Contact } from '@/types/crm';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -52,46 +53,46 @@ export function ContactTable({
         <Checkbox
           checked={isAllSelected}
           onCheckedChange={(value) => onToggleAll(!!value)}
-          className="border-white/20 data-[state=checked]:bg-[#2563eb] data-[state=checked]:border-[#2563eb]"
+          className="border-dash-border data-[state=checked]:bg-dash-accent data-[state=checked]:border-dash-accent"
         />
       ),
       cell: ({ row }) => (
         <Checkbox
           checked={selectedIds.has(row.original.id)}
           onCheckedChange={(value) => onToggleOne(row.original.id, !!value)}
-          className="border-white/20 data-[state=checked]:bg-[#2563eb] data-[state=checked]:border-[#2563eb]"
+          className="border-dash-border data-[state=checked]:bg-dash-accent data-[state=checked]:border-dash-accent"
           onClick={(e) => e.stopPropagation()}
         />
       ),
     }),
     columnHelper.accessor('first_name', {
-      header: 'Lead Name',
+      header: 'Lead name',
       cell: (info) => {
         const first = info.row.original.first_name?.[0] || '?';
         const last = info.row.original.last_name?.[0] || '';
         return (
         <div className="flex items-center gap-2.5 cursor-pointer group">
-          <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[11px] font-bold text-[#eef2ff] font-space-grotesk uppercase">
+          <div className="w-7 h-7 rounded-lg bg-dash-surface border border-dash-border flex items-center justify-center text-[11px] font-bold !text-dash-text uppercase">
             {first}{last}
           </div>
-          <span className="text-[13px] font-semibold text-[#eef2ff] group-hover:text-[#3b82f6] transition-colors font-dm-sans">
+          <span className="text-[13px] font-semibold !text-dash-text group-hover:text-dash-accent transition-colors motion-reduce:transition-none">
             {info.row.original.first_name || 'Unknown'} {info.row.original.last_name || ''}
           </span>
         </div>
       )},
     }),
     columnHelper.accessor('email', {
-      header: 'Email Address',
+      header: 'Email address',
       cell: (info) => (
-        <span className="text-[13px] text-[#94a3c8] font-dm-sans">
+        <span className="text-[13px] !text-dash-textMuted">
           {info.getValue() || '—'}
         </span>
       ),
     }),
     columnHelper.accessor('phone', {
-      header: 'Phone Number',
+      header: 'Phone number',
       cell: (info) => (
-        <span className="text-[13px] text-[#4a5a82] font-dm-sans">
+        <span className="text-[13px] !text-dash-textMuted">
           {info.getValue() || '—'}
         </span>
       ),
@@ -101,20 +102,20 @@ export function ContactTable({
       cell: (info) => (
         <div className="flex flex-wrap gap-1">
           {info.getValue()?.slice(0, 2).map(tag => (
-            <span key={tag} className="px-1.5 py-0.5 rounded bg-[#2563eb]/10 text-[#3b82f6] text-[9px] font-bold uppercase tracking-tight">
+            <span key={tag} className="px-1.5 py-0.5 rounded bg-dash-accent/10 text-dash-accent text-[11px] font-semibold">
               {tag}
             </span>
           ))}
           {(info.getValue()?.length || 0) > 2 && (
-            <span className="text-[9px] text-[#4a5a82] font-bold">+{info.getValue().length - 2}</span>
+            <span className="text-[11px] !text-dash-textMuted font-semibold">+{info.getValue().length - 2}</span>
           )}
         </div>
       ),
     }),
     columnHelper.accessor('last_activity_at', {
-      header: 'Last Activity',
+      header: 'Last activity',
       cell: (info) => (
-        <span className="text-[12px] text-[#4a5a82] font-dm-sans">
+        <span className="text-[12px] !text-dash-textMuted">
           {info.getValue() ? new Date(info.getValue()!).toLocaleDateString() : 'Never'}
         </span>
       ),
@@ -139,30 +140,30 @@ export function ContactTable({
     <div className="w-full flex flex-col h-full justify-between">
       <div className="w-full overflow-x-auto common-scrollbar flex-grow">
         <table className="w-full text-left border-collapse">
-          <thead>
+          <thead className="bg-dash-surface">
             {table.getHeaderGroups().map(headerGroup => (
-              <tr key={headerGroup.id} className="border-b border-white/5">
+              <tr key={headerGroup.id} className="border-b border-dash-border">
                 {headerGroup.headers.map(header => (
                   <th
                     key={header.id}
                     className={cn(
-                      "px-4 py-3 text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans transition-colors select-none",
-                      header.column.getCanSort() && "cursor-pointer hover:text-[#eef2ff]"
+                      "px-4 py-3 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wide transition-colors motion-reduce:transition-none select-none",
+                      header.column.getCanSort() && "cursor-pointer hover:!text-dash-text"
                     )}
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     <div className="flex items-center gap-2">
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       {header.column.getCanSort() && (
-                        <div className="flex flex-col text-[8px] leading-[1] text-[#4a5a82]">
-                          <i className={cn(
-                            "fa-solid fa-caret-up mb-[1px]",
-                            header.column.getIsSorted() === 'asc' && "text-[#3b82f6]"
-                          )}></i>
-                          <i className={cn(
-                            "fa-solid fa-caret-down",
-                            header.column.getIsSorted() === 'desc' && "text-[#3b82f6]"
-                          )}></i>
+                        <div className="flex flex-col leading-[1] text-dash-textMuted">
+                          <ChevronUp
+                            size={10}
+                            className={header.column.getIsSorted() === 'asc' ? 'text-dash-accent' : ''}
+                          />
+                          <ChevronDown
+                            size={10}
+                            className={header.column.getIsSorted() === 'desc' ? 'text-dash-accent' : ''}
+                          />
                         </div>
                       )}
                     </div>
@@ -171,7 +172,7 @@ export function ContactTable({
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-white/[0.03]">
+          <tbody className="divide-y divide-dash-border">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, idx) => (
                 <ContactRowSkeleton key={`skeleton-${idx}`} />
@@ -182,8 +183,8 @@ export function ContactTable({
                   key={row.id}
                   onClick={() => router.push(`/contacts/${row.original.id}`)}
                   className={cn(
-                    "group transition-all hover:bg-white/[0.02] cursor-pointer border-b border-white/[0.03]",
-                    selectedIds.has(row.original.id) && "bg-[#2563eb]/5"
+                    "group transition-colors motion-reduce:transition-none hover:bg-dash-surface/60 cursor-pointer border-b border-dash-border",
+                    selectedIds.has(row.original.id) && "bg-dash-accent/5"
                   )}
                 >
                   {row.getVisibleCells().map(cell => (

@@ -342,7 +342,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
       if (riskRating.overall_rating === 'red') {
         return {
           state: 'red',
-          label: 'HIGH RISK LOCK',
+          label: 'High risk lock',
           color: '#ef4444',
           glowClass: 'shadow-[0_0_25px_rgba(239,68,68,0.25)] border-[#ef4444]/30 bg-[#ef4444]/10',
           icon: <AlertTriangle className="h-10 w-10 text-[#ef4444]" />
@@ -351,7 +351,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
       if (riskRating.overall_rating === 'amber') {
         return {
           state: 'orange',
-          label: 'ACTION REQUIRED',
+          label: 'Action required',
           color: '#f59e0b',
           glowClass: 'shadow-[0_0_25px_rgba(245,158,11,0.25)] border-[#f59e0b]/30 bg-[#f59e0b]/10',
           icon: <Clock className="h-10 w-10 text-[#f59e0b]" />
@@ -360,7 +360,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
       if (riskRating.overall_rating === 'green') {
         return {
           state: 'green',
-          label: 'FICA VERIFIED',
+          label: 'FICA verified',
           color: '#10b981',
           glowClass: 'shadow-[0_0_25px_rgba(16,185,129,0.25)] border-[#10b981]/30 bg-[#10b981]/10',
           icon: <CheckCircle className="h-10 w-10 text-[#10b981]" />
@@ -369,10 +369,10 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
       if (riskRating.overall_rating === 'grey') {
         return {
           state: 'grey',
-          label: 'UNVERIFIED',
+          label: 'Unverified',
           color: '#4a5a82',
-          glowClass: 'shadow-[0_0_15px_rgba(74,90,130,0.15)] border-white/5 bg-white/[0.02]',
-          icon: <Shield className="h-10 w-10 text-[#4a5a82]" />
+          glowClass: 'shadow-[0_0_15px_rgba(74,90,130,0.15)] border-dash-border bg-dash-surface',
+          icon: <Shield className="h-10 w-10 !text-dash-textMuted" />
         };
       }
     }
@@ -386,7 +386,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
     ) {
       return {
         state: 'red',
-        label: 'HIGH RISK LOCK',
+        label: 'High risk lock',
         color: '#ef4444',
         glowClass: 'shadow-[0_0_25px_rgba(239,68,68,0.25)] border-[#ef4444]/30 bg-[#ef4444]/10',
         icon: <AlertTriangle className="h-10 w-10 text-[#ef4444]" />
@@ -397,7 +397,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
     if (contact.kyc_id_verified && !isAddressExpired) {
       return {
         state: 'green',
-        label: 'FICA VERIFIED',
+        label: 'FICA verified',
         color: '#10b981',
         glowClass: 'shadow-[0_0_25px_rgba(16,185,129,0.25)] border-[#10b981]/30 bg-[#10b981]/10',
         icon: <CheckCircle className="h-10 w-10 text-[#10b981]" />
@@ -416,7 +416,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
     ) {
       return {
         state: 'orange',
-        label: 'ACTION REQUIRED',
+        label: 'Action required',
         color: '#f59e0b',
         glowClass: 'shadow-[0_0_25px_rgba(245,158,11,0.25)] border-[#f59e0b]/30 bg-[#f59e0b]/10',
         icon: <Clock className="h-10 w-10 text-[#f59e0b]" />
@@ -426,29 +426,29 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
     // 4. Grey (Unverified / No checks run)
     return {
       state: 'grey',
-      label: 'UNVERIFIED',
+      label: 'Unverified',
       color: '#4a5a82',
-      glowClass: 'shadow-[0_0_15px_rgba(74,90,130,0.15)] border-white/5 bg-white/[0.02]',
-      icon: <Shield className="h-10 w-10 text-[#4a5a82]" />
+      glowClass: 'shadow-[0_0_15px_rgba(74,90,130,0.15)] border-dash-border bg-dash-surface',
+      icon: <Shield className="h-10 w-10 !text-dash-textMuted" />
     };
   }, [contact, latestIdCheck, latestAmlCheck, isAmlExpired, isAddressExpired, consentRecord, riskRating]);
 
   return (
     <div className="w-full lg:w-[320px] shrink-0 space-y-6">
       {/* Unified Status Header Panel */}
-      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl relative overflow-hidden flex flex-col items-center text-center">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-[#2563eb]/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm relative overflow-hidden flex flex-col items-center text-center">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-dash-accent/5 rounded-full blur-3xl pointer-events-none" />
         
         {/* Panel Header */}
-        <div className="w-full flex items-center justify-between border-b border-white/5 pb-4 mb-5">
+        <div className="w-full flex items-center justify-between border-b border-dash-border pb-4 mb-5">
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-[#3b82f6]" />
-            <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans">KYC Status Board</span>
+            <Shield className="h-4 w-4 text-dash-accent" />
+            <span className="text-[10px] font-bold !text-dash-textMuted tracking-[1.5px]">KYC Status Board</span>
           </div>
           <div className="flex items-center gap-1.5">
             <a
               href={`/api/kyc/reports/download/${contact.id}`}
-              className="text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 p-1.5 rounded-lg transition-all"
+              className="!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface p-1.5 rounded-lg transition-all"
               title="Export FICA Audit PDF"
               target="_blank"
               rel="noopener noreferrer"
@@ -458,7 +458,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
             <button 
               onClick={handleRefresh}
               disabled={loading || refreshing}
-              className="text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/5 p-1.5 rounded-lg transition-all"
+              className="!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface p-1.5 rounded-lg transition-all"
               title="Refresh Status"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -471,12 +471,12 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
           {panelStatus.icon}
         </div>
 
-        <h3 className="text-[16px] font-bold uppercase tracking-widest text-[#eef2ff] font-space-grotesk">
+        <h3 className="text-[16px] font-bold tracking-widest !text-dash-text">
           {panelStatus.label}
         </h3>
         
         {/* Explanatory subtitle */}
-        <p className="text-[11px] text-[#4a5a82] font-dm-sans mt-2 max-w-[200px] leading-relaxed">
+        <p className="text-[11px] !text-dash-textMuted  mt-2 max-w-[200px] leading-relaxed">
           {panelStatus.state === 'green' && `FICA checks completed successfully on ${contact.kyc_id_verified_at ? new Date(contact.kyc_id_verified_at).toLocaleDateString() : 'N/A'}.`}
           {panelStatus.state === 'red' && 'Account compliance lockout triggered. Deal progress suspended.'}
           {panelStatus.state === 'orange' && (
@@ -494,8 +494,8 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
           <div className="w-full mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-2 items-start text-left shadow-lg">
             <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">EDD REQUIRED</span>
-              <p className="text-[9.5px] text-[#94a3c8] leading-tight font-dm-sans">
+              <span className="text-[10px] font-bold text-amber-600 tracking-wider block">EDD required</span>
+              <p className="text-[9.5px] !text-dash-textMuted leading-tight ">
                 Corporate Beneficial Ownership validation pending.
               </p>
             </div>
@@ -503,10 +503,10 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
         )}
  
         {/* Mini Checkpoints Checklist */}
-        <div className="w-full mt-6 space-y-3 text-left border-t border-white/5 pt-5 relative z-10">
+        <div className="w-full mt-6 space-y-3 text-left border-t border-dash-border pt-5 relative z-10">
           {/* 1. Consent Checkpoint */}
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-[#94a3c8] font-dm-sans">POPIA Consent</span>
+            <span className="!text-dash-textMuted ">POPIA Consent</span>
             {consentRecord?.status === 'obtained' ? (
               <span className="text-[#10b981] font-bold flex items-center gap-1">
                 <Check className="h-3 w-3" /> Obtained
@@ -516,13 +516,13 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                 <Clock className="h-3 w-3" /> Pending
               </span>
             ) : (
-              <span className="text-[#4a5a82] font-bold">None</span>
+              <span className="!text-dash-textMuted font-bold">None</span>
             )}
           </div>
 
           {/* 2. ID Checkpoint */}
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-[#94a3c8] font-dm-sans">Identity (HANIS)</span>
+            <span className="!text-dash-textMuted ">Identity (HANIS)</span>
             {latestIdCheck?.status === 'passed' ? (
               <span className="text-[#10b981] font-bold flex items-center gap-1">
                 <Check className="h-3 w-3" /> Validated
@@ -536,13 +536,13 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                 Running...
               </span>
             ) : (
-              <span className="text-[#4a5a82] font-bold">Unrun</span>
+              <span className="!text-dash-textMuted font-bold">Unrun</span>
             )}
           </div>
 
           {/* 3. Sanctions / AML Checkpoint */}
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-[#94a3c8] font-dm-sans">AML screening</span>
+            <span className="!text-dash-textMuted ">AML screening</span>
             {latestAmlCheck?.status === 'passed' ? (
               <span className="text-[#10b981] font-bold flex items-center gap-1">
                 <Check className="h-3 w-3" /> Passed
@@ -556,24 +556,24 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                 Review Required
               </span>
             ) : (
-              <span className="text-[#4a5a82] font-bold">Unrun</span>
+              <span className="!text-dash-textMuted font-bold">Unrun</span>
             )}
           </div>
         </div>
       </div>
 
       {/* Actionable Triggers Panel */}
-      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl space-y-4">
-        <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans">KYC Control Deck</h4>
+      <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm space-y-4">
+        <h4 className="text-[10px] font-bold !text-dash-textMuted tracking-[1.5px]">KYC Control Deck</h4>
 
         {/* ID Number Section */}
-        <div className="border border-white/5 rounded-xl p-3 bg-white/[0.01]">
+        <div className="border border-dash-border rounded-xl p-3 bg-dash-surface">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] text-[#4a5a82] font-dm-sans uppercase">Identity Proof</span>
+            <span className="text-[10px] !text-dash-textMuted">Identity Proof</span>
             {!isEditingId && (
               <button 
                 onClick={() => setIsEditingId(true)}
-                className="text-[9px] text-[#3b82f6] font-bold hover:underline"
+                className="text-[9px] text-dash-accent font-bold hover:underline"
               >
                 {contact.id_number ? 'Edit ID' : 'Add ID'}
               </button>
@@ -587,28 +587,28 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                 value={idInput}
                 onChange={e => setIdInput(e.target.value)}
                 placeholder="South African ID Number"
-                className="w-full h-8 bg-white/[0.03] border border-white/5 text-[11px] px-2.5 rounded-lg outline-none focus:border-[#3b82f6]/40 transition-all font-mono"
+                className="w-full h-8 bg-dash-surface border border-dash-border text-[11px] px-2.5 rounded-lg outline-none focus:border-dash-accent/40 transition-all font-mono"
               />
               <div className="flex gap-2">
                 <button
                   onClick={() => setIsEditingId(false)}
-                  className="flex-1 h-7 border border-white/5 rounded-lg text-[10px] text-[#4a5a82] hover:text-[#eef2ff] transition-all"
+                  className="flex-1 h-7 border border-dash-border rounded-lg text-[10px] !text-dash-textMuted hover:!text-dash-text transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveId}
                   disabled={runningAction === 'save_id'}
-                  className="flex-1 h-7 bg-[#2563eb] hover:bg-[#2563eb]/90 text-white rounded-lg text-[10px] font-bold transition-all flex items-center justify-center"
+                  className="flex-1 h-7 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg text-[10px] font-bold transition-all flex items-center justify-center"
                 >
                   {runningAction === 'save_id' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
                 </button>
               </div>
             </div>
           ) : (
-            <div className="text-[12px] font-bold font-mono text-[#eef2ff]">
+            <div className="text-[12px] font-bold font-mono !text-dash-text">
               {contact.id_number ? contact.id_number : (
-                <span className="text-[#ef4444] text-[10px] font-normal italic uppercase">ID Missing! Add first</span>
+                <span className="text-[#ef4444] text-[10px] font-normal italic">ID Missing! Add first</span>
               )}
             </div>
           )}
@@ -617,26 +617,26 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
         {/* Verification Trigger Actions */}
         <div className="space-y-2.5">
           {/* Action 1: Dispatch POPIA Consent */}
-          <div className="border border-white/5 rounded-xl overflow-hidden transition-all bg-white/[0.01]">
+          <div className="border border-dash-border rounded-xl overflow-hidden transition-all bg-dash-surface">
             <button
               onClick={() => setShowConsentQuickDispatch(!showConsentQuickDispatch)}
-              className="w-full flex items-center justify-between p-3.5 hover:bg-white/[0.03] transition-colors"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-dash-surface transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <Signature className="h-4 w-4 text-purple-400" />
                 <div className="text-left">
-                  <span className="block text-[11.5px] font-bold text-[#eef2ff] font-dm-sans">POPIA Consent</span>
-                  <span className="block text-[9px] text-[#4a5a82] font-dm-sans mt-0.5">Send validation request to client</span>
+                  <span className="block text-[11.5px] font-bold !text-dash-text ">POPIA Consent</span>
+                  <span className="block text-[9px] !text-dash-textMuted  mt-0.5">Send validation request to client</span>
                 </div>
               </div>
-              <Plus className={`h-4 w-4 text-[#4a5a82] transition-transform ${showConsentQuickDispatch ? 'rotate-45 text-purple-400' : ''}`} />
+              <Plus className={`h-4 w-4 !text-dash-textMuted transition-transform ${showConsentQuickDispatch ? 'rotate-45 text-purple-400' : ''}`} />
             </button>
 
             {showConsentQuickDispatch && (
-              <div className="p-4 border-t border-white/5 space-y-4 bg-[#0a1230]">
+              <div className="p-4 border-t border-dash-border space-y-4 bg-dash-surface">
                 {/* Channels selection */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] text-[#4a5a82] uppercase font-bold tracking-wider">Channel</label>
+                  <label className="text-[9px] !text-dash-textMuted font-bold tracking-wider">Channel</label>
                   <div className="grid grid-cols-3 gap-1.5">
                     {[
                       { id: 'email', icon: <Mail className="h-3 w-3" />, label: 'Email' },
@@ -650,7 +650,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                         className={`h-8 rounded-lg border text-[10px] font-bold flex items-center justify-center gap-1 transition-all ${
                           dispatchChannel === ch.id
                             ? 'bg-purple-500/10 border-purple-500/30 text-purple-400'
-                            : 'bg-white/[0.01] border-white/5 text-[#4a5a82] hover:text-[#94a3c8]'
+                            : 'bg-dash-surface border-dash-border !text-dash-textMuted hover:!text-dash-textMuted'
                         }`}
                       >
                         {ch.icon}
@@ -662,7 +662,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
 
                 {/* Scopes checklist */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] text-[#4a5a82] uppercase font-bold tracking-wider">Scope</label>
+                  <label className="text-[9px] !text-dash-textMuted font-bold tracking-wider">Scope</label>
                   <div className="space-y-1">
                     {[
                       { id: 'hanis_identity', label: 'ID / HANIS Check' },
@@ -683,8 +683,8 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                           }}
                           className={`w-full h-7 px-2.5 rounded-lg border flex items-center justify-between text-[10.5px] transition-all ${
                             active
-                              ? 'bg-purple-500/5 border-purple-500/15 text-[#eef2ff]'
-                              : 'bg-white/[0.01] border-white/5 text-[#4a5a82]'
+                              ? 'bg-purple-500/5 border-purple-500/15 !text-dash-text'
+                              : 'bg-dash-surface border-dash-border !text-dash-textMuted'
                           }`}
                         >
                           <span>{chk.label}</span>
@@ -721,9 +721,9 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                 type="checkbox"
                 checked={consentTicked}
                 onChange={e => setConsentTicked(e.target.checked)}
-                className="mt-0.5 accent-[#2563eb] rounded h-3.5 w-3.5 border-white/10"
+                className="mt-0.5 accent-dash-accent rounded h-3.5 w-3.5 border-dash-border"
               />
-              <span className="text-[10px] text-[#94a3c8] leading-relaxed font-dm-sans">
+              <span className="text-[10px] !text-dash-textMuted leading-relaxed ">
                 I confirm client has explicitly consented to identity & sanctions verification under POPIA.
               </span>
             </label>
@@ -738,7 +738,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
               !consentTicked || 
               contact.first_name === 'ANONYMIZED'
             }
-            className="w-full h-10 bg-[#2563eb] hover:bg-[#2563eb]/95 disabled:bg-white/5 disabled:text-[#4a5a82] disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#2563eb]/10"
+            className="w-full h-10 bg-dash-accent hover:bg-dash-accent/95 disabled:bg-dash-surface disabled:!text-dash-textMuted disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-dash-accent/10"
           >
             {runningAction === 'hanis_identity' ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -758,7 +758,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
               !consentTicked || 
               contact.first_name === 'ANONYMIZED'
             }
-            className="w-full h-10 bg-red-600 hover:bg-red-500 disabled:bg-white/5 disabled:text-[#4a5a82] disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-red-500/10"
+            className="w-full h-10 bg-red-600 hover:bg-red-500 disabled:bg-dash-surface disabled:!text-dash-textMuted disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-red-500/10"
           >
             {runningAction === 'sanctions_screen' ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -773,12 +773,12 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
       </div>
 
       {/* Secure FICA Document Vault Drawer */}
-      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl space-y-4">
+      <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans">FICA Document Vault</h4>
+          <h4 className="text-[10px] font-bold !text-dash-textMuted tracking-[1.5px]">FICA Document Vault</h4>
           <button 
             onClick={() => setShowUploadDrawer(!showUploadDrawer)}
-            className="text-xs text-[#3b82f6] font-bold hover:underline flex items-center gap-0.5"
+            className="text-xs text-dash-accent font-bold hover:underline flex items-center gap-0.5"
           >
             {showUploadDrawer ? 'Cancel' : 'Upload'}
           </button>
@@ -786,13 +786,13 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
 
         {/* Upload Form inside Drawer */}
         {showUploadDrawer && (
-          <form onSubmit={handleUploadKycDoc} className="p-3 border border-white/5 rounded-xl bg-white/[0.01] space-y-3 animate-in fade-in slide-in-from-top-1.5">
+          <form onSubmit={handleUploadKycDoc} className="p-3 border border-dash-border rounded-xl bg-dash-surface space-y-3 animate-in fade-in slide-in-from-top-1.5">
             <div>
-              <label className="text-[9px] text-[#4a5a82] uppercase font-bold tracking-wider block mb-1">Doc Type</label>
+              <label className="text-[9px] !text-dash-textMuted font-bold tracking-wider block mb-1">Doc Type</label>
               <select
                 value={selectedUploadDocType}
                 onChange={e => setSelectedUploadDocType(e.target.value)}
-                className="w-full h-8 bg-[#04091a] border border-white/5 text-[11px] px-2.5 rounded-lg text-white font-dm-sans outline-none focus:border-[#3b82f6]/40"
+                className="w-full h-8 bg-white border border-dash-border text-[11px] px-2.5 rounded-lg !text-dash-text outline-none focus:border-dash-accent/40"
               >
                 <option value="green_id">Green Barcoded ID</option>
                 <option value="smart_id">Smart ID Card</option>
@@ -802,13 +802,13 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
             </div>
             
             <div>
-              <label className="text-[9px] text-[#4a5a82] uppercase font-bold tracking-wider block mb-1">File</label>
+              <label className="text-[9px] !text-dash-textMuted font-bold tracking-wider block mb-1">File</label>
               <input
                 id="kyc-file-input"
                 type="file"
                 onChange={e => setUploadFile(e.target.files?.[0] || null)}
                 accept=".pdf,.png,.jpg,.jpeg"
-                className="w-full text-xs text-[#4a5a82] file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-[#3b82f6]/10 file:text-[#3b82f6] file:cursor-pointer"
+                className="w-full text-xs !text-dash-textMuted file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-[#3b82f6]/10 file:text-dash-accent file:cursor-pointer"
               />
             </div>
 
@@ -839,7 +839,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
 
         {/* Document List */}
         {kycDocs.length === 0 ? (
-          <div className="py-4 text-center border border-dashed border-white/5 rounded-xl text-[10.5px] text-[#4a5a82]">
+          <div className="py-4 text-center border border-dashed border-dash-border rounded-xl text-[10.5px] !text-dash-textMuted">
             No encrypted files vaulted.
           </div>
         ) : (
@@ -854,12 +854,12 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
               const isDocExpired = docExpiry ? docExpiry.getTime() < Date.now() : false;
 
               return (
-                <div key={doc.id} className="flex items-center justify-between p-2.5 border border-white/5 rounded-xl bg-white/[0.01] hover:bg-white/[0.02] transition-colors">
+                <div key={doc.id} className="flex items-center justify-between p-2.5 border border-dash-border rounded-xl bg-dash-surface hover:bg-dash-surface transition-colors">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4.5 w-4.5 text-[#3b82f6] shrink-0" />
+                    <FileText className="h-4.5 w-4.5 text-dash-accent shrink-0" />
                     <div className="text-left leading-tight">
-                      <span className="block text-[11px] font-bold text-[#eef2ff] font-dm-sans truncate max-w-[140px]">{docTypeLabel}</span>
-                      <span className="text-[9px] text-[#4a5a82] font-mono block mt-0.5">
+                      <span className="block text-[11px] font-bold !text-dash-text  truncate max-w-[140px]">{docTypeLabel}</span>
+                      <span className="text-[9px] !text-dash-textMuted font-mono block mt-0.5">
                         Uploaded: {new Date(doc.created_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -867,7 +867,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
 
                   <div className="flex items-center gap-1.5">
                     {doc.document_type === 'utility_bill' && (
-                      <span className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${
+                      <span className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded border tracking-wider ${
                         isDocExpired ? 'bg-red-500/15 text-red-400 border-red-500/20' : 'bg-green-500/15 text-[#10b981] border-green-500/20'
                       }`}>
                         {isDocExpired ? 'Expired' : 'Active'}
@@ -876,7 +876,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                     
                     <a
                       href={`/api/kyc/documents/download?id=${doc.id}`}
-                      className="text-[#4a5a82] hover:text-[#eef2ff] p-1 rounded transition-colors"
+                      className="!text-dash-textMuted hover:!text-dash-text p-1 rounded transition-colors"
                       title="Decrypt & Download"
                     >
                       <Download className="h-3.5 w-3.5" />
@@ -890,13 +890,13 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
       </div>
 
       {/* Chronological Expandable Audit History Timeline */}
-      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl flex flex-col">
-        <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans mb-5">Compliance Audit History</h4>
+      <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm flex flex-col">
+        <h4 className="text-[10px] font-bold !text-dash-textMuted tracking-[1.5px]  mb-5">Compliance Audit History</h4>
         
         {checks.length === 0 ? (
-          <div className="py-6 text-center border border-dashed border-white/5 rounded-xl">
-            <Shield className="h-6 w-6 text-[#4a5a82] mx-auto mb-2 opacity-30" />
-            <span className="text-[11px] text-[#4a5a82] uppercase tracking-wider block">No runs recorded</span>
+          <div className="py-6 text-center border border-dashed border-dash-border rounded-xl">
+            <Shield className="h-6 w-6 !text-dash-textMuted mx-auto mb-2 opacity-30" />
+            <span className="text-[11px] !text-dash-textMuted tracking-wider block">No runs recorded</span>
           </div>
         ) : (
           <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1 common-scrollbar">
@@ -908,14 +908,14 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
               let typeColor = 'text-purple-400 border-purple-500/20 bg-purple-500/5';
               if (check.check_type === 'hanis_identity') {
                 typeLabel = 'ID Check';
-                typeColor = 'text-[#3b82f6] border-[#3b82f6]/20 bg-[#3b82f6]/5';
+                typeColor = 'text-dash-accent border-dash-accent/20 bg-[#3b82f6]/5';
               } else if (check.check_type === 'sanctions_screen') {
                 typeLabel = 'AML Scan';
                 typeColor = 'text-red-400 border-red-500/20 bg-red-500/5';
               }
 
               return (
-                <div key={check.id} className="relative pl-5 border-l border-white/5">
+                <div key={check.id} className="relative pl-5 border-l border-dash-border">
                   {/* Timeline bullet dot */}
                   <div className={`absolute -left-[4.5px] top-1.5 h-2 w-2 rounded-full border ${
                     check.status === 'passed' ? 'bg-[#10b981] border-[#10b981]' : 
@@ -928,27 +928,27 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                     className="flex flex-col cursor-pointer group"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border tracking-wide font-dm-sans ${typeColor}`}>
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded border tracking-wide  ${typeColor}`}>
                         {typeLabel}
                       </span>
                       
                       <div className="flex items-center gap-1">
-                        <span className={`text-[9.5px] font-black uppercase tracking-tighter ${
+                        <span className={`text-[9.5px] font-black tracking-tighter ${
                           check.status === 'passed' ? 'text-[#10b981]' :
                           check.status === 'failed' ? 'text-[#ef4444]' : 'text-[#f59e0b]'
                         }`}>
                           {check.status === 'passed' ? 'Passed' : 
                            check.status === 'failed' ? 'Failed' : check.status}
                         </span>
-                        {isExpanded ? <ChevronUp className="h-3 w-3 text-[#4a5a82]" /> : <ChevronDown className="h-3 w-3 text-[#4a5a82]" />}
+                        {isExpanded ? <ChevronUp className="h-3 w-3 !text-dash-textMuted" /> : <ChevronDown className="h-3 w-3 !text-dash-textMuted" />}
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between mt-1.5">
-                      <span className="text-[10px] text-[#4a5a82] font-dm-sans">
+                      <span className="text-[10px] !text-dash-textMuted ">
                         by {check.checked_by ? check.checked_by.split('@')[0] : 'System'}
                       </span>
-                      <span className="text-[10px] text-[#4a5a82] font-mono">
+                      <span className="text-[10px] !text-dash-textMuted font-mono">
                         {new Date(check.created_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -956,35 +956,35 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
 
                   {/* Expanded Detail Box */}
                   {isExpanded && (
-                    <div className="mt-2.5 p-3 rounded-lg border border-white/5 bg-[#0a1230] text-[11px] text-[#94a3c8] space-y-2 animate-in fade-in slide-in-from-top-1">
-                      {check.notes && <p className="font-dm-sans leading-relaxed text-white/70 italic">"{check.notes}"</p>}
+                    <div className="mt-2.5 p-3 rounded-lg border border-dash-border bg-dash-surface text-[11px] !text-dash-textMuted space-y-2 animate-in fade-in slide-in-from-top-1">
+                      {check.notes && <p className="leading-relaxed !text-dash-textMuted italic">"{check.notes}"</p>}
                       
-                      <div className="space-y-1.5 font-mono text-[10px] border-t border-white/5 pt-2">
-                        <div><span className="text-[#4a5a82]">Provider:</span> <span className="text-[#eef2ff]">{check.provider}</span></div>
+                      <div className="space-y-1.5 font-mono text-[10px] border-t border-dash-border pt-2">
+                        <div><span className="!text-dash-textMuted">Provider:</span> <span className="!text-dash-text">{check.provider}</span></div>
                         
                         {/* ID Verification specific fields */}
                         {check.check_type === 'hanis_identity' && (
                           <>
                             <div>
-                              <span className="text-[#4a5a82]">ID Valid:</span>{' '}
+                              <span className="!text-dash-textMuted">ID Valid:</span>{' '}
                               <span className={check.id_valid ? 'text-[#10b981]' : 'text-[#ef4444]'}>
                                 {check.id_valid ? 'Yes' : 'No'}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[#4a5a82]">Name Match:</span>{' '}
+                              <span className="!text-dash-textMuted">Name Match:</span>{' '}
                               <span className={check.name_match ? 'text-[#10b981]' : 'text-[#ef4444]'}>
                                 {check.name_match ? 'Yes' : 'No'}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[#4a5a82]">Alive Status:</span>{' '}
+                              <span className="!text-dash-textMuted">Alive Status:</span>{' '}
                               <span className={check.alive_status === 'ALIVE' ? 'text-[#10b981]' : 'text-[#ef4444] font-bold'}>
                                 {check.alive_status || 'Unknown'}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[#4a5a82]">Fraud Flag:</span>{' '}
+                              <span className="!text-dash-textMuted">Fraud Flag:</span>{' '}
                               <span className={check.fraud_indicator ? 'text-[#ef4444] font-bold animate-pulse' : 'text-[#10b981]'}>
                                 {check.fraud_indicator ? 'YES' : 'No'}
                               </span>
@@ -996,7 +996,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                         {check.check_type === 'sanctions_screen' && (
                           <>
                             <div>
-                              <span className="text-[#4a5a82]">Match Level:</span>{' '}
+                              <span className="!text-dash-textMuted">Match Level:</span>{' '}
                               <span className={
                                 check.aml_match_level === 'STRONG_MATCH' ? 'text-[#ef4444] font-bold' : 
                                 check.aml_match_level === 'MEDIUM_MATCH' ? 'text-[#f59e0b]' : 'text-[#10b981]'
@@ -1005,12 +1005,12 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                               </span>
                             </div>
                             {check.aml_match_details && check.aml_match_details.matchedProfiles && check.aml_match_details.matchedProfiles.length > 0 && (
-                              <div className="border-t border-white/5 mt-1 pt-1.5 space-y-1">
-                                <span className="text-[#4a5a82] block text-[9.5px]">Matches:</span>
+                              <div className="border-t border-dash-border mt-1 pt-1.5 space-y-1">
+                                <span className="!text-dash-textMuted block text-[9.5px]">Matches:</span>
                                 {check.aml_match_details.matchedProfiles.slice(0, 2).map((prof: any, i: number) => (
-                                  <div key={i} className="bg-black/20 p-1.5 rounded text-[9.5px] border border-white/[0.02] text-white/50">
-                                    <span className="font-bold text-[#eef2ff] block truncate">{prof.name || 'Sanction Name'}</span>
-                                    <span className="text-red-400/80 block text-[8px] uppercase tracking-wide mt-0.5">{prof.category || 'List Match'} (Conf: {prof.confidence}%)</span>
+                                  <div key={i} className="bg-white p-1.5 rounded text-[9.5px] border border-dash-border !text-dash-textMuted">
+                                    <span className="font-bold !text-dash-text block truncate">{prof.name || 'Sanction Name'}</span>
+                                    <span className="text-red-400/80 block text-[8px] tracking-wide mt-0.5">{prof.category ||'List Match'} (Conf: {prof.confidence}%)</span>
                                   </div>
                                 ))}
                               </div>
@@ -1018,7 +1018,7 @@ export function KycStatusPanel({ contact: initialContact }: KycStatusPanelProps)
                           </>
                         )}
                         
-                        <div className="text-[9px] text-[#4a5a82] pt-1.5 border-t border-white/5">
+                        <div className="text-[9px] !text-dash-textMuted pt-1.5 border-t border-dash-border">
                           ID: {check.id.slice(0, 8)}...
                         </div>
                       </div>

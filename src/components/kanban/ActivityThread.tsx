@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageSquare, Send, Clock, UserPlus, ArrowRight } from 'lucide-react';
+import { MessageSquare, Send, Clock, UserPlus, ArrowRight, Mic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceNoteCard } from '@/components/common/VoiceNoteCard';
 
@@ -95,7 +95,7 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
       if (i % 2 !== 0) {
         const member = members.find(m => m.user_id === part);
         return (
-          <span key={i} className="text-primary font-bold">
+          <span key={i} className="text-dash-accent font-bold">
             @{member?.user?.first_name || 'unknown'}
           </span>
         );
@@ -112,28 +112,28 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
           placeholder="Add a comment... (use @ to mention)"
           value={newComment}
           onChange={handleTextChange}
-          className="min-h-[100px] bg-white/[0.03] border-white/5 rounded-xl pr-12 focus:border-primary/50 transition-all resize-none text-[13px] placeholder:text-white/20 font-dm"
+          className="min-h-[100px] bg-dash-surface border-dash-border rounded-xl pr-12 focus:border-dash-accent/50 transition-all resize-none text-[13px] placeholder:!text-dash-textMuted "
         />
 
         {showMentionPicker && filteredMembers.length > 0 && (
-          <div className="absolute bottom-full left-0 mb-2 w-56 bg-[#0c1433] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
-            <div className="p-2 border-b border-white/5 bg-white/[0.02]">
-              <span className="text-[9px] font-black uppercase tracking-widest text-white/20 px-2">Tag Teammate</span>
+          <div className="absolute bottom-full left-0 mb-2 w-56 bg-white border border-dash-border rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
+            <div className="p-2 border-b border-dash-border bg-dash-surface">
+              <span className="text-[9px] font-black tracking-widest !text-dash-textMuted px-2">Tag Teammate</span>
             </div>
             <div className="max-h-48 overflow-y-auto py-1 custom-scrollbar">
               {filteredMembers.map((m) => (
                 <button
                   key={m.user_id}
                   onClick={() => insertMention(m)}
-                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 text-left transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-dash-surface text-left transition-colors"
                 >
-                  <Avatar className="w-6 h-6 border border-white/10">
+                  <Avatar className="w-6 h-6 border border-dash-border">
                     <AvatarImage src={m.user?.avatar_url} />
-                    <AvatarFallback className="text-[8px] bg-white/10">{m.user?.first_name?.[0]}</AvatarFallback>
+                    <AvatarFallback className="text-[8px] bg-dash-border/60">{m.user?.first_name?.[0]}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="text-[11px] font-bold text-white/90">{m.user?.first_name} {m.user?.last_name}</span>
-                    <span className="text-[9px] text-white/20">@{m.user?.first_name?.toLowerCase()}</span>
+                    <span className="text-[11px] font-bold !text-dash-text">{m.user?.first_name} {m.user?.last_name}</span>
+                    <span className="text-[9px] !text-dash-textMuted">@{m.user?.first_name?.toLowerCase()}</span>
                   </div>
                 </button>
               ))}
@@ -145,7 +145,7 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
           size="icon"
           onClick={handleSubmit}
           disabled={!newComment.trim() || submitting}
-          className="absolute right-3 bottom-3 w-8 h-8 bg-primary hover:bg-primary/90 text-white rounded-lg shadow-lg"
+          className="absolute right-3 bottom-3 w-8 h-8 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg shadow-lg"
         >
           {submitting ? <Clock className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
         </Button>
@@ -157,29 +157,29 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
           <div key={item.id} className="relative pl-8 group">
             {/* Timeline Line */}
             {idx !== timeline.length - 1 && (
-              <div className="absolute left-[15px] top-8 bottom-[-24px] w-[1px] bg-white/5" />
+              <div className="absolute left-[15px] top-8 bottom-[-24px] w-[1px] bg-dash-surface" />
             )}
             
             {/* Timeline Icon/Avatar */}
             <div className="absolute left-0 top-0">
               {item.itemType === 'comment' ? (
                 item.audio_url ? (
-                  <div className="w-8 h-8 rounded-full bg-[#0F6E56]/20 flex items-center justify-center border-2 border-[#080f28] z-10">
-                    <i className="fa-solid fa-microphone text-[12px] text-[#0f6e56]"></i>
+                  <div className="w-8 h-8 rounded-full bg-[#0F6E56]/20 flex items-center justify-center border-2 border-white z-10">
+                    <Mic size={12} className="text-[#0f6e56]" />
                   </div>
                 ) : (
-                  <Avatar className="w-8 h-8 border-2 border-[#080f28] z-10 shadow-lg">
+                  <Avatar className="w-8 h-8 border-2 border-white z-10 shadow-lg">
                     <AvatarImage src={item.user?.avatar_url} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
+                    <AvatarFallback className="bg-dash-accent/20 text-dash-accent text-[10px] font-bold">
                       {item.user?.first_name?.[0]}{item.user?.last_name?.[0]}
                     </AvatarFallback>
                   </Avatar>
                 )
               ) : (
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border-2 border-[#080f28] z-10">
+                <div className="w-8 h-8 rounded-full bg-dash-surface flex items-center justify-center border-2 border-white z-10">
                   {item.type === 'status_change' ? <ArrowRight className="w-3.5 h-3.5 text-amber" /> : 
-                   item.type === 'assignment' ? <UserPlus className="w-3.5 h-3.5 text-primary" /> :
-                   <Clock className="w-3.5 h-3.5 text-white/20" />}
+                   item.type === 'assignment' ? <UserPlus className="w-3.5 h-3.5 text-dash-accent" /> :
+                   <Clock className="w-3.5 h-3.5 !text-dash-textMuted" />}
                 </div>
               )}
             </div>
@@ -208,22 +208,22 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
             ) : (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-[12px] font-bold text-white/90">
+                  <span className="text-[12px] font-bold !text-dash-text">
                     {item.user?.first_name} {item.user?.last_name}
                   </span>
-                  <span className="text-[10px] text-white/20 font-medium">
+                  <span className="text-[10px] !text-dash-textMuted font-medium">
                     {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
                   </span>
                 </div>
 
                 {item.itemType === 'comment' ? (
-                  <div className="bg-white/[0.03] border border-white/5 p-3 rounded-xl rounded-tl-none shadow-sm group-hover:bg-white/[0.05] transition-all">
-                    <p className="text-[12.5px] text-white/60 leading-relaxed whitespace-pre-wrap font-dm">
+                  <div className="bg-dash-surface border border-dash-border p-3 rounded-xl rounded-tl-none shadow-sm group-hover:bg-dash-surface transition-all">
+                    <p className="text-[12.5px] !text-dash-textMuted leading-relaxed whitespace-pre-wrap ">
                       {renderContent(item.content)}
                     </p>
                   </div>
                 ) : (
-                  <p className="text-[11px] text-white/30 italic font-dm">
+                  <p className="text-[11px] !text-dash-textMuted italic ">
                     {item.description}
                   </p>
                 )}
@@ -235,7 +235,7 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
         {timeline.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 opacity-20">
             <MessageSquare className="w-12 h-12 mb-2" />
-            <p className="text-xs font-bold uppercase tracking-widest">No activity yet</p>
+            <p className="text-xs font-bold tracking-widest">No activity yet</p>
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Phone, Mail, Tag, Send, Loader2, EyeOff, Ban, PenLine, UserX, MessageCircle, MessageSquare, CheckCircle2, Circle } from 'lucide-react';
 import { Contact } from '@/types/crm';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -9,6 +10,8 @@ import { inviteContactToPortal, revokeContactPortalAccess, impersonateContact } 
 import { ErasureReceiptModal } from '@/components/crm/ErasureReceiptModal';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
 
 interface ProfileSidebarProps {
   contact: Contact;
@@ -169,219 +172,200 @@ export function ProfileSidebar({ contact }: ProfileSidebarProps) {
   };
 
   return (
-    <div className="w-[280px] shrink-0 space-y-6">
+    <div className="w-full lg:w-[280px] shrink-0 space-y-6">
       {/* Identity Card */}
-      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-[#2563eb]/5 rounded-full blur-3xl pointer-events-none" />
-        
+      <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-dash-accent/5 rounded-full blur-3xl pointer-events-none" />
+
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[#eef2ff] font-bold text-2xl mb-4 font-space-grotesk overflow-hidden shadow-2xl relative z-10">
+          <div className="w-20 h-20 rounded-2xl bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-text font-bold text-2xl mb-4 overflow-hidden relative z-10">
             {contact.first_name[0] || '?'}{contact.last_name ? contact.last_name[0] : ''}
           </div>
-          <h2 className="text-[18px] font-bold text-[#eef2ff] font-space-grotesk tracking-tight relative z-10">
+          <h2 className="text-[18px] font-bold !text-dash-text tracking-tight relative z-10">
             {contact.first_name} {contact.last_name || ''}
           </h2>
-          <p className="text-[12px] text-[#4a5a82] font-dm-sans relative z-10">{contact.email || 'No email provided'}</p>
+          <p className="text-[12px] !text-dash-textMuted relative z-10">{contact.email || 'No email provided'}</p>
         </div>
 
         <div className="space-y-4 relative z-10">
-          <div className="flex items-center justify-between py-2 border-b border-white/5">
-            <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest font-dm-sans">Status</span>
-            <span className={cn(
-              "text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border",
-              contact.first_name === 'ANONYMIZED'
-                ? "bg-red-500/15 text-red-400 border-red-500/20"
-                : "bg-[#10b981]/15 text-[#10b981] border-[#10b981]/20"
-            )}>
+          <div className="flex items-center justify-between py-2 border-b border-dash-border">
+            <span className="text-[11px] font-semibold !text-dash-textMuted">Status</span>
+            <DashStatusPill variant={contact.first_name === 'ANONYMIZED' ? 'danger' : 'success'}>
               {contact.first_name === 'ANONYMIZED' ? 'Erased (POPIA)' : 'Active'}
-            </span>
+            </DashStatusPill>
           </div>
-          <div className="flex items-center justify-between py-2 border-b border-white/5">
-            <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest font-dm-sans">Source</span>
-            <span className="text-[12px] font-semibold text-[#eef2ff] font-dm-sans">{contact.source || 'Direct'}</span>
+          <div className="flex items-center justify-between py-2 border-b border-dash-border">
+            <span className="text-[11px] font-semibold !text-dash-textMuted">Source</span>
+            <span className="text-[12px] font-semibold !text-dash-text">{contact.source || 'Direct'}</span>
           </div>
           <div className="flex items-center justify-between py-2">
-            <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest font-dm-sans">Created</span>
-            <span className="text-[11px] font-medium text-[#4a5a82] font-dm-sans">{format(new Date(contact.created_at), 'MMM dd, yyyy')}</span>
+            <span className="text-[11px] font-semibold !text-dash-textMuted">Created</span>
+            <span className="text-[11px] font-medium !text-dash-textMuted">{format(new Date(contact.created_at), 'MMM dd, yyyy')}</span>
           </div>
         </div>
       </div>
 
       {/* Tactical Info */}
-      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl">
-        <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] mb-5 font-dm-sans">Tactical Channels</h4>
+      <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm">
+        <h4 className="text-[12px] font-bold !text-dash-text mb-5">Tactical channels</h4>
         <div className="space-y-4">
           <div className="flex items-center gap-3 group cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-[#4a5a82] group-hover:text-[#3b82f6] group-hover:border-[#3b82f6]/40 transition-all">
-              <i className="fa-solid fa-phone text-[12px]"></i>
+            <div className="w-8 h-8 rounded-lg bg-dash-surface border border-dash-border flex items-center justify-center text-dash-textMuted group-hover:text-dash-accent group-hover:border-dash-accent/40 transition-colors motion-reduce:transition-none">
+              <Phone size={13} />
             </div>
-            <span className="text-[13px] text-[#94a3c8] font-dm-sans group-hover:text-[#eef2ff] transition-colors">{contact.phone || 'Not available'}</span>
+            <span className="text-[13px] !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none">{contact.phone || 'Not available'}</span>
           </div>
           <div className="flex items-center gap-3 group cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-[#4a5a82] group-hover:text-[#3b82f6] group-hover:border-[#3b82f6]/40 transition-all">
-              <i className="fa-solid fa-envelope text-[12px]"></i>
+            <div className="w-8 h-8 rounded-lg bg-dash-surface border border-dash-border flex items-center justify-center text-dash-textMuted group-hover:text-dash-accent group-hover:border-dash-accent/40 transition-colors motion-reduce:transition-none">
+              <Mail size={13} />
             </div>
-            <span className="text-[13px] text-[#94a3c8] font-dm-sans group-hover:text-[#eef2ff] transition-colors truncate">{contact.email || 'Not available'}</span>
+            <span className="text-[13px] !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none truncate">{contact.email || 'Not available'}</span>
           </div>
         </div>
       </div>
 
       {/* Strategic Tags */}
-      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl">
+      <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans">Strategic Tags</h4>
-          <i className="fa-solid fa-tag text-[10px] text-[#2563eb]"></i>
+          <h4 className="text-[12px] font-bold !text-dash-text">Strategic tags</h4>
+          <Tag size={12} className="text-dash-accent" />
         </div>
         <div className="flex flex-wrap gap-1.5">
           {contact.tags && contact.tags.length > 0 ? contact.tags.map(tag => (
-            <span key={tag} className="px-2 py-0.5 rounded bg-[#2563eb]/10 text-[#3b82f6] text-[9px] font-bold uppercase tracking-tight border border-[#2563eb]/10">
+            <span key={tag} className="px-2 py-0.5 rounded bg-dash-accent/10 text-dash-accent text-[11px] font-semibold border border-dash-accent/10">
               {tag}
             </span>
           )) : (
-            <span className="text-[11px] text-[#4a5a82] italic font-dm-sans">No tags assigned</span>
+            <span className="text-[11px] !text-dash-textMuted italic">No tags assigned</span>
           )}
         </div>
       </div>
 
       {/* Portal Access Management */}
-      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl space-y-4">
+      <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans">Portal Access</h4>
-          <span className={cn(
-            "text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border",
-            (contact as any).portal_access_revoked
-              ? "bg-red-500/15 text-red-400 border-red-500/20"
-              : (contact as any).portal_access_enabled
-              ? "bg-emerald-500/15 text-emerald-400 border-[#10b981]/20"
-              : "bg-amber-500/15 text-amber-400 border-amber-500/20"
-          )}>
-            {(contact as any).portal_access_revoked ? 'Revoked' : (contact as any).portal_access_enabled ? 'Active' : 'No Access'}
-          </span>
+          <h4 className="text-[12px] font-bold !text-dash-text">Portal access</h4>
+          <DashStatusPill
+            variant={
+              (contact as any).portal_access_revoked
+                ? 'danger'
+                : (contact as any).portal_access_enabled
+                ? 'success'
+                : 'warning'
+            }
+          >
+            {(contact as any).portal_access_revoked ? 'Revoked' : (contact as any).portal_access_enabled ? 'Active' : 'No access'}
+          </DashStatusPill>
         </div>
 
         <div className="space-y-2">
           {!(contact as any).portal_access_enabled || (contact as any).portal_access_revoked ? (
-            <button
-              type="button"
+            <DashButton
+              variant="primary"
+              size="sm"
+              className="w-full"
               onClick={handlePortalInvite}
               disabled={portalLoading || contact.first_name === 'ANONYMIZED'}
-              className="w-full h-9 rounded-[8px] bg-[#2563eb] text-white hover:bg-[#2563eb]/95 disabled:opacity-50 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#2563eb]/10"
             >
               {portalLoading ? (
-                <i className="fa-solid fa-spinner animate-spin text-[10px]"></i>
+                <Loader2 size={12} className="animate-spin motion-reduce:animate-none" />
               ) : (
                 <>
-                  <i className="fa-solid fa-paper-plane text-[10px]"></i>
-                  {(contact as any).portal_access_revoked ? 'Re-Invite to Portal' : 'Invite to Portal'}
+                  <Send size={12} />
+                  {(contact as any).portal_access_revoked ? 'Re-invite to portal' : 'Invite to portal'}
                 </>
               )}
-            </button>
+            </DashButton>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={handlePortalImpersonate}
-                disabled={portalLoading}
-                className="w-full h-9 rounded-[8px] bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all"
-              >
+              <DashButton variant="secondary" size="sm" className="w-full" onClick={handlePortalImpersonate} disabled={portalLoading}>
                 {portalLoading ? (
-                  <i className="fa-solid fa-spinner animate-spin text-[10px]"></i>
+                  <Loader2 size={12} className="animate-spin motion-reduce:animate-none" />
                 ) : (
                   <>
-                    <i className="fa-solid fa-user-secret text-[10px]"></i>
-                    Impersonate View
+                    <EyeOff size={12} />
+                    Impersonate view
                   </>
                 )}
-              </button>
-              <button
-                type="button"
-                onClick={handlePortalRevoke}
-                disabled={portalLoading}
-                className="w-full h-9 rounded-[8px] bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all"
-              >
+              </DashButton>
+              <DashButton variant="destructive" size="sm" className="w-full" onClick={handlePortalRevoke} disabled={portalLoading}>
                 {portalLoading ? (
-                  <i className="fa-solid fa-spinner animate-spin text-[10px]"></i>
+                  <Loader2 size={12} className="animate-spin motion-reduce:animate-none" />
                 ) : (
                   <>
-                    <i className="fa-solid fa-ban text-[10px]"></i>
-                    Revoke Access
+                    <Ban size={12} />
+                    Revoke access
                   </>
                 )}
-              </button>
+              </DashButton>
             </>
           )}
         </div>
       </div>
 
       {/* Compliance & Consent Gate */}
-      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl space-y-4">
+      <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans">POPIA Compliance</h4>
+          <h4 className="text-[12px] font-bold !text-dash-text">POPIA compliance</h4>
           {loadingConsent ? (
-            <span className="text-[9px] text-[#4a5a82] uppercase">Loading...</span>
+            <span className="text-[11px] !text-dash-textMuted">Loading…</span>
           ) : !consentRecord ? (
-            <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border bg-amber-500/15 text-amber-400 border-amber-500/20">
-              Not Requested
-            </span>
+            <DashStatusPill variant="warning">Not requested</DashStatusPill>
           ) : consentRecord.status === 'obtained' ? (
-            <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border bg-emerald-500/15 text-emerald-400 border-[#10b981]/20">
-              Obtained
-            </span>
+            <DashStatusPill variant="success">Obtained</DashStatusPill>
           ) : consentRecord.status === 'pending' ? (
-            <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border bg-blue-500/15 text-blue-400 border-blue-500/20 animate-pulse">
-              Pending
-            </span>
+            <DashStatusPill variant="info" className="motion-safe:animate-pulse">Pending</DashStatusPill>
           ) : (
-            <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tighter border bg-red-500/15 text-red-400 border-red-500/20">
-              {consentRecord.status}
-            </span>
+            <DashStatusPill variant="danger">{consentRecord.status}</DashStatusPill>
           )}
         </div>
 
         {consentRecord && consentRecord.status === 'obtained' && (
-          <div className="text-[11px] text-[#4a5a82] space-y-1 font-mono">
+          <div className="text-[11px] !text-dash-textMuted space-y-1 font-mono">
             <div><strong>Given:</strong> {new Date(consentRecord.consent_given_at).toLocaleDateString()}</div>
             <div><strong>IP:</strong> {consentRecord.ip_address || 'N/A'}</div>
           </div>
         )}
 
-        <button
-          type="button"
+        <DashButton
+          variant="primary"
+          size="sm"
+          className="w-full bg-purple-600 hover:bg-purple-500 shadow-none hover:translate-y-0"
           onClick={() => setShowRequestModal(true)}
           disabled={loadingConsent || contact.first_name === 'ANONYMIZED'}
-          className="w-full h-9 rounded-[8px] bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-purple-500/10"
         >
-          <i className="fa-solid fa-signature text-[10px]"></i>
-          {consentRecord ? 'Re-Request Consent' : 'Request Consent'}
-        </button>
+          <PenLine size={12} />
+          {consentRecord ? 'Re-request consent' : 'Request consent'}
+        </DashButton>
       </div>
 
       {/* Operations & Compliance */}
-      <div className="bg-[#080f28] border border-white/5 rounded-[24px] p-6 shadow-xl space-y-3">
-        <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans">Compliance Gateways</h4>
-        <button
-          type="button"
+      <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm space-y-3">
+        <h4 className="text-[12px] font-bold !text-dash-text">Compliance gateways</h4>
+        <DashButton
+          variant="destructive"
+          size="sm"
+          className="w-full"
           onClick={handleErasure}
           disabled={loading || contact.first_name === 'ANONYMIZED'}
-          className="w-full h-9 rounded-[8px] bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all"
         >
           {loading ? (
             <>
-              <i className="fa-solid fa-spinner animate-spin text-[10px]"></i>
-              Erasing...
+              <Loader2 size={12} className="animate-spin motion-reduce:animate-none" />
+              Erasing…
             </>
           ) : contact.first_name === 'ANONYMIZED' ? (
             <>
-              <i className="fa-solid fa-user-slash text-[10px]"></i>
-              POPIA Erased
+              <UserX size={12} />
+              POPIA erased
             </>
           ) : (
             <>
-              <i className="fa-solid fa-user-slash text-[10px]"></i>
-              Right to Erasure (POPIA)
+              <UserX size={12} />
+              Right to erasure (POPIA)
             </>
           )}
-        </button>
+        </DashButton>
       </div>
 
       <ErasureReceiptModal
@@ -392,40 +376,40 @@ export function ProfileSidebar({ contact }: ProfileSidebarProps) {
 
       {/* Consent Request Dispatch Modal */}
       {showRequestModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-dash-text/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-dash-border rounded-2xl w-full max-w-md p-6 space-y-5 shadow-xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
             <div>
-              <h3 className="text-[16px] font-bold text-[#eef2ff] uppercase tracking-tight font-space-grotesk">
+              <h3 className="text-[16px] font-bold !text-dash-text tracking-tight">
                 Request explicit POPIA consent
               </h3>
-              <p className="text-[11.5px] text-[#4a5a82] mt-1 font-dm-sans leading-relaxed">
-                Generate a secure, tracked link for <strong className="text-white">{contact.first_name} {contact.last_name || ''}</strong> to sign under South African POPIA regulations.
+              <p className="text-[12px] !text-dash-textMuted mt-1 leading-relaxed">
+                Generate a secure, tracked link for <strong className="!text-dash-text">{contact.first_name} {contact.last_name || ''}</strong> to sign under South African POPIA regulations.
               </p>
             </div>
 
             {/* Channels selection */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-wider font-dm-sans">
-                Dispatch Channel
+              <label className="text-[11px] font-bold !text-dash-textMuted">
+                Dispatch channel
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: 'email', label: 'Email', icon: 'fa-envelope' },
-                  { id: 'whatsapp', label: 'WhatsApp', icon: 'fa-whatsapp' },
-                  { id: 'sms', label: 'SMS', icon: 'fa-comment-sms' }
+                  { id: 'email', label: 'Email', icon: Mail },
+                  { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+                  { id: 'sms', label: 'SMS', icon: MessageSquare }
                 ].map(ch => (
                   <button
                     key={ch.id}
                     type="button"
                     onClick={() => setDispatchChannel(ch.id as any)}
                     className={cn(
-                      "h-10 rounded-xl border flex flex-col items-center justify-center text-[11px] font-bold font-dm-sans transition-all",
+                      "h-10 rounded-xl border flex flex-col items-center justify-center text-[11px] font-bold transition-colors motion-reduce:transition-none",
                       dispatchChannel === ch.id
-                        ? "bg-purple-600/10 border-purple-500 text-purple-400"
-                        : "bg-white/[0.02] border-white/5 text-[#4a5a82] hover:text-[#94a3c8]"
+                        ? "bg-purple-600/10 border-purple-500 text-purple-600"
+                        : "bg-dash-surface border-dash-border !text-dash-textMuted hover:!text-dash-text"
                     )}
                   >
-                    <i className={cn("fa-brands", ch.icon, "text-[12px] mb-0.5")}></i>
+                    <ch.icon size={13} className="mb-0.5" />
                     {ch.label}
                   </button>
                 ))}
@@ -434,16 +418,16 @@ export function ProfileSidebar({ contact }: ProfileSidebarProps) {
 
             {/* Check types checklist selection */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-wider font-dm-sans">
-                Verifications Scope
+              <label className="text-[11px] font-bold !text-dash-textMuted">
+                Verifications scope
               </label>
               <div className="space-y-1.5">
                 {[
-                  { id: 'hanis_identity', label: 'ID / HANIS Verification' },
-                  { id: 'credit_report', label: 'Credit Report Verification' },
-                  { id: 'sanctions_screen', label: 'Sanctions Screening (AML)' },
-                  { id: 'pep_check', label: 'Politically Exposed Person (PEP)' },
-                  { id: 'address_verification', label: 'Address Verification' }
+                  { id: 'hanis_identity', label: 'ID / HANIS verification' },
+                  { id: 'credit_report', label: 'Credit report verification' },
+                  { id: 'sanctions_screen', label: 'Sanctions screening (AML)' },
+                  { id: 'pep_check', label: 'Politically exposed person (PEP)' },
+                  { id: 'address_verification', label: 'Address verification' }
                 ].map(chk => {
                   const active = selectedChecks.includes(chk.id);
                   return (
@@ -458,17 +442,18 @@ export function ProfileSidebar({ contact }: ProfileSidebarProps) {
                         }
                       }}
                       className={cn(
-                        "w-full h-9 px-4 rounded-xl border flex items-center justify-between text-[11.5px] font-semibold font-dm-sans transition-all",
+                        "w-full h-9 px-4 rounded-xl border flex items-center justify-between text-[11.5px] font-semibold transition-colors motion-reduce:transition-none",
                         active
-                          ? "bg-purple-600/5 border-purple-500/20 text-[#eef2ff]"
-                          : "bg-white/[0.01] border-white/5 text-[#4a5a82] hover:text-[#94a3c8]"
+                          ? "bg-purple-600/5 border-purple-500/20 !text-dash-text"
+                          : "bg-white border-dash-border !text-dash-textMuted hover:!text-dash-text"
                       )}
                     >
                       <span>{chk.label}</span>
-                      <i className={cn(
-                        "fa-solid text-[10px]",
-                        active ? "fa-circle-check text-purple-400" : "fa-circle text-white/10"
-                      )}></i>
+                      {active ? (
+                        <CheckCircle2 size={12} className="text-purple-600" />
+                      ) : (
+                        <Circle size={12} className="text-dash-border" />
+                      )}
                     </button>
                   );
                 })}
@@ -477,22 +462,19 @@ export function ProfileSidebar({ contact }: ProfileSidebarProps) {
 
             {/* Modal Actions */}
             <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowRequestModal(false)}
-                className="flex-1 h-10 border border-white/5 rounded-xl text-[#4a5a82] hover:text-[#eef2ff] text-[12px] font-bold transition-all"
-              >
+              <DashButton variant="secondary" size="default" className="flex-1" onClick={() => setShowRequestModal(false)}>
                 Cancel
-              </button>
-              <button
-                type="button"
+              </DashButton>
+              <DashButton
+                variant="primary"
+                size="default"
+                className="flex-1 bg-purple-600 hover:bg-purple-500 shadow-none hover:translate-y-0"
                 onClick={handleSendRequest}
                 disabled={selectedChecks.length === 0}
-                className="flex-1 h-10 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 rounded-xl text-white text-[12px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-purple-500/20"
               >
-                <i className="fa-solid fa-paper-plane text-[10px]"></i>
-                Dispatch Request
-              </button>
+                <Send size={12} />
+                Dispatch request
+              </DashButton>
             </div>
           </div>
         </div>

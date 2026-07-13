@@ -81,29 +81,29 @@ export function SearchFilters() {
   };
 
   return (
-    <form onSubmit={handleSearch} className="bg-n900 border border-white/10 rounded-2xl p-6 space-y-6 shadow-xl">
+    <form onSubmit={handleSearch} className="bg-white border border-dash-border rounded-2xl p-6 space-y-6 shadow-xl">
       <div>
-        <h2 className="text-xl font-space font-bold text-white mb-2 flex items-center gap-2">
-          <Target className="text-accent" /> Find New Leads
+        <h2 className="text-xl font-bold !text-dash-text mb-2 flex items-center gap-2">
+          <Target className="text-dash-accent" /> Find New Leads
         </h2>
-        <p className="text-sm text-t3">Search Google Places to discover high-quality business prospects.</p>
+        <p className="text-sm !text-dash-textMuted">Search Google Places to discover high-quality business prospects.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label className="text-xs font-bold text-t2 uppercase tracking-wider">Search Type</label>
-          <div className="flex bg-n800 rounded-lg p-1 border border-white/5">
+          <label className="text-xs font-bold !text-dash-textMuted tracking-wider">Search Type</label>
+          <div className="flex bg-white rounded-lg p-1 border border-dash-border">
             <button
               type="button"
               onClick={() => setSearchType('keyword')}
-              className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${searchType === 'keyword' ? 'bg-accent text-white shadow-md' : 'text-t3 hover:text-white'}`}
+              className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${searchType === 'keyword' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               Keyword
             </button>
             <button
               type="button"
               onClick={() => setSearchType('business_type')}
-              className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${searchType === 'business_type' ? 'bg-accent text-white shadow-md' : 'text-t3 hover:text-white'}`}
+              className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${searchType === 'business_type' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               Business Type
             </button>
@@ -111,54 +111,54 @@ export function SearchFilters() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-bold text-t2 uppercase tracking-wider">Location (City, Region, etc.) *</label>
+          <label className="text-xs font-bold !text-dash-textMuted tracking-wider">Location (City, Region, etc.) *</label>
           <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-t4" />
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 !text-dash-textMuted" />
             <input
               required
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="e.g. New York, NY"
-              className="w-full bg-n800 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-accent"
+              className="w-full bg-white border border-dash-border rounded-xl py-3 pl-10 pr-4 !text-dash-text placeholder-dash-textMuted/70 focus:outline-none focus:border-dash-accent"
             />
           </div>
         </div>
 
         {searchType === 'business_type' ? (
           <div className="space-y-2">
-            <label className="text-xs font-bold text-t2 uppercase tracking-wider">Business Type *</label>
+            <label className="text-xs font-bold !text-dash-textMuted tracking-wider">Business Type *</label>
             <div className="relative">
-              <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-t4" />
+              <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 !text-dash-textMuted" />
               <input
                 required
                 type="text"
                 value={businessType}
                 onChange={(e) => setBusinessType(e.target.value)}
                 placeholder="e.g. Plumber, Restaurant, Agency"
-                className="w-full bg-n800 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-accent"
+                className="w-full bg-white border border-dash-border rounded-xl py-3 pl-10 pr-4 !text-dash-text placeholder-dash-textMuted/70 focus:outline-none focus:border-dash-accent"
               />
             </div>
           </div>
         ) : (
           <div className="space-y-2">
-            <label className="text-xs font-bold text-t2 uppercase tracking-wider">Keywords *</label>
+            <label className="text-xs font-bold !text-dash-textMuted tracking-wider">Keywords *</label>
             <div className="relative">
-              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-t4" />
+              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 !text-dash-textMuted" />
               <input
                 required
                 type="text"
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
                 placeholder="e.g. Marketing agency, best pizza"
-                className="w-full bg-n800 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-accent"
+                className="w-full bg-white border border-dash-border rounded-xl py-3 pl-10 pr-4 !text-dash-text placeholder-dash-textMuted/70 focus:outline-none focus:border-dash-accent"
               />
             </div>
           </div>
         )}
 
         <div className="space-y-2">
-          <label className="text-xs font-bold text-t2 uppercase tracking-wider">Search Radius ({radius / 1000}km)</label>
+          <label className="text-xs font-bold !text-dash-textMuted tracking-wider">Search Radius ({radius / 1000}km)</label>
           <input
             type="range"
             min="1000"
@@ -166,22 +166,22 @@ export function SearchFilters() {
             step="1000"
             value={radius}
             onChange={(e) => setRadius(Number(e.target.value))}
-            className="w-full h-2 bg-n800 rounded-lg appearance-none cursor-pointer accent-accent"
+            className="w-full h-2 bg-white rounded-lg appearance-none cursor-pointer accent-dash-accent"
           />
         </div>
       </div>
 
       {/* Advanced Filters placeholder for MVP */}
-      <div className="pt-4 border-t border-white/5 flex gap-4">
+      <div className="pt-4 border-t border-dash-border flex gap-4">
         <div className="flex-1 opacity-50 cursor-not-allowed">
-          <label className="text-xs font-bold text-t2 uppercase tracking-wider mb-2 block">Employee Size</label>
-          <select disabled className="w-full bg-n800 border border-white/10 rounded-xl py-2 px-3 text-sm text-t3 cursor-not-allowed">
+          <label className="text-xs font-bold !text-dash-textMuted tracking-wider mb-2 block">Employee Size</label>
+          <select disabled className="w-full bg-white border border-dash-border rounded-xl py-2 px-3 text-sm !text-dash-textMuted cursor-not-allowed">
             <option>Any Size (Pro)</option>
           </select>
         </div>
         <div className="flex-1 opacity-50 cursor-not-allowed">
-          <label className="text-xs font-bold text-t2 uppercase tracking-wider mb-2 block">Rating Filter</label>
-          <select disabled className="w-full bg-n800 border border-white/10 rounded-xl py-2 px-3 text-sm text-t3 cursor-not-allowed">
+          <label className="text-xs font-bold !text-dash-textMuted tracking-wider mb-2 block">Rating Filter</label>
+          <select disabled className="w-full bg-white border border-dash-border rounded-xl py-2 px-3 text-sm !text-dash-textMuted cursor-not-allowed">
             <option>Any Rating (Pro)</option>
           </select>
         </div>
@@ -190,7 +190,7 @@ export function SearchFilters() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-4 bg-accent hover:bg-accent-hover text-white rounded-xl font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(37,99,235,0.2)] hover:shadow-[0_0_30px_rgba(37,99,235,0.4)] disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
+        className="w-full py-4 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl font-bold tracking-widest transition-all shadow-[0_0_20px_rgba(37,99,235,0.2)] hover:shadow-[0_0_30px_rgba(37,99,235,0.4)] disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
       >
         {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Search className="w-5 h-5" />}
         {loading ? 'Searching & Enriching Leads...' : 'Search Leads'}

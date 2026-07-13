@@ -235,13 +235,13 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
     return (
       <div className="text-center py-12">
         <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-        <p className="text-xs text-[#4a5a82]">Loading corporate directories and ownership structures...</p>
+        <p className="text-xs !text-dash-textMuted">Loading corporate directories and ownership structures...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 text-[#eef2ff]">
+    <div className="space-y-6 !text-dash-text">
       
       {/* EDD ALERTS STATUS BOARD */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-center">
@@ -253,10 +253,10 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
                 <ShieldAlert className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-xs font-bold font-space-grotesk uppercase tracking-wider text-amber-400">
+                <h4 className="text-xs font-bold  tracking-wider text-amber-400">
                   Enhanced Due Diligence (EDD) Required
                 </h4>
-                <p className="text-[11px] font-dm-sans text-[#94a3c8] leading-relaxed">
+                <p className="text-[11px]  !text-dash-textMuted leading-relaxed">
                   Enhanced compliance rules are flagged for this corporate entity. Ensure all linked directors' FICA verification sub-tasks are complete and the official Beneficial Ownership declaration form is uploaded.
                 </p>
               </div>
@@ -268,10 +268,10 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
                 <CheckCircle className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-xs font-bold font-space-grotesk uppercase tracking-wider text-emerald-400">
+                <h4 className="text-xs font-bold  tracking-wider text-emerald-400">
                   Standard Compliance Status
                 </h4>
-                <p className="text-[11px] font-dm-sans text-[#94a3c8] leading-relaxed">
+                <p className="text-[11px]  !text-dash-textMuted leading-relaxed">
                   Standard verification checks apply. To enforce B2B diligence protocols, link CIPC directory records or add major stakeholders (&gt;25% share) to toggle EDD.
                 </p>
               </div>
@@ -281,7 +281,7 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
 
         <button
           onClick={handleToggleEdd}
-          className={`h-11 rounded-xl font-bold font-dm-sans text-xs transition-all border flex items-center justify-center gap-2 ${requiresEdd ? 'bg-white/5 border-white/5 text-[#eef2ff] hover:bg-white/10' : 'bg-[#e4002b]/10 border-[#e4002b]/20 text-red-400 hover:bg-[#e4002b]/20'}`}
+          className={`h-11 rounded-xl font-bold  text-xs transition-all border flex items-center justify-center gap-2 ${requiresEdd ? 'bg-dash-surface border-dash-border !text-dash-text hover:bg-dash-border/60' : 'bg-red/10 border-red/20 text-red hover:bg-red/20'}`}
         >
           <ShieldAlert className="w-4 h-4" />
           {requiresEdd ? 'Disable EDD Flag' : 'Enforce EDD Compliance'}
@@ -289,12 +289,12 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
       </div>
 
       {/* CIPC SEARCH WIDGET */}
-      <div className="bg-[#080f28]/70 border border-white/5 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-white border border-dash-border rounded-2xl p-5 shadow-xl space-y-4">
         <div>
-          <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-wider flex items-center gap-2 text-[#3b82f6]">
+          <h3 className="text-sm font-bold  tracking-wider flex items-center gap-2 text-dash-accent">
             <Search className="w-4 h-4" /> CIPC Corporate Directory Lookup (SA)
           </h3>
-          <p className="text-[11.5px] text-[#4a5a82] font-dm-sans mt-1">
+          <p className="text-[11.5px] !text-dash-textMuted  mt-1">
             Query the CIPC registry by business registration number or company name to fetch executive directors and automate B2B KYC routing.
           </p>
         </div>
@@ -305,30 +305,30 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
             placeholder="e.g. Zafro Logistics or 2019/382910/07"
             value={cipcQuery}
             onChange={(e) => setCipcQuery(e.target.value)}
-            className="flex-1 h-10 px-3 bg-[#04091a] border border-white/5 rounded-lg text-xs text-[#eef2ff] focus:outline-none focus:border-[#3b82f6] font-dm-sans"
+            className="flex-1 h-10 px-3 bg-white border border-dash-border rounded-lg text-xs !text-dash-text focus:outline-none focus:border-dash-accent "
           />
           <button
             type="submit"
             disabled={isSearchingCipc}
-            className="px-5 h-10 rounded-lg bg-[#2563eb] text-white hover:bg-[#2563eb]/90 text-xs font-bold font-dm-sans transition-all flex items-center gap-1.5 shrink-0"
+            className="px-5 h-10 rounded-lg bg-dash-accent text-white hover:bg-dash-accent/90 text-xs font-bold  transition-all flex items-center gap-1.5 shrink-0"
           >
             {isSearchingCipc ? 'Searching...' : 'Lookup CIPC'}
           </button>
         </form>
 
         {cipcResults.length > 0 && (
-          <div className="border border-white/5 rounded-xl divide-y divide-white/5 overflow-hidden">
+          <div className="border border-dash-border rounded-xl divide-y divide-dash-border overflow-hidden">
             {cipcResults.map((comp) => (
-              <div key={comp.registrationNumber} className="p-4 bg-white/[0.01] flex flex-col sm:flex-row justify-between gap-4">
+              <div key={comp.registrationNumber} className="p-4 bg-dash-surface flex flex-col sm:flex-row justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="text-xs font-bold text-[#eef2ff]">{comp.companyName}</div>
-                  <div className="text-[10.5px] text-[#94a3c8] font-mono">{comp.registrationNumber} • Registered {comp.registrationDate}</div>
-                  <div className="text-[9.5px] text-[#4a5a82]">{comp.physicalAddress}</div>
+                  <div className="text-xs font-bold !text-dash-text">{comp.companyName}</div>
+                  <div className="text-[10.5px] !text-dash-textMuted font-mono">{comp.registrationNumber} • Registered {comp.registrationDate}</div>
+                  <div className="text-[9.5px] !text-dash-textMuted">{comp.physicalAddress}</div>
                   
                   {/* Directors list preview */}
                   <div className="pt-2 flex flex-wrap gap-1.5">
                     {comp.directors.map((d: any) => (
-                      <span key={d.name} className="px-1.5 py-0.5 rounded bg-white/5 text-[9px] text-[#94a3c8] font-dm-sans">
+                      <span key={d.name} className="px-1.5 py-0.5 rounded bg-dash-surface text-[9px] !text-dash-textMuted ">
                         👤 {d.name} ({d.role})
                       </span>
                     ))}
@@ -337,7 +337,7 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
 
                 <button
                   onClick={() => handleLinkCipc(comp)}
-                  className="px-4 h-9 bg-emerald-500 text-slate-950 hover:bg-emerald-600 rounded-lg text-xs font-bold font-dm-sans transition-all flex items-center justify-center gap-1.5 self-start sm:self-center shrink-0"
+                  className="px-4 h-9 bg-emerald-500 text-slate-950 hover:bg-emerald-600 rounded-lg text-xs font-bold  transition-all flex items-center justify-center gap-1.5 self-start sm:self-center shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" /> Link CIPC Directors
                 </button>
@@ -351,12 +351,12 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* The Mapping Tree View */}
-        <div className="lg:col-span-2 bg-[#080f28]/70 border border-white/5 rounded-2xl p-5 shadow-xl space-y-4">
-          <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-wider flex items-center gap-2 text-[#eef2ff]">
+        <div className="lg:col-span-2 bg-white border border-dash-border rounded-2xl p-5 shadow-xl space-y-4">
+          <h3 className="text-sm font-bold  tracking-wider flex items-center gap-2 !text-dash-text">
             <Network className="w-4 h-4 text-blue-400" /> Beneficial Owner Mapping Layer
           </h3>
 
-          <div className="border border-white/5 rounded-xl p-4 bg-[#04091a]/30 relative">
+          <div className="border border-dash-border rounded-xl p-4 bg-dash-surface relative">
             
             {/* TREE STRUCTURAL VISUAL */}
             <div className="flex flex-col gap-6 relative">
@@ -364,61 +364,61 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
               <div className="flex items-center gap-3 bg-blue-500/5 border border-blue-500/20 px-4 py-3 rounded-lg max-w-sm relative z-10 shadow-lg">
                 <Building className="w-5 h-5 text-blue-400 shrink-0" />
                 <div>
-                  <h4 className="text-xs font-bold font-space-grotesk tracking-wide text-blue-400">CORPORATE HOLDING</h4>
-                  <p className="text-[13px] font-bold text-[#eef2ff] font-dm-sans">{contact.first_name} {contact.last_name}</p>
+                  <h4 className="text-xs font-bold tracking-wide text-blue-600">Corporate holding</h4>
+                  <p className="text-[13px] font-bold !text-dash-text ">{contact.first_name} {contact.last_name}</p>
                 </div>
               </div>
 
               {owners.length === 0 ? (
-                <div className="text-center py-6 text-xs text-[#4a5a82] italic">
+                <div className="text-center py-6 text-xs !text-dash-textMuted italic">
                   No linked beneficial owners, shareholders, or active trustees. Link CIPC records or select below.
                 </div>
               ) : (
-                <div className="pl-6 border-l-2 border-white/5 ml-6 space-y-4 relative">
+                <div className="pl-6 border-l-2 border-dash-border ml-6 space-y-4 relative">
                   {owners.map((owner) => {
                     const rating = owner.owner_contact.kyc_risk_ratings?.overall_rating || 'grey';
                     const isMajorShareholder = owner.share_percentage >= 25;
 
                     return (
-                      <div key={owner.id} className="flex items-start gap-4 bg-white/[0.01] border border-white/5 rounded-xl p-3 shadow relative group">
+                      <div key={owner.id} className="flex items-start gap-4 bg-dash-surface border border-dash-border rounded-xl p-3 shadow relative group">
                         
-                        <div className="w-7 h-7 rounded bg-white/5 flex items-center justify-center text-xs text-[#4a5a82] shrink-0 font-space-grotesk">
+                        <div className="w-7 h-7 rounded bg-dash-surface flex items-center justify-center text-xs !text-dash-textMuted shrink-0 ">
                           {owner.relationship_type[0].toUpperCase()}
                         </div>
 
                         <div className="flex-1 space-y-1">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                              <span className="text-xs font-bold text-[#eef2ff]">
+                              <span className="text-xs font-bold !text-dash-text">
                                 {owner.owner_contact.first_name} {owner.owner_contact.last_name}
                               </span>
-                              <span className="text-[10px] text-[#4a5a82] uppercase ml-2 font-mono">
+                              <span className="text-[10px] !text-dash-textMuted ml-2 font-mono">
                                 • {owner.relationship_type}
                               </span>
                             </div>
                             
                             {/* KYC status tag */}
                             <div>
-                              {rating === 'green' && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">FICA verified</span>}
-                              {rating === 'amber' && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase">medium risk</span>}
-                              {rating === 'red' && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 uppercase">high risk</span>}
-                              {rating === 'grey' && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-white/5 text-[#94a3c8] border border-white/5 uppercase">unverified</span>}
+                              {rating ==='green' && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">FICA verified</span>}
+                              {rating ==='amber' && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">medium risk</span>}
+                              {rating ==='red' && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">high risk</span>}
+                              {rating ==='grey' && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-dash-surface !text-dash-textMuted border border-dash-border">unverified</span>}
                             </div>
                           </div>
 
                           <div className="flex items-center justify-between text-[10.5px]">
-                            <div className="flex items-center gap-2 text-[#94a3c8] font-dm-sans">
-                              <span>Share Ownership: <strong className="text-white font-space-grotesk">{owner.share_percentage}%</strong></span>
+                            <div className="flex items-center gap-2 !text-dash-textMuted ">
+                              <span>Share ownership: <strong className="!text-dash-text">{owner.share_percentage}%</strong></span>
                               {isMajorShareholder && (
                                 <span className="px-1.5 py-0.2 rounded text-[8.5px] font-bold bg-[#e4002b]/10 text-red-400 border border-[#e4002b]/20">
-                                  MAJOR SHAREHOLDER (&gt;25% VOTING WEIGHT)
+                                  Major shareholder (&gt;25% voting weight)
                                 </span>
                               )}
                             </div>
                             
                             <button
                               onClick={() => handleDeleteOwner(owner.id)}
-                              className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-opacity p-1"
+                              className="opacity-0 group-hover:opacity-100 text-red hover:text-red/80 transition-opacity p-1"
                               title="Delete linkage"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -436,15 +436,15 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
           </div>
 
           {/* MANUAL LINKER SECTION */}
-          <form onSubmit={handleAddManualOwner} className="pt-4 border-t border-white/5 grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+          <form onSubmit={handleAddManualOwner} className="pt-4 border-t border-dash-border grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
             <div className="sm:col-span-2">
-              <label className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
+              <label className="text-[9px] font-bold !text-dash-textMuted tracking-[1px] block mb-1.5">
                 Select Individual Contact
               </label>
               <select
                 value={selectedContactId}
                 onChange={(e) => setSelectedContactId(e.target.value)}
-                className="w-full h-9 px-3 bg-[#04091a] border border-white/5 rounded-lg text-xs text-[#eef2ff] focus:outline-none focus:border-[#3b82f6]"
+                className="w-full h-9 px-3 bg-white border border-dash-border rounded-lg text-xs !text-dash-text focus:outline-none focus:border-dash-accent"
               >
                 <option value="">-- Choose Contact --</option>
                 {workspaceContacts.map((c: any) => (
@@ -455,7 +455,7 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
               </select>
             </div>
             <div>
-              <label className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
+              <label className="text-[9px] font-bold !text-dash-textMuted tracking-[1px] block mb-1.5">
                 Ownership %
               </label>
               <input
@@ -464,13 +464,13 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
                 max="100"
                 value={sharePercentage}
                 onChange={(e) => setSharePercentage(Number(e.target.value))}
-                className="w-full h-9 px-3 bg-[#04091a] border border-white/5 rounded-lg text-xs focus:outline-none focus:border-[#3b82f6] font-mono"
+                className="w-full h-9 px-3 bg-white border border-dash-border rounded-lg text-xs focus:outline-none focus:border-dash-accent font-mono"
               />
             </div>
             <button
               type="submit"
               disabled={isLinkingOwner}
-              className="w-full h-9 bg-white/5 hover:bg-white/10 disabled:bg-white/5 text-xs font-bold rounded-lg border border-white/5 transition-all flex items-center justify-center gap-1"
+              className="w-full h-9 bg-dash-surface hover:bg-dash-border/60 disabled:bg-dash-surface text-xs font-bold rounded-lg border border-dash-border transition-all flex items-center justify-center gap-1"
             >
               <Plus className="w-3.5 h-3.5" /> Link Owner
             </button>
@@ -479,19 +479,19 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
         </div>
 
         {/* Beneficial Ownership Form Storage */}
-        <div className="bg-[#080f28]/70 border border-white/5 rounded-2xl p-5 shadow-xl space-y-5 flex flex-col justify-between">
+        <div className="bg-white border border-dash-border rounded-2xl p-5 shadow-xl space-y-5 flex flex-col justify-between">
           <div className="space-y-4">
-            <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-wider flex items-center gap-2 text-[#eef2ff]">
+            <h3 className="text-sm font-bold  tracking-wider flex items-center gap-2 !text-dash-text">
               <FileText className="w-4 h-4 text-emerald-400" /> Beneficial Ownership Vault
             </h3>
 
-            <p className="text-[11.5px] text-[#4a5a82] font-dm-sans leading-relaxed">
+            <p className="text-[11.5px] !text-dash-textMuted  leading-relaxed">
               Upload completed Beneficial Ownership Declaration forms to satisfy EDD requirements for South African business entities.
             </p>
 
             <form onSubmit={handleUploadForm} className="space-y-3">
               <div>
-                <label className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
+                <label className="text-[9px] font-bold !text-dash-textMuted tracking-[1px] block mb-1.5">
                   Form Filename
                 </label>
                 <input
@@ -499,35 +499,35 @@ export function BeneficialOwnershipTab({ contact }: BeneficialOwnershipTabProps)
                   placeholder="e.g. zafro_beneficial_owners.pdf"
                   value={uploadFilename}
                   onChange={(e) => setUploadFilename(e.target.value)}
-                  className="w-full h-9 px-3 bg-[#04091a] border border-white/5 rounded-lg text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                  className="w-full h-9 px-3 bg-white border border-dash-border rounded-lg text-xs focus:outline-none focus:border-emerald-500 font-mono"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isUploading}
-                className="w-full h-9 rounded-lg bg-emerald-500 text-slate-950 hover:bg-emerald-600 disabled:bg-emerald-600/35 text-xs font-bold font-dm-sans transition-all flex items-center justify-center gap-1.5"
+                className="w-full h-9 rounded-lg bg-emerald-500 text-slate-950 hover:bg-emerald-600 disabled:bg-emerald-600/35 text-xs font-bold  transition-all flex items-center justify-center gap-1.5"
               >
                 <Upload className="w-3.5 h-3.5" /> Simulate Form Upload
               </button>
             </form>
           </div>
 
-          <div className="pt-4 border-t border-white/5 space-y-3">
-            <h4 className="text-[10px] font-bold uppercase tracking-[1px] text-[#4a5a82] font-space-grotesk">Uploaded Ownership Declarations</h4>
+          <div className="pt-4 border-t border-dash-border space-y-3">
+            <h4 className="text-[10px] font-bold tracking-[1px] !text-dash-textMuted">Uploaded Ownership Declarations</h4>
             <div className="max-h-[160px] overflow-y-auto space-y-2 common-scrollbar">
               {documents.length === 0 ? (
-                <p className="text-[10px] text-[#4a5a82] italic">No beneficial ownership forms uploaded.</p>
+                <p className="text-[10px] !text-dash-textMuted italic">No beneficial ownership forms uploaded.</p>
               ) : (
                 documents.map((doc: any) => (
-                  <div key={doc.id} className="bg-white/[0.01] border border-white/5 p-2 rounded-lg flex items-center justify-between text-[11px] font-dm-sans">
+                  <div key={doc.id} className="bg-dash-surface border border-dash-border p-2 rounded-lg flex items-center justify-between text-[11px] ">
                     <div className="truncate pr-2">
-                      <div className="font-semibold text-[#eef2ff] truncate">{doc.file_url.split('/').pop()}</div>
-                      <div className="text-[9px] text-[#4a5a82] mt-0.5">Uploaded: {new Date(doc.created_at).toLocaleDateString()}</div>
+                      <div className="font-semibold !text-dash-text truncate">{doc.file_url.split('/').pop()}</div>
+                      <div className="text-[9px] !text-dash-textMuted mt-0.5">Uploaded: {new Date(doc.created_at).toLocaleDateString()}</div>
                     </div>
                     <a
                       href={`/api/kyc/documents/download?id=${doc.id}`}
-                      className="p-1 rounded bg-white/5 hover:bg-white/10 text-emerald-400"
+                      className="p-1 rounded bg-dash-surface hover:bg-dash-border/60 text-emerald-400"
                       title="Download PDF"
                     >
                       <Upload className="w-3.5 h-3.5 transform rotate-180" />

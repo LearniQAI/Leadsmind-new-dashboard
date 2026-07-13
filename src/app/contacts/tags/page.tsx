@@ -24,17 +24,17 @@ export default async function TagsPage() {
     <div className="space-y-8 py-10 px-4 max-w-4xl mx-auto">
      <div className="flex items-center gap-4">
       <Link href="/apps/contacts">
-       <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-white/40 hover:text-white hover:bg-white/5 border border-white/5">
+       <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface border border-dash-border">
         <ArrowLeft size={18} />
        </Button>
       </Link>
       <div>
-       <h1 className="text-3xl font-extrabold tracking-tight text-white mb-1">Manage Tags</h1>
-       <p className="text-sm text-white/40 font-medium">Organize and clean up your contact segments</p>
+       <h1 className="text-3xl font-extrabold tracking-tight !text-dash-text mb-1">Manage tags</h1>
+       <p className="text-sm !text-dash-textMuted font-medium">Organize and clean up your contact segments</p>
       </div>
      </div>
 
-     <div className="bg-card border border-borderLight rounded-3xl p-8 shadow-xl">
+     <div className="bg-white border border-dash-border rounded-2xl p-8 shadow-sm">
       <TagsClient initialTags={tags} />
      </div>
     </div>

@@ -10,6 +10,8 @@ import {
 import { globalRenameTag, globalDeleteTag, createRegistryTag } from '@/app/actions/contacts';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Tags, Tag as TagIcon, Plus, SquarePen, Trash2 } from 'lucide-react';
+import { DashButton } from '@/components/dashboard-ui/Button';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 interface ManageTagsDialogProps {
@@ -74,46 +76,47 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="z-[1002] bg-[#0b0f1a] border-white/5 text-[#eef2ff] max-w-md p-0 overflow-hidden rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="p-6 pb-4 border-b border-white/5">
-            <DialogTitle className="text-xl font-extrabold font-space tracking-tight text-white flex items-center gap-3">
-              <i className="fa-solid fa-tags text-[#2563eb]"></i>
+        <DialogContent className="z-[1002] bg-white border-dash-border !text-dash-text max-w-md p-0 overflow-hidden rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="p-6 pb-4 border-b border-dash-border">
+            <DialogTitle className="text-xl font-extrabold tracking-tight !text-dash-text flex items-center gap-3">
+              <Tags className="text-dash-accent" size={18} />
               Manage Strategic Tags
             </DialogTitle>
           </DialogHeader>
 
           {/* CREATE TAG SECTION */}
-          <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+          <div className="p-4 border-b border-dash-border bg-dash-surface">
             <div className="flex gap-2">
-              <input 
+              <input
                 placeholder="Enter new strategic tag..."
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[13px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb] transition-all font-dm-sans"
+                className="flex-1 bg-white border border-dash-border rounded-xl px-4 py-2 text-[13px] !text-dash-text placeholder:text-dash-textMuted focus:outline-none focus:border-dash-accent transition-all"
               />
-              <button 
+              <DashButton
                 onClick={handleCreate}
                 disabled={isProcessing || !createName.trim()}
-                className="h-[38px] px-4 rounded-xl bg-[#2563eb] text-white text-[11px] font-bold uppercase tracking-widest hover:bg-[#2563eb]/90 transition-all disabled:opacity-50 flex items-center gap-2"
+                size="sm"
+                className="h-[38px]"
               >
-                <i className="fa-solid fa-plus"></i>
+                <Plus size={14} />
                 Create
-              </button>
+              </DashButton>
             </div>
           </div>
 
           <div className="max-h-[350px] overflow-y-auto p-4 space-y-2 no-scrollbar">
             {tags.length === 0 ? (
               <div className="py-12 text-center">
-                <i className="fa-solid fa-tag text-3xl text-white/10 mb-3 block"></i>
-                <p className="text-sm text-white/30 font-dm-sans">No tags found in the database.</p>
+                <TagIcon className="text-dash-border mb-3 mx-auto" size={30} />
+                <p className="text-sm !text-dash-textMuted">No tags found in the database.</p>
               </div>
             ) : (
               tags.map((tag) => (
                 <div
                   key={tag.id}
-                  className="group flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all"
+                  className="group flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border hover:border-dash-text/10 transition-all"
                 >
                   <div className="flex-1 mr-4">
                     {editingTag === tag.name ? (
@@ -123,26 +126,26 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleRename(tag.name)}
-                          className="flex-1 bg-white/5 border border-[#2563eb]/30 rounded-lg px-3 py-1.5 text-[13px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb] transition-all"
+                          className="flex-1 bg-white border border-dash-accent/30 rounded-lg px-3 py-1.5 text-[13px] !text-dash-text focus:outline-none focus:border-dash-accent transition-all"
                         />
                         <button
                           onClick={() => handleRename(tag.name)}
                           disabled={isProcessing}
-                          className="px-3 rounded-lg bg-[#2563eb] text-white text-[11px] font-bold uppercase tracking-widest disabled:opacity-50"
+                          className="px-3 rounded-lg bg-dash-accent text-white text-[11px] font-bold disabled:opacity-50"
                         >
                           Save
                         </button>
                         <button
                           onClick={() => setEditingTag(null)}
-                          className="px-3 rounded-lg bg-white/5 text-white/60 text-[11px] font-bold uppercase tracking-widest"
+                          className="px-3 rounded-lg bg-dash-border/60 text-dash-textMuted text-[11px] font-bold"
                         >
                           Cancel
                         </button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-3">
-                        <span className="text-[13px] font-bold text-[#eef2ff] font-dm-sans">{tag.name}</span>
-                        <span className="text-[10px] font-bold text-[#4a5a82] bg-white/5 px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                        <span className="text-[13px] font-bold !text-dash-text">{tag.name}</span>
+                        <span className="text-[10px] font-bold text-dash-textMuted bg-dash-border/50 px-2 py-0.5 rounded-full">
                           {tag.count} leads
                         </span>
                       </div>
@@ -156,17 +159,17 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
                           setEditingTag(tag.name);
                           setNewName(tag.name);
                         }}
-                        className="p-2 rounded-lg text-[#4a5a82] hover:text-[#2563eb] hover:bg-[#2563eb]/10 transition-all"
+                        className="p-2 rounded-lg text-dash-textMuted hover:text-dash-accent hover:bg-dash-accent/10 transition-all"
                         title="Rename"
                       >
-                        <i className="fa-solid fa-pen-to-square text-[13px]"></i>
+                        <SquarePen size={13} />
                       </button>
                       <button
                         onClick={() => setTagToDelete(tag.name)}
-                        className="p-2 rounded-lg text-[#4a5a82] hover:text-red-500 hover:bg-red-500/10 transition-all"
+                        className="p-2 rounded-lg text-dash-textMuted hover:text-red hover:bg-red/10 transition-all"
                         title="Delete Globally"
                       >
-                        <i className="fa-solid fa-trash-can text-[13px]"></i>
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   )}
@@ -175,8 +178,8 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
             )}
           </div>
 
-          <div className="p-6 pt-2 border-t border-white/5 bg-white/[0.01]">
-            <p className="text-[11px] text-[#4a5a82] leading-relaxed italic text-center">
+          <div className="p-6 pt-2 border-t border-dash-border bg-dash-surface/60">
+            <p className="text-[11px] !text-dash-textMuted leading-relaxed italic text-center">
               Global actions will update all contacts across the entire Relationship Hub instantly.
             </p>
           </div>

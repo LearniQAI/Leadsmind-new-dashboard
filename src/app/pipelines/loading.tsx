@@ -9,7 +9,7 @@ export default function PipelinesLoading() {
   return (
     <MetaData pageTitle="Strategic Pipelines">
       <Wrapper>
-        <div className="flex flex-col h-screen bg-[#04091a] overflow-hidden">
+        <div className="flex flex-col h-screen bg-white overflow-hidden">
           <PipelinesSkeleton />
         </div>
       </Wrapper>

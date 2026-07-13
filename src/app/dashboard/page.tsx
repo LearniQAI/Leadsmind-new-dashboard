@@ -12,6 +12,7 @@ import { WorkspaceSync } from '@/components/auth/WorkspaceSync';
 import { DashboardWorkspacePicker } from '@/components/auth/DashboardWorkspacePicker';
 
 import { AttributionEngine } from '@/lib/analytics/AttributionEngine';
+import { fetchDashboardMetrics } from '@/lib/analytics';
 
 const Home = async () => {
   const user = await requireAuth();
@@ -90,7 +91,11 @@ const Home = async () => {
     supabase.from('contact_activities').select('*, contacts(id, first_name, last_name)').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(8),
     supabase.from('opportunities').select('*, contacts(id, first_name, last_name)').eq('workspace_id', workspaceId).eq('status', 'open').order('value', { ascending: false }).limit(5),
     supabase.from('tasks').select('id, title, due_date').eq('workspace_id', workspaceId).eq('priority', 'high').neq('status', 'done').lt('due_date', new Date().toISOString()),
-    AttributionEngine.getAttributionMetrics(workspaceId)
+    AttributionEngine.getAttributionMetrics(workspaceId),
+    // Additive: powers the Revenue/Leads trend charts and the real per-stage
+    // Sales Pipeline row on the redesigned dashboard. Existing queries above
+    // are untouched.
+    fetchDashboardMetrics(workspaceId, '30d'),
   ]);
 
   const contactCount = results[0].count || 0;
@@ -103,6 +108,7 @@ const Home = async () => {
   const topOpportunities = results[7].data || [];
   const overdueTasks = results[8].data || [];
   const attributionMetrics = results[9] as any;
+  const metrics = results[10] as Awaited<ReturnType<typeof fetchDashboardMetrics>>;
 
   const totalRevenue = revenueData?.reduce((acc: any, curr: any) => acc + (Number(curr.total_amount) || 0), 0) || 0;
 
@@ -124,6 +130,7 @@ const Home = async () => {
             topOpportunities={topOpportunities || []}
             overdueTasks={overdueTasks || []}
             attributionMetrics={attributionMetrics}
+            metrics={metrics}
           />
         </Wrapper>
       </MetaData>

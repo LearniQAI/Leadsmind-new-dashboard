@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashInput } from '@/components/dashboard-ui/FormField';
 
 interface TagData {
  id: string;
@@ -63,8 +65,8 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
  if (initialTags.length === 0) {
   return (
    <div className="py-20 text-center">
-    <TagIcon size={40} className="mx-auto text-primary/30 mb-4" />
-    <p className="text-primary/70 font-bold uppercase tracking-widest">No tags created yet</p>
+    <TagIcon size={40} className="mx-auto text-dash-accent/30 mb-4" />
+    <p className="!text-dash-textMuted font-bold">No tags created yet</p>
    </div>
   );
  }
@@ -72,38 +74,38 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
  return (
   <div className="grid gap-4">
    {initialTags.map((tag) => (
-    <div key={tag.name} className="flex items-center justify-between p-4 rounded-2xl bg-card border border-borderLight shadow-sm hover:border-primary/30 transition-all">
+    <div key={tag.name} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-dash-border shadow-sm hover:border-dash-accent/30 transition-colors motion-reduce:transition-none">
      <div className="flex items-center gap-4">
-      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-       <TagIcon size={18} className="text-primary" />
+      <div className="h-10 w-10 rounded-xl bg-dash-accent/10 flex items-center justify-center">
+       <TagIcon size={18} className="text-dash-accent" />
       </div>
       <div>
-       <p className="text-sm font-bold text-primary uppercase tracking-tight">{tag.name}</p>
-       <p className="text-[10px] text-primary/50 font-bold uppercase tracking-widest">{tag.count} contacts</p>
+       <p className="text-sm font-bold !text-dash-text">{tag.name}</p>
+       <p className="text-[11px] !text-dash-textMuted font-semibold">{tag.count} contacts</p>
       </div>
      </div>
-     
+
      <div className="flex items-center gap-2">
       <DropdownMenu>
        <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary/40 hover:text-primary" disabled={isProcessing}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 !text-dash-textMuted hover:!text-dash-text" disabled={isProcessing}>
          <MoreHorizontal size={16} />
         </Button>
        </DropdownMenuTrigger>
-       <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-xl rounded-xl p-2 min-w-[140px]">
-        <DropdownMenuItem 
-         className="cursor-pointer flex items-center gap-2 hover:bg-gray-50 rounded-lg p-2 font-bold text-[#1359FF]"
+       <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-lg rounded-xl p-2 min-w-[140px]">
+        <DropdownMenuItem
+         className="cursor-pointer flex items-center gap-2 hover:bg-dash-surface rounded-lg p-2 font-bold text-dash-accent"
          onClick={() => handleRename(tag.name)}
         >
-         <Edit2 size={14} className="text-[#1359FF]/70" />
-         <span>Rename Tag</span>
+         <Edit2 size={14} className="text-dash-accent/70" />
+         <span>Rename tag</span>
         </DropdownMenuItem>
-        <DropdownMenuItem 
-         className="cursor-pointer flex items-center gap-2 hover:bg-rose-50 rounded-lg p-2 font-bold text-rose-500"
+        <DropdownMenuItem
+         className="cursor-pointer flex items-center gap-2 hover:bg-red/10 rounded-lg p-2 font-bold text-red"
          onClick={() => handleDelete(tag.name)}
         >
          <Trash2 size={14} />
-         <span>Delete Tag</span>
+         <span>Delete tag</span>
         </DropdownMenuItem>
        </DropdownMenuContent>
       </DropdownMenu>
@@ -124,33 +126,30 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
 
    {renameConfig && (
     <Dialog open={renameConfig.isOpen} onOpenChange={(open) => setRenameConfig(prev => prev ? { ...prev, isOpen: open } : null)}>
-     <DialogContent className="bg-[#0b0f1a] border-white/5 text-[#eef2ff] max-w-sm rounded-3xl shadow-2xl p-6 z-[1001]">
+     <DialogContent className="bg-white border-dash-border !text-dash-text max-w-sm rounded-2xl shadow-xl p-6 z-[1001]">
       <DialogHeader>
-       <DialogTitle className="text-lg font-bold font-space text-white uppercase">Rename Tag</DialogTitle>
-       <DialogDescription className="text-xs text-[#4a5a82]">
+       <DialogTitle className="text-lg font-bold !text-dash-text">Rename tag</DialogTitle>
+       <DialogDescription className="text-xs !text-dash-textMuted">
         Rename tag "{renameConfig.oldTag}" across all contacts.
        </DialogDescription>
       </DialogHeader>
       <div className="space-y-4 py-4">
-       <input
+       <DashInput
         autoFocus
         type="text"
         value={renameConfig.newName}
         onChange={(e) => setRenameConfig(prev => prev ? { ...prev, newName: e.target.value } : null)}
         placeholder="Enter new tag name..."
-        className="w-full bg-[#04091a] border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-primary focus:outline-none transition"
        />
       </div>
       <DialogFooter className="flex gap-2">
-       <button
-        type="button"
-        onClick={() => setRenameConfig(null)}
-        className="flex-1 py-2 bg-white/5 border border-white/5 hover:bg-white/10 rounded-lg text-xs font-bold transition"
-       >
+       <DashButton type="button" variant="secondary" className="flex-1" onClick={() => setRenameConfig(null)}>
         Cancel
-       </button>
-       <button
+       </DashButton>
+       <DashButton
         type="button"
+        variant="primary"
+        className="flex-1"
         disabled={!renameConfig.newName.trim() || renameConfig.newName.trim() === renameConfig.oldTag}
         onClick={async () => {
          const targetName = renameConfig.newName.trim();
@@ -166,10 +165,9 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
           setIsProcessing(false);
          }
         }}
-        className="flex-1 py-2 bg-primary hover:bg-blue-600 text-white font-bold text-xs rounded-lg transition disabled:opacity-50"
        >
         Rename
-       </button>
+       </DashButton>
       </DialogFooter>
      </DialogContent>
     </Dialog>

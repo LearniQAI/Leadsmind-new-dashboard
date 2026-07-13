@@ -2,8 +2,10 @@
 
 import React from 'react';
 import { Droppable } from '@hello-pangea/dnd';
+import { Plus } from 'lucide-react';
 import { Opportunity, PipelineStage } from '@/types/crm';
 import { OpportunityCard } from './OpportunityCard';
+import { cn } from '@/lib/utils';
 
 interface KanbanColumnProps {
   stage: PipelineStage;
@@ -22,32 +24,32 @@ export function KanbanColumn({ stage, opportunities, onEditDeal, onAddDeal }: Ka
   };
 
   return (
-    <div className="flex flex-col w-full min-h-[400px] bg-[#080f28]/20 rounded-2xl border border-white/5 overflow-hidden">
+    <div className="flex flex-col w-full min-h-[400px] bg-dash-surface rounded-2xl border border-dash-border overflow-hidden">
       {/* Column Header */}
       <div 
-        className="p-4 border-t-4 bg-[#080f28]/40"
+        className="p-4 border-t-4 bg-dash-surface"
         style={{ borderTopColor: getStageColor(stage.position) }}
       >
         <div className="flex items-center justify-between mb-1">
-          <h3 className="text-[13px] font-extrabold text-[#eef2ff] uppercase tracking-widest font-dm-sans flex items-center gap-2">
+          <h3 className="text-[13px] font-extrabold !text-dash-text tracking-widest  flex items-center gap-2">
             {stage.name}
-            <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded-md text-[#4a5a82]">
+            <span className="text-[10px] bg-dash-border/60 px-1.5 py-0.5 rounded-md !text-dash-textMuted">
               {opportunities.length}
             </span>
           </h3>
-          <button 
+          <button
             onClick={onAddDeal}
-            className="text-[#4a5a82] hover:text-white transition-colors"
+            className="!text-dash-textMuted hover:text-dash-accent transition-colors"
           >
-            <i className="fa-solid fa-plus text-[12px]"></i>
+            <Plus size={12} />
           </button>
         </div>
         
         <div className="flex items-center gap-1.5">
-          <span className="text-[14px] font-space font-bold text-[#ff9d00]/80">
+          <span className="text-[14px]  font-bold text-amber-600">
             R {columnValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </span>
-          <span className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-tighter">Value</span>
+          <span className="text-[9px] font-bold !text-dash-textMuted tracking-tighter">Value</span>
         </div>
       </div>
 
@@ -57,9 +59,9 @@ export function KanbanColumn({ stage, opportunities, onEditDeal, onAddDeal }: Ka
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={className(
+            className={cn(
               "flex-1 p-3 overflow-y-auto common-scrollbar transition-colors",
-              snapshot.isDraggingOver ? "bg-[#2563eb]/5" : ""
+              snapshot.isDraggingOver ? "bg-dash-accent/5" : ""
             )}
           >
             {opportunities.map((opp, index) => (
@@ -76,8 +78,4 @@ export function KanbanColumn({ stage, opportunities, onEditDeal, onAddDeal }: Ka
       </Droppable>
     </div>
   );
-}
-
-function className(...classes: string[]) {
-  return classes.filter(Boolean).join(' ');
 }

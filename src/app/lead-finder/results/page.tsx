@@ -44,17 +44,17 @@ export default async function LeadFinderResultsPage({
             <div>
               <Link 
                 href="/lead-finder" 
-                className="inline-flex items-center gap-2 text-sm font-bold text-t3 hover:text-white transition-colors mb-2"
+                className="inline-flex items-center gap-2 text-sm font-bold !text-dash-textMuted hover:!text-dash-text transition-colors mb-2"
               >
                 <ArrowLeft size={16} /> Back to Search
               </Link>
-              <h1 className="text-3xl font-space font-black text-white flex items-center gap-3">
-                <Target className="text-accent" />
+              <h1 className="text-3xl font-black !text-dash-text flex items-center gap-3">
+                <Target className="text-dash-accent" />
                 Search Results
               </h1>
               {search && (
-                <p className="text-sm text-t3 mt-1">
-                  Found {results.length} leads for <strong className="text-white">{search.search_type === 'keyword' ? search.keywords : search.business_type}</strong> in <strong className="text-white">{search.location}</strong>.
+                <p className="text-sm !text-dash-textMuted mt-1">
+                  Found {results.length} leads for <strong className="!text-dash-text">{search.search_type === 'keyword' ? search.keywords : search.business_type}</strong> in <strong className="!text-dash-text">{search.location}</strong>.
                 </p>
               )}
             </div>
@@ -63,17 +63,17 @@ export default async function LeadFinderResultsPage({
           {results.length > 0 ? (
             <SearchResultsGrid results={results} />
           ) : (
-            <div className="bg-n900 border border-white/5 rounded-3xl p-12 text-center flex flex-col items-center justify-center">
-              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
-                <Target className="w-10 h-10 text-t4" />
+            <div className="bg-white border border-dash-border rounded-3xl p-12 text-center flex flex-col items-center justify-center">
+              <div className="w-20 h-20 bg-dash-surface rounded-full flex items-center justify-center mb-6">
+                <Target className="w-10 h-10 !text-dash-textMuted" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">No Results Found</h2>
-              <p className="text-t3 max-w-md mx-auto">
+              <h2 className="text-xl font-bold !text-dash-text mb-2">No Results Found</h2>
+              <p className="!text-dash-textMuted max-w-md mx-auto">
                 We couldn't find any leads matching your criteria in that location. Try expanding the radius or using different keywords.
               </p>
               <Link 
                 href="/lead-finder" 
-                className="mt-6 px-6 py-3 bg-accent text-white font-bold uppercase tracking-wider rounded-xl hover:bg-accent-hover transition-colors"
+                className="mt-6 px-6 py-3 bg-dash-accent text-white font-bold tracking-wider rounded-xl hover:bg-dash-accent/90 transition-colors"
               >
                 New Search
               </Link>

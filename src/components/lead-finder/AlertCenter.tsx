@@ -26,43 +26,43 @@ export function AlertCenter({ alerts }: { alerts: any[] }) {
   };
 
   return (
-    <div className="bg-n800 border border-white/10 rounded-3xl p-6">
+    <div className="bg-white border border-dash-border rounded-3xl p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-space font-bold text-white flex items-center gap-2">
-          <Bell className="text-accent" /> Alert Center
+        <h2 className="text-xl font-bold !text-dash-text flex items-center gap-2">
+          <Bell className="text-dash-accent" /> Alert Center
         </h2>
       </div>
 
       <div className="space-y-3">
         {alerts.length === 0 ? (
-          <div className="text-center p-8 bg-white/5 rounded-2xl border border-white/10 border-dashed">
-            <Bell size={32} className="text-t4 mx-auto mb-3 opacity-50" />
-            <p className="text-sm text-t3">All caught up! No recent alerts.</p>
+          <div className="text-center p-8 bg-dash-surface rounded-2xl border border-dash-border border-dashed">
+            <Bell size={32} className="!text-dash-textMuted mx-auto mb-3 opacity-50" />
+            <p className="text-sm !text-dash-textMuted">All caught up! No recent alerts.</p>
           </div>
         ) : (
           alerts.map(alert => (
             <Link key={alert.id} href={`/lead-finder/lead/${alert.result_id}`}>
               <div className={`p-4 rounded-2xl border transition-all group ${
-                alert.is_read ? 'bg-n900 border-white/5 opacity-60' : getPriorityColor(alert.priority)
+                alert.is_read ? 'bg-white border-dash-border opacity-60' : getPriorityColor(alert.priority)
               }`}>
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
                     <div className="mt-1">{getPriorityIcon(alert.priority)}</div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-t4">
+                        <span className="text-[10px] font-bold tracking-widest !text-dash-textMuted">
                           {alert.watchlist?.name || 'System Alert'}
                         </span>
-                        <span className="text-[10px] text-t4">• {new Date(alert.created_at).toLocaleDateString()}</span>
+                        <span className="text-[10px] !text-dash-textMuted">• {new Date(alert.created_at).toLocaleDateString()}</span>
                       </div>
-                      <h4 className={`text-sm font-bold ${alert.is_read ? 'text-t2' : 'text-white'}`}>
+                      <h4 className={`text-sm font-bold ${alert.is_read ? '!text-dash-textMuted' : '!text-dash-text'}`}>
                         {alert.title}
                       </h4>
-                      <p className="text-xs text-t3 mt-1">
+                      <p className="text-xs !text-dash-textMuted mt-1">
                         {alert.description}
                       </p>
                       {alert.lead && (
-                        <p className="text-xs font-semibold text-accent mt-2 flex items-center gap-1 group-hover:underline">
+                        <p className="text-xs font-semibold text-dash-accent mt-2 flex items-center gap-1 group-hover:underline">
                           View {alert.lead.business_name} <ChevronRight size={12} />
                         </p>
                       )}
@@ -72,7 +72,7 @@ export function AlertCenter({ alerts }: { alerts: any[] }) {
                   {!alert.is_read && (
                     <button
                       onClick={(e) => handleMarkRead(e, alert.id)}
-                      className="p-1.5 text-t4 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-colors shrink-0"
+                      className="p-1.5 !text-dash-textMuted hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-colors shrink-0"
                       title="Mark as Read"
                     >
                       <Check size={14} />

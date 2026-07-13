@@ -36,11 +36,11 @@ export default async function EditContactPage({
    <Wrapper>
     <div className="space-y-8 py-10 px-4 max-w-4xl mx-auto">
      <div>
-      <h1 className="text-3xl font-extrabold tracking-tight text-white mb-1">Edit Contact</h1>
-      <p className="text-sm text-white/40 font-medium">Update information for {contactResult.data.first_name} {contactResult.data.last_name}</p>
+      <h1 className="text-3xl font-extrabold tracking-tight !text-dash-text mb-1">Edit contact</h1>
+      <p className="text-sm !text-dash-textMuted font-medium">Update information for {contactResult.data.first_name} {contactResult.data.last_name}</p>
      </div>
 
-     <div className="bg-[#0b0b10] border border-white/5 rounded-3xl p-8 md:p-12 shadow-2xl">
+     <div className="bg-white border border-dash-border rounded-2xl p-8 md:p-12 shadow-sm">
       <ContactForm initialData={contactResult.data} members={members} />
      </div>
     </div>

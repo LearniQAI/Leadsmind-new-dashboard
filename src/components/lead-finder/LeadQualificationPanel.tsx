@@ -29,10 +29,10 @@ export function LeadQualificationPanel({ leadId, currentStatus }: { leadId: stri
   const statusColor = STATUS_COLORS[currentStatus] || STATUS_COLORS['New'];
 
   return (
-    <div className="bg-n800 border border-white/10 rounded-2xl p-5 relative">
+    <div className="bg-white border border-dash-border rounded-2xl p-5 relative">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-          <ShieldCheck size={16} className="text-accent" /> Qualification
+        <h3 className="text-sm font-bold !text-dash-text tracking-wider flex items-center gap-2">
+          <ShieldCheck size={16} className="text-dash-accent" /> Qualification
         </h3>
       </div>
 
@@ -50,24 +50,24 @@ export function LeadQualificationPanel({ leadId, currentStatus }: { leadId: stri
         </button>
 
         {isOpen && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-n900 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-dash-border rounded-xl shadow-2xl overflow-hidden z-20 animate-in fade-in slide-in-from-top-2 duration-200">
             {STATUS_OPTIONS.map(status => (
               <button
                 key={status}
                 onClick={() => handleStatusChange(status)}
-                className={`w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-white/5 transition-colors ${
-                  status === currentStatus ? 'text-white' : 'text-t3'
+                className={`w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-dash-surface transition-colors ${
+                  status === currentStatus ? '!text-dash-text' : '!text-dash-textMuted'
                 }`}
               >
                 {status}
-                {status === currentStatus && <Check size={14} className="text-accent" />}
+                {status === currentStatus && <Check size={14} className="text-dash-accent" />}
               </button>
             ))}
           </div>
         )}
       </div>
 
-      <p className="text-xs text-t4 mt-4 text-center">
+      <p className="text-xs !text-dash-textMuted mt-4 text-center">
         Updating status will automatically log activity on the timeline.
       </p>
     </div>

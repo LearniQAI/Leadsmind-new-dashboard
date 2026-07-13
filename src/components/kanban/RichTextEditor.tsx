@@ -30,16 +30,16 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
   );
 
   return (
-    <div className="flex flex-col border border-white/5 rounded-xl bg-white/[0.02] overflow-hidden group focus-within:border-primary/40 transition-all">
+    <div className="flex flex-col border border-dash-border rounded-xl bg-dash-surface overflow-hidden group focus-within:border-dash-accent/40 transition-all">
       {/* Editor Toolbar */}
       {!readOnly && (
-        <div className="flex items-center gap-1 p-2 border-b border-white/5 bg-white/[0.01]">
+        <div className="flex items-center gap-1 p-2 border-b border-dash-border bg-dash-surface">
           <ToolbarButton icon={<Bold className="w-3.5 h-3.5" />} />
           <ToolbarButton icon={<Italic className="w-3.5 h-3.5" />} />
-          <div className="w-[1px] h-4 bg-white/5 mx-1" />
+          <div className="w-[1px] h-4 bg-dash-surface mx-1" />
           <ToolbarButton icon={<List className="w-3.5 h-3.5" />} />
           <ToolbarButton icon={<ListOrdered className="w-3.5 h-3.5" />} />
-          <div className="w-[1px] h-4 bg-white/5 mx-1" />
+          <div className="w-[1px] h-4 bg-dash-surface mx-1" />
           <ToolbarButton icon={<Link className="w-3.5 h-3.5" />} />
           <ToolbarButton icon={<Image className="w-3.5 h-3.5" />} />
           <div className="flex-1" />
@@ -53,15 +53,15 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
         onChange={(e) => setLocalValue(e.target.value)}
         readOnly={readOnly}
         placeholder={placeholder || "Describe the task objectives..."}
-        className="min-h-[200px] p-4 bg-transparent text-[13.5px] text-white/80 placeholder:text-white/10 outline-none resize-none font-dm leading-relaxed disabled:opacity-50"
+        className="min-h-[200px] p-4 bg-transparent text-[13.5px] !text-dash-text placeholder:!text-dash-textMuted outline-none resize-none  leading-relaxed disabled:opacity-50"
       />
 
       {/* Status Bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-t border-white/5 bg-white/[0.01]">
-        <span className="text-[10px] text-white/10 font-bold uppercase tracking-widest">
+      <div className="flex items-center justify-between px-4 py-2 border-t border-dash-border bg-dash-surface">
+        <span className="text-[10px] !text-dash-textMuted font-bold tracking-widest">
           {localValue.length} characters
         </span>
-        <span className="text-[10px] text-white/10 font-bold uppercase tracking-widest">
+        <span className="text-[10px] !text-dash-textMuted font-bold tracking-widest">
           Auto-saving enabled
         </span>
       </div>
@@ -73,7 +73,7 @@ function ToolbarButton({ icon, active }: { icon: React.ReactNode, active?: boole
   return (
     <button className={cn(
       "w-7 h-7 flex items-center justify-center rounded-md transition-all",
-      active ? "bg-primary/20 text-primary" : "text-white/20 hover:text-white/60 hover:bg-white/5"
+      active ? "bg-dash-accent/20 text-dash-accent" : "!text-dash-textMuted hover:!text-dash-textMuted hover:bg-dash-surface"
     )}>
       {icon}
     </button>

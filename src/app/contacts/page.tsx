@@ -7,6 +7,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getWorkspaceTags } from '../actions/contacts';
 import { ImportContactsModal } from '@/components/crm/ImportContactsModal';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { Plus } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,27 +41,26 @@ export default async function ContactsPage() {
   return (
     <MetaData pageTitle="Relationship Management">
       <Wrapper>
-        <div className="flex flex-col h-screen bg-[#04091a] overflow-hidden">
+        <div className="flex flex-col h-screen bg-white overflow-hidden">
           {/* Header Section - Compact */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4 bg-[#04091a] border-b border-white/5 shrink-0">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 sm:px-6 py-4 bg-white border-b border-dash-border shrink-0">
             <div>
-              <h1 className="text-[20px] font-bold text-[#eef2ff] uppercase tracking-tight leading-none mb-1 font-space-grotesk">
-                Relationship <span className="text-[#3b82f6]">Management</span>
+              <h1 className="text-[20px] font-bold !text-dash-text leading-none mb-1">
+                Relationship Management
               </h1>
-              <p className="text-[10.5px] font-medium text-[#4a5a82] uppercase tracking-[0.8px] font-dm-sans">
+              <p className="text-[12px] font-medium !text-dash-textMuted">
                 Segment and manage your high-fidelity database relationships
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <ImportContactsModal />
-              <Link
-                href="/contacts/new"
-                className="h-8 px-3 rounded-[6px] bg-[#2563eb] text-white hover:bg-[#2563eb]/90 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all shadow-lg shadow-[#2563eb]/20"
-              >
-                <i className="fa-solid fa-plus text-[11px]"></i>
-                Add Lead
-              </Link>
+              <DashButton asChild size="sm">
+                <Link href="/contacts/new">
+                  <Plus size={14} />
+                  Add lead
+                </Link>
+              </DashButton>
             </div>
           </div>
 

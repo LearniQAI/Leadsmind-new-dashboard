@@ -11,17 +11,17 @@ export function OpportunityMapLayer({ leads }: { leads: any[] }) {
   const [filter, setFilter] = useState('all');
 
   return (
-    <div className="bg-n800 border border-white/10 rounded-3xl overflow-hidden flex flex-col h-[600px] relative">
+    <div className="bg-white border border-dash-border rounded-3xl overflow-hidden flex flex-col h-[600px] relative">
       {/* Map Controls Overlay */}
       <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between pointer-events-none">
-        <div className="bg-n900/90 backdrop-blur-md border border-white/10 rounded-xl p-2 flex items-center gap-2 pointer-events-auto shadow-2xl">
-          <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${filter === 'all' ? 'bg-white/10 text-white' : 'text-t4 hover:text-white'}`}>All Leads</button>
-          <button onClick={() => setFilter('high')} className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${filter === 'high' ? 'bg-emerald-500/20 text-emerald-400' : 'text-t4 hover:text-emerald-400'}`}>High Opp</button>
-          <button onClick={() => setFilter('gaps')} className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${filter === 'gaps' ? 'bg-amber-500/20 text-amber-400' : 'text-t4 hover:text-amber-400'}`}>Gaps</button>
+        <div className="bg-white/90 backdrop-blur-md border border-dash-border rounded-xl p-2 flex items-center gap-2 pointer-events-auto shadow-2xl">
+          <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider transition-colors ${filter ==='all' ?'bg-dash-border/60 !text-dash-text' :'!text-dash-textMuted hover:!text-dash-text'}`}>All Leads</button>
+          <button onClick={() => setFilter('high')} className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider transition-colors ${filter ==='high' ?'bg-emerald-500/20 text-emerald-400' :'!text-dash-textMuted hover:text-emerald-400'}`}>High Opp</button>
+          <button onClick={() => setFilter('gaps')} className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider transition-colors ${filter ==='gaps' ?'bg-amber-500/20 text-amber-400' :'!text-dash-textMuted hover:text-amber-400'}`}>Gaps</button>
         </div>
-        <div className="bg-n900/90 backdrop-blur-md border border-white/10 rounded-xl p-2 flex flex-col gap-1 pointer-events-auto shadow-2xl">
-          <button className="p-2 hover:bg-white/10 rounded-lg text-white transition-colors"><Layers size={18} /></button>
-          <button className="p-2 hover:bg-white/10 rounded-lg text-white transition-colors"><Navigation size={18} /></button>
+        <div className="bg-white/90 backdrop-blur-md border border-dash-border rounded-xl p-2 flex flex-col gap-1 pointer-events-auto shadow-2xl">
+          <button className="p-2 hover:bg-dash-border/60 rounded-lg !text-dash-text transition-colors"><Layers size={18} /></button>
+          <button className="p-2 hover:bg-dash-border/60 rounded-lg !text-dash-text transition-colors"><Navigation size={18} /></button>
         </div>
       </div>
 
@@ -32,8 +32,8 @@ export function OpportunityMapLayer({ leads }: { leads: any[] }) {
         
         {leads.length === 0 ? (
           <div className="text-center z-10">
-            <Map size={48} className="text-t4 mx-auto mb-4 opacity-30" />
-            <p className="text-t4 font-bold tracking-widest uppercase text-sm">Map Data Unavailable</p>
+            <Map size={48} className="!text-dash-textMuted mx-auto mb-4 opacity-30" />
+            <p className="!text-dash-textMuted font-bold tracking-widest text-sm">Map Data Unavailable</p>
           </div>
         ) : (
           <div className="w-full h-full relative z-10">
@@ -54,9 +54,9 @@ export function OpportunityMapLayer({ leads }: { leads: any[] }) {
                   <div className={`p-2 rounded-full shadow-xl shadow-black/50 ${isHigh ? 'bg-emerald-500 text-black' : isGap ? 'bg-amber-400 text-black' : 'bg-white text-black'}`}>
                     {isHigh ? <Building2 size={14} /> : <MapPin size={14} />}
                   </div>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-n900 border border-white/10 rounded-xl p-3 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-2xl">
-                    <p className="text-xs font-bold text-white truncate">{lead.business_name}</p>
-                    <p className="text-[10px] text-t3 truncate mt-1">{lead.location}</p>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border border-dash-border rounded-xl p-3 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-2xl">
+                    <p className="text-xs font-bold !text-dash-text truncate">{lead.business_name}</p>
+                    <p className="text-[10px] !text-dash-textMuted truncate mt-1">{lead.location}</p>
                   </div>
                 </Link>
               );
@@ -65,7 +65,7 @@ export function OpportunityMapLayer({ leads }: { leads: any[] }) {
         )}
       </div>
 
-      <div className="bg-n900 border-t border-white/5 p-4 flex items-center justify-between text-xs font-bold text-t4 uppercase tracking-wider">
+      <div className="bg-white border-t border-dash-border p-4 flex items-center justify-between text-xs font-bold !text-dash-textMuted tracking-wider">
         <span>{leads.length} Leads in Viewport</span>
         <span className="flex items-center gap-1">Data Layer: Default <ChevronRight size={14} /></span>
       </div>

@@ -1,0 +1,141 @@
+import { NavModule } from "@/interface";
+
+const dashboardNav: NavModule[] = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: "fa-light fa-house",
+    link: "/dashboard",
+    permission: "dashboard",
+  },
+  {
+    id: "crm-sales",
+    label: "CRM & Sales",
+    icon: "fa-light fa-users",
+    items: [
+      { id: 5, label: "Contacts", icon: "fa-light fa-users", link: "/contacts", permission: "contacts" },
+      { id: 51, label: "Lead Finder", icon: "fa-light fa-magnifying-glass-location", link: "/lead-finder", permission: "contacts" },
+      { id: 6, label: "Pipelines", icon: "icon-projects", link: "/pipelines", permission: "pipelines" },
+      { id: 7, label: "Proposals", icon: "fa-light fa-file-signature", link: "/proposals", permission: "proposals" },
+      { id: 81, label: "Quotes", icon: "fa-light fa-file-invoice", link: "/quotes", permission: "invoices" },
+      { id: 2, label: "Tasks", icon: "fa-light fa-circle-check", link: "/tasks", permission: "dashboard" },
+      { id: 21, label: "Projects", icon: "icon-projects", link: "/projects", permission: "business" },
+    ],
+  },
+  {
+    id: "marketing",
+    label: "Marketing",
+    icon: "fa-light fa-bullhorn",
+    items: [
+      { id: 13, label: "Campaigns", icon: "fa-light fa-paper-plane", link: "/campaigns", permission: "marketing" },
+      { id: 12, label: "Funnels", icon: "fa-light fa-filter", link: "/funnels", permission: "marketing" },
+      { id: 14, label: "Forms", icon: "icon-document", link: "/forms", permission: "marketing" },
+      { id: 15, label: "Social", icon: "fa-light fa-share-nodes", link: "/social", permission: "marketing" },
+      { id: 17, label: "Ads", icon: "icon-announcement", link: "/ads", permission: "marketing" },
+      { id: 113, label: "Content Studio", icon: "fa-light fa-sparkles", link: "/ai-studio", permission: "marketing" },
+      { id: 16, label: "Reputation", icon: "icon-trophy", link: "/reputation", permission: "marketing" },
+      { id: 11, label: "Websites", icon: "fa-light fa-browser", link: "/websites", permission: "marketing" },
+      { id: 112, label: "Blogs", icon: "fa-light fa-newspaper", link: "/blog/manage", permission: "marketing" },
+    ],
+  },
+  {
+    id: "finance-accounting",
+    label: "Finance & Accounting",
+    icon: "fa-light fa-chart-line",
+    items: [
+      {
+        id: 20,
+        label: "Finance",
+        icon: "fa-light fa-chart-line",
+        link: "/finance",
+        permission: "commerce",
+        subItems: [
+          { label: "Overview", link: "/finance" },
+          { label: "Transactions", link: "/finance/transactions" },
+          { label: "Reconciliation", link: "/finance/reconciliation" },
+          { label: "Connected Accounts", link: "/finance/connected-accounts" },
+          { label: "Payment Gateways", link: "/finance/payment-gateways" },
+          { label: "Reports", link: "/finance/reports" },
+          { label: "Expenses", link: "/finance/expenses" },
+        ],
+      },
+      { id: 82, label: "Compliance Hub", icon: "fa-light fa-shield-halved", link: "/admin/compliance", permission: "contacts" },
+      { id: 8, label: "Invoices", icon: "fa-light fa-file-invoice-dollar", link: "/invoices", permission: "invoices" },
+    ],
+  },
+  {
+    id: "commerce-ops",
+    label: "Commerce & Ops",
+    icon: "fa-light fa-box",
+    items: [
+      { id: 18, label: "Products", icon: "fa-light fa-box", link: "/products", permission: "commerce" },
+      { id: 19, label: "Orders", icon: "fa-light fa-bag-shopping", link: "/orders", permission: "commerce" },
+      { id: 191, label: "Shipments", icon: "fa-light fa-truck", link: "/shipments", permission: "commerce" },
+      {
+        id: 192,
+        label: "Affiliates",
+        icon: "fa-light fa-handshake",
+        link: "/affiliates",
+        permission: "commerce",
+        subItems: [
+          { label: "Management", link: "/affiliates" },
+          { label: "Affiliate Portal", link: "/affiliate-portal" },
+          { label: "Program Marketplace", link: "/affiliate-marketplace" },
+        ],
+      },
+      { id: 31, label: "Inventory", icon: "fa-light fa-boxes-stacked", link: "/inventory", permission: "commerce" },
+      {
+        id: 30,
+        label: "HR & Payroll",
+        icon: "fa-light fa-users-gear",
+        link: "/hr",
+        permission: "commerce",
+        subItems: [
+          { label: "Employees", link: "/hr/employees" },
+          { label: "Payroll", link: "/hr/payroll" },
+          { label: "Leave", link: "/hr/leave" },
+          { label: "Time Tracking", link: "/hr/time-tracking" },
+        ],
+      },
+      { id: 9, label: "Calendars", icon: "fa-light fa-calendar-days", link: "/calendar", permission: "calendar" },
+      { id: 10, label: "Waitlists", icon: "fa-light fa-clock-rotate-left", link: "/calendar/waitlist", permission: "calendar" },
+      { id: 101, label: "Instant Meet", icon: "fa-light fa-video", link: "/calendar/instant-meet", permission: "calendar" },
+      { id: 23, label: "Automations", icon: "fa-light fa-bolt", link: "/automations", permission: "automation" },
+    ],
+  },
+  {
+    id: "learning",
+    label: "Learning",
+    icon: "icon-training",
+    items: [
+      { id: 24, label: "Learning", icon: "icon-training", link: "/courses", permission: "learning" },
+      { id: 241, label: "Student Portal", icon: "fa-light fa-graduation-cap", link: "/student" },
+      { id: 25, label: "Certificates", icon: "icon-trophy", link: "/courses/certificates", permission: "learning" },
+      { id: 26, label: "Community", icon: "fa-light fa-comments", link: "/community/forums", permission: "business" },
+      { id: 27, label: "Media Center", icon: "fa-light fa-folder-open", link: "/media", permission: "business" },
+    ],
+  },
+  {
+    id: "communication",
+    label: "Communication",
+    icon: "fa-light fa-comments",
+    items: [
+      { id: 3, label: "Chat", icon: "fa-light fa-comments", link: "/conversations", permission: "contacts" },
+      { id: 34, label: "LENA Chat", icon: "fa-light fa-robot", link: "/settings/lena-chat", permission: "settings" },
+    ],
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: "fa-light fa-gear",
+    items: [
+      { id: 29, label: "Settings", icon: "fa-light fa-gear", link: "/settings", permission: "settings" },
+      { id: 32, label: "Integrations", icon: "fa-light fa-plug", link: "/settings/integrations-hub", permission: "settings" },
+      { id: 33, label: "Developer & API", icon: "fa-light fa-code", link: "/settings/developer", permission: "settings" },
+      { id: 22, label: "Support", icon: "fa-light fa-life-ring", link: "/support", permission: "business" },
+      { id: 221, label: "Help Center", icon: "fa-light fa-circle-question", link: "/articles", permission: "business" },
+    ],
+  },
+];
+
+export default dashboardNav;
