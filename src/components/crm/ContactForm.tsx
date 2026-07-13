@@ -4,12 +4,11 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { createContact, updateContact, checkDuplicateContact } from '@/app/actions/contacts';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
+import { DashButton } from '@/components/dashboard-ui/Button';
 
 const contactSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -92,84 +91,38 @@ export function ContactForm({ initialData, members }: ContactFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest ml-1">First Name</label>
-          <input 
-            {...register('firstName')}
-            className={cn(
-              "w-full bg-white/[0.03] border border-white/5 rounded-lg px-4 h-10 text-[13.5px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb]/40 transition-all font-dm-sans",
-              errors.firstName && "border-red-500/50"
-            )}
-            placeholder="John"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest ml-1">Last Name</label>
-          <input 
-            {...register('lastName')}
-            className={cn(
-              "w-full bg-white/[0.03] border border-white/5 rounded-lg px-4 h-10 text-[13.5px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb]/40 transition-all font-dm-sans",
-              errors.lastName && "border-red-500/50"
-            )}
-            placeholder="Doe"
-          />
-        </div>
+        <DashFormField label="First name" error={errors.firstName?.message}>
+          <DashInput {...register('firstName')} invalid={!!errors.firstName} placeholder="John" />
+        </DashFormField>
+        <DashFormField label="Last name" error={errors.lastName?.message}>
+          <DashInput {...register('lastName')} invalid={!!errors.lastName} placeholder="Doe" />
+        </DashFormField>
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest ml-1">Email Address</label>
-        <input 
-          {...register('email')}
-          className={cn(
-            "w-full bg-white/[0.03] border border-white/5 rounded-lg px-4 h-10 text-[13.5px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb]/40 transition-all font-dm-sans",
-            errors.email && "border-red-500/50"
-          )}
-          placeholder="lead@organization.com"
-        />
-      </div>
+      <DashFormField label="Email address" error={errors.email?.message}>
+        <DashInput {...register('email')} invalid={!!errors.email} placeholder="lead@organization.com" />
+      </DashFormField>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest ml-1">Phone Number</label>
-        <input 
-          {...register('phone')}
-          className="w-full bg-white/[0.03] border border-white/5 rounded-lg px-4 h-10 text-[13.5px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb]/40 transition-all font-dm-sans"
-          placeholder="+1 (555) 000-0000"
-        />
-      </div>
+      <DashFormField label="Phone number">
+        <DashInput {...register('phone')} placeholder="+1 (555) 000-0000" />
+      </DashFormField>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest ml-1">Lead Source</label>
-          <input 
-            {...register('source')}
-            className="w-full bg-white/[0.03] border border-white/5 rounded-lg px-4 h-10 text-[13.5px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb]/40 transition-all font-dm-sans"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest ml-1">Tags (Comma Separated)</label>
-          <input 
-            {...register('tags')}
-            className="w-full bg-white/[0.03] border border-white/5 rounded-lg px-4 h-10 text-[13.5px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb]/40 transition-all font-dm-sans"
-            placeholder="Lead, Cold, VIP..."
-          />
-        </div>
+        <DashFormField label="Lead source">
+          <DashInput {...register('source')} />
+        </DashFormField>
+        <DashFormField label="Tags (comma separated)">
+          <DashInput {...register('tags')} placeholder="Lead, Cold, VIP..." />
+        </DashFormField>
       </div>
 
       <div className="pt-4 flex gap-3">
-        <button 
-          type="button"
-          onClick={() => router.back()}
-          className="flex-1 h-10 rounded-lg bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[13px] font-bold font-dm-sans transition-all"
-        >
+        <DashButton type="button" variant="secondary" className="flex-1" onClick={() => router.back()}>
           Cancel
-        </button>
-        <button 
-          type="submit"
-          disabled={isSubmitting}
-          className="flex-1 h-10 rounded-lg bg-[#2563eb] text-white hover:bg-[#2563eb]/90 text-[13px] font-bold font-dm-sans transition-all shadow-lg shadow-[#2563eb]/20 disabled:opacity-50"
-        >
-          {isSubmitting ? (initialData ? 'Saving...' : 'Creating...') : (initialData ? 'Save Changes' : 'Create Lead')}
-        </button>
+        </DashButton>
+        <DashButton type="submit" variant="primary" className="flex-1" disabled={isSubmitting}>
+          {isSubmitting ? (initialData ? 'Saving…' : 'Creating…') : (initialData ? 'Save changes' : 'Create lead')}
+        </DashButton>
       </div>
     </form>
   );

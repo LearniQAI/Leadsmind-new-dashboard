@@ -2,7 +2,9 @@
 
 import React from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import { AlertTriangle, AlertCircle, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DashButton } from '@/components/dashboard-ui/Button';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -25,61 +27,47 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   variant = 'danger'
 }: ConfirmDialogProps) {
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'danger': return 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20';
-      case 'warning': return 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20';
-      default: return 'bg-[#2563eb] text-white hover:bg-[#2563eb]/90 shadow-[#2563eb]/20';
-    }
-  };
+  const iconWrapClass = {
+    danger: 'bg-red/10 text-red',
+    warning: 'bg-amber/10 text-amber',
+    info: 'bg-dash-accent/10 text-dash-accent',
+  }[variant];
 
-  const getIcon = () => {
-    switch (variant) {
-      case 'danger': return 'fa-triangle-exclamation text-red-400';
-      case 'warning': return 'fa-circle-exclamation text-amber-400';
-      default: return 'fa-circle-question text-[#3b82f6]';
-    }
-  };
+  const Icon = { danger: AlertTriangle, warning: AlertCircle, info: HelpCircle }[variant];
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[1001] bg-[#000000c1] backdrop-blur-sm animate-in fade-in duration-300" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-[1002] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[24px] bg-[#080f28] border border-white/5 p-6 shadow-2xl animate-in zoom-in-95 fade-in duration-300 max-h-[90vh] overflow-y-auto">
+        <Dialog.Overlay className="fixed inset-0 z-[1001] bg-dash-text/40 backdrop-blur-sm animate-in fade-in duration-300 motion-reduce:animate-none" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-[1002] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white border border-dash-border p-6 shadow-xl animate-in zoom-in-95 fade-in duration-300 motion-reduce:animate-none max-h-[90vh] overflow-y-auto">
           <div className="flex flex-col items-center text-center">
-            <div className={cn(
-              "w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-4 bg-white/[0.03] border border-white/5 shadow-xl rotate-6 transition-transform hover:rotate-0 duration-500"
-            )}>
-              <i className={cn("fa-solid text-[24px]", getIcon())}></i>
+            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-4", iconWrapClass)}>
+              <Icon size={22} strokeWidth={2} />
             </div>
 
-            <Dialog.Title className="text-[20px] font-bold text-[#eef2ff] mb-2 font-space-grotesk uppercase tracking-tight">
+            <Dialog.Title className="text-[17px] font-bold !text-dash-text mb-2">
               {title}
             </Dialog.Title>
 
-            <Dialog.Description className="text-[13.5px] text-[#4a5a82] mb-5 font-dm-sans leading-relaxed max-w-[320px]">
+            <Dialog.Description className="text-[13.5px] !text-dash-textMuted mb-5 leading-relaxed max-w-[320px]">
               {description}
             </Dialog.Description>
 
             <div className="flex w-full gap-3">
-              <button
-                onClick={onClose}
-                className="flex-1 h-11 rounded-[12px] bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[13px] font-bold font-dm-sans transition-all"
-              >
+              <DashButton variant="secondary" size="default" className="flex-1" onClick={onClose}>
                 {cancelLabel}
-              </button>
-              <button
+              </DashButton>
+              <DashButton
+                variant={variant === 'danger' ? 'destructive' : 'primary'}
+                size="default"
+                className="flex-1"
                 onClick={() => {
                   onConfirm();
                   onClose();
                 }}
-                className={cn(
-                  "flex-1 h-11 rounded-[12px] text-[13px] font-bold font-dm-sans transition-all shadow-lg active:scale-95",
-                  getVariantStyles()
-                )}
               >
                 {confirmLabel}
-              </button>
+              </DashButton>
             </div>
           </div>
         </Dialog.Content>

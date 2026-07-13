@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
+import { Tag, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui/Button';
 
 interface BulkActionToolbarProps {
   selectedCount: number;
@@ -26,38 +27,32 @@ export function BulkActionToolbar({
       "fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300",
       className
     )}>
-      <div className="bg-[#080f28] border border-white/10 rounded-[16px] px-6 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-6 backdrop-blur-xl">
-        <div className="flex items-center gap-3 pr-6 border-r border-white/5">
-          <span className="bg-[#2563eb] text-white text-[11px] font-bold w-6 h-6 rounded-md flex items-center justify-center font-space-grotesk">
+      <div className="bg-white border border-dash-border rounded-2xl px-6 py-3 shadow-xl flex items-center gap-6">
+        <div className="flex items-center gap-3 pr-6 border-r border-dash-border">
+          <span className="bg-dash-accent text-white text-[11px] font-bold w-6 h-6 rounded-md flex items-center justify-center">
             {selectedCount}
           </span>
-          <span className="text-[12px] font-bold text-[#eef2ff] uppercase tracking-widest font-dm-sans">
+          <span className="text-[12px] font-bold !text-dash-text">
             Selected
           </span>
-          <button 
+          <button
             onClick={onClear}
-            className="text-[10px] font-bold text-[#4a5a82] hover:text-[#eef2ff] transition-colors uppercase tracking-widest ml-1"
+            className="text-[12px] font-bold text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none ml-1"
           >
             Clear
           </button>
         </div>
 
         <div className="flex items-center gap-2">
-          <button 
-            onClick={onAddTag}
-            className="h-9 px-4 rounded-lg bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all"
-          >
-            <i className="fa-solid fa-tag text-[#3b82f6] text-[12px]"></i>
-            Add Tag
-          </button>
-          
-          <button 
-            onClick={onDelete}
-            className="h-9 px-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all"
-          >
-            <i className="fa-solid fa-trash-can text-[12px]"></i>
+          <DashButton variant="secondary" size="sm" onClick={onAddTag}>
+            <Tag size={13} className="text-dash-accent" />
+            Add tag
+          </DashButton>
+
+          <DashButton variant="destructive" size="sm" onClick={onDelete}>
+            <Trash2 size={13} />
             Delete
-          </button>
+          </DashButton>
         </div>
       </div>
     </div>

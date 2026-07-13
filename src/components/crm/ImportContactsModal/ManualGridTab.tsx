@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Plus, X } from 'lucide-react';
 import { ParsedContact } from './PreviewTable';
 
 interface ManualGridTabProps {
@@ -67,21 +68,21 @@ export function ManualGridTab({ onParsed, onClear }: ManualGridTabProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between text-[11px] font-dm-sans uppercase tracking-wider font-semibold px-1">
-        <span className="text-[#94a3c8]">Interactive Grid Input</span>
+      <div className="flex items-center justify-between text-[11px]  tracking-wider font-semibold px-1">
+        <span className="!text-dash-textMuted">Interactive Grid Input</span>
         <button
           type="button"
           onClick={addRow}
-          className="text-[#3b82f6] hover:text-[#2563eb] font-semibold flex items-center gap-1 transition-all"
+          className="text-dash-accent hover:text-dash-accent/80 font-semibold flex items-center gap-1 transition-all"
         >
-          <i className="fa-solid fa-plus text-[10px]"></i>
-          Add Row
+          <Plus size={10} />
+          Add row
         </button>
       </div>
 
-      <div className="border border-white/5 bg-[#080f28] rounded-xl overflow-hidden max-h-[220px] overflow-y-auto common-scrollbar">
-        <table className="w-full text-left border-collapse text-[11px] font-dm-sans">
-          <thead className="sticky top-0 bg-[#0c1535] text-[#94a3c8] font-semibold border-b border-white/5 z-10">
+      <div className="border border-dash-border bg-white rounded-xl overflow-hidden max-h-[220px] overflow-y-auto common-scrollbar">
+        <table className="w-full text-left border-collapse text-[11px] ">
+          <thead className="sticky top-0 bg-dash-surface !text-dash-textMuted font-semibold border-b border-dash-border z-10">
             <tr>
               <th className="py-2 px-2.5">First Name *</th>
               <th className="py-2 px-2.5">Last Name</th>
@@ -91,16 +92,16 @@ export function ManualGridTab({ onParsed, onClear }: ManualGridTabProps) {
               <th className="py-2 px-2.5 text-center w-10"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.03] text-[#eef2ff]">
+          <tbody className="divide-y divide-dash-border !text-dash-text">
             {rows.map((row, index) => (
-              <tr key={index} className="hover:bg-[#111d47]/10 transition-colors">
+              <tr key={index} className="hover:bg-dash-surface transition-colors">
                 <td className="py-1 px-1.5">
                   <input
                     type="text"
                     value={row.firstName}
                     onChange={(e) => updateField(index, 'firstName', e.target.value)}
                     placeholder="E.g., John"
-                    className="w-full bg-transparent border border-transparent hover:border-white/5 focus:border-[#2563eb] rounded px-1.5 py-1 text-white outline-none transition-all"
+                    className="w-full bg-transparent border border-transparent hover:border-dash-border focus:border-dash-accent rounded px-1.5 py-1 !text-dash-text outline-none transition-colors motion-reduce:transition-none"
                   />
                 </td>
                 <td className="py-1 px-1.5">
@@ -109,7 +110,7 @@ export function ManualGridTab({ onParsed, onClear }: ManualGridTabProps) {
                     value={row.lastName}
                     onChange={(e) => updateField(index, 'lastName', e.target.value)}
                     placeholder="E.g., Doe"
-                    className="w-full bg-transparent border border-transparent hover:border-white/5 focus:border-[#2563eb] rounded px-1.5 py-1 text-white outline-none transition-all"
+                    className="w-full bg-transparent border border-transparent hover:border-dash-border focus:border-dash-accent rounded px-1.5 py-1 !text-dash-text outline-none transition-colors motion-reduce:transition-none"
                   />
                 </td>
                 <td className="py-1 px-1.5">
@@ -118,7 +119,7 @@ export function ManualGridTab({ onParsed, onClear }: ManualGridTabProps) {
                     value={row.email}
                     onChange={(e) => updateField(index, 'email', e.target.value)}
                     placeholder="E.g., john@example.com"
-                    className="w-full bg-transparent border border-transparent hover:border-white/5 focus:border-[#2563eb] rounded px-1.5 py-1 text-white outline-none transition-all"
+                    className="w-full bg-transparent border border-transparent hover:border-dash-border focus:border-dash-accent rounded px-1.5 py-1 !text-dash-text outline-none transition-colors motion-reduce:transition-none"
                   />
                 </td>
                 <td className="py-1 px-1.5">
@@ -127,7 +128,7 @@ export function ManualGridTab({ onParsed, onClear }: ManualGridTabProps) {
                     value={row.phone}
                     onChange={(e) => updateField(index, 'phone', e.target.value)}
                     placeholder="E.g., +15550199"
-                    className="w-full bg-transparent border border-transparent hover:border-white/5 focus:border-[#2563eb] rounded px-1.5 py-1 text-white outline-none transition-all"
+                    className="w-full bg-transparent border border-transparent hover:border-dash-border focus:border-dash-accent rounded px-1.5 py-1 !text-dash-text outline-none transition-colors motion-reduce:transition-none"
                   />
                 </td>
                 <td className="py-1 px-1.5">
@@ -136,16 +137,16 @@ export function ManualGridTab({ onParsed, onClear }: ManualGridTabProps) {
                     value={row.tags}
                     onChange={(e) => updateField(index, 'tags', e.target.value)}
                     placeholder="lead, premium"
-                    className="w-full bg-transparent border border-transparent hover:border-white/5 focus:border-[#2563eb] rounded px-1.5 py-1 text-white outline-none transition-all"
+                    className="w-full bg-transparent border border-transparent hover:border-dash-border focus:border-dash-accent rounded px-1.5 py-1 !text-dash-text outline-none transition-colors motion-reduce:transition-none"
                   />
                 </td>
                 <td className="py-1 px-1 text-center">
                   <button
                     type="button"
                     onClick={() => deleteRow(index)}
-                    className="text-[#4a5a82] hover:text-[#ef4444] p-1 rounded hover:bg-[#ef4444]/10 transition-all"
+                    className="!text-dash-textMuted hover:text-red p-1 rounded hover:bg-red/10 transition-all"
                   >
-                    <i className="fa-solid fa-xmark text-[11px]"></i>
+                    <X size={11} />
                   </button>
                 </td>
               </tr>

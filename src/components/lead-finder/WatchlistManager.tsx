@@ -60,44 +60,44 @@ export function WatchlistManager({ initialWatchlists }: { initialWatchlists: any
       case 'location': return <MapPin size={14} className="text-blue-400" />;
       case 'industry': return <Building2 size={14} className="text-amber-400" />;
       case 'keyword': return <Tag size={14} className="text-emerald-400" />;
-      default: return <Search size={14} className="text-t4" />;
+      default: return <Search size={14} className="!text-dash-textMuted" />;
     }
   };
 
   return (
-    <div className="bg-n800 border border-white/10 rounded-3xl p-6">
+    <div className="bg-white border border-dash-border rounded-3xl p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-space font-bold text-white flex items-center gap-2">
-          <Eye className="text-accent" /> Active Watchlists
+        <h2 className="text-xl font-bold !text-dash-text flex items-center gap-2">
+          <Eye className="text-dash-accent" /> Active Watchlists
         </h2>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-xs font-bold tracking-wider transition-colors flex items-center gap-2"
         >
           <Plus size={14} /> New Watchlist
         </button>
       </div>
 
       {isOpen && (
-        <form onSubmit={handleCreate} className="mb-6 p-4 bg-n900 border border-white/5 rounded-2xl space-y-4">
+        <form onSubmit={handleCreate} className="mb-6 p-4 bg-white border border-dash-border rounded-2xl space-y-4">
           <div>
-            <label className="block text-xs font-bold text-t4 uppercase tracking-wider mb-2">Watchlist Name</label>
+            <label className="block text-xs font-bold !text-dash-textMuted tracking-wider mb-2">Watchlist Name</label>
             <input 
               type="text" 
               required
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="e.g. Dentists in New York"
-              className="w-full bg-n800 border border-white/10 rounded-xl py-2 px-3 text-sm text-white focus:outline-none focus:border-accent"
+              className="w-full bg-white border border-dash-border rounded-xl py-2 px-3 text-sm !text-dash-text focus:outline-none focus:border-dash-accent"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-t4 uppercase tracking-wider mb-2">Monitor By</label>
+              <label className="block text-xs font-bold !text-dash-textMuted tracking-wider mb-2">Monitor By</label>
               <select 
                 value={type}
                 onChange={e => setType(e.target.value)}
-                className="w-full bg-n800 border border-white/10 rounded-xl py-2 px-3 text-sm text-white focus:outline-none focus:border-accent"
+                className="w-full bg-white border border-dash-border rounded-xl py-2 px-3 text-sm !text-dash-text focus:outline-none focus:border-dash-accent"
               >
                 <option value="location">Location</option>
                 <option value="industry">Industry / Category</option>
@@ -105,21 +105,21 @@ export function WatchlistManager({ initialWatchlists }: { initialWatchlists: any
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-t4 uppercase tracking-wider mb-2">Value</label>
+              <label className="block text-xs font-bold !text-dash-textMuted tracking-wider mb-2">Value</label>
               <input 
                 type="text" 
                 required
                 value={criteria}
                 onChange={e => setCriteria(e.target.value)}
                 placeholder="e.g. New York, NY"
-                className="w-full bg-n800 border border-white/10 rounded-xl py-2 px-3 text-sm text-white focus:outline-none focus:border-accent"
+                className="w-full bg-white border border-dash-border rounded-xl py-2 px-3 text-sm !text-dash-text focus:outline-none focus:border-dash-accent"
               />
             </div>
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+            className="w-full py-2 bg-dash-border/60 hover:bg-dash-border !text-dash-text rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
           >
             {loading ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Create Watchlist'}
           </button>
@@ -128,20 +128,20 @@ export function WatchlistManager({ initialWatchlists }: { initialWatchlists: any
 
       <div className="space-y-3">
         {watchlists.length === 0 ? (
-          <div className="text-center p-8 bg-white/5 rounded-2xl border border-white/10 border-dashed">
-            <Eye size={32} className="text-t4 mx-auto mb-3 opacity-50" />
-            <p className="text-sm text-t3">You have no active watchlists.</p>
+          <div className="text-center p-8 bg-dash-surface rounded-2xl border border-dash-border border-dashed">
+            <Eye size={32} className="!text-dash-textMuted mx-auto mb-3 opacity-50" />
+            <p className="text-sm !text-dash-textMuted">You have no active watchlists.</p>
           </div>
         ) : (
           watchlists.map(w => (
-            <div key={w.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${w.is_active ? 'bg-white/5 border-white/10' : 'bg-n900 border-white/5 opacity-70'}`}>
+            <div key={w.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${w.is_active ? 'bg-dash-surface border-dash-border' : 'bg-white border-dash-border opacity-70'}`}>
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="text-white font-bold">{w.name}</h4>
-                  {!w.is_active && <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded uppercase font-bold tracking-widest">Paused</span>}
+                  <h4 className="!text-dash-text font-bold">{w.name}</h4>
+                  {!w.is_active && <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded font-bold tracking-widest">Paused</span>}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-t3">
-                  <span className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded">
+                <div className="flex items-center gap-3 text-xs !text-dash-textMuted">
+                  <span className="flex items-center gap-1 bg-dash-surface px-2 py-1 rounded">
                     {getTypeIcon(w.monitoring_type)} 
                     {w.monitoring_type}
                   </span>
@@ -158,7 +158,7 @@ export function WatchlistManager({ initialWatchlists }: { initialWatchlists: any
                 </button>
                 <button
                   onClick={() => handleDelete(w.id)}
-                  className="p-2 text-t4 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                  className="p-2 !text-dash-textMuted hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                   title="Delete Watchlist"
                 >
                   <Trash2 size={16} />

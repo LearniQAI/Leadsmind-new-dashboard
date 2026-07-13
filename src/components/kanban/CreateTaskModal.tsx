@@ -83,20 +83,20 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#04091a] border-white/5 p-0 overflow-hidden rounded-lg z-[2000]">
+      <DialogContent className="max-w-4xl bg-white border-dash-border p-0 overflow-hidden rounded-lg z-[2000]">
         <div className="flex flex-col max-h-[90vh]">
           {/* Header Section */}
-          <div className="px-6 py-4 border-b border-white/5">
+          <div className="px-6 py-4 border-b border-dash-border">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-[#2563eb]/10 flex items-center justify-center border border-[#2563eb]/20">
-                <Target className="w-5 h-5 text-[#2563eb]" />
+              <div className="w-10 h-10 rounded-2xl bg-dash-accent/10 flex items-center justify-center border border-dash-accent/20">
+                <Target className="w-5 h-5 text-dash-accent" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-black tracking-tighter text-white font-space-grotesk flex items-center gap-3">
-                  CREATE <span className="text-accent2">TASK</span>
+                <DialogTitle className="text-xl font-bold tracking-tight !text-dash-text flex items-center gap-3">
+                  Create <span className="text-dash-accent">task</span>
                 </DialogTitle>
-                <DialogDescription className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.2em] mt-1">
-                  Strategic Deployment & Asset Allocation
+                <DialogDescription className="text-[11px] font-semibold !text-dash-textMuted mt-1">
+                  Strategic deployment & asset allocation
                 </DialogDescription>
               </div>
             </div>
@@ -107,33 +107,33 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
               {/* Primary Configuration (Left) */}
               <div className="lg:col-span-7 space-y-8">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.6px] text-[#4a5a82] font-dm-sans">
-                    OBJECTIVE IDENTITY
+                  <label className="text-[12px] font-bold !text-dash-textMuted">
+                    Objective identity
                   </label>
                   <PremiumInput
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="DEFINE CORE TARGET..."
-                    className="text-[11px] py-3 rounded-xl"
+                    placeholder="Define core target..."
+                    className="text-[13px] py-3 rounded-xl"
                   />
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.6px] text-[#4a5a82] font-dm-sans">
-                    STRATEGIC CONTEXT
+                  <label className="text-[12px] font-bold !text-dash-textMuted">
+                    Strategic context
                   </label>
                   <PremiumTextarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="OUTLINE THE EXECUTION PATH..."
-                    className="min-h-[120px] text-[11px] p-4 rounded-xl"
+                    placeholder="Outline the execution path..."
+                    className="min-h-[120px] text-[13px] p-4 rounded-xl"
                   />
                 </div>
               </div>
 
               {/* Operational Metadata (Right) */}
               <div className="lg:col-span-5 space-y-6">
-                <div className="p-4 rounded-xl bg-[#080f28] border border-white/5 space-y-6">
+                <div className="p-4 rounded-xl bg-white border border-dash-border space-y-6">
                   <PriorityToggleGroup
                     value={priority}
                     onChange={setPriority}
@@ -156,10 +156,10 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
           </div>
 
           {/* Footer Control Bar */}
-          <div className="px-10 py-2.5 border-t border-white/5 bg-white/[0.01] flex items-center justify-between">
+          <div className="px-10 py-2.5 border-t border-dash-border bg-dash-surface flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Layout className="w-4 h-4 text-[#4a5a82]" />
-              <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest">
+              <Layout className="w-4 h-4 !text-dash-textMuted" />
+              <span className="text-[11px] font-semibold !text-dash-textMuted">
                 Ready for initialization
               </span>
             </div>
@@ -168,16 +168,16 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
               <Button
                 variant="ghost"
                 onClick={() => onOpenChange(false)}
-                className="px-4 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-[#4a5a82] hover:text-white hover:bg-white/5 rounded-md transition-all"
+                className="px-4 py-1 text-[12px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-md transition-all"
               >
-                ABORT
+                Cancel
               </Button>
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="bg-[#2563eb] hover:bg-[#2563eb]/90 text-white px-4 py-1 rounded-md text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-[#2563eb]/20 transition-all active:scale-[0.98]"
+                className="bg-dash-accent hover:bg-dash-accent/90 text-white px-4 py-1 rounded-md text-[12px] font-bold shadow-lg shadow-dash-accent/20 transition-all active:scale-[0.98]"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'DEPLOY TASK'}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> : 'Deploy task'}
               </Button>
             </div>
           </div>

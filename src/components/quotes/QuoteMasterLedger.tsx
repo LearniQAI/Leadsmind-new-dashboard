@@ -13,10 +13,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { convertQuoteToInvoice, deleteQuote, updateQuoteStatus } from '@/app/actions/quotes';
 import { useRouter } from 'next/navigation';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
 
 interface QuoteMasterLedgerProps {
   quotes: any[];
@@ -111,28 +109,28 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
   };
 
   return (
-    <div className="bg-[var(--n800)] border border-[var(--bdr)] rounded-[var(--r16)] overflow-hidden">
+    <div className="bg-white border border-dash-border rounded-2xl overflow-hidden shadow-sm">
       {/* Search & Filters */}
-      <div className="p-4 border-b border-[var(--bdr)] flex flex-wrap items-center justify-between gap-4">
+      <div className="p-4 border-b border-dash-border flex flex-wrap items-center justify-between gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--t3)]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 !text-dash-textMuted" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search proposals..."
-            className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--bdr)] rounded-[var(--r8)] pl-9 pr-3 py-2 text-xs text-[var(--t1)] outline-none focus:border-[var(--accent)] transition-all"
+            className="w-full bg-white border border-dash-border rounded-lg pl-9 pr-3 py-2 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-dash-surface p-1 rounded-lg">
             {['all', 'draft', 'sent', 'accepted', 'converted'].map(status => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
                 className={cn(
-                  "px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all",
-                  statusFilter === status ? "bg-[var(--accent)] text-white" : "text-[var(--t3)] hover:text-[var(--t1)]"
+                  "px-3 py-1 rounded-md text-[12px] font-semibold capitalize transition-colors motion-reduce:transition-none",
+                  statusFilter === status ? "bg-dash-accent text-white" : "!text-dash-textMuted hover:!text-dash-text"
                 )}
               >
                 {status}
@@ -143,7 +141,7 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
           <select
             value={sortBy}
             onChange={e => setBy(e.target.value)}
-            className="bg-white/5 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--t2)] outline-none focus:border-[var(--accent)] cursor-pointer"
+            className="bg-dash-surface border border-dash-border rounded-lg px-3 py-1.5 text-[12px] font-semibold !text-dash-textMuted outline-none focus:border-dash-accent cursor-pointer"
           >
             <option value="newest">Newest First</option>
             <option value="highest">Highest Amount</option>
@@ -155,56 +153,57 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-white/[0.02] border-b border-[var(--bdr)]">
-              <th className="px-6 py-4 text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">Quote No.</th>
-              <th className="px-6 py-4 text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">Client</th>
-              <th className="px-6 py-4 text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">Total Amount</th>
-              <th className="px-6 py-4 text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">Date</th>
+            <tr className="bg-dash-surface border-b border-dash-border">
+              <th className="px-6 py-4 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wide">Quote No.</th>
+              <th className="px-6 py-4 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wide">Client</th>
+              <th className="px-6 py-4 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wide">Total Amount</th>
+              <th className="px-6 py-4 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wide">Status</th>
+              <th className="px-6 py-4 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wide">Date</th>
               <th className="px-6 py-4"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--bdr)]">
+          <tbody className="divide-y divide-dash-border">
             {filteredQuotes.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center">
-                  <FileText className="h-8 w-8 text-[var(--t4)] mx-auto mb-2 opacity-20" />
-                  <p className="text-xs font-medium text-[var(--t3)]">No matching proposals found</p>
+                  <FileText className="h-8 w-8 !text-dash-textMuted mx-auto mb-2 opacity-30" />
+                  <p className="text-xs font-medium !text-dash-textMuted">No matching proposals found</p>
                 </td>
               </tr>
             ) : (
               filteredQuotes.map((q) => (
-                <tr key={q?.id || Math.random().toString()} className="hover:bg-[rgba(255,255,255,0.01)] transition-colors group">
+                <tr key={q?.id || Math.random().toString()} className="hover:bg-dash-surface/60 transition-colors motion-reduce:transition-none group">
                   <td className="px-6 py-4">
-                    <span className="text-[11px] font-black font-space text-[var(--accent2)]">
+                    <span className="text-[11px] font-bold text-dash-accent">
                       {q?.quote_number || 'N/A'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
-                      <span className="text-xs font-bold text-[var(--t1)]">
+                      <span className="text-xs font-bold !text-dash-text">
                         {q?.contact ? `${q.contact.first_name || ''} ${q.contact.last_name || ''}`.trim() || 'Unknown Client' : 'Unknown Client'}
                       </span>
-                      <span className="text-[10px] text-[var(--t4)]">
+                      <span className="text-[10px] !text-dash-textMuted">
                         {q?.contact?.email || 'No email registered'}
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-xs font-bold text-[var(--t1)]">
+                  <td className="px-6 py-4 text-xs font-bold !text-dash-text">
                     ${(Number(q?.total_amount) || 0).toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={cn(
-                      "text-[9px] font-black uppercase px-2 py-1 rounded-full border",
-                      q?.status === 'accepted' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                        q?.status === 'converted' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                          q?.status === 'declined' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
-                            'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                    )}>
-                      {q?.status || 'draft'}
-                    </span>
+                    <DashStatusPill
+                      variant={
+                        q?.status === 'accepted' ? 'success' :
+                        q?.status === 'converted' ? 'accent' :
+                        q?.status === 'declined' ? 'danger' :
+                        'info'
+                      }
+                    >
+                      {q?.status ? q.status.charAt(0).toUpperCase() + q.status.slice(1) : 'Draft'}
+                    </DashStatusPill>
                   </td>
-                  <td className="px-6 py-4 text-[10px] text-[var(--t3)]">
+                  <td className="px-6 py-4 text-[10px] !text-dash-textMuted">
                     {q?.created_at ? (() => {
                       try {
                         return format(new Date(q.created_at), 'dd MMM yyyy');
@@ -216,11 +215,11 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
                   <td className="px-6 py-4 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="p-2 hover:bg-white/5 rounded-lg transition-colors text-[var(--t4)]">
+                        <button className="p-2 hover:bg-dash-surface rounded-lg transition-colors !text-dash-textMuted">
                           <MoreVertical size={16} />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-[var(--n800)] border border-[var(--bdrh)] shadow-2xl rounded-xl min-w-[180px]">
+                      <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-lg rounded-xl min-w-[180px]">
                         <DropdownMenuItem
                           onClick={() => q?.id && router.push(`/quotes/${q.id}/edit`)}
                           className="flex items-center gap-2 cursor-pointer text-xs py-2.5"
@@ -228,22 +227,22 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
                           <Pencil size={14} /> Edit Proposal
                         </DropdownMenuItem>
                         {q?.status === 'accepted' && q?.id && (
-                          <DropdownMenuItem onClick={() => handleConvert(q.id)} className="flex items-center gap-2 cursor-pointer text-[var(--accent2)] text-xs py-2.5 font-bold">
+                          <DropdownMenuItem onClick={() => handleConvert(q.id)} className="flex items-center gap-2 cursor-pointer text-dash-accent text-xs py-2.5 font-bold">
                             <ArrowRight size={14} /> Convert to Invoice
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator className="bg-[var(--bdr)]" />
+                        <DropdownMenuSeparator className="bg-dash-border" />
                         <DropdownMenuItem onClick={() => q?.id && handleStatusChange(q, 'sent')} className="flex items-center gap-2 cursor-pointer text-xs py-2.5">
                           <Send size={14} /> Resend Quote
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => q?.id && handleStatusChange(q, 'accepted')} className="flex items-center gap-2 cursor-pointer text-emerald-400 text-xs py-2.5">
+                        <DropdownMenuItem onClick={() => q?.id && handleStatusChange(q, 'accepted')} className="flex items-center gap-2 cursor-pointer text-green text-xs py-2.5">
                           <CheckCircle2 size={14} /> Mark as Accepted
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => q?.id && handleStatusChange(q, 'declined')} className="flex items-center gap-2 cursor-pointer text-rose-400 text-xs py-2.5">
+                        <DropdownMenuItem onClick={() => q?.id && handleStatusChange(q, 'declined')} className="flex items-center gap-2 cursor-pointer text-red text-xs py-2.5">
                           <XCircle size={14} /> Mark as Declined
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-[var(--bdr)]" />
-                        <DropdownMenuItem onClick={() => q?.id && setDeleteId(q.id)} className="flex items-center gap-2 cursor-pointer text-rose-500 text-xs py-2.5">
+                        <DropdownMenuSeparator className="bg-dash-border" />
+                        <DropdownMenuItem onClick={() => q?.id && setDeleteId(q.id)} className="flex items-center gap-2 cursor-pointer text-red text-xs py-2.5">
                           <Trash2 size={14} /> Delete Quote
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -256,20 +255,15 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
         </table>
       </div>
 
-      <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <DialogContent className="bg-[var(--n800)] z-[1002] border-[var(--bdr)] text-[var(--t1)]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold font-space uppercase">Confirm <span className="text-rose-500">Deletion</span></DialogTitle>
-            <DialogDescription className="text-[var(--t3)]">
-              Are you sure you want to delete this proposal? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-6 gap-3">
-            <Button variant="ghost" onClick={() => setDeleteId(null)} className="btn-ghost">Cancel</Button>
-            <Button onClick={handleDelete} className="bg-rose-500 hover:bg-rose-600 text-white font-bold">Delete Permanently</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Confirm Deletion"
+        description="Are you sure you want to delete this proposal? This action cannot be undone."
+        confirmLabel="Delete Permanently"
+        variant="danger"
+      />
     </div>
   );
 }

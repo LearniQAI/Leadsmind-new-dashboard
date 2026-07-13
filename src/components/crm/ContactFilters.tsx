@@ -23,31 +23,31 @@ export function ContactFilters({
   onManageTags
 }: ContactFiltersProps) {
   return (
-    <div className="w-[240px] shrink-0 space-y-8 bg-[#080f28] p-6 border-r border-white/5 h-full overflow-y-auto no-scrollbar">
+    <div className="w-full md:w-[240px] shrink-0 space-y-8 bg-dash-surface p-6 border-b md:border-b-0 md:border-r border-dash-border md:h-full overflow-y-auto no-scrollbar">
       {/* Filter Section: Search - Handled globally usually, but for filters we focus on specific facets */}
 
       {/* Owners */}
       <div>
-        <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] mb-4 font-dm-sans">
-          Database Owner
+        <h4 className="text-[12px] font-bold !text-dash-text mb-4">
+          Database owner
         </h4>
         <div className="space-y-1.5">
           <button
             onClick={() => onOwnerChange(null)}
             className={cn(
-              "w-full text-left px-3 py-2 rounded-lg text-[13px] font-dm-sans transition-all",
-              !selectedOwner ? "bg-[#2563eb]/10 text-[#3b82f6] font-semibold" : "text-[#94a3c8] hover:bg-white/5"
+              "w-full text-left px-3 py-2 rounded-lg text-[13px] transition-colors motion-reduce:transition-none",
+              !selectedOwner ? "bg-dash-accent/10 text-dash-accent font-semibold" : "!text-dash-textMuted hover:bg-white"
             )}
           >
-            All Personnel
+            All personnel
           </button>
           {owners.map(owner => (
             <button
               key={owner.id}
               onClick={() => onOwnerChange(owner.id)}
               className={cn(
-                "w-full text-left px-3 py-2 rounded-lg text-[13px] font-dm-sans transition-all",
-                selectedOwner === owner.id ? "bg-[#2563eb]/10 text-[#3b82f6] font-semibold" : "text-[#94a3c8] hover:bg-white/5"
+                "w-full text-left px-3 py-2 rounded-lg text-[13px] transition-colors motion-reduce:transition-none",
+                selectedOwner === owner.id ? "bg-dash-accent/10 text-dash-accent font-semibold" : "!text-dash-textMuted hover:bg-white"
               )}
             >
               {owner.name}
@@ -59,12 +59,12 @@ export function ContactFilters({
       {/* Tags */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.2px] font-dm-sans">
-            Strategic Tags
+          <h4 className="text-[12px] font-bold !text-dash-text">
+            Strategic tags
           </h4>
-          <button 
+          <button
             onClick={onManageTags}
-            className="text-[10px] font-bold text-[#2563eb] hover:underline uppercase tracking-widest"
+            className="text-[12px] font-bold text-dash-accent hover:opacity-80 transition-opacity"
           >
             Manage
           </button>
@@ -77,10 +77,10 @@ export function ContactFilters({
                 key={tag}
                 onClick={() => onTagToggle(tag)}
                 className={cn(
-                  "px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-tight transition-all border",
+                  "px-2.5 py-1 rounded-md text-[12px] font-semibold transition-colors motion-reduce:transition-none border",
                   isSelected
-                    ? "bg-[#2563eb] border-[#2563eb] text-white shadow-lg shadow-[#2563eb]/20"
-                    : "bg-white/5 border-white/5 text-[#4a5a82] hover:border-white/10 hover:text-[#eef2ff]"
+                    ? "bg-dash-accent border-dash-accent text-white shadow-[0_4px_12px_rgba(19,89,255,0.2)]"
+                    : "bg-white border-dash-border !text-dash-textMuted hover:border-dash-text/20 hover:!text-dash-text"
                 )}
               >
                 {tag}
@@ -89,14 +89,6 @@ export function ContactFilters({
           })}
         </div>
       </div>
-
-      {/* Advanced Filters Placeholder */}
-      {/* <div className="pt-6 border-t border-white/5">
-        <button className="w-full flex items-center justify-between text-[11px] font-bold text-[#4a5a82] uppercase tracking-widest hover:text-[#eef2ff] transition-colors">
-          <span>Advanced Filters</span>
-          <i className="fa-solid fa-chevron-down text-[10px]"></i>
-        </button>
-      </div> */}
     </div>
   );
 }

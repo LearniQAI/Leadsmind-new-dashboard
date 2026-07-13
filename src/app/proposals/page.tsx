@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
-import { Button } from "@/components/ui/button";
+import { DashButton } from "@/components/dashboard-ui/Button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
@@ -21,19 +21,19 @@ export default async function ProposalsPage() {
  return (
   <MetaData pageTitle="Proposals">
    <Wrapper>
-    <div className="app__slide-wrapper">
+    <div className="px-4 py-6">
      <div className="space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-2">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
        <div>
-        <h1 className="card__title !text-4xl uppercase mb-1">Proposal <span className="text-primary">Studio</span></h1>
-        <p className="card__sub-title !text-[11px] uppercase tracking-[0.2em]">Craft and manage your business estimates</p>
+        <h1 className="text-3xl font-bold !text-dash-text mb-1">Proposal <span className="text-dash-accent">Studio</span></h1>
+        <p className="text-[13px] !text-dash-textMuted">Craft and manage your business estimates</p>
        </div>
        <div className="flex items-center gap-3">
         <Link href="/invoices/new?type=proposal">
-         <Button className="btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
-          <Plus className="h-4 w-4 mr-2" />
+         <DashButton variant="primary">
+          <Plus className="h-4 w-4" />
           <span>Create Proposal</span>
-         </Button>
+         </DashButton>
         </Link>
        </div>
       </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useOptimistic, useTransition } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
+import { Plus, Layers } from 'lucide-react';
 import { Pipeline, PipelineStage, Opportunity } from '@/types/crm';
 import { PipelineStats } from './components/PipelineStats';
 import { KanbanColumn } from './components/KanbanColumn';
@@ -88,57 +89,57 @@ export default function PipelinesClient({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[#04091a]">
+    <div className="flex flex-col h-full overflow-hidden bg-white">
       {/* 1. Header Area */}
       <div className="shrink-0 flex flex-col">
-        <div className="h-[72px] px-8 border-b border-white/[0.05] flex items-center justify-between bg-[#04091a]/80 backdrop-blur-md sticky top-0 z-10">
+        <div className="h-[72px] px-8 border-b border-dash-border flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-6">
             <div className="flex flex-col">
-              <h1 className="text-[14px] font-bold text-[#3b82f6] uppercase tracking-[2px] font-display leading-none mb-1.5">
-                Strategic <span className="text-white">Pipelines</span>
+              <h1 className="text-[14px] font-bold text-dash-accent tracking-[2px] font-display leading-none mb-1.5">
+                Strategic <span className="!text-dash-text">Pipelines</span>
               </h1>
               <div className="flex items-center gap-2">
                 <select
                   value={activePipeline.id}
                   onChange={(e) => router.push(`/pipelines?pipelineId=${e.target.value}`)}
-                  className="bg-transparent text-[16px] font-extrabold text-[#eef2ff] focus:outline-none cursor-pointer hover:text-[#3b82f6] transition-colors appearance-none min-w-[140px]"
+                  className="bg-transparent text-[16px] font-extrabold !text-dash-text focus:outline-none cursor-pointer hover:text-dash-accent transition-colors appearance-none min-w-[140px]"
                 >
                   {pipelines.map(p => (
-                    <option key={p.id} value={p.id} className="bg-[#0b0f1a] text-white">
+                    <option key={p.id} value={p.id}>
                       {p.name}
                     </option>
                   ))}
                 </select>
-                <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-green animate-pulse"></div>
               </div>
             </div>
 
-            <div className="h-10 w-[1px] bg-white/10"></div>
+            <div className="h-10 w-[1px] bg-dash-border/60"></div>
 
             <button 
               onClick={() => setIsPipelineModalOpen(true)}
-              className="group flex items-center gap-2 h-10 px-4 rounded-[12px] bg-white/[0.03] border border-white/[0.05] text-[#4a5a82] hover:text-[#3b82f6] hover:bg-[#3b82f6]/5 transition-all"
+              className="group flex items-center gap-2 h-10 px-4 rounded-[12px] bg-dash-surface border border-dash-border !text-dash-textMuted hover:text-dash-accent hover:bg-dash-accent/5 transition-colors motion-reduce:transition-none"
               title="Add New Pipeline"
             >
-              <i className="fa-solid fa-plus text-[12px] group-hover:scale-110 transition-transform"></i>
-              <span className="text-[11px] font-bold uppercase tracking-wider">New Pipeline</span>
+              <Plus size={12} className="group-hover:scale-110 transition-transform motion-reduce:group-hover:scale-100" />
+              <span className="text-[11px] font-bold tracking-wider">New pipeline</span>
             </button>
           </div>
 
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsStageModalOpen(true)}
-              className="h-11 px-6 rounded-[12px] bg-white/[0.03] border border-white/[0.07] text-[#eef2ff] hover:bg-white/[0.06] text-[12px] font-bold font-dm-sans transition-all flex items-center gap-2.5 active:scale-[0.98]"
+              className="h-11 px-6 rounded-[12px] bg-dash-surface border border-dash-border !text-dash-text hover:bg-dash-border/60 text-[12px] font-bold  transition-all flex items-center gap-2.5 active:scale-[0.98]"
             >
-              <i className="fa-solid fa-layer-group text-[12px] text-[#4a5a82]"></i>
-              Architect Stages
+              <Layers size={12} className="!text-dash-textMuted" />
+              Architect stages
             </button>
             <button
               onClick={() => handleCreateDeal()}
-              className="h-11 px-6 rounded-[12px] bg-[#2563eb] text-white hover:bg-[#1d4ed8] text-[12px] font-bold font-dm-sans transition-all flex items-center gap-2.5 shadow-xl shadow-[#2563eb]/20 active:scale-[0.98]"
+              className="h-11 px-6 rounded-[12px] bg-dash-accent text-white hover:bg-dash-accent/90 text-[12px] font-bold transition-all flex items-center gap-2.5 shadow-xl shadow-dash-accent/20 active:scale-[0.98]"
             >
-              <i className="fa-solid fa-plus text-[12px]"></i>
-              Launch Deal
+              <Plus size={12} />
+              Launch deal
             </button>
           </div>
         </div>
@@ -147,7 +148,7 @@ export default function PipelinesClient({
       </div>
 
       {/* 2. Responsive Grid Board Area */}
-      <div className="flex-1 overflow-x-auto common-scrollbar bg-[#04091a] p-8">
+      <div className="flex-1 overflow-x-auto common-scrollbar bg-white p-8">
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex items-start gap-8 min-h-full">
             {initialStages.map((stage) => (
@@ -164,13 +165,13 @@ export default function PipelinesClient({
             {/* Add Stage Placeholder */}
             <div 
               onClick={() => setIsStageModalOpen(true)}
-              className="w-[320px] shrink-0 h-[400px] flex flex-col items-center justify-center border-2 border-dashed border-white/[0.03] rounded-[24px] group hover:border-[#2563eb]/30 transition-all cursor-pointer bg-[#080f28]/10 hover:bg-[#2563eb]/5"
+              className="w-[320px] shrink-0 h-[400px] flex flex-col items-center justify-center border-2 border-dashed border-dash-border rounded-[24px] group hover:border-dash-accent/30 transition-all cursor-pointer bg-dash-surface hover:bg-dash-accent/5"
             >
-              <div className="w-14 h-14 rounded-[16px] bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mb-4 group-hover:bg-[#2563eb]/10 group-hover:border-[#2563eb]/20 group-hover:scale-110 transition-all shadow-inner">
-                <i className="fa-solid fa-plus text-[#2a3557] group-hover:text-[#3b82f6] text-xl"></i>
+              <div className="w-14 h-14 rounded-[16px] bg-dash-surface border border-dash-border flex items-center justify-center mb-4 group-hover:bg-dash-accent/10 group-hover:border-dash-accent/20 group-hover:scale-110 transition-all shadow-inner">
+                <Plus size={20} className="!text-dash-textMuted group-hover:text-dash-accent" />
               </div>
-              <p className="text-[12px] font-bold text-[#2a3557] uppercase tracking-[2px] group-hover:text-[#eef2ff] transition-colors">Add Pipeline Stage</p>
-              <p className="text-[10px] text-[#2a3557] mt-2 font-medium opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">Architect Level</p>
+              <p className="text-[12px] font-bold !text-dash-textMuted tracking-[2px] group-hover:!text-dash-text transition-colors">Add pipeline stage</p>
+              <p className="text-[10px] !text-dash-textMuted mt-2 font-medium opacity-0 group-hover:opacity-100 transition-opacity tracking-widest">Architect Level</p>
             </div>
           </div>
         </DragDropContext>

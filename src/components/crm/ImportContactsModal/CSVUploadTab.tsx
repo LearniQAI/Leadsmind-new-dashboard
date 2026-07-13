@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { UploadCloud, FileSpreadsheet, Trash2, Split } from 'lucide-react';
 import { ParsedContact } from './PreviewTable';
 import { toast } from 'sonner';
 
@@ -165,8 +166,8 @@ export function CSVUploadTab({ onParsed, onClear }: CSVUploadTabProps) {
           onDragLeave={handleDrag}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-white/[0.02] ${
-            dragActive ? 'border-[#2563eb] bg-[#2563eb]/5' : 'border-white/5 bg-[#080f28]'
+          className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-dash-surface ${
+            dragActive ? 'border-dash-accent bg-dash-accent/5' : 'border-dash-border bg-white'
           }`}
         >
           <input
@@ -176,25 +177,25 @@ export function CSVUploadTab({ onParsed, onClear }: CSVUploadTabProps) {
             onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
             className="hidden"
           />
-          <div className="h-10 w-10 rounded-lg bg-[#2563eb]/10 border border-[#2563eb]/20 text-[#3b82f6] flex items-center justify-center mb-3">
-            <i className="fa-solid fa-cloud-arrow-up text-[16px]"></i>
+          <div className="h-10 w-10 rounded-lg bg-dash-accent/10 border border-dash-accent/20 text-dash-accent flex items-center justify-center mb-3">
+            <UploadCloud size={16} />
           </div>
-          <span className="text-[12.5px] font-semibold text-[#eef2ff] mb-1">
+          <span className="text-[12.5px] font-semibold !text-dash-text mb-1">
             Drag and drop your CSV file here
           </span>
-          <span className="text-[11px] text-[#4a5a82]">
+          <span className="text-[11px] !text-dash-textMuted">
             or click to browse from your device
           </span>
         </div>
       ) : (
-        <div className="bg-[#080f28] border border-white/5 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-white border border-dash-border rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 text-[#34d399] flex items-center justify-center">
-              <i className="fa-solid fa-file-csv text-[15px]"></i>
+            <div className="h-9 w-9 rounded-lg bg-green/10 border border-green/20 text-green flex items-center justify-center">
+              <FileSpreadsheet size={15} />
             </div>
             <div>
-              <div className="text-[12px] font-semibold text-[#eef2ff] max-w-[200px] truncate">{fileName}</div>
-              <div className="text-[10px] text-[#94a3c8]">{csvRows.length} records detected</div>
+              <div className="text-[12px] font-semibold !text-dash-text max-w-[200px] truncate">{fileName}</div>
+              <div className="text-[10px] !text-dash-textMuted">{csvRows.length} records detected</div>
             </div>
           </div>
           <button
@@ -205,35 +206,35 @@ export function CSVUploadTab({ onParsed, onClear }: CSVUploadTabProps) {
               setMappings({});
               onClear();
             }}
-            className="h-7 w-7 rounded-md bg-white/5 border border-white/5 text-[#4a5a82] hover:text-[#ef4444] hover:bg-[#ef4444]/10 flex items-center justify-center transition-all"
+            className="h-7 w-7 rounded-md bg-dash-surface border border-dash-border !text-dash-textMuted hover:text-red hover:bg-red/10 flex items-center justify-center transition-colors motion-reduce:transition-none"
           >
-            <i className="fa-solid fa-trash-can text-[11px]"></i>
+            <Trash2 size={11} />
           </button>
         </div>
       )}
 
       {/* Header Mapping Section */}
       {headers.length > 0 && (
-        <div className="bg-[#0c1535] border border-white/5 rounded-xl p-3.5 space-y-3">
-          <div className="text-[11.5px] font-semibold text-[#eef2ff] uppercase tracking-wider font-space-grotesk flex items-center gap-1.5">
-            <i className="fa-solid fa-arrows-split-up-and-left text-[#3b82f6]"></i>
-            Header Mapping
+        <div className="bg-dash-surface border border-dash-border rounded-xl p-3.5 space-y-3">
+          <div className="text-[11.5px] font-semibold !text-dash-text tracking-wider flex items-center gap-1.5">
+            <Split size={13} className="text-dash-accent" />
+            Header mapping
           </div>
           <div className="grid grid-cols-2 gap-3 text-[11.5px]">
             {['firstName', 'lastName', 'email', 'phone', 'tags'].map((field) => (
               <div key={field} className="flex flex-col gap-1">
-                <span className="text-[#94a3c8] font-medium capitalize font-dm-sans">
+                <span className="!text-dash-textMuted font-medium capitalize ">
                   {field === 'firstName' ? 'First Name' : field === 'lastName' ? 'Last Name' : field}
-                  {field === 'firstName' && <span className="text-[#ef4444] ml-0.5">*</span>}
+                  {field === 'firstName' && <span className="text-red ml-0.5">*</span>}
                 </span>
                 <select
                   value={mappings[field] || ''}
                   onChange={(e) => handleMappingChange(field, e.target.value)}
-                  className="bg-[#111d47] border border-white/5 rounded-lg px-2.5 py-1.5 text-[#eef2ff] focus:border-[#2563eb] outline-none font-dm-sans text-[11.5px] cursor-pointer"
+                  className="bg-white border border-dash-border rounded-lg px-2.5 py-1.5 !text-dash-text focus:border-dash-accent outline-none text-[11.5px] cursor-pointer"
                 >
-                  <option value="" className="bg-[#080f28] text-[#4a5a82]">Do not import</option>
+                  <option value="" className="!text-dash-textMuted">Do not import</option>
                   {headers.map(h => (
-                    <option key={h} value={h} className="bg-[#080f28] text-[#eef2ff]">{h}</option>
+                    <option key={h} value={h} className="bg-white !text-dash-text">{h}</option>
                   ))}
                 </select>
               </div>

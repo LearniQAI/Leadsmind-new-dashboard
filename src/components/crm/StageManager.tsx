@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Plus, Trash2, GripVertical, Check, X } from 'lucide-react';
 import { updatePipelineStages, deleteStage } from '@/app/actions/pipelines';
 import { PipelineStage } from '@/types/crm';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashInput } from '@/components/dashboard-ui/FormField';
 
 interface StageManagerProps {
  pipelineId: string;
@@ -77,18 +77,18 @@ export function StageManager({ pipelineId, initialStages }: StageManagerProps) {
   <div className="space-y-6">
    <div className="space-y-3">
     {stages.map((stage, i) => (
-     <div key={stage.id} className="flex items-center gap-3 bg-white/[0.02] border border-white/5 rounded-2xl px-4 py-3 group animate-in fade-in slide-in-from-top-2">
-      <div className="card__icon !w-8 !h-8 !text-xs !rounded-lg">
+     <div key={stage.id} className="flex items-center gap-3 bg-dash-surface border border-dash-border rounded-2xl px-4 py-3 group animate-in fade-in slide-in-from-top-2 motion-reduce:animate-none">
+      <div className="w-8 h-8 rounded-lg bg-white border border-dash-border flex items-center justify-center text-xs font-bold text-dash-accent shrink-0">
        {i + 1}
       </div>
-      <Input
+      <DashInput
        value={stage.name}
        onChange={e => updateStageName(i, e.target.value)}
-       className="bg-transparent border-none text-white h-9 focus-visible:ring-0 px-0 font-bold"
+       className="bg-transparent border-none h-9 focus-visible:ring-0 px-0 font-bold"
       />
       <button
        onClick={() => removeStage(stage.id, i)}
-       className="text-white/10 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100 p-2"
+       className="text-dash-border hover:text-red transition-colors opacity-0 group-hover:opacity-100 p-2"
       >
        <Trash2 className="h-4 w-4" />
       </button>
@@ -97,21 +97,22 @@ export function StageManager({ pipelineId, initialStages }: StageManagerProps) {
    </div>
 
    <div className="flex items-center gap-3 pt-4">
-    <Button
+    <DashButton
      type="button"
-     variant="outline"
+     variant="secondary"
      onClick={addStage}
-     className="border-white/5 bg-white/5 text-white hover:bg-white/10 rounded-xl h-11 px-6 gap-2 font-bold flex-1"
+     className="h-11 px-6 gap-2 flex-1"
     >
      <Plus className="h-4 w-4" /> Add Stage
-    </Button>
-    <Button
+    </DashButton>
+    <DashButton
+     variant="primary"
      onClick={handleSave}
      disabled={isPending}
-     className="btn btn-primary !h-11 !px-10 !rounded-xl !text-[10px] uppercase font-black tracking-widest shadow-lg shadow-primary/20"
+     className="h-11 px-10"
     >
      {isPending ? 'Saving...' : 'Save Changes'}
-    </Button>
+    </DashButton>
    </div>
    {confirmConfig && (
     <ConfirmDialog

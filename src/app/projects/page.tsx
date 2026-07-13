@@ -10,7 +10,7 @@ export default async function ProjectsPage() {
   return (
     <MetaData pageTitle="Project Hub">
       <Wrapper>
-        <div className="app__slide-wrapper">
+        <div className="px-4 py-6 bg-white min-h-screen">
           <ProjectsClient initialProjects={projects || []} />
         </div>
       </Wrapper>

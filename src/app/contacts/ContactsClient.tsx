@@ -2,11 +2,12 @@
 
 import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { Users, Search, RotateCw } from 'lucide-react';
 import { Contact } from '@/types/crm';
 import { ContactTable } from '@/components/crm/ContactTable';
 import { ContactFilters } from '@/components/crm/ContactFilters';
 import { BulkActionToolbar } from '@/components/crm/BulkActionToolbar';
-import { EmptyState } from '@/components/common/EmptyState';
+import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
 import { bulkAddTag, deleteContact } from '../actions/contacts';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -108,14 +109,12 @@ export default function ContactsClient({ initialContacts, initialTags, owners = 
   if (initialContacts.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-12">
-        <EmptyState
-          icon="fa-users"
+        <DashEmptyState
+          icon={Users}
           title="No contacts added"
           description="Your database is currently empty. Start by importing leads or adding them manually to activate the command center."
-          action={{
-            label: "Import Contacts",
-            onClick: () => setIsImportModalOpen(true)
-          }}
+          actionLabel="Import contacts"
+          onAction={() => setIsImportModalOpen(true)}
         />
         <ImportContactsModal
           isOpen={isImportModalOpen}
@@ -127,7 +126,7 @@ export default function ContactsClient({ initialContacts, initialTags, owners = 
   }
 
   return (
-    <div className="flex h-[calc(100vh-160px)] bg-[#04091a] relative overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-160px)] bg-white relative overflow-hidden">
       {/* 1. Left Sidebar: Filters */}
       <ContactFilters
         tags={allTags}
@@ -144,30 +143,31 @@ export default function ContactsClient({ initialContacts, initialTags, owners = 
       />
 
       {/* 2. Main Content: Table */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#04091a]">
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
         {/* Table Toolbar */}
-        <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#080f28]/40 shrink-0">
+        <div className="h-14 border-b border-dash-border flex items-center justify-between px-4 sm:px-6 bg-dash-surface/60 shrink-0">
           <div className="flex-1 max-w-md relative">
-            <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-[#4a5a82]"></i>
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dash-textMuted" />
             <input
               type="text"
               placeholder="Search leads by name, email, or tactical data..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent border-none text-[13px] text-[#eef2ff] placeholder:text-[#4a5a82] pl-9 focus:outline-none focus:ring-0 font-dm-sans"
+              className="w-full bg-transparent border-none text-[13px] !text-dash-text placeholder:text-dash-textMuted pl-9 focus:outline-none focus:ring-0"
             />
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-[11px] font-bold text-[#4a5a82] uppercase tracking-widest font-dm-sans">
-              Displaying {filteredContacts.length} Leads
+            <span className="hidden sm:inline text-[12px] font-semibold !text-dash-textMuted">
+              Displaying {filteredContacts.length} leads
             </span>
-            <button 
-              className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors disabled:opacity-50" 
+            <button
+              className="text-dash-textMuted hover:text-dash-text transition-colors motion-reduce:transition-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent rounded-lg p-1"
               onClick={handleRefresh}
               disabled={isPending}
+              aria-label="Refresh contacts"
             >
-              <i className={`fa-solid fa-arrows-rotate text-[13px] ${isPending ? 'animate-spin text-[#3b82f6]' : ''}`}></i>
+              <RotateCw size={14} className={isPending ? 'animate-spin motion-reduce:animate-none text-dash-accent' : ''} />
             </button>
           </div>
         </div>

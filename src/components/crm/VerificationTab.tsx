@@ -203,7 +203,7 @@ export default function VerificationTab({
         )
       case 'running':
         return (
-          <span className="flex items-center gap-1 bg-[rgba(37,99,235,0.1)] border border-[rgba(37,99,235,0.2)] text-[#3b82f6] text-[10px] font-semibold rounded-full px-2.5 py-0.5 animate-pulse">
+          <span className="flex items-center gap-1 bg-[rgba(37,99,235,0.1)] border border-[rgba(37,99,235,0.2)] text-dash-accent text-[10px] font-semibold rounded-full px-2.5 py-0.5 animate-pulse">
             Running...
           </span>
         )
@@ -217,12 +217,12 @@ export default function VerificationTab({
 
       {/* Header */}
       <div>
-        <h3 className="text-[16px] font-semibold text-[#eef2ff] flex items-center gap-2"
+        <h3 className="text-[16px] font-semibold !text-dash-text flex items-center gap-2"
           style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-          <Shield size={18} className="text-[#3b82f6]" />
+          <Shield size={18} className="text-dash-accent" />
           Identity & Compliance
         </h3>
-        <p className="text-[12px] text-[#4a5a82] mt-1"
+        <p className="text-[12px] !text-dash-textMuted mt-1"
           style={{ fontFamily: "'DM Sans', sans-serif" }}>
           Run FICA-compliant verifications for {contactName} directly from this contact record
         </p>
@@ -231,10 +231,10 @@ export default function VerificationTab({
       {/* POPIA Consent Notice */}
       <div className="bg-[rgba(245,158,11,0.06)] border border-[rgba(245,158,11,0.15)] rounded-xl p-4 flex gap-3">
         <AlertTriangle size={16} className="text-[#f59e0b] flex-shrink-0 mt-0.5" />
-        <p className="text-[12px] text-[#94a3c8] leading-relaxed"
+        <p className="text-[12px] !text-dash-textMuted leading-relaxed"
           style={{ fontFamily: "'DM Sans', sans-serif" }}>
           All verifications require the contact's explicit consent under POPIA.
-          By running a check, you confirm that <strong className="text-[#eef2ff]">{contactName}</strong> has
+          By running a check, you confirm that <strong className="!text-dash-text">{contactName}</strong> has
           verbally or in writing consented to their information being verified.
           This consent is recorded automatically with a timestamp.
         </p>
@@ -248,7 +248,7 @@ export default function VerificationTab({
 
           return (
             <div key={checkDef.type}
-              className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-4 hover:border-[rgba(255,255,255,0.13)] transition-all">
+              className="bg-white border border-dash-border rounded-xl p-4 hover:border-dash-border transition-all">
 
               <div className="flex items-center justify-between gap-4">
                 {/* Left — icon + info */}
@@ -256,28 +256,28 @@ export default function VerificationTab({
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: `${checkDef.color}1F` }}>
                     <span className="text-[10px] font-bold"
-                      style={{ color: checkDef.color, fontFamily: "'Space Grotesk', sans-serif" }}>
+                      style={{ color: checkDef.color }}>
                       {checkDef.shortName}
                     </span>
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[13px] font-semibold text-[#eef2ff]"
+                      <span className="text-[13px] font-semibold !text-dash-text"
                         style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                         {checkDef.label}
                       </span>
                       {checkDef.required && (
-                        <span className="text-[9px] text-[#ef4444] font-bold uppercase tracking-wider">
+                        <span className="text-[9px] text-[#ef4444] font-bold tracking-wider">
                           FICA Required
                         </span>
                       )}
                     </div>
-                    <p className="text-[11.5px] text-[#94a3c8] mt-0.5"
+                    <p className="text-[11.5px] !text-dash-textMuted mt-0.5"
                       style={{ fontFamily: "'DM Sans', sans-serif" }}>
                       {checkDef.description} — via {checkDef.provider}
                     </p>
                     {existing && (
-                      <p className="text-[10px] text-[#4a5a82] mt-0.5"
+                      <p className="text-[10px] !text-dash-textMuted mt-0.5"
                         style={{ fontFamily: "'DM Sans', sans-serif" }}>
                         Last run: {new Date(existing.created_at).toLocaleDateString()}
                       </p>
@@ -290,7 +290,7 @@ export default function VerificationTab({
                   {existing && getStatusBadge(existing.status)}
 
                   {isRunning ? (
-                    <span className="text-[11px] text-[#4a5a82]">Running...</span>
+                    <span className="text-[11px] !text-dash-textMuted">Running...</span>
                   ) : (
                     <button
                       onClick={() => {
@@ -300,7 +300,6 @@ export default function VerificationTab({
                       className="text-white text-[11px] font-semibold rounded-lg px-3 py-1.5 hover:opacity-90 transition-all"
                       style={{
                         backgroundColor: checkDef.color,
-                        fontFamily: "'DM Sans', sans-serif",
                       }}>
                       {existing ? 'Re-run' : 'Run Check'}
                     </button>
@@ -309,7 +308,7 @@ export default function VerificationTab({
                   {existing && (
                     <button
                       onClick={() => setExpandedCheck(expandedCheck === checkDef.type ? null : checkDef.type)}
-                      className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors">
+                      className="!text-dash-textMuted hover:!text-dash-text transition-colors">
                       {expandedCheck === checkDef.type ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </button>
                   )}
@@ -318,7 +317,7 @@ export default function VerificationTab({
 
               {/* Expanded result */}
               {expandedCheck === checkDef.type && existing && (
-                <div className="mt-4 pt-4 border-t border-[rgba(255,255,255,0.05)] space-y-4 text-left">
+                <div className="mt-4 pt-4 border-t border-dash-border space-y-4 text-left">
                   {/* Thin Credit Score UI rendering */}
                   {checkDef.type === 'credit_score' && (
                     (() => {
@@ -343,22 +342,22 @@ export default function VerificationTab({
 
                       return (
                         <div className="space-y-4">
-                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center justify-between">
+                          <div className="bg-dash-surface border border-dash-border rounded-xl p-4 flex items-center justify-between">
                             <div>
-                              <span className="text-[10px] text-[#4a5a82] uppercase block tracking-wider font-bold">TransUnion Credit Score</span>
-                              <span className="text-[28px] font-bold text-white font-space-grotesk mt-1 block">
-                                {scoreVal} <span className="text-xs text-[#4a5a82] font-normal font-sans">/ 999</span>
+                              <span className="text-[10px] !text-dash-textMuted block tracking-wider font-bold">TransUnion Credit Score</span>
+                              <span className="text-[28px] font-bold !text-dash-text mt-1 block">
+                                {scoreVal} <span className="text-xs !text-dash-textMuted font-normal font-sans">/ 999</span>
                               </span>
                             </div>
-                            <span className={`px-3 py-1 rounded-lg border text-[11px] font-bold uppercase ${getScoreColorClass(scoreVal)}`}>
+                            <span className={`px-3 py-1 rounded-lg border text-[11px] font-bold ${getScoreColorClass(scoreVal)}`}>
                               {risk}
                             </span>
                           </div>
-                          <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+                          <div className="w-full bg-dash-surface rounded-full h-2 overflow-hidden">
                             <div className={`h-full ${getScoreProgressColor(scoreVal)} transition-all`} style={{ width: `${(scoreVal / 999) * 100}%` }} />
                           </div>
                           {existing.notes && (
-                            <p className="text-[11px] text-[#4a5a82] leading-relaxed italic">
+                            <p className="text-[11px] !text-dash-textMuted leading-relaxed italic">
                               {existing.notes}
                             </p>
                           )}
@@ -392,50 +391,50 @@ export default function VerificationTab({
                       return (
                         <div className="space-y-5">
                           {/* Score and Risk Header */}
-                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center justify-between">
+                          <div className="bg-dash-surface border border-dash-border rounded-xl p-4 flex items-center justify-between">
                             <div>
-                              <span className="text-[10px] text-[#4a5a82] uppercase block tracking-wider font-bold">Bureau Score (Scale 1-999)</span>
-                              <span className="text-[28px] font-bold text-white font-space-grotesk mt-1 block">
-                                {scoreVal} <span className="text-xs text-[#4a5a82] font-normal font-sans">/ 999</span>
+                              <span className="text-[10px] !text-dash-textMuted block tracking-wider font-bold">Bureau Score (Scale 1-999)</span>
+                              <span className="text-[28px] font-bold !text-dash-text mt-1 block">
+                                {scoreVal} <span className="text-xs !text-dash-textMuted font-normal font-sans">/ 999</span>
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className={`px-3 py-1 rounded-lg border text-[11px] font-bold uppercase inline-block ${getScoreColorClass(scoreVal)}`}>
+                              <span className={`px-3 py-1 rounded-lg border text-[11px] font-bold inline-block ${getScoreColorClass(scoreVal)}`}>
                                 {risk}
                               </span>
-                              <span className="block text-[9px] text-[#4a5a82] mt-1 font-mono">Date verified: {new Date(existing.created_at).toLocaleDateString()}</span>
+                              <span className="block text-[9px] !text-dash-textMuted mt-1 font-mono">Date verified: {new Date(existing.created_at).toLocaleDateString()}</span>
                             </div>
                           </div>
-                          <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                          <div className="w-full bg-dash-surface rounded-full h-1.5 overflow-hidden">
                             <div className={`h-full ${getScoreProgressColor(scoreVal)} transition-all`} style={{ width: `${(scoreVal / 999) * 100}%` }} />
                           </div>
 
                           {/* Financial metrics grid */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3 text-left">
-                              <span className="text-[9px] uppercase tracking-wider text-[#4a5a82] block font-bold">Total Debt Exposure</span>
-                              <span className="text-[14px] font-bold text-white font-space-grotesk mt-1 block">
+                            <div className="bg-dash-surface border border-dash-border rounded-xl p-3 text-left">
+                              <span className="text-[9px] tracking-wider !text-dash-textMuted block font-bold">Total Debt Exposure</span>
+                              <span className="text-[14px] font-bold !text-dash-text mt-1 block">
                                 {new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 }).format(existing.total_debt_exposure || 0)}
                               </span>
                             </div>
 
-                            <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3 text-left">
-                              <span className="text-[9px] uppercase tracking-wider text-[#4a5a82] block font-bold">Monthly Repayments</span>
-                              <span className="text-[14px] font-bold text-white font-space-grotesk mt-1 block">
+                            <div className="bg-dash-surface border border-dash-border rounded-xl p-3 text-left">
+                              <span className="text-[9px] tracking-wider !text-dash-textMuted block font-bold">Monthly Repayments</span>
+                              <span className="text-[14px] font-bold !text-dash-text mt-1 block">
                                 {new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 }).format(existing.monthly_repayments || 0)}
                               </span>
                             </div>
 
-                            <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3 text-left">
-                              <span className="text-[9px] uppercase tracking-wider text-[#4a5a82] block font-bold">Defaults Count</span>
-                              <span className={`text-[14px] font-bold font-space-grotesk mt-1 block ${existing.defaults_count && existing.defaults_count > 0 ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+                            <div className="bg-dash-surface border border-dash-border rounded-xl p-3 text-left">
+                              <span className="text-[9px] tracking-wider !text-dash-textMuted block font-bold">Defaults Count</span>
+                              <span className={`text-[14px] font-bold  mt-1 block ${existing.defaults_count && existing.defaults_count > 0 ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
                                 {existing.defaults_count ?? 0}
                               </span>
                             </div>
 
-                            <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3 text-left">
-                              <span className="text-[9px] uppercase tracking-wider text-[#4a5a82] block font-bold">Judgements Count</span>
-                              <span className={`text-[14px] font-bold font-space-grotesk mt-1 block ${existing.judgements_count && existing.judgements_count > 0 ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+                            <div className="bg-dash-surface border border-dash-border rounded-xl p-3 text-left">
+                              <span className="text-[9px] tracking-wider !text-dash-textMuted block font-bold">Judgements Count</span>
+                              <span className={`text-[14px] font-bold  mt-1 block ${existing.judgements_count && existing.judgements_count > 0 ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
                                 {existing.judgements_count ?? 0}
                               </span>
                             </div>
@@ -444,24 +443,24 @@ export default function VerificationTab({
                           {/* Affordability Calculator Widget */}
                           <div className="bg-purple-950/10 border border-purple-500/10 rounded-xl p-4 text-left space-y-4">
                             <div className="flex items-center justify-between border-b border-purple-500/10 pb-2">
-                              <h5 className="text-[11px] font-bold uppercase tracking-wider text-purple-400 font-space-grotesk">Affordability & Debt Planner</h5>
-                              <span className="text-[9px] uppercase tracking-wider text-[#4a5a82] font-semibold">Real Estate Calculator</span>
+                              <h5 className="text-[11px] font-bold tracking-wider text-purple-400">Affordability & Debt Planner</h5>
+                              <span className="text-[9px] tracking-wider !text-dash-textMuted font-semibold">Real Estate Calculator</span>
                             </div>
 
                             <div className="space-y-3">
                               {/* Gross Income Input */}
                               <div className="flex items-center justify-between gap-4">
                                 <div>
-                                  <label className="text-[10px] text-[#94a3c8] font-bold block">Gross Monthly Income</label>
-                                  <span className="text-[9px] text-[#4a5a82] block">Input client monthly earnings</span>
+                                  <label className="text-[10px] !text-dash-textMuted font-bold block">Gross Monthly Income</label>
+                                  <span className="text-[9px] !text-dash-textMuted block">Input client monthly earnings</span>
                                 </div>
                                 <div className="relative">
-                                  <span className="absolute left-2.5 top-1.5 text-xs text-[#4a5a82] font-bold font-mono">R</span>
+                                  <span className="absolute left-2.5 top-1.5 text-xs !text-dash-textMuted font-bold font-mono">R</span>
                                   <input
                                     type="number"
                                     value={grossIncome}
                                     onChange={(e) => setGrossIncome(Math.max(0, Number(e.target.value)))}
-                                    className="w-32 h-8 bg-black/40 border border-purple-500/20 text-xs font-bold font-mono pl-6 pr-2 rounded-lg text-white outline-none focus:border-purple-500/40 text-right"
+                                    className="w-32 h-8 bg-white border border-purple-500/20 text-xs font-bold font-mono pl-6 pr-2 rounded-lg !text-dash-text outline-none focus:border-purple-500/40 text-right"
                                   />
                                 </div>
                               </div>
@@ -480,7 +479,7 @@ export default function VerificationTab({
                               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-purple-500/5">
                                 {/* DTI Calculation */}
                                 <div>
-                                  <span className="text-[9px] uppercase text-[#4a5a82] tracking-wider block font-bold">Debt-to-Income (DTI) %</span>
+                                  <span className="text-[9px] !text-dash-textMuted tracking-wider block font-bold">Debt-to-Income (DTI) %</span>
                                   {(() => {
                                     const repayments = existing.monthly_repayments || 0;
                                     const dti = grossIncome > 0 ? (repayments / grossIncome) * 100 : 0;
@@ -497,8 +496,8 @@ export default function VerificationTab({
 
                                     return (
                                       <div className="mt-1">
-                                        <span className={`text-[16px] font-bold font-space-grotesk ${dtiColor}`}>{dti.toFixed(1)}%</span>
-                                        <span className="block text-[8.5px] text-[#4a5a82] font-semibold uppercase tracking-wider mt-0.5">{dtiText}</span>
+                                        <span className={`text-[16px] font-bold  ${dtiColor}`}>{dti.toFixed(1)}%</span>
+                                        <span className="block text-[8.5px] !text-dash-textMuted font-semibold tracking-wider mt-0.5">{dtiText}</span>
                                       </div>
                                     );
                                   })()}
@@ -506,16 +505,16 @@ export default function VerificationTab({
 
                                 {/* Max bond monthly budget */}
                                 <div>
-                                  <span className="text-[9px] uppercase text-[#4a5a82] tracking-wider block font-bold">Max Bond Installment</span>
+                                  <span className="text-[9px] !text-dash-textMuted tracking-wider block font-bold">Max Bond Installment</span>
                                   {(() => {
                                     const repayments = existing.monthly_repayments || 0;
                                     const maxBond = Math.max(0, (grossIncome * 0.40) - repayments);
                                     return (
                                       <div className="mt-1">
-                                        <span className="text-[16px] font-bold text-emerald-400 font-space-grotesk">
+                                        <span className="text-[16px] font-bold text-emerald-400 ">
                                           {new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 }).format(maxBond)}
                                         </span>
-                                        <span className="block text-[8.5px] text-[#4a5a82] font-semibold uppercase tracking-wider mt-0.5">At 40% income cap</span>
+                                        <span className="block text-[8.5px] !text-dash-textMuted font-semibold tracking-wider mt-0.5">At 40% income cap</span>
                                       </div>
                                     );
                                   })()}
@@ -553,31 +552,31 @@ export default function VerificationTab({
 
                       return (
                         <div className="space-y-4">
-                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center justify-between">
+                          <div className="bg-dash-surface border border-dash-border rounded-xl p-4 flex items-center justify-between">
                             <div>
-                              <span className="text-[10px] text-[#4a5a82] uppercase block tracking-wider font-bold">XDS Mass-Market Score</span>
-                              <span className="text-[28px] font-bold text-white font-space-grotesk mt-1 block">
-                                {scoreVal} <span className="text-xs text-[#4a5a82] font-normal font-sans">/ 999</span>
+                              <span className="text-[10px] !text-dash-textMuted block tracking-wider font-bold">XDS Mass-Market Score</span>
+                              <span className="text-[28px] font-bold !text-dash-text mt-1 block">
+                                {scoreVal} <span className="text-xs !text-dash-textMuted font-normal font-sans">/ 999</span>
                               </span>
                             </div>
-                            <span className={`px-3 py-1 rounded-lg border text-[11px] font-bold uppercase ${getScoreColorClass(scoreVal)}`}>
+                            <span className={`px-3 py-1 rounded-lg border text-[11px] font-bold ${getScoreColorClass(scoreVal)}`}>
                               {risk}
                             </span>
                           </div>
-                          <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                          <div className="w-full bg-dash-surface rounded-full h-1.5 overflow-hidden">
                             <div className={`h-full ${getScoreProgressColor(scoreVal)} transition-all`} style={{ width: `${(scoreVal / 999) * 100}%` }} />
                           </div>
 
                           {/* Accounts Listing */}
                           <div className="space-y-2">
-                            <h5 className="text-[10.5px] font-bold uppercase tracking-wider text-[#94a3c8] font-space-grotesk">Micro-Lending & Retail Accounts</h5>
+                            <h5 className="text-[10.5px] font-bold tracking-wider !text-dash-textMuted">Micro-Lending & Retail Accounts</h5>
                             {accounts.length === 0 ? (
-                              <p className="text-[11px] text-[#4a5a82] italic">No active retail credit records found.</p>
+                              <p className="text-[11px] !text-dash-textMuted italic">No active retail credit records found.</p>
                             ) : (
-                              <div className="overflow-x-auto border border-white/5 rounded-xl bg-black/20">
+                              <div className="overflow-x-auto border border-dash-border rounded-xl bg-dash-surface">
                                 <table className="w-full text-[11px] text-left border-collapse">
                                   <thead>
-                                    <tr className="border-b border-white/5 text-[#4a5a82] bg-white/[0.01]">
+                                    <tr className="border-b border-dash-border !text-dash-textMuted bg-dash-surface">
                                       <th className="p-2.5 font-bold">Creditor</th>
                                       <th className="p-2.5 font-bold">Type</th>
                                       <th className="p-2.5 font-bold text-right">Balance</th>
@@ -585,18 +584,18 @@ export default function VerificationTab({
                                       <th className="p-2.5 font-bold text-center">Status</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-white/5 text-white">
+                                  <tbody className="divide-y divide-dash-border !text-dash-text">
                                     {accounts.map((acct: any, idx: number) => {
                                       const isArrears = acct.paymentStatus === 'Arrears' || acct.paymentStatus === 'Written Off';
                                       const isPaid = acct.paymentStatus === 'Paid Up';
                                       return (
-                                        <tr key={idx} className="hover:bg-white/[0.01]">
+                                        <tr key={idx} className="hover:bg-dash-surface">
                                           <td className="p-2.5 font-semibold">{acct.creditorName}</td>
-                                          <td className="p-2.5 text-[#94a3c8]">{acct.accountType}</td>
+                                          <td className="p-2.5 !text-dash-textMuted">{acct.accountType}</td>
                                           <td className="p-2.5 text-right font-mono font-bold">
                                             {new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 }).format(acct.currentBalance)}
                                           </td>
-                                          <td className="p-2.5 text-right font-mono text-[#94a3c8]">
+                                          <td className="p-2.5 text-right font-mono !text-dash-textMuted">
                                             {new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 }).format(acct.monthlyInstallment)}
                                           </td>
                                           <td className="p-2.5 text-center">
@@ -626,29 +625,29 @@ export default function VerificationTab({
 
                       return (
                         <div className="space-y-4">
-                          <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3 text-left">
-                            <span className="text-[10px] text-[#4a5a82] uppercase block tracking-wider font-bold">Collections Trace History</span>
-                            <span className="text-[12px] text-[#94a3c8] mt-1 block">
-                              Found <strong className="text-white">{addresses.length}</strong> addresses and <strong className="text-white">{phones.length}</strong> verified numbers.
+                          <div className="bg-dash-surface border border-dash-border rounded-xl p-3 text-left">
+                            <span className="text-[10px] !text-dash-textMuted block tracking-wider font-bold">Collections Trace History</span>
+                            <span className="text-[12px] !text-dash-textMuted mt-1 block">
+                              Found <strong className="!text-dash-text">{addresses.length}</strong> addresses and <strong className="!text-dash-text">{phones.length}</strong> verified numbers.
                             </span>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Traced Addresses */}
                             <div className="space-y-2">
-                              <h5 className="text-[10.5px] font-bold uppercase tracking-wider text-[#94a3c8] font-space-grotesk flex items-center gap-1.5">
+                              <h5 className="text-[10.5px] font-bold tracking-wider !text-dash-textMuted  flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                 Verified Addresses
                               </h5>
                               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                                 {addresses.length === 0 ? (
-                                  <p className="text-[10px] text-[#4a5a82] italic">No verified addresses found.</p>
+                                  <p className="text-[10px] !text-dash-textMuted italic">No verified addresses found.</p>
                                 ) : (
                                   addresses.map((addr: any, idx: number) => (
-                                    <div key={idx} className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 text-[11px] leading-relaxed">
-                                      <p className="text-white font-semibold">{addr.addressLine}</p>
-                                      <p className="text-[#94a3c8]">{addr.city}, {addr.province}, {addr.postalCode}</p>
-                                      <span className="inline-block text-[8px] text-[#4a5a82] font-mono mt-1 uppercase">Verified: {addr.lastVerified}</span>
+                                    <div key={idx} className="bg-dash-surface border border-dash-border rounded-xl p-2.5 text-[11px] leading-relaxed">
+                                      <p className="!text-dash-text font-semibold">{addr.addressLine}</p>
+                                      <p className="!text-dash-textMuted">{addr.city}, {addr.province}, {addr.postalCode}</p>
+                                      <span className="inline-block text-[8px] !text-dash-textMuted font-mono mt-1">Verified: {addr.lastVerified}</span>
                                     </div>
                                   ))
                                 )}
@@ -657,21 +656,21 @@ export default function VerificationTab({
 
                             {/* Traced Phones */}
                             <div className="space-y-2">
-                              <h5 className="text-[10.5px] font-bold uppercase tracking-wider text-[#94a3c8] font-space-grotesk flex items-center gap-1.5">
+                              <h5 className="text-[10.5px] font-bold tracking-wider !text-dash-textMuted  flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                 Contact Numbers
                               </h5>
                               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                                 {phones.length === 0 ? (
-                                  <p className="text-[10px] text-[#4a5a82] italic">No verified phone numbers found.</p>
+                                  <p className="text-[10px] !text-dash-textMuted italic">No verified phone numbers found.</p>
                                 ) : (
                                   phones.map((phone: any, idx: number) => (
-                                    <div key={idx} className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 text-[11px] flex justify-between items-center">
+                                    <div key={idx} className="bg-dash-surface border border-dash-border rounded-xl p-2.5 text-[11px] flex justify-between items-center">
                                       <div>
-                                        <p className="text-white font-mono font-bold">{phone.phoneNumber}</p>
-                                        <span className="inline-block text-[8px] text-[#4a5a82] font-mono mt-0.5 uppercase">Verified: {phone.lastVerified}</span>
+                                        <p className="!text-dash-text font-mono font-bold">{phone.phoneNumber}</p>
+                                        <span className="inline-block text-[8px] !text-dash-textMuted font-mono mt-0.5">Verified: {phone.lastVerified}</span>
                                       </div>
-                                      <span className="px-1.5 py-0.5 text-[9px] uppercase font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded">
+                                      <span className="px-1.5 py-0.5 text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded">
                                         {phone.phoneType}
                                       </span>
                                     </div>
@@ -688,9 +687,9 @@ export default function VerificationTab({
                   {/* Experian TrueID Biometric UI rendering */}
                   {checkDef.type === 'biometric' && (
                     <div className="space-y-4 text-left">
-                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex flex-col md:flex-row items-center gap-4">
+                      <div className="bg-dash-surface border border-dash-border rounded-xl p-4 flex flex-col md:flex-row items-center gap-4">
                         {/* Simulated Selfie Capture Frame */}
-                        <div className="w-16 h-16 rounded-full border-2 border-[#3b82f6]/60 flex items-center justify-center bg-black/40 text-blue-400 relative overflow-hidden shrink-0">
+                        <div className="w-16 h-16 rounded-full border-2 border-dash-accent/60 flex items-center justify-center bg-dash-surface text-blue-400 relative overflow-hidden shrink-0">
                           <svg className="w-9 h-9 opacity-40 text-blue-300" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                           </svg>
@@ -698,11 +697,11 @@ export default function VerificationTab({
                         </div>
 
                         <div className="flex-1 space-y-1 w-full">
-                          <span className="text-[10px] text-[#4a5a82] uppercase block tracking-wider font-bold">Biometric Match & Liveness</span>
-                          <span className="text-xs font-bold text-white block">
+                          <span className="text-[10px] !text-dash-textMuted block tracking-wider font-bold">Biometric Match & Liveness</span>
+                          <span className="text-xs font-bold !text-dash-text block">
                             {existing.result || existing.notes || 'Liveness Checked'}
                           </span>
-                          <div className="flex gap-2 items-center text-[10px] text-[#4a5a82]">
+                          <div className="flex gap-2 items-center text-[10px] !text-dash-textMuted">
                             <span>Status:</span>
                             <span className={`font-bold ${existing.status === 'passed' ? 'text-emerald-400' : 'text-red-400'}`}>
                               {existing.status === 'passed' ? 'PASSED' : 'FAILED'}
@@ -716,24 +715,24 @@ export default function VerificationTab({
                   {/* Experian Address Geocoding UI rendering */}
                   {checkDef.type === 'address_verification' && existing.provider === 'experian' && (
                     <div className="space-y-4 text-left">
-                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-3">
+                      <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-3">
                         <div>
-                          <span className="text-[10px] text-[#4a5a82] uppercase block tracking-wider font-bold">Geocoded GPS Coordinates</span>
-                          <span className="text-xs font-bold text-white block mt-1">
+                          <span className="text-[10px] !text-dash-textMuted block tracking-wider font-bold">Geocoded GPS Coordinates</span>
+                          <span className="text-xs font-bold !text-dash-text block mt-1">
                             {existing.notes || 'Geocoding Verified'}
                           </span>
                         </div>
-                        <div className="flex gap-4 border-t border-white/5 pt-3 text-[11px] text-[#94a3c8] font-mono">
+                        <div className="flex gap-4 border-t border-dash-border pt-3 text-[11px] !text-dash-textMuted font-mono">
                           <div>
-                            <span className="text-[#4a5a82] block text-[9px] uppercase font-bold">Latitude</span>
-                            <span className="text-white font-bold">{existing.raw_response?.geocodeResult?.coordinates?.latitude || existing.raw_response?.latitude || '-26.1314'}</span>
+                            <span className="!text-dash-textMuted block text-[9px] font-bold">Latitude</span>
+                            <span className="!text-dash-text font-bold">{existing.raw_response?.geocodeResult?.coordinates?.latitude || existing.raw_response?.latitude || '-26.1314'}</span>
                           </div>
                           <div>
-                            <span className="text-[#4a5a82] block text-[9px] uppercase font-bold">Longitude</span>
-                            <span className="text-white font-bold">{existing.raw_response?.geocodeResult?.coordinates?.longitude || existing.raw_response?.longitude || '28.0673'}</span>
+                            <span className="!text-dash-textMuted block text-[9px] font-bold">Longitude</span>
+                            <span className="!text-dash-text font-bold">{existing.raw_response?.geocodeResult?.coordinates?.longitude || existing.raw_response?.longitude || '28.0673'}</span>
                           </div>
                           <div>
-                            <span className="text-[#4a5a82] block text-[9px] uppercase font-bold">Accuracy</span>
+                            <span className="!text-dash-textMuted block text-[9px] font-bold">Accuracy</span>
                             <span className="text-emerald-400 font-bold">HIGH</span>
                           </div>
                         </div>
@@ -745,14 +744,14 @@ export default function VerificationTab({
                   {checkDef.type !== 'credit_score' && checkDef.type !== 'credit_report' && checkDef.type !== 'xds_credit' && checkDef.type !== 'xds_trace' && checkDef.type !== 'biometric' && !(checkDef.type === 'address_verification' && existing.provider === 'experian') && (
                     <>
                       {existing.notes && (
-                        <p className="text-[11.5px] text-[#94a3c8]"
+                        <p className="text-[11.5px] !text-dash-textMuted"
                           style={{ fontFamily: "'DM Sans', sans-serif" }}>
                           {existing.notes}
                         </p>
                       )}
                       {existing.id_valid !== undefined && (
                         <div className="flex items-center gap-2 text-[11px]">
-                          <span className="text-[#4a5a82]">ID Valid:</span>
+                          <span className="!text-dash-textMuted">ID Valid:</span>
                           <span className={existing.id_valid ? 'text-[#10b981]' : 'text-[#ef4444]'}>
                             {existing.id_valid ? 'Yes' : 'No'}
                           </span>
@@ -760,13 +759,13 @@ export default function VerificationTab({
                       )}
                       {existing.credit_score !== undefined && (
                         <div className="flex items-center gap-2 text-[11px]">
-                          <span className="text-[#4a5a82]">Credit Score:</span>
-                          <span className="text-[#eef2ff] font-semibold">{existing.credit_score}</span>
+                          <span className="!text-dash-textMuted">Credit Score:</span>
+                          <span className="!text-dash-text font-semibold">{existing.credit_score}</span>
                         </div>
                       )}
                       {existing.on_sanctions_list !== undefined && (
                         <div className="flex items-center gap-2 text-[11px]">
-                          <span className="text-[#4a5a82]">On Sanctions List:</span>
+                          <span className="!text-dash-textMuted">On Sanctions List:</span>
                           <span className={existing.on_sanctions_list ? 'text-[#ef4444]' : 'text-[#10b981]'}>
                             {existing.on_sanctions_list ? 'Yes — Flag for review' : 'No'}
                           </span>
@@ -784,23 +783,23 @@ export default function VerificationTab({
       {/* Verification History */}
       {checks.length > 0 && (
         <div>
-          <h4 className="text-[13px] font-semibold text-[#eef2ff] mb-3"
+          <h4 className="text-[13px] font-semibold !text-dash-text mb-3"
             style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             Verification History
           </h4>
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl divide-y divide-[rgba(255,255,255,0.04)]">
+          <div className="bg-white border border-dash-border rounded-xl divide-y divide-dash-border">
             {checks.map(check => (
               <div key={check.id} className="flex items-center justify-between px-4 py-3 gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-[12px] font-medium text-[#eef2ff]"
+                  <span className="text-[12px] font-medium !text-dash-text"
                     style={{ fontFamily: "'DM Sans', sans-serif" }}>
                     {CHECK_TYPES.find(c => c.type === check.check_type)?.label ?? check.check_type}
                   </span>
-                  <span className="text-[10px] text-[#4a5a82]">via {check.provider}</span>
+                  <span className="text-[10px] !text-dash-textMuted">via {check.provider}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   {getStatusBadge(check.status)}
-                  <span className="text-[10px] text-[#4a5a82]"
+                  <span className="text-[10px] !text-dash-textMuted"
                     style={{ fontFamily: "'DM Sans', sans-serif" }}>
                     {new Date(check.created_at).toLocaleDateString()}
                   </span>
@@ -813,17 +812,17 @@ export default function VerificationTab({
 
       {/* Confirm Modal */}
       {confirmModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-5 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-dash-text/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-dash-border rounded-2xl shadow-xl w-full max-w-md p-5 max-h-[90vh] overflow-y-auto">
             {(() => {
               const checkDef = CHECK_TYPES.find(c => c.type === confirmModal)!
               return (
                 <>
-                  <h3 className="text-[17px] font-semibold text-[#eef2ff] mb-2"
+                  <h3 className="text-[17px] font-semibold !text-dash-text mb-2"
                     style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                     Run {checkDef.label}?
                   </h3>
-                  <p className="text-[12px] text-[#94a3c8] mb-3 leading-relaxed"
+                  <p className="text-[12px] !text-dash-textMuted mb-3 leading-relaxed"
                     style={{ fontFamily: "'DM Sans', sans-serif" }}>
                     This will run a {checkDef.provider} {checkDef.label} check on {contactName}.
                     The result will be saved on this contact record with a timestamp.
@@ -833,18 +832,18 @@ export default function VerificationTab({
                       type="checkbox"
                       checked={consentTicked}
                       onChange={e => setConsentTicked(e.target.checked)}
-                      className="mt-0.5 accent-[#2563eb]"
+                      className="mt-0.5 accent-dash-accent"
                     />
-                    <span className="text-[12px] text-[#94a3c8] leading-relaxed"
+                    <span className="text-[12px] !text-dash-textMuted leading-relaxed"
                       style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                      I confirm that <strong className="text-[#eef2ff]">{contactName}</strong> has
+                      I confirm that <strong className="!text-dash-text">{contactName}</strong> has
                       explicitly consented to this verification check.
                     </span>
                   </label>
                   <div className="flex gap-3">
                     <button
                       onClick={() => { setConfirmModal(null); setConsentTicked(false) }}
-                      className="flex-1 py-2.5 border border-[rgba(255,255,255,0.07)] rounded-lg text-[#4a5a82] text-[13px] font-semibold hover:text-[#eef2ff] transition-all"
+                      className="flex-1 py-2.5 border border-dash-border rounded-lg !text-dash-textMuted text-[13px] font-semibold hover:!text-dash-text transition-all"
                       style={{ fontFamily: "'DM Sans', sans-serif" }}>
                       Cancel
                     </button>
@@ -854,7 +853,6 @@ export default function VerificationTab({
                       className="flex-1 py-2.5 rounded-lg text-white text-[13px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{
                         backgroundColor: consentTicked ? checkDef.color : undefined,
-                        fontFamily: "'DM Sans', sans-serif",
                       }}>
                       Run Check
                     </button>

@@ -48,16 +48,16 @@ export function KanbanColumn({ id, title, tasks, onAddTask, onCardClick }: Kanba
 
   return (
     <div className={cn(
-      "flex flex-col w-full rounded-2xl border border-white/5 overflow-hidden transition-all duration-300",
+      "flex flex-col w-full rounded-2xl border border-dash-border overflow-hidden transition-all duration-300",
       theme.shadow,
-      isExpanded ? "bg-white/[0.02]" : "bg-transparent"
+      isExpanded ? "bg-dash-surface" : "bg-transparent"
     )}>
       {/* Accordion Header */}
       <div 
         className={cn(
           "flex items-center justify-between py-4 px-6 cursor-pointer select-none border-l-4 transition-all",
           theme.border,
-          isExpanded ? "bg-white/[0.03]" : "hover:bg-white/[0.02]"
+          isExpanded ? "bg-dash-surface" : "hover:bg-dash-surface"
         )}
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -72,10 +72,10 @@ export function KanbanColumn({ id, title, tasks, onAddTask, onCardClick }: Kanba
           </div>
           
           <div className="flex flex-col">
-            <h3 className="text-sm font-black uppercase tracking-[0.1em] text-white/90 font-space">
+            <h3 className="text-sm font-black tracking-[0.1em] !text-dash-text">
               {title}
             </h3>
-            <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
+            <span className="text-[10px] font-bold !text-dash-textMuted tracking-widest">
               {tasks.length} {tasks.length === 1 ? 'Task' : 'Tasks'}
             </span>
           </div>
@@ -84,7 +84,7 @@ export function KanbanColumn({ id, title, tasks, onAddTask, onCardClick }: Kanba
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center -space-x-2 mr-4">
              {/* Mock avatars for the row */}
-             <div className="w-6 h-6 rounded-full border-2 border-[#080f28] bg-white/5 flex items-center justify-center text-[8px] font-bold text-white/40">
+             <div className="w-6 h-6 rounded-full border-2 border-white bg-dash-surface flex items-center justify-center text-[8px] font-bold !text-dash-textMuted">
                 +{tasks.length}
              </div>
           </div>
@@ -93,7 +93,7 @@ export function KanbanColumn({ id, title, tasks, onAddTask, onCardClick }: Kanba
           
           <button 
             onClick={(e) => e.stopPropagation()}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-white/20 hover:text-white/60 transition-all"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-textMuted transition-all"
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
@@ -113,7 +113,7 @@ export function KanbanColumn({ id, title, tasks, onAddTask, onCardClick }: Kanba
                 {...provided.droppableProps}
                 className={cn(
                   "p-6 transition-colors duration-200",
-                  snapshot.isDraggingOver ? "bg-primary/5" : "bg-transparent"
+                  snapshot.isDraggingOver ? "bg-dash-accent/5" : "bg-transparent"
                 )}
               >
                 {tasks.length === 0 && !snapshot.isDraggingOver ? (

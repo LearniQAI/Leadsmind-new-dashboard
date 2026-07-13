@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import { Tags, Tag as TagIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DashButton } from '@/components/dashboard-ui/Button';
 
 interface TagDialogProps {
   isOpen: boolean;
@@ -31,49 +33,50 @@ export function TagDialog({
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[1001] bg-[#000000c1] backdrop-blur-sm animate-in fade-in duration-300" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-[1002] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[24px] bg-[#080f28] border border-white/5 p-6 shadow-2xl animate-in zoom-in-95 fade-in duration-300 focus:outline-none max-h-[90vh] overflow-y-auto">
+        <Dialog.Overlay className="fixed inset-0 z-[1001] bg-dash-text/40 backdrop-blur-sm animate-in fade-in duration-300 motion-reduce:animate-none" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-[1002] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white border border-dash-border p-6 shadow-xl animate-in zoom-in-95 fade-in duration-300 motion-reduce:animate-none focus:outline-none max-h-[90vh] overflow-y-auto">
           <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[#2563eb]/10 border border-[#2563eb]/20 flex items-center justify-center mb-4 shadow-lg shadow-[#2563eb]/5">
-              <i className="fa-solid fa-tags text-[#3b82f6] text-[24px]"></i>
+            <div className="w-16 h-16 rounded-2xl bg-dash-accent/10 border border-dash-accent/20 flex items-center justify-center mb-4">
+              <Tags className="text-dash-accent" size={24} />
             </div>
-            
-            <Dialog.Title className="text-[20px] font-bold text-[#eef2ff] mb-2 font-space-grotesk uppercase tracking-tight">
-              Apply <span className="text-[#3b82f6]">Strategic Tag</span>
+
+            <Dialog.Title className="text-[20px] font-bold !text-dash-text mb-2">
+              Apply <span className="text-dash-accent">Strategic Tag</span>
             </Dialog.Title>
-            
-            <Dialog.Description className="text-[13px] text-[#4a5a82] mb-5 font-dm-sans leading-relaxed">
-              You are applying a tactical tag to <span className="text-[#eef2ff] font-bold">{selectedCount}</span> selected leads. This will help in high-fidelity segmentation.
+
+            <Dialog.Description className="text-[13px] !text-dash-textMuted mb-5 leading-relaxed">
+              You are applying a tactical tag to <span className="!text-dash-text font-bold">{selectedCount}</span> selected leads. This will help in high-fidelity segmentation.
             </Dialog.Description>
-            
+
             <form onSubmit={handleSubmit} className="w-full space-y-4">
               <div className="relative group">
-                <i className="fa-solid fa-tag absolute left-4 top-1/2 -translate-y-1/2 text-[12px] text-[#4a5a82] group-focus-within:text-[#3b82f6] transition-colors"></i>
+                <TagIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-dash-textMuted group-focus-within:text-dash-accent transition-colors" size={12} />
                 <input
                   autoFocus
                   type="text"
                   placeholder="Enter tag name (e.g. Q2-Lead, Priority...)"
                   value={tag}
                   onChange={(e) => setTag(e.target.value)}
-                  className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-xl px-11 text-[14px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb]/50 focus:ring-4 focus:ring-[#2563eb]/10 transition-all font-dm-sans"
+                  className="w-full h-12 bg-white border border-dash-border rounded-xl px-11 text-[14px] !text-dash-text placeholder:text-dash-textMuted focus:outline-none focus:border-dash-accent/50 focus:ring-4 focus:ring-dash-accent/10 transition-all"
                 />
               </div>
 
               <div className="flex w-full gap-3">
-                <button
+                <DashButton
                   type="button"
+                  variant="secondary"
                   onClick={onClose}
-                  className="flex-1 h-11 rounded-xl bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[13px] font-bold font-dm-sans transition-all"
+                  className="flex-1"
                 >
                   Cancel
-                </button>
-                <button
+                </DashButton>
+                <DashButton
                   type="submit"
                   disabled={!tag.trim()}
-                  className="flex-1 h-11 rounded-xl bg-[#2563eb] text-white hover:bg-[#2563eb]/90 disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-bold font-dm-sans transition-all shadow-lg shadow-[#2563eb]/20"
+                  className="flex-1"
                 >
                   Apply Tag
-                </button>
+                </DashButton>
               </div>
             </form>
           </div>

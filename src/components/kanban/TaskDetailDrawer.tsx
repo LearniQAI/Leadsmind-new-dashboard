@@ -25,8 +25,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 interface TaskDetailDrawerProps {
   taskId: string | null;
@@ -193,10 +192,10 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="sm:max-w-[480px] p-0 flex flex-col h-full bg-[#0B132C]/95 backdrop-blur-xl border-l border-white/5 shadow-[-20px_0_40px_rgba(0,0,0,0.4)]">
+        <SheetContent className="sm:max-w-[480px] p-0 flex flex-col h-full bg-white backdrop-blur-xl border-l border-dash-border shadow-[-20px_0_40px_rgba(0,0,0,0.4)]">
           {loading && !task ? (
             <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              <Loader2 className="w-8 h-8 text-dash-accent animate-spin" />
             </div>
           ) : task ? (
             <>
@@ -209,38 +208,38 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
                         <DropdownMenuTrigger asChild disabled={role === 'viewer'}>
                           <button className="flex items-center gap-2 hover:opacity-80 transition-opacity disabled:opacity-50">
                             <Badge className={cn(
-                              "text-[10px] uppercase font-black px-2 cursor-pointer transition-all",
+                              "text-[10px] font-black px-2 cursor-pointer transition-all",
                               task.status === 'done' ? "bg-green/10 text-green border-green/20" : 
-                              task.status === 'in_progress' ? "bg-primary/10 text-primary border-primary/20" : 
-                              "bg-white/5 text-white/40 border-white/10"
+                              task.status === 'in_progress' ? "bg-dash-accent/10 text-dash-accent border-dash-accent/20" : 
+                              "bg-dash-surface !text-dash-textMuted border-dash-border"
                             )}>
                               {task.status.replace('_', ' ')}
                               <ChevronDown className="w-2.5 h-2.5 ml-1 opacity-40" />
                             </Badge>
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-[#080f28] border-white/10 z-[2100]">
+                        <DropdownMenuContent className="bg-white border-dash-border z-[2100]">
                           {['todo', 'in_progress', 'in_review', 'done'].map((s) => (
                             <DropdownMenuItem 
                               key={s} 
                               onClick={() => saveUpdates({ status: s })}
-                              className="text-[10px] font-bold uppercase tracking-widest py-2 px-4 focus:bg-white/5 cursor-pointer"
+                              className="text-[10px] font-bold tracking-widest py-2 px-4 focus:bg-dash-surface cursor-pointer"
                             >
                               {s.replace('_', ' ')}
                             </DropdownMenuItem>
                           ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      <ChevronRight className="w-3 h-3 text-white/10" />
-                      <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest font-space-grotesk">
+                      <ChevronRight className="w-3 h-3 !text-dash-textMuted" />
+                      <span className="text-[10px] !text-dash-textMuted font-bold tracking-widest">
                         Task-{task.id.slice(0, 4)}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-white/20">
+                      <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-dash-surface !text-dash-textMuted">
                         <Share2 className="w-4 h-4" />
                       </button>
-                      <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-white/20">
+                      <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-dash-surface !text-dash-textMuted">
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
                     </div>
@@ -250,7 +249,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     disabled={role === 'viewer'}
-                    className="w-full bg-transparent text-2xl font-bold text-white outline-none placeholder:text-white/10 font-space-grotesk mb-4 border-b border-transparent focus:border-white/5 pb-2 transition-all disabled:opacity-50"
+                    className="w-full bg-transparent text-2xl font-bold !text-dash-text outline-none placeholder:!text-dash-textMuted mb-4 border-b border-transparent focus:border-dash-border pb-2 transition-all disabled:opacity-50"
                     placeholder="Task Title"
                   />
 
@@ -259,23 +258,23 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
                       <Label label="Priority" />
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild disabled={role === 'viewer'}>
-                          <button className="flex items-center justify-between w-full px-3 py-2 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all disabled:opacity-50">
+                          <button className="flex items-center justify-between w-full px-3 py-2 rounded-xl bg-dash-surface border border-dash-border hover:border-dash-border transition-all disabled:opacity-50">
                             <div className="flex items-center gap-2">
                               <div className={cn(
                                 "w-2 h-2 rounded-full",
                                 task.priority === 'high' ? "bg-red" : task.priority === 'medium' ? "bg-amber" : "bg-green"
                               )} />
-                              <span className="text-xs font-bold text-white/90 capitalize">{task.priority}</span>
+                              <span className="text-xs font-bold !text-dash-text capitalize">{task.priority}</span>
                             </div>
-                            <ChevronDown className="w-3 h-3 text-white/20" />
+                            <ChevronDown className="w-3 h-3 !text-dash-textMuted" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-[#0B132C] border-white/10 z-[2100]">
+                        <DropdownMenuContent className="bg-white border-dash-border z-[2100]">
                           {['low', 'medium', 'high'].map((p) => (
                             <DropdownMenuItem 
                               key={p} 
                               onClick={() => saveUpdates({ priority: p })}
-                              className="text-[10px] font-bold uppercase tracking-widest py-2 px-4 focus:bg-white/5 cursor-pointer"
+                              className="text-[10px] font-bold tracking-widest py-2 px-4 focus:bg-dash-surface cursor-pointer"
                             >
                               {p}
                             </DropdownMenuItem>
@@ -294,27 +293,27 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
                   </div>
                 </div>
 
-                <Separator className="bg-white/5" />
+                <Separator className="bg-dash-surface" />
 
                 {/* Assignees */}
                 <div className="p-8 py-6 space-y-4">
                   <Label label="Assigned Team" />
                   <div className="flex flex-wrap items-center gap-3">
                     {task.assignees?.map((a: any) => (
-                      <div key={a.user_id} className="flex items-center gap-2 bg-primary/10 border border-primary/20 pl-1 pr-3 py-1 rounded-full group transition-all">
-                        <div className="w-6 h-6 rounded-full overflow-hidden border-2 border-[#080f28] bg-white/5 flex items-center justify-center">
+                      <div key={a.user_id} className="flex items-center gap-2 bg-dash-accent/10 border border-dash-accent/20 pl-1 pr-3 py-1 rounded-full group transition-all">
+                        <div className="w-6 h-6 rounded-full overflow-hidden border-2 border-white bg-dash-surface flex items-center justify-center">
                           {a.profile?.avatar_url ? (
                             <img src={a.profile.avatar_url} alt={a.profile?.first_name || 'Assignee avatar'} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-[8px] text-primary">{a.profile?.first_name?.[0]}</span>
+                            <span className="text-[8px] text-dash-accent">{a.profile?.first_name?.[0]}</span>
                           )}
                         </div>
-                        <span className="text-[11px] font-bold text-primary">{a.profile?.first_name}</span>
+                        <span className="text-[11px] font-bold text-dash-accent">{a.profile?.first_name}</span>
                         <button 
                           onClick={() => handleToggleAssignee(a.user_id)}
-                          className="w-4 h-4 rounded-full hover:bg-primary/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="w-4 h-4 rounded-full hover:bg-dash-accent/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Trash2 className="w-2.5 h-2.5 text-primary" />
+                          <Trash2 className="w-2.5 h-2.5 text-dash-accent" />
                         </button>
                       </div>
                     ))}
@@ -324,13 +323,13 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
                   </div>
                 </div>
 
-                <Separator className="bg-white/5" />
+                <Separator className="bg-dash-surface" />
 
                 {/* Description */}
                 <div className="p-8 py-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <Label label="Description" />
-                    <span className="text-[10px] text-white/10 font-bold uppercase tracking-widest italic">
+                    <span className="text-[10px] !text-dash-textMuted font-bold tracking-widest italic">
                       Real-time sync active
                     </span>
                   </div>
@@ -344,7 +343,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
                   />
                 </div>
 
-                <Separator className="bg-white/5" />
+                <Separator className="bg-dash-surface" />
 
                 {/* Attachments / Payload */}
                 <div className="p-8 py-6 space-y-4">
@@ -355,7 +354,7 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
                       (loading || role === 'viewer') && "opacity-50 pointer-events-none"
                     )}>
                       <input type="file" className="hidden" onChange={handleUpload} disabled={loading || role === 'viewer'} />
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest text-white/40 transition-all">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-dash-surface border border-dash-border hover:bg-dash-border/60 text-[10px] font-black tracking-widest !text-dash-textMuted transition-all">
                         {loading ? (
                           <>
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -373,14 +372,14 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
 
                   <div className="space-y-2">
                     {task.attachments?.map((file: any) => (
-                      <div key={file.id} className="group flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                      <div key={file.id} className="group flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border hover:border-dash-border transition-all">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                          <div className="w-8 h-8 rounded-lg bg-dash-accent/10 flex items-center justify-center text-dash-accent">
                             <FileText className="w-4 h-4" />
                           </div>
                           <div className="flex flex-col overflow-hidden">
-                            <span className="text-xs font-bold text-white/80 truncate max-w-[200px]">{file.file_name}</span>
-                            <span className="text-[10px] text-white/20 uppercase tracking-tight">
+                            <span className="text-xs font-bold !text-dash-text truncate max-w-[200px]">{file.file_name}</span>
+                            <span className="text-[10px] !text-dash-textMuted tracking-tight">
                               {(file.file_size / 1024 / 1024).toFixed(2)} MB • {format(new Date(file.created_at), 'MMM d, h:mm a')}
                             </span>
                           </div>
@@ -388,14 +387,14 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => handleDownload(file.file_path, file.file_name)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/5 text-white/20 hover:text-white"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text"
                           >
                             <Download className="w-3.5 h-3.5" />
                           </button>
                           {role !== 'viewer' && (
                             <button 
                               onClick={() => handleDeleteAttachment(file.id)}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red/10 text-white/20 hover:text-red"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red/10 !text-dash-textMuted hover:text-red"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -404,21 +403,21 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
                       </div>
                     ))}
                     {(!task.attachments || task.attachments.length === 0) && (
-                      <div className="flex flex-col items-center justify-center py-8 rounded-xl border border-dashed border-white/5 opacity-20">
+                      <div className="flex flex-col items-center justify-center py-8 rounded-xl border border-dashed border-dash-border opacity-20">
                         <Paperclip className="w-8 h-8 mb-2" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest font-space-grotesk">No Payloads Attached</span>
+                        <span className="text-[10px] font-bold tracking-widest">No Payloads Attached</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <Separator className="bg-white/5" />
+                <Separator className="bg-dash-surface" />
 
                 {/* Activity & Comments */}
                 <div className="p-8 py-6 space-y-6 flex-1">
                   <div className="flex items-center gap-2">
                     <Label label="Activity Thread" />
-                    <div className="px-2 py-0.5 rounded-full bg-white/5 text-[10px] font-bold text-white/40">
+                    <div className="px-2 py-0.5 rounded-full bg-dash-surface text-[10px] font-bold !text-dash-textMuted">
                       {task.comments?.length || 0}
                     </div>
                   </div>
@@ -432,18 +431,18 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
               </div>
 
               {/* Footer Actions */}
-              <div className="p-6 bg-white/[0.01] border-t border-white/5 flex items-center justify-between">
+              <div className="p-6 bg-dash-surface border-t border-dash-border flex items-center justify-between">
                 {(role === 'admin' || role === 'manager') ? (
                   <button 
                     onClick={() => setDeleteConfirmOpen(true)}
-                    className="flex items-center gap-2 text-red/40 hover:text-red text-[11px] font-bold uppercase tracking-widest transition-colors"
+                    className="flex items-center gap-2 text-red/40 hover:text-red text-[11px] font-bold tracking-widest transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete Task
                   </button>
                 ) : <div />}
                 <div className="flex items-center gap-2">
-                   <Badge variant="outline" className="bg-green/10 text-green border-green/20 text-[10px] font-black uppercase font-space-grotesk">
+                   <Badge variant="outline" className="bg-green/10 text-green border-green/20 text-[10px] font-black">
                       ID: {task.id.slice(0,8)}
                    </Badge>
                 </div>
@@ -451,55 +450,30 @@ export function TaskDetailDrawer({ taskId, open, onOpenChange, onTaskUpdated }: 
             </>
           ) : (
             <div className="flex flex-col items-center justify-center h-full p-12 text-center">
-              <AlertCircle className="w-12 h-12 text-white/10 mb-4" />
-              <h3 className="text-white/60 font-bold uppercase tracking-widest">Task Not Found</h3>
-              <p className="text-white/20 text-sm mt-2">The record might have been deleted or moved.</p>
+              <AlertCircle className="w-12 h-12 !text-dash-textMuted mb-4" />
+              <h3 className="!text-dash-textMuted font-bold tracking-widest">Task Not Found</h3>
+              <p className="!text-dash-textMuted text-sm mt-2">The record might have been deleted or moved.</p>
             </div>
           )}
         </SheetContent>
       </Sheet>
 
-      {/* Tactical Confirmation Modal */}
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent className="max-w-sm bg-[#04091a] border-white/5 p-8 rounded-2xl z-[2500]">
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-red/10 flex items-center justify-center border border-red/20 text-red">
-              <AlertCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl font-bold text-white uppercase tracking-tighter">
-                Confirm <span className="text-red">Deletion</span>
-              </DialogTitle>
-              <DialogDescription className="text-xs text-[#4a5a82] mt-2 leading-relaxed">
-                You are about to permanently remove this objective. This action cannot be reversed within the current tactical cycle.
-              </DialogDescription>
-            </div>
-            <div className="flex flex-col w-full gap-3 pt-4">
-              <Button 
-                onClick={handleDeleteTask}
-                disabled={loading}
-                className="bg-red hover:bg-red/90 text-white h-11 rounded-xl text-[10px] font-black uppercase tracking-widest"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'CONFIRM TERMINATION'}
-              </Button>
-              <Button 
-                variant="ghost" 
-                onClick={() => setDeleteConfirmOpen(false)}
-                className="text-[#4a5a82] hover:text-white hover:bg-white/5 h-11 rounded-xl text-[10px] font-black uppercase tracking-widest"
-              >
-                CANCEL
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteTask}
+        title="Confirm deletion"
+        description="You are about to permanently remove this task. This action cannot be reversed."
+        confirmLabel="Delete task"
+        variant="danger"
+      />
     </>
   );
 }
 
 function Label({ label }: { label: string }) {
   return (
-    <h5 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30 font-space-grotesk">
+    <h5 className="text-[11px] font-black tracking-[0.2em] !text-dash-textMuted">
       {label}
     </h5>
   );

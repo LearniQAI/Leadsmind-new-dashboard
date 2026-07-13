@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { format, isPast, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Trash2, CalendarDays } from 'lucide-react';
+import { DashButton } from '@/components/dashboard-ui/Button';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
@@ -43,63 +45,61 @@ export function TasksManager({ contactId, tasks }: TasksManagerProps) {
     <div className="space-y-8">
       {/* Quick Add */}
       <div className="flex gap-3">
-        <div className="flex-1 bg-white/[0.03] border border-white/5 rounded-lg h-10 px-4 flex items-center gap-3 focus-within:border-[#2563eb]/40 transition-all">
-          <i className="fa-solid fa-plus text-[11px] text-[#4a5a82]"></i>
-          <input 
+        <div className="flex-1 bg-dash-surface border border-dash-border rounded-lg h-10 px-4 flex items-center gap-3 focus-within:border-dash-accent/40 transition-all">
+          <Plus size={11} className="text-dash-textMuted" />
+          <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Assign a new tactical task..."
-            className="flex-1 bg-transparent border-none text-[13px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:ring-0 font-dm-sans"
+            className="flex-1 bg-transparent border-none text-[13px] !text-dash-text placeholder:text-dash-textMuted focus:outline-none focus:ring-0"
             onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
           />
         </div>
-        <button 
+        <DashButton
           onClick={handleAddTask}
           disabled={isSubmitting || !title.trim()}
-          className="h-10 px-6 rounded-lg bg-[#2563eb] text-white hover:bg-[#2563eb]/90 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all shadow-lg shadow-[#2563eb]/20 disabled:opacity-50"
+          size="default"
+          className="h-10"
         >
           Add Task
-        </button>
+        </DashButton>
       </div>
 
       {/* Task List */}
       <div className="space-y-3">
         {tasks.length === 0 ? (
-          <p className="text-[12px] text-[#4a5a82] italic font-dm-sans">No tasks assigned to this contact.</p>
+          <p className="text-[12px] !text-dash-textMuted italic">No tasks assigned to this contact.</p>
         ) : (
           tasks.map(task => {
             const isOverdue = task.due_date && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date)) && task.status !== 'completed';
-            
+
             return (
-              <div 
-                key={task.id} 
+              <div
+                key={task.id}
                 className={cn(
-                  "bg-[#080f28] border border-white/5 rounded-[12px] p-4 flex items-center gap-4 group transition-all",
+                  "bg-white border border-dash-border rounded-xl p-4 flex items-center gap-4 group transition-all",
                   task.status === 'completed' && "opacity-50"
                 )}
               >
-                <Checkbox 
+                <Checkbox
                   checked={task.status === 'completed'}
                   onCheckedChange={() => toggleTaskStatus(task.id, contactId, task.status)}
-                  className="border-[#4a5a82] data-[state=checked]:bg-[#2563eb] data-[state=checked]:border-[#2563eb]"
+                  className="border-dash-textMuted data-[state=checked]:bg-dash-accent data-[state=checked]:border-dash-accent"
                 />
-                
+
                 <div className="flex-1 min-w-0">
                   <h4 className={cn(
-                    "text-[13.5px] font-medium text-[#eef2ff] font-dm-sans truncate",
-                    task.status === 'completed' && "line-through text-[#4a5a82]"
+                    "text-[13.5px] font-medium !text-dash-text truncate",
+                    task.status === 'completed' && "line-through !text-dash-textMuted"
                   )}>
                     {task.title}
                   </h4>
                   {task.due_date && (
                     <div className="flex items-center gap-2 mt-0.5">
-                      <i className={cn(
-                        "fa-solid fa-calendar-day text-[10px]",
-                        isOverdue ? "text-red-400" : "text-[#4a5a82]"
-                      )}></i>
+                      <CalendarDays size={10} className={isOverdue ? "text-red" : "text-dash-textMuted"} />
                       <span className={cn(
-                        "text-[10px] font-bold uppercase tracking-widest font-dm-sans",
-                        isOverdue ? "text-red-400" : "text-[#4a5a82]"
+                        "text-[10px] font-bold",
+                        isOverdue ? "text-red" : "text-dash-textMuted"
                       )}>
                         {format(new Date(task.due_date), 'MMM dd, yyyy')} {isOverdue && '(OVERDUE)'}
                       </span>
@@ -108,11 +108,11 @@ export function TasksManager({ contactId, tasks }: TasksManagerProps) {
                 </div>
 
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                   <button 
+                   <button
                     onClick={() => setDeleteId(task.id)}
-                    className="text-[#4a5a82] hover:text-red-400 p-2"
+                    className="text-dash-textMuted hover:text-red p-2"
                    >
-                    <i className="fa-solid fa-trash-can text-[12px]"></i>
+                    <Trash2 size={12} />
                    </button>
                 </div>
               </div>

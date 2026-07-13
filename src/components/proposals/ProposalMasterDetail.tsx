@@ -5,9 +5,7 @@ import {
   Search, Download, MoreVertical, Calendar, FileSignature, X, ArrowRight,
   FileText, Send, Ban, Printer, Trash2, CheckCircle, XCircle, Clock, Pencil
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -19,6 +17,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { convertToInvoice, deleteQuote, updateQuoteStatus } from '@/app/actions/finance';
 import { useRouter } from 'next/navigation';
+import { DashCard } from '@/components/dashboard-ui/Card';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
 
 interface ProposalMasterDetailProps {
   proposals: any[];
@@ -26,12 +27,21 @@ interface ProposalMasterDetailProps {
 
 const PROPOSAL_STATUSES = ['draft', 'sent', 'accepted', 'declined'];
 
+/**
+ * Sentence-case, dash-token status pill for dashboard chrome (sidebar list,
+ * document header badge). The printable document body below this
+ * intentionally keeps its own bold/uppercase letterhead typography and the
+ * workspace's white-label `primary` color — see note above the Document View.
+ */
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'accepted') return <Badge className="bg-emerald-100 text-emerald-700 border-none text-[8px] font-black uppercase px-2 py-0">Accepted</Badge>;
-  if (status === 'converted') return <Badge className="bg-violet-100 text-violet-700 border-none text-[8px] font-black uppercase px-2 py-0">Converted</Badge>;
-  if (status === 'sent') return <Badge className="bg-blue-100 text-blue-700 border-none text-[8px] font-black uppercase px-2 py-0">Sent</Badge>;
-  if (status === 'declined') return <Badge className="bg-rose-100 text-rose-700 border-none text-[8px] font-black uppercase px-2 py-0">Declined</Badge>;
-  return <Badge className="bg-amber-100 text-amber-700 border-none text-[8px] font-black uppercase px-2 py-0">{status || 'Draft'}</Badge>;
+  const variant =
+    status === 'accepted' ? 'success' :
+    status === 'converted' ? 'accent' :
+    status === 'sent' ? 'info' :
+    status === 'declined' ? 'danger' :
+    'warning';
+  const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Draft';
+  return <DashStatusPill variant={variant}>{label}</DashStatusPill>;
 }
 
 export function ProposalMasterDetail({ proposals: initialProposals }: ProposalMasterDetailProps) {
@@ -91,32 +101,32 @@ export function ProposalMasterDetail({ proposals: initialProposals }: ProposalMa
     <div className="flex flex-col lg:flex-row h-full lg:h-[calc(100vh-280px)] gap-6">
       {/* Left Sidebar */}
       <div className={cn("w-full lg:w-[380px] flex flex-col gap-4 no-print", selectedId && "hidden lg:flex")}>
-        <div className="card__wrapper !p-4 !mb-0 h-full flex flex-col shadow-lg">
+        <DashCard interactive={false} className="p-4 h-full flex flex-col">
           <div className="p-2 mb-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search proposals..." className="pl-10 h-10 border-gray-200 rounded-xl text-xs font-bold" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 !text-dash-textMuted" />
+              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search proposals..." className="pl-10 h-10 border-dash-border rounded-xl text-xs font-bold" />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto scrollbar-none space-y-2 px-1">
             {filteredProposals.length === 0 && (
-              <div className="py-12 text-center text-gray-400 text-sm font-bold uppercase tracking-widest">No proposals</div>
+              <div className="py-12 text-center !text-dash-textMuted text-sm font-bold">No proposals</div>
             )}
             {filteredProposals.map(prop => (
               <button key={prop.id} onClick={() => setSelectedId(prop.id)} className={cn(
-                "w-full text-left p-4 rounded-2xl transition-all duration-200 group relative overflow-hidden border",
-                selectedId === prop.id ? "bg-primary/5 border-primary/30" : "hover:bg-gray-50 border-transparent"
+                "w-full text-left p-4 rounded-2xl transition-colors motion-reduce:transition-none group relative overflow-hidden border",
+                selectedId === prop.id ? "bg-dash-accent/5 border-dash-accent/30" : "hover:bg-dash-surface border-transparent"
               )}>
-                {selectedId === prop.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-2xl" />}
+                {selectedId === prop.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-dash-accent rounded-l-2xl" />}
                 <div className="flex justify-between items-start mb-2">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-primary">{prop.quote_number}</span>
-                  <span className="text-sm font-black text-gray-800">${Number(prop.total_amount).toLocaleString()}</span>
+                  <span className="text-[11px] font-bold tracking-wide text-dash-accent">{prop.quote_number}</span>
+                  <span className="text-sm font-black !text-dash-text">${Number(prop.total_amount).toLocaleString()}</span>
                 </div>
-                <h4 className="text-sm font-bold text-gray-700 group-hover:text-primary transition-colors truncate">
+                <h4 className="text-sm font-bold !text-dash-textMuted group-hover:text-dash-accent transition-colors truncate">
                   {prop.contact ? `${prop.contact.first_name} ${prop.contact.last_name}` : 'Unknown Prospect'}
                 </h4>
                 <div className="flex items-center justify-between mt-3">
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium">
+                  <div className="flex items-center gap-2 text-[10px] !text-dash-textMuted font-medium">
                     <Calendar className="h-3 w-3" />
                     {prop.valid_until ? format(new Date(prop.valid_until), 'dd MMM y') : format(new Date(prop.created_at), 'dd MMM y')}
                   </div>
@@ -125,7 +135,7 @@ export function ProposalMasterDetail({ proposals: initialProposals }: ProposalMa
               </button>
             ))}
           </div>
-        </div>
+        </DashCard>
       </div>
 
       {/* Right Content */}
@@ -133,57 +143,66 @@ export function ProposalMasterDetail({ proposals: initialProposals }: ProposalMa
         {selectedProposal ? (
           <>
             {/* Actions Header */}
-            <div className="card__wrapper !p-4 !mb-0 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl no-print">
+            <DashCard interactive={false} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
               <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" className="lg:hidden text-gray-400" onClick={() => setSelectedId(null)}>
+                <DashButton variant="ghost" size="icon" className="lg:hidden !text-dash-textMuted border-none" onClick={() => setSelectedId(null)}>
                   <X className="h-5 w-5" />
-                </Button>
-                <div className="card__icon !w-10 !h-10 !bg-primary/10 border-primary/20">
-                  <FileSignature className="h-5 w-5 text-primary" />
+                </DashButton>
+                <div className="w-10 h-10 rounded-xl bg-dash-accent/10 border border-dash-accent/20 flex items-center justify-center shrink-0">
+                  <FileSignature className="h-5 w-5 text-dash-accent" />
                 </div>
                 <div>
-                  <h3 className="card__title !text-lg !mb-0">Quote Details</h3>
-                  <p className="card__desc !text-[9px] !mb-0 uppercase tracking-[0.2em]">Ref: {selectedProposal.quote_number}</p>
+                  <h3 className="text-lg font-bold !text-dash-text">Quote Details</h3>
+                  <p className="text-[11px] !text-dash-textMuted">Ref: {selectedProposal.quote_number}</p>
                 </div>
               </div>
               <div className="flex gap-2 w-full md:w-auto">
                 {selectedProposal.status === 'accepted' && (
-                  <Button onClick={handleConvert} disabled={isConverting} className="btn-primary h-10 px-6 rounded-xl uppercase text-[10px] gap-2">
+                  <DashButton variant="primary" onClick={handleConvert} disabled={isConverting} className="h-10 px-6 rounded-xl">
                     <ArrowRight className="h-4 w-4" />
                     {isConverting ? 'Converting...' : 'Generate Invoice'}
-                  </Button>
+                  </DashButton>
                 )}
-                <Button onClick={handleDownload} variant="outline" className="btn btn-outline-theme-border h-10 px-4 rounded-xl uppercase text-[10px] gap-2">
+                <DashButton variant="secondary" onClick={handleDownload} className="h-10 px-4 rounded-xl">
                   <Download className="h-4 w-4" />
-                </Button>
+                </DashButton>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="btn btn-outline-theme-border h-10 w-10 p-0 rounded-xl">
+                    <DashButton variant="secondary" className="h-10 w-10 p-0 rounded-xl">
                       <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    </DashButton>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-xl rounded-xl min-w-[190px]">
+                  <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-lg rounded-xl min-w-[190px]">
                     {PROPOSAL_STATUSES.filter(s => s !== selectedProposal.status).map(s => (
-                      <DropdownMenuItem key={s} onClick={() => handleStatusChange(selectedProposal, s)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:bg-gray-50 rounded-lg mx-1 px-3 py-2 capitalize">
-                        {s === 'accepted' && <CheckCircle className="h-4 w-4 text-emerald-600" />}
-                        {s === 'sent' && <Send className="h-4 w-4 text-blue-600" />}
-                        {s === 'declined' && <XCircle className="h-4 w-4 text-rose-600" />}
+                      <DropdownMenuItem key={s} onClick={() => handleStatusChange(selectedProposal, s)} className="flex items-center gap-2 cursor-pointer !text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2 capitalize">
+                        {s === 'accepted' && <CheckCircle className="h-4 w-4 text-green" />}
+                        {s === 'sent' && <Send className="h-4 w-4 text-dash-accent" />}
+                        {s === 'declined' && <XCircle className="h-4 w-4 text-red" />}
                         {s === 'draft' && <Pencil className="h-4 w-4 text-amber-600" />}
                         Mark as {s}
                       </DropdownMenuItem>
                     ))}
-                    <DropdownMenuSeparator className="my-1 bg-gray-100" />
-                    <DropdownMenuItem onClick={() => { setDeleteTarget(selectedProposal); setDeleteOpen(true); }} className="flex items-center gap-2 cursor-pointer text-rose-600 hover:bg-rose-50 rounded-lg mx-1 px-3 py-2">
+                    <DropdownMenuSeparator className="my-1 bg-dash-border" />
+                    <DropdownMenuItem onClick={() => { setDeleteTarget(selectedProposal); setDeleteOpen(true); }} className="flex items-center gap-2 cursor-pointer text-red hover:bg-red/10 rounded-lg mx-1 px-3 py-2">
                       <Trash2 className="h-4 w-4" /> Delete Proposal
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            </div>
+            </DashCard>
 
-            {/* Document View */}
+            {/*
+              Document View — this is the printable client-facing document
+              (see `printable-area` / window.print() above), not dashboard
+              chrome. It intentionally keeps its own bold/uppercase
+              letterhead typography and the workspace's white-label
+              `primary` color/logo (via BrandingProvider) rather than the
+              fixed `dash-accent` used everywhere else in this file — a
+              proposal sent to a client should carry that workspace's brand,
+              not the dashboard's own accent color. Left as-is.
+            */}
             <div className="flex-1 overflow-y-auto scrollbar-none">
-              <div className="card__wrapper !p-8 md:!p-16 !mb-0 shadow-2xl relative overflow-hidden min-h-full printable-area bg-white">
+              <div className="border border-dash-border rounded-2xl p-8 md:p-16 shadow-sm relative overflow-hidden min-h-full printable-area bg-white">
                 <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-16 relative">
                   <div>
                     <div className="h-10 w-40 bg-primary text-white rounded-xl flex items-center justify-center font-black mb-6 tracking-tighter text-sm uppercase">LEADSMIND</div>
@@ -266,23 +285,23 @@ export function ProposalMasterDetail({ proposals: initialProposals }: ProposalMa
             </div>
           </>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-gray-200">
-            <FileSignature className="h-24 w-24 mb-6" />
-            <span className="text-xl font-black uppercase tracking-[0.5em]">Select a Proposal</span>
+          <div className="h-full flex flex-col items-center justify-center !text-dash-textMuted">
+            <FileSignature className="h-24 w-24 mb-6 opacity-40" />
+            <span className="text-xl font-bold tracking-wide">Select a proposal</span>
           </div>
         )}
       </div>
 
       {/* Delete Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="bg-white border border-gray-200 rounded-3xl max-w-sm p-8 shadow-2xl">
+        <DialogContent className="bg-white border border-dash-border rounded-2xl max-w-sm p-8 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight text-gray-800">Delete Proposal?</DialogTitle>
+            <DialogTitle className="text-xl font-bold tracking-tight !text-dash-text">Delete proposal?</DialogTitle>
           </DialogHeader>
-          <p className="text-gray-500 text-sm py-4">This will permanently delete proposal <strong className="text-gray-800">{deleteTarget?.quote_number}</strong>. This cannot be undone.</p>
+          <p className="!text-dash-textMuted text-sm py-4">This will permanently delete proposal <strong className="!text-dash-text">{deleteTarget?.quote_number}</strong>. This cannot be undone.</p>
           <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)} className="border-gray-200 text-gray-600 rounded-xl">Cancel</Button>
-            <Button onClick={handleDelete} disabled={deleting} className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black uppercase text-xs px-8">{deleting ? 'Deleting...' : 'Delete'}</Button>
+            <DashButton variant="secondary" onClick={() => setDeleteOpen(false)} className="rounded-xl">Cancel</DashButton>
+            <DashButton variant="destructive" onClick={handleDelete} disabled={deleting} className="rounded-xl px-8">{deleting ? 'Deleting...' : 'Delete'}</DashButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

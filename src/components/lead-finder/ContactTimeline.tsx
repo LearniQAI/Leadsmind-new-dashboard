@@ -43,44 +43,44 @@ export function ContactTimeline({ contactId, activities, notes }: { contactId: s
       case 'note': return <FileText size={14} className="text-blue-400" />;
       case 'status_change': return <RefreshCw size={14} className="text-emerald-400" />;
       case 'crm_push': return <LinkIcon size={14} className="text-purple-400" />;
-      default: return <Clock size={14} className="text-t4" />;
+      default: return <Clock size={14} className="!text-dash-textMuted" />;
     }
   };
 
   return (
-    <div className="bg-n800 border border-white/10 rounded-3xl p-8 flex flex-col h-[600px]">
-      <h3 className="text-lg font-space font-bold text-white mb-6 flex items-center gap-2">
-        <Clock className="text-accent" /> Relationship Timeline
+    <div className="bg-white border border-dash-border rounded-3xl p-8 flex flex-col h-[600px]">
+      <h3 className="text-lg font-bold !text-dash-text mb-6 flex items-center gap-2">
+        <Clock className="text-dash-accent" /> Relationship Timeline
       </h3>
 
       <div className="flex-1 overflow-y-auto pr-4 space-y-6 relative custom-scrollbar">
-        <div className="absolute top-0 bottom-0 left-[19px] w-px bg-white/5" />
+        <div className="absolute top-0 bottom-0 left-[19px] w-px bg-dash-surface" />
         
         {timeline.length === 0 ? (
-          <p className="text-t4 text-sm text-center pt-8">No relationship activity recorded yet.</p>
+          <p className="!text-dash-textMuted text-sm text-center pt-8">No relationship activity recorded yet.</p>
         ) : (
           timeline.map((item, i) => (
             <div key={item.id} className="relative flex gap-4 animate-in fade-in slide-in-from-bottom-2">
-              <div className="w-10 h-10 rounded-full bg-n900 border border-white/10 flex items-center justify-center shrink-0 z-10 relative">
+              <div className="w-10 h-10 rounded-full bg-white border border-dash-border flex items-center justify-center shrink-0 z-10 relative">
                 {getIcon(item.type)}
               </div>
               <div className="pt-1 w-full">
                 <div className="flex items-center justify-between gap-4 mb-1">
-                  <span className="text-xs font-bold text-t3 flex items-center gap-2">
-                    <User size={12} className="text-t4" /> 
+                  <span className="text-xs font-bold !text-dash-textMuted flex items-center gap-2">
+                    <User size={12} className="!text-dash-textMuted" /> 
                     {item.auth_user?.email?.split('@')[0] || 'System'}
                   </span>
-                  <span className="text-[10px] text-t4 uppercase tracking-widest font-semibold">
+                  <span className="text-[10px] !text-dash-textMuted tracking-widest font-semibold">
                     {new Date(item.created_at).toLocaleString()}
                   </span>
                 </div>
                 
                 {item.isNote ? (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-white mt-2 leading-relaxed">
+                  <div className="bg-dash-surface border border-dash-border rounded-xl p-4 text-sm !text-dash-text mt-2 leading-relaxed">
                     {item.description}
                   </div>
                 ) : (
-                  <p className="text-sm text-t2 mt-1">
+                  <p className="text-sm !text-dash-textMuted mt-1">
                     {item.description}
                   </p>
                 )}
@@ -90,18 +90,18 @@ export function ContactTimeline({ contactId, activities, notes }: { contactId: s
         )}
       </div>
 
-      <form onSubmit={handleAddNote} className="mt-6 pt-6 border-t border-white/10 relative">
+      <form onSubmit={handleAddNote} className="mt-6 pt-6 border-t border-dash-border relative">
         <textarea
           value={noteContent}
           onChange={(e) => setNoteContent(e.target.value)}
           placeholder="Log outreach attempt, note, or call details..."
-          className="w-full bg-n900 border border-white/10 rounded-xl py-3 px-4 pr-12 text-sm text-white placeholder-white/20 focus:outline-none focus:border-accent resize-none h-24"
+          className="w-full bg-white border border-dash-border rounded-xl py-3 px-4 pr-12 text-sm !text-dash-text placeholder-dash-textMuted/70 focus:outline-none focus:border-dash-accent resize-none h-24"
           required
         />
         <button
           type="submit"
           disabled={loading}
-          className="absolute bottom-3 right-3 p-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors disabled:opacity-50"
+          className="absolute bottom-3 right-3 p-2 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg transition-colors disabled:opacity-50"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         </button>
