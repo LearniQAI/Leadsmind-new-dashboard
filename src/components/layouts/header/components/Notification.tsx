@@ -126,13 +126,13 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
       {/* Clickable Icon */}
       <button
         onClick={handleShowNotification}
-        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all relative group ${
-          isOpenNotification ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'text-t2 hover:text-t1 hover:bg-white/[0.05]'
+        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 relative group ${
+          isOpenNotification ? 'bg-dash-accent text-white shadow-lg shadow-dash-accent/20' : '!text-dash-textMuted hover:text-dash-accent hover:bg-dash-surface'
         }`}
       >
-        <Bell size={16} />
+        <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute top-2 right-2 w-2 h-2 bg-green rounded-full border-2 border-n800 group-hover:scale-110 transition-transform"></span>
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border-2 border-dash-bg group-hover:scale-110 transition-transform motion-reduce:transition-none"></span>
         )}
       </button>
 

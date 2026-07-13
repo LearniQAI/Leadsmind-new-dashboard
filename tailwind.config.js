@@ -126,6 +126,23 @@ module.exports = {
           dark: '#94A3B8',    // Slate 400
         },
         rating: "#EC8D1D",
+        // Dashboard-shell-only light theme tokens (rail, sub-nav, header). Scoped under
+        // `dash` so they're obviously shell-specific and don't collide with `primary`
+        // (which BrandingProvider overrides per-workspace for white-label branding —
+        // the dashboard nav accent must NOT be recolorable that way).
+        dash: {
+          bg: "#FFFFFF",
+          surface: "#F8F9FC",
+          border: "#E2E8F0",
+          text: "#0F172A",
+          // Was #64748B (slate-500, ~4.75:1 on white — only barely AA, and easily
+          // pushed below it by translucent surfaces or the admin template's global
+          // h6/p color reset, see the `!` prefixes throughout the dash-* shell).
+          // #475569 (slate-600) gives ~7.6:1, a real margin, while still reading
+          // as clearly secondary/muted next to dash-text.
+          textMuted: "#475569",
+          accent: "#1359FF",
+        },
         n900: "#04091a",
         n800: "#080f28",
         n700: "#0c1535",

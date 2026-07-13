@@ -9,6 +9,9 @@ import useGlobalContext from "@/hooks/use-context";
 import { useDashboardContext } from "./DashboardProvider";
 import GlobalSearchModal from "../dashboard/GlobalSearchModal";
 import AccessDenied from "../auth/AccessDenied";
+import { getRequiredPermission } from "@/lib/nav/deriveRouteMap";
+import { resolveActiveNav } from "@/lib/nav/matchActiveNav";
+import dashboardNav from "@/data/dashboard-nav";
 // import LENAChat from "../support/LENAChat";
 // import LENAContextualSidebar from "../support/LENAContextualSidebar";
 import LenaVisitorChat from "../support/LenaVisitorChat";
@@ -48,58 +51,32 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       return true;
     }
 
-    const routeMap: Record<string, string> = {
-      '/contacts': 'contacts',
-      '/conversations': 'contacts',
-      '/lead-finder': 'contacts',
-      '/pipelines': 'pipelines',
-      '/proposals': 'proposals',
-      '/invoices': 'invoices',
-      '/quotes': 'invoices',
-      '/calendar': 'calendar',
-      '/websites': 'marketing',
-      '/blog': 'marketing',
-      '/ai-studio': 'marketing',
-      '/funnels': 'marketing',
-      '/campaigns': 'marketing',
-      '/forms': 'marketing',
-      '/social': 'marketing',
-      '/reputation': 'marketing',
-      '/ads': 'marketing',
-      '/products': 'commerce',
-      '/orders': 'commerce',
-      '/finance': 'commerce',
-      '/hr': 'commerce',
-      '/inventory': 'commerce',
-      '/projects': 'business',
-      '/support': 'business',
-      '/articles': 'business',
-      '/community': 'business',
-      '/media': 'business',
-      '/automations': 'automation',
-      '/courses': 'learning',
-      '/settings': 'settings',
-      '/tasks': 'dashboard',
-    };
+    const requiredPermission = getRequiredPermission(pathName);
+    if (!requiredPermission) return true;
 
-    const requiredPermission = Object.entries(routeMap).find(([path]) => pathName.startsWith(path))?.[1];
-    if (!requiredPermission) return true; 
-    
     return permissions.includes(requiredPermission);
   };
 
  const accessGranted = hasPermission();
 
+  const activeNav = resolveActiveNav(pathName);
+  const activeModuleHasItems = Boolean(
+    activeNav && dashboardNav.find((m) => m.id === activeNav.moduleId)?.items
+  );
+  const hasSubNav = activeModuleHasItems && !isCollapse;
+
+  // Must stay in literal-string sync with src/lib/nav/sidebarWidth.ts and the
+  // matching ternary in DashBoardSidebar.tsx's <aside> width.
   return (
    <>
-    <div className="flex min-h-screen bg-n900 text-t1 overflow-x-hidden">
+    <div className="flex min-h-screen bg-dash-bg text-dash-text overflow-x-hidden">
      {/* Sidebar Component */}
      <DashBoardSidebar />
-     
+
      {/* Main Content Area */}
-     <div 
+     <div
       className={`flex flex-col flex-1 min-h-screen w-full max-w-full transition-all duration-300 ease-in-out ${
-        isCollapse ? "lg:pl-[80px]" : "lg:pl-[280px]"
+        isCollapse ? "lg:pl-[72px]" : hasSubNav ? "lg:pl-[428px]" : "lg:pl-[208px]"
       }`}
      >
       <BackToTop />

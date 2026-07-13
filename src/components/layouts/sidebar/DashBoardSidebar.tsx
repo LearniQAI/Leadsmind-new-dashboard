@@ -1,206 +1,185 @@
 "use client";
 import Link from "next/link";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import useGlobalContext from "@/hooks/use-context";
-import sidebarData from "@/data/sidebar-data";
+import dashboardNav from "@/data/dashboard-nav";
 import { usePathname } from "next/navigation";
 import { useDashboardContext } from "../DashboardProvider";
-import { X, ChevronDown, Activity, Target, Zap, Layers, BarChart3, Users, Settings } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
+import { resolveActiveNav } from "@/lib/nav/matchActiveNav";
+import { filterNavByPermissions } from "@/lib/nav/filterNavByPermissions";
+import NavRail from "./NavRail";
+import NavSubPanel from "./NavSubPanel";
+import NavItemsList from "./NavItemsList";
 
 const DashBoardSidebar = () => {
   const { isCollapse, setIsCollapse, sideMenuOpen, setSideMenuOpen } = useGlobalContext();
-  const { enrichedWorkspace, role, permissions } = useDashboardContext() as any;
-  const [linkId, setlinkId] = useState<number | null>(null);
+  const { role, permissions } = useDashboardContext() as any;
   const pathName = usePathname();
-  const sidebarRef = useRef<HTMLDivElement>(null);
 
-  const handleClick = (id: number) => {
-    setlinkId(linkId === id ? null : id);
-  };
+  const visibleModules = filterNavByPermissions(dashboardNav, { role, permissions });
+  const activeNav = resolveActiveNav(pathName);
 
+  // Clicking a rail module that has no page of its own (e.g. "Marketing") should
+  // preview its sub-nav immediately, without waiting for a navigation to occur.
+  // The override resets as soon as the URL actually changes, so the URL remains
+  // the source of truth for active state on load/refresh/deep-link.
+  const [manualModuleId, setManualModuleId] = useState<string | null>(null);
   useEffect(() => {
-    const findLayerIds = () => {
-      let foundFirstLayerId = null;
-      sidebarData.forEach((category) => {
-        category.items.forEach((item) => {
-          if (item.link === pathName) {
-            foundFirstLayerId = item.id;
-          } else if (item.subItems) {
-            item.subItems.forEach((subItem) => {
-              if (subItem.link === pathName) {
-                foundFirstLayerId = item.id;
-              }
-            });
-          }
-        });
-      });
-      setlinkId(foundFirstLayerId);
-    };
-    findLayerIds();
-
+    setManualModuleId(null);
     if (window.innerWidth < 1200) {
       setSideMenuOpen(false);
     }
   }, [pathName, setSideMenuOpen]);
 
-  useEffect(() => {
-    const saved = sessionStorage.getItem('sidebar-scroll');
-    if (saved && sidebarRef.current) {
-      sidebarRef.current.scrollTop = parseInt(saved);
-    }
-  }, []);
+  // "True" active module — what the rail's own selected/highlighted state shows.
+  // Never affected by hover; only by an actual click-to-pin or real navigation.
+  const activeModuleId = manualModuleId ?? activeNav?.moduleId ?? null;
 
-  // Force full width on mobile
-  const sidebarWidth = sideMenuOpen ? "w-[280px]" : (isCollapse ? "w-[80px]" : "w-[280px]");
+  // Hovering a rail module temporarily previews its sub-nav content, purely as
+  // an at-rest convenience. It must never outlive the hover itself — the moment
+  // the pointer leaves the rail/sub-nav region (see onMouseLeave below),
+  // hoveredModuleId resets to null and the preview collapses back to whatever
+  // the true active module actually is, per matchActiveNav(pathname).
+  const [hoveredModuleId, setHoveredModuleId] = useState<string | null>(null);
+  useEffect(() => {
+    setHoveredModuleId(null);
+  }, [pathName]);
+
+  // The module whose content the sub-panel actually renders right now. Also
+  // drives the sidebar's width (hasSubNav) so the two never disagree — if they
+  // did, hovering a with-items module while parked on a no-items page (or vice
+  // versa) would either overflow the rail or leave a blank gap.
+  const previewModuleId = hoveredModuleId ?? activeModuleId;
+  const previewModule = visibleModules.find((m) => m.id === previewModuleId);
+  const hasSubNav = Boolean(previewModule?.items) && !isCollapse;
+
+  const [mobileExpandedId, setMobileExpandedId] = useState<string | null>(activeNav?.moduleId ?? null);
+  useEffect(() => {
+    setMobileExpandedId(activeNav?.moduleId ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathName]);
 
   return (
     <>
-      {/* Mobile Sidebar Overlay */}
       {sideMenuOpen && (
         <div
           onClick={() => setSideMenuOpen(false)}
-          className="fixed inset-0 bg-n900/95 backdrop-blur-md z-[1000] lg:hidden animate-in fade-in duration-300"
+          className="fixed inset-0 bg-dash-text/40 backdrop-blur-sm z-[1000] lg:hidden"
         />
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-full bg-n900 border-r border-white/5 z-[1000] transition-all duration-300 ease-in-out flex flex-col ${sidebarWidth} ${sideMenuOpen ? "translate-x-0 shadow-2xl shadow-black" : "-translate-x-full lg:translate-x-0"
-          }`}
+        className={`fixed top-0 left-0 h-full bg-dash-bg border-r border-dash-border z-[1000] transition-all duration-300 ease-in-out flex flex-col
+          w-[280px] ${sideMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}
+          lg:translate-x-0 ${isCollapse ? "lg:w-[72px]" : hasSubNav ? "lg:w-[428px]" : "lg:w-[208px]"}`}
       >
-        {/* Logo Area */}
-        <div className={`h-[70px] flex items-center px-6 border-b border-white/5 flex-shrink-0 ${isCollapse && !sideMenuOpen ? "justify-center" : "justify-between"}`}>
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent to-accent2 flex items-center justify-center shadow-lg shadow-accent/20 flex-shrink-0">
-              <Zap size={20} className="text-white fill-white" />
-            </div>
-            {(!isCollapse || sideMenuOpen) && (
-              <div className="flex flex-col min-w-0">
-                <span className="text-[15px] font-space font-black text-t1 tracking-tighter truncate leading-none">LEADSMIND</span>
-                <span className="text-[9px] font-black text-accent2 tracking-[0.2em] uppercase opacity-80 mt-0.5">Operating System</span>
-              </div>
-            )}
+        {/* Logo — widths must stay in sync with src/lib/nav/sidebarWidth.ts.
+            Desktop-collapsed shows the dedicated square icon mark (icon0.svg);
+            everywhere else shows the full LeadsMind lockup. */}
+        <div className="h-[70px] flex items-center justify-between px-5 border-b border-dash-border flex-shrink-0">
+          <Link href="/dashboard" className="flex items-center min-w-0">
+            {/* Icon-only mark: desktop rail collapsed ONLY. The mobile drawer is
+                always full-width regardless of the desktop isCollapse preference
+                stored in localStorage, so this must never show below lg. */}
+            <img
+              src="/icon0.svg"
+              alt="LeadsMind"
+              width={36}
+              height={36}
+              className={`w-9 h-9 flex-shrink-0 object-contain ${
+                isCollapse ? "hidden lg:block" : "hidden"
+              }`}
+            />
+            <img
+              src="/assets/images/brand/LeadsMind_Logo.png.png"
+              alt="LeadsMind"
+              className={`h-8 w-auto object-contain ${isCollapse ? "lg:hidden" : ""}`}
+            />
           </Link>
-          {sideMenuOpen && (
-            <button onClick={() => setSideMenuOpen(false)} className="lg:hidden w-8 h-8 flex items-center justify-center bg-white/5 rounded-lg text-t3 hover:text-t1 transition-colors">
-              <X size={18} />
-            </button>
-          )}
+          <button
+            onClick={() => setSideMenuOpen(false)}
+            className="lg:hidden w-8 h-8 flex items-center justify-center bg-dash-surface rounded-lg text-dash-textMuted hover:text-dash-text transition-colors"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        {/* Navigation */}
-        <div
-          ref={sidebarRef}
-          onScroll={(e) => {
-            sessionStorage.setItem('sidebar-scroll', String((e.target as HTMLDivElement).scrollTop));
-          }}
-          className="flex-1 overflow-y-auto no-scrollbar py-6 px-4 space-y-8"
-        >
-          {sidebarData.map((category) => {
-            // Filter items in category based on permissions
-            const filteredItems = category.items.filter(item => {
-              if (role === 'admin' || role === 'owner') return true;
-              
-              // Special case: HR & Payroll is allowed for all workspace members
-              if (item.link === '/hr') {
-                return true;
-              }
+        {/* Desktop: rail + contextual sub-nav. onMouseLeave sits on this shared
+            wrapper (not on NavRail alone) so moving the pointer from the rail
+            into the sub-panel to click an item doesn't trip the revert-to-real-
+            active logic — the rail and its preview panel count as one region. */}
+        <div className="hidden lg:flex flex-1 min-h-0" onMouseLeave={() => setHoveredModuleId(null)}>
+          <NavRail
+            modules={visibleModules}
+            activeModuleId={activeModuleId}
+            activeItemId={activeNav?.itemId}
+            pathname={pathName}
+            isCollapse={isCollapse}
+            onSelectModule={setManualModuleId}
+            onToggleCollapse={() => setIsCollapse(!isCollapse)}
+            onHoverModule={setHoveredModuleId}
+          />
+          {/* Gated on hasSubNav (not just previewModule?.items) so this never
+              mounts while the rail is collapsed — collapsed mode has its own
+              per-icon CSS flyout inside NavRail; rendering both at once is what
+              produced two overlapping "module" panels on hover. */}
+          {hasSubNav && <NavSubPanel module={previewModule} pathname={pathName} activeItemId={activeNav?.itemId} />}
+        </div>
 
-              // Use the permission key from sidebarData
-              const requiredPermission = item.permission;
-              if (!requiredPermission) return true; // Items without explicit permission are public or basic
+        {/* Mobile: rail modules as an accordion, no second column */}
+        <div className="flex lg:hidden flex-col flex-1 min-h-0 overflow-y-auto no-scrollbar py-4 px-3 gap-1">
+          {visibleModules.map((module) => {
+            if (!module.items) {
+              return (
+                <Link
+                  key={module.id}
+                  href={module.link!}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                    module.id === activeNav?.moduleId
+                      ? "bg-dash-accent/10 text-dash-accent font-bold"
+                      : "text-dash-textMuted hover:bg-dash-surface hover:text-dash-text"
+                  }`}
+                >
+                  <i className={`${module.icon} text-[15px] w-5 text-center`}></i>
+                  <span className="text-[13px]">{module.label}</span>
+                </Link>
+              );
+            }
 
-              return permissions.includes(requiredPermission);
-            });
-
-            if (filteredItems.length === 0) return null;
+            const isExpanded = mobileExpandedId === module.id;
 
             return (
-              <div key={category.id} className="space-y-2">
-                {(!isCollapse || sideMenuOpen) && (
-                  <h5 className="px-3 text-[9px] font-black uppercase tracking-[0.25em] text-t4">
-                    {category.category}
-                  </h5>
+              <div key={module.id}>
+                <button
+                  type="button"
+                  onClick={() => setMobileExpandedId(isExpanded ? null : module.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                    module.id === activeNav?.moduleId
+                      ? "text-dash-accent font-bold"
+                      : "text-dash-textMuted hover:bg-dash-surface hover:text-dash-text"
+                  }`}
+                >
+                  <i className={`${module.icon} text-[15px] w-5 text-center`}></i>
+                  <span className="text-[13px] flex-1 text-left">{module.label}</span>
+                  <ChevronDown
+                    size={14}
+                    className={`opacity-50 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {isExpanded && (
+                  <div className="pl-6 mt-1">
+                    <NavItemsList
+                      items={module.items}
+                      pathname={pathName}
+                      activeItemId={activeNav?.itemId}
+                      onNavigate={() => setSideMenuOpen(false)}
+                    />
+                  </div>
                 )}
-                <div className="space-y-1">
-                  {filteredItems.map((item) => {
-                    const isActive = pathName === item.link || (linkId === item.id && item.subItems);
-                    return (
-                      <div key={item.id} className="relative">
-                        <Link
-                          onClick={(e) => {
-                            if (item.subItems?.length) {
-                              e.preventDefault();
-                              handleClick(item.id);
-                            }
-                          }}
-                          href={item.link || "#"}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${isActive
-                            ? "bg-accent/10 text-accent2 shadow-sm shadow-accent/5"
-                            : "text-t2 hover:bg-white/[0.03] hover:text-t1"
-                            } ${isCollapse && !sideMenuOpen ? "justify-center px-0" : ""}`}
-                        >
-                          {isActive && !isCollapse && <div className="absolute left-[-4px] top-3 bottom-3 w-[4px] bg-accent rounded-r-full shadow-[2px_0_10px_rgba(37,99,235,0.4)]"></div>}
-                          <div className={`flex-shrink-0 w-6 flex items-center justify-center ${isActive ? "text-accent2" : "text-t3 group-hover:text-t2"}`}>
-                            <i className={`${item.icon} text-[15px]`}></i>
-                          </div>
-                          {(!isCollapse || sideMenuOpen) && (
-                            <>
-                              <span className="text-[13px] font-bold flex-1 truncate">{item.label}</span>
-                              {item.subItems && (
-                                <ChevronDown
-                                  size={14}
-                                  className={`transition-transform duration-200 opacity-40 group-hover:opacity-100 ${linkId === item.id ? "rotate-180" : ""}`}
-                                />
-                              )}
-                            </>
-                          )}
-                        </Link>
-
-                        {item.subItems && (!isCollapse || sideMenuOpen) && linkId === item.id && (
-                          <div className="mt-1 ml-4 border-l border-white/5 space-y-1 animate-in slide-in-from-top-2 duration-200">
-                            {item.subItems
-                              .filter(sub => {
-                                if (role === 'admin' || role === 'owner') return true;
-                                if (sub.link === '/hr/employees') {
-                                  return role === 'admin' || role === 'owner' || role === 'hr';
-                                }
-                                if (sub.link === '/hr/payroll') {
-                                  return role === 'admin' || role === 'owner' || role === 'hr' || role === 'payroll';
-                                }
-                                return true;
-                              })
-                              .map((sub, idx) => (
-                                <Link
-                                  key={idx}
-                                  href={sub.link || "/"}
-                                  className={`text-[12px] py-1.5 pl-6 pr-4 flex items-center transition-all rounded-r-lg ${pathName === sub.link ? "text-t1 font-bold bg-white/[0.02]" : "text-t3 hover:text-t1 hover:bg-white/[0.01]"
-                                    }`}
-                                >
-                                  {sub.label}
-                                </Link>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
             );
           })}
-        </div>
-
-        {/* Sidebar Bottom */}
-        <div className="p-4 border-t border-white/5 bg-white/[0.01] hidden lg:block">
-          <button
-            onClick={() => setIsCollapse(!isCollapse)}
-            className={`w-full flex items-center gap-3 py-2.5 rounded-xl hover:bg-white/5 text-t3 hover:text-t1 transition-all ${isCollapse ? "justify-center" : "px-4"}`}
-          >
-            <div className="w-6 flex items-center justify-center">
-              <i className={`fa-solid fa-angles-${isCollapse ? "right" : "left"} text-xs`}></i>
-            </div>
-            {!isCollapse && <span className="text-[11px] font-black uppercase tracking-widest">Collapse Menu</span>}
-          </button>
         </div>
       </aside>
     </>

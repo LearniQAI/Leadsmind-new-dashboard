@@ -20,7 +20,7 @@ const HeaderAction = () => {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1.5 mr-2 border-r border-white/5 pr-4">
+      <div className="flex items-center gap-1.5 mr-2 border-r border-dash-border pr-4">
         <EmailNotification />
         <Notification 
           handleShowNotification={handleShowNotification} 

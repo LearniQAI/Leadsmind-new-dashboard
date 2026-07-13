@@ -20,7 +20,12 @@
       "Bash(grep -E \"layout\\\\.tsx|blog[\\\\\\\\\\\\\\\\/]page\\\\.tsx|terms[\\\\\\\\\\\\\\\\/]page\\\\.tsx|privacy-policy[\\\\\\\\\\\\\\\\/]page\\\\.tsx|robots\\\\.ts|sitemap-marketing\")",
       "Bash(git status *)",
       "Bash(grep -riE \"STRIPE_.*PRICE_ID|price_zar|ANNUAL\" .env*)",
-      "Bash(ls .env*)"
+      "Bash(ls .env*)",
+      "Bash(git ls-tree *)",
+      "Bash(grep -v \"GlobalCommandPalette.tsx$\")",
+      "Bash(grep -v \"OnboardingWidget.tsx$\")",
+      "Bash(npm run *)",
+      "Bash(echo \"started with pid $!\")"
     ]
   }
 }
