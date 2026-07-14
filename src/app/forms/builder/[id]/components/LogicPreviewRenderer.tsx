@@ -5,7 +5,8 @@ import { useFormBuilder } from './FormBuilderContext';
 import { useRuntimeForm } from './RuntimeStore';
 import { useLogicRuntime } from './LogicRuntimeHandler';
 import { LogicRule } from './LogicEngine';
-import { EyeOff, SkipForward, Sliders } from 'lucide-react';
+import { Sliders } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function ActiveRuleIndicator() {
   const { state } = useFormBuilder();
@@ -58,23 +59,19 @@ function ActiveRuleIndicatorInner({
     <div className="relative">
       <button
         onClick={() => setShowPanel(!showPanel)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 hover:border-[#2563eb]/20 rounded-lg transition-all"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-dash-border hover:border-dash-accent/40 rounded-lg transition-colors motion-reduce:transition-none"
       >
-        <Sliders size={11} className="text-[#60a5fa]" />
-        <span className="text-[9px] font-black uppercase tracking-wider text-white/60">
-          {activeRules.length}/{logicRules.length} Active
+        <Sliders size={11} className="text-dash-accent" />
+        <span className="text-[10px] font-bold !text-dash-textMuted">
+          {activeRules.length}/{logicRules.length} active
         </span>
       </button>
 
       {showPanel && (
-        <div
-          className="absolute top-full right-0 mt-2 w-72 bg-[#0b132c] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
-          style={{ animation: 'panelIn 0.15s ease-out' }}
-        >
-          <style>{`@keyframes panelIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-          <div className="px-4 py-3 border-b border-white/5">
-            <p className="text-[9px] font-black uppercase tracking-widest text-white/40">
-              Active Rules ({activeRules.length}/{logicRules.length})
+        <div className="absolute top-full right-0 mt-2 w-72 bg-white border border-dash-border rounded-2xl shadow-lg z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150 motion-reduce:animate-none">
+          <div className="px-4 py-3 border-b border-dash-border">
+            <p className="text-[10px] font-bold !text-dash-textMuted">
+              Active rules ({activeRules.length}/{logicRules.length})
             </p>
           </div>
           <div className="max-h-60 overflow-y-auto custom-scrollbar">
@@ -86,18 +83,18 @@ function ActiveRuleIndicatorInner({
                 : formState.fields.find(f => f.id === rule.targetId)?.label || rule.targetId;
 
               return (
-                <div key={rule.id} className={`px-4 py-2.5 border-b border-white/5 last:border-none ${isActive ? 'bg-[#2563eb]/5' : ''}`}>
+                <div key={rule.id} className={cn("px-4 py-2.5 border-b border-dash-border last:border-none", isActive && "bg-dash-accent/5")}>
                   <div className="flex items-center gap-2 text-[10px]">
-                    <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-400' : 'bg-white/10'}`} />
-                    <span className="text-white/70 font-bold truncate">{triggerLabel}</span>
-                    <span className="text-white/30 text-[8px] uppercase">{rule.operator.replace(/_/g, ' ')}</span>
+                    <div className={cn("w-1.5 h-1.5 rounded-full", isActive ? "bg-green" : "bg-dash-border")} />
+                    <span className="!text-dash-text font-bold truncate">{triggerLabel}</span>
+                    <span className="!text-dash-textMuted text-[9px]">{rule.operator.replace(/_/g, ' ')}</span>
                     {rule.operator !== 'checked' && rule.operator !== 'unchecked' && (
-                      <span className="text-white/50 truncate">&quot;{rule.value}&quot;</span>
+                      <span className="!text-dash-textMuted truncate">&quot;{rule.value}&quot;</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1 ml-3.5 text-[9px] text-white/40">
+                  <div className="flex items-center gap-1.5 mt-1 ml-3.5 text-[9px] !text-dash-textMuted">
                     <span>→ {rule.action.replace(/_/g, ' ')}</span>
-                    <span className="text-white/60">{targetLabel}</span>
+                    <span className="!text-dash-text">{targetLabel}</span>
                   </div>
                 </div>
               );

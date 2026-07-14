@@ -12,10 +12,10 @@ export default async function CompliancePage() {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) {
     return (
-      <div className="min-h-screen bg-[#04091a] text-slate-300 flex items-center justify-center p-6">
-        <div className="text-center bg-[#0d1527] border border-slate-800 p-8 rounded-xl shadow-2xl">
-          <p className="text-red-400 font-semibold text-lg">No Active Workspace Context</p>
-          <p className="text-slate-400 text-sm mt-2">Please select or switch to a workspace to access the Compliance Hub.</p>
+      <div className="min-h-screen bg-white !text-dash-textMuted flex items-center justify-center p-6">
+        <div className="text-center bg-white border border-dash-border p-8 rounded-xl shadow-sm">
+          <p className="text-red font-semibold text-lg">No Active Workspace Context</p>
+          <p className="!text-dash-textMuted text-sm mt-2">Please select or switch to a workspace to access the Compliance Hub.</p>
         </div>
       </div>
     );
@@ -52,17 +52,17 @@ export default async function CompliancePage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#04091a] text-slate-100 p-4 md:p-8">
+    <div className="min-h-screen bg-white !text-dash-text p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-5">
+        <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-dash-border pb-5">
           <div>
             <div className="flex items-center space-x-3">
-              <span className="bg-red-900/50 text-red-400 border border-red-800 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
+              <span className="bg-red/10 text-red border border-red/20 px-3 py-1 rounded-full text-xs font-semibold">
                 FICA Regulatory Control
               </span>
             </div>
-            <h1 className="text-3xl font-extrabold text-white mt-2 tracking-tight">Compliance Hub & STR Center</h1>
-            <p className="text-slate-400 mt-1 text-sm">Draft, serialize, and lock official Suspicious Transaction Reports for the Financial Intelligence Centre.</p>
+            <h1 className="text-3xl font-bold !text-dash-text mt-2 tracking-tight">Compliance Hub & STR Center</h1>
+            <p className="!text-dash-textMuted mt-1 text-sm">Draft, serialize, and lock official Suspicious Transaction Reports for the Financial Intelligence Centre.</p>
           </div>
         </header>
 

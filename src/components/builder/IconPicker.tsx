@@ -37,22 +37,22 @@ export const IconPicker = ({ value, onChange }: IconPickerProps) => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-2 p-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all w-full group">
-          <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-white">
+        <button className="flex items-center gap-2 p-2 rounded-lg border border-dash-border bg-dash-surface hover:bg-dash-border/60 transition-all motion-reduce:transition-none w-full group">
+          <div className="w-8 h-8 rounded bg-white flex items-center justify-center !text-dash-text">
             <CurrentIcon size={18} />
           </div>
-          <span className="text-xs font-bold text-muted-foreground group-hover:text-white transition-colors">{value}</span>
+          <span className="text-xs font-bold text-muted-foreground group-hover:!text-dash-text transition-colors motion-reduce:transition-none">{value}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0 bg-black/90 border-white/10 backdrop-blur-xl shadow-2xl overflow-hidden">
-        <div className="p-3 border-b border-white/10 bg-white/5">
+      <PopoverContent className="w-[300px] p-0 bg-white border-dash-border backdrop-blur-xl shadow-2xl overflow-hidden">
+        <div className="p-3 border-b border-dash-border bg-dash-surface">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search icons..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9 text-xs bg-black/40 border-white/10"
+              className="pl-8 h-9 text-xs bg-white border-dash-border"
             />
           </div>
         </div>
@@ -64,7 +64,7 @@ export const IconPicker = ({ value, onChange }: IconPickerProps) => {
                 <button
                   key={iconName}
                   onClick={() => onChange(iconName)}
-                  className={`p-2 rounded-md hover:bg-primary/20 hover:text-primary transition-all flex items-center justify-center ${value === iconName ? 'bg-primary text-white shadow-lg' : 'text-muted-foreground'}`}
+                  className={`p-2 rounded-md hover:bg-primary/20 hover:text-primary transition-all motion-reduce:transition-none flex items-center justify-center ${value === iconName ? 'bg-primary text-white shadow-lg' : 'text-muted-foreground'}`}
                   title={iconName}
                 >
                   <IconComponent size={20} />
@@ -78,8 +78,8 @@ export const IconPicker = ({ value, onChange }: IconPickerProps) => {
             </div>
           )}
         </ScrollArea>
-        <div className="p-2 border-t border-white/10 bg-white/5 text-[9px] text-center text-muted-foreground uppercase tracking-widest">
-          {allIconNames.length} Professional Icons
+        <div className="p-2 border-t border-dash-border bg-dash-surface text-[9px] text-center text-muted-foreground">
+          {allIconNames.length} professional icons
         </div>
       </PopoverContent>
     </Popover>

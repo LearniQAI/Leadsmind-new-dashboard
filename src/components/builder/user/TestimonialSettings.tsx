@@ -29,40 +29,40 @@ export const TestimonialSettings = () => {
 
   return (
     <Tabs defaultValue="content" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 mb-4">
-        <TabsTrigger value="content" className="text-[10px] font-bold uppercase tracking-widest gap-2">
+      <TabsList className="grid w-full grid-cols-2 bg-dash-surface border border-dash-border p-1 mb-4">
+        <TabsTrigger value="content" className="text-[10px] font-bold gap-2 !text-dash-textMuted data-[state=active]:bg-white data-[state=active]:!text-dash-text">
           <User size={12} /> Content
         </TabsTrigger>
-        <TabsTrigger value="style" className="text-[10px] font-bold uppercase tracking-widest gap-2">
+        <TabsTrigger value="style" className="text-[10px] font-bold gap-2 !text-dash-textMuted data-[state=active]:bg-white data-[state=active]:!text-dash-text">
           <Palette size={12} /> Style
         </TabsTrigger>
       </TabsList>
 
       <TabsContent value="content" className="space-y-6">
         <div className="space-y-2">
-          <Label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block">Avatar Image URL</Label>
-          <Input 
-            value={image} 
+          <Label className="text-xs font-bold !text-dash-textMuted block">Avatar image URL</Label>
+          <Input
+            value={image}
             onChange={(e) => setProp((p: any) => p.image = e.target.value)}
-            className="h-9 bg-white/5 border-white/10 text-xs"
+            className="h-9 bg-white border-dash-border text-xs"
           />
         </div>
-        
+
         <div className="space-y-4 pt-2">
           <div className="space-y-1">
-            <Label className="text-[9px] uppercase font-bold text-muted-foreground">Author Name</Label>
-            <Input value={author} onChange={(e) => setProp((p: any) => p.author = e.target.value)} className="h-8 bg-black/20" />
+            <Label className="text-[9px] font-bold !text-dash-textMuted">Author name</Label>
+            <Input value={author} onChange={(e) => setProp((p: any) => p.author = e.target.value)} className="h-8 bg-white border-dash-border" />
           </div>
           <div className="space-y-1">
-            <Label className="text-[9px] uppercase font-bold text-muted-foreground">Title / Company</Label>
-            <Input value={title} onChange={(e) => setProp((p: any) => p.title = e.target.value)} className="h-8 bg-black/20" />
+            <Label className="text-[9px] font-bold !text-dash-textMuted">Title / company</Label>
+            <Input value={title} onChange={(e) => setProp((p: any) => p.title = e.target.value)} className="h-8 bg-white border-dash-border" />
           </div>
           <div className="space-y-1">
-            <Label className="text-[9px] uppercase font-bold text-muted-foreground">Testimonial Quote</Label>
-            <textarea 
-              value={quote} 
-              onChange={(e) => setProp((p: any) => p.quote = e.target.value)} 
-              className="w-full bg-black/20 border border-white/10 rounded p-2 text-xs h-32 outline-none focus:ring-1 focus:ring-primary"
+            <Label className="text-[9px] font-bold !text-dash-textMuted">Testimonial quote</Label>
+            <textarea
+              value={quote}
+              onChange={(e) => setProp((p: any) => p.quote = e.target.value)}
+              className="w-full bg-white border border-dash-border rounded p-2 text-xs !text-dash-text h-32 outline-none focus:ring-1 focus:ring-dash-accent"
             />
           </div>
         </div>
@@ -70,8 +70,8 @@ export const TestimonialSettings = () => {
 
       <TabsContent value="style" className="space-y-6">
         <div className="space-y-4">
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 border-b border-white/5 pb-2">Layout</h4>
-          <div className="flex bg-muted/50 p-1 rounded-lg">
+          <h4 className="text-[10px] font-bold !text-dash-textMuted border-b border-dash-border pb-2">Layout</h4>
+          <div className="flex bg-dash-surface p-1 rounded-lg border border-dash-border">
             {[
               { id: 'left', icon: AlignLeft },
               { id: 'center', icon: AlignCenter },
@@ -79,30 +79,30 @@ export const TestimonialSettings = () => {
               <button
                 key={item.id}
                 onClick={() => setProp((p: any) => p.textAlign = item.id)}
-                className={`flex-1 flex justify-center py-1.5 rounded-md transition-all ${textAlign === item.id ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-white'}`}
+                className={`flex-1 flex justify-center py-1.5 rounded-md transition-all motion-reduce:transition-none ${textAlign === item.id ? 'bg-white shadow-sm text-dash-accent' : '!text-dash-textMuted hover:!text-dash-text'}`}
               >
                 <item.icon size={16} />
               </button>
             ))}
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-               <Label className="text-[10px] uppercase font-bold text-muted-foreground">Radius ({borderRadius}px)</Label>
-               <input type="range" min="0" max="100" step="4" value={borderRadius} onChange={(e) => setProp((p: any) => p.borderRadius = Number(e.target.value))} className="w-full accent-primary" />
+               <Label className="text-[10px] font-bold !text-dash-textMuted">Radius ({borderRadius}px)</Label>
+               <input type="range" min="0" max="100" step="4" value={borderRadius} onChange={(e) => setProp((p: any) => p.borderRadius = Number(e.target.value))} className="w-full accent-dash-accent" />
             </div>
             <div className="space-y-2">
-               <Label className="text-[10px] uppercase font-bold text-muted-foreground">Padding ({padding}px)</Label>
-               <input type="range" min="16" max="128" step="8" value={padding} onChange={(e) => setProp((p: any) => p.padding = Number(e.target.value))} className="w-full accent-primary" />
+               <Label className="text-[10px] font-bold !text-dash-textMuted">Padding ({padding}px)</Label>
+               <input type="range" min="16" max="128" step="8" value={padding} onChange={(e) => setProp((p: any) => p.padding = Number(e.target.value))} className="w-full accent-dash-accent" />
             </div>
           </div>
         </div>
 
         <div className="space-y-4 pt-4">
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 border-b border-white/5 pb-2">Colors</h4>
+          <h4 className="text-[10px] font-bold !text-dash-textMuted border-b border-dash-border pb-2">Colors</h4>
           <ColorPicker label="Background" value={backgroundColor} onChange={(val) => setProp((p: any) => p.backgroundColor = val)} />
-          <ColorPicker label="Text Color" value={textColor} onChange={(val) => setProp((p: any) => p.textColor = val)} />
-          <ColorPicker label="Accent Color" value={accentColor} onChange={(val) => setProp((p: any) => p.accentColor = val)} />
+          <ColorPicker label="Text color" value={textColor} onChange={(val) => setProp((p: any) => p.textColor = val)} />
+          <ColorPicker label="Accent color" value={accentColor} onChange={(val) => setProp((p: any) => p.accentColor = val)} />
         </div>
       </TabsContent>
     </Tabs>

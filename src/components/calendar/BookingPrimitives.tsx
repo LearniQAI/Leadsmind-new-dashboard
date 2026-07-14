@@ -8,25 +8,25 @@ interface GlassContainerProps {
  glowColor?: string;
 }
 
-export function GlassContainer({ 
- children, 
- className, 
- withGlow = true, 
- glowColor = 'var(--primary)' 
+export function GlassContainer({
+ children,
+ className,
+ withGlow = true,
+ glowColor = '#1359FF'
 }: GlassContainerProps) {
  return (
   <div className={cn(
-   "card__wrapper relative overflow-hidden group transition-all duration-500",
+   "bg-white border border-dash-border rounded-2xl p-6 relative overflow-hidden group transition-all duration-500 motion-reduce:transition-none",
    className
   )}>
-   {/* Dynamic Glow Effect - subtle to match Manez */}
+   {/* Dynamic Glow Effect - subtle accent */}
    {withGlow && (
-    <div 
-     className="absolute -right-10 -top-10 w-40 h-40 blur-[80px] opacity-10 group-hover:opacity-20 transition-opacity duration-1000 rounded-full"
+    <div
+     className="absolute -right-10 -top-10 w-40 h-40 blur-[80px] opacity-10 group-hover:opacity-20 transition-opacity duration-1000 motion-reduce:transition-none rounded-full"
      style={{ backgroundColor: glowColor }}
     />
    )}
-   
+
    <div className="relative z-10">
     {children}
    </div>
@@ -43,42 +43,42 @@ interface SectionLabelProps {
 
 export function SectionLabel({ label, title, description, badge }: SectionLabelProps) {
  return (
-  <div className="card__title-wrap flex flex-col gap-1 mb-[20px]">
+  <div className="flex flex-col gap-1 mb-[20px]">
    <div className="flex items-center gap-2 mb-1">
-     <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-     <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{label}</span>
+     <div className="h-1.5 w-1.5 rounded-full bg-dash-accent" />
+     <span className="text-[10px] font-bold !text-dash-textMuted">{label}</span>
    </div>
    <div className="flex items-center justify-between gap-4">
-    <h5 className="card__heading-title mb-0 uppercase">
+    <h5 className="text-lg font-bold !text-dash-text mb-0">
      {title}
     </h5>
     {badge}
    </div>
-   {description && <p className="card__desc style_two text-xs font-medium mt-3 leading-relaxed">{description}</p>}
+   {description && <p className="!text-dash-textMuted text-xs font-medium mt-3 leading-relaxed">{description}</p>}
   </div>
  );
 }
 
-export function PremiumSection({ 
- children, 
- label, 
- title, 
- description, 
- badge, 
+export function PremiumSection({
+ children,
+ label,
+ title,
+ description,
+ badge,
  className,
- accentColor = "var(--primary)"
+ accentColor = "#1359FF"
 }: SectionLabelProps & { children: React.ReactNode; className?: string; accentColor?: string }) {
  return (
   <section className={cn(
-   "card__wrapper relative overflow-hidden",
+   "bg-white border border-dash-border rounded-2xl p-6 relative overflow-hidden",
    className
   )}>
-   {/* Subtle Ambient Glow to match Manez premium pages */}
-   <div 
+   {/* Subtle Ambient Glow */}
+   <div
     className="absolute top-0 right-0 w-[300px] h-[300px] blur-[100px] opacity-[0.05] pointer-events-none rounded-full"
     style={{ backgroundColor: accentColor }}
    />
-   
+
    <div className="relative z-10">
     <SectionLabel label={label} title={title} description={description} badge={badge} />
     {children}

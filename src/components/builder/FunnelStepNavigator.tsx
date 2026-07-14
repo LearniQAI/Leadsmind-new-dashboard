@@ -30,9 +30,9 @@ export const FunnelStepNavigator = ({ steps, onReorder }: { steps: FunnelStep[],
  };
 
  return (
-  <div className="w-64 h-full bg-card border-r flex flex-col">
-   <div className="p-4 border-b flex items-center justify-between">
-    <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Funnel Steps</h2>
+  <div className="w-64 h-full bg-white border-r border-dash-border flex flex-col">
+   <div className="p-4 border-b border-dash-border flex items-center justify-between">
+    <h2 className="text-sm font-bold text-muted-foreground">Funnel steps</h2>
     <Button variant="ghost" size="icon" className="h-6 w-6">
       <Plus className="h-4 w-4" />
     </Button>
@@ -49,8 +49,8 @@ export const FunnelStepNavigator = ({ steps, onReorder }: { steps: FunnelStep[],
            <div
             ref={provided.innerRef}
             {...provided.draggableProps}
-            className={`group flex items-center gap-2 p-3 rounded-lg border transition-all ${
-             snapshot.isDragging ? 'bg-primary/10 border-primary shadow-lg' : 'bg-background hover:border-white/10'
+            className={`group flex items-center gap-2 p-3 rounded-lg border transition-all motion-reduce:transition-none ${
+             snapshot.isDragging ? 'bg-primary/10 border-primary shadow-lg' : 'bg-white hover:border-dash-border'
             }`}
            >
             <div {...provided.dragHandleProps} className="text-muted-foreground/30 group-hover:text-muted-foreground">
@@ -59,7 +59,7 @@ export const FunnelStepNavigator = ({ steps, onReorder }: { steps: FunnelStep[],
             
             <div className="flex-1 overflow-hidden">
              <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-primary/50">{index + 1}</span>
+              <span className="text-[10px] font-bold text-primary/50">{index + 1}</span>
               <span className="text-xs font-bold truncate">{step.name}</span>
              </div>
              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
@@ -82,7 +82,7 @@ export const FunnelStepNavigator = ({ steps, onReorder }: { steps: FunnelStep[],
     </DragDropContext>
    </div>
 
-   <div className="p-4 bg-muted/30 border-t">
+   <div className="p-4 bg-dash-surface border-t border-dash-border">
     <div className="text-[10px] text-muted-foreground flex items-center gap-2">
       <Layout className="w-3 h-3" />
       <span>Drag to reorder the funnel flow</span>

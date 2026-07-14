@@ -110,15 +110,15 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
     >
       {isActive && id !== 'ROOT' && (
         <div className="absolute -top-6 left-0 bg-primary text-white text-[9px] px-3 py-1.5 rounded-t-lg flex items-center gap-2 z-30 shadow-md">
-          <span className="font-black uppercase tracking-wider pointer-events-none">{name}</span>
+          <span className="font-bold pointer-events-none">{name}</span>
           <button
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
               setBlueprintNodeId(id);
             }}
-            className="text-white hover:text-emerald-400 cursor-pointer flex items-center justify-center p-0.5"
-            title="Save Component Blueprint"
+            className="text-white hover:text-green cursor-pointer flex items-center justify-center p-0.5"
+            title="Save component blueprint"
           >
             <Save size={10} />
           </button>
@@ -134,56 +134,56 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
 
       {/* Right-click Context Menu */}
       {contextMenu && (
-        <div 
-          className="fixed bg-[#0c0c16]/95 border border-white/5 shadow-2xl rounded-2xl p-1.5 w-44 text-white z-[9999] flex flex-col font-sans backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+        <div
+          className="fixed bg-white/95 border border-dash-border shadow-2xl rounded-2xl p-1.5 w-44 !text-dash-text z-[9999] flex flex-col font-sans backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 motion-reduce:animate-none"
           style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             onClick={() => {
               setPropertiesOpen(true);
-              window.dispatchEvent(new CustomEvent('open-floating-properties', { 
-                detail: { x: contextMenu.x, y: contextMenu.y } 
+              window.dispatchEvent(new CustomEvent('open-floating-properties', {
+                detail: { x: contextMenu.x, y: contextMenu.y }
               }));
               setContextMenu(null);
             }}
-            className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white/75 hover:text-white hover:bg-primary/20 rounded-xl transition-all text-left w-full"
+            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
           >
-            <Settings size={12} className="text-[#a855f7] shrink-0" />
+            <Settings size={12} className="text-purple-600 shrink-0" />
             Properties
           </button>
-          <div className="h-[1px] bg-white/5 my-1" />
+          <div className="h-[1px] bg-dash-border my-1" />
           <button
             onClick={handleDuplicate}
-            className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white/75 hover:text-white hover:bg-primary/20 rounded-xl transition-all text-left w-full"
+            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
           >
             <Copy size={12} className="text-primary shrink-0" />
             Duplicate
           </button>
           <button
             onClick={handleResetLayout}
-            className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white/75 hover:text-white hover:bg-primary/20 rounded-xl transition-all text-left w-full"
+            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
           >
-            <RefreshCw size={12} className="text-[#3b82f6] shrink-0" />
-            Reset Layout
+            <RefreshCw size={12} className="text-primary shrink-0" />
+            Reset layout
           </button>
           <button
             onClick={handleSaveBlueprint}
-            className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white/75 hover:text-white hover:bg-primary/20 rounded-xl transition-all text-left w-full"
+            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
           >
-            <Save size={12} className="text-[#fbbf24] shrink-0" />
-            Save Blueprint
+            <Save size={12} className="text-amber-600 shrink-0" />
+            Save blueprint
           </button>
           {id !== 'ROOT' && (
-            <div className="h-[1px] bg-white/5 my-1" />
+            <div className="h-[1px] bg-dash-border my-1" />
           )}
           {id !== 'ROOT' && (
             <button
               onClick={handleDelete}
-              className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-rose-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all text-left w-full"
+              className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-red hover:text-red/80 hover:bg-red/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
             >
               <Trash2 size={12} className="shrink-0" />
-              Delete Element
+              Delete element
             </button>
           )}
         </div>

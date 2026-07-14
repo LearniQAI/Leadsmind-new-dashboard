@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Paperclip, X, File, AlertCircle, Loader2 } from 'lucide-react';
+import { Paperclip, X, File, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AttachmentDropzoneProps {
@@ -49,22 +49,22 @@ const AttachmentDropzone: React.FC<AttachmentDropzoneProps> = ({
       <div
         {...getRootProps()}
         className={cn(
-          "relative border-2 border-dashed rounded-[var(--r16)] p-8 transition-all cursor-pointer text-center",
+          "relative border-2 border-dashed rounded-2xl p-8 transition-all motion-reduce:transition-none cursor-pointer text-center",
           isDragActive
-            ? "border-[var(--accent)] bg-[var(--accentg)]"
-            : "border-[var(--bdr)] hover:border-[var(--bdrh)] bg-[rgba(255,255,255,0.02)]"
+            ? "border-dash-accent bg-dash-accent/5"
+            : "border-dash-border hover:border-dash-text/20 bg-dash-surface"
         )}
       >
         <input {...getInputProps()} />
         <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-[var(--n800)] flex items-center justify-center border border-[var(--bdr)]">
-            <Paperclip className="h-5 w-5 text-[var(--t3)]" />
+          <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center border border-dash-border">
+            <Paperclip className="h-5 w-5 !text-dash-textMuted" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-[var(--t1)]">
+            <p className="text-sm font-semibold !text-dash-text">
               {isDragActive ? "Drop the files here" : "Click or drag to upload attachments"}
             </p>
-            <p className="text-[10px] text-[var(--t4)] uppercase tracking-widest font-bold">
+            <p className="text-[11px] !text-dash-textMuted font-medium">
               Up to {maxFiles} files, max {maxSizeMB}MB each
             </p>
           </div>
@@ -72,7 +72,7 @@ const AttachmentDropzone: React.FC<AttachmentDropzoneProps> = ({
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-3 rounded-[var(--r8)] bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[var(--red)] text-xs font-medium">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-red/10 border border-red/20 text-red text-xs font-medium">
           <AlertCircle size={14} />
           {error}
         </div>
@@ -83,22 +83,22 @@ const AttachmentDropzone: React.FC<AttachmentDropzoneProps> = ({
           {files.map((file, idx) => (
             <div
               key={idx}
-              className="flex items-center justify-between p-3 rounded-[var(--r12)] bg-[var(--n800)] border border-[var(--bdr)] group animate-in fade-in slide-in-from-bottom-2 duration-300"
+              className="flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border group animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--n900)] flex items-center justify-center border border-[var(--bdr)]">
-                  <File className="h-4 w-4 text-[var(--accent2)]" />
+                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-dash-border">
+                  <File className="h-4 w-4 text-dash-accent" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--t1)] truncate">{file.name}</p>
-                  <p className="text-[10px] text-[var(--t4)] font-medium">
+                  <p className="text-xs font-bold !text-dash-text truncate">{file.name}</p>
+                  <p className="text-[10px] !text-dash-textMuted font-medium">
                     {(file.size / (1024 * 1024)).toFixed(2)} MB
                   </p>
                 </div>
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
-                className="p-1.5 rounded-full hover:bg-[rgba(255,255,255,0.05)] text-[var(--t4)] hover:text-[var(--red)] transition-colors"
+                className="p-1.5 rounded-full hover:bg-dash-border/60 !text-dash-textMuted hover:text-red transition-colors motion-reduce:transition-none"
               >
                 <X size={14} />
               </button>

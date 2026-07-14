@@ -8,9 +8,9 @@ export default function CertificatesPage() {
   const certificates: any[] = []; 
 
   return (
-    <MetaData pageTitle="Academy Certificates">
+    <MetaData pageTitle="Course Certificates">
       <Wrapper>
-        <div className="app__slide-wrapper">
+        <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)]">
           <CertificatesClient certificates={certificates} />
         </div>
       </Wrapper>

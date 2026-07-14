@@ -111,7 +111,7 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
   const handleDeleteWorkflow = async (id: string) => {
     setConfirmConfig({
       isOpen: true,
-      title: 'Delete Workflow?',
+      title: 'Delete workflow?',
       description: 'Are you sure you want to delete this workflow and all its steps?',
       confirmLabel: 'Delete',
       onConfirm: async () => {
@@ -133,54 +133,54 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#04081a] p-8 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#2563eb] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-white p-8 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-dash-accent border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#04081a] text-white p-8 font-dm-sans">
+    <div className="min-h-screen bg-white !text-dash-text p-8">
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
         
         {/* Topbar */}
-        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+        <div className="flex items-center justify-between border-b border-dash-border pb-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/forms')}
-              className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/10"
+              className="p-2.5 bg-dash-surface hover:bg-dash-border/60 rounded-xl transition-colors motion-reduce:transition-none border border-dash-border"
             >
-              <ArrowLeft size={16} className="text-[#4a5a82]" />
+              <ArrowLeft size={16} className="!text-dash-textMuted" />
             </button>
             <div>
-              <h1 className="text-xl font-space-grotesk font-black uppercase tracking-tight flex items-center gap-2">
-                {form?.name} <span className="text-xs font-bold text-blue-500 font-dm-sans bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">Automations</span>
+              <h1 className="text-xl font-bold flex items-center gap-2">
+                {form?.name} <span className="text-xs font-bold text-dash-accent bg-dash-accent/10 px-2 py-0.5 rounded-lg border border-dash-accent/20">Automations</span>
               </h1>
-              <p className="text-xs text-[#4a5a82]">Event-driven triggers, CRM automation nodes & email chains</p>
+              <p className="text-xs !text-dash-textMuted">Event-driven triggers, CRM automation nodes & email chains</p>
             </div>
           </div>
 
           {/* Mode Switcher */}
-          <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl">
+          <div className="flex bg-dash-surface border border-dash-border p-1 rounded-xl">
             <button
               onClick={() => setActiveTab('editor')}
-              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-colors motion-reduce:transition-none ${
                 activeTab === 'editor'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-white/40 hover:text-white'
+                  ? 'bg-dash-accent text-white shadow-md'
+                  : '!text-dash-textMuted hover:!text-dash-text'
               }`}
             >
-              <Sliders size={12} /> Pipeline Builder
+              <Sliders size={12} /> Pipeline builder
             </button>
             <button
               onClick={() => setActiveTab('logs')}
-              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-colors motion-reduce:transition-none ${
                 activeTab === 'logs'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-white/40 hover:text-white'
+                  ? 'bg-dash-accent text-white shadow-md'
+                  : '!text-dash-textMuted hover:!text-dash-text'
               }`}
             >
-              <History size={12} /> Execution Logs
+              <History size={12} /> Execution logs
             </button>
           </div>
         </div>
@@ -207,9 +207,9 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
                 onSaved={loadData}
               />
             ) : (
-              <div className="flex-1 bg-[#0c1535] border border-white/5 rounded-2xl flex flex-col items-center justify-center p-12 text-center text-[#4a5a82]">
+              <div className="flex-1 bg-white border border-dash-border rounded-2xl flex flex-col items-center justify-center p-12 text-center !text-dash-textMuted">
                 <Settings2 size={40} className="opacity-30 mb-4" />
-                <h4 className="text-sm font-black uppercase tracking-wide text-white">No Workflow Selected</h4>
+                <h4 className="text-sm font-bold !text-dash-text">No workflow selected</h4>
                 <p className="text-xs mt-1">Select a workflow on the left sidebar or create a new one to begin.</p>
               </div>
             )

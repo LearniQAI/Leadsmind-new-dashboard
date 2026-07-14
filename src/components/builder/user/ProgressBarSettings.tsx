@@ -21,57 +21,57 @@ export const ProgressBarSettings = () => {
     <div className="space-y-6">
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Progress ({value}%)</Label>
+          <Label className="text-xs font-bold !text-dash-textMuted">Progress ({value}%)</Label>
         </div>
-        <input 
-          type="range" min="0" max="100" 
+        <input
+          type="range" min="0" max="100"
           value={value || 0}
           onChange={(e) => setProp((props: any) => props.value = Number(e.target.value))}
           className="w-full accent-primary"
         />
       </div>
 
-      <ColorPicker 
-        label="Bar Color"
+      <ColorPicker
+        label="Bar color"
         value={color}
         onChange={(val) => setProp((props: any) => props.color = val)}
       />
 
-      <div className="space-y-2 pt-2 border-t border-white/5">
+      <div className="space-y-2 pt-2 border-t border-dash-border">
         <div className="flex items-center justify-between">
-          <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Show Label</Label>
-          <Switch 
+          <Label className="text-xs font-bold !text-dash-textMuted">Show label</Label>
+          <Switch
             checked={showLabel}
             onCheckedChange={(val) => setProp((props: any) => props.showLabel = val)}
           />
         </div>
         {showLabel && (
-          <Input 
+          <Input
             value={label}
             onChange={(e) => setProp((props: any) => props.label = e.target.value)}
-            className="h-8 bg-white/5 border-white/10 text-xs mt-2"
+            className="h-8 bg-white border-dash-border text-xs mt-2"
             placeholder="e.g. Step 1 of 3"
           />
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-dash-border">
         <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Thickness (px)</Label>
-          <Input 
+          <Label className="text-xs font-bold !text-dash-textMuted block">Thickness (px)</Label>
+          <Input
             type="number"
             value={height}
             onChange={(e) => setProp((props: any) => props.height = Number(e.target.value))}
-            className="h-8 bg-white/5 border-white/10 text-xs"
+            className="h-8 bg-white border-dash-border text-xs"
           />
         </div>
         <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Radius (px)</Label>
-          <Input 
+          <Label className="text-xs font-bold !text-dash-textMuted block">Radius (px)</Label>
+          <Input
             type="number"
             value={borderRadius}
             onChange={(e) => setProp((props: any) => props.borderRadius = Number(e.target.value))}
-            className="h-8 bg-white/5 border-white/10 text-xs"
+            className="h-8 bg-white border-dash-border text-xs"
           />
         </div>
       </div>

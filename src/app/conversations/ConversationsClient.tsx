@@ -216,7 +216,7 @@ export default function ConversationsClient({ initialConversations }: { initialC
   };
 
   return (
-    <div className="flex h-[calc(100vh-140px)] bg-[#04091a] rounded-[24px] overflow-hidden border border-white/5 shadow-2xl mx-6">
+    <div className="flex h-[calc(100vh-140px)] bg-white rounded-[24px] overflow-hidden border border-dash-border shadow-sm mx-6">
       {/* 1. Conversation List (280px) */}
       <ConversationList 
         conversations={filteredConversations}

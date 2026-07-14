@@ -38,6 +38,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -68,7 +69,11 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
     editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   };
 
-  // Custom inline markup helpers to prevent package bloat and ensure zero compile failures
+  // Custom inline markup helpers to prevent package bloat and ensure zero compile failures.
+  // NOTE: these insert HTML directly into the published post body (rendered
+  // on the public blog page, a separate out-of-scope surface from this
+  // dashboard editor chrome) — their embedded classes are intentionally left
+  // matching that surface's existing styling, not converted to dash tokens.
   const applyHighlight = () => {
     const { from, to } = editor.state.selection;
     const selectedText = editor.state.doc.textBetween(from, to, ' ');
@@ -109,17 +114,22 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
     ).run();
   };
 
+  const groupClass = "flex items-center gap-0.5 bg-dash-surface p-1 rounded-lg border border-dash-border";
+  const btnClass = "p-1.5 rounded transition-colors motion-reduce:transition-none";
+  const activeBtnClass = (isActive: boolean) =>
+    cn(btnClass, isActive ? 'bg-dash-accent text-white' : '!text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text');
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#0a0f26]/95 backdrop-blur-md sticky top-0 z-40 border-b border-white/10 rounded-t-xl select-none">
-      
+    <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white/95 backdrop-blur-md sticky top-0 z-40 border-b border-dash-border rounded-t-xl select-none">
+
       {/* Action Control Pills */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Undo/Redo Group */}
-        <div className="flex items-center gap-0.5 bg-white/5 p-1 rounded-lg border border-white/5">
+        <div className={groupClass}>
           <button
             onClick={() => editor.chain().focus().undo().run()}
             disabled={!editor.can().undo()}
-            className="p-1.5 rounded transition text-white/50 hover:bg-white/5 hover:text-white disabled:opacity-30"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text disabled:opacity-30")}
             title="Undo"
           >
             <Undo2 className="w-3.5 h-3.5" />
@@ -127,7 +137,7 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
           <button
             onClick={() => editor.chain().focus().redo().run()}
             disabled={!editor.can().redo()}
-            className="p-1.5 rounded transition text-white/50 hover:bg-white/5 hover:text-white disabled:opacity-30"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text disabled:opacity-30")}
             title="Redo"
           >
             <Redo2 className="w-3.5 h-3.5" />
@@ -135,16 +145,12 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
         </div>
 
         {/* Headings Group */}
-        <div className="flex items-center gap-0.5 bg-white/5 p-1 rounded-lg border border-white/5">
+        <div className={groupClass}>
           {([1, 2, 3, 4] as const).map(l => (
             <button
               key={l}
               onClick={() => editor.chain().focus().toggleHeading({ level: l }).run()}
-              className={`p-1.5 rounded transition-all text-xs font-bold ${
-                editor.isActive('heading', { level: l })
-                  ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]'
-                  : 'text-white/60 hover:bg-white/5 hover:text-white'
-              }`}
+              className={cn(activeBtnClass(editor.isActive('heading', { level: l })), "text-xs font-bold")}
               title={`Heading ${l}`}
             >
               {l === 1 ? <Heading1 className="w-3.5 h-3.5" /> : l === 2 ? <Heading2 className="w-3.5 h-3.5" /> : l === 3 ? <Heading3 className="w-3.5 h-3.5" /> : <Heading4 className="w-3.5 h-3.5" />}
@@ -153,45 +159,45 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
         </div>
 
         {/* Inline Formatting Group */}
-        <div className="flex items-center gap-0.5 bg-white/5 p-1 rounded-lg border border-white/5">
+        <div className={groupClass}>
           <button
             onClick={() => editor.chain().focus().toggleBold().run()}
-            className={`p-1.5 rounded transition-all ${editor.isActive('bold') ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={activeBtnClass(editor.isActive('bold'))}
             title="Bold"
           >
             <Bold className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={`p-1.5 rounded transition-all ${editor.isActive('italic') ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={activeBtnClass(editor.isActive('italic'))}
             title="Italic"
           >
             <Italic className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => editor.chain().focus().toggleUnderline().run()}
-            className={`p-1.5 rounded transition-all ${editor.isActive('underline') ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={activeBtnClass(editor.isActive('underline'))}
             title="Underline"
           >
             <UnderlineIcon className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => editor.chain().focus().toggleStrike().run()}
-            className={`p-1.5 rounded transition-all ${editor.isActive('strike') ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={activeBtnClass(editor.isActive('strike'))}
             title="Strikethrough"
           >
             <Strikethrough className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => editor.chain().focus().toggleCode().run()}
-            className={`p-1.5 rounded transition-all ${editor.isActive('code') ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={activeBtnClass(editor.isActive('code'))}
             title="Inline Code"
           >
             <Code className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
-            className="p-1.5 rounded text-white/50 hover:bg-white/5 hover:text-rose-400 transition"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-dash-border/40 hover:text-red")}
             title="Clear Formatting"
           >
             <Eraser className="w-3.5 h-3.5" />
@@ -199,24 +205,24 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
         </div>
 
         {/* Advanced Typography Additions */}
-        <div className="flex items-center gap-0.5 bg-white/5 p-1 rounded-lg border border-white/5">
+        <div className={groupClass}>
           <button
             onClick={applyHighlight}
-            className="p-1.5 rounded transition-all text-white/60 hover:bg-amber-500/10 hover:text-amber-400"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-amber-50 hover:text-amber-600")}
             title="Text Highlight"
           >
             <Highlighter className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={applySubscript}
-            className="p-1.5 rounded transition-all text-white/60 hover:bg-white/5 hover:text-white"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text")}
             title="Subscript"
           >
             <Subscript className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={applySuperscript}
-            className="p-1.5 rounded transition-all text-white/60 hover:bg-white/5 hover:text-white"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text")}
             title="Superscript"
           >
             <Superscript className="w-3.5 h-3.5" />
@@ -224,38 +230,38 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
         </div>
 
         {/* Structural Blocks Group */}
-        <div className="flex items-center gap-0.5 bg-white/5 p-1 rounded-lg border border-white/5">
+        <div className={groupClass}>
           <button
             onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={`p-1.5 rounded transition-all ${editor.isActive('bulletList') ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={activeBtnClass(editor.isActive('bulletList'))}
             title="Bullet List"
           >
             <List className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={`p-1.5 rounded transition-all ${editor.isActive('orderedList') ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={activeBtnClass(editor.isActive('orderedList'))}
             title="Ordered List"
           >
             <ListOrdered className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            className={`p-1.5 rounded transition-all ${editor.isActive('blockquote') ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={activeBtnClass(editor.isActive('blockquote'))}
             title="Blockquote"
           >
             <Quote className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-            className={`p-1.5 rounded transition-all ${editor.isActive('codeBlock') ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={activeBtnClass(editor.isActive('codeBlock'))}
             title="Code Block"
           >
             <Code2 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => editor.chain().focus().setHorizontalRule().run()}
-            className="p-1.5 rounded text-white/60 hover:bg-white/5 hover:text-white transition"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text")}
             title="Divider Line"
           >
             <Minus className="w-3.5 h-3.5" />
@@ -263,17 +269,17 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
         </div>
 
         {/* Specialized Container Insertions */}
-        <div className="flex items-center gap-0.5 bg-white/5 p-1 rounded-lg border border-white/5">
+        <div className={groupClass}>
           <button
             onClick={insertCallout}
-            className="p-1.5 rounded text-white/60 hover:bg-white/5 hover:text-blue-400 transition"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-dash-border/40 hover:text-dash-accent")}
             title="Insert Alert Banner/Callout"
           >
             <AlertCircle className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={insertColumns}
-            className="p-1.5 rounded text-white/60 hover:bg-white/5 hover:text-purple-400 transition"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-dash-border/40 hover:text-purple-600")}
             title="Split Layout Columns"
           >
             <Columns className="w-3.5 h-3.5" />
@@ -281,31 +287,34 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
         </div>
 
         {/* Media & Insertions Group */}
-        <div className="flex items-center gap-0.5 bg-white/5 p-1 rounded-lg border border-white/5">
+        <div className={groupClass}>
           <button
             onClick={onOpenLinkModal}
-            className={`p-1.5 rounded transition-all ${editor.isActive('link') ? 'bg-primary text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={activeBtnClass(editor.isActive('link'))}
             title="Hyperlink"
           >
             <Link2 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={onOpenImageModal}
-            className="p-1.5 rounded text-white/60 hover:bg-white/5 hover:text-white transition"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text")}
             title="WebP Graphic"
           >
             <ImageIcon className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={onOpenEmbedModal}
-            className="p-1.5 rounded text-white/60 hover:bg-white/5 hover:text-white transition"
+            className={cn(btnClass, "!text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text")}
             title="Responsive Video Embed"
           >
             <Tv className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={addTable}
-            className={`p-1.5 rounded transition ${editor.isActive('table') ? 'bg-primary/20 text-primary border border-primary/20' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+            className={cn(
+              btnClass,
+              editor.isActive('table') ? 'bg-dash-accent/20 text-dash-accent border border-dash-accent/20' : '!text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text'
+            )}
             title="Insert Table"
           >
             <TableIcon className="w-3.5 h-3.5" />
@@ -314,12 +323,12 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
 
         {/* Tables Action Pills */}
         {editor.isActive('table') && (
-          <div className="flex items-center gap-0.5 bg-emerald-500/5 p-1 rounded-lg border border-emerald-500/10">
-            <button onClick={() => editor.chain().focus().addColumnAfter().run()} className="p-1.5 rounded text-emerald-400 hover:bg-emerald-500/10 transition" title="Add Column"><PlusSquare className="w-3.5 h-3.5" /></button>
-            <button onClick={() => editor.chain().focus().addRowAfter().run()} className="p-1.5 rounded text-emerald-400 hover:bg-emerald-500/10 transition rotate-90" title="Add Row"><PlusSquare className="w-3.5 h-3.5" /></button>
-            <button onClick={() => editor.chain().focus().deleteColumn().run()} className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10 transition" title="Delete Column"><MinusSquare className="w-3.5 h-3.5" /></button>
-            <button onClick={() => editor.chain().focus().deleteRow().run()} className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10 transition rotate-90" title="Delete Row"><MinusSquare className="w-3.5 h-3.5" /></button>
-            <button onClick={() => editor.chain().focus().deleteTable().run()} className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 transition" title="Delete Table"><Trash2 className="w-3.5 h-3.5" /></button>
+          <div className="flex items-center gap-0.5 bg-green/5 p-1 rounded-lg border border-green/10">
+            <button onClick={() => editor.chain().focus().addColumnAfter().run()} className="p-1.5 rounded text-green hover:bg-green/10 transition-colors motion-reduce:transition-none" title="Add Column"><PlusSquare className="w-3.5 h-3.5" /></button>
+            <button onClick={() => editor.chain().focus().addRowAfter().run()} className="p-1.5 rounded text-green hover:bg-green/10 transition-colors motion-reduce:transition-none rotate-90" title="Add Row"><PlusSquare className="w-3.5 h-3.5" /></button>
+            <button onClick={() => editor.chain().focus().deleteColumn().run()} className="p-1.5 rounded text-red hover:bg-red/10 transition-colors motion-reduce:transition-none" title="Delete Column"><MinusSquare className="w-3.5 h-3.5" /></button>
+            <button onClick={() => editor.chain().focus().deleteRow().run()} className="p-1.5 rounded text-red hover:bg-red/10 transition-colors motion-reduce:transition-none rotate-90" title="Delete Row"><MinusSquare className="w-3.5 h-3.5" /></button>
+            <button onClick={() => editor.chain().focus().deleteTable().run()} className="p-1.5 rounded text-red hover:bg-red/10 transition-colors motion-reduce:transition-none" title="Delete Table"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         )}
       </div>
@@ -329,46 +338,47 @@ export const BlogEditorToolbar: React.FC<ToolbarProps> = ({
         {/* Inline AI Engine Trigger */}
         <button
           onClick={onOpenInlineAIPalette}
-          className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 border border-violet-500/30 px-3 py-1.5 rounded-lg text-xs font-bold text-white shadow-[0_0_15px_rgba(124,58,237,0.3)] transition flex items-center gap-1.5 shrink-0"
+          className="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-colors motion-reduce:transition-none flex items-center gap-1.5 shrink-0"
           title="Ask LeadsMind Copilot"
         >
-          <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-          <span>AI Assist</span>
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>AI assist</span>
         </button>
 
-        <span className="w-[1px] h-5 bg-white/10" />
+        <span className="w-[1px] h-5 bg-dash-border" />
 
         {/* Zen Mode Trigger */}
         <button
           onClick={onToggleZenMode}
-          className={`border px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+          className={cn(
+            "border px-3 py-1.5 rounded-lg text-xs font-bold transition-colors motion-reduce:transition-none flex items-center gap-1.5 shrink-0",
             isZenMode
-              ? 'bg-primary border-primary text-white shadow-[0_0_15px_rgba(59,130,246,0.4)]'
-              : 'bg-white/5 border-white/5 text-white/70 hover:bg-white/10 hover:text-white'
-          }`}
+              ? 'bg-dash-accent border-dash-accent text-white'
+              : 'bg-dash-surface border-dash-border !text-dash-textMuted hover:!text-dash-text'
+          )}
           title="Toggle Zen Focus Mode"
         >
           {isZenMode ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-          <span>{isZenMode ? 'Exit Zen' : 'Zen Mode'}</span>
+          <span>{isZenMode ? 'Exit zen' : 'Zen mode'}</span>
         </button>
 
-        <span className="w-[1px] h-5 bg-white/10" />
+        <span className="w-[1px] h-5 bg-dash-border" />
 
         {/* Fullscreen Trigger */}
         <button
           onClick={onToggleFullscreen}
-          className="bg-white/5 border border-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg text-xs font-bold text-white/70 hover:text-white transition flex items-center gap-1.5 shrink-0"
+          className="bg-dash-surface border border-dash-border hover:bg-dash-border/40 px-3 py-1.5 rounded-lg text-xs font-bold !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none flex items-center gap-1.5 shrink-0"
           title="Focus Mode"
         >
           {isFullscreen ? (
             <>
               <Minimize2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Exit Focus</span>
+              <span className="hidden sm:inline">Exit focus</span>
             </>
           ) : (
             <>
               <Maximize2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Focus Mode</span>
+              <span className="hidden sm:inline">Focus mode</span>
             </>
           )}
         </button>

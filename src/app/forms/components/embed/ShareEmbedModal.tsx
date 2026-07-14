@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalDescription } from '@/components/dashboard-ui/Modal';
 import { AlertTriangle, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -71,7 +71,7 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
   scrolling="no"
   allow="payment; camera; microphone"
 ></iframe>`;
-      
+
       case 'inline':
         return `<!-- LeadsMind Form: ${form.name} -->
 <div id="leadsmind-form-${form.id}"></div>
@@ -89,7 +89,7 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
 
       case 'popup':
         return `<!-- LeadsMind Form Trigger Button -->
-<button id="leadsmind-popup-btn-${form.id}" style="background: #2563eb; color: #ffffff; padding: 12px 24px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: sans-serif; transition: background 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
+<button id="leadsmind-popup-btn-${form.id}" style="background: #1359FF; color: #ffffff; padding: 12px 24px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: sans-serif; transition: background 0.2s;" onmouseover="this.style.background='#0f4bdb'" onmouseout="this.style.background='#1359FF'">
   Open Form
 </button>
 
@@ -109,10 +109,10 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
 
       case 'fullpage':
         return `<!-- LeadsMind Form: ${form.name} Link Button -->
-<a href="${publicUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: sans-serif; transition: background 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
+<a href="${publicUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #1359FF; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: sans-serif; transition: background 0.2s;" onmouseover="this.style.background='#0f4bdb'" onmouseout="this.style.background='#1359FF'">
   Fill Out Form
 </a>`;
-      
+
       default:
         return '';
     }
@@ -150,36 +150,36 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#080f28] border border-white/10 rounded-[20px] !max-w-2xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-[95vw] sm:w-full overflow-hidden flex flex-col gap-0 max-h-[92vh] focus-visible:outline-none">
-        
+    <DashModal open={open} onOpenChange={onClose}>
+      <DashModalContent className="!max-w-2xl w-[95vw] sm:w-full overflow-hidden flex flex-col gap-0 max-h-[92vh] p-6 sm:p-8">
+
         {/* Modal Header */}
-        <DialogHeader className="mb-6 border-b border-white/5 pb-4 relative">
+        <DashModalHeader className="mb-6 border-b border-dash-border pb-4">
           <div className="flex items-center gap-2 mb-1.5">
-            <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400">
+            <div className="p-1.5 rounded-lg bg-dash-accent/10 text-dash-accent">
               <Share2 size={16} />
             </div>
-            <DialogTitle className="text-xl font-bold uppercase text-white tracking-wider font-display">
-              Share &amp; <span className="text-[#3b82f6]">Embed</span>
-            </DialogTitle>
+            <DashModalTitle>
+              Share &amp; <span className="text-dash-accent">embed</span>
+            </DashModalTitle>
           </div>
-          <DialogDescription className="text-[10px] uppercase tracking-widest text-[#4a5a82] font-sans font-bold">
-            Form Deployment: {form.name}
-          </DialogDescription>
-        </DialogHeader>
+          <DashModalDescription>
+            Form deployment: {form.name}
+          </DashModalDescription>
+        </DashModalHeader>
 
-        {/* Scrollable Container with cleaner spacing rhythm */}
+        {/* Scrollable Container */}
         <div className="flex-1 overflow-y-auto pr-1 -mr-3 flex flex-col gap-6 custom-scrollbar">
-          
-          {/* Publish gate warning - Re-styled to match premium alert standards */}
+
+          {/* Publish gate warning */}
           {!isPublished && (
-            <div className="flex items-start gap-3.5 p-4 bg-amber-500/10 border-l-4 border-amber-500 rounded-r-2xl bg-gradient-to-r from-amber-500/5 to-transparent shadow-[0_4px_20px_rgba(245,158,11,0.05)] transition-all">
-              <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3.5 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-2xl">
+              <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-amber-500 mb-0.5 font-display">
+                <p className="text-[11px] font-bold text-amber-600 mb-0.5">
                   Form is not published
                 </p>
-                <p className="text-[10.5px] text-[#94a3c8] font-sans leading-relaxed">
+                <p className="text-[11px] !text-dash-textMuted leading-relaxed">
                   Publish this form to activate live sharing. The links and embed codes below will render a temporary placeholder until the status is changed to Published.
                 </p>
               </div>
@@ -188,24 +188,23 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
 
           {/* Group 1: Direct Share Link */}
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] font-sans">
-              Step 1: Direct Share
+            <span className="text-[11px] font-bold !text-dash-textMuted">
+              Step 1: Direct share
             </span>
             <PublicFormUrlCard publicUrl={publicUrl} />
           </div>
 
-          {/* Group 2: Segmented Embed Options & Code Block (Developer Integration Suite) */}
-          <div className="flex flex-col gap-4 p-5 bg-white/[0.01] border border-white/5 rounded-2xl relative">
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+          {/* Group 2: Segmented Embed Options & Code Block */}
+          <div className="flex flex-col gap-4 p-5 bg-dash-surface border border-dash-border rounded-2xl">
             <div className="flex flex-col gap-1 mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] font-sans">
-                Step 2: Embed Options
+              <span className="text-[11px] font-bold !text-dash-textMuted">
+                Step 2: Embed options
               </span>
-              <p className="text-[10px] text-[#4a5a82] font-sans">
+              <p className="text-[11px] !text-dash-textMuted">
                 Copy the code block below to embed this form directly on your page.
               </p>
             </div>
-            
+
             <EmbedTypeSelector selected={embedMode} onChange={(mode) => {
               setEmbedMode(mode);
               setSelectedPlatform(null); // Clear active platform indicator if mode changed manually
@@ -213,8 +212,8 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
 
             {/* Custom Setup Instruction Tip */}
             {selectedPlatform && platformRecommendations[selectedPlatform] && (
-              <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[10.5px] text-blue-300 font-sans flex items-start gap-2 animate-scale-in">
-                <span className="font-bold uppercase tracking-widest text-blue-400">Setup Tip:</span>
+              <div className="p-3.5 bg-dash-accent/5 border border-dash-accent/20 rounded-xl text-[11px] !text-dash-textMuted flex items-start gap-2 animate-in fade-in duration-200 motion-reduce:animate-none">
+                <span className="font-bold text-dash-accent">Setup tip:</span>
                 <span>{platformRecommendations[selectedPlatform].tip}</span>
               </div>
             )}
@@ -224,12 +223,12 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
 
           {/* Group 3: Compatibility & Quick Deployment Actions */}
           <div className="flex flex-col gap-4">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] font-sans">
-              Step 3: Deploy &amp; Test
+            <span className="text-[11px] font-bold !text-dash-textMuted">
+              Step 3: Deploy &amp; test
             </span>
-            <PlatformCompatibilityGrid 
-              selectedPlatform={selectedPlatform} 
-              onSelectPlatform={handleSelectPlatform} 
+            <PlatformCompatibilityGrid
+              selectedPlatform={selectedPlatform}
+              onSelectPlatform={handleSelectPlatform}
             />
             <ShareActionsBar
               onCopyUrl={handleCopyUrl}
@@ -239,7 +238,7 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
             />
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DashModalContent>
+    </DashModal>
   );
 }

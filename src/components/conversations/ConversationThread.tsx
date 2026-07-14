@@ -44,14 +44,14 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
 
   if (!conversation) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-[#04091a]">
-        <div className="w-24 h-24 bg-[#2563eb]/10 rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl shadow-[#2563eb]/10 relative z-10 rotate-12">
-          <i className="fa-solid fa-inbox text-[32px] text-[#2563eb]"></i>
+      <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white">
+        <div className="w-24 h-24 bg-dash-accent/10 rounded-[2rem] flex items-center justify-center mb-8 relative z-10 rotate-12">
+          <i className="fa-solid fa-inbox text-[32px] text-dash-accent"></i>
         </div>
-        <h2 className="text-3xl font-bold text-[#eef2ff] mb-4 relative z-10 tracking-tight font-space-grotesk">
-          Select a <span className="text-[#3b82f6]">Thread</span>
+        <h2 className="text-3xl font-bold !text-dash-text mb-4 relative z-10 tracking-tight">
+          Select a <span className="text-dash-accent">thread</span>
         </h2>
-        <p className="text-[#4a5a82] max-w-sm relative z-10 font-dm-sans leading-relaxed text-[13.5px]">
+        <p className="!text-dash-textMuted max-w-sm relative z-10 leading-relaxed text-[13.5px]">
           Your unified communications command center. Select a conversation to start dominating the conversation.
         </p>
       </div>
@@ -104,47 +104,47 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#04091a] relative overflow-hidden">
+    <div className="flex-1 flex flex-col bg-white relative overflow-hidden">
       {/* Header (h-14, clean, space-saving) */}
-      <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 z-10 bg-[#080f28]/80 backdrop-blur-xl shrink-0 gap-6">
+      <div className="h-14 border-b border-dash-border flex items-center justify-between px-6 z-10 bg-dash-surface/80 backdrop-blur-xl shrink-0 gap-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 shrink-0 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
-            {selectedPlatform === 'sms' && <i className="fa-solid fa-comment-dots text-[13px] text-[#10b981]"></i>}
-            {selectedPlatform === 'email' && <i className="fa-solid fa-envelope text-[13px] text-[#3b82f6]"></i>}
+          <div className="w-8 h-8 shrink-0 rounded-lg bg-white flex items-center justify-center border border-dash-border">
+            {selectedPlatform === 'sms' && <i className="fa-solid fa-comment-dots text-[13px] text-green"></i>}
+            {selectedPlatform === 'email' && <i className="fa-solid fa-envelope text-[13px] text-dash-accent"></i>}
             {selectedPlatform === 'whatsapp' && <i className="fa-brands fa-whatsapp text-[14px] text-[#25d366]"></i>}
-            {selectedPlatform === 'instagram' && <i className="fa-brands fa-instagram text-[14px] text-[#ec4899]"></i>}
-            {selectedPlatform === 'facebook' && <i className="fa-brands fa-facebook-messenger text-[14px] text-[#3b82f6]"></i>}
+            {selectedPlatform === 'instagram' && <i className="fa-brands fa-instagram text-[14px] text-pink"></i>}
+            {selectedPlatform === 'facebook' && <i className="fa-brands fa-facebook-messenger text-[14px] text-dash-accent"></i>}
             {!['sms', 'email', 'whatsapp', 'instagram', 'facebook'].includes(selectedPlatform) && (
-              <i className="fa-solid fa-comment text-[13px] text-[#3b82f6]"></i>
+              <i className="fa-solid fa-comment text-[13px] text-dash-accent"></i>
             )}
           </div>
           <div>
-            <h3 className="text-[13px] font-bold text-[#eef2ff] font-space-grotesk tracking-tight whitespace-nowrap">
+            <h3 className="text-[13px] font-bold !text-dash-text tracking-tight whitespace-nowrap">
               {conversation.contacts ? `${conversation.contacts.first_name} ${conversation.contacts.last_name}` : conversation.title}
             </h3>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <div className="w-1 h-1 rounded-full bg-[#10b981] animate-pulse shrink-0" />
-              <span className="text-[8px] text-[#4a5a82] font-bold uppercase tracking-widest font-dm-sans whitespace-nowrap">
+              <div className="w-1 h-1 rounded-full bg-green animate-pulse motion-reduce:animate-none shrink-0" />
+              <span className="text-[8px] !text-dash-textMuted font-bold whitespace-nowrap capitalize">
                 {selectedPlatform}
               </span>
             </div>
           </div>
         </div>
-        
+
         {/* Compliance and SLA Badges */}
         <div className="flex items-center gap-2 shrink-0">
           {/* WhatsApp compliance status */}
           {selectedPlatform === 'whatsapp' && (
             <>
               {!isWhatsAppWindowClosed ? (
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center gap-1">
+                <span className="px-2 py-0.5 rounded-full bg-green/10 text-green border border-green/20 text-[8px] font-bold flex items-center gap-1">
                   <i className="fa-solid fa-circle text-[4px]"></i>
-                  24h Open ({windowTimeRemainingText})
+                  24h open ({windowTimeRemainingText})
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center gap-1">
+                <span className="px-2 py-0.5 rounded-full bg-red/10 text-red border border-red/20 text-[8px] font-bold flex items-center gap-1">
                   <i className="fa-solid fa-triangle-exclamation text-[8px]"></i>
-                  24h Closed
+                  24h closed
                 </span>
               )}
             </>
@@ -152,29 +152,29 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
 
           {/* SLA display */}
           {slaStatus === 'breached' && (
-            <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center gap-1 animate-pulse">
+            <span className="px-2 py-0.5 rounded-full bg-red/10 text-red border border-red/20 text-[8px] font-bold flex items-center gap-1 animate-pulse motion-reduce:animate-none">
               <i className="fa-solid fa-circle-exclamation text-[8px]"></i>
-              SLA Overdue ({slaText})
+              SLA overdue ({slaText})
             </span>
           )}
           {slaStatus === 'pending' && (
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded-full bg-amber/10 text-amber border border-amber/20 text-[8px] font-bold flex items-center gap-1">
               <i className="fa-regular fa-clock text-[8px]"></i>
-              SLA Due ({slaText})
+              SLA due ({slaText})
             </span>
           )}
           {slaStatus === 'met' && (
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded-full bg-green/10 text-green border border-green/20 text-[8px] font-bold flex items-center gap-1">
               <i className="fa-solid fa-check text-[8px]"></i>
-              SLA Met
+              SLA met
             </span>
           )}
 
           {/* Toggle Panel Button */}
-          <button 
-            onClick={onTogglePanel} 
-            className="w-8 h-8 rounded-lg bg-[#2563eb]/20 border border-[#2563eb]/30 hover:bg-[#2563eb]/30 flex items-center justify-center text-[#3b82f6] hover:text-white transition-all ml-2 shrink-0"
-            title="Toggle Contact Panel"
+          <button
+            onClick={onTogglePanel}
+            className="w-8 h-8 rounded-lg bg-dash-accent/10 border border-dash-accent/20 hover:bg-dash-accent/20 flex items-center justify-center text-dash-accent hover:text-dash-accent transition-all motion-reduce:transition-none ml-2 shrink-0"
+            title="Toggle contact panel"
           >
             <i className="fa-solid fa-circle-info text-[13px]"></i>
           </button>

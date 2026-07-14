@@ -38,7 +38,7 @@ export function SignaturePad({ fieldId, disabled, isBuilder, value, onChange }: 
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.lineWidth = 2;
-      ctx.strokeStyle = '#eef2ff'; // White ink for dark mode
+      ctx.strokeStyle = '#0F172A'; // dash-text ink
       
       // If we have an existing value, try to redraw it (simplified for now)
       if (value && hasSignature) {
@@ -126,19 +126,19 @@ export function SignaturePad({ fieldId, disabled, isBuilder, value, onChange }: 
 
   return (
     <div className="w-full">
-      <div 
-        className={`relative w-full h-32 bg-[#080f28]/95 border border-white/10 rounded-xl overflow-hidden ${
-          isBuilder || disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-crosshair focus-within:border-[#2563eb] transition-colors'
+      <div
+        className={`relative w-full h-32 bg-white border border-dash-border rounded-xl overflow-hidden ${
+          isBuilder || disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-crosshair focus-within:border-dash-accent transition-colors motion-reduce:transition-none'
         }`}
       >
         {!hasSignature && !isDrawing && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-[24px] font-space-grotesk text-white/10 uppercase tracking-widest select-none">
-              Sign Here
+            <span className="text-[24px] !text-dash-border select-none">
+              Sign here
             </span>
           </div>
         )}
-        
+
         <canvas
           ref={canvasRef}
           style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none' }}
@@ -150,20 +150,20 @@ export function SignaturePad({ fieldId, disabled, isBuilder, value, onChange }: 
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
         />
-        
+
         <div className="absolute bottom-2 right-2 flex items-center pointer-events-none">
-          <PenTool size={12} className="text-[#4a5a82]" />
+          <PenTool size={12} className="!text-dash-textMuted" />
         </div>
       </div>
-      
+
       {hasSignature && !isBuilder && !disabled && (
         <div className="mt-2 flex justify-end">
           <button
             type="button"
             onClick={clearSignature}
-            className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#4a5a82] hover:text-white transition-colors"
+            className="flex items-center gap-1.5 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none"
           >
-            <RotateCcw size={10} /> Clear Signature
+            <RotateCcw size={10} /> Clear signature
           </button>
         </div>
       )}

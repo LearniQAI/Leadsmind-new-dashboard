@@ -1,30 +1,33 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
-  Plus, FileText, Share2, UserCheck, Trash2, X,
-  CheckCircle, Clock, Loader2, Search, Users, ExternalLink, Bell
+  Plus, FileText, Share2, UserCheck, CheckCircle, Search, Users, ExternalLink, Bell
 } from 'lucide-react';
 import { createForm } from '@/app/actions/marketing';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmbedModal } from './EmbedModal';
 import { CreateFormDialog, EditFormDialog, DeleteFormDialog } from './FormsModals';
 import { FormCard } from './FormCard';
 import { getUserCollaborations, acceptFormInvitation, declineFormInvitation, sendInviteNotificationAfterAcceptance } from '@/app/actions/collaborators';
 import { InviteAcceptancePanel } from '@/components/collaboration/InviteAcceptancePanel';
 import { CollaborationNotifications } from '@/components/collaboration/CollaborationNotifications';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashCard } from '@/components/dashboard-ui/Card';
+import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
+import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
+import { DashInput } from '@/components/dashboard-ui/FormField';
+import { DashTabs, DashTabsList, DashTabsTrigger, DashTabsContent } from '@/components/dashboard-ui/Tabs';
+import { cn } from '@/lib/utils';
 
 function StatusBadge({ status }: { status: string }) {
   const isPending = status === 'pending';
   const isActive = status === 'active' || status === 'accepted';
-  
-  if (isPending) return <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Pending</span>;
-  if (isActive) return <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>;
-  return <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">{status}</span>;
+
+  if (isPending) return <DashStatusPill variant="warning" className="text-[9px] px-1.5 py-0.5">Pending</DashStatusPill>;
+  if (isActive) return <DashStatusPill variant="success" className="text-[9px] px-1.5 py-0.5">Active</DashStatusPill>;
+  return <DashStatusPill variant="danger" className="text-[9px] px-1.5 py-0.5">{status}</DashStatusPill>;
 }
 
 export default function FormsClient({ initialForms }: { initialForms: any[] }) {
@@ -82,13 +85,13 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
       const { data } = await supabase
         .from('form_partial_submissions')
         .select('form_id');
-      
+
       if (data) {
         const counts: Record<string, number> = {};
         data.forEach((p: any) => {
           counts[p.form_id] = (counts[p.form_id] || 0) + 1;
         });
-        
+
         setForms(prev =>
           prev.map(f => ({
             ...f,
@@ -102,8 +105,8 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
 
   const filteredForms = forms.filter(form => {
     const matchesSearch = form.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' || 
-                         (filter === 'published' && form.status === 'published') || 
+    const matchesFilter = filter === 'all' ||
+                         (filter === 'published' && form.status === 'published') ||
                          (filter === 'draft' && form.status !== 'published');
     return matchesSearch && matchesFilter;
   });
@@ -129,17 +132,17 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
   const handleCreate = async () => {
     if (!createName.trim()) { toast.error('Please enter a form name'); return; }
     setCreating(true);
-    
+
     try {
       const res = await createForm(createName.trim());
-      
+
       setCreating(false);
-      
-      if (res.error) { 
-        toast.error(res.error); 
+
+      if (res.error) {
+        toast.error(res.error);
         return;
       }
-      
+
       if (!res.data || !res.data.id) {
         toast.error('Failed to get new form ID. Please try again.');
         return;
@@ -149,7 +152,7 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
       toast.success('Form created! Opening builder...');
       setCreateName('');
       setCreateOpen(false);
-      
+
       // Wait for Radix Dialog exit animation then navigate
       setTimeout(() => {
         document.body.style.removeProperty('pointer-events');
@@ -196,7 +199,7 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
       const res = await updateForm(form.id, { status: newStatus });
       if (res.error) { toast.error(res.error); return; }
       setForms(prev => prev.map(f => f.id === form.id ? { ...f, status: newStatus } : f));
-      toast.success(isLive ? 'Form moved to Draft' : 'Form is now Live!');
+      toast.success(isLive ? 'Form moved to draft' : 'Form is now live!');
     } catch { toast.error('Status update failed'); }
   };
 
@@ -228,33 +231,35 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="card__title !text-4xl uppercase mb-1">Smart <span className="text-primary">Forms</span></h1>
-          <p className="card__sub-title !text-[11px] uppercase tracking-[0.2em]">Capture high-intent leads with precision data extraction.</p>
+          <h1 className="text-3xl font-bold !text-dash-text">
+            Smart <span className="text-dash-accent">forms</span>
+          </h1>
+          <p className="!text-dash-textMuted text-[12px] font-medium mt-2">Capture high-intent leads with precision data extraction.</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
-          <Plus className="w-4 h-4 mr-2" /> Build Form
-        </Button>
+        <DashButton onClick={() => setCreateOpen(true)}>
+          <Plus className="w-4 h-4" /> Build form
+        </DashButton>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-        <TabsList className="bg-white/5 border border-white/10 p-1 rounded-2xl h-14">
-          <TabsTrigger value="forms" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
-            <FileText className="w-4 h-4 mr-2" /> My Forms
-          </TabsTrigger>
-          <TabsTrigger value="collaborations" className="rounded-xl px-8 data-[state=active]:bg-primary data-[state=active]:text-white font-black uppercase text-[10px] tracking-widest">
-            <Users className="w-4 h-4 mr-2" /> Collaborations
-          </TabsTrigger>
-        </TabsList>
+      <DashTabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+        <DashTabsList>
+          <DashTabsTrigger value="forms">
+            <FileText className="w-4 h-4" /> My forms
+          </DashTabsTrigger>
+          <DashTabsTrigger value="collaborations">
+            <Users className="w-4 h-4" /> Collaborations
+          </DashTabsTrigger>
+        </DashTabsList>
 
-        <TabsContent value="forms" className="space-y-8 focus-visible:outline-none">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white/5 border border-white/10 p-4 rounded-3xl">
+        <DashTabsContent value="forms" className="space-y-8">
+          <DashCard padding="default" className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-4 top-3.5 h-4 w-4 text-white/30" />
-              <Input
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 !text-dash-textMuted" />
+              <DashInput
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search forms..."
-                className="pl-11 h-12 bg-white/5 border-white/10 rounded-xl text-white placeholder-white/30 focus:border-primary focus:ring-0"
+                className="pl-11 h-12"
               />
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto overflow-x-auto w-full sm:w-auto">
@@ -262,28 +267,29 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
                 <button
                   key={p}
                   onClick={() => setFilter(p)}
-                  className={`px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                  className={cn(
+                    "px-5 py-2 rounded-xl text-[11px] font-bold transition-colors motion-reduce:transition-none shrink-0",
                     filter === p
-                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                      : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
-                  }`}
+                      ? 'bg-dash-accent text-white'
+                      : 'bg-dash-surface !text-dash-textMuted hover:!text-dash-text'
+                  )}
                 >
-                  {p === 'all' ? 'All Forms' : p === 'published' ? 'Published' : 'Drafts'}
+                  {p === 'all' ? 'All forms' : p === 'published' ? 'Published' : 'Drafts'}
                 </button>
               ))}
             </div>
-          </div>
+          </DashCard>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredForms.length === 0 ? (
-              <div className="col-span-full py-20 bg-white/5 border border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary/40 transition-all" onClick={() => setCreateOpen(true)}>
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
-                  <FileText className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="text-lg font-black uppercase text-white tracking-widest">No Forms Found</h3>
-                <p className="text-white/40 text-[10px] font-bold mt-2 uppercase tracking-widest">
-                  {searchQuery ? 'Adjust your search query' : 'Click to build your first form'}
-                </p>
+              <div className="col-span-full">
+                <DashEmptyState
+                  icon={FileText}
+                  title="No forms found"
+                  description={searchQuery ? 'Adjust your search query' : 'Click to build your first form'}
+                  actionLabel={searchQuery ? undefined : 'Build form'}
+                  onAction={searchQuery ? undefined : () => setCreateOpen(true)}
+                />
               </div>
             ) : filteredForms.map(form => (
               <FormCard
@@ -298,28 +304,28 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
               />
             ))}
           </div>
-        </TabsContent>
+        </DashTabsContent>
 
-        <TabsContent value="collaborations" className="space-y-8 focus-visible:outline-none">
+        <DashTabsContent value="collaborations" className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-            <div className="bg-[#0c1535] border border-white/5 p-6 rounded-3xl flex flex-col gap-6">
+            <DashCard padding="default" className="flex flex-col gap-6">
               <div>
-                <h2 className="text-lg font-space-grotesk font-black uppercase tracking-tight flex items-center gap-2 text-white">
-                  <UserCheck className="text-emerald-400" size={20} /> Forms Shared With You
+                <h2 className="text-lg font-bold flex items-center gap-2 !text-dash-text">
+                  <UserCheck className="text-green" size={20} /> Forms shared with you
                 </h2>
-                <p className="text-xs text-t3 mt-1">Forms you've been invited to edit or view.</p>
+                <p className="text-xs !text-dash-textMuted mt-1">Forms you've been invited to edit or view.</p>
               </div>
 
               <div className="flex flex-col gap-3 max-h-[540px] overflow-y-auto pr-1">
                 {loadingCollabs ? (
-                  <div className="py-8 text-center text-[10px] font-black uppercase tracking-widest text-t3 animate-pulse">Loading invitations...</div>
+                  <div className="py-8 text-center text-[11px] font-bold !text-dash-textMuted animate-pulse motion-reduce:animate-none">Loading invitations...</div>
                 ) : collaborations.invitedTo.length === 0 ? (
-                  <div className="py-14 text-center border border-dashed border-white/5 rounded-2xl">
-                    <div className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 mx-auto mb-3 flex items-center justify-center">
-                      <UserCheck size={20} className="text-t4 opacity-40" />
+                  <div className="py-14 text-center border border-dashed border-dash-border rounded-2xl">
+                    <div className="w-12 h-12 rounded-2xl bg-dash-surface border border-dash-border mx-auto mb-3 flex items-center justify-center">
+                      <UserCheck size={20} className="!text-dash-textMuted opacity-60" />
                     </div>
-                    <p className="text-[11px] font-bold text-t3 uppercase tracking-widest">No shared forms</p>
+                    <p className="text-[11px] font-bold !text-dash-textMuted">No shared forms</p>
                   </div>
                 ) : (
                   collaborations.invitedTo.map((item) => {
@@ -335,31 +341,29 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
                       );
                     }
                     return (
-                      <div key={item.id} className="bg-[#04091a] border border-white/5 hover:border-white/10 p-4 rounded-2xl flex items-center justify-between transition-colors">
+                      <div key={item.id} className="bg-dash-surface border border-dash-border hover:border-dash-text/20 p-4 rounded-2xl flex items-center justify-between transition-colors motion-reduce:transition-none">
                         <div className="flex flex-col gap-1 min-w-0">
-                          <span className="text-sm font-bold text-white truncate">{item.formName}</span>
+                          <span className="text-sm font-bold !text-dash-text truncate">{item.formName}</span>
                           <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                            <span className="text-[9px] text-t3 font-medium">by <strong className="text-t2">{item.invitedByEmail}</strong></span>
-                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{item.role}</span>
+                            <span className="text-[10px] !text-dash-textMuted font-medium">by <strong className="!text-dash-text">{item.invitedByEmail}</strong></span>
+                            <DashStatusPill variant="accent" className="text-[9px] px-1.5 py-0.5">{item.role}</DashStatusPill>
                             <StatusBadge status={item.status} />
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
                           {item.status === 'pending' ? (
-                            <button
-                              onClick={() => setAcceptingCollabId(item.id)}
-                              className="bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
-                            >
+                            <DashButton size="sm" onClick={() => setAcceptingCollabId(item.id)} className="shrink-0">
                               Accept <CheckCircle size={10} />
-                            </button>
+                            </DashButton>
                           ) : (
-                            <button
+                            <DashButton
+                              size="sm"
                               onClick={() => router.push(item.role === 'editor' ? `/forms/builder/${item.formId}` : `/forms/${item.formId}/submissions`)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
+                              className="shrink-0"
                             >
                               Open <ExternalLink size={10} />
-                            </button>
+                            </DashButton>
                           )}
                         </div>
                       </div>
@@ -367,71 +371,73 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
                   })
                 )}
               </div>
-            </div>
+            </DashCard>
 
             <div className="flex flex-col gap-6">
-              <div className="bg-[#0c1535] border border-white/5 p-6 rounded-3xl flex flex-col gap-6">
+              <DashCard padding="default" className="flex flex-col gap-6">
                 <div>
-                  <h2 className="text-lg font-space-grotesk font-black uppercase tracking-tight flex items-center gap-2 text-white">
-                    <Share2 className="text-blue-400" size={20} /> People You Invited
+                  <h2 className="text-lg font-bold flex items-center gap-2 !text-dash-text">
+                    <Share2 className="text-dash-accent" size={20} /> People you invited
                   </h2>
-                  <p className="text-xs text-t3 mt-1">Collaborators you've added to your forms.</p>
+                  <p className="text-xs !text-dash-textMuted mt-1">Collaborators you've added to your forms.</p>
                 </div>
 
                 <div className="flex flex-col gap-3 max-h-[280px] overflow-y-auto pr-1">
                   {loadingCollabs ? (
-                    <div className="py-6 text-center text-[10px] font-black uppercase tracking-widest text-t3 animate-pulse">Loading...</div>
+                    <div className="py-6 text-center text-[11px] font-bold !text-dash-textMuted animate-pulse motion-reduce:animate-none">Loading...</div>
                   ) : collaborations.invitedOthers.length === 0 ? (
-                    <div className="py-10 text-center border border-dashed border-white/5 rounded-2xl">
-                      <div className="w-10 h-10 rounded-2xl bg-white/[0.02] border border-white/5 mx-auto mb-3 flex items-center justify-center">
-                        <Share2 size={18} className="text-t4 opacity-40" />
+                    <div className="py-10 text-center border border-dashed border-dash-border rounded-2xl">
+                      <div className="w-10 h-10 rounded-2xl bg-dash-surface border border-dash-border mx-auto mb-3 flex items-center justify-center">
+                        <Share2 size={18} className="!text-dash-textMuted opacity-60" />
                       </div>
-                      <p className="text-[10px] font-bold text-t3 uppercase tracking-widest">No invitations sent</p>
+                      <p className="text-[10px] font-bold !text-dash-textMuted">No invitations sent</p>
                     </div>
                   ) : (
                     collaborations.invitedOthers.map((item) => (
-                      <div key={item.id} className="bg-[#04091a] border border-white/5 hover:border-white/10 p-3.5 rounded-2xl flex items-center justify-between transition-colors">
+                      <div key={item.id} className="bg-dash-surface border border-dash-border hover:border-dash-text/20 p-3.5 rounded-2xl flex items-center justify-between transition-colors motion-reduce:transition-none">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-[9px] font-black text-purple-400 flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-purple-50 border border-purple-200 flex items-center justify-center text-[10px] font-bold text-purple-600 shrink-0">
                             {item.email?.substring(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <span className="text-xs font-bold text-white truncate block">{item.email}</span>
+                            <span className="text-xs font-bold !text-dash-text truncate block">{item.email}</span>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-[8px] text-t3 truncate max-w-[120px]">on <strong className="text-t2">{item.formName}</strong></span>
-                              <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">{item.role}</span>
+                              <span className="text-[9px] !text-dash-textMuted truncate max-w-[120px]">on <strong className="!text-dash-text">{item.formName}</strong></span>
+                              <DashStatusPill variant="accent" className="text-[9px] px-1.5 py-0.5">{item.role}</DashStatusPill>
                               <StatusBadge status={item.status} />
                             </div>
                           </div>
                         </div>
-                        <button
+                        <DashButton
+                          size="sm"
+                          variant="secondary"
                           onClick={() => router.push(`/forms/${item.formId}/governance`)}
-                          className="bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0 ml-2"
+                          className="shrink-0 ml-2"
                         >
                           Manage <ExternalLink size={9} />
-                        </button>
+                        </DashButton>
                       </div>
                     ))
                   )}
                 </div>
-              </div>
+              </DashCard>
 
-              <div className="bg-[#0c1535] border border-white/5 p-6 rounded-3xl flex flex-col gap-4">
+              <DashCard padding="default" className="flex flex-col gap-4">
                 <div>
-                  <h2 className="text-base font-space-grotesk font-bold uppercase tracking-tight flex items-center gap-2 text-white">
-                    <Bell className="text-amber-400" size={16} /> Activity Updates
+                  <h2 className="text-base font-bold flex items-center gap-2 !text-dash-text">
+                    <Bell className="text-amber-600" size={16} /> Activity updates
                   </h2>
-                  <p className="text-[10px] text-t3 mt-0.5">Real-time collaboration activity</p>
+                  <p className="text-[11px] !text-dash-textMuted mt-0.5">Real-time collaboration activity</p>
                 </div>
                 <div className="max-h-[240px] overflow-y-auto pr-1">
                   <CollaborationNotifications />
                 </div>
-              </div>
+              </DashCard>
             </div>
 
           </div>
-        </TabsContent>
-      </Tabs>
+        </DashTabsContent>
+      </DashTabs>
 
       <CreateFormDialog
         open={createOpen}

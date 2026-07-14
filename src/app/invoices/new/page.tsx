@@ -2,11 +2,11 @@ import { requireAuth, getCurrentWorkspaceId } from "@/lib/auth";
 import { getInvoiceSettings, getContactsForInvoicing, getProducts } from "@/app/actions/finance";
 import InvoiceClientWrapper from "@/components/invoices/InvoiceClientWrapper";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
+import { DashButton } from "@/components/dashboard-ui/Button";
 
 export const dynamic = 'force-dynamic';
 
@@ -28,22 +28,22 @@ export default async function NewInvoicePage({
   return (
     <MetaData pageTitle="New Invoice">
       <Wrapper>
-        <div className="app__slide-wrapper">
-          <div className="page-header px-6 py-4">
-            <div className="ph-left">
-              <h1 className="text-2xl font-bold font-space text-[var(--t1)]">
-                NEW <span className="text-[var(--accent2)]">INVOICE</span>
+        <div className="bg-white min-h-screen">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4 border-b border-dash-border">
+            <div>
+              <h1 className="text-2xl font-bold !text-dash-text">
+                New <span className="text-dash-accent">Invoice</span>
               </h1>
-              <p className="text-[11.5px] text-[var(--t3)] uppercase tracking-[0.8px] font-medium mt-1">
+              <p className="text-[12px] !text-dash-textMuted font-medium mt-1">
                 Generate a professional billing document
               </p>
             </div>
-            <div className="ph-right flex gap-3">
+            <div className="flex gap-3">
               <Link href="/invoices">
-                <button className="btn-ghost">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
+                <DashButton variant="ghost">
+                  <ArrowLeft className="h-4 w-4" />
                   <span>Back to List</span>
-                </button>
+                </DashButton>
               </Link>
             </div>
           </div>

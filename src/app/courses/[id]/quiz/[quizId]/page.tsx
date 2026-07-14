@@ -58,7 +58,7 @@ export default async function QuizWorkbenchPage({ params }: PageProps) {
 
   return (
     <Wrapper>
-      <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)] text-white">
+      <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)] !text-dash-text">
         <QuizWorkbenchClient 
           course={course} 
           quiz={quiz} 

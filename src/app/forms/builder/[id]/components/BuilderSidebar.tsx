@@ -5,6 +5,7 @@ import { useFormBuilder, FieldType } from './FormBuilderContext';
 import { StepManager } from './StepManager';
 import { IntelligenceBuilder } from './IntelligenceBuilder';
 import { Type, Mail, Phone, AlignLeft, ChevronDown, CheckSquare, Search, LayoutGrid, Layers, Settings2, UploadCloud, PenTool, CreditCard } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface LibraryField {
   type: FieldType;
@@ -56,52 +57,49 @@ export function BuilderSidebar() {
       draggable="true"
       onDragStart={(e) => handleDragStart(e, field.type)}
       onClick={() => addField(field.type)}
-      className="builder-field-card group flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-[#2563eb]/40 hover:bg-[#0c1535]/60 transition-all select-none"
+      className="builder-field-card group flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-dash-accent/40 hover:bg-dash-accent/5 select-none"
     >
       <div className="flex items-center gap-3">
-        <span className="builder-field-card__icon text-white/50 group-hover:text-[#2563eb] transition-colors">
+        <span className="builder-field-card__icon group-hover:text-dash-accent transition-colors motion-reduce:transition-none">
           {field.icon}
         </span>
-        <span className="text-xs font-bold text-white/80 font-dm-sans">{field.label}</span>
+        <span className="text-xs font-bold !text-dash-text">{field.label}</span>
       </div>
-      <span className="text-[9px] text-[#4a5a82] font-black uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+      <span className="text-[10px] !text-dash-textMuted font-bold opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none">
         + Add
       </span>
     </div>
   );
 
   return (
-    <div className="builder-panel" style={{ width: 280, display: 'flex', flexDirection: 'column' }}>
-      
+    <div className="builder-panel w-[280px] flex flex-col">
+
       {/* Sidebar Navigation Tabs */}
-      <div className="flex border-b border-white/5 bg-white/1 p-1 m-2.5 rounded-xl overflow-hidden">
+      <div className="flex border-b border-dash-border bg-white p-1 m-2.5 rounded-xl overflow-hidden">
         <button
           onClick={() => setActiveTab('fields')}
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${
-            activeTab === 'fields'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-white/40 hover:text-white'
-          }`}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none",
+            activeTab === 'fields' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'
+          )}
         >
           <LayoutGrid size={12} /> Fields
         </button>
         <button
           onClick={() => setActiveTab('steps')}
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${
-            activeTab === 'steps'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-white/40 hover:text-white'
-          }`}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none",
+            activeTab === 'steps' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'
+          )}
         >
           <Layers size={12} /> Steps
         </button>
         <button
           onClick={() => setActiveTab('config')}
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${
-            activeTab === 'config'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-white/40 hover:text-white'
-          }`}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none",
+            activeTab === 'config' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'
+          )}
         >
           <Settings2 size={12} /> Config
         </button>
@@ -110,74 +108,68 @@ export function BuilderSidebar() {
       {activeTab === 'fields' && (
         <>
           {/* Search */}
-          <div style={{ padding: '8px 20px 8px' }}>
-            <div style={{ position: 'relative' }}>
-              <Search size={13} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--t3)', pointerEvents: 'none' }} />
+          <div className="px-5 py-2">
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted pointer-events-none" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search library fields..."
-                className="settings-input w-full pl-9 h-10 text-xs bg-white/5 border-white/10 rounded-xl"
+                className="settings-input pl-9 h-10 text-xs"
               />
             </div>
           </div>
 
-          <div className="builder-panel__body custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '8px 20px 20px' }}>
+          <div className="builder-panel__body custom-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-2">
             {/* CRM Contact Checklist */}
-            <div style={{ 
-              marginBottom: 20, 
-              padding: 14, 
-              background: 'rgba(12,21,53,0.6)', 
-              border: '1px solid rgba(255,255,255,0.06)', 
-              borderRadius: 14,
-            }}>
-              <p className="builder-section-label" style={{ marginBottom: 8, fontSize: 10, letterSpacing: '0.08em' }}>CRM Sync Checklist</p>
-              <p style={{ fontSize: 11, color: '#94a3c8', marginBottom: 10, lineHeight: 1.4 }}>
+            <div className="mb-5 p-3.5 bg-white border border-dash-border rounded-2xl">
+              <p className="builder-section-label mb-2">CRM sync checklist</p>
+              <p className="text-[11px] !text-dash-textMuted mb-2.5 leading-relaxed">
                 Include these fields to automatically link submissions to CRM contacts.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
-                  <span style={{ color: hasFirstName ? '#10b981' : '#f43f5e' }}>{hasFirstName ? '✓' : '○'}</span>
-                  <span style={{ color: hasFirstName ? '#eef2ff' : '#94a3c8' }}>First Name</span>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <span className={hasFirstName ? "text-green" : "text-red"}>{hasFirstName ? '✓' : '○'}</span>
+                  <span className={hasFirstName ? "!text-dash-text" : "!text-dash-textMuted"}>First Name</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
-                  <span style={{ color: hasLastName ? '#10b981' : '#f43f5e' }}>{hasLastName ? '✓' : '○'}</span>
-                  <span style={{ color: hasLastName ? '#eef2ff' : '#94a3c8' }}>Last Name</span>
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <span className={hasLastName ? "text-green" : "text-red"}>{hasLastName ? '✓' : '○'}</span>
+                  <span className={hasLastName ? "!text-dash-text" : "!text-dash-textMuted"}>Last Name</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
-                  <span style={{ color: hasEmail ? '#10b981' : '#f43f5e' }}>{hasEmail ? '✓' : '○'}</span>
-                  <span style={{ color: hasEmail ? '#eef2ff' : '#94a3c8' }}>Email Address</span>
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <span className={hasEmail ? "text-green" : "text-red"}>{hasEmail ? '✓' : '○'}</span>
+                  <span className={hasEmail ? "!text-dash-text" : "!text-dash-textMuted"}>Email Address</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
-                  <span style={{ color: hasPhone ? '#10b981' : '#f43f5e' }}>{hasPhone ? '✓' : '○'}</span>
-                  <span style={{ color: hasPhone ? '#eef2ff' : '#94a3c8' }}>Phone Number</span>
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <span className={hasPhone ? "text-green" : "text-red"}>{hasPhone ? '✓' : '○'}</span>
+                  <span className={hasPhone ? "!text-dash-text" : "!text-dash-textMuted"}>Phone Number</span>
                 </div>
               </div>
             </div>
 
             {standardFields.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <p className="builder-section-label" style={{ marginBottom: 12 }}>Standard Input Fields</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="mb-6">
+                <p className="builder-section-label">Standard input fields</p>
+                <div className="flex flex-col gap-2">
                   {standardFields.map(renderFieldCard)}
                 </div>
               </div>
             )}
 
             {contactFields.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <p className="builder-section-label" style={{ marginBottom: 12 }}>Pre-built Contact Fields</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="mb-6">
+                <p className="builder-section-label">Pre-built contact fields</p>
+                <div className="flex flex-col gap-2">
                   {contactFields.map(renderFieldCard)}
                 </div>
               </div>
             )}
 
             {transactionalFields.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <p className="builder-section-label" style={{ marginBottom: 12 }}>Transactional Workflows</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="mb-6">
+                <p className="builder-section-label">Transactional workflows</p>
+                <div className="flex flex-col gap-2">
                   {transactionalFields.map(renderFieldCard)}
                 </div>
               </div>
@@ -185,7 +177,7 @@ export function BuilderSidebar() {
 
             {filteredFields.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-xs text-white/30 font-dm-sans">No matching fields found</p>
+                <p className="text-xs !text-dash-textMuted">No matching fields found</p>
               </div>
             )}
           </div>
@@ -193,13 +185,13 @@ export function BuilderSidebar() {
       )}
 
       {activeTab === 'steps' && (
-        <div className="builder-panel__body custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '8px 20px 20px' }}>
+        <div className="builder-panel__body custom-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-2">
           <StepManager />
         </div>
       )}
 
       {activeTab === 'config' && (
-        <div className="builder-panel__body custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 32 }}>
+        <div className="builder-panel__body custom-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-4 flex flex-col gap-8">
           <IntelligenceBuilder />
         </div>
       )}

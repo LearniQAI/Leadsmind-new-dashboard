@@ -7,6 +7,10 @@ import Wrapper from '@/components/layouts/DefaultWrapper';
 import MetaData from '@/hooks/useMetaData';
 import VoiceRecorder from '@/components/blog/editor/VoiceRecorder';
 import { Sparkles, Mic, ArrowLeft, Loader2, Link2, Facebook, Instagram, Linkedin, Twitter, MessageSquare, Video } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { DashCard } from '@/components/dashboard-ui/Card';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashFormField, DashInput, DashTextarea } from '@/components/dashboard-ui/FormField';
 
 type TabState = 'social' | 'voice';
 type PlatformState = 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'whatsapp';
@@ -17,7 +21,7 @@ export default function SocialImportClient() {
   const [platform, setPlatform] = useState<PlatformState>('linkedin');
   const [sourceUrl, setSourceUrl] = useState('');
   const [sourceText, setSourceText] = useState('');
-  
+
   // States
   const [isScraping, setIsScraping] = useState(false);
   const [isExpanding, setIsExpanding] = useState(false);
@@ -86,89 +90,88 @@ export default function SocialImportClient() {
   };
 
   const platforms = [
-    { id: 'linkedin', label: 'LinkedIn', icon: Linkedin, color: 'text-blue-400 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10' },
-    { id: 'twitter', label: 'Twitter/X', icon: Twitter, color: 'text-sky-300 border-sky-500/30 bg-sky-500/5 hover:bg-sky-500/10' },
-    { id: 'facebook', label: 'Facebook', icon: Facebook, color: 'text-blue-500 border-blue-600/30 bg-blue-600/5 hover:bg-blue-600/10' },
-    { id: 'instagram', label: 'Instagram', icon: Instagram, color: 'text-pink-400 border-pink-500/30 bg-pink-500/5 hover:bg-pink-500/10' },
-    { id: 'tiktok', label: 'TikTok', icon: Video, color: 'text-teal-400 border-teal-500/30 bg-teal-500/5 hover:bg-teal-500/10' },
-    { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10' }
+    { id: 'linkedin', label: 'LinkedIn', icon: Linkedin, color: 'text-dash-accent border-dash-accent/30 bg-dash-accent/5 hover:bg-dash-accent/10' },
+    { id: 'twitter', label: 'Twitter/X', icon: Twitter, color: '!text-dash-textMuted border-dash-border bg-dash-surface hover:bg-dash-border/40' },
+    { id: 'facebook', label: 'Facebook', icon: Facebook, color: 'text-dash-accent border-dash-accent/30 bg-dash-accent/5 hover:bg-dash-accent/10' },
+    { id: 'instagram', label: 'Instagram', icon: Instagram, color: 'text-pink-500 border-pink-300 bg-pink-50 hover:bg-pink-100' },
+    { id: 'tiktok', label: 'TikTok', icon: Video, color: 'text-purple-600 border-purple-300 bg-purple-50 hover:bg-purple-100' },
+    { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, color: 'text-green border-green/30 bg-green/5 hover:bg-green/10' }
   ] as const;
 
   return (
     <MetaData pageTitle="Expander Studio">
       <Wrapper>
-        <div className="flex flex-col min-h-screen bg-[#04091a] text-white font-dm-sans py-12 px-6">
-          <div className="max-w-3xl mx-auto w-full space-y-8 animate-fade-in">
-            
+        <div className="flex flex-col min-h-screen bg-white py-12 px-6">
+          <div className="max-w-3xl mx-auto w-full space-y-8 animate-in fade-in duration-300 motion-reduce:animate-none">
+
             {/* Header */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3">
-                <button onClick={() => router.push('/blog/manage')} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition">
+                <button onClick={() => router.push('/blog/manage')} className="p-2 rounded-lg bg-dash-surface hover:bg-dash-border/60 !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
                   <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div>
-                  <h1 className="font-space-grotesk text-2xl font-bold text-white uppercase tracking-tight">
-                    Expander <span className="text-primary">Studio</span>
+                  <h1 className="text-2xl font-bold !text-dash-text">
+                    Expander <span className="text-dash-accent">studio</span>
                   </h1>
-                  <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-semibold mt-0.5">
-                    Conversion Suite for Blurbs, Captions, & Spoken Ideas
+                  <p className="text-[10px] !text-dash-textMuted font-semibold mt-0.5">
+                    Conversion suite for blurbs, captions, & spoken ideas
                   </p>
                 </div>
               </div>
 
               {/* Dynamic Double Tabs */}
-              <div className="bg-white/5 p-1 rounded-xl border border-white/5 flex items-center gap-1">
+              <div className="bg-dash-surface p-1 rounded-xl border border-dash-border flex items-center gap-1">
                 <button
                   onClick={() => { setActiveTab('social'); setErrorMessage(null); }}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition flex items-center gap-1.5 ${
-                    activeTab === 'social' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
-                  }`}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors motion-reduce:transition-none flex items-center gap-1.5",
+                    activeTab === 'social' ? 'bg-dash-accent text-white' : '!text-dash-textMuted hover:!text-dash-text'
+                  )}
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> Social Post
+                  <Sparkles className="w-3.5 h-3.5" /> Social post
                 </button>
                 <button
                   onClick={() => { setActiveTab('voice'); setErrorMessage(null); }}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition flex items-center gap-1.5 ${
-                    activeTab === 'voice' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
-                  }`}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors motion-reduce:transition-none flex items-center gap-1.5",
+                    activeTab === 'voice' ? 'bg-dash-accent text-white' : '!text-dash-textMuted hover:!text-dash-text'
+                  )}
                 >
-                  <Mic className="w-3.5 h-3.5" /> Voice Capture
+                  <Mic className="w-3.5 h-3.5" /> Voice capture
                 </button>
               </div>
             </div>
 
             {activeTab === 'social' ? (
-              <div className="bg-[#080f28] border border-white/10 rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+              <DashCard padding="default" className="space-y-6">
 
                 {/* Scraper Console */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Import from Social URL (Optional)</label>
+                <DashFormField label="Import from social URL (optional)">
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <Link2 className="w-3.5 h-3.5 text-white/30 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
+                      <Link2 className="w-3.5 h-3.5 !text-dash-textMuted absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <DashInput
                         type="url"
                         value={sourceUrl}
                         onChange={(e) => setSourceUrl(e.target.value)}
                         placeholder="e.g. https://www.linkedin.com/posts/..."
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-white/30 outline-none focus:border-primary transition"
+                        className="pl-9"
                       />
                     </div>
-                    <button
+                    <DashButton
                       type="button"
+                      variant="secondary"
                       onClick={handleScrapeUrl}
                       disabled={isScraping || !sourceUrl.trim()}
-                      className="bg-white/5 border border-white/10 hover:bg-white/10 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition disabled:opacity-50 flex items-center gap-1.5"
                     >
-                      {isScraping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Fetch Details'}
-                    </button>
+                      {isScraping ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : 'Fetch details'}
+                    </DashButton>
                   </div>
-                </div>
+                </DashFormField>
 
                 {/* Platform Selector Grid */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Source Platform Format</label>
+                <DashFormField label="Source platform format">
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {platforms.map(p => {
                       const Icon = p.icon;
@@ -178,60 +181,54 @@ export default function SocialImportClient() {
                           key={p.id}
                           type="button"
                           onClick={() => setPlatform(p.id)}
-                          className={`border rounded-xl p-3 flex flex-col items-center gap-1.5 transition text-center ${
-                            active
-                              ? 'border-primary bg-primary/10 text-white ring-2 ring-primary/20 scale-[1.02]'
-                              : p.color
-                          }`}
+                          className={cn(
+                            "border rounded-xl p-3 flex flex-col items-center gap-1.5 transition-colors motion-reduce:transition-none text-center",
+                            active ? 'border-dash-accent bg-dash-accent/10 !text-dash-text' : p.color
+                          )}
                         >
                           <Icon className="w-4 h-4" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">{p.label}</span>
+                          <span className="text-[10px] font-bold">{p.label}</span>
                         </button>
                       );
                     })}
                   </div>
-                </div>
+                </DashFormField>
 
                 {/* Input Text Area */}
                 <form onSubmit={handleExpandSubmit} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Social Post Captions / Ideas</label>
-                    <textarea
+                  <DashFormField label="Social post captions / ideas">
+                    <DashTextarea
                       value={sourceText}
                       onChange={(e) => setSourceText(e.target.value)}
                       placeholder="Paste your brief social post blurb, draft sentences, or conceptual notes here..."
                       rows={6}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/30 outline-none focus:border-primary transition resize-none leading-relaxed"
+                      className="resize-none leading-relaxed"
                       required
                     />
-                  </div>
+                  </DashFormField>
 
-                  <button
-                    type="submit"
-                    disabled={isExpanding || !sourceText.trim()}
-                    className="w-full bg-primary hover:bg-blue-600 text-white font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
-                  >
+                  <DashButton type="submit" disabled={isExpanding || !sourceText.trim()} className="w-full justify-center">
                     {isExpanding ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Expanding into 1,000 Word Article...</span>
+                        <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" />
+                        <span>Expanding into 1,000 word article...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 fill-current" />
-                        <span>Generate SEO Article</span>
+                        <Sparkles className="w-4 h-4" />
+                        <span>Generate SEO article</span>
                       </>
                     )}
-                  </button>
+                  </DashButton>
                 </form>
 
                 {/* Error Log */}
                 {errorMessage && (
-                  <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-xs flex items-start gap-2.5">
+                  <div className="p-4 bg-red/10 border border-red/20 text-red rounded-xl text-xs flex items-start gap-2.5">
                     <span>{errorMessage}</span>
                   </div>
                 )}
-              </div>
+              </DashCard>
             ) : (
               <VoiceRecorder />
             )}

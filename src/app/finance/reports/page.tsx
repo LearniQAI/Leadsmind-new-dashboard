@@ -6,6 +6,9 @@ import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 import { createClient } from '@/lib/supabase/client';
 import { BarChart3, Receipt, ArrowUpDown, Download, Printer, RefreshCw, Landmark, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { DashCard } from '@/components/dashboard-ui/Card';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
 
 type ReportType = 'pl' | 'vat' | 'cashflow' | 'compliance';
 
@@ -314,34 +317,33 @@ export default function ReportsPage() {
     return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(val);
   };
 
+  const riskLabel = (flag?: string) => {
+    if (!flag) return 'Low';
+    return flag.charAt(0).toUpperCase() + flag.slice(1).toLowerCase();
+  };
+
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-4xl mx-auto font-sans print:bg-white print:text-black print:px-0">
-        
+      <div className="min-h-screen bg-white px-6 py-6 max-w-4xl mx-auto print:bg-white print:text-black print:px-0">
+
         {/* Header (Hidden when printing) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 print:hidden">
           <div>
-            <h1 className="text-[22px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Financial <span className="text-[#2563eb]">Reports</span>
+            <h1 className="text-[22px] font-bold !text-dash-text">
+              Financial <span className="text-dash-accent">Reports</span>
             </h1>
-            <p className="text-[11px] uppercase tracking-[0.8px] font-medium mt-1 text-[#4a5a82]">
+            <p className="text-[12px] font-medium mt-1 !text-dash-textMuted">
               Profit & Loss, VAT, and Cash Flow reports for your business
             </p>
           </div>
-          
+
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-t1 border border-white/10 text-[11px] font-bold rounded-xl transition-all"
-            >
+            <DashButton onClick={handleExportCSV} variant="secondary" size="sm">
               <Download size={13} /> Export CSV
-            </button>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-t1 border border-white/10 text-[11px] font-bold rounded-xl transition-all"
-            >
+            </DashButton>
+            <DashButton onClick={handlePrint} variant="secondary" size="sm">
               <Printer size={13} /> Print
-            </button>
+            </DashButton>
           </div>
         </div>
 
@@ -350,79 +352,79 @@ export default function ReportsPage() {
           {/* Card 1: Profit & Loss */}
           <button
             onClick={() => setActiveReport('pl')}
-            className={`p-5 rounded-2xl border flex flex-col items-start text-left gap-2 transition-all ${
+            className={`p-5 rounded-2xl border flex flex-col items-start text-left gap-2 transition-colors motion-reduce:transition-none ${
               activeReport === 'pl'
-                ? 'bg-[#2563eb]/10 border-[#2563eb] shadow-md shadow-blue-500/5'
-                : 'bg-[rgba(12,21,53,0.85)] border-[rgba(255,255,255,0.07)] hover:border-white/10'
+                ? 'bg-dash-accent/10 border-dash-accent shadow-md shadow-dash-accent/5'
+                : 'bg-white border-dash-border hover:border-dash-text/15'
             }`}
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeReport === 'pl' ? 'bg-[#2563eb] text-white' : 'bg-blue-500/10 text-[#2563eb]'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeReport === 'pl' ? 'bg-dash-accent text-white' : 'bg-dash-accent/10 text-dash-accent'}`}>
               <BarChart3 size={16} />
             </div>
             <div>
-              <span className="text-[13px] font-bold text-[#eef2ff] block">Profit & Loss</span>
-              <span className="text-[11px] text-[#94a3c8] mt-0.5 block">Income vs expenses statement</span>
+              <span className="text-[13px] font-bold !text-dash-text block">Profit & Loss</span>
+              <span className="text-[11px] !text-dash-textMuted mt-0.5 block">Income vs expenses statement</span>
             </div>
           </button>
 
           {/* Card 2: VAT Report */}
           <button
             onClick={() => setActiveReport('vat')}
-            className={`p-5 rounded-2xl border flex flex-col items-start text-left gap-2 transition-all ${
+            className={`p-5 rounded-2xl border flex flex-col items-start text-left gap-2 transition-colors motion-reduce:transition-none ${
               activeReport === 'vat'
-                ? 'bg-[#10b981]/10 border-[#10b981] shadow-md shadow-emerald-500/5'
-                : 'bg-[rgba(12,21,53,0.85)] border-[rgba(255,255,255,0.07)] hover:border-white/10'
+                ? 'bg-green/10 border-green shadow-md shadow-green/5'
+                : 'bg-white border-dash-border hover:border-dash-text/15'
             }`}
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeReport === 'vat' ? 'bg-[#10b981] text-white' : 'bg-emerald-500/10 text-[#10b981]'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeReport === 'vat' ? 'bg-green text-white' : 'bg-green/10 text-green'}`}>
               <Receipt size={16} />
             </div>
             <div>
-              <span className="text-[13px] font-bold text-[#eef2ff] block">VAT Report (VAT201)</span>
-              <span className="text-[11px] text-[#94a3c8] mt-0.5 block">Input & output VAT calculations</span>
+              <span className="text-[13px] font-bold !text-dash-text block">VAT Report (VAT201)</span>
+              <span className="text-[11px] !text-dash-textMuted mt-0.5 block">Input & output VAT calculations</span>
             </div>
           </button>
 
           {/* Card 3: Cash Flow */}
           <button
             onClick={() => setActiveReport('cashflow')}
-            className={`p-5 rounded-2xl border flex flex-col items-start text-left gap-2 transition-all ${
+            className={`p-5 rounded-2xl border flex flex-col items-start text-left gap-2 transition-colors motion-reduce:transition-none ${
               activeReport === 'cashflow'
-                ? 'bg-[#f59e0b]/10 border-[#f59e0b] shadow-md shadow-amber-500/5'
-                : 'bg-[rgba(12,21,53,0.85)] border-[rgba(255,255,255,0.07)] hover:border-white/10'
+                ? 'bg-amber-50 border-amber-500 shadow-md shadow-amber-500/5'
+                : 'bg-white border-dash-border hover:border-dash-text/15'
             }`}
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeReport === 'cashflow' ? 'bg-[#f59e0b] text-white' : 'bg-amber-500/10 text-[#f59e0b]'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeReport === 'cashflow' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-600'}`}>
               <ArrowUpDown size={16} />
             </div>
             <div>
-              <span className="text-[13px] font-bold text-[#eef2ff] block">Cash Flow</span>
-              <span className="text-[11px] text-[#94a3c8] mt-0.5 block">12-month money inflow/outflow</span>
+              <span className="text-[13px] font-bold !text-dash-text block">Cash Flow</span>
+              <span className="text-[11px] !text-dash-textMuted mt-0.5 block">12-month money inflow/outflow</span>
             </div>
           </button>
 
           {/* Card 4: FICA Compliance */}
           <button
             onClick={() => setActiveReport('compliance')}
-            className={`p-5 rounded-2xl border flex flex-col items-start text-left gap-2 transition-all ${
+            className={`p-5 rounded-2xl border flex flex-col items-start text-left gap-2 transition-colors motion-reduce:transition-none ${
               activeReport === 'compliance'
-                ? 'bg-[#8b5cf6]/10 border-[#8b5cf6] shadow-md shadow-purple-500/5'
-                : 'bg-[rgba(12,21,53,0.85)] border-[rgba(255,255,255,0.07)] hover:border-white/10'
+                ? 'bg-purple-50 border-purple-500 shadow-md shadow-purple-500/5'
+                : 'bg-white border-dash-border hover:border-dash-text/15'
             }`}
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeReport === 'compliance' ? 'bg-[#8b5cf6] text-white' : 'bg-purple-500/10 text-[#8b5cf6]'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeReport === 'compliance' ? 'bg-purple-500 text-white' : 'bg-purple-50 text-purple-600'}`}>
               <Landmark size={16} />
             </div>
             <div>
-              <span className="text-[13px] font-bold text-[#eef2ff] block">FICA KYC Audit</span>
-              <span className="text-[11px] text-[#94a3c8] mt-0.5 block">Audit trails & FICA report exports</span>
+              <span className="text-[13px] font-bold !text-dash-text block">FICA KYC Audit</span>
+              <span className="text-[11px] !text-dash-textMuted mt-0.5 block">Audit trails & FICA report exports</span>
             </div>
           </button>
         </div>
 
         {/* Filters Panel per Report (Hidden when printing) */}
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 mb-6 flex items-center justify-between print:hidden">
-          <span className="text-[12px] font-semibold text-[#94a3c8]">
+        <DashCard padding="default" interactive={false} className="mb-6 flex items-center justify-between print:hidden">
+          <span className="text-[12px] font-semibold !text-dash-textMuted">
             Configure Report Parameters
           </span>
 
@@ -431,7 +433,7 @@ export default function ReportsPage() {
               <select
                 value={plPeriod}
                 onChange={e => setPlPeriod(e.target.value)}
-                className="bg-[#070d24] border border-white/5 rounded-xl py-2 px-3 text-[12px] text-[#eef2ff] outline-none"
+                className="bg-dash-surface border border-dash-border rounded-xl py-2 px-3 text-[12px] !text-dash-text outline-none"
               >
                 <option value="this-month">This Month</option>
                 <option value="last-month">Last Month</option>
@@ -444,7 +446,7 @@ export default function ReportsPage() {
               <select
                 value={vatPeriod}
                 onChange={e => setVatPeriod(e.target.value)}
-                className="bg-[#070d24] border border-white/5 rounded-xl py-2 px-3 text-[12px] text-[#eef2ff] outline-none"
+                className="bg-dash-surface border border-dash-border rounded-xl py-2 px-3 text-[12px] !text-dash-text outline-none"
               >
                 <option value="this-month">This Month</option>
                 <option value="last-month">Last Month</option>
@@ -454,7 +456,7 @@ export default function ReportsPage() {
             )}
 
             {activeReport === 'cashflow' && (
-              <span className="text-[11px] text-[#4a5a82] font-semibold uppercase">
+              <span className="text-[11px] !text-dash-textMuted font-semibold">
                 Past 12 Months
               </span>
             )}
@@ -465,63 +467,63 @@ export default function ReportsPage() {
                 else if (activeReport === 'vat') generateVatReport();
                 else if (activeReport === 'cashflow') generateCashFlowReport();
               }}
-              className="p-2 rounded-xl bg-white/5 border border-white/5 text-t3 hover:text-t1 hover:bg-white/10 transition-colors"
+              className="p-2 rounded-xl bg-dash-surface border border-dash-border !text-dash-textMuted hover:!text-dash-text hover:bg-dash-border/60 transition-colors motion-reduce:transition-none"
               title="Refresh Report Data"
             >
-              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={13} className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />
             </button>
           </div>
-        </div>
+        </DashCard>
 
         {/* Generated Report Content */}
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-8 print:border-none print:bg-white print:p-0">
-          
+        <DashCard padding="default" interactive={false} className="print:border-none print:bg-white print:p-0">
+
           {/* Print Only Header */}
           <div className="hidden print:block mb-8">
-            <h2 className="text-xl font-bold text-black uppercase tracking-tight">LeadsMind Financial Report</h2>
+            <h2 className="text-xl font-bold text-black">LeadsMind Financial Report</h2>
             <p className="text-xs text-slate-500 mt-1">Generated on {new Date().toLocaleString()}</p>
           </div>
 
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center gap-2">
-              <RefreshCw className="animate-spin text-[#2563eb]" size={24} />
-              <span className="text-[12px] text-t3">Generating report metrics...</span>
+              <RefreshCw className="animate-spin motion-reduce:animate-none text-dash-accent" size={24} />
+              <span className="text-[12px] !text-dash-textMuted">Generating report metrics...</span>
             </div>
           ) : (
             <>
               {/* Tab 1: P&L Statement */}
               {activeReport === 'pl' && plData && (
                 <div>
-                  <div className="border-b border-white/5 pb-4 mb-6">
-                    <h3 className="text-[16px] font-bold text-[#eef2ff] print:text-black" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <div className="border-b border-dash-border pb-4 mb-6">
+                    <h3 className="text-[16px] font-bold !text-dash-text print:text-black">
                       Profit & Loss Statement
                     </h3>
-                    <span className="text-[11px] text-[#4a5a82] font-semibold uppercase">
+                    <span className="text-[11px] !text-dash-textMuted font-semibold capitalize">
                       Period: {plPeriod.replace('-', ' ')}
                     </span>
                   </div>
 
                   {/* Income Section */}
                   <div className="mb-6">
-                    <h4 className="text-[12px] font-bold uppercase tracking-[1px] text-[#10b981] mb-3">
+                    <h4 className="text-[12px] font-bold text-green mb-3">
                       Revenue / Income
                     </h4>
                     <table className="w-full text-left text-[12px]">
                       <tbody>
                         {plData.income.map((row, idx) => (
-                          <tr key={idx} className="border-b border-white/[0.02] py-2">
-                            <td className="py-2.5 text-[#eef2ff] print:text-black">{row.label}</td>
-                            <td className="py-2.5 text-right font-semibold text-[#eef2ff] print:text-black font-space">{formatCurrency(row.amount)}</td>
+                          <tr key={idx} className="border-b border-dash-border py-2">
+                            <td className="py-2.5 !text-dash-text print:text-black">{row.label}</td>
+                            <td className="py-2.5 text-right font-semibold !text-dash-text print:text-black">{formatCurrency(row.amount)}</td>
                           </tr>
                         ))}
                         {plData.income.length === 0 && (
                           <tr>
-                            <td colSpan={2} className="py-4 text-[#4a5a82] italic">No income recorded for this period</td>
+                            <td colSpan={2} className="py-4 !text-dash-textMuted italic">No income recorded for this period</td>
                           </tr>
                         )}
-                        <tr className="font-bold border-t border-white/10">
-                          <td className="py-3 text-[#10b981]">Total Revenue</td>
-                          <td className="py-3 text-right text-[#10b981] font-space">
+                        <tr className="font-bold border-t border-dash-border">
+                          <td className="py-3 text-green">Total Revenue</td>
+                          <td className="py-3 text-right text-green">
                             {formatCurrency(plData.income.reduce((s, r) => s + r.amount, 0))}
                           </td>
                         </tr>
@@ -531,25 +533,25 @@ export default function ReportsPage() {
 
                   {/* Expenses Section */}
                   <div className="mb-8">
-                    <h4 className="text-[12px] font-bold uppercase tracking-[1px] text-[#ef4444] mb-3">
+                    <h4 className="text-[12px] font-bold text-red mb-3">
                       Operating Expenses
                     </h4>
                     <table className="w-full text-left text-[12px]">
                       <tbody>
                         {plData.expenses.map((row, idx) => (
-                          <tr key={idx} className="border-b border-white/[0.02] py-2">
-                            <td className="py-2.5 text-[#eef2ff] print:text-black">{row.label}</td>
-                            <td className="py-2.5 text-right font-semibold text-[#eef2ff] print:text-black font-space">{formatCurrency(row.amount)}</td>
+                          <tr key={idx} className="border-b border-dash-border py-2">
+                            <td className="py-2.5 !text-dash-text print:text-black">{row.label}</td>
+                            <td className="py-2.5 text-right font-semibold !text-dash-text print:text-black">{formatCurrency(row.amount)}</td>
                           </tr>
                         ))}
                         {plData.expenses.length === 0 && (
                           <tr>
-                            <td colSpan={2} className="py-4 text-[#4a5a82] italic">No expenses recorded for this period</td>
+                            <td colSpan={2} className="py-4 !text-dash-textMuted italic">No expenses recorded for this period</td>
                           </tr>
                         )}
-                        <tr className="font-bold border-t border-white/10">
-                          <td className="py-3 text-[#ef4444]">Total Expenses</td>
-                          <td className="py-3 text-right text-[#ef4444] font-space">
+                        <tr className="font-bold border-t border-dash-border">
+                          <td className="py-3 text-red">Total Expenses</td>
+                          <td className="py-3 text-right text-red">
                             {formatCurrency(plData.expenses.reduce((s, r) => s + r.amount, 0))}
                           </td>
                         </tr>
@@ -558,9 +560,9 @@ export default function ReportsPage() {
                   </div>
 
                   {/* Net Profit Summary Banner */}
-                  <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between print:border-slate-300 print:text-black">
-                    <span className="text-[14px] font-bold text-[#eef2ff] print:text-black">Net Profit / Loss</span>
-                    <span className={`text-[20px] font-bold font-space ${plData.netProfit >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
+                  <div className="p-5 rounded-xl bg-dash-surface border border-dash-border flex items-center justify-between print:border-slate-300 print:text-black">
+                    <span className="text-[14px] font-bold !text-dash-text print:text-black">Net Profit / Loss</span>
+                    <span className={`text-[20px] font-bold ${plData.netProfit >= 0 ? 'text-green' : 'text-red'}`}>
                       {formatCurrency(plData.netProfit)}
                     </span>
                   </div>
@@ -570,32 +572,32 @@ export default function ReportsPage() {
               {/* Tab 2: VAT Report (VAT201) */}
               {activeReport === 'vat' && vatData && (
                 <div>
-                  <div className="border-b border-white/5 pb-4 mb-6">
-                    <h3 className="text-[16px] font-bold text-[#eef2ff] print:text-black" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <div className="border-b border-dash-border pb-4 mb-6">
+                    <h3 className="text-[16px] font-bold !text-dash-text print:text-black">
                       VAT Statement (VAT201)
                     </h3>
-                    <span className="text-[11px] text-[#4a5a82] font-semibold uppercase">
+                    <span className="text-[11px] !text-dash-textMuted font-semibold capitalize">
                       Period: {vatPeriod.replace('-', ' ')}
                     </span>
                   </div>
 
                   <div className="space-y-4 text-[12px] mb-8">
-                    <div className="flex justify-between py-3 border-b border-white/[0.03]">
-                      <span className="text-[#94a3c8] print:text-black font-medium">Output VAT (15% on sales)</span>
-                      <span className="font-bold text-[#eef2ff] print:text-black font-space">{formatCurrency(vatData.outputVat)}</span>
+                    <div className="flex justify-between py-3 border-b border-dash-border">
+                      <span className="!text-dash-textMuted print:text-black font-medium">Output VAT (15% on sales)</span>
+                      <span className="font-bold !text-dash-text print:text-black">{formatCurrency(vatData.outputVat)}</span>
                     </div>
-                    <div className="flex justify-between py-3 border-b border-white/[0.03]">
-                      <span className="text-[#94a3c8] print:text-black font-medium">Input VAT (15% on purchases)</span>
-                      <span className="font-bold text-[#eef2ff] print:text-black font-space">{formatCurrency(vatData.inputVat)}</span>
+                    <div className="flex justify-between py-3 border-b border-dash-border">
+                      <span className="!text-dash-textMuted print:text-black font-medium">Input VAT (15% on purchases)</span>
+                      <span className="font-bold !text-dash-text print:text-black">{formatCurrency(vatData.inputVat)}</span>
                     </div>
                   </div>
 
-                  <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between print:border-slate-300 print:text-black">
+                  <div className="p-5 rounded-xl bg-dash-surface border border-dash-border flex items-center justify-between print:border-slate-300 print:text-black">
                     <div>
-                      <span className="text-[13px] font-bold text-[#eef2ff] print:text-black block">Net VAT Payable to SARS</span>
-                      <span className="text-[10px] text-[#4a5a82] block mt-0.5">Negative indicates SARS refund due</span>
+                      <span className="text-[13px] font-bold !text-dash-text print:text-black block">Net VAT Payable to SARS</span>
+                      <span className="text-[10px] !text-dash-textMuted block mt-0.5">Negative indicates SARS refund due</span>
                     </div>
-                    <span className={`text-[20px] font-bold font-space ${vatData.netVat >= 0 ? 'text-[#ef4444]' : 'text-[#10b981]'}`}>
+                    <span className={`text-[20px] font-bold ${vatData.netVat >= 0 ? 'text-red' : 'text-green'}`}>
                       {formatCurrency(vatData.netVat)}
                     </span>
                   </div>
@@ -605,11 +607,11 @@ export default function ReportsPage() {
               {/* Tab 3: Cash Flow Statement */}
               {activeReport === 'cashflow' && (
                 <div>
-                  <div className="border-b border-white/5 pb-4 mb-6">
-                    <h3 className="text-[16px] font-bold text-[#eef2ff] print:text-black" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <div className="border-b border-dash-border pb-4 mb-6">
+                    <h3 className="text-[16px] font-bold !text-dash-text print:text-black">
                       Cash Flow Statement
                     </h3>
-                    <span className="text-[11px] text-[#4a5a82] font-semibold uppercase">
+                    <span className="text-[11px] !text-dash-textMuted font-semibold">
                       12-Month Inflow/Outflow Overview
                     </span>
                   </div>
@@ -617,20 +619,20 @@ export default function ReportsPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-[12px]">
                       <thead>
-                        <tr className="border-b border-white/10 font-bold text-[#4a5a82] print:text-black">
+                        <tr className="border-b border-dash-border font-bold !text-dash-textMuted print:text-black">
                           <th className="py-3">Month</th>
                           <th className="py-3 text-right">Inflow (Income)</th>
                           <th className="py-3 text-right">Outflow (Expenses)</th>
                           <th className="py-3 text-right">Net Flow</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/[0.02] print:divide-slate-200">
+                      <tbody className="divide-y divide-dash-border print:divide-slate-200">
                         {cashFlowData.map((row, idx) => (
-                          <tr key={idx} className="text-[#eef2ff] print:text-black">
+                          <tr key={idx} className="!text-dash-text print:text-black">
                             <td className="py-3 font-medium">{row.month}</td>
-                            <td className="py-3 text-right text-[#10b981] font-space font-semibold">{formatCurrency(row.income)}</td>
-                            <td className="py-3 text-right text-[#ef4444] font-space font-semibold">{formatCurrency(row.expenses)}</td>
-                            <td className={`py-3 text-right font-space font-bold ${row.net >= 0 ? 'text-[#3b82f6]' : 'text-[#ef4444]'}`}>
+                            <td className="py-3 text-right text-green font-semibold">{formatCurrency(row.income)}</td>
+                            <td className="py-3 text-right text-red font-semibold">{formatCurrency(row.expenses)}</td>
+                            <td className={`py-3 text-right font-bold ${row.net >= 0 ? 'text-dash-accent' : 'text-red'}`}>
                               {formatCurrency(row.net)}
                             </td>
                           </tr>
@@ -644,12 +646,12 @@ export default function ReportsPage() {
               {/* Tab 4: FICA Compliance Audit Panel */}
               {activeReport === 'compliance' && (
                 <div>
-                  <div className="border-b border-white/5 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="border-b border-dash-border pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <h3 className="text-[16px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                      <h3 className="text-[16px] font-bold !text-dash-text">
                         FICA Regulatory Auditing Ledger
                       </h3>
-                      <span className="text-[11px] text-[#4a5a82] font-semibold uppercase">
+                      <span className="text-[11px] !text-dash-textMuted font-semibold">
                         Generate official audit files for regulatory inspections
                       </span>
                     </div>
@@ -661,21 +663,21 @@ export default function ReportsPage() {
                         placeholder="Search by name or ID..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="w-full h-9 bg-[#04091a] border border-white/5 text-xs px-3.5 rounded-xl text-white outline-none focus:border-[#8b5cf6]/40 font-dm-sans"
+                        className="w-full h-9 bg-white border border-dash-border text-xs px-3.5 rounded-xl !text-dash-text outline-none focus:border-purple-500/40"
                       />
                     </div>
                   </div>
 
                   {loadingContacts ? (
                     <div className="py-12 flex flex-col items-center justify-center gap-2">
-                      <RefreshCw className="animate-spin text-[#8b5cf6]" size={24} />
-                      <span className="text-[12px] text-t3">Loading compliance records...</span>
+                      <RefreshCw className="animate-spin motion-reduce:animate-none text-purple-600" size={24} />
+                      <span className="text-[12px] !text-dash-textMuted">Loading compliance records...</span>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-[12px]">
                         <thead>
-                          <tr className="border-b border-white/10 font-bold text-[#4a5a82]">
+                          <tr className="border-b border-dash-border font-bold !text-dash-textMuted">
                             <th className="py-3">Contact</th>
                             <th className="py-3">ID Number</th>
                             <th className="py-3">FICA Status</th>
@@ -683,7 +685,7 @@ export default function ReportsPage() {
                             <th className="py-3 text-right">Audit PDF</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/[0.02]">
+                        <tbody className="divide-y divide-dash-border">
                           {(() => {
                             const filtered = contacts.filter(c => {
                               const q = searchQuery.toLowerCase();
@@ -695,7 +697,7 @@ export default function ReportsPage() {
                             if (filtered.length === 0) {
                               return (
                                 <tr>
-                                  <td colSpan={5} className="py-8 text-center text-[#4a5a82] italic">
+                                  <td colSpan={5} className="py-8 text-center !text-dash-textMuted italic">
                                     No matching compliance profiles found.
                                   </td>
                                 </tr>
@@ -703,40 +705,36 @@ export default function ReportsPage() {
                             }
 
                             return filtered.map((c) => (
-                              <tr key={c.id} className="text-[#eef2ff]">
+                              <tr key={c.id} className="!text-dash-text">
                                 <td className="py-3.5">
                                   <div className="font-bold">{c.first_name} {c.last_name || ''}</div>
-                                  <div className="text-[10px] text-[#4a5a82]">{c.email || 'No email'}</div>
+                                  <div className="text-[10px] !text-dash-textMuted">{c.email || 'No email'}</div>
                                 </td>
                                 <td className="py-3.5 font-mono text-[11px] font-semibold">
                                   {c.id_number || 'Missing ID'}
                                 </td>
                                 <td className="py-3.5">
-                                  <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold uppercase border ${
-                                    c.kyc_id_verified
-                                      ? 'bg-green-500/10 text-[#10b981] border-green-500/20'
-                                      : 'bg-white/5 text-[#4a5a82] border-white/5'
-                                  }`}>
+                                  <DashStatusPill variant={c.kyc_id_verified ? 'success' : 'neutral'}>
                                     {c.kyc_id_verified ? 'Verified' : 'Unverified'}
-                                  </span>
+                                  </DashStatusPill>
                                 </td>
                                 <td className="py-3.5">
-                                  <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold uppercase border ${
-                                    c.kyc_risk_flag === 'HIGH'
-                                      ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                      : c.kyc_risk_flag === 'MEDIUM'
-                                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                      : 'bg-green-500/10 text-[#10b981] border-green-500/20'
-                                  }`}>
-                                    {c.kyc_risk_flag || 'LOW'}
-                                  </span>
+                                  <DashStatusPill
+                                    variant={
+                                      c.kyc_risk_flag === 'HIGH' ? 'danger' :
+                                      c.kyc_risk_flag === 'MEDIUM' ? 'warning' :
+                                      'success'
+                                    }
+                                  >
+                                    {riskLabel(c.kyc_risk_flag)}
+                                  </DashStatusPill>
                                 </td>
                                 <td className="py-3.5 text-right">
                                   <a
                                     href={`/api/kyc/reports/download/${c.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-[#8b5cf6] hover:text-white bg-[#8b5cf6]/5 hover:bg-[#8b5cf6]/15 px-3 py-1.5 rounded-lg border border-[#8b5cf6]/10 hover:border-[#8b5cf6]/20 transition-all"
+                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg border border-purple-200 transition-colors motion-reduce:transition-none"
                                   >
                                     Export <Download size={11} />
                                   </a>
@@ -750,8 +748,8 @@ export default function ReportsPage() {
                   )}
 
                   {/* FICA Regulatory Audit Info card */}
-                  <div className="bg-[#111d47]/20 border border-white/5 p-4 rounded-2xl flex gap-3 text-[10.5px] text-[#4a5a82] leading-relaxed mt-6">
-                    <AlertCircle size={14} className="shrink-0 text-[#8b5cf6] mt-0.5" />
+                  <div className="bg-purple-50 border border-purple-100 p-4 rounded-2xl flex gap-3 text-[11px] !text-dash-textMuted leading-relaxed mt-6">
+                    <AlertCircle size={14} className="shrink-0 text-purple-600 mt-0.5" />
                     <span>
                       <strong>Regulatory Auditing Guide:</strong> Under the Financial Intelligence Centre Act (FICA), this platform keeps electronic audit logs for all verifications. Exporting PDF reports compiles legal profiles containing client details, HANIS outputs, sanctions screen details, and POPIA timestamps suitable for regulatory inspections.
                     </span>
@@ -762,7 +760,7 @@ export default function ReportsPage() {
             </>
           )}
 
-        </div>
+        </DashCard>
       </div>
     </Wrapper>
   );

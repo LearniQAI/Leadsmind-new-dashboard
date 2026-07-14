@@ -5,6 +5,8 @@ import Wrapper from '@/components/layouts/DefaultWrapper';
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 import { Plus, Search, Edit2, Trash2, X, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { DashCard } from '@/components/dashboard-ui/Card';
+import { DashButton } from '@/components/dashboard-ui/Button';
 
 interface Transaction {
   id: string;
@@ -170,10 +172,10 @@ export default function TransactionsPage() {
 
   const getSourceBadgeClass = (source: string) => {
     switch (source) {
-      case 'invoice': return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
-      case 'expense': return 'bg-red-500/10 text-red-400 border border-red-500/20';
-      case 'bank_feed': return 'bg-green-500/10 text-green-400 border border-green-500/20';
-      default: return 'bg-white/5 text-t3 border border-white/10';
+      case 'invoice': return 'bg-dash-accent/10 text-dash-accent border border-dash-accent/20';
+      case 'expense': return 'bg-red/10 text-red border border-red/20';
+      case 'bank_feed': return 'bg-green/10 text-green border border-green/20';
+      default: return 'bg-dash-surface !text-dash-textMuted border border-dash-border';
     }
   };
 
@@ -190,54 +192,51 @@ export default function TransactionsPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-5xl mx-auto font-sans">
+      <div className="min-h-screen bg-white px-6 py-6 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-[22px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            <h1 className="text-[22px] font-bold !text-dash-text">
               Transactions
             </h1>
-            <p className="text-[11px] uppercase tracking-[0.8px] font-medium mt-1 text-[#4a5a82]">
+            <p className="text-[12px] font-medium mt-1 !text-dash-textMuted">
               All income and expenses across your workspace
             </p>
           </div>
-          <button
-            onClick={handleOpenCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-[12px] font-bold text-white rounded-xl shadow-lg shadow-blue-500/10 transition-all font-space"
-          >
+          <DashButton onClick={handleOpenCreate} variant="primary" size="sm">
             <Plus size={16} /> Add Transaction
-          </button>
+          </DashButton>
         </div>
 
         {/* Filters */}
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 mb-6 flex flex-wrap gap-4 items-center">
+        <DashCard padding="default" interactive={false} className="mb-6 flex flex-wrap gap-4 items-center">
           {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-t4" size={14} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 !text-dash-textMuted" size={14} />
             <input
               type="text"
               placeholder="Search description or reference..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full bg-[#070d24] border border-white/5 rounded-xl py-2 pl-10 pr-4 text-[12px] text-[#eef2ff] outline-none focus:border-[#2563eb]/50 transition-all"
+              className="w-full bg-dash-surface border border-dash-border rounded-xl py-2 pl-10 pr-4 text-[12px] !text-dash-text outline-none focus:border-dash-accent/50 transition-colors"
             />
           </div>
 
           {/* Date range picker */}
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[#4a5a82] font-semibold uppercase">From</span>
+            <span className="text-[11px] !text-dash-textMuted font-semibold">From</span>
             <input
               type="date"
               value={fromDate}
               onChange={e => setFromDate(e.target.value)}
-              className="bg-[#070d24] border border-white/5 rounded-xl py-1.5 px-3 text-[12px] text-[#eef2ff] outline-none focus:border-[#2563eb]/50 transition-all"
+              className="bg-dash-surface border border-dash-border rounded-xl py-1.5 px-3 text-[12px] !text-dash-text outline-none focus:border-dash-accent/50 transition-colors"
             />
-            <span className="text-[11px] text-[#4a5a82] font-semibold uppercase">To</span>
+            <span className="text-[11px] !text-dash-textMuted font-semibold">To</span>
             <input
               type="date"
               value={toDate}
               onChange={e => setToDate(e.target.value)}
-              className="bg-[#070d24] border border-white/5 rounded-xl py-1.5 px-3 text-[12px] text-[#eef2ff] outline-none focus:border-[#2563eb]/50 transition-all"
+              className="bg-dash-surface border border-dash-border rounded-xl py-1.5 px-3 text-[12px] !text-dash-text outline-none focus:border-dash-accent/50 transition-colors"
             />
           </div>
 
@@ -245,7 +244,7 @@ export default function TransactionsPage() {
           <select
             value={sourceType}
             onChange={e => setSourceType(e.target.value)}
-            className="bg-[#070d24] border border-white/5 rounded-xl py-2 px-3 text-[12px] text-[#eef2ff] outline-none focus:border-[#2563eb]/50 transition-all"
+            className="bg-dash-surface border border-dash-border rounded-xl py-2 px-3 text-[12px] !text-dash-text outline-none focus:border-dash-accent/50 transition-colors"
           >
             <option value="">All Sources</option>
             <option value="invoice">Invoice</option>
@@ -253,27 +252,27 @@ export default function TransactionsPage() {
             <option value="bank_feed">Bank</option>
             <option value="manual">Manual</option>
           </select>
-        </div>
+        </DashCard>
 
         {/* Table List */}
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl overflow-hidden">
+        <DashCard padding="none" interactive={false} className="overflow-hidden">
           {loading ? (
             <div className="p-8 space-y-3">
               {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="h-10 rounded-lg bg-white/[0.02] animate-pulse" />
+                <div key={i} className="h-10 rounded-lg bg-dash-surface animate-pulse motion-reduce:animate-none" />
               ))}
             </div>
           ) : transactions.length === 0 ? (
-            <div className="p-12 text-center text-t3 flex flex-col items-center gap-2">
-              <AlertCircle size={24} className="text-[#4a5a82]" />
-              <p className="text-[13px] text-[#94a3c8]">No transactions matched your criteria.</p>
+            <div className="p-12 text-center !text-dash-textMuted flex flex-col items-center gap-2">
+              <AlertCircle size={24} className="!text-dash-textMuted" />
+              <p className="text-[13px] !text-dash-textMuted">No transactions matched your criteria.</p>
             </div>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b border-white/5 text-[11px] font-semibold text-[#4a5a82] uppercase tracking-[0.5px] bg-white/[0.01]">
+                    <tr className="border-b border-dash-border text-[11px] font-semibold !text-dash-textMuted uppercase tracking-wide bg-dash-surface">
                       <th className="py-4 px-6">Date</th>
                       <th className="py-4 px-6">Description</th>
                       <th className="py-4 px-6">Reference</th>
@@ -282,32 +281,32 @@ export default function TransactionsPage() {
                       <th className="py-4 px-6 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.02]">
+                  <tbody className="divide-y divide-dash-border">
                     {transactions.map(tx => (
-                      <tr key={tx.id} className="text-[12px] text-[#eef2ff] hover:bg-white/[0.01] transition-colors">
-                        <td className="py-4 px-6 text-[#94a3c8]">{tx.date}</td>
+                      <tr key={tx.id} className="text-[12px] !text-dash-text hover:bg-dash-surface/60 transition-colors motion-reduce:transition-none">
+                        <td className="py-4 px-6 !text-dash-textMuted">{tx.date}</td>
                         <td className="py-4 px-6 font-medium">{tx.description}</td>
-                        <td className="py-4 px-6 text-[#94a3c8]">{tx.reference || '-'}</td>
+                        <td className="py-4 px-6 !text-dash-textMuted">{tx.reference || '-'}</td>
                         <td className="py-4 px-6">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getSourceBadgeClass(tx.source_type)}`}>
                             {getSourceLabel(tx.source_type)}
                           </span>
                         </td>
-                        <td className={`py-4 px-6 text-right font-semibold font-space ${tx.total_amount >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
+                        <td className={`py-4 px-6 text-right font-semibold ${tx.total_amount >= 0 ? 'text-green' : 'text-red'}`}>
                           {tx.total_amount >= 0 ? '+' : ''}{formatCurrency(tx.total_amount)}
                         </td>
                         <td className="py-4 px-6 text-center">
                           <div className="flex items-center justify-center gap-3">
                             <button
                               onClick={() => handleOpenEdit(tx)}
-                              className="text-t3 hover:text-[#2563eb] transition-colors"
+                              className="!text-dash-textMuted hover:text-dash-accent transition-colors"
                               title="Edit"
                             >
                               <Edit2 size={13} />
                             </button>
                             <button
                               onClick={() => handleDelete(tx.id)}
-                              className="text-t3 hover:text-[#ef4444] transition-colors"
+                              className="!text-dash-textMuted hover:text-red transition-colors"
                               title="Delete"
                             >
                               <Trash2 size={13} />
@@ -321,22 +320,22 @@ export default function TransactionsPage() {
               </div>
 
               {/* Pagination */}
-              <div className="border-t border-white/5 p-4 flex items-center justify-between">
-                <span className="text-[11px] text-[#4a5a82] font-semibold">
+              <div className="border-t border-dash-border p-4 flex items-center justify-between">
+                <span className="text-[11px] !text-dash-textMuted font-semibold">
                   Page {page} of {totalPages}
                 </span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="px-3 py-1 bg-white/[0.03] border border-white/5 text-t3 hover:text-t1 disabled:opacity-40 disabled:hover:text-t3 text-[11px] rounded-lg transition-colors"
+                    className="px-3 py-1 bg-dash-surface border border-dash-border !text-dash-textMuted hover:!text-dash-text disabled:opacity-40 disabled:hover:!text-dash-textMuted text-[11px] rounded-lg transition-colors"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="px-3 py-1 bg-white/[0.03] border border-white/5 text-t3 hover:text-t1 disabled:opacity-40 disabled:hover:text-t3 text-[11px] rounded-lg transition-colors"
+                    className="px-3 py-1 bg-dash-surface border border-dash-border !text-dash-textMuted hover:!text-dash-text disabled:opacity-40 disabled:hover:!text-dash-textMuted text-[11px] rounded-lg transition-colors"
                   >
                     Next
                   </button>
@@ -344,19 +343,19 @@ export default function TransactionsPage() {
               </div>
             </>
           )}
-        </div>
+        </DashCard>
 
         {/* Create/Edit Modal */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-[#000]/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/[0.01]">
-                <h3 className="text-[15px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+          <div className="fixed inset-0 bg-dash-text/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="bg-white border border-dash-border rounded-2xl w-full max-w-md overflow-hidden shadow-xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-5 border-b border-dash-border bg-dash-surface">
+                <h3 className="text-[15px] font-bold !text-dash-text">
                   {modalMode === 'create' ? 'Add Transaction' : 'Edit Transaction'}
                 </h3>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-t3 hover:text-t1 transition-colors"
+                  className="!text-dash-textMuted hover:!text-dash-text transition-colors"
                 >
                   <X size={16} />
                 </button>
@@ -365,25 +364,25 @@ export default function TransactionsPage() {
               <form onSubmit={handleSave} className="p-5 space-y-4">
                 {/* Date */}
                 <div>
-                  <label className="block text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.8px] mb-1.5">Date</label>
+                  <label className="block text-[12px] font-semibold !text-dash-textMuted mb-1.5">Date</label>
                   <input
                     type="date"
                     value={txDate}
                     onChange={e => setTxDate(e.target.value)}
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl py-2 px-3 text-[12px] text-[#eef2ff] outline-none focus:border-[#2563eb]/50 transition-all"
+                    className="w-full bg-dash-surface border border-dash-border rounded-xl py-2 px-3 text-[12px] !text-dash-text outline-none focus:border-dash-accent/50 transition-colors"
                     required
                   />
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="block text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.8px] mb-1.5">Description</label>
+                  <label className="block text-[12px] font-semibold !text-dash-textMuted mb-1.5">Description</label>
                   <input
                     type="text"
                     value={txDescription}
                     onChange={e => setTxDescription(e.target.value)}
                     placeholder="e.g. Server hosting subscription"
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl py-2 px-3 text-[12px] text-[#eef2ff] outline-none focus:border-[#2563eb]/50 transition-all"
+                    className="w-full bg-dash-surface border border-dash-border rounded-xl py-2 px-3 text-[12px] !text-dash-text outline-none focus:border-dash-accent/50 transition-colors"
                     required
                   />
                 </div>
@@ -391,7 +390,7 @@ export default function TransactionsPage() {
                 {/* Amount & Type */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.8px] mb-1.5">Amount (ZAR)</label>
+                    <label className="block text-[12px] font-semibold !text-dash-textMuted mb-1.5">Amount (ZAR)</label>
                     <input
                       type="number"
                       step="0.01"
@@ -399,24 +398,24 @@ export default function TransactionsPage() {
                       value={txAmount}
                       onChange={e => setTxAmount(e.target.value)}
                       placeholder="0.00"
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl py-2 px-3 text-[12px] text-[#eef2ff] outline-none focus:border-[#2563eb]/50 transition-all font-space"
+                      className="w-full bg-dash-surface border border-dash-border rounded-xl py-2 px-3 text-[12px] !text-dash-text outline-none focus:border-dash-accent/50 transition-colors"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.8px] mb-1.5">Type</label>
-                    <div className="flex bg-[#070d24] border border-white/5 rounded-xl p-1 gap-1">
+                    <label className="block text-[12px] font-semibold !text-dash-textMuted mb-1.5">Type</label>
+                    <div className="flex bg-dash-surface border border-dash-border rounded-xl p-1 gap-1">
                       <button
                         type="button"
                         onClick={() => setTxType('income')}
-                        className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-all ${txType === 'income' ? 'bg-[#10b981]/20 text-[#10b981]' : 'text-[#4a5a82]'}`}
+                        className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-colors ${txType === 'income' ? 'bg-green/20 text-green' : '!text-dash-textMuted'}`}
                       >
                         Income
                       </button>
                       <button
                         type="button"
                         onClick={() => setTxType('expense')}
-                        className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-all ${txType === 'expense' ? 'bg-[#ef4444]/20 text-[#ef4444]' : 'text-[#4a5a82]'}`}
+                        className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-colors ${txType === 'expense' ? 'bg-red/20 text-red' : '!text-dash-textMuted'}`}
                       >
                         Expense
                       </button>
@@ -426,31 +425,24 @@ export default function TransactionsPage() {
 
                 {/* Reference */}
                 <div>
-                  <label className="block text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.8px] mb-1.5">Reference (Optional)</label>
+                  <label className="block text-[12px] font-semibold !text-dash-textMuted mb-1.5">Reference (Optional)</label>
                   <input
                     type="text"
                     value={txReference}
                     onChange={e => setTxReference(e.target.value)}
                     placeholder="e.g. INV-0043"
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl py-2 px-3 text-[12px] text-[#eef2ff] outline-none focus:border-[#2563eb]/50 transition-all"
+                    className="w-full bg-dash-surface border border-dash-border rounded-xl py-2 px-3 text-[12px] !text-dash-text outline-none focus:border-dash-accent/50 transition-colors"
                   />
                 </div>
 
                 {/* Submit */}
                 <div className="pt-2 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 border border-white/5 hover:bg-white/5 text-[11px] font-bold rounded-xl text-t3 hover:text-t1 transition-colors"
-                  >
+                  <DashButton type="button" variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>
                     Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-[11px] font-bold rounded-xl text-white transition-colors"
-                  >
+                  </DashButton>
+                  <DashButton type="submit" variant="primary" size="sm">
                     Save Transaction
-                  </button>
+                  </DashButton>
                 </div>
               </form>
             </div>

@@ -40,55 +40,33 @@ export function BuilderTopbar() {
   }, [state.lastSaved, state.hasUnsavedChanges]);
 
   return (
-    <div 
-      className="app__header__area" 
-      style={{ 
-        position: 'relative', 
-        zIndex: 10, 
-        flexShrink: 0, 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        padding: '0 24px',
-        height: 64,
-        background: 'var(--n800)',
-        borderBottom: '1px solid var(--bdr)'
-      }}
-    >
-      
+    <div className="relative z-10 shrink-0 flex items-center justify-between px-6 h-16 bg-dash-surface border-b border-dash-border">
+
       {/* Left Side: Navigation & Name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div className="flex items-center gap-4">
         <button
           onClick={() => router.push('/forms')}
-          className="builder-action-btn"
-          style={{ 
-            padding: '8px', 
-            background: 'rgba(255,255,255,0.03)', 
-            border: '1px solid var(--bdr)', 
-            borderRadius: 'var(--r8)',
-            color: 'var(--t1)'
-          }}
+          className="p-2 bg-white border border-dash-border rounded-lg !text-dash-text hover:bg-dash-border/40 transition-colors motion-reduce:transition-none"
           title="Back to Forms"
         >
           <ArrowLeft size={16} />
         </button>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div className="flex flex-col gap-0.5">
           <input
             type="text"
             value={state.formName}
             onChange={(e) => dispatch({ type: 'UPDATE_FORM_NAME', name: e.target.value })}
-            className="bg-transparent border-none text-white text-sm font-black uppercase tracking-tight focus:outline-none focus:ring-0 placeholder-white/30 p-0 h-6"
-            style={{ fontFamily: 'Space Grotesk, sans-serif', width: 220 }}
+            className="bg-transparent border-none !text-dash-text text-sm font-bold focus:outline-none focus:ring-0 placeholder:!text-dash-textMuted p-0 h-6 w-[220px]"
             placeholder="Name your form..."
           />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="flex items-center gap-1.5">
             {state.hasUnsavedChanges ? (
-              <AlertCircle size={10} className="text-amber-500 animate-pulse" />
+              <AlertCircle size={10} className="text-amber-500 animate-pulse motion-reduce:animate-none" />
             ) : (
-              <Check size={10} className="text-emerald-500" />
+              <Check size={10} className="text-green" />
             )}
-            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+            <span className="text-[10px] font-bold !text-dash-textMuted">
               {relativeSavedTime}
             </span>
           </div>
@@ -96,100 +74,53 @@ export function BuilderTopbar() {
       </div>
 
       {/* Right Side: Actions */}
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button 
+      <div className="flex gap-2.5">
+        <button
           onClick={() => dispatch({ type: 'SET_MODE', mode: 'preview' })}
           disabled={state.fields.length === 0}
-          className="builder-action-btn flex items-center gap-2"
-          style={{
-            padding: '8px 16px',
-            fontSize: 11,
-            fontWeight: 900,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            borderRadius: 'var(--r8)',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid var(--bdr)',
-            color: 'var(--t1)',
-            opacity: state.fields.length === 0 ? 0.5 : 1,
-            cursor: state.fields.length === 0 ? 'not-allowed' : 'pointer'
-          }}
+          className="flex items-center gap-2 px-4 py-2 text-[11px] font-bold rounded-lg bg-white border border-dash-border !text-dash-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors motion-reduce:transition-none"
         >
           <Play size={12} /> Preview
         </button>
 
-        <button 
+        <button
           onClick={saveForm}
           disabled={state.isSaving || !state.hasUnsavedChanges}
-          className="builder-action-btn flex items-center gap-2"
-          style={{
-            padding: '8px 16px',
-            fontSize: 11,
-            fontWeight: 900,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            borderRadius: 'var(--r8)',
-            background: state.hasUnsavedChanges ? 'rgba(37,99,235,0.1)' : 'rgba(255,255,255,0.01)',
-            border: state.hasUnsavedChanges ? '1px solid rgba(37,99,235,0.3)' : '1px solid var(--bdr)',
-            color: state.hasUnsavedChanges ? '#60a5fa' : 'var(--t3)',
-            cursor: (!state.hasUnsavedChanges || state.isSaving) ? 'not-allowed' : 'pointer'
-          }}
+          className={`flex items-center gap-2 px-4 py-2 text-[11px] font-bold rounded-lg border transition-colors motion-reduce:transition-none disabled:cursor-not-allowed ${
+            state.hasUnsavedChanges
+              ? 'bg-dash-accent/10 border-dash-accent/30 text-dash-accent'
+              : 'bg-dash-surface border-dash-border !text-dash-textMuted'
+          }`}
         >
           {state.isSaving ? (
             <>
-              <Loader2 size={12} className="animate-spin" /> Saving...
+              <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> Saving...
             </>
           ) : (
-            'Save Draft'
+            'Save draft'
           )}
         </button>
 
-        <button 
+        <button
           onClick={() => {
             if (state.formId) {
               router.push(`/forms/${state.formId}/automations`);
             }
           }}
           disabled={!state.formId}
-          className="builder-action-btn flex items-center gap-2" 
-          style={{
-            padding: '8px 16px',
-            fontSize: 11,
-            fontWeight: 900,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            borderRadius: 'var(--r8)',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid var(--bdr)',
-            color: 'var(--t1)',
-            cursor: !state.formId ? 'not-allowed' : 'pointer',
-            opacity: !state.formId ? 0.4 : 1
-          }}
+          className="flex items-center gap-2 px-4 py-2 text-[11px] font-bold rounded-lg bg-white border border-dash-border !text-dash-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors motion-reduce:transition-none"
         >
           Automations
         </button>
 
-        <button 
+        <button
           onClick={() => {
             if (state.formId) {
               router.push(`/forms/${state.formId}/governance`);
             }
           }}
           disabled={!state.formId}
-          className="builder-action-btn flex items-center gap-2" 
-          style={{
-            padding: '8px 16px',
-            fontSize: 11,
-            fontWeight: 900,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            borderRadius: 'var(--r8)',
-            background: 'var(--primary)',
-            border: 'none',
-            color: 'white',
-            cursor: !state.formId ? 'not-allowed' : 'pointer',
-            opacity: !state.formId ? 0.4 : 1
-          }}
+          className="flex items-center gap-2 px-4 py-2 text-[11px] font-bold rounded-lg bg-dash-accent text-white border-none disabled:opacity-40 disabled:cursor-not-allowed transition-colors motion-reduce:transition-none"
         >
           Publish
         </button>

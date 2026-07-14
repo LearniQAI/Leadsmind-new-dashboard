@@ -19,7 +19,7 @@ export default async function AutomationsPage({ params }: PageProps) {
 
   return (
     <Wrapper>
-      <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)] text-white">
+      <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)]">
         <AutomationsClient course={course} />
       </div>
     </Wrapper>

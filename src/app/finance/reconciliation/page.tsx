@@ -6,6 +6,7 @@ import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 import { createClient } from '@/lib/supabase/client';
 import { Landmark, FileText, CheckCircle, AlertCircle, ArrowRight, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { DashCard } from '@/components/dashboard-ui/Card';
 
 interface BankTransaction {
   id: string;
@@ -99,7 +100,7 @@ export default function ReconciliationPage() {
       if (invError) throw invError;
 
       toast.success(`Successfully reconciled transaction with Invoice ${invoice.invoice_number || 'draft'}`);
-      
+
       // Remove reconciled items from state
       setBankTxs(prev => prev.filter(t => t.id !== selectedTx.id));
       setInvoices(prev => prev.filter(i => i.id !== invoice.id));
@@ -117,42 +118,42 @@ export default function ReconciliationPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-5xl mx-auto font-sans">
+      <div className="min-h-screen bg-white px-6 py-6 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-[22px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            <h1 className="text-[22px] font-bold !text-dash-text">
               Reconciliation
             </h1>
-            <p className="text-[11px] uppercase tracking-[0.8px] font-medium mt-1 text-[#4a5a82]">
+            <p className="text-[12px] font-medium mt-1 !text-dash-textMuted">
               Match your bank transactions to invoices with one click
             </p>
           </div>
           <button
             onClick={fetchData}
-            className="w-9 h-9 rounded-xl border border-white/5 bg-white/[0.03] flex items-center justify-center text-t3 hover:text-t1 hover:bg-white/[0.08] transition-colors"
+            className="w-9 h-9 rounded-xl border border-dash-border bg-dash-surface flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-border/60 transition-colors motion-reduce:transition-none"
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />
           </button>
         </div>
 
         {/* Selected Transaction Action Banner */}
         {selectedTx && (
-          <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[#eef2ff] text-[12px] flex items-center justify-between animate-in fade-in duration-200">
+          <div className="mb-6 p-4 rounded-xl bg-dash-accent/10 border border-dash-accent/20 !text-dash-text text-[12px] flex items-center justify-between animate-in fade-in duration-200 motion-reduce:animate-none">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-[#3b82f6]">
+              <div className="w-8 h-8 rounded-lg bg-dash-accent/20 flex items-center justify-center text-dash-accent">
                 <Landmark size={14} />
               </div>
               <div>
                 <span className="font-semibold block">Active Matching Mode</span>
-                <span className="text-t3">
+                <span className="!text-dash-textMuted">
                   Matching "{selectedTx.description}" ({formatCurrency(selectedTx.total_amount)}) to an invoice. Select an invoice on the right to match them.
                 </span>
               </div>
             </div>
             <button
               onClick={() => setSelectedTx(null)}
-              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[11px] font-bold transition-all"
+              className="px-3 py-1.5 bg-dash-surface hover:bg-dash-border/60 rounded-lg text-[11px] font-bold transition-colors motion-reduce:transition-none"
             >
               Cancel
             </button>
@@ -161,28 +162,28 @@ export default function ReconciliationPage() {
 
         {/* Content Split Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
+
           {/* Left Panel: Bank Transactions */}
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex flex-col min-h-[500px]">
-            <h2 className="text-[14px] font-bold text-[#eef2ff] mb-4 flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              <Landmark size={16} className="text-[#3b82f6]" /> Bank Transactions
+          <DashCard padding="default" interactive={false} className="flex flex-col min-h-[500px]">
+            <h2 className="text-[14px] font-bold !text-dash-text mb-4 flex items-center gap-2">
+              <Landmark size={16} className="text-dash-accent" /> Bank Transactions
             </h2>
-            
+
             {loading ? (
               <div className="space-y-3 flex-1">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="h-16 rounded-xl bg-white/[0.02] animate-pulse" />
+                  <div key={i} className="h-16 rounded-xl bg-dash-surface animate-pulse motion-reduce:animate-none" />
                 ))}
               </div>
             ) : bankTxs.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                <AlertCircle size={24} className="text-[#4a5a82] mb-2" />
-                <p className="text-[12px] text-[#94a3c8] max-w-[280px]">
+                <AlertCircle size={24} className="!text-dash-textMuted mb-2" />
+                <p className="text-[12px] !text-dash-textMuted max-w-[280px]">
                   No unmatched bank transactions. Connect your bank account to start reconciling.
                 </p>
                 <a
                   href="/finance/connected-accounts"
-                  className="mt-4 px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-[11px] font-bold text-white rounded-lg transition-colors"
+                  className="mt-4 px-4 py-2 bg-dash-accent hover:bg-dash-accent/90 text-[11px] font-bold text-white rounded-lg transition-colors"
                 >
                   Connect Bank Account
                 </a>
@@ -194,26 +195,26 @@ export default function ReconciliationPage() {
                   return (
                     <div
                       key={tx.id}
-                      className={`p-4 rounded-xl border transition-all duration-200 ${
+                      className={`p-4 rounded-xl border transition-colors duration-200 motion-reduce:transition-none ${
                         isSelected
-                          ? 'bg-blue-500/5 border-blue-500/50 shadow-md shadow-blue-500/5'
-                          : 'bg-[#070d24]/50 border-white/5 hover:border-white/10'
+                          ? 'bg-dash-accent/5 border-dash-accent/50 shadow-md shadow-dash-accent/5'
+                          : 'bg-dash-surface border-dash-border hover:border-dash-text/20'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <span className="text-[10px] text-[#4a5a82] font-semibold block">{tx.date}</span>
-                          <span className="text-[12px] font-medium text-[#eef2ff] block mt-0.5">{tx.description}</span>
-                          <span className="text-[13px] font-bold text-[#eef2ff] block mt-1 font-space">
+                          <span className="text-[10px] !text-dash-textMuted font-semibold block">{tx.date}</span>
+                          <span className="text-[12px] font-medium !text-dash-text block mt-0.5">{tx.description}</span>
+                          <span className="text-[13px] font-bold !text-dash-text block mt-1">
                             {formatCurrency(tx.total_amount)}
                           </span>
                         </div>
                         <button
                           onClick={() => setSelectedTx(tx)}
-                          className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                          className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-colors motion-reduce:transition-none ${
                             isSelected
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-white/5 hover:bg-white/10 text-t1'
+                              ? 'bg-dash-accent text-white'
+                              : 'bg-dash-border/60 hover:bg-dash-border !text-dash-text'
                           }`}
                         >
                           {isSelected ? 'Matching' : 'Match'}
@@ -224,24 +225,24 @@ export default function ReconciliationPage() {
                 })}
               </div>
             )}
-          </div>
+          </DashCard>
 
           {/* Right Panel: Unpaid Invoices */}
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex flex-col min-h-[500px]">
-            <h2 className="text-[14px] font-bold text-[#eef2ff] mb-4 flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              <FileText size={16} className="text-[#f59e0b]" /> Unpaid Invoices
+          <DashCard padding="default" interactive={false} className="flex flex-col min-h-[500px]">
+            <h2 className="text-[14px] font-bold !text-dash-text mb-4 flex items-center gap-2">
+              <FileText size={16} className="text-amber-600" /> Unpaid Invoices
             </h2>
 
             {loading ? (
               <div className="space-y-3 flex-1">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="h-16 rounded-xl bg-white/[0.02] animate-pulse" />
+                  <div key={i} className="h-16 rounded-xl bg-dash-surface animate-pulse motion-reduce:animate-none" />
                 ))}
               </div>
             ) : invoices.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                <CheckCircle size={24} className="text-[#10b981] mb-2" />
-                <p className="text-[12px] text-[#94a3c8] max-w-[280px]">
+                <CheckCircle size={24} className="text-green mb-2" />
+                <p className="text-[12px] !text-dash-textMuted max-w-[280px]">
                   All invoices are matched. Great work!
                 </p>
               </div>
@@ -253,29 +254,29 @@ export default function ReconciliationPage() {
                     <div
                       key={inv.id}
                       onClick={() => selectedTx && !reconciling && handleMatch(inv)}
-                      className={`p-4 rounded-xl border bg-[#070d24]/50 border-white/5 transition-all duration-200 ${
+                      className={`p-4 rounded-xl border bg-dash-surface border-dash-border transition-colors duration-200 motion-reduce:transition-none ${
                         selectedTx
-                          ? 'hover:border-blue-500/50 cursor-pointer hover:bg-blue-500/[0.02]'
+                          ? 'hover:border-dash-accent/50 cursor-pointer hover:bg-dash-accent/[0.03]'
                           : 'opacity-75'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-[12px] font-bold text-[#eef2ff]">
+                            <span className="text-[12px] font-bold !text-dash-text">
                               Invoice #{inv.invoice_number || 'Draft'}
                             </span>
                           </div>
-                          <span className="text-[10px] text-[#4a5a82] font-semibold block mt-0.5">
+                          <span className="text-[10px] !text-dash-textMuted font-semibold block mt-0.5">
                             Created {new Date(inv.created_at).toLocaleDateString()}
                           </span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[13px] font-bold text-[#eef2ff] block font-space">
+                          <span className="text-[13px] font-bold !text-dash-text block">
                             {formatCurrency(amount)}
                           </span>
                           {selectedTx && (
-                            <span className="text-[9px] text-[#3b82f6] font-semibold flex items-center justify-end gap-1 mt-1">
+                            <span className="text-[9px] text-dash-accent font-semibold flex items-center justify-end gap-1 mt-1">
                               Match with this <ArrowRight size={10} />
                             </span>
                           )}
@@ -286,7 +287,7 @@ export default function ReconciliationPage() {
                 })}
               </div>
             )}
-          </div>
+          </DashCard>
 
         </div>
       </div>

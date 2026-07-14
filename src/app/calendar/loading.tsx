@@ -9,7 +9,7 @@ export default function CalendarLoading() {
   return (
     <MetaData pageTitle="Calendar Hub">
       <Wrapper>
-        <main className="min-h-screen bg-[var(--n900)] text-[var(--t1)]">
+        <main className="min-h-screen bg-dash-surface !text-dash-text">
           <CalendarSkeleton />
         </main>
       </Wrapper>

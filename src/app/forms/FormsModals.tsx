@@ -1,11 +1,11 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
-} from '@/components/ui/dialog';
+  DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter
+} from '@/components/dashboard-ui/Modal';
+import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 interface CreateFormDialogProps {
   open: boolean;
@@ -25,49 +25,38 @@ export function CreateFormDialog({
   onSubmit
 }: CreateFormDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#080f28] border border-white/10 rounded-3xl max-w-md p-8 shadow-2xl text-white">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-black uppercase tracking-tight text-[#eef2ff] font-space-grotesk">
-            Build a <span className="text-[#3b82f6]">Form</span>
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-[#94a3c8]">
-              Form Name
-            </Label>
-            <Input 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
-              placeholder="e.g. Contact Us Form" 
-              className="h-12 bg-white/5 border-white/10 text-white placeholder-white/30 rounded-xl focus:border-[#2563eb] focus:ring-0" 
-              onKeyDown={e => e.key === 'Enter' && onSubmit()} 
+    <DashModal open={open} onOpenChange={onOpenChange}>
+      <DashModalContent className="max-w-md">
+        <DashModalHeader>
+          <DashModalTitle>
+            Build a <span className="text-dash-accent">form</span>
+          </DashModalTitle>
+        </DashModalHeader>
+        <div className="space-y-4">
+          <DashFormField label="Form name">
+            <DashInput
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="e.g. Contact Us Form"
+              className="h-12"
+              onKeyDown={e => e.key === 'Enter' && onSubmit()}
             />
-          </div>
+          </DashFormField>
         </div>
-        <DialogFooter className="gap-3">
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)} 
-            className="bg-white/5 border-white/10 text-[#eef2ff] hover:bg-white/10 rounded-xl"
-          >
+        <DashModalFooter>
+          <DashButton variant="secondary" onClick={() => onOpenChange(false)}>
             Cancel
-          </Button>
-          <Button 
-            onClick={onSubmit} 
-            disabled={creating} 
-            className="bg-[#2563eb] hover:bg-[#2563eb]/90 text-white rounded-xl font-black uppercase text-xs px-8"
-          >
+          </DashButton>
+          <DashButton onClick={onSubmit} disabled={creating}>
             {creating ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...
+                <Loader2 className="w-4 h-4 animate-spin" /> Creating...
               </>
-            ) : 'Create Form'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            ) : 'Create form'}
+          </DashButton>
+        </DashModalFooter>
+      </DashModalContent>
+    </DashModal>
   );
 }
 
@@ -93,64 +82,49 @@ export function EditFormDialog({
   onPublishToggle
 }: EditFormDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#080f28] border border-white/10 rounded-3xl max-w-md p-8 shadow-2xl text-white">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-black uppercase tracking-tight text-[#eef2ff] font-space-grotesk">
-            Edit <span className="text-[#3b82f6]">Form</span>
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-[#94a3c8]">
-              Form Name
-            </Label>
-            <Input 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
-              className="h-12 bg-white/5 border-white/10 text-white placeholder-white/30 rounded-xl focus:border-[#2563eb] focus:ring-0" 
+    <DashModal open={open} onOpenChange={onOpenChange}>
+      <DashModalContent className="max-w-md">
+        <DashModalHeader>
+          <DashModalTitle>
+            Edit <span className="text-dash-accent">form</span>
+          </DashModalTitle>
+        </DashModalHeader>
+        <div className="space-y-4">
+          <DashFormField label="Form name">
+            <DashInput
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="h-12"
             />
-          </div>
-          <div className="p-4 bg-white/[0.03] border border-white/5 rounded-xl">
-            <p className="text-[10px] font-black uppercase tracking-widest text-[#94a3c8] mb-1">
-              Current Status
+          </DashFormField>
+          <div className="p-4 bg-dash-surface border border-dash-border rounded-xl">
+            <p className="text-[11px] font-bold !text-dash-textMuted mb-1">
+              Current status
             </p>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-[#eef2ff]">
+              <span className="text-sm font-bold !text-dash-text">
                 {form?.status === 'published' ? 'Live — visible to users' : 'Draft — not public'}
               </span>
-              <Button 
-                onClick={onPublishToggle} 
-                size="sm" 
-                className={`h-8 px-4 rounded-lg text-[9px] font-black uppercase ${
-                  form?.status === 'published' 
-                    ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' 
-                    : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                }`}
+              <DashButton
+                onClick={onPublishToggle}
+                size="sm"
+                className={form?.status === 'published' ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-green/10 text-green hover:bg-green/20'}
               >
                 {form?.status === 'published' ? 'Unpublish' : 'Publish'}
-              </Button>
+              </DashButton>
             </div>
           </div>
         </div>
-        <DialogFooter className="gap-3">
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)} 
-            className="bg-white/5 border-white/10 text-[#eef2ff] hover:bg-white/10 rounded-xl"
-          >
+        <DashModalFooter>
+          <DashButton variant="secondary" onClick={() => onOpenChange(false)}>
             Cancel
-          </Button>
-          <Button 
-            onClick={onSubmit} 
-            disabled={saving} 
-            className="bg-[#2563eb] hover:bg-[#2563eb]/90 text-white rounded-xl font-black uppercase text-xs px-8"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </DashButton>
+          <DashButton onClick={onSubmit} disabled={saving}>
+            {saving ? 'Saving...' : 'Save changes'}
+          </DashButton>
+        </DashModalFooter>
+      </DashModalContent>
+    </DashModal>
   );
 }
 
@@ -170,33 +144,14 @@ export function DeleteFormDialog({
   onSubmit
 }: DeleteFormDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#080f28] border border-white/10 rounded-3xl max-w-sm p-8 shadow-2xl text-white">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-black uppercase tracking-tight text-[#eef2ff] font-space-grotesk">
-            Delete Form?
-          </DialogTitle>
-        </DialogHeader>
-        <p className="text-[#94a3c8] text-sm py-4">
-          This will permanently delete <strong className="text-white">{form?.name}</strong> and all its submissions.
-        </p>
-        <DialogFooter className="gap-3">
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)} 
-            className="bg-white/5 border-white/10 text-[#eef2ff] hover:bg-white/10 rounded-xl"
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={onSubmit} 
-            disabled={deleting} 
-            className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-black uppercase text-xs px-8"
-          >
-            {deleting ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      onConfirm={onSubmit}
+      title="Delete form?"
+      description={`This will permanently delete "${form?.name}" and all its submissions.`}
+      confirmLabel={deleting ? 'Deleting...' : 'Delete'}
+      variant="danger"
+    />
   );
 }

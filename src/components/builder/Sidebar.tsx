@@ -51,12 +51,12 @@ const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: an
           connectors.create(ref, component);
         }
       }}
-      className="flex flex-col items-center justify-center p-4 rounded-2xl border border-white/5 bg-[#12121c] hover:border-primary/50 hover:bg-primary/5 hover:shadow-[0_0_20px_rgba(19,89,255,0.1)] transition-all cursor-grab active:cursor-grabbing group"
+      className="flex flex-col items-center justify-center p-4 rounded-2xl border border-dash-border bg-dash-surface hover:border-primary/50 hover:bg-primary/5 hover:shadow-[0_0_20px_rgba(19,89,255,0.1)] transition-all motion-reduce:transition-none cursor-grab active:cursor-grabbing group"
     >
-      <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-white transition-all duration-300">
-        <Icon className="w-5 h-5 group-hover:scale-110 transition-transform pointer-events-none" />
+      <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-white transition-all motion-reduce:transition-none duration-300">
+        <Icon className="w-5 h-5 group-hover:scale-110 transition-transform motion-reduce:transition-none pointer-events-none" />
       </div>
-      <span className="text-[9px] font-black text-white/40 group-hover:text-white uppercase tracking-widest text-center leading-tight">{name}</span>
+      <span className="text-[9px] font-bold !text-dash-textMuted group-hover:!text-dash-text text-center leading-tight">{name}</span>
     </div>
   );
 };
@@ -218,36 +218,59 @@ export const Sidebar = ({
     const toastId = toast.loading('Saving step order...');
     try {
       const supabase = createClient();
-      const updates = newSteps.map((step, idx) => 
-        supabase
-          .from('funnel_steps')
-          .update({ position: idx + 1 })
-          .eq('id', step.stepId)
+      const results = await Promise.allSettled(
+        newSteps.map((step, idx) =>
+          supabase
+            .from('funnel_steps')
+            .update({ position: idx + 1 })
+            .eq('id', step.id)
+        )
       );
 
-      await Promise.all(updates);
+      const failures = results.reduce<{ step: any; reason: string }[]>((acc, result, idx) => {
+        const step = newSteps[idx];
+        if (result.status === 'rejected') {
+          acc.push({ step, reason: result.reason?.message || String(result.reason) });
+        } else if (result.value?.error) {
+          acc.push({ step, reason: result.value.error.message });
+        }
+        return acc;
+      }, []);
+
+      if (failures.length > 0) {
+        console.error('[Sidebar] Step reorder partially failed:', {
+          failedSteps: failures.map(f => ({ id: f.step.id, name: f.step.name, reason: f.reason })),
+          totalSteps: newSteps.length,
+          failedCount: failures.length,
+        });
+        const failedNames = failures.map(f => f.step.name || f.step.id).join(', ');
+        toast.error(`Step order failed to save for: ${failedNames}. Please retry.`, { id: toastId });
+        return;
+      }
+
       toast.success('Step order updated!', { id: toastId });
       window.location.reload();
     } catch (err: any) {
+      console.error('[Sidebar] Step reorder failed:', err);
       toast.error('Failed to save order: ' + err.message, { id: toastId });
     }
   };
 
   if (selected && selected.id !== 'ROOT') {
     return (
-      <div className="w-[300px] h-full bg-[#0b0b14] border-r border-white/5 flex flex-col font-sans select-none z-40 animate-in fade-in slide-in-from-left duration-200">
-        <div className="p-4 border-b border-white/5 flex items-center gap-3 bg-white/[0.02]">
+      <div className="w-[300px] h-full bg-white border-r border-dash-border flex flex-col font-sans select-none z-40 animate-in fade-in slide-in-from-left duration-200 motion-reduce:animate-none">
+        <div className="p-4 border-b border-dash-border flex items-center gap-3 bg-dash-surface">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => editorActions.selectNode(null)}
-            className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/5 rounded-lg transition-colors shrink-0"
-            title="Back to Elements"
+            className="h-8 w-8 !text-dash-textMuted hover:!text-dash-text hover:bg-white rounded-lg transition-colors motion-reduce:transition-none shrink-0"
+            title="Back to elements"
           >
             <ArrowLeft size={16} />
           </Button>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[11px] font-black uppercase tracking-tighter flex items-center gap-2 truncate">
+            <h2 className="text-[11px] font-bold flex items-center gap-2 truncate">
               <div className="h-6 w-6 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30 shrink-0">
                 <Settings className="w-3 h-3 text-primary" />
               </div>
@@ -261,22 +284,22 @@ export const Sidebar = ({
               onClick={() => {
                 editorActions.delete(selected.id);
               }}
-              className="h-8 w-8 hover:bg-rose-500/10 text-rose-500 rounded-lg transition-all shrink-0"
-              title="Delete Element"
+              className="h-8 w-8 hover:bg-red/10 text-red rounded-lg transition-all motion-reduce:transition-none shrink-0"
+              title="Delete element"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
           )}
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-5 space-y-8 common-scrollbar">
           {selected.settings && React.createElement(selected.settings as any)}
           {!selected.settings && (
             <div className="text-center py-20">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4 opacity-20">
+              <div className="w-12 h-12 rounded-2xl bg-dash-surface flex items-center justify-center mx-auto mb-4 opacity-40">
                 <Settings className="w-6 h-6" />
               </div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-white/20">No Modulators Available</p>
+              <p className="text-[9px] font-bold !text-dash-textMuted">No settings available</p>
             </div>
           )}
         </div>
@@ -285,29 +308,29 @@ export const Sidebar = ({
   }
 
   return (
-    <div className="w-[300px] h-full bg-[#0b0b14] border-r border-white/5 flex flex-col font-sans select-none z-40">
-      <div className="p-3 border-b border-white/5 flex gap-2">
+    <div className="w-[300px] h-full bg-white border-r border-dash-border flex flex-col font-sans select-none z-40">
+      <div className="p-3 border-b border-dash-border flex gap-2">
         <Button
           variant="ghost"
           onClick={() => setActiveTab('elements')}
           title="Elements"
-          className={`flex-1 h-11 rounded-xl transition-all duration-300 ${activeTab === 'elements' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-white/30 hover:text-white'}`}
+          className={`flex-1 h-11 rounded-xl transition-all duration-300 motion-reduce:transition-none ${activeTab === 'elements' ? 'bg-primary/10 text-primary border border-primary/20' : '!text-dash-textMuted hover:!text-dash-text'}`}
         >
           <LayoutGrid size={18} />
         </Button>
         <Button
           variant="ghost"
           onClick={() => setActiveTab('layers')}
-          title="Layers Explorer"
-          className={`flex-1 h-11 rounded-xl transition-all duration-300 ${activeTab === 'layers' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-white/30 hover:text-white'}`}
+          title="Layers explorer"
+          className={`flex-1 h-11 rounded-xl transition-all duration-300 motion-reduce:transition-none ${activeTab === 'layers' ? 'bg-primary/10 text-primary border border-primary/20' : '!text-dash-textMuted hover:!text-dash-text'}`}
         >
           <Layers size={18} />
         </Button>
         <Button
           variant="ghost"
           onClick={() => setActiveTab('page')}
-          title="Page Settings"
-          className={`flex-1 h-11 rounded-xl transition-all duration-300 ${activeTab === 'page' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-white/30 hover:text-white'}`}
+          title="Page settings"
+          className={`flex-1 h-11 rounded-xl transition-all duration-300 motion-reduce:transition-none ${activeTab === 'page' ? 'bg-primary/10 text-primary border border-primary/20' : '!text-dash-textMuted hover:!text-dash-text'}`}
         >
           <Settings size={18} />
         </Button>
@@ -315,8 +338,8 @@ export const Sidebar = ({
           <Button
             variant="ghost"
             onClick={() => setActiveTab('steps')}
-            title="Funnel Steps"
-            className={`flex-1 h-11 rounded-xl transition-all duration-300 ${activeTab === 'steps' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-white/30 hover:text-white'}`}
+            title="Funnel steps"
+            className={`flex-1 h-11 rounded-xl transition-all duration-300 motion-reduce:transition-none ${activeTab === 'steps' ? 'bg-primary/10 text-primary border border-primary/20' : '!text-dash-textMuted hover:!text-dash-text'}`}
           >
             <ListOrdered size={18} />
           </Button>
@@ -324,8 +347,8 @@ export const Sidebar = ({
           <Button
             variant="ghost"
             onClick={() => setActiveTab('settings')}
-            title="Site Settings"
-            className={`flex-1 h-11 rounded-xl transition-all duration-300 ${activeTab === 'settings' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-white/30 hover:text-white'}`}
+            title="Site settings"
+            className={`flex-1 h-11 rounded-xl transition-all duration-300 motion-reduce:transition-none ${activeTab === 'settings' ? 'bg-primary/10 text-primary border border-primary/20' : '!text-dash-textMuted hover:!text-dash-text'}`}
           >
             <Layout size={18} />
           </Button>
@@ -336,31 +359,31 @@ export const Sidebar = ({
         <div className="flex-1 overflow-y-auto p-5 space-y-8 common-scrollbar">
           {/* AI Generator Panel */}
           <section className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-3">
-            <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 animate-pulse text-primary" />
-              AI Section Generator
+            <h3 className="text-[10px] font-bold text-primary flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 animate-pulse motion-reduce:animate-none text-primary" />
+              AI section generator
             </h3>
-            <Input 
+            <Input
               value={aiLayoutPrompt}
               onChange={(e) => setAiLayoutPrompt(e.target.value)}
               placeholder="e.g. bento grid, pricing table"
-              className="h-8 bg-white/5 border-white/10 text-white text-xs placeholder:text-white/20"
+              className="h-8 bg-white border-dash-border !text-dash-text text-xs placeholder:text-dash-textMuted"
             />
-            <Button 
+            <Button
               onClick={handleGenerateLayout}
               disabled={generatingLayout}
               size="sm"
-              className="w-full bg-[#6c47ff]/20 hover:bg-[#6c47ff]/30 text-primary border border-[#6c47ff]/30 text-[10px] uppercase font-bold h-8"
+              className="w-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[10px] font-bold h-8"
             >
-              {generatingLayout ? 'Generating...' : 'Ingest Canvas Block'}
+              {generatingLayout ? 'Generating...' : 'Ingest canvas block'}
             </Button>
           </section>
 
           {customBlueprints.length > 0 && (
             <section>
-              <h3 className="text-[10px] font-black text-[#10b981] uppercase tracking-[0.2em] mb-4 px-1 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
-                Saved Blueprints
+              <h3 className="text-[10px] font-bold text-green mb-4 px-1 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green" />
+                Saved blueprints
               </h3>
               <div className="grid grid-cols-2 gap-2">
                 {customBlueprints.map((blueprint) => (
@@ -376,7 +399,7 @@ export const Sidebar = ({
                         }
                       }
                     }}
-                    className="relative flex flex-col items-center justify-center p-4 rounded-2xl border border-white/5 bg-[#12121c] hover:border-[#10b981]/50 hover:bg-[#10b981]/5 hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] transition-all cursor-grab active:cursor-grabbing group"
+                    className="relative flex flex-col items-center justify-center p-4 rounded-2xl border border-dash-border bg-dash-surface hover:border-green/50 hover:bg-green/5 hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] transition-all motion-reduce:transition-none cursor-grab active:cursor-grabbing group"
                   >
                     <button
                       onClick={async (e) => {
@@ -393,15 +416,15 @@ export const Sidebar = ({
                           }
                         }
                       }}
-                      className="absolute top-2 right-2 text-white/20 hover:text-red-500 cursor-pointer p-0.5 transition-colors z-20"
-                      title="Delete Blueprint"
+                      className="absolute top-2 right-2 !text-dash-textMuted hover:text-red cursor-pointer p-0.5 transition-colors motion-reduce:transition-none z-20"
+                      title="Delete blueprint"
                     >
                       <Minus size={10} />
                     </button>
-                    <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center mb-3 group-hover:bg-[#10b981] group-hover:text-white transition-all duration-300">
-                      <Layers className="w-5 h-5 group-hover:scale-110 transition-transform pointer-events-none" />
+                    <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center mb-3 group-hover:bg-green group-hover:text-white transition-all motion-reduce:transition-none duration-300">
+                      <Layers className="w-5 h-5 group-hover:scale-110 transition-transform motion-reduce:transition-none pointer-events-none" />
                     </div>
-                    <span className="text-[9px] font-black text-white/40 group-hover:text-white uppercase tracking-widest text-center leading-tight truncate w-full px-1">{blueprint.name}</span>
+                    <span className="text-[9px] font-bold !text-dash-textMuted group-hover:!text-dash-text text-center leading-tight truncate w-full px-1">{blueprint.name}</span>
                   </div>
                 ))}
               </div>
@@ -409,7 +432,7 @@ export const Sidebar = ({
           )}
 
           <section>
-            <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-4 px-1">Structure Nodes</h3>
+            <h3 className="text-[10px] font-bold !text-dash-textMuted mb-4 px-1">Structure nodes</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Section" icon={SectionIcon} component={<RESOLVER.Section canvas paddingBottom={64} paddingTop={64} paddingLeft={24} paddingRight={24} backgroundColor="transparent" />} />
               <DraggableItem name="Container" icon={Square} component={<RESOLVER.Container canvas layoutType="fixed" maxWidth="1200px" padding={16} backgroundColor="transparent" />} />
@@ -420,7 +443,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Typography</h3>
+            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Typography</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Heading" icon={HeadingIcon} component={<RESOLVER.Heading level="h2" text="Heading" fontWeight="bold" textAlign="left" color="#111827" />} />
               <DraggableItem name="Paragraph" icon={AlignLeft} component={<RESOLVER.Paragraph text="Type your paragraph here." fontSize={16} textAlign="left" color="#4b5563" lineHeight="relaxed" />} />
@@ -429,7 +452,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Media & Assets</h3>
+            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Media & assets</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Image" icon={ImageIcon} component={<RESOLVER.Image src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="Placeholder" borderRadius={16} objectFit="cover" />} />
               <DraggableItem name="Video" icon={VideoIcon} component={<RESOLVER.Video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" provider="youtube" autoPlay={false} controls={true} loop={false} muted={false} borderRadius={16} />} />
@@ -438,7 +461,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Layout & Authority</h3>
+            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Layout & authority</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Ultra Hero" icon={SectionIcon} component={<RESOLVER.Hero />} />
               <DraggableItem name="Global Navbar" icon={Navigation} component={<RESOLVER.Navbar />} />
@@ -448,7 +471,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Trust & Social Proof</h3>
+            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Trust & social proof</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Testimonial" icon={MessageCircleQuestion} component={<RESOLVER.Testimonial />} />
               <DraggableItem name="Star Rating" icon={Star} component={<RESOLVER.StarRating />} />
@@ -458,7 +481,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Conversion & Logic</h3>
+            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Conversion & logic</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Button" icon={ButtonIcon} component={<RESOLVER.Button text="Click Here" size="md" variant="primary" color="#6c47ff" textColor="#ffffff" borderRadius={8} width="fit" link="#" iconPosition="right" />} />
               <DraggableItem name="Lead Form" icon={FormInput} component={<RESOLVER.Form />} />
@@ -469,7 +492,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Advanced</h3>
+            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Advanced</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem
                 name="Embed Code"
@@ -481,12 +504,12 @@ export const Sidebar = ({
         </div>
       ) : activeTab === 'layers' ? (
         <div className="flex-1 overflow-hidden h-full">
-          <div className="p-3 text-[10px] uppercase font-bold text-white/30 tracking-widest border-b border-white/5">Layer Tree</div>
+          <div className="p-3 text-[10px] font-bold !text-dash-textMuted border-b border-dash-border">Layer tree</div>
           <NodeTreeExplorer />
         </div>
       ) : activeTab === 'steps' ? (
         <div className="flex-1 overflow-hidden h-full">
-          <div className="p-3 text-[10px] uppercase font-bold text-white/30 tracking-widest border-b border-white/5">Funnel Steps</div>
+          <div className="p-3 text-[10px] font-bold !text-dash-textMuted border-b border-dash-border">Funnel steps</div>
           <StepNavigator
             steps={funnelSteps}
             activeStepId={pageId as string}

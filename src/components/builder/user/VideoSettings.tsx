@@ -60,14 +60,14 @@ export const VideoSettings = () => {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Video Source</Label>
+        <Label className="text-xs font-bold !text-dash-textMuted block">Video source</Label>
 
-        <div className="grid grid-cols-3 bg-muted p-1 rounded-md border border-white/5 mb-3">
+        <div className="grid grid-cols-3 bg-dash-surface p-1 rounded-md border border-dash-border mb-3">
           {['youtube', 'vimeo', 'custom'].map((p) => (
             <button
               key={p}
               onClick={() => setProp((props: any) => props.provider = p)}
-              className={`text-[9px] py-1.5 rounded capitalize ${provider === p ? 'bg-primary text-white font-bold shadow' : 'text-muted-foreground hover:text-white'}`}
+              className={`text-[9px] py-1.5 rounded capitalize transition-colors motion-reduce:transition-none ${provider === p ? 'bg-primary text-white font-bold shadow' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               {p === 'custom' ? 'Upload' : p}
             </button>
@@ -85,16 +85,16 @@ export const VideoSettings = () => {
             />
             <Button
               variant="outline"
-              className="w-full h-20 border-dashed border-2 bg-white/5 hover:bg-white/10 flex flex-col gap-2"
+              className="w-full h-20 border-dashed border-2 bg-white hover:bg-dash-surface flex flex-col gap-2"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
             >
               {isUploading ? (
-                <Loader2 className="w-6 h-6 animate-spin text-[#6c47ff]" />
+                <Loader2 className="w-6 h-6 animate-spin motion-reduce:animate-none text-dash-accent" />
               ) : (
                 <>
-                  <Upload className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground">Click to upload MP4</span>
+                  <Upload className="w-5 h-5 !text-dash-textMuted" />
+                  <span className="text-xs font-medium !text-dash-textMuted">Click to upload MP4</span>
                 </>
               )}
             </Button>
@@ -102,7 +102,7 @@ export const VideoSettings = () => {
               value={url || ''}
               placeholder="Or paste direct video URL (.mp4)"
               onChange={(e) => setProp((props: any) => props.url = e.target.value)}
-              className="h-8 text-xs bg-white/5 border-white/10 mt-2"
+              className="h-8 text-xs bg-white border-dash-border mt-2"
             />
           </div>
         ) : (
@@ -111,67 +111,67 @@ export const VideoSettings = () => {
               value={url || ''}
               placeholder={`Paste ${provider} URL...`}
               onChange={(e) => setProp((props: any) => props.url = e.target.value)}
-              className="h-9 text-xs bg-white/5 border-white/10"
+              className="h-9 text-xs bg-white border-dash-border"
             />
           </div>
         )}
       </div>
 
-      <div className="space-y-3 pt-2 border-t border-white/5">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Playback Controls</Label>
+      <div className="space-y-3 pt-2 border-t border-dash-border">
+        <Label className="text-xs font-bold !text-dash-textMuted block">Playback controls</Label>
 
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-white/5 bg-white/5 hover:bg-white/10 transition-colors">
+          <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-dash-border bg-white hover:bg-dash-surface transition-colors motion-reduce:transition-none">
             <input
               type="checkbox"
               checked={autoPlay}
               onChange={(e) => setProp((props: any) => props.autoPlay = e.target.checked)}
-              className="w-3 h-3 rounded-sm bg-background border-white/20 text-primary accent-primary"
+              className="w-3 h-3 rounded-sm bg-white border-dash-border text-primary accent-primary"
             />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">Autoplay</span>
+            <span className="text-[10px] font-bold !text-dash-textMuted">Autoplay</span>
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-white/5 bg-white/5 hover:bg-white/10 transition-colors">
+          <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-dash-border bg-white hover:bg-dash-surface transition-colors motion-reduce:transition-none">
             <input
               type="checkbox"
               checked={loop}
               onChange={(e) => setProp((props: any) => props.loop = e.target.checked)}
-              className="w-3 h-3 rounded-sm bg-background border-white/20 text-primary accent-primary"
+              className="w-3 h-3 rounded-sm bg-white border-dash-border text-primary accent-primary"
             />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">Loop</span>
+            <span className="text-[10px] font-bold !text-dash-textMuted">Loop</span>
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-white/5 bg-white/5 hover:bg-white/10 transition-colors">
+          <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-dash-border bg-white hover:bg-dash-surface transition-colors motion-reduce:transition-none">
             <input
               type="checkbox"
               checked={muted}
               onChange={(e) => setProp((props: any) => props.muted = e.target.checked)}
-              className="w-3 h-3 rounded-sm bg-background border-white/20 text-primary accent-primary"
+              className="w-3 h-3 rounded-sm bg-white border-dash-border text-primary accent-primary"
             />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">Muted</span>
+            <span className="text-[10px] font-bold !text-dash-textMuted">Muted</span>
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-white/5 bg-white/5 hover:bg-white/10 transition-colors">
+          <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-dash-border bg-white hover:bg-dash-surface transition-colors motion-reduce:transition-none">
             <input
               type="checkbox"
               checked={controls}
               onChange={(e) => setProp((props: any) => props.controls = e.target.checked)}
-              className="w-3 h-3 rounded-sm bg-background border-white/20 text-primary accent-primary"
+              className="w-3 h-3 rounded-sm bg-white border-dash-border text-primary accent-primary"
             />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">Controls</span>
+            <span className="text-[10px] font-bold !text-dash-textMuted">Controls</span>
           </label>
         </div>
       </div>
 
-      <div className="space-y-2 pt-2 border-t border-white/5">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Border Radius ({borderRadius}px)</Label>
+      <div className="space-y-2 pt-2 border-t border-dash-border">
+        <Label className="text-xs font-bold !text-dash-textMuted">Border radius ({borderRadius}px)</Label>
         <input
           type="range"
           min="0"
           max="100"
           value={borderRadius || 0}
           onChange={(e) => setProp((props: any) => props.borderRadius = Number(e.target.value))}
-          className="w-full"
+          className="w-full accent-primary"
         />
       </div>
     </div>

@@ -2,7 +2,8 @@
 
 import React, { useState, useRef } from 'react';
 import { Mail, Sparkles, AlertCircle, Save, HelpCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashFormField, DashInput, DashTextarea } from '@/components/dashboard-ui/FormField';
 import { toast } from 'sonner';
 import { updateCourseEmailTemplate } from '@/app/actions/courseEmails';
 
@@ -85,42 +86,38 @@ export default function EmailTemplateForm({ course, onSaved }: EmailTemplateForm
   };
 
   return (
-    <div className="bg-[#0c1535] border border-white/5 rounded-2xl p-6 shadow-xl space-y-6">
-      <div className="border-b border-white/5 pb-4">
-        <h3 className="text-base font-space-grotesk font-black text-white flex items-center gap-2 uppercase tracking-tight">
-          <Mail className="text-primary w-5 h-5" /> Onboarding Lifecycle Emails
+    <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm space-y-6">
+      <div className="border-b border-dash-border pb-4">
+        <h3 className="text-lg font-bold !text-dash-text flex items-center gap-2">
+          <Mail className="text-dash-accent w-5 h-5" /> Onboarding emails
         </h3>
-        <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-1">
-          Customize transactional notifications dispatched upon successful student registration
+        <p className="text-xs !text-dash-textMuted mt-1">
+          Customize the email sent automatically when a student registers
         </p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-5">
         {/* Subject */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 font-mono">
-            Email Subject Row
-          </label>
-          <input
+        <DashFormField label="Email subject">
+          <DashInput
             ref={subjectRef}
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             onFocus={() => setLastFocused('subject')}
-            className="w-full bg-[#111d47]/50 border border-white/5 rounded-xl px-4 py-3 text-xs outline-none focus:border-primary text-white"
             placeholder="e.g. Welcome to {{course_name}}!"
             required
           />
-        </div>
+        </DashFormField>
 
         {/* Dynamic Variable Chips */}
-        <div className="bg-[#111d47]/30 border border-white/5 rounded-xl p-4 space-y-2.5">
+        <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-[#3b82f6] flex items-center gap-1">
-              <Sparkles size={11} /> Dynamic Parameter Tokens
+            <span className="text-xs font-bold text-dash-accent flex items-center gap-1">
+              <Sparkles size={11} /> Insert a variable
             </span>
-            <span className="text-[8px] font-mono text-white/30">
-              Clicks parameter to insert at selector cursor position
+            <span className="text-[11px] !text-dash-textMuted">
+              Click a token to insert it at your cursor
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -129,10 +126,10 @@ export default function EmailTemplateForm({ course, onSaved }: EmailTemplateForm
                 key={chip.value}
                 type="button"
                 onClick={() => insertVariable(chip.value)}
-                className="bg-white/5 border border-white/10 hover:border-primary/20 hover:bg-primary/10 hover:text-white rounded-lg px-2.5 py-1.5 text-[10px] font-mono font-bold text-white/60 transition-all active:scale-95 flex items-center gap-1"
+                className="bg-white border border-dash-border hover:border-dash-accent/40 hover:bg-dash-accent/10 rounded-lg px-2.5 py-1.5 text-xs font-bold !text-dash-text transition-all motion-reduce:transition-none active:scale-95 flex items-center gap-1"
               >
                 <span>{chip.label}</span>
-                <span className="text-primary-light text-[9px] font-medium">{chip.value}</span>
+                <span className="text-dash-accent text-[11px] font-medium">{chip.value}</span>
               </button>
             ))}
           </div>
@@ -141,42 +138,38 @@ export default function EmailTemplateForm({ course, onSaved }: EmailTemplateForm
         {/* Body */}
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 font-mono">
-              Email Template Body (Markdown Supported)
+            <label className="text-[13px] font-semibold !text-dash-text">
+              Email body (markdown supported)
             </label>
-            <span className="text-[8px] font-mono text-white/20 flex items-center gap-1">
-              <HelpCircle size={10} /> Hydrates values dynamically
+            <span className="text-[11px] !text-dash-textMuted flex items-center gap-1">
+              <HelpCircle size={10} /> Variables fill in automatically
             </span>
           </div>
-          <textarea
+          <DashTextarea
             ref={bodyRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             onFocus={() => setLastFocused('body')}
-            className="w-full bg-[#111d47]/50 border border-white/5 rounded-xl px-4 py-3 text-xs outline-none focus:border-primary text-white font-mono leading-relaxed"
             placeholder="Compose welcome message..."
             rows={8}
             required
+            className="leading-relaxed"
           />
         </div>
 
         {/* Warning Alert */}
-        <div className="bg-amber-500/10 border border-yellow-500/20 rounded-xl p-4 flex gap-3 text-yellow-400">
+        <div className="bg-amber-600/10 border border-amber-600/20 rounded-xl p-4 flex gap-3 text-amber-600">
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
-          <div className="text-[11px] leading-relaxed">
-            <strong>Advisory Note:</strong> Ensure all variables are typed correctly inside double braces (e.g. <code>{"{{"}student_first_name{"}}"}</code>). Incomplete variable formatting tags will prevent variables from parsing correctly in the mail queue processor.
+          <div className="text-[13px] leading-relaxed">
+            <strong>Note:</strong> Make sure variables are typed correctly inside double braces (e.g. <code>{"{{"}student_first_name{"}}"}</code>). Incorrectly formatted variables will not be filled in when the email is sent.
           </div>
         </div>
 
         {/* Actions */}
         <div className="flex justify-end pt-3">
-          <Button
-            type="submit"
-            disabled={saving}
-            className="bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-6 shadow-lg shadow-primary/20 flex items-center gap-1.5"
-          >
-            {saving ? 'Saving...' : <><Save size={14} /> Save Templates</>}
-          </Button>
+          <DashButton type="submit" disabled={saving}>
+            {saving ? 'Saving...' : <><Save size={14} /> Save templates</>}
+          </DashButton>
         </div>
       </form>
     </div>

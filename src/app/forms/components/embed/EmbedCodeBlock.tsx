@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Copy, Check, ChevronDown, ChevronUp, Terminal } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface EmbedCodeBlockProps {
   code: string;
@@ -27,15 +28,15 @@ export function EmbedCodeBlock({ code }: EmbedCodeBlockProps) {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-      
+
       return escaped
-        .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="text-[#4a5a82] font-medium">$1</span>') // HTML Comments
-        .replace(/(&lt;\/?[a-zA-Z0-9\-]+)/g, '<span class="text-[#ff79c6]">$1</span>') // Tag names
-        .replace(/(\s[a-zA-Z0-9\-]+)=/g, ' <span class="text-[#50fa7b]">$1</span>=') // Attribute keys
-        .replace(/(".*?")/g, '<span class="text-[#f1fa8c]">$1</span>') // String values
-        .replace(/(&gt;)/g, '<span class="text-[#ff79c6]">$1</span>') // Bracket close
-        .replace(/(async|defer)/g, '<span class="text-[#ff79c6] font-italic">$1</span>') // Keywords
-        .replace(/(script|iframe|div|button|a)/g, '<span class="text-[#ff79c6]">$1</span>'); // Tag names inside elements
+        .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="text-slate-500 font-medium">$1</span>') // HTML Comments
+        .replace(/(&lt;\/?[a-zA-Z0-9\-]+)/g, '<span class="text-pink-400">$1</span>') // Tag names
+        .replace(/(\s[a-zA-Z0-9\-]+)=/g, ' <span class="text-green-400">$1</span>=') // Attribute keys
+        .replace(/(".*?")/g, '<span class="text-yellow-300">$1</span>') // String values
+        .replace(/(&gt;)/g, '<span class="text-pink-400">$1</span>') // Bracket close
+        .replace(/(async|defer)/g, '<span class="text-pink-400 font-italic">$1</span>') // Keywords
+        .replace(/(script|iframe|div|button|a)/g, '<span class="text-pink-400">$1</span>'); // Tag names inside elements
     } catch {
       return rawCode;
     }
@@ -48,9 +49,9 @@ export function EmbedCodeBlock({ code }: EmbedCodeBlockProps) {
       {/* Top Bar with Labels and Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Terminal size={14} className="text-blue-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#94a3c8] font-display">
-            Embed Code Snippet
+          <Terminal size={14} className="text-dash-accent" />
+          <span className="text-[11px] font-bold !text-dash-textMuted">
+            Embed code snippet
           </span>
         </div>
 
@@ -58,7 +59,7 @@ export function EmbedCodeBlock({ code }: EmbedCodeBlockProps) {
           {/* Expand/Collapse Trigger */}
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-[#94a3c8] hover:text-white hover:bg-white/5 transition-all border border-white/5 hover:border-white/10"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none border border-dash-border"
           >
             {expanded ? (
               <>
@@ -70,53 +71,56 @@ export function EmbedCodeBlock({ code }: EmbedCodeBlockProps) {
               </>
             )}
           </button>
-          
+
           {/* Copy Button */}
           <button
             onClick={handleCopy}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-300 border ${
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors motion-reduce:transition-none border",
               copied
-                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                : 'bg-blue-600 hover:bg-blue-700 border-blue-500/20 text-white shadow-md shadow-blue-500/10'
-            }`}
+                ? 'bg-green/10 border-green/40 text-green'
+                : 'bg-dash-accent hover:bg-dash-accent/90 border-dash-accent/20 text-white'
+            )}
           >
             {copied ? (
               <>
-                <Check size={12} className="animate-scale-in" /> Copied!
+                <Check size={12} /> Copied!
               </>
             ) : (
               <>
-                <Copy size={12} /> Copy Snippet
+                <Copy size={12} /> Copy snippet
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* Code Container Block */}
-      <div className="relative border border-white/10 hover:border-white/15 rounded-2xl overflow-hidden bg-[#020512] shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition-colors duration-300 group">
-        {/* macOS Style Window Header Controls */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#050b24] border-b border-white/5">
+      {/*
+        Terminal/code-viewer block: intentionally kept dark regardless of
+        dashboard theme, matching the standard code-editor convention (VS
+        Code, GitHub, Stripe docs) — this is a code display, not dashboard
+        chrome, and dark syntax highlighting is how code blocks are read.
+      */}
+      <div className="relative border border-slate-800 rounded-2xl overflow-hidden bg-[#0b1120] shadow-lg">
+        <div className="flex items-center justify-between px-4 py-3 bg-[#0f172a] border-b border-slate-800">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
             <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
             <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
           </div>
-          <span className="text-[10px] font-mono text-[#4a5a82] font-semibold select-none">
+          <span className="text-[10px] font-mono text-slate-500 font-semibold select-none">
             {code.includes('iframe') ? 'iframe.html' : 'embed.js'}
           </span>
           <div className="w-12" /> {/* Spacer */}
         </div>
 
-        <div className="absolute top-[44px] left-0 right-0 h-[1px] bg-gradient-to-r from-blue-500/20 via-transparent to-blue-500/20 pointer-events-none" />
-        
-        {/* Highlighted Code Container */}
-        <div 
-          className={`transition-all duration-300 ${
+        <div
+          className={cn(
+            "transition-all duration-300 motion-reduce:transition-none overflow-auto custom-scrollbar",
             expanded ? 'max-h-[350px]' : 'max-h-[130px]'
-          } overflow-auto custom-scrollbar`}
+          )}
         >
-          <pre className="p-5 text-[11px] text-[#94a3c8] font-mono leading-relaxed whitespace-pre overflow-x-auto select-all">
+          <pre className="p-5 text-[11px] text-slate-300 font-mono leading-relaxed whitespace-pre overflow-x-auto select-all">
             <code dangerouslySetInnerHTML={{ __html: highlighted }} />
           </pre>
         </div>

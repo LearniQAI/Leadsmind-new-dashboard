@@ -30,18 +30,18 @@ export default async function InstantMeetPage() {
 
   return (
     <Wrapper>
-      <main className="min-h-screen bg-[var(--n900)] text-[var(--t1)] py-12 px-6">
+      <main className="min-h-screen bg-dash-surface !text-dash-text py-12 px-6">
         <div className="max-w-6xl mx-auto">
-          
+
           {/* Header */}
           <div className="mb-10 text-center sm:text-left">
-            <h1 className="text-3xl font-black tracking-tight text-white mb-2 flex items-center justify-center sm:justify-start gap-3">
+            <h1 className="text-3xl font-bold tracking-tight !text-dash-text mb-2 flex items-center justify-center sm:justify-start gap-3">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
                 <Video className="w-5 h-5 text-white" />
               </div>
-              Instant Meet Hub
+              Instant meet hub
             </h1>
-            <p className="text-white/40 text-sm font-medium">
+            <p className="!text-dash-textMuted text-sm font-medium">
               Start ad-hoc meetings instantly, test WebRTC video lobbies, inspect calendar bookings, and view diagnostics.
             </p>
           </div>

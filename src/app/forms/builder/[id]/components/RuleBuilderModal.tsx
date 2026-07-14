@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { LogicRule } from './LogicEngine';
 import { FormField, FormStep } from './FormBuilderContext';
-import { X, Plus, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { validateRule } from './RulePersistenceService';
+import { DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter } from '@/components/dashboard-ui/Modal';
+import { DashButton } from '@/components/dashboard-ui/Button';
 
 interface RuleBuilderModalProps {
   isOpen: boolean;
@@ -87,40 +89,29 @@ export function RuleBuilderModal({
     onSave(rule);
   };
 
-  if (!isOpen) return null;
+  const selectClass = "w-full h-9 px-3 bg-white border border-dash-border rounded-xl !text-dash-text text-xs focus:outline-none focus:border-dash-accent";
+  const fieldLabelClass = "text-[10px] font-bold !text-dash-textMuted";
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-[#0b132c] border border-white/10 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-        style={{ animation: 'modalIn 0.2s ease-out' }}
-      >
-        <style>{`@keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }`}</style>
-
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-          <h3 className="text-sm font-black uppercase tracking-widest text-white font-space-grotesk">
-            {editingRule ? 'Edit Rule' : 'Add Rule'}
-          </h3>
-          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
-            <X size={16} />
-          </button>
-        </div>
+    <DashModal open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DashModalContent className="max-w-md p-0 overflow-hidden max-h-[90vh]">
+        <DashModalHeader className="px-6 py-4 border-b border-dash-border">
+          <DashModalTitle>
+            {editingRule ? 'Edit rule' : 'Add rule'}
+          </DashModalTitle>
+        </DashModalHeader>
 
         <div className="p-6 flex flex-col gap-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
           {/* IF - Trigger Field */}
           <div className="flex flex-col gap-1.5">
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#2563eb]">IF Field</span>
+            <span className="text-[10px] font-bold text-dash-accent">IF field</span>
             <select
               value={triggerFieldId}
               onChange={(e) => setTriggerFieldId(e.target.value)}
-              className="w-full h-9 px-3 bg-white/5 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-[#2563eb]/40"
+              className={selectClass}
             >
               {fields.map(f => (
-                <option key={f.id} value={f.id} className="bg-[#0b132c] text-white">{f.label} ({f.type})</option>
+                <option key={f.id} value={f.id}>{f.label} ({f.type})</option>
               ))}
             </select>
           </div>
@@ -128,31 +119,31 @@ export function RuleBuilderModal({
           {/* Operator & Value */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Condition</span>
+              <span className={fieldLabelClass}>Condition</span>
               <select
                 value={operator}
                 onChange={(e) => setOperator(e.target.value as LogicRule['operator'])}
-                className="w-full h-9 px-3 bg-white/5 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-[#2563eb]/40"
+                className={selectClass}
               >
-                <option value="equals" className="bg-[#0b132c]">Equals</option>
-                <option value="not_equals" className="bg-[#0b132c]">Not Equals</option>
-                <option value="contains" className="bg-[#0b132c]">Contains</option>
-                <option value="checked" className="bg-[#0b132c]">Is Checked</option>
-                <option value="unchecked" className="bg-[#0b132c]">Is Unchecked</option>
-                <option value="greater_than" className="bg-[#0b132c]">&gt; Greater Than</option>
-                <option value="less_than" className="bg-[#0b132c]">&lt; Less Than</option>
-                <option value="length_greater_than" className="bg-[#0b132c]">&gt; Longer Than (characters)</option>
-                <option value="length_less_than" className="bg-[#0b132c]">&lt; Shorter Than (characters)</option>
+                <option value="equals">Equals</option>
+                <option value="not_equals">Not equals</option>
+                <option value="contains">Contains</option>
+                <option value="checked">Is checked</option>
+                <option value="unchecked">Is unchecked</option>
+                <option value="greater_than">&gt; Greater than</option>
+                <option value="less_than">&lt; Less than</option>
+                <option value="length_greater_than">&gt; Longer than (characters)</option>
+                <option value="length_less_than">&lt; Shorter than (characters)</option>
               </select>
             </div>
             {needsValue && (
               <div className="flex flex-col gap-1.5">
-                <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Value</span>
+                <span className={fieldLabelClass}>Value</span>
                 <input
                   type="text"
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
-                  className="w-full h-9 px-3 bg-white/5 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-[#2563eb]/40"
+                  className={selectClass}
                   placeholder="Compare value..."
                 />
               </div>
@@ -160,11 +151,11 @@ export function RuleBuilderModal({
           </div>
 
           {/* THEN - Action */}
-          <div className="flex flex-col gap-1.5 pt-3 border-t border-white/5">
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#2563eb]">THEN</span>
+          <div className="flex flex-col gap-1.5 pt-3 border-t border-dash-border">
+            <span className="text-[10px] font-bold text-dash-accent">THEN</span>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Action</span>
+                <span className={fieldLabelClass}>Action</span>
                 <select
                   value={action}
                   onChange={(e) => {
@@ -177,25 +168,25 @@ export function RuleBuilderModal({
                       setTargetId(fields.find(f => f.id !== triggerFieldId)?.id || fields[0]?.id || '');
                     }
                   }}
-                  className="w-full h-9 px-3 bg-white/5 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-[#2563eb]/40"
+                  className={selectClass}
                 >
-                  <option value="show_field" className="bg-[#0b132c]">Show Field</option>
-                  <option value="hide_field" className="bg-[#0b132c]">Hide Field</option>
-                  <option value="skip_step" className="bg-[#0b132c]">Skip Step</option>
+                  <option value="show_field">Show field</option>
+                  <option value="hide_field">Hide field</option>
+                  <option value="skip_step">Skip step</option>
                 </select>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
-                  {isStepAction ? 'Target Step' : 'Target Field'}
+                <span className={fieldLabelClass}>
+                  {isStepAction ? 'Target step' : 'Target field'}
                 </span>
                 <select
                   value={targetId}
                   onChange={(e) => setTargetId(e.target.value)}
-                  className="w-full h-9 px-3 bg-white/5 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-[#2563eb]/40"
+                  className={selectClass}
                 >
                   {filteredTargets.map(t => (
-                    <option key={t.id} value={t.id} className="bg-[#0b132c]">{t.label}</option>
+                    <option key={t.id} value={t.id}>{t.label}</option>
                   ))}
                 </select>
               </div>
@@ -205,28 +196,22 @@ export function RuleBuilderModal({
 
           {/* Validation error */}
           {error && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
-              <p className="text-[10px] text-rose-400 font-dm-sans">{error}</p>
+            <div className="p-3 bg-red/10 border border-red/20 rounded-xl">
+              <p className="text-[11px] text-red">{error}</p>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/5">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-[10px] font-black uppercase tracking-wider text-white/40 hover:text-white transition-colors"
-          >
+        <DashModalFooter className="px-6 py-4 border-t border-dash-border">
+          <DashButton variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
-          >
-            <Save size={11} /> {editingRule ? 'Update' : 'Add'} Rule
-          </button>
-        </div>
-      </div>
-    </div>
+          </DashButton>
+          <DashButton onClick={handleSave}>
+            <Save size={11} /> {editingRule ? 'Update' : 'Add'} rule
+          </DashButton>
+        </DashModalFooter>
+      </DashModalContent>
+    </DashModal>
   );
 }

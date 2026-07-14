@@ -104,47 +104,47 @@ export default function AutomationsClient({ initialWorkflows }: { initialWorkflo
   <div className="space-y-8">
    <div className="flex items-center justify-between">
     <div>
-     <h1 className="card__title !text-4xl uppercase mb-1">Workflow <span className="text-primary">Engine</span></h1>
-     <p className="card__sub-title !text-[11px] uppercase tracking-[0.2em]">Scale your business with automated workflows.</p>
+     <h1 className="text-3xl font-bold !text-dash-text mb-1">Workflow <span className="text-dash-accent">engine</span></h1>
+     <p className="text-xs !text-dash-textMuted">Scale your business with automated workflows.</p>
     </div>
-    <Button onClick={openCreate} className="btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
-     <Plus className="w-4 h-4 mr-2" /> New Workflow
+    <Button onClick={openCreate} className="bg-dash-accent hover:bg-dash-accent/90 text-white !rounded-xl text-[10px] font-bold px-8 shadow-lg shadow-dash-accent/20 transition-colors motion-reduce:transition-none">
+     <Plus className="w-4 h-4 mr-2" /> New workflow
     </Button>
    </div>
 
    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
     {workflows.length === 0 ? (
-     <div className="col-span-full py-20 bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary/40 transition-all" onClick={openCreate}>
-      <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
-       <Zap className="w-8 h-8 text-primary" />
+     <div className="col-span-full py-20 bg-dash-surface border-2 border-dashed border-dash-border rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-dash-accent/40 transition-all motion-reduce:transition-none" onClick={openCreate}>
+      <div className="w-16 h-16 bg-dash-accent/10 rounded-full flex items-center justify-center mb-6 border border-dash-accent/20">
+       <Zap className="w-8 h-8 text-dash-accent" />
       </div>
-      <h3 className="text-lg font-black uppercase text-gray-500 tracking-widest">No Workflows Yet</h3>
-      <p className="text-gray-400 text-[10px] font-bold mt-2 uppercase tracking-widest">Click to create your first automation</p>
+      <h3 className="text-lg font-bold !text-dash-textMuted">No workflows yet</h3>
+      <p className="!text-dash-textMuted text-[10px] font-bold mt-2">Click to create your first automation</p>
      </div>
     ) : workflows.map(wf => (
-     <div key={wf.id} className="card__wrapper !p-6 !mb-0 group hover:border-primary/50 transition-all duration-300 shadow-lg">
+     <div key={wf.id} className="bg-white border border-dash-border rounded-2xl p-6 group hover:border-dash-accent/50 transition-all motion-reduce:transition-none duration-300 shadow-sm">
       <div className="flex justify-between items-start mb-6">
-       <div className={`h-12 w-12 rounded-2xl flex items-center justify-center border transition-all ${wf.is_active ? 'bg-primary/10 text-primary border-primary/20' : 'bg-gray-100 text-gray-400 border-gray-200'}`}>
-        <Zap size={20} className={wf.is_active ? 'animate-pulse' : ''} />
+       <div className={`h-12 w-12 rounded-2xl flex items-center justify-center border transition-all motion-reduce:transition-none ${wf.is_active ? 'bg-dash-accent/10 text-dash-accent border-dash-accent/20' : 'bg-dash-surface !text-dash-textMuted border-dash-border'}`}>
+        <Zap size={20} className={wf.is_active ? 'animate-pulse motion-reduce:animate-none' : ''} />
        </div>
        <div className="flex items-center gap-2">
-        <Badge className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border-none ${wf.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+        <Badge className={`text-[9px] font-bold px-3 py-1 rounded-full border-none ${wf.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-dash-surface !text-dash-textMuted'}`}>
          {wf.is_active ? 'Active' : 'Paused'}
         </Badge>
         <DropdownMenu>
          <DropdownMenuTrigger asChild>
-          <button className="h-8 w-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-           <MoreVertical size={14} className="text-gray-600" />
+          <button className="h-8 w-8 rounded-lg bg-dash-surface hover:bg-dash-border/60 flex items-center justify-center transition-colors motion-reduce:transition-none">
+           <MoreVertical size={14} className="!text-dash-textMuted" />
           </button>
          </DropdownMenuTrigger>
-         <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-xl rounded-xl min-w-[170px]">
-          <DropdownMenuItem onClick={() => openEdit(wf)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg mx-1 px-3 py-2">
-           <Pencil size={14} /> Edit Workflow
+         <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-xl rounded-xl min-w-[170px]">
+          <DropdownMenuItem onClick={() => openEdit(wf)} className="flex items-center gap-2 cursor-pointer !text-dash-text hover:text-dash-accent hover:bg-dash-accent/5 rounded-lg mx-1 px-3 py-2">
+           <Pencil size={14} /> Edit workflow
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleToggleActive(wf)} className="flex items-center gap-2 cursor-pointer text-gray-700 hover:bg-gray-50 rounded-lg mx-1 px-3 py-2">
+          <DropdownMenuItem onClick={() => handleToggleActive(wf)} className="flex items-center gap-2 cursor-pointer !text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2">
            {wf.is_active ? <><Pause size={14} /> Pause</> : <><Play size={14} /> Activate</>}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => { setDeleteTarget(wf); setDeleteOpen(true); }} className="flex items-center gap-2 cursor-pointer text-rose-600 hover:bg-rose-50 rounded-lg mx-1 px-3 py-2">
+          <DropdownMenuItem onClick={() => { setDeleteTarget(wf); setDeleteOpen(true); }} className="flex items-center gap-2 cursor-pointer text-red hover:bg-red/5 rounded-lg mx-1 px-3 py-2">
            <Trash2 size={14} /> Delete
           </DropdownMenuItem>
          </DropdownMenuContent>
@@ -153,21 +153,21 @@ export default function AutomationsClient({ initialWorkflows }: { initialWorkflo
       </div>
 
       <div className="mb-6">
-       <h4 className="text-xl font-black text-gray-800 uppercase tracking-tighter mb-1">{wf.name}</h4>
-       {wf.description && <p className="text-gray-400 text-xs mb-2">{wf.description}</p>}
-       <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-        <GitBranch className="w-3.5 h-3.5 text-primary" />
+       <h4 className="text-xl font-bold !text-dash-text mb-1">{wf.name}</h4>
+       {wf.description && <p className="!text-dash-textMuted text-xs mb-2">{wf.description}</p>}
+       <div className="flex items-center gap-2 text-[10px] font-bold !text-dash-textMuted">
+        <GitBranch className="w-3.5 h-3.5 text-dash-accent" />
         <span>Trigger: {wf.trigger_type?.replace(/_/g, ' ')}</span>
        </div>
       </div>
 
-      <div className="flex items-center justify-between pt-5 border-t border-gray-100">
-       <span className="text-[10px] font-black text-gray-400 uppercase">{wf.steps?.[0]?.count || 0} Steps</span>
+      <div className="flex items-center justify-between pt-5 border-t border-dash-border">
+       <span className="text-[10px] font-bold !text-dash-textMuted">{wf.steps?.[0]?.count || 0} steps</span>
        <div className="flex items-center gap-2">
-        <Button onClick={() => handleToggleActive(wf)} size="sm" className={`h-8 px-4 rounded-xl text-[9px] font-black uppercase flex items-center gap-1.5 ${wf.is_active ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
+        <Button onClick={() => handleToggleActive(wf)} size="sm" className={`h-8 px-4 rounded-xl text-[9px] font-bold flex items-center gap-1.5 transition-colors motion-reduce:transition-none ${wf.is_active ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
          {wf.is_active ? <><Pause size={11} /> Pause</> : <><Play size={11} /> Activate</>}
         </Button>
-        <Button onClick={() => openEdit(wf)} variant="outline" size="sm" className="h-8 px-3 rounded-xl border-gray-200 text-[9px] font-black uppercase text-gray-600 hover:text-primary hover:border-primary hover:bg-primary/5 flex items-center gap-1.5">
+        <Button onClick={() => openEdit(wf)} variant="outline" size="sm" className="h-8 px-3 rounded-xl border-dash-border text-[9px] font-bold !text-dash-textMuted hover:text-dash-accent hover:border-dash-accent hover:bg-dash-accent/5 flex items-center gap-1.5 transition-colors motion-reduce:transition-none">
          <Pencil size={11} /> Edit
         </Button>
        </div>
@@ -178,48 +178,48 @@ export default function AutomationsClient({ initialWorkflows }: { initialWorkflo
 
    {/* Create / Edit Dialog */}
    <Dialog open={formOpen} onOpenChange={setFormOpen}>
-    <DialogContent className="bg-white border border-gray-200 rounded-3xl max-w-lg p-8 shadow-2xl">
+    <DialogContent className="bg-white border border-dash-border rounded-3xl max-w-lg p-8 shadow-2xl">
      <DialogHeader>
-      <DialogTitle className="text-2xl font-black uppercase tracking-tight text-gray-800">
-       {editingWf ? 'Edit' : 'New'} <span className="text-primary">Workflow</span>
+      <DialogTitle className="text-2xl font-bold !text-dash-text">
+       {editingWf ? 'Edit' : 'New'} <span className="text-dash-accent">workflow</span>
       </DialogTitle>
      </DialogHeader>
      <div className="space-y-4 py-4">
       <div className="space-y-2">
-       <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Workflow Name *</Label>
-       <Input value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="e.g. New Lead Welcome Sequence" className="h-12 border-gray-200 rounded-xl" />
+       <Label className="text-[10px] font-bold !text-dash-textMuted">Workflow name *</Label>
+       <Input value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="e.g. New Lead Welcome Sequence" className="h-12 border-dash-border rounded-xl" />
       </div>
       <div className="space-y-2">
-       <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Trigger Event</Label>
+       <Label className="text-[10px] font-bold !text-dash-textMuted">Trigger event</Label>
        <Select value={formData.trigger_type} onValueChange={v => setFormData(p => ({ ...p, trigger_type: v }))}>
-        <SelectTrigger className="h-12 border-gray-200 rounded-xl"><SelectValue /></SelectTrigger>
-        <SelectContent className="bg-white border border-gray-200 rounded-xl shadow-xl">
+        <SelectTrigger className="h-12 border-dash-border rounded-xl"><SelectValue /></SelectTrigger>
+        <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
          {TRIGGER_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t.replace(/_/g, ' ')}</SelectItem>)}
         </SelectContent>
        </Select>
       </div>
       <div className="space-y-2">
-       <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Description</Label>
-       <Textarea value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="What does this workflow do?" className="min-h-[80px] border-gray-200 rounded-xl" />
+       <Label className="text-[10px] font-bold !text-dash-textMuted">Description</Label>
+       <Textarea value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="What does this workflow do?" className="min-h-[80px] border-dash-border rounded-xl" />
       </div>
      </div>
      <DialogFooter className="gap-3">
-      <Button variant="outline" onClick={() => setFormOpen(false)} className="border-gray-200 text-gray-600 rounded-xl">Cancel</Button>
-      <Button onClick={handleSave} disabled={saving} className="btn-primary rounded-xl font-black uppercase text-xs px-8">{saving ? 'Saving...' : (editingWf ? 'Save Changes' : 'Create Workflow')}</Button>
+      <Button variant="outline" onClick={() => setFormOpen(false)} className="border-dash-border !text-dash-textMuted rounded-xl">Cancel</Button>
+      <Button onClick={handleSave} disabled={saving} className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl font-bold text-xs px-8 transition-colors motion-reduce:transition-none">{saving ? 'Saving...' : (editingWf ? 'Save changes' : 'Create workflow')}</Button>
      </DialogFooter>
     </DialogContent>
    </Dialog>
 
    {/* Delete Dialog */}
    <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-    <DialogContent className="bg-white border border-gray-200 rounded-3xl max-w-sm p-8 shadow-2xl">
+    <DialogContent className="bg-white border border-dash-border rounded-3xl max-w-sm p-8 shadow-2xl">
      <DialogHeader>
-      <DialogTitle className="text-xl font-black uppercase tracking-tight text-gray-800">Delete Workflow?</DialogTitle>
+      <DialogTitle className="text-xl font-bold !text-dash-text">Delete workflow?</DialogTitle>
      </DialogHeader>
-     <p className="text-gray-500 text-sm py-4">This will permanently delete <strong className="text-gray-800">{deleteTarget?.name}</strong> and all its steps.</p>
+     <p className="!text-dash-textMuted text-sm py-4">This will permanently delete <strong className="!text-dash-text">{deleteTarget?.name}</strong> and all its steps.</p>
      <DialogFooter className="gap-3">
-      <Button variant="outline" onClick={() => setDeleteOpen(false)} className="border-gray-200 text-gray-600 rounded-xl">Cancel</Button>
-      <Button onClick={handleDelete} disabled={deleting} className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black uppercase text-xs px-8">{deleting ? 'Deleting...' : 'Delete'}</Button>
+      <Button variant="outline" onClick={() => setDeleteOpen(false)} className="border-dash-border !text-dash-textMuted rounded-xl">Cancel</Button>
+      <Button onClick={handleDelete} disabled={deleting} className="bg-red hover:bg-red/90 text-white rounded-xl font-bold text-xs px-8 transition-colors motion-reduce:transition-none">{deleting ? 'Deleting...' : 'Delete'}</Button>
      </DialogFooter>
     </DialogContent>
    </Dialog>

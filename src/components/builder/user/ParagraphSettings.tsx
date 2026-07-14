@@ -27,14 +27,14 @@ export const ParagraphSettings = () => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block flex justify-between">
-          <span>Font Size</span>
+        <Label className="text-xs font-bold !text-dash-textMuted block flex justify-between">
+          <span>Font size</span>
           <span className="text-primary">{getDisplayValue('fontSize', fontSize)}px</span>
         </Label>
-        <input 
-          type="range" 
-          min="10" 
-          max="72" 
+        <input
+          type="range"
+          min="10"
+          max="72"
           value={getDisplayValue('fontSize', fontSize) || 16}
           onChange={(e) => setResponsiveValue('fontSize', Number(e.target.value))}
           className="w-full accent-primary"
@@ -42,13 +42,13 @@ export const ParagraphSettings = () => {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Line Height</Label>
-        <div className="flex bg-muted p-1 rounded-md border border-white/5">
+        <Label className="text-xs font-bold !text-dash-textMuted block">Line height</Label>
+        <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
           {['tight', 'normal', 'relaxed', 'loose'].map((lh) => (
             <button
               key={lh}
               onClick={() => setResponsiveValue('lineHeight', lh)}
-              className={`flex-1 text-[9px] py-1.5 rounded capitalize ${getDisplayValue('lineHeight', lineHeight) === lh ? 'bg-primary text-white shadow font-bold' : 'text-muted-foreground hover:text-white'}`}
+              className={`flex-1 text-[9px] py-1.5 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('lineHeight', lineHeight) === lh ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               {lh}
             </button>
@@ -57,21 +57,21 @@ export const ParagraphSettings = () => {
       </div>
 
       <div className="pt-2">
-        <ColorPicker 
-          label="Text Color"
+        <ColorPicker
+          label="Text color"
           value={color || '#4b5563'}
           onChange={(val) => setProp((props: any) => props.color = val)}
         />
       </div>
 
-      <div className="space-y-2 pt-4 border-t border-white/5">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Text Align</Label>
-        <div className="flex bg-muted p-1 rounded-md border border-white/5">
+      <div className="space-y-2 pt-4 border-t border-dash-border">
+        <Label className="text-xs font-bold !text-dash-textMuted block">Text align</Label>
+        <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
           {['left', 'center', 'right', 'justify'].map((align) => (
             <button
               key={align}
               onClick={() => setResponsiveValue('textAlign', align)}
-              className={`flex-1 text-[10px] py-1 rounded capitalize ${getDisplayValue('textAlign', textAlign) === align ? 'bg-primary text-white shadow font-bold' : 'text-muted-foreground hover:text-white'}`}
+              className={`flex-1 text-[10px] py-1 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('textAlign', textAlign) === align ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               {align}
             </button>

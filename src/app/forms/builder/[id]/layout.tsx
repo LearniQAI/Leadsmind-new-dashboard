@@ -43,7 +43,7 @@ export default function FormBuilderLayout({
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: 'var(--n900)',
+        background: '#ffffff',
         overflow: 'hidden',
       }}
     >

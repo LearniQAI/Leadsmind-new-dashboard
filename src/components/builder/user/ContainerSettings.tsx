@@ -36,17 +36,17 @@ export const ContainerSettings = () => {
     <div className="space-y-4 px-3 py-3">
       {/* Container Type */}
       <div className="space-y-2">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Container Type</Label>
-        <div className="grid grid-cols-2 bg-white/5 p-1 rounded-lg border border-white/10">
+        <Label className="text-xs font-bold !text-dash-textMuted block">Container type</Label>
+        <div className="grid grid-cols-2 bg-dash-surface p-1 rounded-lg border border-dash-border">
           {['fixed', 'fluid'].map((type) => (
             <button
               key={type}
               type="button"
               onClick={() => setProp((props: any) => props.layoutType = type)}
-              className={`text-[10px] py-1.5 rounded capitalize font-bold transition-all ${
-                layoutType === type 
-                  ? 'bg-primary text-white shadow' 
-                  : 'text-muted-foreground hover:text-white'
+              className={`text-[10px] py-1.5 rounded capitalize font-bold transition-all motion-reduce:transition-none ${
+                layoutType === type
+                  ? 'bg-dash-accent text-white shadow'
+                  : '!text-dash-textMuted hover:!text-dash-text'
               }`}
             >
               {type}
@@ -57,18 +57,18 @@ export const ContainerSettings = () => {
 
       {layoutType === 'fixed' && (
         <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Max Width</Label>
-          <Input 
+          <Label className="text-xs font-bold !text-dash-textMuted block">Max width</Label>
+          <Input
             value={getDisplayValue('maxWidth', maxWidth)}
             onChange={(e) => setResponsiveValue('maxWidth', e.target.value)}
-            className="h-9 text-xs bg-white/5 border-white/10 rounded-lg focus:border-primary"
+            className="h-9 text-xs bg-white border-dash-border rounded-lg focus:border-dash-accent"
             placeholder="e.g. 1200px or 90%"
           />
         </div>
       )}
 
-      <ColorPicker 
-        label="Background Color"
+      <ColorPicker
+        label="Background color"
         value={backgroundColor === 'transparent' ? '' : backgroundColor}
         onChange={(val) => setProp((props: any) => props.backgroundColor = val)}
       />
@@ -76,32 +76,32 @@ export const ContainerSettings = () => {
       {/* Internal Padding with badge */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Internal Padding</Label>
-          <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+          <Label className="text-xs font-bold !text-dash-textMuted block">Internal padding</Label>
+          <span className="text-[10px] font-bold text-dash-accent bg-dash-accent/10 px-2 py-0.5 rounded-full">
             {getDisplayValue('padding', padding)}px
           </span>
         </div>
-        <input 
+        <input
           type="range" min="0" max="128" step="4"
           value={getDisplayValue('padding', padding) || 0}
           onChange={(e) => setResponsiveValue('padding', Number(e.target.value))}
-          className="w-full accent-primary mt-1"
+          className="w-full accent-dash-accent mt-1"
         />
       </div>
 
-      <Separator className="bg-white/5 my-2" />
+      <Separator className="bg-dash-border my-2" />
       <FlexboxControl />
-      
-      <Separator className="bg-white/5 my-2" />
+
+      <Separator className="bg-dash-border my-2" />
       <BoxModelControl />
-      
-      <Separator className="bg-white/5 my-2" />
+
+      <Separator className="bg-dash-border my-2" />
       <TypographyControl />
-      
-      <Separator className="bg-white/5 my-2" />
+
+      <Separator className="bg-dash-border my-2" />
       <BackgroundBorderControl />
-      
-      <Separator className="bg-white/5 my-2" />
+
+      <Separator className="bg-dash-border my-2" />
       <CustomClassControl />
     </div>
   );

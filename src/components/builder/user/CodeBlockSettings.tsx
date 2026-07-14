@@ -29,10 +29,10 @@ class MonacoErrorBoundary extends React.Component<{ children: React.ReactNode },
  render() {
   if (this.state.hasError) {
    return (
-    <div className="h-[400px] w-full flex flex-col items-center justify-center bg-zinc-900 rounded-xl border border-red-500/20 text-center p-6 gap-3">
+    <div className="h-[400px] w-full flex flex-col items-center justify-center bg-dash-surface rounded-xl border border-red-500/20 text-center p-6 gap-3">
      <AlertCircle className="w-8 h-8 text-red-500 opacity-50" />
-     <h4 className="text-xs font-bold text-white uppercase tracking-widest">Editor Failed to Load</h4>
-     <p className="text-[10px] text-muted-foreground leading-relaxed max-w-[200px]">
+     <h4 className="text-xs font-bold !text-dash-text">Editor failed to load</h4>
+     <p className="text-[10px] !text-dash-textMuted leading-relaxed max-w-[200px]">
       There was a conflict with the code editor worker. Please try refreshing the page.
      </p>
     </div>
@@ -53,25 +53,34 @@ export const CodeBlockSettings = () => {
  }, []);
 
  if (!isMounted) {
-  return <div className="h-[400px] w-full bg-zinc-900 animate-pulse rounded-xl border border-white/5" />;
+  // Skeleton intentionally kept dark — it previews the Monaco editor surface
+  // below, which renders with theme="vs-dark" by design (a code editor, not
+  // dashboard chrome), so a dark placeholder avoids a light-to-dark flash.
+  return <div className="h-[400px] w-full bg-zinc-900 animate-pulse motion-reduce:animate-none rounded-xl border border-white/5" />;
  }
 
  return (
   <div className="space-y-6">
    <div className="space-y-3">
-    <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center justify-between">
+    <Label className="text-[10px] font-bold !text-dash-textMuted flex items-center justify-between">
      <span>HTML / CSS / JS</span>
-     <span className="text-primary animate-pulse">● Live Edit</span>
+     <span className="text-primary animate-pulse motion-reduce:animate-none">● Live edit</span>
     </Label>
-    
-    <div className="rounded-xl overflow-hidden border border-white/10 h-[400px] bg-[#1e1e1e]">
+
+    {/*
+      The editor surface itself (Monaco, theme="vs-dark") intentionally stays
+      dark below — it's a code editor rendering surface, not dashboard chrome,
+      matching the same convention as other content-preview surfaces in this
+      app. Only the surrounding chrome (label, border, help text) is converted.
+    */}
+    <div className="rounded-xl overflow-hidden border border-dash-border h-[400px] bg-[#1e1e1e]">
      <MonacoErrorBoundary>
       <Editor
        height="100%"
        defaultLanguage="html"
        theme="vs-dark"
        value={customCode}
-       loading={<div className="h-full w-full bg-zinc-900 animate-pulse flex items-center justify-center text-[10px] text-white/20 font-bold uppercase tracking-widest">Initializing Editor...</div>}
+       loading={<div className="h-full w-full bg-zinc-900 animate-pulse motion-reduce:animate-none flex items-center justify-center text-[10px] text-white/20 font-bold">Initializing editor...</div>}
        onChange={(value) => setProp((props: any) => props.customCode = value)}
        options={{
         minimap: { enabled: false },
@@ -86,7 +95,7 @@ export const CodeBlockSettings = () => {
       />
      </MonacoErrorBoundary>
     </div>
-    <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+    <p className="text-[10px] !text-dash-textMuted leading-relaxed">
      * Scripts will be executed in the final published site. Use sparingly to avoid performance issues.
     </p>
    </div>

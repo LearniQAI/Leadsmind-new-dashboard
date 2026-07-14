@@ -15,10 +15,15 @@ import { BlogEditorToolbar } from './BlogEditorToolbar';
 import { inlineAiEdit } from '@/app/actions/blogStudio';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
 import {
-  Sparkles, Bold, Italic, Underline as UnderlineIcon, Link2, Trash2,
-  ArrowUp, ArrowDown, Copy, Check, Info, AlertTriangle, AlertCircle,
-  HelpCircle, FileText, ChevronRight, Settings, MessageSquare
+  Sparkles, Bold, Italic, Link2, Trash2,
+  ArrowUp, ArrowDown, Copy, Check, AlertTriangle, AlertCircle,
+  Settings, MessageSquare
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import {
+  DashModal, DashModalContent, DashModalTitle
+} from '@/components/dashboard-ui/Modal';
 
 interface EditorContentProps {
   content: string;
@@ -91,6 +96,11 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
       Underline,
+      // NOTE: HTMLAttributes classes below get baked into the saved
+      // body_html and rendered on the public blog article page (a separate,
+      // out-of-scope surface) — intentionally left as-is rather than
+      // converted to dash tokens, same as other published-content styling
+      // in this codebase (invoice/proposal documents, etc).
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-primary hover:underline cursor-pointer' } }),
       Image.configure({ HTMLAttributes: { class: 'rounded-xl max-w-full my-6 border border-white/10 mx-auto block shadow-lg transition-all duration-300' } }),
       Table.configure({ resizable: true, HTMLAttributes: { class: 'border-collapse table-auto w-full my-6 border border-white/10 text-xs rounded-xl overflow-hidden' } }),
@@ -109,8 +119,10 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
       setCharCount(plain.length);
     },
     editorProps: {
+      // This class targets the live editing surface only (not saved to
+      // body_html), so it follows the dashboard's light theme.
       attributes: {
-        class: 'prose prose-invert max-w-none min-h-[480px] p-8 focus:outline-none text-white/90 font-dm-sans leading-relaxed text-sm',
+        class: 'prose max-w-none min-h-[480px] p-8 focus:outline-none !text-dash-text leading-relaxed text-sm',
       },
       handleKeyDown: (view, event) => {
         if (event.key === '/') {
@@ -148,7 +160,7 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
     if (!editor) return;
     const updateSelection = () => {
       const { from, to } = editor.state.selection;
-      
+
       // Auto-close slash menu if slash character is deleted
       if (showSlashMenu) {
         const textBefore = editor.state.doc.textBetween(Math.max(0, from - 1), from);
@@ -241,11 +253,12 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
     if (!editor) return;
     const pos = editor.state.selection.from;
     editor.commands.deleteRange({ from: pos - 1, to: pos });
-    
+
     if (type === 'h2') editor.chain().focus().toggleHeading({ level: 2 }).run();
     else if (type === 'h3') editor.chain().focus().toggleHeading({ level: 3 }).run();
     else if (type === 'table') editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
     else if (type === 'callout') {
+      // Inserted into saved body_html, rendered on the public blog page — left as-is (see note above).
       editor.chain().focus().insertContent(
         `<div class="p-4 rounded-xl border bg-emerald-500/10 border-emerald-500/20 text-emerald-300 my-4 flex gap-3 items-start">
           <span class="text-lg">✅</span>
@@ -274,7 +287,7 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
 
     const targetText = action === 'continue' ? editor.getText().substring(Math.max(0, editor.getText().length - 1500)) : selectedText;
     const res = await inlineAiEdit({ text: targetText, action });
-    
+
     setAiLoading(false);
     if (res.data) {
       setAiResponse(res.data);
@@ -299,7 +312,7 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
   const plainText = editor?.getText() || '';
   const kwMatches = plainText.toLowerCase().split(targetKeyword.toLowerCase()).length - 1;
   const kwDensity = wordCount > 0 ? ((kwMatches / wordCount) * 100).toFixed(1) : '0.0';
-  
+
   // Heading hierarchy check
   const htmlPayload = editor?.getHTML() || '';
   const headingOrder: number[] = [];
@@ -321,11 +334,12 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
   const readTime = Math.ceil(wordCount / 225);
 
   return (
-    <div className={`flex flex-col border border-white/10 rounded-xl bg-[#080f28] overflow-hidden ${
-      isFullscreen ? 'fixed inset-0 z-[9999] w-screen h-screen bg-[#04091a] p-4 sm:p-6' : 'min-h-[550px]'
-    } transition-all duration-300 relative`} onMouseMove={handleMouseMove}>
-      
-      <div className={isZenMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 absolute top-0 left-0 right-0 z-50 bg-[#0a0f26]" : "relative"}>
+    <div className={cn(
+      "flex flex-col border border-dash-border rounded-xl bg-white overflow-hidden transition-colors motion-reduce:transition-none duration-300 relative",
+      isFullscreen ? 'fixed inset-0 z-[9999] w-screen h-screen p-4 sm:p-6' : 'min-h-[550px]'
+    )} onMouseMove={handleMouseMove}>
+
+      <div className={isZenMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity motion-reduce:transition-none duration-300 absolute top-0 left-0 right-0 z-50" : "relative"}>
         <BlogEditorToolbar
           editor={editor}
           onOpenImageModal={() => setShowImageModal(true)}
@@ -346,18 +360,18 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
       </div>
 
       <div className="flex-1 flex overflow-hidden relative">
-        
+
         {/* Editor Scrolling Content Area Container holds absolute aligned layers */}
-        <div ref={editorContainerRef} className={`flex-1 overflow-y-auto max-h-[680px] bg-[#04091a]/40 relative ${isZenMode ? 'pt-16' : ''}`}>
-          
+        <div ref={editorContainerRef} className={cn("flex-1 overflow-y-auto max-h-[680px] bg-white relative", isZenMode && 'pt-16')}>
+
           <div className={isZenMode ? "max-w-2xl mx-auto w-full" : ""}>
             <EditorContent editor={editor} />
           </div>
 
           {/* Notion-style Block Drag Handle Gutter */}
           {hoveredBlock && !isFullscreen && (
-            <div 
-              className="absolute left-2 w-6 h-6 flex items-center justify-center cursor-pointer text-white/40 hover:text-white bg-[#0c1535] border border-white/10 rounded z-30 transition-all duration-150"
+            <div
+              className="absolute left-2 w-6 h-6 flex items-center justify-center cursor-pointer !text-dash-textMuted hover:!text-dash-text bg-white border border-dash-border rounded z-30 transition-colors motion-reduce:transition-none duration-150"
               style={{ top: `${hoveredBlock.top}px` }}
               onClick={() => setShowBlockMenu(!showBlockMenu)}
             >
@@ -374,36 +388,36 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
 
           {/* Notion Block Action Controller Menu */}
           {showBlockMenu && hoveredBlock && (
-            <div 
-              className="absolute left-9 bg-[#0c1535] border border-white/10 p-1.5 rounded-xl shadow-2xl z-50 flex flex-col gap-1 w-44 select-none backdrop-blur-md"
+            <div
+              className="absolute left-9 bg-white border border-dash-border p-1.5 rounded-xl shadow-lg z-50 flex flex-col gap-1 w-44 select-none"
               style={{ top: `${hoveredBlock.top}px` }}
             >
-              <button onClick={() => moveBlock('up')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 flex items-center gap-2"><ArrowUp className="w-3.5 h-3.5 text-blue-400" /> Move Up</button>
-              <button onClick={() => moveBlock('down')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 flex items-center gap-2"><ArrowDown className="w-3.5 h-3.5 text-blue-400" /> Move Down</button>
-              <button onClick={duplicateBlock} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 flex items-center gap-2"><Copy className="w-3.5 h-3.5 text-emerald-400" /> Duplicate</button>
-              <button onClick={() => { setActiveCommentBlockId(hoveredBlock.id); setShowBlockMenu(false); }} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 flex items-center gap-2"><MessageSquare className="w-3.5 h-3.5 text-purple-400" /> Add Comment</button>
-              <div className="h-[1px] bg-white/15 my-1" />
-              <button onClick={deleteBlock} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-500/10 flex items-center gap-2"><Trash2 className="w-3.5 h-3.5" /> Delete Block</button>
+              <button onClick={() => moveBlock('up')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold !text-dash-text hover:bg-dash-surface flex items-center gap-2"><ArrowUp className="w-3.5 h-3.5 text-dash-accent" /> Move up</button>
+              <button onClick={() => moveBlock('down')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold !text-dash-text hover:bg-dash-surface flex items-center gap-2"><ArrowDown className="w-3.5 h-3.5 text-dash-accent" /> Move down</button>
+              <button onClick={duplicateBlock} className="px-2.5 py-1.5 rounded-lg text-xs font-bold !text-dash-text hover:bg-dash-surface flex items-center gap-2"><Copy className="w-3.5 h-3.5 text-green" /> Duplicate</button>
+              <button onClick={() => { setActiveCommentBlockId(hoveredBlock.id); setShowBlockMenu(false); }} className="px-2.5 py-1.5 rounded-lg text-xs font-bold !text-dash-text hover:bg-dash-surface flex items-center gap-2"><MessageSquare className="w-3.5 h-3.5 text-purple-600" /> Add comment</button>
+              <div className="h-[1px] bg-dash-border my-1" />
+              <button onClick={deleteBlock} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-red hover:bg-red/10 flex items-center gap-2"><Trash2 className="w-3.5 h-3.5" /> Delete block</button>
             </div>
           )}
 
           {/* Inline Comment Pin Panel */}
           {activeCommentBlockId && (
-            <div className="absolute right-4 top-20 w-72 bg-[#0c1535]/95 border border-white/10 p-4 rounded-xl shadow-2xl z-50 backdrop-blur-md">
+            <div className="absolute right-4 top-20 w-72 bg-white border border-dash-border p-4 rounded-xl shadow-lg z-50">
               <div className="flex justify-between items-center mb-3">
-                <span className="text-xs font-extrabold text-white/80 uppercase">Pin Post Comment</span>
-                <button onClick={() => setActiveCommentBlockId(null)} className="text-white/40 hover:text-white text-xs">✕</button>
+                <span className="text-xs font-bold !text-dash-text">Pin post comment</span>
+                <button onClick={() => setActiveCommentBlockId(null)} className="!text-dash-textMuted hover:!text-dash-text text-xs">✕</button>
               </div>
               <textarea
-                className="w-full bg-[#080f28] border border-white/10 rounded-lg p-2 text-xs text-white placeholder-white/20 focus:outline-none mb-3 resize-none h-16"
+                className="w-full bg-dash-surface border border-dash-border rounded-lg p-2 text-xs !text-dash-text placeholder:text-dash-textMuted focus:outline-none mb-3 resize-none h-16"
                 placeholder="Write feedback, reminders or editorial annotations..."
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
               />
-              <button onClick={addComment} className="w-full bg-primary hover:bg-blue-600 text-white font-bold py-1.5 rounded-lg text-xs transition">Attach Pin</button>
-              <div className="mt-3 max-h-32 overflow-y-auto flex flex-col gap-1.5 border-t border-white/5 pt-2">
+              <DashButton size="sm" onClick={addComment} className="w-full justify-center">Attach pin</DashButton>
+              <div className="mt-3 max-h-32 overflow-y-auto flex flex-col gap-1.5 border-t border-dash-border pt-2">
                 {comments.filter(c => c.blockId === activeCommentBlockId).map(c => (
-                  <div key={c.id} className="bg-[#080f28]/60 p-2 rounded-lg border border-white/5 text-[10px] text-white/70">
+                  <div key={c.id} className="bg-dash-surface p-2 rounded-lg border border-dash-border text-[11px] !text-dash-textMuted">
                     {c.text}
                   </div>
                 ))}
@@ -413,80 +427,80 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
 
           {/* Smart Floating Selection Bubble Bar */}
           {showBubbleBar && (
-            <div 
-              className="absolute bg-[#0a0f26]/95 border border-white/15 p-1 rounded-xl shadow-2xl z-[60] flex items-center gap-1 backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            <div
+              className="absolute bg-white border border-dash-border p-1 rounded-xl shadow-lg z-[60] flex items-center gap-1 animate-in fade-in zoom-in-95 duration-100 motion-reduce:animate-none"
               style={{ left: `${bubblePosition.x}px`, top: `${bubblePosition.y}px`, transform: 'translateX(-50%)' }}
             >
-              <button onClick={() => editor?.chain().focus().toggleBold().run()} className="p-1.5 rounded hover:bg-white/5 text-white/70 hover:text-white"><Bold className="w-3.5 h-3.5" /></button>
-              <button onClick={() => editor?.chain().focus().toggleItalic().run()} className="p-1.5 rounded hover:bg-white/5 text-white/70 hover:text-white"><Italic className="w-3.5 h-3.5" /></button>
+              <button onClick={() => editor?.chain().focus().toggleBold().run()} className="p-1.5 rounded hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text"><Bold className="w-3.5 h-3.5" /></button>
+              <button onClick={() => editor?.chain().focus().toggleItalic().run()} className="p-1.5 rounded hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text"><Italic className="w-3.5 h-3.5" /></button>
               <button onClick={() => {
                 const prev = editor?.getAttributes('link').href || '';
                 setLinkUrl(prev);
                 setShowLinkModal(true);
-              }} className="p-1.5 rounded hover:bg-white/5 text-white/70 hover:text-white"><Link2 className="w-3.5 h-3.5" /></button>
-              <span className="w-[1px] h-4 bg-white/10" />
+              }} className="p-1.5 rounded hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text"><Link2 className="w-3.5 h-3.5" /></button>
+              <span className="w-[1px] h-4 bg-dash-border" />
               <button onClick={() => {
                 setAiPosition({ x: bubblePosition.x - 200, y: bubblePosition.y + 40 });
                 setShowAiPalette(true);
-              }} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 px-2 py-1.5 rounded-lg text-[10px] font-bold text-white flex items-center gap-1"><Sparkles className="w-3 h-3" /> AI Assist</button>
+              }} className="bg-purple-600 hover:bg-purple-700 px-2 py-1.5 rounded-lg text-[10px] font-bold text-white flex items-center gap-1"><Sparkles className="w-3 h-3" /> AI assist</button>
             </div>
           )}
 
           {/* Slash Commands Dropdown Menu */}
           {showSlashMenu && (
-            <div 
-              className="absolute bg-[#0c1535]/95 border border-white/10 p-1.5 rounded-xl shadow-2xl z-50 flex flex-col gap-0.5 w-52 backdrop-blur-md select-none"
+            <div
+              className="absolute bg-white border border-dash-border p-1.5 rounded-xl shadow-lg z-50 flex flex-col gap-0.5 w-52 select-none"
               style={{ left: `${slashPosition.x}px`, top: `${slashPosition.y}px` }}
             >
-              <span className="text-[9px] font-extrabold text-white/30 uppercase tracking-widest px-2.5 py-1">Insert Block Element</span>
-              <button onClick={() => executeSlashCommand('h2')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 flex items-center gap-2">H2 Subheading</button>
-              <button onClick={() => executeSlashCommand('h3')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 flex items-center gap-2">H3 Subheading</button>
-              <button onClick={() => executeSlashCommand('table')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 flex items-center gap-2">Data Table Grid</button>
-              <button onClick={() => executeSlashCommand('callout')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 flex items-center gap-2">Success Callout Block</button>
-              <button onClick={() => executeSlashCommand('columns')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 flex items-center gap-2">Dual Grid Columns</button>
-              <button onClick={() => executeSlashCommand('image')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 flex items-center gap-2">WebP Image Graphic</button>
+              <span className="text-[10px] font-bold !text-dash-textMuted px-2.5 py-1">Insert block element</span>
+              <button onClick={() => executeSlashCommand('h2')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold !text-dash-text hover:bg-dash-surface flex items-center gap-2">H2 subheading</button>
+              <button onClick={() => executeSlashCommand('h3')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold !text-dash-text hover:bg-dash-surface flex items-center gap-2">H3 subheading</button>
+              <button onClick={() => executeSlashCommand('table')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold !text-dash-text hover:bg-dash-surface flex items-center gap-2">Data table grid</button>
+              <button onClick={() => executeSlashCommand('callout')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold !text-dash-text hover:bg-dash-surface flex items-center gap-2">Success callout block</button>
+              <button onClick={() => executeSlashCommand('columns')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold !text-dash-text hover:bg-dash-surface flex items-center gap-2">Dual grid columns</button>
+              <button onClick={() => executeSlashCommand('image')} className="px-2.5 py-1.5 rounded-lg text-xs font-bold !text-dash-text hover:bg-dash-surface flex items-center gap-2">WebP image graphic</button>
             </div>
           )}
 
           {/* Floating AI Copilot Console */}
           {showAiPalette && (
-            <div 
-              className="absolute bg-[#0a0f26]/95 border border-white/15 p-4 rounded-2xl shadow-[0_0_50px_rgba(124,58,237,0.15)] z-[70] w-[420px] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-200"
+            <div
+              className="absolute bg-white border border-dash-border p-4 rounded-2xl shadow-xl z-[70] w-[420px] animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none"
               style={{ left: `${aiPosition.x}px`, top: `${aiPosition.y}px` }}
             >
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-violet-400 animate-pulse" />
-                  <span className="text-xs font-extrabold text-white tracking-widest uppercase">LeadsMind AI Copilot</span>
+                  <Sparkles className="w-4 h-4 text-purple-600 animate-pulse motion-reduce:animate-none" />
+                  <span className="text-xs font-bold !text-dash-text">LeadsMind AI copilot</span>
                 </div>
-                <button onClick={() => setShowAiPalette(false)} className="text-white/40 hover:text-white text-xs">✕</button>
+                <button onClick={() => setShowAiPalette(false)} className="!text-dash-textMuted hover:!text-dash-text text-xs">✕</button>
               </div>
 
               <div className="grid grid-cols-2 gap-1.5 mb-3">
-                <button onClick={() => executeAiCopilot('elaborate')} className="bg-[#0c1535] hover:bg-violet-600/20 hover:border-violet-500/20 border border-white/5 py-1.5 px-2.5 rounded-lg text-[10px] font-bold text-left text-white/80">🤖 Expand / Elaborate</button>
-                <button onClick={() => executeAiCopilot('condense')} className="bg-[#0c1535] hover:bg-violet-600/20 hover:border-violet-500/20 border border-white/5 py-1.5 px-2.5 rounded-lg text-[10px] font-bold text-left text-white/80">✂️ Tighten / Condense</button>
-                <button onClick={() => executeAiCopilot('south-africanize')} className="bg-[#0c1535] hover:bg-violet-600/20 hover:border-violet-500/20 border border-white/5 py-1.5 px-2.5 rounded-lg text-[10px] font-bold text-left text-white/80">🇿🇦 South Africanize</button>
-                <button onClick={() => executeAiCopilot('continue')} className="bg-[#0c1535] hover:bg-violet-600/20 hover:border-violet-500/20 border border-white/5 py-1.5 px-2.5 rounded-lg text-[10px] font-bold text-left text-white/80">✍️ Continue Writing</button>
+                <button onClick={() => executeAiCopilot('elaborate')} className="bg-dash-surface hover:bg-purple-50 hover:border-purple-200 border border-dash-border py-1.5 px-2.5 rounded-lg text-[10px] font-bold text-left !text-dash-text">🤖 Expand / elaborate</button>
+                <button onClick={() => executeAiCopilot('condense')} className="bg-dash-surface hover:bg-purple-50 hover:border-purple-200 border border-dash-border py-1.5 px-2.5 rounded-lg text-[10px] font-bold text-left !text-dash-text">✂️ Tighten / condense</button>
+                <button onClick={() => executeAiCopilot('south-africanize')} className="bg-dash-surface hover:bg-purple-50 hover:border-purple-200 border border-dash-border py-1.5 px-2.5 rounded-lg text-[10px] font-bold text-left !text-dash-text">🇿🇦 South Africanize</button>
+                <button onClick={() => executeAiCopilot('continue')} className="bg-dash-surface hover:bg-purple-50 hover:border-purple-200 border border-dash-border py-1.5 px-2.5 rounded-lg text-[10px] font-bold text-left !text-dash-text">✍️ Continue writing</button>
               </div>
 
-              <div className="flex flex-col gap-1 mb-3 border-t border-white/5 pt-2">
-                <span className="text-[9px] font-extrabold text-white/30 uppercase tracking-widest">Adjust Persona Tone</span>
+              <div className="flex flex-col gap-1 mb-3 border-t border-dash-border pt-2">
+                <span className="text-[10px] font-bold !text-dash-textMuted">Adjust persona tone</span>
                 <div className="grid grid-cols-4 gap-1">
                   {['professional', 'casual', 'empathetic', 'analytical'].map(t => (
-                    <button key={t} onClick={() => executeAiCopilot(`tone-${t}` as any)} className="bg-[#0c1535] hover:bg-white/5 border border-white/5 py-1 px-1.5 rounded text-[9px] font-bold text-white/70 capitalize">{t}</button>
+                    <button key={t} onClick={() => executeAiCopilot(`tone-${t}` as any)} className="bg-dash-surface hover:bg-dash-border/40 border border-dash-border py-1 px-1.5 rounded text-[9px] font-bold !text-dash-textMuted capitalize">{t}</button>
                   ))}
                 </div>
               </div>
 
               {aiLoading && (
-                <div className="bg-[#080f28] p-3 rounded-lg border border-violet-500/20 text-[10px] font-bold text-violet-400 flex items-center justify-center gap-2 my-2 select-none">
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-ping" />
+                <div className="bg-dash-surface p-3 rounded-lg border border-purple-200 text-[11px] font-bold text-purple-600 flex items-center justify-center gap-2 my-2 select-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-ping motion-reduce:animate-none" />
                   <span>LeadsMind synthesis engine writing...</span>
                 </div>
               )}
 
               {aiResponse && !aiLoading && (
-                <div className="bg-[#080f28] p-3 rounded-lg border border-white/10 text-[10px] text-white/80 my-2 max-h-32 overflow-y-auto select-text font-mono leading-relaxed">
+                <div className="bg-dash-surface p-3 rounded-lg border border-dash-border text-[11px] !text-dash-text my-2 max-h-32 overflow-y-auto select-text font-mono leading-relaxed">
                   {aiResponse}
                 </div>
               )}
@@ -497,19 +511,19 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
 
         {/* Collapsible live SEO Audit & Metrics Sidebar */}
         {showSeoPanel && (
-          <div className="w-80 bg-[#0a0f26]/95 border-l border-white/10 p-5 flex flex-col gap-4 select-none shrink-0 animate-in slide-in-from-right duration-200">
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
+          <div className="w-80 bg-white border-l border-dash-border p-5 flex flex-col gap-4 select-none shrink-0 animate-in slide-in-from-right duration-200 motion-reduce:animate-none">
+            <div className="flex justify-between items-center border-b border-dash-border pb-2">
               <div className="flex items-center gap-1.5">
-                <Settings className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-extrabold text-white uppercase tracking-widest">SEO Live Audit</span>
+                <Settings className="w-4 h-4 text-green" />
+                <span className="text-xs font-bold !text-dash-text">SEO live audit</span>
               </div>
-              <button onClick={() => setShowSeoPanel(false)} className="text-white/40 hover:text-white text-xs">✕</button>
+              <button onClick={() => setShowSeoPanel(false)} className="!text-dash-textMuted hover:!text-dash-text text-xs">✕</button>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold text-white/40 uppercase">Target Audit Keyword</span>
+              <span className="text-[10px] font-bold !text-dash-textMuted">Target audit keyword</span>
               <input
-                className="bg-[#080f28] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none"
+                className="bg-dash-surface border border-dash-border rounded-lg px-3 py-1.5 text-xs !text-dash-text focus:outline-none"
                 value={targetKeyword}
                 onChange={e => setTargetKeyword(e.target.value)}
               />
@@ -517,54 +531,54 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
 
             <div className="flex flex-col gap-3 mt-2">
               {/* Density Indicator */}
-              <div className="bg-[#080f28]/60 p-3 rounded-xl border border-white/5 flex flex-col gap-1">
-                <div className="flex justify-between items-center text-[10px] font-bold text-white/60">
-                  <span>Keyword Density</span>
-                  <span className={parseFloat(kwDensity) > 2.5 ? 'text-rose-400' : parseFloat(kwDensity) > 0.8 ? 'text-emerald-400' : 'text-amber-400'}>{kwDensity}%</span>
+              <div className="bg-dash-surface p-3 rounded-xl border border-dash-border flex flex-col gap-1">
+                <div className="flex justify-between items-center text-[10px] font-bold !text-dash-textMuted">
+                  <span>Keyword density</span>
+                  <span className={parseFloat(kwDensity) > 2.5 ? 'text-red' : parseFloat(kwDensity) > 0.8 ? 'text-green' : 'text-amber-600'}>{kwDensity}%</span>
                 </div>
-                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden mt-1">
-                  <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${Math.min(100, parseFloat(kwDensity) * 35)}%` }} />
+                <div className="w-full bg-dash-border h-1.5 rounded-full overflow-hidden mt-1">
+                  <div className="bg-green h-full transition-all duration-300 motion-reduce:transition-none" style={{ width: `${Math.min(100, parseFloat(kwDensity) * 35)}%` }} />
                 </div>
-                <span className="text-[9px] text-white/30 leading-normal mt-1">Matched {kwMatches} occurrences in plain payload.</span>
+                <span className="text-[10px] !text-dash-textMuted leading-normal mt-1">Matched {kwMatches} occurrences in plain payload.</span>
               </div>
 
               {/* Tag Checker */}
-              <div className="bg-[#080f28]/60 p-3 rounded-xl border border-white/5 flex items-start gap-2.5">
+              <div className="bg-dash-surface p-3 rounded-xl border border-dash-border flex items-start gap-2.5">
                 {headingIssue ? (
                   <>
-                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-bold text-amber-400">Heading Tag skips detected</span>
-                      <span className="text-[9px] text-white/40 leading-normal">Your structure skipped heading ranks (e.g. H2 directly to H4). Update order.</span>
+                      <span className="text-[10px] font-bold text-amber-600">Heading tag skips detected</span>
+                      <span className="text-[10px] !text-dash-textMuted leading-normal">Your structure skipped heading ranks (e.g. H2 directly to H4). Update order.</span>
                     </div>
                   </>
                 ) : (
                   <>
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-green shrink-0 mt-0.5" />
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-bold text-emerald-400">Heading Tag Flow Safe</span>
-                      <span className="text-[9px] text-white/40 leading-normal">Heading outlines are completely nested in absolute logical order.</span>
+                      <span className="text-[10px] font-bold text-green">Heading tag flow safe</span>
+                      <span className="text-[10px] !text-dash-textMuted leading-normal">Heading outlines are completely nested in absolute logical order.</span>
                     </div>
                   </>
                 )}
               </div>
 
               {/* Image Alt Checker */}
-              <div className="bg-[#080f28]/60 p-3 rounded-xl border border-white/5 flex items-start gap-2.5">
+              <div className="bg-dash-surface p-3 rounded-xl border border-dash-border flex items-start gap-2.5">
                 {missingAlts > 0 ? (
                   <>
-                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-red shrink-0 mt-0.5" />
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-bold text-rose-400">{missingAlts} Images Missing Alt Text</span>
-                      <span className="text-[9px] text-white/40 leading-normal">To satisfy accessibility guidelines, double-click image nodes and set alt string tags.</span>
+                      <span className="text-[10px] font-bold text-red">{missingAlts} images missing alt text</span>
+                      <span className="text-[10px] !text-dash-textMuted leading-normal">To satisfy accessibility guidelines, double-click image nodes and set alt string tags.</span>
                     </div>
                   </>
                 ) : (
                   <>
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <Check className="w-4 h-4 text-green shrink-0 mt-0.5" />
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-bold text-emerald-400">Image alt check passed</span>
-                      <span className="text-[9px] text-white/40 leading-normal">All graphic image nodes have valid descriptive alt string definitions.</span>
+                      <span className="text-[10px] font-bold text-green">Image alt check passed</span>
+                      <span className="text-[10px] !text-dash-textMuted leading-normal">All graphic image nodes have valid descriptive alt string definitions.</span>
                     </div>
                   </>
                 )}
@@ -574,148 +588,133 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
         )}
       </div>
 
-      {/* Glassmorphic Metadata Telemetry Footer */}
+      {/* Metadata Telemetry Footer */}
       {!isZenMode && (
-        <div className="bg-[#0c1535] border-t border-white/10 px-4 py-2.5 flex flex-wrap items-center justify-between text-[10px] font-bold text-white/40 tracking-wider gap-3 select-none">
+        <div className="bg-dash-surface border-t border-dash-border px-4 py-2.5 flex flex-wrap items-center justify-between text-[11px] font-bold !text-dash-textMuted gap-3 select-none">
           <div className="flex items-center gap-4">
-            <span>WORDS: <span className="text-white/80">{wordCount} / 1200</span> {wordCount >= 1000 && <span className="text-emerald-400 font-extrabold ml-1">✓ SWEET SPOT MET</span>}</span>
-            <span>CHARACTERS: <span className="text-white/80">{charCount}</span></span>
-            <span>EST. READING TIME: <span className="text-white/80">{readTime} MIN</span></span>
+            <span>Words: <span className="!text-dash-text">{wordCount} / 1200</span> {wordCount >= 1000 && <span className="text-green font-bold ml-1">✓ Sweet spot met</span>}</span>
+            <span>Characters: <span className="!text-dash-text">{charCount}</span></span>
+            <span>Est. reading time: <span className="!text-dash-text">{readTime} min</span></span>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowSeoPanel(!showSeoPanel)} className="bg-white/5 border border-white/5 hover:bg-white/10 px-2.5 py-1 rounded text-[9px] font-extrabold text-white/80 hover:text-white transition flex items-center gap-1 uppercase">
-              <Settings className="w-3 h-3 text-emerald-400" />
-              <span>SEO Audit</span>
+            <button onClick={() => setShowSeoPanel(!showSeoPanel)} className="bg-white border border-dash-border hover:bg-dash-border/40 px-2.5 py-1 rounded text-[10px] font-bold !text-dash-text transition-colors motion-reduce:transition-none flex items-center gap-1">
+              <Settings className="w-3 h-3 text-green" />
+              <span>SEO audit</span>
             </button>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-              <span className="uppercase text-emerald-400 text-[8.5px] font-extrabold tracking-widest">LIVE SYNCHRONIZATION</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-green animate-ping motion-reduce:animate-none" />
+              <span className="text-green text-[9px] font-bold">Live synchronization</span>
             </div>
           </div>
         </div>
       )}
 
       {/* Custom React Hyperlink Modal Overlay */}
-      {showLinkModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm select-none">
-          <div className="bg-[#0c1535] border border-white/10 p-6 rounded-2xl w-96 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xs font-extrabold text-white uppercase tracking-wider mb-4 flex items-center gap-1.5"><Link2 className="w-4 h-4 text-primary" /> Attach Hyperlink</h3>
-            <input
-              type="text"
-              placeholder="https://example.com"
-              value={linkUrl}
-              onChange={e => setLinkUrl(e.target.value)}
-              className="w-full bg-[#080f28] border border-white/10 rounded-lg p-2.5 text-xs text-white placeholder-white/20 focus:outline-none mb-4"
-            />
-            <div className="flex justify-end gap-2 text-xs">
-              <button
-                onClick={() => setShowLinkModal(false)}
-                className="bg-white/5 border border-white/5 hover:bg-white/10 text-white/70 px-4 py-2 rounded-lg font-bold transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (editor) {
-                    if (linkUrl) {
-                      editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run();
-                    } else {
-                      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-                    }
+      <DashModal open={showLinkModal} onOpenChange={setShowLinkModal}>
+        <DashModalContent className="max-w-md">
+          <DashModalTitle className="mb-4 flex items-center gap-1.5"><Link2 className="w-4 h-4 text-dash-accent" /> Attach hyperlink</DashModalTitle>
+          <input
+            type="text"
+            placeholder="https://example.com"
+            value={linkUrl}
+            onChange={e => setLinkUrl(e.target.value)}
+            className="w-full bg-dash-surface border border-dash-border rounded-lg p-2.5 text-xs !text-dash-text placeholder:text-dash-textMuted focus:outline-none mb-4"
+          />
+          <div className="flex justify-end gap-2 text-xs">
+            <DashButton variant="secondary" onClick={() => setShowLinkModal(false)}>Cancel</DashButton>
+            <DashButton
+              onClick={() => {
+                if (editor) {
+                  if (linkUrl) {
+                    editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run();
+                  } else {
+                    editor.chain().focus().extendMarkRange('link').unsetLink().run();
                   }
-                  setShowLinkModal(false);
-                }}
-                className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold transition"
-              >
-                Attach Link
-              </button>
-            </div>
+                }
+                setShowLinkModal(false);
+              }}
+            >
+              Attach link
+            </DashButton>
           </div>
-        </div>
-      )}
+        </DashModalContent>
+      </DashModal>
 
       {/* Custom React Rich Image Modal Overlay */}
-      {showImageModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm select-none">
-          <div className="bg-[#0c1535] border border-white/10 p-6 rounded-2xl w-[400px] shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xs font-extrabold text-white uppercase tracking-wider mb-4 flex items-center gap-1.5">🖼️ Insert Rich Image</h3>
-            
-            {/* Tab Selector */}
-            <div className="flex bg-[#080f28] p-1 rounded-xl border border-white/5 mb-4">
-              <button
-                onClick={() => setImageTab('upload')}
-                className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition ${
-                  imageTab === 'upload' ? 'bg-primary text-white' : 'text-white/40 hover:text-white'
-                }`}
-              >
-                CRM Storage Upload
-              </button>
-              <button
-                onClick={() => setImageTab('url')}
-                className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition ${
-                  imageTab === 'url' ? 'bg-primary text-white' : 'text-white/40 hover:text-white'
-                }`}
-              >
-                Direct Web URL
-              </button>
-            </div>
+      <DashModal open={showImageModal} onOpenChange={setShowImageModal}>
+        <DashModalContent className="max-w-[400px]">
+          <DashModalTitle className="mb-4 flex items-center gap-1.5">🖼️ Insert rich image</DashModalTitle>
 
-            {imageTab === 'upload' ? (
-              <div className="flex flex-col items-center justify-center py-6 border border-dashed border-white/10 rounded-xl bg-[#080f28]/40 mb-4 text-center">
-                <span className="text-[10px] text-white/50 mb-3 px-4 leading-normal">Upload visual assets directly to CRM Secure Storage</span>
-                <button
-                  onClick={() => {
-                    onOpenImageModal();
-                    setShowImageModal(false);
-                  }}
-                  className="bg-primary hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg"
-                >
-                  Open CRM Media Library
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3 mb-4">
-                <input
-                  type="text"
-                  placeholder="Image Web URL (https://unsplash.com/...)"
-                  value={directImageUrl}
-                  onChange={e => setDirectImageUrl(e.target.value)}
-                  className="w-full bg-[#080f28] border border-white/10 rounded-lg p-2.5 text-xs text-white placeholder-white/20 focus:outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Accessibility Alt Text (description of image)"
-                  value={directImageAlt}
-                  onChange={e => setDirectImageAlt(e.target.value)}
-                  className="w-full bg-[#080f28] border border-white/10 rounded-lg p-2.5 text-xs text-white placeholder-white/20 focus:outline-none"
-                />
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 text-xs">
-              <button
-                onClick={() => setShowImageModal(false)}
-                className="bg-white/5 border border-white/5 hover:bg-white/10 text-white/70 px-4 py-2 rounded-lg font-bold transition"
-              >
-                Cancel
-              </button>
-              {imageTab === 'url' && (
-                <button
-                  onClick={() => {
-                    if (editor && directImageUrl) {
-                      editor.chain().focus().setImage({ src: directImageUrl, alt: directImageAlt }).run();
-                    }
-                    setShowImageModal(false);
-                  }}
-                  className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold transition"
-                >
-                  Insert Image URL
-                </button>
+          {/* Tab Selector */}
+          <div className="flex bg-dash-surface p-1 rounded-xl border border-dash-border mb-4">
+            <button
+              onClick={() => setImageTab('upload')}
+              className={cn(
+                "flex-1 text-center py-2 text-xs font-bold rounded-lg transition-colors motion-reduce:transition-none",
+                imageTab === 'upload' ? 'bg-dash-accent text-white' : '!text-dash-textMuted hover:!text-dash-text'
               )}
-            </div>
+            >
+              CRM storage upload
+            </button>
+            <button
+              onClick={() => setImageTab('url')}
+              className={cn(
+                "flex-1 text-center py-2 text-xs font-bold rounded-lg transition-colors motion-reduce:transition-none",
+                imageTab === 'url' ? 'bg-dash-accent text-white' : '!text-dash-textMuted hover:!text-dash-text'
+              )}
+            >
+              Direct web URL
+            </button>
           </div>
-        </div>
-      )}
+
+          {imageTab === 'upload' ? (
+            <div className="flex flex-col items-center justify-center py-6 border border-dashed border-dash-border rounded-xl bg-dash-surface mb-4 text-center">
+              <span className="text-[11px] !text-dash-textMuted mb-3 px-4 leading-normal">Upload visual assets directly to CRM secure storage</span>
+              <DashButton
+                onClick={() => {
+                  onOpenImageModal();
+                  setShowImageModal(false);
+                }}
+              >
+                Open CRM media library
+              </DashButton>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 mb-4">
+              <input
+                type="text"
+                placeholder="Image Web URL (https://unsplash.com/...)"
+                value={directImageUrl}
+                onChange={e => setDirectImageUrl(e.target.value)}
+                className="w-full bg-dash-surface border border-dash-border rounded-lg p-2.5 text-xs !text-dash-text placeholder:text-dash-textMuted focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Accessibility Alt Text (description of image)"
+                value={directImageAlt}
+                onChange={e => setDirectImageAlt(e.target.value)}
+                className="w-full bg-dash-surface border border-dash-border rounded-lg p-2.5 text-xs !text-dash-text placeholder:text-dash-textMuted focus:outline-none"
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 text-xs">
+            <DashButton variant="secondary" onClick={() => setShowImageModal(false)}>Cancel</DashButton>
+            {imageTab === 'url' && (
+              <DashButton
+                onClick={() => {
+                  if (editor && directImageUrl) {
+                    editor.chain().focus().setImage({ src: directImageUrl, alt: directImageAlt }).run();
+                  }
+                  setShowImageModal(false);
+                }}
+              >
+                Insert image URL
+              </DashButton>
+            )}
+          </div>
+        </DashModalContent>
+      </DashModal>
       {/* AI Spark Drawer Inline Panel */}
       <AISparkDrawer
         isOpen={isSparkDrawerOpen}

@@ -10,8 +10,8 @@ export default async function CoursesPage() {
     return (
       <Wrapper>
         <div className="p-6 max-w-7xl mx-auto min-h-[calc(100vh-80px)] flex flex-col items-center justify-center">
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-6 rounded-xl max-w-md text-center space-y-4">
-            <h2 className="text-lg font-bold uppercase tracking-wider">Database Fetch Error</h2>
+          <div className="bg-red/10 border border-red/20 !text-red p-6 rounded-xl max-w-md text-center space-y-4">
+            <h2 className="text-lg font-bold">Failed to load courses</h2>
             <p className="text-xs font-mono">{error}</p>
           </div>
         </div>

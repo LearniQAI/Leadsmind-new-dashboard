@@ -25,29 +25,29 @@ export const ColorPicker = ({ value, onChange, label }: ColorPickerProps) => {
   return (
     <div className="space-y-2">
       {label && (
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">
+        <Label className="text-xs font-bold text-muted-foreground block">
           {label}
         </Label>
       )}
       <div className="flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <button 
-              className="w-10 h-10 rounded-lg border-2 border-white/10 shadow-sm transition-all hover:scale-105 active:scale-95 flex items-center justify-center overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/checkerboard.png')]"
+            <button
+              className="w-10 h-10 rounded-lg border-2 border-dash-border shadow-sm transition-all motion-reduce:transition-none hover:scale-105 active:scale-95 flex items-center justify-center overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/checkerboard.png')]"
               style={{ backgroundColor: color }}
             >
               <div className="w-full h-full border border-black/5 rounded-md" style={{ backgroundColor: color }} />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-3 bg-black/90 border-white/10 backdrop-blur-xl shadow-2xl">
+          <PopoverContent className="w-auto p-3 bg-white border-dash-border backdrop-blur-xl shadow-2xl">
             <div className="space-y-4 pt-2">
               <HexColorPicker color={color.startsWith('#') ? color.substring(0, 7) : '#6c47ff'} onChange={onChange} />
-              
+
               <div className="grid grid-cols-6 gap-1 mt-2">
                 {presets.map((preset) => (
                   <button
                     key={preset}
-                    className="w-6 h-6 rounded-md border border-white/10 transition-transform hover:scale-110"
+                    className="w-6 h-6 rounded-md border border-dash-border transition-transform motion-reduce:transition-none hover:scale-110"
                     style={{ backgroundColor: preset }}
                     onClick={() => onChange(preset)}
                   />
@@ -55,21 +55,21 @@ export const ColorPicker = ({ value, onChange, label }: ColorPickerProps) => {
               </div>
 
               <div className="flex items-center gap-2 mt-2">
-                <div className="text-[10px] font-mono text-muted-foreground uppercase">Hex</div>
-                <Input 
+                <div className="text-[10px] font-mono text-muted-foreground">Hex</div>
+                <Input
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
-                  className="h-8 text-[10px] bg-white/5 border-white/10 font-mono"
+                  className="h-8 text-[10px] bg-white border-dash-border font-mono"
                 />
               </div>
             </div>
           </PopoverContent>
         </Popover>
         <div className="flex-1">
-          <Input 
+          <Input
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="h-9 text-xs bg-white/5 border-white/10 font-mono"
+            className="h-9 text-xs bg-white border-dash-border font-mono"
           />
         </div>
       </div>

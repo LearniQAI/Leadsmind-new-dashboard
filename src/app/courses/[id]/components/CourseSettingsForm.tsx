@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { DashButton } from "@/components/dashboard-ui/Button";
+import { DashFormField, DashInput, DashTextarea } from "@/components/dashboard-ui/FormField";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -92,85 +93,82 @@ export default function CourseSettingsForm({
   };
 
   return (
-    <form onSubmit={handleUpdateCourse} className="bg-[#080f28] border border-white/5 rounded-2xl p-6 space-y-6">
-      <div className="border-b border-white/5 pb-4">
-        <h2 className="text-base font-black font-space-grotesk uppercase tracking-wider text-white">Course Settings</h2>
-        <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-1">Manage title, pricing, layout and launch state</p>
+    <form onSubmit={handleUpdateCourse} className="bg-white border border-dash-border rounded-2xl p-6 space-y-6">
+      <div className="border-b border-dash-border pb-4">
+        <h2 className="text-lg font-bold !text-dash-text">Course settings</h2>
+        <p className="text-xs !text-dash-textMuted mt-1">Manage title, pricing, layout and launch state</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Title */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Course Title</label>
-          <input
+        <DashFormField label="Course title">
+          <DashInput
             type="text"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
             placeholder="e.g. Masterclass in JavaScript"
-            className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-body font-bold"
+            className="font-bold"
             required
           />
-        </div>
+        </DashFormField>
 
         {/* Price */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Course Price (USD)</label>
-          <input
+        <DashFormField label="Course price (USD)">
+          <DashInput
             type="number"
             step="0.01"
             value={editPrice}
             onChange={(e) => setEditPrice(e.target.value)}
             placeholder="0.00"
-            className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all font-mono"
+            className="font-mono"
             required
           />
-        </div>
+        </DashFormField>
 
         {/* Launch Status */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Launch Status</label>
+        <DashFormField label="Launch status">
           <select
             value={editStatus}
             onChange={(e) => setEditStatus(e.target.value)}
-            className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all"
+            className="w-full h-11 rounded-xl border border-dash-border bg-white px-3.5 text-sm !text-dash-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent transition-colors motion-reduce:transition-none"
           >
-            <option value="draft">Draft Mode</option>
-            <option value="published">Published / Live Node</option>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
           </select>
-        </div>
+        </DashFormField>
 
         {/* Cover Image / Thumbnail Upload */}
         <div className="space-y-2 md:col-span-2">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Course Cover Image</label>
-          <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4 items-center bg-[#111d47]/20 border border-white/5 p-4 rounded-xl">
+          <label className="text-[13px] font-semibold !text-dash-text block">Course cover image</label>
+          <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4 items-center bg-dash-surface border border-dash-border p-4 rounded-xl">
             {/* Thumbnail Preview / Upload Zone */}
-            <div className="relative aspect-video md:aspect-square bg-[#111d47] border border-dashed border-white/10 rounded-lg overflow-hidden flex flex-col items-center justify-center text-center p-3 group hover:border-primary/40 transition-all cursor-pointer" onClick={() => document.getElementById("thumbnail-file-input")?.click()}>
+            <div className="relative aspect-video md:aspect-square bg-white border border-dashed border-dash-border rounded-lg overflow-hidden flex flex-col items-center justify-center text-center p-3 group hover:border-dash-accent/40 transition-all motion-reduce:transition-none cursor-pointer" onClick={() => document.getElementById("thumbnail-file-input")?.click()}>
               {editThumbnail ? (
                 <>
-                  <img src={editThumbnail} alt="Thumbnail Preview" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[10px] font-bold uppercase tracking-wider text-white">
-                    Replace Cover
+                  <img src={editThumbnail} alt="Thumbnail Preview" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all motion-reduce:transition-none motion-reduce:group-hover:scale-100" />
+                  <div className="absolute inset-0 bg-dash-text/60 opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none flex items-center justify-center text-xs font-bold text-white">
+                    Replace cover
                   </div>
                 </>
               ) : isUploading ? (
                 <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="animate-spin text-primary" size={20} />
-                  <span className="text-[9px] uppercase tracking-wider text-white/40">Uploading...</span>
+                  <Loader2 className="animate-spin motion-reduce:animate-none text-dash-accent" size={20} />
+                  <span className="text-xs !text-dash-textMuted">Uploading...</span>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2 text-white/30 group-hover:text-white/60 transition-colors">
+                <div className="flex flex-col items-center gap-2 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none">
                   <span className="text-xl">📸</span>
-                  <span className="text-[9px] font-black uppercase tracking-wider">Upload Cover</span>
-                  <span className="text-[8px] text-white/20">JPEG/PNG up to 5MB</span>
+                  <span className="text-xs font-bold">Upload cover</span>
+                  <span className="text-[11px] !text-dash-textMuted">JPEG/PNG up to 5MB</span>
                 </div>
               )}
             </div>
-            
+
             <div className="space-y-3 w-full">
               <div>
-                <span className="text-[11px] font-bold text-white block">File Storage Upload</span>
-                <span className="text-[9px] text-white/40 block mt-0.5 leading-normal">
-                  Upload a high-resolution banner or square cover. Assets are deployed to the Supabase `media` node storage bucket.
+                <span className="text-[13px] font-bold !text-dash-text block">Upload from your device</span>
+                <span className="text-xs !text-dash-textMuted block mt-0.5 leading-normal">
+                  Upload a high-resolution banner or square cover image.
                 </span>
               </div>
               <input
@@ -182,13 +180,13 @@ export default function CourseSettingsForm({
                 onChange={handleImageUpload}
               />
               <div className="space-y-1">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-white/30 block">Or Paste External Image URL</span>
-                <input
+                <span className="text-xs font-semibold !text-dash-textMuted block">Or paste an image URL</span>
+                <DashInput
                   type="url"
                   value={editThumbnail}
                   onChange={(e) => setEditThumbnail(e.target.value)}
                   placeholder="https://example.com/banner.jpg"
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-mono"
+                  className="h-10 text-xs font-mono"
                 />
               </div>
             </div>
@@ -196,32 +194,27 @@ export default function CourseSettingsForm({
         </div>
 
         {/* Description */}
-        <div className="space-y-2 md:col-span-2">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Course Description</label>
-          <textarea
+        <DashFormField label="Course description" className="md:col-span-2">
+          <DashTextarea
             value={editDesc}
             onChange={(e) => setEditDesc(e.target.value)}
             placeholder="Describe what students will learn in this course..."
             rows={4}
-            className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-body leading-relaxed"
+            className="leading-relaxed"
           />
-        </div>
+        </DashFormField>
       </div>
 
-      <div className="flex items-center justify-end border-t border-white/5 pt-4">
-        <Button
-          type="submit"
-          disabled={isSavingCourse}
-          className="bg-primary hover:bg-primary/95 text-white font-black uppercase tracking-wider text-[10px] h-11 px-6 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-1.5 transition-all"
-        >
+      <div className="flex items-center justify-end border-t border-dash-border pt-4">
+        <DashButton type="submit" disabled={isSavingCourse}>
           {isSavingCourse ? (
             <>
-              <Loader2 size={13} className="animate-spin" /> Saving Changes...
+              <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> Saving changes...
             </>
           ) : (
-            "Save Course Settings"
+            "Save course settings"
           )}
-        </Button>
+        </DashButton>
       </div>
     </form>
   );

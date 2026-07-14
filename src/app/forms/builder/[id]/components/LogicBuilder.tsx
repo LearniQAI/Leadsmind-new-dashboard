@@ -69,49 +69,49 @@ export function LogicBuilder() {
   const stepMap = new Map(steps.map(s => [s.id, s]));
 
   return (
-    <div className="flex flex-col gap-6" style={{ padding: '8px 0 20px' }}>
+    <div className="flex flex-col gap-6 py-2 pb-5">
       <div className="flex items-center justify-between">
-        <p className="builder-section-label" style={{ margin: 0 }}>Conditional Rules</p>
+        <p className="builder-section-label m-0">Conditional rules</p>
         <button
           onClick={handleOpenNew}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 hover:bg-[#2563eb] hover:border-transparent text-[#60a5fa] hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-dash-accent/10 border border-dash-accent/20 hover:bg-dash-accent hover:border-transparent text-dash-accent hover:text-white rounded-lg text-[10px] font-bold transition-colors motion-reduce:transition-none cursor-pointer"
         >
-          <Plus size={10} /> Add Rule
+          <Plus size={10} /> Add rule
         </button>
       </div>
 
       {logicRules.length === 0 ? (
         <div className="flex flex-col gap-4">
-          <div className="text-center py-10 bg-white/2 border border-dashed border-white/5 rounded-2xl p-4">
-            <p className="text-xs text-white/30 font-dm-sans leading-relaxed">
+          <div className="text-center py-10 bg-dash-surface border border-dashed border-dash-border rounded-2xl p-4">
+            <p className="text-xs !text-dash-textMuted leading-relaxed">
               No conditional logic rules yet. Rules let you show, hide, or skip based on user responses.
             </p>
             <button
               onClick={() => { if (fields.length === 0) { toast.error('Add at least one field first.', { id: 'no-fields-first' }); return; } setEditingRule(null); setModalOpen(true); }}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb] text-[#60a5fa] hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-dash-accent/10 border border-dash-accent/20 hover:bg-dash-accent text-dash-accent hover:text-white rounded-xl text-[10px] font-bold transition-colors motion-reduce:transition-none cursor-pointer"
             >
-              <Plus size={10} /> Add Your First Rule
+              <Plus size={10} /> Add your first rule
             </button>
           </div>
 
           {fields.length >= 2 && (
             <div className="flex flex-col gap-2">
-              <p className="text-[9px] font-black uppercase tracking-widest text-white/30 flex items-center gap-1.5">
-                <Sparkles size={10} /> Quick Start Examples
+              <p className="text-[10px] font-bold !text-dash-textMuted flex items-center gap-1.5">
+                <Sparkles size={10} /> Quick start examples
               </p>
               <button
                 onClick={() => handleUseStarter('Company', 'show_field')}
-                className="text-left p-3 bg-white/3 border border-white/5 hover:border-[#2563eb]/20 rounded-xl transition-all text-[10px] text-white/50 hover:text-white font-dm-sans leading-relaxed"
+                className="text-left p-3 bg-white border border-dash-border hover:border-dash-accent/30 rounded-xl transition-colors motion-reduce:transition-none text-[10px] !text-dash-textMuted hover:!text-dash-text leading-relaxed"
               >
-                <span className="block text-[10px] font-bold text-white/60 mb-0.5">Show business fields when &quot;Company&quot; selected</span>
-                <span className="block text-[9px] text-[#4a5a82]">IF [dropdown] equals &quot;Company&quot; THEN Show Field</span>
+                <span className="block text-[10px] font-bold !text-dash-text mb-0.5">Show business fields when &quot;Company&quot; selected</span>
+                <span className="block text-[9px] !text-dash-textMuted">IF [dropdown] equals &quot;Company&quot; THEN show field</span>
               </button>
               <button
                 onClick={() => handleUseStarter('Free', 'skip_step')}
-                className="text-left p-3 bg-white/3 border border-white/5 hover:border-[#2563eb]/20 rounded-xl transition-all text-[10px] text-white/50 hover:text-white font-dm-sans leading-relaxed"
+                className="text-left p-3 bg-white border border-dash-border hover:border-dash-accent/30 rounded-xl transition-colors motion-reduce:transition-none text-[10px] !text-dash-textMuted hover:!text-dash-text leading-relaxed"
               >
-                <span className="block text-[10px] font-bold text-white/60 mb-0.5">Skip payment step for free plans</span>
-                <span className="block text-[9px] text-[#4a5a82]">IF [dropdown] equals &quot;Free&quot; THEN Skip Step</span>
+                <span className="block text-[10px] font-bold !text-dash-text mb-0.5">Skip payment step for free plans</span>
+                <span className="block text-[9px] !text-dash-textMuted">IF [dropdown] equals &quot;Free&quot; THEN skip step</span>
               </button>
             </div>
           )}
@@ -131,25 +131,25 @@ export function LogicBuilder() {
             return (
               <div
                 key={rule.id}
-                className="p-4 bg-[#0c1535]/80 border border-white/5 rounded-2xl relative group hover:border-[#2563eb]/20 transition-all"
+                className="p-4 bg-white border border-dash-border rounded-2xl relative group hover:border-dash-accent/30 transition-colors motion-reduce:transition-none"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 text-[11px] text-white font-bold font-dm-sans mb-2 flex-wrap">
-                      <span className="text-[#2563eb] text-[10px] font-black uppercase tracking-widest">IF</span>
+                    <div className="flex items-center gap-2 text-[11px] !text-dash-text font-bold mb-2 flex-wrap">
+                      <span className="text-dash-accent text-[10px] font-bold">IF</span>
                       <span className="truncate max-w-[120px]">{triggerField?.label || 'Unknown'}</span>
-                      <span className="text-[#94a3c8] text-[10px] uppercase tracking-wider">{rule.operator.replace(/_/g, ' ')}</span>
+                      <span className="!text-dash-textMuted text-[10px]">{rule.operator.replace(/_/g, ' ')}</span>
                       {rule.operator !== 'checked' && rule.operator !== 'unchecked' && (
-                        <span className="text-white/70 truncate max-w-[100px]">&quot;{rule.value}&quot;</span>
+                        <span className="!text-dash-textMuted truncate max-w-[100px]">&quot;{rule.value}&quot;</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-white font-bold font-dm-sans flex-wrap">
-                      <span className="text-[#2563eb] text-[10px] font-black uppercase tracking-widest">THEN</span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/5 rounded-md text-[10px]">
+                    <div className="flex items-center gap-2 text-[11px] !text-dash-text font-bold flex-wrap">
+                      <span className="text-dash-accent text-[10px] font-bold">THEN</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-dash-surface rounded-md text-[10px]">
                         {actionMeta.icon}
                         {actionMeta.label}
                       </span>
-                      <ArrowRight size={10} className="text-white/30" />
+                      <ArrowRight size={10} className="!text-dash-textMuted" />
                       <span className="truncate max-w-[140px]">{targetLabel}</span>
                     </div>
                   </div>
@@ -157,14 +157,14 @@ export function LogicBuilder() {
                   <div className="flex gap-1 shrink-0">
                     <button
                       onClick={() => handleOpenEdit(rule)}
-                      className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-white/5 rounded text-white/30 hover:text-white transition-all"
+                      className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-dash-surface rounded !text-dash-textMuted hover:!text-dash-text transition-opacity motion-reduce:transition-none"
                       title="Edit Rule"
                     >
                       <Pencil size={12} />
                     </button>
                     <button
                       onClick={() => handleRemoveRule(rule.id)}
-                      className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-rose-500/10 rounded text-rose-400 hover:text-rose-500 transition-all"
+                      className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red/10 rounded text-red hover:text-red transition-opacity motion-reduce:transition-none"
                       title="Remove Rule"
                     >
                       <Trash2 size={12} />
