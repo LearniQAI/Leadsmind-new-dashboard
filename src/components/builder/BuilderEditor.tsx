@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { Viewport } from './Viewport';
 import { PropertiesPanel } from './PropertiesPanel';
 import { FloatingPropertiesPanel } from './FloatingPropertiesPanel';
+import { BuilderCommandPalette } from './BuilderCommandPalette';
 import { RenderNode } from './RenderNode';
 import { Container } from './user/Container';
 import { Section } from './user/Section';
@@ -40,7 +41,7 @@ import { TemplateDirectoryModal } from './TemplateDirectoryModal';
 import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, Send, AlertCircle, Copy as CopyIcon, Sparkles, Upload } from 'lucide-react';
+import { Loader2, Save, Send, AlertCircle, Copy as CopyIcon, Sparkles, Upload, Monitor, Tablet, Smartphone, Check } from 'lucide-react';
 import { RESOLVER, wrapForReact19 } from '@/lib/builder/resolver';
 import { cn } from '@/lib/utils';
 import { LayoutTemplate, Settings2 } from 'lucide-react';
@@ -339,8 +340,11 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 .single();
 
             if (pageError || !data) {
-                console.error('Builder load error:', pageError);
-                toast.error('Failed to load page content');
+                console.error('Builder load error:', pageError, 'PageID:', pageId);
+                toast.error('Failed to load page content. Loading blank canvas.');
+                setInitialContent(BLANK_CANVAS);
+                lastLoadedPageId.current = typeof pageId === 'string' ? pageId : 'error';
+                setIsLoadingContent(false);
                 return;
             }
 
@@ -462,6 +466,8 @@ const BuilderEditorLayout = ({
     isPublishing,
     pages
 }: any) => {
+    const USE_DOCKED_INSPECTOR = true; // Feature flag for migration
+
     const {
         sidebarOpen,
         setSidebarOpen,
@@ -470,7 +476,9 @@ const BuilderEditorLayout = ({
         previewMode,
         setPreviewMode,
         blueprintNodeId,
-        setBlueprintNodeId
+        setBlueprintNodeId,
+        viewMode,
+        setViewMode
     } = useBuilder();
 
     const { actions: editorActions, query, canUndo, canRedo } = useEditor((state, query) => ({
@@ -559,28 +567,23 @@ const BuilderEditorLayout = ({
     return (
         <div className="h-screen w-full flex flex-col overflow-hidden bg-white !text-dash-text">
             {/* Header Section */}
-            <header className="h-[70px] border-b border-dash-border bg-white/90 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50 w-full select-none overflow-x-auto scrollbar-none">
-                <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-3 pr-6 border-r border-dash-border shrink-0">
-                        <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-                            <span className="font-bold text-lg tracking-tighter text-white">L</span>
-                        </div>
-                        <div className="shrink-0">
-                            <span className="block text-[11px] font-bold !text-dash-text leading-none whitespace-nowrap">Leadsmind</span>
-                            <span className="block text-[8px] font-bold text-primary mt-0.5 whitespace-nowrap">Node builder</span>
+            <header className="h-[72px] border-b border-slate-200 bg-white flex items-center justify-between px-4 shrink-0 z-50 w-full select-none overflow-x-auto scrollbar-none">
+                {/* Left: Logo & Sidebar Toggle */}
+                <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-3 pr-4 border-r border-slate-200 shrink-0">
+                        <div className="h-8 w-8 rounded-[8px] bg-primary flex items-center justify-center shrink-0">
+                            <span className="font-bold text-sm tracking-tighter text-white">L</span>
                         </div>
                     </div>
 
-                    {/* Sidebar Toggles */}
-                    <div className="flex items-center gap-2 px-4 border-r border-dash-border shrink-0">
+                    <div className="flex items-center gap-1.5">
                         <Button
                             variant="ghost"
                             size="icon"
-                            title="Toggle Elements Sidebar"
                             onClick={() => setSidebarOpen(!sidebarOpen)}
                             className={cn(
-                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none",
-                                sidebarOpen ? "bg-dash-accent/10 !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text"
+                                "h-9 w-9 rounded-md transition-all",
+                                sidebarOpen ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
                             )}
                         >
                             <LayoutTemplate className="w-4 h-4" />
@@ -588,29 +591,74 @@ const BuilderEditorLayout = ({
                         <Button
                             variant="ghost"
                             size="icon"
-                            title="Toggle Properties Panel"
                             onClick={() => setPropertiesOpen(!propertiesOpen)}
                             className={cn(
-                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none",
-                                propertiesOpen ? "bg-dash-accent/10 !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text"
+                                "h-9 w-9 rounded-md transition-all",
+                                propertiesOpen ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
                             )}
                         >
                             <Settings2 className="w-4 h-4" />
                         </Button>
                     </div>
 
-                    {/* Undo / Redo Actions */}
-                    <div className="flex items-center gap-1.5 px-4 border-r border-dash-border">
+                    {/* Page Switcher */}
+                    <div className="ml-2 flex items-center bg-slate-50 px-3 py-1.5 rounded-md border border-slate-200 shrink-0">
+                        <select
+                            value={pageId as string}
+                            onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
+                            className="bg-transparent border-none text-[12px] font-semibold text-slate-700 outline-none cursor-pointer hover:text-primary transition-colors min-w-[120px]"
+                        >
+                            {pages.map((p) => (
+                                <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Center: Responsive Controls */}
+                <div className="hidden md:flex bg-slate-100 p-1 rounded-[8px] border border-slate-200 shrink-0 mx-auto">
+                    <button
+                        onClick={() => setViewMode('desktop')}
+                        className={cn(
+                            "px-3 py-1.5 rounded-[6px] transition-all flex items-center justify-center",
+                            viewMode === 'desktop' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900"
+                        )}
+                        title="Desktop view"
+                    >
+                        <Monitor className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('tablet')}
+                        className={cn(
+                            "px-3 py-1.5 rounded-[6px] transition-all flex items-center justify-center",
+                            viewMode === 'tablet' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900"
+                        )}
+                        title="Tablet view"
+                    >
+                        <Tablet className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('mobile')}
+                        className={cn(
+                            "px-3 py-1.5 rounded-[6px] transition-all flex items-center justify-center",
+                            viewMode === 'mobile' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900"
+                        )}
+                        title="Mobile view"
+                    >
+                        <Smartphone className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1 pr-4 border-r border-slate-200">
                         <Button
                             variant="ghost"
                             size="icon"
                             disabled={!canUndo}
                             onClick={() => editorActions.history.undo()}
                             title="Undo (Ctrl+Z)"
-                            className={cn(
-                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none !text-dash-textMuted hover:!text-dash-text",
-                                !canUndo && "opacity-40 cursor-not-allowed"
-                            )}
+                            className="h-9 w-9 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md disabled:opacity-40"
                         >
                             <span className="text-sm">↩</span>
                         </Button>
@@ -620,92 +668,40 @@ const BuilderEditorLayout = ({
                             disabled={!canRedo}
                             onClick={() => editorActions.history.redo()}
                             title="Redo (Ctrl+Y)"
-                            className={cn(
-                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none !text-dash-textMuted hover:!text-dash-text",
-                                !canRedo && "opacity-40 cursor-not-allowed"
-                            )}
+                            className="h-9 w-9 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md disabled:opacity-40"
                         >
                             <span className="text-sm">↪</span>
                         </Button>
-                    </div>
-
-                    {/* Page Switcher */}
-                    <div className="flex items-center gap-4 bg-dash-surface px-4 py-2 rounded-xl border border-dash-border shrink-0">
-                        <div className="flex items-center gap-2 shrink-0">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse motion-reduce:animate-none shrink-0" />
-                            <span className="text-[9px] font-bold !text-dash-textMuted whitespace-nowrap">Editing mode:</span>
-                        </div>
-                        <select
-                            value={pageId as string}
-                            onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
-                            className="bg-transparent border-none text-[10px] font-bold !text-dash-text outline-none cursor-pointer hover:text-primary transition-colors motion-reduce:transition-none min-w-[120px] shrink-0"
-                        >
-                            {pages.map((p) => (
-                                <option key={p.id} value={p.id} className="bg-white text-dash-text">{p.name} ({p.slug})</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-2 px-4 border-r border-dash-border mr-2 shrink-0">
-                        <div className="text-right hidden sm:block shrink-0">
-                            <span className="block text-[9px] font-bold !text-dash-textMuted mb-0.5 whitespace-nowrap">Node status</span>
-                            <span className="block text-[10px] font-bold text-green whitespace-nowrap">System online</span>
-                        </div>
                     </div>
 
                     <Button
                         variant="ghost"
                         onClick={() => setPreviewMode(!previewMode)}
                         className={cn(
-                            "h-11 px-6 text-[10px] font-bold rounded-xl border transition-all motion-reduce:transition-none mr-2",
-                            previewMode ? "bg-primary/20 border-primary/30 text-primary hover:bg-primary/30" : "border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text"
+                            "h-9 px-4 text-[12px] font-semibold rounded-md border transition-all",
+                            previewMode ? "bg-slate-900 text-white hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                         )}
                     >
-                        {previewMode ? "Edit mode" : "Preview mode"}
+                        {previewMode ? "Edit" : "Preview"}
                     </Button>
-                    <Button
-                        variant="ghost"
-                        onClick={() => setIsTemplateDirectoryOpen(true)}
-                        className="h-11 px-4 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface text-primary hover:!text-dash-text transition-all motion-reduce:transition-none mr-2"
-                        title="Open Template Directory"
-                    >
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Templates
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        onClick={() => setIsImportModalOpen(true)}
-                        className="h-11 px-4 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text transition-all motion-reduce:transition-none mr-2"
-                        title="Import JSON Template"
-                    >
-                        <Upload className="w-4 h-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        onClick={handleExportJSON}
-                        className="h-11 px-4 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text transition-all motion-reduce:transition-none mr-2"
-                        title="Export for Template System"
-                    >
-                        <CopyIcon className="w-4 h-4" />
-                    </Button>
+
                     <Button
                         variant="ghost"
                         onClick={handleSaveDraft}
                         disabled={isSaving}
-                        className="h-11 px-6 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text transition-all motion-reduce:transition-none"
+                        className="h-9 px-4 text-[12px] font-semibold rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all bg-white"
                     >
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                        {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
                         Save draft
                     </Button>
+                    
                     <Button
                         onClick={handlePublish}
                         disabled={isPublishing}
-                        className="h-11 px-8 text-[10px] font-bold rounded-xl bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 transition-all motion-reduce:transition-none active:scale-95"
+                        className="h-9 px-5 text-[12px] font-semibold rounded-md bg-primary hover:bg-blue-700 text-white shadow-sm transition-all"
                     >
-                        {isPublishing ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                        Deploy live
+                        {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                        Publish
                     </Button>
                 </div>
             </header>
@@ -715,10 +711,10 @@ const BuilderEditorLayout = ({
                 <div
                     className={cn(
                         "transition-all duration-300 ease-in-out motion-reduce:transition-none border-r border-dash-border bg-white overflow-hidden shrink-0",
-                        sidebarOpen && !previewMode ? "w-[300px] opacity-100" : "w-0 opacity-0 border-none"
+                        sidebarOpen && !previewMode ? "w-[320px] opacity-100" : "w-0 opacity-0 border-none"
                     )}
                 >
-                    <div className="w-[300px] h-full"> {/* Fixed width and height inner to prevent squishing and enable scrolling */}
+                    <div className="w-[320px] h-full"> {/* Fixed width and height inner to prevent squishing and enable scrolling */}
                         <Sidebar
                             type={type}
                             website={websiteData}
@@ -812,9 +808,52 @@ const BuilderEditorLayout = ({
                         )}
                     </div>
                 </Viewport>
-                {/* Floating Properties Panel */}
-                <FloatingPropertiesPanel />
+
+                {/* Right Docked Properties Panel */}
+                {USE_DOCKED_INSPECTOR && (
+                    <div
+                        className={cn(
+                            "transition-all duration-300 ease-in-out motion-reduce:transition-none border-l border-dash-border bg-white overflow-hidden shrink-0 z-40 shadow-[-10px_0_30px_rgba(0,0,0,0.02)]",
+                            propertiesOpen && !previewMode ? "w-[360px] opacity-100" : "w-0 opacity-0 border-none"
+                        )}
+                    >
+                        <div className="w-[360px] h-full">
+                            <PropertiesPanel />
+                        </div>
+                    </div>
+                )}
+
+                {/* Legacy Floating Properties Panel */}
+                {!USE_DOCKED_INSPECTOR && <FloatingPropertiesPanel />}
             </div>
+
+            {/* Footer Status Bar */}
+            <footer className="h-8 bg-white border-t border-slate-200 flex items-center justify-between px-4 text-[11px] font-medium text-slate-500 z-50 shrink-0">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Online
+                    </div>
+                    {isSaving ? (
+                        <div className="flex items-center gap-1.5 text-slate-400">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Saving...
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1.5 text-emerald-600">
+                            <Check className="w-3 h-3" />
+                            Draft Saved
+                        </div>
+                    )}
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="capitalize">{viewMode} View</div>
+                    <div className="flex items-center gap-1 border-l border-slate-200 pl-4">
+                        <span className="text-slate-400">Page:</span>
+                        <span className="text-slate-700">{pages.find((p: any) => p.id === pageId)?.name || 'Unknown'}</span>
+                    </div>
+                </div>
+            </footer>
 
             {/* Save Blueprint Modal */}
             <Dialog open={!!blueprintNodeId} onOpenChange={(open) => !open && setBlueprintNodeId(null)}>
@@ -906,8 +945,14 @@ export const BuilderEditor = ({ type }: { type: 'website' | 'funnel' }) => {
             resolver={RESOLVER}
             enabled={true}
             onRender={({ render }) => <RenderNode render={render} />}
+            indicator={{
+                success: '#2563EB',
+                error: '#EF4444',
+                thickness: 3,
+            }}
         >
             <BuilderEditorContent type={type} />
+            <BuilderCommandPalette />
         </Editor>
     );
 };

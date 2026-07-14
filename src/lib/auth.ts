@@ -69,13 +69,15 @@ export const getCurrentProfile = cache(async (existingUser?: any): Promise<UserP
 
  if (error || !data) {
   // Profile doesn't exist yet — create it now (fallback for trigger failures)
+  const nameParts = (user.user_metadata?.full_name ?? user.email ?? '').split(' ');
   const { data: created } = await supabase
    .from('users')
    .upsert({
     id: user.id,
     email: user.email ?? '',
-    first_name: (user.user_metadata?.full_name ?? user.email ?? '').split(' ')[0] ?? '',
-    last_name: '',
+    first_name: nameParts[0] ?? '',
+    last_name: nameParts.slice(1).join(' ') ?? '',
+    avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
    })
    .select('id, email, first_name, last_name, avatar_url, created_at')
    .single();

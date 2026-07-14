@@ -5,7 +5,7 @@ import { useNode, useEditor } from '@craftjs/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useBuilder } from './BuilderContext';
-import { Save, Copy, Trash2, RefreshCw, Settings } from 'lucide-react';
+import { Save, Copy, Trash2, RefreshCw, Settings, Move, Plus } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -99,7 +99,7 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
           else connect(drag(ref));
         }
       }}
-      className="relative"
+      className="relative group"
       onContextMenu={(e) => {
         if (!isEnabled) return;
         e.preventDefault();
@@ -108,29 +108,66 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
         setContextMenu({ x: e.clientX, y: e.clientY });
       }}
     >
-      {isActive && id !== 'ROOT' && (
-        <div className="absolute -top-6 left-0 bg-primary text-white text-[9px] px-3 py-1.5 rounded-t-lg flex items-center gap-2 z-30 shadow-md">
-          <span className="font-bold pointer-events-none">{name}</span>
+      {/* Sleek Floating Action Bar on Hover */}
+      {isHovered && id !== 'ROOT' && (
+        <div className="absolute -top-[18px] right-4 bg-primary text-white h-[36px] px-2 rounded-[12px] flex items-center justify-center gap-1 z-40 shadow-lg animate-in slide-in-from-bottom-2 fade-in duration-200">
+          <div className="flex items-center justify-center h-full px-1 cursor-grab active:cursor-grabbing text-white/70 hover:text-white transition-colors" title="Move element">
+            <Move size={14} />
+          </div>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              setBlueprintNodeId(id);
-            }}
-            className="text-white hover:text-green cursor-pointer flex items-center justify-center p-0.5"
-            title="Save component blueprint"
+            onClick={(e) => { e.stopPropagation(); handleDuplicate(); }}
+            className="w-7 h-7 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+            title="Duplicate"
           >
-            <Save size={10} />
+            <Copy size={14} />
+          </button>
+          <button
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              editorActions.selectNode(id); 
+              setPropertiesOpen(true); 
+            }}
+            className="w-7 h-7 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+            title="Settings"
+          >
+            <Settings size={14} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+            className="w-7 h-7 flex items-center justify-center text-white/70 hover:text-red-300 hover:bg-white/20 rounded-lg transition-colors"
+            title="Delete"
+          >
+            <Trash2 size={14} />
           </button>
         </div>
       )}
+
+      {/* Hover Outline */}
       {isHovered && !isActive && (
-        <div className="absolute inset-0 border border-primary/40 border-dashed rounded-[inherit] pointer-events-none z-10" />
+        <div className="absolute inset-0 border-[1.5px] border-primary/50 rounded-[inherit] pointer-events-none z-10 transition-colors duration-200" />
       )}
+      {/* Active Outline */}
       {isActive && (
-        <div className="absolute inset-0 border-2 border-primary rounded-[inherit] pointer-events-none z-20 shadow-xl" />
+        <div className="absolute inset-0 border-[2px] border-primary rounded-[inherit] pointer-events-none z-20 shadow-sm" />
       )}
       {render}
+
+      {/* Section Inserter */}
+      {isHovered && parentId === 'ROOT' && (
+         <div className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+           <button 
+             onClick={(e) => {
+               e.stopPropagation();
+               // Open sidebar to Elements
+               const el = document.querySelector('[title="Toggle Elements Sidebar"]') as HTMLButtonElement;
+               if (el) el.click();
+             }}
+             className="bg-primary text-white h-7 px-3 rounded-full text-[11px] font-bold shadow-[0_4px_12px_rgba(37,99,235,0.3)] flex items-center gap-1.5 hover:bg-blue-700 hover:scale-105 transition-all"
+           >
+             <Plus className="w-3.5 h-3.5" /> Add Section
+           </button>
+         </div>
+      )}
 
       {/* Right-click Context Menu */}
       {contextMenu && (

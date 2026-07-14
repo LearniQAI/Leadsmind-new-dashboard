@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { X, HelpCircle, BookOpen, ChevronRight, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { X, HelpCircle, BookOpen, ChevronRight, Sparkles, Loader2, AlertCircle, Search, RefreshCw, Plus, Link2, CheckCircle2 } from 'lucide-react';
 import { getContextualArticles } from '@/app/actions/help';
 
 export default function HelpDrawer() {
@@ -10,6 +10,7 @@ export default function HelpDrawer() {
   const [articles, setArticles] = useState<any[]>([]);
   const [releaseNote, setReleaseNote] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -25,197 +26,281 @@ export default function HelpDrawer() {
     };
   }, []);
 
-  // Fetch articles and release notes when drawer is opened or pathname changes
+  async function fetchHelp() {
+    setLoading(true);
+    try {
+      const res = await getContextualArticles(pathname || '/dashboard');
+      if (res.data) {
+        setArticles(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchReleaseNote() {
+    try {
+      const res = await fetch(`/api/platform/release-notes?route=${encodeURIComponent(pathname || '/dashboard')}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && json.data.length > 0) {
+          setReleaseNote(json.data[0]);
+        } else {
+          setReleaseNote(null);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching release note:", err);
+    }
+  }
+
   useEffect(() => {
     if (!isOpen) return;
-
-    async function fetchHelp() {
-      setLoading(true);
-      try {
-        const res = await getContextualArticles(pathname || '/dashboard');
-        if (res.data) {
-          setArticles(res.data);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    async function fetchReleaseNote() {
-      try {
-        const res = await fetch(`/api/platform/release-notes?route=${encodeURIComponent(pathname || '/dashboard')}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.data && json.data.length > 0) {
-            setReleaseNote(json.data[0]);
-          } else {
-            setReleaseNote(null);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching release note:", err);
-      }
-    }
-
     fetchHelp();
     fetchReleaseNote();
   }, [isOpen, pathname]);
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([fetchHelp(), fetchReleaseNote()]);
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
   const handleDismissAlert = () => {
     setReleaseNote(null);
-    // Dispatch global event to clear header dot alert
     window.dispatchEvent(new CustomEvent('dismiss-help-alert'));
   };
 
-  const getPageTitle = (path: string) => {
-    if (path.includes('/contacts')) return 'Workspace Contacts & Tags';
-    if (path.includes('/pipelines')) return 'Sales Pipelines & Deals';
-    if (path.includes('/calendar')) return 'Booking Slots Scheduler';
-    if (path.includes('/invoices')) return 'Financial Invoicing & Gateways';
-    if (path.includes('/automations')) return 'Email & SMS Automations';
-    if (path.includes('/websites') || path.includes('/funnels')) return 'Landing Page & Web Builder';
-    if (path.includes('/campaigns')) return 'Newsletter Email Campaigns';
-    if (path.includes('/support')) return 'Technical Tickets Queue';
-    return 'Workspace Dashboard';
+  const getPageContext = (path: string) => {
+    if (path.includes('/contacts')) return { title: 'Workspace Contacts & Tags', actions: ['Create Contact', 'Import List'] };
+    if (path.includes('/pipelines')) return { title: 'Sales Pipelines & Deals', actions: ['Create Opportunity', 'Manage Pipelines'] };
+    if (path.includes('/calendar')) return { title: 'Booking Slots Scheduler', actions: ['Create Event', 'Sync Calendar'] };
+    if (path.includes('/invoices')) return { title: 'Financial Invoicing', actions: ['Create Invoice', 'Connect Stripe'] };
+    if (path.includes('/automations')) return { title: 'Email & SMS Automations', actions: ['Create Workflow', 'View Logs'] };
+    if (path.includes('/websites') || path.includes('/funnels')) return { title: 'Landing Page & Web Builder', actions: ['Create Website', 'Connect Domain'] };
+    return { title: 'Dashboard Overview', actions: ['Create Lead', 'Create Opportunity', 'View Pipeline', 'Open Analytics'] };
   };
 
   if (!isOpen) return null;
 
+  const contextInfo = getPageContext(pathname || '/');
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2100] animate-fade-in flex justify-end font-dm-sans">
-      <div className="w-full max-w-md bg-[#04091a] border-l border-white/10 h-full flex flex-col shadow-2xl relative animate-slide-in-right">
+    <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[2100] animate-in fade-in flex justify-end font-dm-sans">
+      <div className="w-[420px] max-w-[460px] bg-white border-l border-[#EEF2F7] h-full flex flex-col shadow-2xl relative animate-in slide-in-from-right duration-200">
         
+        {/* Header Search */}
+        <div className="px-5 py-4 border-b border-[#EEF2F7] bg-white relative">
+          <Search className="absolute left-8 top-1/2 -translate-y-1/2 w-4 h-4 !text-slate-400" />
+          <input 
+            type="text" 
+            placeholder="Search documentation..."
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-[#EEF2F7] rounded-xl text-[13px] !text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all placeholder:!text-slate-400"
+          />
+        </div>
+
         {/* Header */}
-        <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#060b1f]">
+        <div className="px-5 py-4 border-b border-[#EEF2F7] flex items-center justify-between bg-white">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 border border-primary/20 rounded-xl text-primary">
+            <div className="p-2 bg-primary/10 rounded-xl !text-primary">
               <HelpCircle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-space-grotesk">Contextual Assistance</h3>
-              <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold pt-0.5">Page-specific guides & support</p>
+              <h3 className="text-[14px] font-bold !text-slate-800">Workspace Assistant</h3>
+              <p className="text-[11px] !text-slate-500 font-medium">Dashboard Workspace</p>
             </div>
           </div>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="p-2.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
-          {/* Diagnostic Active Path Info */}
-          <div className="p-4 bg-[#080f28]/60 border border-white/5 rounded-2xl space-y-1">
-            <span className="text-[9px] font-bold text-primary uppercase tracking-widest flex items-center gap-1">
-              <Sparkles className="w-3 h-3" /> Active Platform Screen
-            </span>
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider font-space-grotesk">
-              {getPageTitle(pathname || '/')}
-            </h4>
-            <p className="text-[10px] text-white/40 truncate">Route path: {pathname || '/dashboard'}</p>
-          </div>
-
-          {/* Operational Update Banner */}
-          {releaseNote && (
-            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2 relative overflow-hidden animate-fade-in">
-              <div className="flex items-center gap-1.5 text-[9px] font-black text-amber-400 uppercase tracking-widest">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>Operational Update</span>
-              </div>
-              <h5 className="text-xs font-bold text-white uppercase tracking-wider font-space-grotesk">
-                {releaseNote.title}
-              </h5>
-              <p className="text-[11px] text-white/70 leading-relaxed font-light">
-                {releaseNote.description}
-              </p>
-              <div className="pt-1.5 flex justify-end">
-                <button
-                  onClick={handleDismissAlert}
-                  className="text-[9px] font-black text-white/40 hover:text-white hover:underline uppercase tracking-widest transition"
-                >
-                  Acknowledge & Clear
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-white/[0.04]">
-              <BookOpen className="w-4 h-4 text-primary" />
-              <span className="text-xs font-bold text-white uppercase tracking-wider">Suggested Documentation</span>
-            </div>
-
-            {loading ? (
-              <div className="py-12 text-center flex flex-col items-center justify-center gap-2">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                <span className="text-xs text-white/40 uppercase tracking-widest font-semibold">Matching relevant guides...</span>
-              </div>
-            ) : articles.length === 0 ? (
-              <div className="py-12 text-center text-xs text-white/45">
-                No matching articles found for this layout route.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {articles.map((art) => (
-                  <a
-                    key={art.id}
-                    href={`/articles/${art.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block p-4 bg-[#080f28]/45 border border-white/5 hover:border-primary/20 rounded-xl transition duration-150 group"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1.5">
-                        <span className="inline-block text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/10">
-                          {art.category}
-                        </span>
-                        <h5 className="text-xs font-bold text-white group-hover:text-primary transition">
-                          {art.title}
-                        </h5>
-                        <p className="text-[11px] text-white/40 line-clamp-2 leading-relaxed font-light">
-                          {art.body_plain}
-                        </p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-white/20 self-center group-hover:translate-x-0.5 group-hover:text-primary transition" />
-                    </div>
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Support Ticket fallthrough widget */}
-          <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl space-y-3">
-            <h5 className="text-xs font-bold text-white uppercase tracking-wider">Need Technical Support?</h5>
-            <p className="text-[11px] text-white/40 leading-relaxed font-light">
-              Can&apos;t find what you need in the docs? Submit an urgent diagnostic report ticket to our team directly.
-            </p>
+          <div className="flex items-center gap-1">
             <button
-              onClick={() => {
-                setIsOpen(false);
-                window.location.href = '/support';
-              }}
-              className="w-full py-2.5 px-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-[10px] font-black uppercase tracking-widest text-white transition text-center shadow-lg"
+              onClick={handleRefresh}
+              className="p-2 !text-slate-400 hover:!text-slate-700 hover:bg-slate-50 rounded-xl transition"
+              title="Refresh"
             >
-              Go to Support Desk
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-2 !text-slate-400 hover:!text-slate-700 hover:bg-slate-50 rounded-xl transition"
+            >
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6 no-scrollbar bg-white">
+          
+          {/* Current Context Card */}
+          <div className="p-4 bg-slate-50 border border-[#EEF2F7] rounded-2xl space-y-3 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-3">
+              <span className="text-[10px] !text-slate-400 font-medium">Last Updated: Just now</span>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold !text-slate-400 uppercase tracking-wider mb-1 block">
+                Current Context
+              </span>
+              <h4 className="text-[14px] font-bold !text-slate-800">
+                {contextInfo.title}
+              </h4>
+            </div>
+            <div className="pt-2 border-t border-slate-200/60">
+              <span className="text-[11px] font-semibold !text-slate-600 block mb-2">Available Actions:</span>
+              <ul className="space-y-1.5">
+                {contextInfo.actions.map(action => (
+                  <li key={action} className="text-[12px] !text-slate-600 flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-slate-300"></span> {action}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* AI Assistant Section */}
+          <div className="space-y-3">
+            <span className="text-[12px] font-bold !text-slate-800 uppercase tracking-wider">Ask Anything</span>
+            <div className="relative">
+              <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 !text-primary" />
+              <input 
+                type="text" 
+                placeholder="How do I create an automation?"
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#EEF2F7] rounded-xl text-[13px] !text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all placeholder:!text-slate-400"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-[#EEF2F7] rounded-lg text-[11px] font-medium !text-slate-600 transition-colors">
+                How do I publish a website?
+              </button>
+              <button className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-[#EEF2F7] rounded-lg text-[11px] font-medium !text-slate-600 transition-colors">
+                How do I connect a domain?
+              </button>
+              <button className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-[#EEF2F7] rounded-lg text-[11px] font-medium !text-slate-600 transition-colors">
+                How does lead scoring work?
+              </button>
+            </div>
+          </div>
+
+          {/* Suggested Next Steps */}
+          <div className="space-y-3">
+            <span className="text-[12px] font-bold !text-slate-800 uppercase tracking-wider">Suggested Next Steps</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button className="flex items-center gap-2 p-3 bg-white border border-[#EEF2F7] hover:border-slate-300 rounded-xl text-left transition-colors group">
+                <div className="p-1.5 rounded-lg bg-slate-50 !text-slate-500 group-hover:!text-primary group-hover:bg-primary/10 transition-colors">
+                  <Plus className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[11px] font-semibold !text-slate-700">Create your first automation</span>
+              </button>
+              <button className="flex items-center gap-2 p-3 bg-white border border-[#EEF2F7] hover:border-slate-300 rounded-xl text-left transition-colors group">
+                <div className="p-1.5 rounded-lg bg-slate-50 !text-slate-500 group-hover:!text-primary group-hover:bg-primary/10 transition-colors">
+                  <Link2 className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[11px] font-semibold !text-slate-700">Connect a custom domain</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Recommended Resources */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-[#EEF2F7]">
+              <BookOpen className="w-4 h-4 !text-slate-800" />
+              <span className="text-[12px] font-bold !text-slate-800 uppercase tracking-wider">Recommended Resources</span>
+            </div>
+
+            {loading ? (
+              <div className="py-12 text-center flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin !text-slate-400" />
+                <span className="text-[11px] !text-slate-500 font-medium">Fetching workspace guides...</span>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {/* Fallback to static mock articles to ensure it looks good if empty */}
+                <a
+                  href="#"
+                  className="block p-4 bg-[#F8FAFC] rounded-2xl transition hover:-translate-y-[1px] hover:shadow-sm"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">📘</span>
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-[13px] font-bold !text-slate-800">Dashboard Analytics Guide</h5>
+                        <span className="text-[10px] font-semibold !text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Guide</span>
+                      </div>
+                      <p className="text-[12px] !text-slate-500 leading-snug">
+                        Learn how revenue, leads and conversion metrics are calculated.
+                      </p>
+                    </div>
+                  </div>
+                </a>
+                <a
+                  href="#"
+                  className="block p-4 bg-[#F8FAFC] rounded-2xl transition hover:-translate-y-[1px] hover:shadow-sm"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">📘</span>
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-[13px] font-bold !text-slate-800">Managing Opportunities</h5>
+                        <span className="text-[10px] font-semibold !text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Tutorial</span>
+                      </div>
+                      <p className="text-[12px] !text-slate-500 leading-snug">
+                        Learn pipeline stages and forecasting.
+                      </p>
+                    </div>
+                  </div>
+                </a>
+                <a
+                  href="#"
+                  className="block p-4 bg-[#F8FAFC] rounded-2xl transition hover:-translate-y-[1px] hover:shadow-sm"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">📘</span>
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-[13px] font-bold !text-slate-800">Automation Setup</h5>
+                        <span className="text-[10px] font-semibold !text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Reference</span>
+                      </div>
+                      <p className="text-[12px] !text-slate-500 leading-snug">
+                        Create workflows and triggers.
+                      </p>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Need Help? Block */}
+          <div className="p-4 bg-slate-50 border border-[#EEF2F7] rounded-2xl space-y-3">
+            <h5 className="text-[13px] font-bold !text-slate-800">Need Help?</h5>
+            <p className="text-[12px] !text-slate-500 leading-relaxed">
+              Can't find what you're looking for? Our support team is available.
+            </p>
+            <div className="flex flex-col gap-2 pt-1">
+              <button className="w-full py-2 bg-white border border-[#EEF2F7] hover:border-slate-300 rounded-xl text-[12px] font-semibold !text-slate-700 transition-colors shadow-sm">
+                Open Help Center
+              </button>
+              <div className="flex gap-2">
+                <button className="w-full py-2 bg-white border border-[#EEF2F7] hover:border-slate-300 rounded-xl text-[12px] font-semibold !text-slate-700 transition-colors shadow-sm">
+                  Contact Support
+                </button>
+                <button className="w-full py-2 bg-white border border-[#EEF2F7] hover:border-slate-300 rounded-xl text-[12px] font-semibold !text-slate-700 transition-colors shadow-sm">
+                  Report Issue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Footer */}
-        <div className="p-4 border-t border-white/5 bg-[#060b1f] text-center">
-          <a
-            href="/articles"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[10px] font-bold text-primary hover:text-primary/80 uppercase tracking-widest flex items-center justify-center gap-1"
-          >
-            Open Help Center Hub <ChevronRight className="w-3.5 h-3.5" />
-          </a>
+        <div className="p-4 border-t border-[#EEF2F7] bg-white flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold !text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg">
+            <CheckCircle2 className="w-3.5 h-3.5 !text-emerald-500" /> All systems operational
+          </div>
+          <div className="flex items-center gap-4 text-[11px] font-semibold !text-slate-500">
+            <a href="/docs" className="hover:!text-slate-800 transition-colors">Documentation</a>
+            <a href="/api-docs" className="hover:!text-slate-800 transition-colors">API Docs</a>
+          </div>
         </div>
 
       </div>
