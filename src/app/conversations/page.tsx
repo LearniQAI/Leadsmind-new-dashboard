@@ -9,7 +9,7 @@ export default async function ConversationsPage() {
   return (
     <MetaData pageTitle="Communications Hub">
       <Wrapper>
-        <div className="flex flex-col h-screen bg-[#04091a]">
+        <div className="flex flex-col h-screen bg-dash-bg">
           {/* Main Content */}
           <div className="flex-1 overflow-hidden">
             <ConversationsClient initialConversations={conversations || []} />

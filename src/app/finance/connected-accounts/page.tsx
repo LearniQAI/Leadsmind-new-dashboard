@@ -4,6 +4,7 @@ import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
 import { Landmark, RefreshCw, X, Eye, EyeOff, Upload, CheckCircle, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { DashButton } from '@/components/dashboard-ui/Button'
 
 interface BankConnection {
   id: string
@@ -120,7 +121,7 @@ export default function ConnectedAccountsPage() {
       const text = await csvFile.text()
       const lines = text.split('\n').filter(l => l.trim())
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''))
-      
+
       let imported = 0
       const rows = lines.slice(1)
 
@@ -172,27 +173,23 @@ export default function ConnectedAccountsPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-4xl mx-auto font-sans">
+      <div className="min-h-screen bg-white px-6 py-6 max-w-4xl mx-auto">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-[22px] font-bold"
-              style={{ fontFamily: "'Space Grotesk', sans-serif", color: '#eef2ff' }}>
-              Connected <span style={{ color: '#3b82f6' }}>Accounts</span>
+            <h1 className="text-[22px] font-bold !text-dash-text">
+              Connected <span className="text-dash-accent">Accounts</span>
             </h1>
-            <p className="text-[11px] uppercase tracking-[0.8px] font-medium mt-1"
-              style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
+            <p className="text-[12px] font-medium mt-1 !text-dash-textMuted">
               Link your bank account to import transactions automatically
             </p>
           </div>
           {activeConnections.length > 0 && (
-            <button onClick={handleSync} disabled={syncing}
-              className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[12px] font-semibold text-[#eef2ff] hover:bg-white/10 transition-all disabled:opacity-50"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}>
-              <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
+            <DashButton onClick={handleSync} disabled={syncing} variant="secondary" size="sm">
+              <RefreshCw size={13} className={syncing ? 'animate-spin motion-reduce:animate-none' : ''} />
               {syncing ? 'Syncing...' : 'Sync Now'}
-            </button>
+            </DashButton>
           )}
         </div>
 
@@ -200,50 +197,46 @@ export default function ConnectedAccountsPage() {
         {loading ? (
           <div className="space-y-3 mb-6">
             {[1,2].map(i => (
-              <div key={i} className="h-[88px] rounded-xl bg-white/[0.03] animate-pulse" />
+              <div key={i} className="h-[88px] rounded-xl bg-dash-surface animate-pulse motion-reduce:animate-none" />
             ))}
           </div>
         ) : activeConnections.length > 0 ? (
           <div className="flex flex-col gap-3 mb-8">
             {activeConnections.map(conn => (
               <div key={conn.id}
-                className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 flex items-center justify-between gap-4">
+                className="bg-white border border-dash-border rounded-xl p-5 flex items-center justify-between gap-4 shadow-sm">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{ backgroundColor: '#004f9f1F' }}>
-                    <span className="text-[11px] font-bold" style={{ color: '#004f9f', fontFamily: "'Space Grotesk', sans-serif" }}>
+                    <span className="text-[11px] font-bold" style={{ color: '#004f9f' }}>
                       INV
                     </span>
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[14px] font-semibold text-[#eef2ff]"
-                        style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                      <span className="text-[14px] font-semibold !text-dash-text">
                         {conn.bank_name}
                       </span>
-                      <span className="bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.2)] text-[#10b981] text-[10px] font-semibold rounded-full px-2 py-0.5"
-                        style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      <span className="bg-green/10 border border-green/20 text-green text-[10px] font-semibold rounded-full px-2 py-0.5">
                         ● Connected
                       </span>
                     </div>
-                    <p className="text-[12px] mt-0.5" style={{ color: '#94a3c8', fontFamily: "'DM Sans', sans-serif" }}>
+                    <p className="text-[12px] mt-0.5 !text-dash-textMuted">
                       {conn.account_name} — {conn.account_type} •••• {conn.account_number_last4}
                     </p>
-                    <p className="text-[13px] font-bold mt-1"
-                      style={{ color: '#10b981', fontFamily: "'Space Grotesk', sans-serif" }}>
+                    <p className="text-[13px] font-bold mt-1 text-green">
                       {formatCurrency(conn.balance)}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {conn.last_synced_at && (
-                    <span className="text-[10px] text-[#4a5a82]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    <span className="text-[10px] !text-dash-textMuted">
                       Synced {new Date(conn.last_synced_at).toLocaleDateString()}
                     </span>
                   )}
                   <button onClick={() => handleDisconnect(conn.bank_name)}
-                    className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] text-[11px] font-semibold rounded-lg px-3 py-1.5 hover:bg-[rgba(239,68,68,0.18)] transition-all"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    className="bg-red/10 border border-red/20 text-red text-[11px] font-semibold rounded-lg px-3 py-1.5 hover:bg-red/20 transition-colors motion-reduce:transition-none">
                     Disconnect
                   </button>
                 </div>
@@ -253,161 +246,146 @@ export default function ConnectedAccountsPage() {
         ) : null}
 
         {/* Available banks to connect */}
-        <p className="text-[10px] font-semibold uppercase tracking-[1.2px] mb-3"
-          style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
-          Available Bank Connections
+        <p className="text-[11px] font-semibold mb-3 !text-dash-textMuted">
+          Available bank connections
         </p>
 
         <div className="flex flex-col gap-3 mb-8">
 
           {/* Investec */}
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 flex items-center justify-between gap-4 hover:border-[rgba(255,255,255,0.13)] transition-all">
+          <div className="bg-white border border-dash-border rounded-xl p-5 flex items-center justify-between gap-4 hover:border-dash-text/15 transition-colors shadow-sm">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                 style={{ backgroundColor: '#004f9f1F' }}>
-                <span className="text-[11px] font-bold" style={{ color: '#004f9f', fontFamily: "'Space Grotesk', sans-serif" }}>INV</span>
+                <span className="text-[11px] font-bold" style={{ color: '#004f9f' }}>INV</span>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold text-[#eef2ff]"
-                    style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <span className="text-[14px] font-semibold !text-dash-text">
                     Investec
                   </span>
-                  <span className="bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.2)] text-[#10b981] text-[10px] font-semibold rounded-full px-2 py-0.5">
+                  <span className="bg-green/10 border border-green/20 text-green text-[10px] font-semibold rounded-full px-2 py-0.5">
                     Available Now
                   </span>
                 </div>
-                <p className="text-[12px] mt-0.5" style={{ color: '#94a3c8', fontFamily: "'DM Sans', sans-serif" }}>
+                <p className="text-[12px] mt-0.5 !text-dash-textMuted">
                   Private Banking and Business Banking — self-service API access
                 </p>
               </div>
             </div>
             {activeConnections.some(c => c.bank_name === 'Investec') ? (
-              <span className="text-[11px] text-[#10b981] font-semibold">Connected</span>
+              <span className="text-[11px] text-green font-semibold">Connected</span>
             ) : (
               <button onClick={() => setShowInvestecModal(true)}
-                className="text-white text-[11.5px] font-semibold rounded-lg px-4 py-2 hover:opacity-90 transition-all"
-                style={{ backgroundColor: '#004f9f', fontFamily: "'DM Sans', sans-serif" }}>
+                className="text-white text-[11.5px] font-semibold rounded-lg px-4 py-2 hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: '#004f9f' }}>
                 Connect
               </button>
             )}
           </div>
 
           {/* Absa */}
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 flex items-center justify-between gap-4">
+          <div className="bg-white border border-dash-border rounded-xl p-5 flex items-center justify-between gap-4 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                 style={{ backgroundColor: '#dc00001F' }}>
-                <span className="text-[11px] font-bold" style={{ color: '#dc0000', fontFamily: "'Space Grotesk', sans-serif" }}>AB</span>
+                <span className="text-[11px] font-bold" style={{ color: '#dc0000' }}>AB</span>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold text-[#eef2ff]"
-                    style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <span className="text-[14px] font-semibold !text-dash-text">
                     Absa
                   </span>
-                  <span className="bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)] text-[#f59e0b] text-[10px] font-semibold rounded-full px-2 py-0.5">
+                  <span className="bg-amber-50 border border-amber-200 text-amber-600 text-[10px] font-semibold rounded-full px-2 py-0.5">
                     Registration Required
                   </span>
                 </div>
-                <p className="text-[12px] mt-0.5" style={{ color: '#94a3c8', fontFamily: "'DM Sans', sans-serif" }}>
+                <p className="text-[12px] mt-0.5 !text-dash-textMuted">
                   Register at developer.absa.africa as an AISP — coming once approved
                 </p>
               </div>
             </div>
             <button disabled
-              className="text-[#4a5a82] text-[11.5px] font-semibold rounded-lg px-4 py-2 cursor-not-allowed opacity-50 border border-white/10"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}>
+              className="!text-dash-textMuted text-[11.5px] font-semibold rounded-lg px-4 py-2 cursor-not-allowed opacity-50 border border-dash-border">
               Coming Soon
             </button>
           </div>
 
           {/* Capitec */}
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-5 flex items-center justify-between gap-4">
+          <div className="bg-white border border-dash-border rounded-xl p-5 flex items-center justify-between gap-4 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                 style={{ backgroundColor: '#0033a01F' }}>
-                <span className="text-[11px] font-bold" style={{ color: '#0033a0', fontFamily: "'Space Grotesk', sans-serif" }}>CAP</span>
+                <span className="text-[11px] font-bold" style={{ color: '#0033a0' }}>CAP</span>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold text-[#eef2ff]"
-                    style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <span className="text-[14px] font-semibold !text-dash-text">
                     Capitec Business
                   </span>
-                  <span className="bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)] text-[#f59e0b] text-[10px] font-semibold rounded-full px-2 py-0.5">
+                  <span className="bg-amber-50 border border-amber-200 text-amber-600 text-[10px] font-semibold rounded-full px-2 py-0.5">
                     Pilot Programme
                   </span>
                 </div>
-                <p className="text-[12px] mt-0.5" style={{ color: '#94a3c8', fontFamily: "'DM Sans', sans-serif" }}>
+                <p className="text-[12px] mt-0.5 !text-dash-textMuted">
                   Apply via openbanking@capitecbank.co.za — pilot access available
                 </p>
               </div>
             </div>
             <button disabled
-              className="text-[#4a5a82] text-[11.5px] font-semibold rounded-lg px-4 py-2 cursor-not-allowed opacity-50 border border-white/10"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}>
+              className="!text-dash-textMuted text-[11.5px] font-semibold rounded-lg px-4 py-2 cursor-not-allowed opacity-50 border border-dash-border">
               Coming Soon
             </button>
           </div>
         </div>
 
         {/* CSV Upload Section */}
-        <p className="text-[10px] font-semibold uppercase tracking-[1.2px] mb-3"
-          style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
-          Upload a Bank Statement
+        <p className="text-[11px] font-semibold mb-3 !text-dash-textMuted">
+          Upload a bank statement
         </p>
-        <div className="bg-[rgba(255,255,255,0.02)] border border-dashed border-[rgba(255,255,255,0.12)] rounded-xl p-8 flex flex-col items-center text-center gap-3">
-          <Upload size={28} style={{ color: '#4a5a82', opacity: 0.5 }} />
-          <p className="text-[13px] font-medium text-[#eef2ff]"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}>
+        <div className="bg-dash-surface border border-dashed border-dash-border rounded-xl p-8 flex flex-col items-center text-center gap-3">
+          <Upload size={28} className="!text-dash-textMuted opacity-60" />
+          <p className="text-[13px] font-medium !text-dash-text">
             Works with any SA bank
           </p>
-          <p className="text-[12px] max-w-xs text-[#94a3c8]"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}>
+          <p className="text-[12px] max-w-xs !text-dash-textMuted">
             Upload a CSV bank statement and LeadsMind will import your transactions automatically.
             Supports FNB, Standard Bank, Nedbank, Discovery, and any bank that exports CSV.
           </p>
           <button onClick={() => setShowCSVModal(true)}
-            className="bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.07)] text-[#94a3c8] text-[12px] font-semibold rounded-lg px-4 py-2 hover:text-[#eef2ff] hover:border-[rgba(255,255,255,0.13)] transition-all"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            className="bg-white border border-dash-border !text-dash-textMuted text-[12px] font-semibold rounded-lg px-4 py-2 hover:!text-dash-text hover:border-dash-text/20 transition-colors motion-reduce:transition-none">
             Choose File
           </button>
-          <p className="text-[11px] text-[#4a5a82] italic"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}>
+          <p className="text-[11px] !text-dash-textMuted italic">
             Your statement is processed privately inside your workspace and never shared.
           </p>
         </div>
 
         {/* Investec Connect Modal */}
         {showInvestecModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-dash-text/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white border border-dash-border rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto shadow-xl">
               <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h3 className="text-[17px] font-semibold text-[#eef2ff]"
-                    style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <h3 className="text-[17px] font-semibold !text-dash-text">
                     Connect Investec
                   </h3>
-                  <p className="text-[12px] text-[#4a5a82] mt-1"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  <p className="text-[12px] !text-dash-textMuted mt-1">
                     Enter your Investec API credentials
                   </p>
                 </div>
                 <button onClick={() => setShowInvestecModal(false)}
-                  className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors">
+                  className="!text-dash-textMuted hover:!text-dash-text transition-colors">
                   <X size={18} />
                 </button>
               </div>
 
               {/* How to get credentials */}
-              <div className="bg-[rgba(37,99,235,0.06)] border border-[rgba(37,99,235,0.12)] rounded-xl p-4 mb-5">
-                <p className="text-[12px] font-semibold text-[#eef2ff] mb-1"
-                  style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+              <div className="bg-dash-accent/5 border border-dash-accent/20 rounded-xl p-4 mb-5">
+                <p className="text-[12px] font-semibold !text-dash-text mb-1">
                   How to get your Investec API credentials
                 </p>
-                <ol className="text-[11.5px] text-[#94a3c8] space-y-1 list-decimal list-inside"
-                  style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                <ol className="text-[11.5px] !text-dash-textMuted space-y-1 list-decimal list-inside">
                   <li>Log in to Investec Online Banking at invest.investec.com</li>
                   <li>Go to Manage → Developer → Programmable Banking</li>
                   <li>Enable API access — generates your 3 credentials instantly</li>
@@ -417,57 +395,49 @@ export default function ConnectedAccountsPage() {
 
               <form onSubmit={handleInvestecConnect} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  <label className="block text-[12px] font-semibold !text-dash-textMuted mb-1.5">
                     Client ID
                   </label>
                   <input type="text" value={clientId} onChange={e => setClientId(e.target.value)}
                     placeholder="Your Investec Client ID"
-                    className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] outline-none focus:border-[#2563eb] transition-all"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }} required />
+                    className="w-full bg-dash-surface border border-dash-border rounded-lg px-4 py-2.5 !text-dash-text text-[13px] outline-none focus:border-dash-accent transition-colors"
+                    required />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  <label className="block text-[12px] font-semibold !text-dash-textMuted mb-1.5">
                     Client Secret
                   </label>
                   <div className="relative">
                     <input type={showSecret ? 'text' : 'password'} value={clientSecret}
                       onChange={e => setClientSecret(e.target.value)}
                       placeholder="Your Investec Client Secret"
-                      className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 pr-10 text-[#eef2ff] text-[13px] outline-none focus:border-[#2563eb] transition-all"
-                      style={{ fontFamily: "'DM Sans', sans-serif" }} required />
+                      className="w-full bg-dash-surface border border-dash-border rounded-lg px-4 py-2.5 pr-10 !text-dash-text text-[13px] outline-none focus:border-dash-accent transition-colors"
+                      required />
                     <button type="button" onClick={() => setShowSecret(!showSecret)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4a5a82] hover:text-[#eef2ff]">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 !text-dash-textMuted hover:!text-dash-text">
                       {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  <label className="block text-[12px] font-semibold !text-dash-textMuted mb-1.5">
                     API Key
                   </label>
                   <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)}
                     placeholder="Your Investec API Key"
-                    className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] outline-none focus:border-[#2563eb] transition-all"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }} required />
+                    className="w-full bg-dash-surface border border-dash-border rounded-lg px-4 py-2.5 !text-dash-text text-[13px] outline-none focus:border-dash-accent transition-colors"
+                    required />
                 </div>
-                <p className="text-[11px] text-[#4a5a82] italic"
-                  style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                <p className="text-[11px] !text-dash-textMuted italic">
                   Your credentials are encrypted and stored securely. LeadsMind only reads your transactions — it cannot move money.
                 </p>
                 <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setShowInvestecModal(false)}
-                    className="flex-1 py-2.5 border border-[rgba(255,255,255,0.07)] rounded-lg text-[#4a5a82] text-[13px] font-semibold hover:text-[#eef2ff] transition-all"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  <DashButton type="button" variant="secondary" className="flex-1" onClick={() => setShowInvestecModal(false)}>
                     Cancel
-                  </button>
-                  <button type="submit" disabled={connecting}
-                    className="flex-1 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] rounded-lg text-white text-[13px] font-semibold transition-all disabled:opacity-50"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  </DashButton>
+                  <DashButton type="submit" variant="primary" className="flex-1" disabled={connecting}>
                     {connecting ? 'Connecting...' : 'Connect Investec'}
-                  </button>
+                  </DashButton>
                 </div>
               </form>
             </div>
@@ -476,59 +446,51 @@ export default function ConnectedAccountsPage() {
 
         {/* CSV Upload Modal */}
         {showCSVModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-dash-text/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white border border-dash-border rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto shadow-xl">
               <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h3 className="text-[17px] font-semibold text-[#eef2ff]"
-                    style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <h3 className="text-[17px] font-semibold !text-dash-text">
                     Upload Bank Statement
                   </h3>
-                  <p className="text-[12px] text-[#4a5a82] mt-1"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  <p className="text-[12px] !text-dash-textMuted mt-1">
                     Works with any SA bank — FNB, Absa, Nedbank, Standard Bank, Discovery
                   </p>
                 </div>
                 <button onClick={() => setShowCSVModal(false)}
-                  className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors">
+                  className="!text-dash-textMuted hover:!text-dash-text transition-colors">
                   <X size={18} />
                 </button>
               </div>
               <form onSubmit={handleCSVUpload} className="space-y-4">
-                <div className="border-2 border-dashed border-[rgba(255,255,255,0.12)] rounded-xl p-6 text-center">
-                  <Upload size={24} className="mx-auto mb-2 text-[#4a5a82]" />
+                <div className="border-2 border-dashed border-dash-border rounded-xl p-6 text-center">
+                  <Upload size={24} className="mx-auto mb-2 !text-dash-textMuted" />
                   <input type="file" accept=".csv,.ofx,.qif"
                     onChange={e => setCsvFile(e.target.files?.[0] || null)}
                     className="hidden" id="csv-file" />
                   <label htmlFor="csv-file"
-                    className="cursor-pointer text-[#3b82f6] text-[13px] font-semibold hover:text-[#2563eb] transition-colors"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    className="cursor-pointer text-dash-accent text-[13px] font-semibold hover:text-dash-accent/80 transition-colors">
                     {csvFile ? csvFile.name : 'Choose CSV file'}
                   </label>
-                  <p className="text-[11px] text-[#4a5a82] mt-1"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  <p className="text-[11px] !text-dash-textMuted mt-1">
                     Supports CSV, OFX, and QIF formats
                   </p>
                 </div>
                 {csvFile && (
-                  <div className="flex items-center gap-2 bg-[rgba(16,185,129,0.08)] border border-[rgba(16,185,129,0.15)] rounded-lg px-3 py-2">
-                    <CheckCircle size={14} className="text-[#10b981]" />
-                    <span className="text-[12px] text-[#10b981]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  <div className="flex items-center gap-2 bg-green/10 border border-green/20 rounded-lg px-3 py-2">
+                    <CheckCircle size={14} className="text-green" />
+                    <span className="text-[12px] text-green">
                       {csvFile.name} selected
                     </span>
                   </div>
                 )}
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setShowCSVModal(false)}
-                    className="flex-1 py-2.5 border border-[rgba(255,255,255,0.07)] rounded-lg text-[#4a5a82] text-[13px] font-semibold hover:text-[#eef2ff] transition-all"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  <DashButton type="button" variant="secondary" className="flex-1" onClick={() => setShowCSVModal(false)}>
                     Cancel
-                  </button>
-                  <button type="submit" disabled={!csvFile || csvParsing}
-                    className="flex-1 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] rounded-lg text-white text-[13px] font-semibold transition-all disabled:opacity-50"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  </DashButton>
+                  <DashButton type="submit" variant="primary" className="flex-1" disabled={!csvFile || csvParsing}>
                     {csvParsing ? 'Importing...' : 'Import Transactions'}
-                  </button>
+                  </DashButton>
                 </div>
               </form>
             </div>

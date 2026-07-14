@@ -21,60 +21,60 @@ export const IconSettings = () => {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Select Icon</Label>
-        <IconPicker 
+        <Label className="text-xs font-bold !text-dash-textMuted block">Select icon</Label>
+        <IconPicker
           value={name || 'Star'}
           onChange={(newName) => setProp((props: any) => props.name = newName)}
         />
       </div>
 
-      <div className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/5">
+      <div className="flex items-center justify-between p-3 rounded-lg border border-dash-border bg-dash-surface">
         <div className="space-y-0.5">
-          <Label className="text-xs font-bold text-white">Solid Fill</Label>
-          <p className="text-[10px] text-muted-foreground">Switch between outline and filled</p>
+          <Label className="text-xs font-bold !text-dash-text">Solid fill</Label>
+          <p className="text-[10px] !text-dash-textMuted">Switch between outline and filled</p>
         </div>
-        <Switch 
+        <Switch
           checked={fill || false}
           onCheckedChange={(checked) => setProp((props: any) => props.fill = checked)}
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-dash-border">
         <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Size ({size}px)</Label>
-          <Input 
+          <Label className="text-xs font-bold !text-dash-textMuted block">Size ({size}px)</Label>
+          <Input
             type="number"
             value={size || 24}
             onChange={(e) => setProp((props: any) => props.size = Number(e.target.value))}
-            className="h-8 text-xs bg-white/5 border-white/10"
+            className="h-8 text-xs bg-white border-dash-border"
           />
         </div>
         <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Stroke ({strokeWidth})</Label>
-          <Input 
+          <Label className="text-xs font-bold !text-dash-textMuted block">Stroke ({strokeWidth})</Label>
+          <Input
             type="number"
             step="0.5"
             value={strokeWidth || 2}
             onChange={(e) => setProp((props: any) => props.strokeWidth = Number(e.target.value))}
-            className="h-8 text-xs bg-white/5 border-white/10"
+            className="h-8 text-xs bg-white border-dash-border"
           />
         </div>
       </div>
 
-      <ColorPicker 
-        label="Icon Color"
+      <ColorPicker
+        label="Icon color"
         value={color || '#000000'}
         onChange={(val) => setProp((props: any) => props.color = val)}
       />
 
-      <div className="space-y-2 pt-2 border-t border-white/5">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Alignment</Label>
-        <div className="flex bg-muted p-1 rounded-md border border-white/5">
+      <div className="space-y-2 pt-2 border-t border-dash-border">
+        <Label className="text-xs font-bold !text-dash-textMuted block">Alignment</Label>
+        <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
           {['left', 'center', 'right'].map((align) => (
             <button
               key={align}
               onClick={() => setProp((props: any) => props.alignment = align)}
-              className={`flex-1 text-[10px] py-1.5 rounded capitalize font-bold ${alignment === align ? 'bg-primary text-white shadow' : 'text-muted-foreground hover:text-white'}`}
+              className={`flex-1 text-[10px] py-1.5 rounded capitalize font-bold transition-colors motion-reduce:transition-none ${alignment === align ? 'bg-dash-accent text-white shadow' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               {align}
             </button>

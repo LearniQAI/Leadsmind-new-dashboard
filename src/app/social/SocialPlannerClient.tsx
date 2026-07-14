@@ -1,11 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { 
- Plus, 
- Calendar, 
- Image as ImageIcon, 
+import {
+ Plus,
+ Calendar,
+ Image as ImageIcon,
  Send,
  MoreHorizontal,
  Clock,
@@ -20,13 +19,19 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import AIAssistantSidebar from '@/components/content-studio/AIAssistantSidebar';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
+import { cn } from '@/lib/utils';
+import { DashCard } from '@/components/dashboard-ui/Card';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
+import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
+import { DashTextarea, DashInput } from '@/components/dashboard-ui/FormField';
 
-export default function SocialPlannerClient({ 
-  initialPosts, 
+export default function SocialPlannerClient({
+  initialPosts,
   accounts,
   workspaceId
-}: { 
-  initialPosts: any[], 
+}: {
+  initialPosts: any[],
   accounts: any[],
   workspaceId: string
 }) {
@@ -70,7 +75,7 @@ export default function SocialPlannerClient({
  ];
 
  const togglePlatform = (id: string) => {
-  setSelectedPlatforms(prev => 
+  setSelectedPlatforms(prev =>
    prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
   );
  };
@@ -106,33 +111,31 @@ export default function SocialPlannerClient({
   <div className="space-y-8">
    <div className="flex items-center justify-between">
     <div>
-     <h1 className="text-3xl font-black uppercase tracking-tighter text-white">Social <span className="text-primary">Planner</span></h1>
-     <p className="text-white/40 text-sm font-medium mt-1">Schedule and manage your social presence with absolute precision.</p>
+     <h1 className="text-3xl font-bold !text-dash-text">Social <span className="text-dash-accent">planner</span></h1>
+     <p className="!text-dash-textMuted text-[12px] font-medium mt-2">Schedule and manage your social presence with absolute precision.</p>
     </div>
-    <Button 
-     onClick={() => setIsComposerOpen(true)}
-     className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-widest text-xs h-12 px-8 rounded-xl shadow-lg shadow-primary/20"
-    >
-     <Plus className="w-4 h-4 mr-2" /> New Post
-    </Button>
+    <DashButton onClick={() => setIsComposerOpen(true)}>
+     <Plus className="w-4 h-4" /> New post
+    </DashButton>
    </div>
 
    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
     {/* Left Column: Composer / Queue */}
     <div className="lg:col-span-8 space-y-6">
      {isComposerOpen && (
-      <div className="bg-[#0b0b1a] border border-primary/20 rounded-3xl p-6 shadow-2xl relative overflow-hidden group">
-       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32" />
-       
-       <div className="relative z-10 space-y-6">
+      <DashCard padding="default" className="border-dash-accent/20">
+       <div className="space-y-6">
         <div className="flex items-center gap-4 mb-4">
-         <span className="text-xs font-black uppercase tracking-widest text-white/40">Select Platforms</span>
+         <span className="text-xs font-bold !text-dash-textMuted">Select platforms</span>
          <div className="flex gap-2">
           {platforms.map(p => (
            <button
             key={p.id}
             onClick={() => togglePlatform(p.id)}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${selectedPlatforms.includes(p.id) ? `${p.color} text-white scale-110 shadow-lg` : 'bg-white/5 text-white/30 hover:bg-white/10 hover:text-white'}`}
+            className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center transition-all motion-reduce:transition-none",
+              selectedPlatforms.includes(p.id) ? `${p.color} text-white scale-110 shadow-md motion-reduce:scale-100` : 'bg-dash-surface !text-dash-textMuted hover:bg-dash-border/60 hover:!text-dash-text'
+            )}
            >
             {p.icon}
            </button>
@@ -140,107 +143,105 @@ export default function SocialPlannerClient({
          </div>
         </div>
 
-        <textarea
+        <DashTextarea
          value={content}
          onChange={(e) => setContent(e.target.value)}
          placeholder="What's happening? Dominating your industry starts with a post..."
-         className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/20 focus:outline-none focus:border-primary/50 transition-colors resize-none h-40"
+         className="h-40 resize-none"
         />
 
-        <input
+        <DashInput
           type="text"
           placeholder="Image URL (required for Instagram)..."
           value={mediaUrl}
           onChange={(e) => setMediaUrl(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder:text-white/20 focus:outline-none focus:border-primary/50 transition-colors text-sm"
         />
 
-        <div className="flex items-center justify-between">
-         <div className="flex gap-2">
-          <Button variant="ghost" className="text-white/40 hover:text-white hover:bg-white/5 rounded-xl"><ImageIcon className="w-4 h-4 mr-2" /> Media</Button>
-          <Button variant="ghost" className="text-white/40 hover:text-white hover:bg-white/5 rounded-xl"><Calendar className="w-4 h-4 mr-2" /> Schedule</Button>
-          <Button
+        <div className="flex items-center justify-between flex-wrap gap-3">
+         <div className="flex gap-2 flex-wrap">
+          <DashButton variant="ghost" size="sm"><ImageIcon className="w-4 h-4" /> Media</DashButton>
+          <DashButton variant="ghost" size="sm"><Calendar className="w-4 h-4" /> Schedule</DashButton>
+          <DashButton
            type="button"
            variant="ghost"
+           size="sm"
            onClick={() => setIsCopilotOpen(!isCopilotOpen)}
-           className={`text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition ${
-            isCopilotOpen ? 'bg-purple-600/20 text-purple-400 hover:text-purple-300' : ''
-           }`}
+           className={cn(isCopilotOpen && 'bg-purple-50 text-purple-600 hover:text-purple-600')}
           >
-           <Sparkles className="w-4 h-4 mr-2" /> AI Copilot
-          </Button>
-          <Button
+           <Sparkles className="w-4 h-4" /> AI copilot
+          </DashButton>
+          <DashButton
             type="button"
             variant="ghost"
+            size="sm"
             onClick={() => setIsAiDrawerOpen(true)}
-            className="text-[#a78bfa] hover:text-[#c084fc] hover:bg-[#8b5cf6]/10 rounded-xl transition border border-[#8b5cf6]/20 bg-[#8b5cf6]/5"
+            className="text-purple-600 hover:text-purple-600 border border-purple-200 bg-purple-50 hover:bg-purple-100"
           >
-           <Sparkles className="w-4 h-4 mr-2 animate-pulse" /> Write with AI
-          </Button>
+           <Sparkles className="w-4 h-4" /> Write with AI
+          </DashButton>
          </div>
          <div className="flex gap-3">
-          <Button 
-           variant="ghost" 
+          <DashButton
+           variant="ghost"
            onClick={() => {
             setIsComposerOpen(false);
             setIsCopilotOpen(false);
-           }} 
-           className="text-white/40 hover:text-white"
+           }}
           >
            Cancel
-          </Button>
-          <Button 
+          </DashButton>
+          <DashButton
            onClick={handlePost}
            disabled={isSubmitting}
-           className="bg-primary text-white px-6 rounded-xl font-bold uppercase tracking-widest text-[10px]"
           >
-           {isSubmitting ? 'Publishing...' : 'Publish Now'}
-          </Button>
+           {isSubmitting ? 'Publishing...' : 'Publish now'}
+          </DashButton>
          </div>
         </div>
        </div>
-      </div>
+      </DashCard>
      )}
 
      <div className="space-y-4">
-      <h2 className="text-lg font-bold text-white flex items-center gap-2">
-       <Clock className="w-5 h-5 text-primary" /> Recent Posts
+      <h2 className="text-lg font-bold !text-dash-text flex items-center gap-2">
+       <Clock className="w-5 h-5 text-dash-accent" /> Recent posts
       </h2>
       <div className="space-y-4">
        {initialPosts.length === 0 ? (
-        <div className="bg-white/5 border border-white/5 rounded-3xl p-12 text-center">
-         <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
-          <Send className="w-6 h-6 text-white/20" />
-         </div>
-         <p className="text-white/40 font-medium">No posts scheduled yet. Start building your influence.</p>
-        </div>
+        <DashCard padding="default">
+         <DashEmptyState
+          icon={Send}
+          title="No posts scheduled yet"
+          description="Start building your influence."
+         />
+        </DashCard>
        ) : (
         initialPosts.map(post => (
-         <div key={post.id} className="bg-white/5 border border-white/5 rounded-2xl p-4 hover:border-white/10 transition-colors group">
+         <DashCard key={post.id} padding="default">
           <div className="flex items-start justify-between mb-3">
            <div className="flex gap-1">
             {post.platforms?.map((p: string) => (
-             <div key={p} className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white/60">
+             <div key={p} className="w-6 h-6 rounded-md bg-dash-surface flex items-center justify-center !text-dash-textMuted">
               {platforms.find(pl => pl.id === p)?.icon}
              </div>
             ))}
            </div>
            <div className="flex items-center gap-3">
-            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${post.status === 'published' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+            <DashStatusPill variant={post.status === 'published' ? 'success' : 'warning'}>
              {post.status}
-            </span>
-            <button className="text-white/20 hover:text-white"><MoreHorizontal className="w-4 h-4" /></button>
+            </DashStatusPill>
+            <button className="!text-dash-textMuted hover:!text-dash-text"><MoreHorizontal className="w-4 h-4" /></button>
            </div>
           </div>
-          <p className="text-sm text-white/70 line-clamp-2 mb-3">{post.content}</p>
-          <div className="flex items-center justify-between text-[10px] text-white/30 font-medium pt-3 border-t border-white/5">
+          <p className="text-sm !text-dash-textMuted line-clamp-2 mb-3">{post.content}</p>
+          <div className="flex items-center justify-between text-[11px] !text-dash-textMuted font-medium pt-3 border-t border-dash-border">
            <span>{new Date(post.created_at).toLocaleDateString()}</span>
            <span className="flex items-center gap-1">
-            {post.status === 'published' ? <CheckCircle2 className="w-3 h-3 text-success" /> : <Clock className="w-3 h-3" />}
+            {post.status === 'published' ? <CheckCircle2 className="w-3 h-3 text-green" /> : <Clock className="w-3 h-3" />}
             {post.status === 'published' ? 'Published' : 'Scheduled'}
            </span>
           </div>
-         </div>
+         </DashCard>
         ))
        )}
       </div>
@@ -261,25 +262,25 @@ export default function SocialPlannerClient({
        />
       ) : (
        <>
-        <div className="bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-3xl p-6">
-         <h3 className="text-sm font-black uppercase tracking-widest text-white mb-4">Account Health</h3>
-         <div className="space-y-4">
+        <DashCard padding="default" className="bg-gradient-to-br from-dash-accent/5 to-transparent border-dash-accent/20">
+         <h3 className="text-sm font-bold !text-dash-text mb-4">Account health</h3>
+         <div className="space-y-3">
           {platforms.map(p => {
            const isConnected = accounts.some(a => a.platform === p.id);
            return (
-            <div key={p.id} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5">
+            <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border">
              <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${p.color}`}>
+              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white", p.color)}>
                {p.icon}
               </div>
-              <span className="text-xs font-bold text-white capitalize">{p.id}</span>
+              <span className="text-xs font-bold !text-dash-text capitalize">{p.id}</span>
              </div>
              {isConnected ? (
-              <span className="text-[10px] font-black text-success uppercase tracking-widest">Active</span>
+              <span className="text-[11px] font-bold text-green">Active</span>
              ) : (
-              <button 
+              <button
                onClick={() => handleConnect(p.id)}
-               className="text-[10px] font-black text-white/20 hover:text-white uppercase tracking-widest transition-colors"
+               className="text-[11px] font-bold text-dash-accent hover:text-dash-accent/80 transition-colors motion-reduce:transition-none"
               >
                Connect
               </button>
@@ -288,17 +289,17 @@ export default function SocialPlannerClient({
            );
           })}
          </div>
-        </div>
+        </DashCard>
 
-        <div className="bg-white/5 border border-white/5 rounded-3xl p-6">
-         <div className="flex items-center gap-2 mb-4 text-warning">
+        <DashCard padding="default">
+         <div className="flex items-center gap-2 mb-3 text-amber-600">
           <AlertCircle className="w-4 h-4" />
-          <h3 className="text-xs font-black uppercase tracking-widest">Pro Tip</h3>
+          <h3 className="text-xs font-bold">Pro tip</h3>
          </div>
-         <p className="text-xs text-white/40 leading-relaxed">
-          Posts with media assets typically receive <span className="text-white font-bold">4.5x more engagement</span>. Use the media composer to upload high-quality images.
+         <p className="text-xs !text-dash-textMuted leading-relaxed">
+          Posts with media assets typically receive <span className="!text-dash-text font-bold">4.5x more engagement</span>. Use the media composer to upload high-quality images.
          </p>
-        </div>
+        </DashCard>
        </>
       )}
      </div>

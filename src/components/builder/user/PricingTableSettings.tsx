@@ -41,7 +41,7 @@ export const PricingTableSettings = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Pricing Plans</Label>
+        <Label className="text-xs font-bold !text-dash-textMuted block">Pricing plans</Label>
         <Button variant="ghost" size="icon" onClick={addPlan} className="h-6 w-6">
           <Plus className="h-4 w-4" />
         </Button>
@@ -49,28 +49,28 @@ export const PricingTableSettings = () => {
 
       <div className="space-y-4">
         {plans.map((plan: any, i: number) => (
-          <div key={i} className="p-4 bg-muted/50 rounded-xl border border-white/5 space-y-3 relative group">
-            <button 
+          <div key={i} className="p-4 bg-dash-surface rounded-xl border border-dash-border space-y-3 relative group">
+            <button
               onClick={() => removePlan(i)}
-              className="absolute -top-2 -right-2 p-1.5 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              className="absolute -top-2 -right-2 p-1.5 bg-red text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none z-10"
             >
               <Trash2 className="w-3 h-3" />
             </button>
 
             <div className="flex gap-2">
-               <Input 
+               <Input
                 value={plan.name}
                 onChange={(e) => updatePlan(i, 'name', e.target.value)}
-                className="h-8 bg-black/20 border-white/10 text-xs font-bold flex-1"
-                placeholder="Plan Name"
+                className="h-8 bg-white border-dash-border text-xs font-bold flex-1"
+                placeholder="Plan name"
               />
-              <button 
+              <button
                 onClick={() => {
                   setProp((props: any) => {
                     props.plans.forEach((p: any, idx: number) => p.highlight = idx === i ? !p.highlight : false);
                   });
                 }}
-                className={`p-1.5 rounded border ${plan.highlight ? 'bg-secondary border-secondary text-secondary-foreground' : 'bg-black/20 border-white/10 text-muted-foreground'}`}
+                className={`p-1.5 rounded border transition-colors motion-reduce:transition-none ${plan.highlight ? 'bg-dash-accent border-dash-accent text-white' : 'bg-white border-dash-border !text-dash-textMuted'}`}
                 title="Feature this plan"
               >
                 <Star className="w-4 h-4" fill={plan.highlight ? 'currentColor' : 'none'} />
@@ -78,33 +78,33 @@ export const PricingTableSettings = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Input 
+              <Input
                 value={plan.price}
                 onChange={(e) => updatePlan(i, 'price', e.target.value)}
-                className="h-8 bg-black/20 border-white/10 text-xs"
+                className="h-8 bg-white border-dash-border text-xs"
                 placeholder="Price"
               />
-              <Input 
+              <Input
                 value={plan.period}
                 onChange={(e) => updatePlan(i, 'period', e.target.value)}
-                className="h-8 bg-black/20 border-white/10 text-xs"
+                className="h-8 bg-white border-dash-border text-xs"
                 placeholder="Period"
               />
             </div>
 
-            <Input 
+            <Input
               value={plan.buttonText}
               onChange={(e) => updatePlan(i, 'buttonText', e.target.value)}
-              className="h-8 bg-black/20 border-white/10 text-xs"
-              placeholder="Button Text"
+              className="h-8 bg-white border-dash-border text-xs"
+              placeholder="Button text"
             />
 
             <div className="pt-2 space-y-2">
-               <Label className="text-[10px] uppercase font-bold text-muted-foreground opacity-50">Features (one per line)</Label>
-               <textarea 
+               <Label className="text-[10px] font-bold !text-dash-textMuted">Features (one per line)</Label>
+               <textarea
                 value={plan.features.join('\n')}
                 onChange={(e) => updatePlan(i, 'features', e.target.value.split('\n'))}
-                className="w-full bg-black/20 border border-white/10 rounded p-2 text-xs h-20 outline-none"
+                className="w-full bg-white border border-dash-border rounded p-2 text-xs !text-dash-text h-20 outline-none"
                />
             </div>
           </div>

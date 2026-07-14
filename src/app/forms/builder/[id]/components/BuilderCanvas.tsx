@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useFormBuilder, FieldType, FormField } from './FormBuilderContext';
 import { FormCanvasField } from './FormCanvasField';
-import { LayoutTemplate, Plus, ListOrdered } from 'lucide-react';
+import { LayoutTemplate } from 'lucide-react';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
+import { cn } from '@/lib/utils';
 
 export function BuilderCanvas() {
   const { state, dispatch } = useFormBuilder();
@@ -62,7 +63,7 @@ export function BuilderCanvas() {
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
-    
+
     // Convert relative indices back to absolute indices in the global fields list
     const stepFields = fields.filter(f => f.stepId === activeStepId);
     const sourceField = stepFields[result.source.index];
@@ -85,14 +86,14 @@ export function BuilderCanvas() {
   const handleHTML5Drop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsOver(false);
-    
+
     const type = e.dataTransfer.getData('field-type') as FieldType;
     if (!type) return;
 
     const stepFields = fields.filter(f => f.stepId === activeStepId);
     const dropY = e.clientY;
     const fieldsElements = Array.from(document.querySelectorAll('[data-rfd-draggable-id]'));
-    
+
     let targetIndex = stepFields.length;
     for (let i = 0; i < fieldsElements.length; i++) {
       const rect = fieldsElements[i].getBoundingClientRect();
@@ -109,31 +110,28 @@ export function BuilderCanvas() {
   const activeStepFields = fields.filter(f => f.stepId === activeStepId);
 
   return (
-    <div 
-      style={{ 
-        flex: 1, 
-        background: 'var(--n900)', 
-        backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.05) 1.5px, transparent 1.5px)',
+    <div
+      className="flex-1 flex flex-col overflow-hidden bg-dash-surface"
+      style={{
+        backgroundImage: 'radial-gradient(rgba(15, 23, 42, 0.06) 1.5px, transparent 1.5px)',
         backgroundSize: '24px 24px',
-        display: 'flex', 
-        flexDirection: 'column', 
-        overflow: 'hidden' 
       }}
       onClick={() => dispatch({ type: 'SELECT_FIELD', id: null })}
     >
       {/* Steps Navigation Bar */}
       {steps.length > 1 && (
-        <div className="flex items-center gap-2 px-6 py-3 bg-[#080f28] border-b border-white/5 overflow-x-auto custom-scrollbar">
-          <span className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82] mr-2">Steps:</span>
+        <div className="flex items-center gap-2 px-6 py-3 bg-white border-b border-dash-border overflow-x-auto custom-scrollbar">
+          <span className="text-[10px] font-bold !text-dash-textMuted mr-2">Steps:</span>
           {steps.map((step, idx) => (
             <button
               key={step.id}
               onClick={(e) => { e.stopPropagation(); setActiveStepId(step.id); }}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors motion-reduce:transition-none border",
                 activeStepId === step.id
-                  ? 'bg-[#2563eb]/10 border-[#2563eb]/30 text-[#60a5fa]'
-                  : 'bg-transparent border-transparent text-white/40 hover:text-white/80'
-              }`}
+                  ? 'bg-dash-accent/10 border-dash-accent/30 text-dash-accent'
+                  : 'bg-transparent border-transparent !text-dash-textMuted hover:!text-dash-text'
+              )}
             >
               {idx + 1}. {step.title}
             </button>
@@ -141,32 +139,32 @@ export function BuilderCanvas() {
         </div>
       )}
 
-      <div className="custom-scrollbar" style={{ flex: 1, padding: '40px 20px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
-        <div style={{ width: '100%', maxWidth: 640, display: 'flex', flexDirection: 'column' }}>
+      <div className="custom-scrollbar flex-1 py-10 px-5 overflow-y-auto flex justify-center">
+        <div className="w-full max-w-[640px] flex flex-col">
 
           {activeStepFields.length === 0 ? (
             <div
               onDragOver={(e) => { e.preventDefault(); setIsOver(true); }}
               onDragLeave={() => setIsOver(false)}
               onDrop={handleHTML5Drop}
-              className={`empty-state transition-all duration-300 ${
-                isOver ? 'border-[#2563eb] bg-[#2563eb]/5 scale-[0.99]' : ''
-              }`}
-              style={{ flex: 1, padding: '80px 40px', justifyContent: 'center' }}
+              className={cn(
+                "empty-state flex-1 justify-center px-10 py-20 transition-colors motion-reduce:transition-none",
+                isOver && "border-dash-accent bg-dash-accent/5"
+              )}
             >
               <div className="empty-state__icon">
                 <LayoutTemplate size={48} />
               </div>
               <div className="empty-state__title">This step is empty</div>
-              <div className="empty-state__desc" style={{ maxWidth: 280, marginBottom: 12 }}>
+              <div className="empty-state__desc max-w-[280px] mb-3">
                 Drag & drop fields here, or click standard fields in the left library to add them to this step.
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxWidth: 400 }}>
+              <div className="flex flex-wrap gap-2 justify-center max-w-[400px]">
                 {(['text', 'email', 'phone', 'textarea', 'dropdown', 'checkbox'] as const).map(type => (
                   <button
                     key={type}
                     onClick={(e) => { e.stopPropagation(); handleAddField(type); }}
-                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
+                    className="px-3 py-1.5 bg-white hover:bg-dash-border/40 !text-dash-textMuted hover:!text-dash-text rounded-lg text-[10px] font-bold transition-colors motion-reduce:transition-none border border-dash-border"
                   >
                     + {type}
                   </button>
@@ -179,13 +177,11 @@ export function BuilderCanvas() {
                 onDragOver={(e) => { e.preventDefault(); setIsOver(true); }}
                 onDragLeave={() => setIsOver(false)}
                 onDrop={handleHTML5Drop}
-                className={`transition-all duration-300 rounded-2xl ${
-                  isOver ? 'border border-dashed border-[#2563eb]/40 bg-[#2563eb]/5 shadow-[0_0_30px_rgba(37,99,235,0.05)]' : 'border border-transparent'
-                }`}
-                style={{
-                  display: 'flex', flexDirection: 'column', gap: 16, padding: 12,
-                  minHeight: 450
-                }}
+                className={cn(
+                  "transition-colors motion-reduce:transition-none rounded-2xl flex flex-col gap-4 p-3",
+                  isOver ? 'border border-dashed border-dash-accent/40 bg-dash-accent/5' : 'border border-transparent'
+                )}
+                style={{ minHeight: 450 }}
               >
                 <Droppable droppableId="form-fields">
                   {(provided) => (
@@ -206,9 +202,9 @@ export function BuilderCanvas() {
                   )}
                 </Droppable>
 
-                <div style={{ marginTop: 'auto', paddingTop: 24 }}>
-                  <button className="btn-primary" style={{ width: '100%', padding: '14px 24px', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 900, opacity: 0.9, pointerEvents: 'none' }}>
-                    Submit Form
+                <div className="mt-auto pt-6">
+                  <button className="w-full py-3.5 px-6 text-[13px] font-bold rounded-xl bg-dash-accent text-white opacity-90 pointer-events-none">
+                    Submit form
                   </button>
                 </div>
               </div>

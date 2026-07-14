@@ -63,12 +63,12 @@ const InvoiceClientWrapper: React.FC<InvoiceClientWrapperProps> = ({
       />
 
       <div className="fixed bottom-12 left-12 z-[100] no-print">
-         <button 
+         <button
            onClick={() => setIsScheduling(true)}
-           className="bg-[var(--accent)] hover:bg-blue-700 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all group"
+           className="bg-dash-accent hover:bg-dash-accent/90 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all motion-reduce:transition-none group"
            title="Schedule Delivery"
          >
-            <CalendarClock size={24} className="group-hover:scale-110 transition-transform" />
+            <CalendarClock size={24} className="group-hover:scale-110 motion-reduce:group-hover:scale-100 transition-transform motion-reduce:transition-none" />
          </button>
       </div>
 

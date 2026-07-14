@@ -54,45 +54,45 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
  };
 
  return (
-  <div className="flex-1 flex flex-col bg-[#050508] overflow-hidden relative">
+  <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
    <link href={googleFontsLink} rel="stylesheet" />
    <style dangerouslySetInnerHTML={{ __html: themeVariablesCss }} />
    {/* Device Toolbar */}
-   <div className="h-14 bg-[#0b0b14]/50 border-b border-white/5 flex items-center justify-center gap-4 px-4 shrink-0 z-10">
-    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
-      <button 
+   <div className="h-14 bg-dash-surface border-b border-dash-border flex items-center justify-center gap-4 px-4 shrink-0 z-10">
+    <div className="flex bg-white p-1 rounded-xl border border-dash-border">
+      <button
         onClick={() => setViewMode('desktop')}
         className={cn(
-          "p-2 rounded-lg transition-all",
-          viewMode === 'desktop' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-white/30 hover:text-white"
+          "p-2 rounded-lg transition-all motion-reduce:transition-none",
+          viewMode === 'desktop' ? "bg-primary text-white shadow-lg shadow-primary/20" : "!text-dash-textMuted hover:!text-dash-text"
         )}
       >
         <Monitor className="w-4 h-4" />
       </button>
-      <button 
+      <button
         onClick={() => setViewMode('tablet')}
         className={cn(
-          "p-2 rounded-lg transition-all",
-          viewMode === 'tablet' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-white/30 hover:text-white"
+          "p-2 rounded-lg transition-all motion-reduce:transition-none",
+          viewMode === 'tablet' ? "bg-primary text-white shadow-lg shadow-primary/20" : "!text-dash-textMuted hover:!text-dash-text"
         )}
       >
         <Tablet className="w-4 h-4" />
       </button>
-      <button 
+      <button
         onClick={() => setViewMode('mobile')}
         className={cn(
-          "p-2 rounded-lg transition-all",
-          viewMode === 'mobile' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-white/30 hover:text-white"
+          "p-2 rounded-lg transition-all motion-reduce:transition-none",
+          viewMode === 'mobile' ? "bg-primary text-white shadow-lg shadow-primary/20" : "!text-dash-textMuted hover:!text-dash-text"
         )}
       >
         <Smartphone className="w-4 h-4" />
       </button>
     </div>
-    
+
     <div className="absolute right-4 flex items-center gap-2">
-      <span className="text-[10px] text-white/20 font-black uppercase tracking-widest flex items-center gap-2">
+      <span className="text-[10px] !text-dash-textMuted font-bold flex items-center gap-2">
         <Scale className="w-3 h-3 text-primary" />
-        {viewMode === 'desktop' ? 'Fluid Canvas' : getWidth()}
+        {viewMode === 'desktop' ? 'Fluid canvas' : getWidth()}
       </span>
     </div>
    </div>

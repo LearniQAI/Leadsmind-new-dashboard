@@ -165,67 +165,67 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
   };
 
   return (
-    <div className="flex-1 bg-[#0c1535] border border-white/5 rounded-2xl flex flex-col overflow-hidden p-6 font-dm-sans">
+    <div className="flex-1 bg-white border border-dash-border rounded-2xl flex flex-col overflow-hidden p-6">
       
       {/* Editor topbar */}
-      <div className="flex items-center justify-between gap-4 border-b border-white/5 pb-4 mb-6">
+      <div className="flex items-center justify-between gap-4 border-b border-dash-border pb-4 mb-6">
         <div className="flex-1 flex gap-3">
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-space-grotesk font-black uppercase tracking-wider w-64 focus:outline-none"
+            className="bg-dash-surface border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text font-bold w-64 focus:outline-none"
             placeholder="Workflow Name"
           />
           <select
             value={triggerType}
             onChange={(e) => setTriggerType(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none cursor-pointer"
+            className="bg-dash-surface border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text focus:outline-none cursor-pointer"
           >
-            <option value="form_submitted" className="bg-[#0b132c]">Trigger: Form Submitted</option>
-            <option value="step_completed" className="bg-[#0b132c]">Trigger: Step Completed</option>
-            <option value="form_viewed" className="bg-[#0b132c]">Trigger: Form Opened</option>
-            <option value="recovery_link_opened" className="bg-[#0b132c]">Trigger: Recovery Link Opened</option>
-            <option value="partial_abandoned" className="bg-[#0b132c]">Trigger: Submission Abandoned</option>
+            <option value="form_submitted" className="bg-white">Trigger: Form Submitted</option>
+            <option value="step_completed" className="bg-white">Trigger: Step Completed</option>
+            <option value="form_viewed" className="bg-white">Trigger: Form Opened</option>
+            <option value="recovery_link_opened" className="bg-white">Trigger: Recovery Link Opened</option>
+            <option value="partial_abandoned" className="bg-white">Trigger: Submission Abandoned</option>
           </select>
         </div>
         <button
           onClick={saveWorkflow}
           disabled={saving}
-          className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all"
+          className="flex items-center gap-1.5 px-4 py-2 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-xs font-bold transition-colors motion-reduce:transition-none"
         >
-          <Save size={14} /> {saving ? 'Saving...' : 'Save Workflow'}
+          <Save size={14} /> {saving ? 'Saving...' : 'Save workflow'}
         </button>
       </div>
 
       {/* Steps Builder Chain */}
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-4">
         {steps.map((step, idx) => (
-          <div key={step.id || idx} className="p-4 bg-white/2 border border-white/5 rounded-2xl flex flex-col gap-3 relative">
+          <div key={step.id || idx} className="p-4 bg-dash-surface border border-dash-border rounded-2xl flex flex-col gap-3 relative">
             
             {/* Step header selector */}
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-              <span className="text-[10px] font-black tracking-widest text-[#4a5a82] uppercase">
+            <div className="flex items-center justify-between border-b border-dash-border pb-2.5">
+              <span className="text-[10px] font-bold !text-dash-textMuted">
                 Action step {idx + 1}
               </span>
               <div className="flex items-center gap-2">
                 <select
                   value={step.type}
                   onChange={(e) => updateStepType(idx, e.target.value)}
-                  className="bg-white/5 border border-white/5 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none cursor-pointer"
+                  className="bg-dash-surface border border-dash-border rounded-lg px-2.5 py-1 text-[11px] !text-dash-text focus:outline-none cursor-pointer"
                 >
-                  <option value="send_email" className="bg-[#0b132c]">Send Email</option>
-                  <option value="wait" className="bg-[#0b132c]">Delay Action</option>
-                  <option value="if_else" className="bg-[#0b132c]">Conditional Branch</option>
-                  <option value="create_task" className="bg-[#0b132c]">CRM: Create Task</option>
-                  <option value="apply_tags" className="bg-[#0b132c]">CRM: Apply Tags</option>
-                  <option value="assign_owner" className="bg-[#0b132c]">CRM: Assign Owner</option>
-                  <option value="update_pipeline" className="bg-[#0b132c]">CRM: Update Pipeline</option>
-                  <option value="create_note" className="bg-[#0b132c]">CRM: Create Note</option>
+                  <option value="send_email" className="bg-white">Send Email</option>
+                  <option value="wait" className="bg-white">Delay Action</option>
+                  <option value="if_else" className="bg-white">Conditional Branch</option>
+                  <option value="create_task" className="bg-white">CRM: Create Task</option>
+                  <option value="apply_tags" className="bg-white">CRM: Apply Tags</option>
+                  <option value="assign_owner" className="bg-white">CRM: Assign Owner</option>
+                  <option value="update_pipeline" className="bg-white">CRM: Update Pipeline</option>
+                  <option value="create_note" className="bg-white">CRM: Create Note</option>
                 </select>
                 <button
                   onClick={() => removeStep(idx)}
-                  className="p-1 hover:bg-rose-500/10 text-rose-400 hover:text-rose-500 rounded transition-colors"
+                  className="p-1 hover:bg-red/10 text-red hover:text-red rounded transition-colors motion-reduce:transition-none"
                 >
                   <Trash2 size={13} />
                 </button>
@@ -239,14 +239,14 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
                   type="text"
                   value={step.config?.subject || ''}
                   onChange={(e) => updateStepConfig(idx, 'subject', e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
+                  className="bg-dash-surface border border-dash-border rounded-xl px-3 py-2 !text-dash-text"
                   placeholder="Email Subject"
                 />
                 <textarea
                   value={step.config?.body || ''}
                   onChange={(e) => updateStepConfig(idx, 'body', e.target.value)}
                   rows={2}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-[11px]"
+                  className="bg-dash-surface border border-dash-border rounded-xl px-3 py-2 !text-dash-text font-mono text-[11px]"
                   placeholder="Email HTML/Body Text (supports {{name}} tags)"
                 />
               </div>
@@ -254,13 +254,13 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
 
             {step.type === 'wait' && (
               <div className="flex items-center gap-2 text-xs">
-                <Clock size={12} className="text-blue-400" />
+                <Clock size={12} className="text-dash-accent" />
                 <span>Delay duration:</span>
                 <input
                   type="number"
                   value={step.config?.delaySeconds || 0}
                   onChange={(e) => updateStepConfig(idx, 'delaySeconds', parseInt(e.target.value, 10))}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white w-20 text-center"
+                  className="bg-dash-surface border border-dash-border rounded-xl px-3 py-1.5 !text-dash-text w-20 text-center"
                 />
                 <span>seconds</span>
               </div>
@@ -277,7 +277,7 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
                     : ''
                 }
                 onChange={(e) => updateStepConfig(idx, 'tags', e.target.value.split(',').map(s => s.trim()))}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                className="bg-dash-surface border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text"
                 placeholder="Comma separated tags (e.g. Lead, High-Value)"
               />
             )}
@@ -288,32 +288,32 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
                   type="text"
                   value={step.config?.title || ''}
                   onChange={(e) => updateStepConfig(idx, 'title', e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white flex-1"
+                  className="bg-dash-surface border border-dash-border rounded-xl px-3 py-2 !text-dash-text flex-1"
                   placeholder="Task title"
                 />
                 <select
                   value={step.config?.priority || 'normal'}
                   onChange={(e) => updateStepConfig(idx, 'priority', e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
+                  className="bg-dash-surface border border-dash-border rounded-xl px-3 py-2 !text-dash-text"
                 >
-                  <option value="low" className="bg-[#0b132c]">Low</option>
-                  <option value="normal" className="bg-[#0b132c]">Normal</option>
-                  <option value="high" className="bg-[#0b132c]">High</option>
+                  <option value="low" className="bg-white">Low</option>
+                  <option value="normal" className="bg-white">Normal</option>
+                  <option value="high" className="bg-white">High</option>
                 </select>
               </div>
             )}
 
             {step.type === 'if_else' && (
               <div className="flex flex-col gap-2 text-xs">
-                <div className="flex items-center gap-2 p-2 bg-white/2 rounded-xl border border-white/5 text-[11px]">
+                <div className="flex items-center gap-2 p-2 bg-dash-surface rounded-xl border border-dash-border text-[11px]">
                   <span>Condition type: Field validation</span>
-                  <span className="font-bold text-[#60a5fa]">({step.config?.conditions?.[0]?.type || 'completion_percentage'})</span>
+                  <span className="font-bold text-dash-accent">({step.config?.conditions?.[0]?.type || 'completion_percentage'})</span>
                 </div>
                 <div className="flex gap-2">
-                  <div className="flex-1 bg-[#2563eb]/10 p-2 rounded-xl text-[10px] text-blue-400 border border-blue-500/10">
+                  <div className="flex-1 bg-dash-accent/10 p-2 rounded-xl text-[10px] text-dash-accent border border-dash-accent/10">
                     <strong>Match path:</strong> Continue workflow execution
                   </div>
-                  <div className="flex-1 bg-white/5 p-2 rounded-xl text-[10px] text-white/40 border border-white/5">
+                  <div className="flex-1 bg-dash-surface p-2 rounded-xl text-[10px] !text-dash-textMuted border border-dash-border">
                     <strong>Fallback path:</strong> Stop execution run
                   </div>
                 </div>
@@ -326,7 +326,7 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
                 <select
                   value={step.config?.ownerId || ''}
                   onChange={(e) => updateStepConfig(idx, 'ownerId', e.target.value)}
-                  className="bg-[#0b132c] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none cursor-pointer"
+                  className="bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text focus:outline-none cursor-pointer"
                 >
                   <option value="">Select Owner...</option>
                   {owners.map(o => (
@@ -342,7 +342,7 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
                 <select
                   value={step.config?.stageId || step.config?.stage || ''}
                   onChange={(e) => updateStepConfig(idx, 'stageId', e.target.value)}
-                  className="bg-[#0b132c] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none cursor-pointer"
+                  className="bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text focus:outline-none cursor-pointer"
                 >
                   <option value="">Select Stage...</option>
                   {stages.map(s => (
@@ -361,7 +361,7 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
                   value={step.config?.content || ''}
                   onChange={(e) => updateStepConfig(idx, 'content', e.target.value)}
                   rows={2}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-[11px]"
+                  className="bg-dash-surface border border-dash-border rounded-xl px-3 py-2 !text-dash-text font-mono text-[11px]"
                   placeholder="Note content (supports {{name}} tags)"
                 />
               </div>
@@ -372,9 +372,9 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
 
         <button
           onClick={addStep}
-          className="flex items-center justify-center gap-1.5 p-4 border border-dashed border-white/10 hover:border-white/20 bg-transparent text-white/50 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all mt-2"
+          className="flex items-center justify-center gap-1.5 p-4 border border-dashed border-dash-border hover:border-dash-text/20 bg-transparent !text-dash-textMuted hover:!text-dash-text rounded-2xl text-[10px] font-bold transition-colors motion-reduce:transition-none mt-2"
         >
-          <Plus size={14} /> Add Action Step
+          <Plus size={14} /> Add action step
         </button>
       </div>
 

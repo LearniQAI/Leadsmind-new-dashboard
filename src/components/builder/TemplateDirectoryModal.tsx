@@ -53,17 +53,17 @@ export const TemplateDirectoryModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#0b0b14] border-white/5 text-white rounded-3xl p-0 overflow-hidden shadow-2xl z-[9999]">
+      <DialogContent className="max-w-4xl bg-white border-dash-border !text-dash-text rounded-3xl p-0 overflow-hidden shadow-2xl z-[9999]">
         <div className="flex flex-col h-[75vh]">
           {/* Header */}
-          <DialogHeader className="p-6 pb-4 border-b border-white/5 flex flex-col gap-4">
+          <DialogHeader className="p-6 pb-4 border-b border-dash-border flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary animate-pulse" />
-                  Template <span className="text-primary">Library</span>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary animate-pulse motion-reduce:animate-none" />
+                  Template <span className="text-primary">library</span>
                 </DialogTitle>
-                <DialogDescription className="text-xs text-white/40 font-bold uppercase tracking-widest mt-1">
+                <DialogDescription className="text-xs !text-dash-textMuted font-bold mt-1">
                   Choose a conversion-optimized layout to deploy in one click
                 </DialogDescription>
               </div>
@@ -72,12 +72,12 @@ export const TemplateDirectoryModal = ({
             {/* Search and Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 !text-dash-textMuted" />
                 <Input
                   placeholder="Search templates (e.g. Lead, Agency...)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 pl-10 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary/50 text-xs placeholder:text-white/30"
+                  className="h-10 pl-10 bg-white border-dash-border !text-dash-text rounded-xl focus:border-primary/50 text-xs placeholder:text-dash-textMuted"
                 />
               </div>
               <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
@@ -86,10 +86,10 @@ export const TemplateDirectoryModal = ({
                     key={cat}
                     variant="ghost"
                     onClick={() => setSelectedCategory(cat)}
-                    className={`h-10 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all shrink-0 ${
+                    className={`h-10 px-4 text-[10px] font-bold rounded-xl border transition-all motion-reduce:transition-none shrink-0 ${
                       selectedCategory === cat
                         ? 'bg-primary/10 border-primary/30 text-primary'
-                        : 'border-white/5 hover:bg-white/5 text-white/40 hover:text-white'
+                        : 'border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text'
                     }`}
                   >
                     {cat}
@@ -102,41 +102,41 @@ export const TemplateDirectoryModal = ({
           {/* Grid Content */}
           <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
             {filteredTemplates.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center opacity-30">
+              <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
                 <LayoutGrid className="w-12 h-12 mb-4" />
-                <p className="text-sm font-bold uppercase tracking-widest">No templates found matching filters</p>
+                <p className="text-sm font-bold">No templates found matching filters</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredTemplates.map((template) => (
                   <div
                     key={template.id}
-                    className="group flex flex-col bg-white/[0.02] border border-white/5 hover:border-primary/45 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-[0_0_30px_rgba(108,71,255,0.15)]"
+                    className="group flex flex-col bg-white border border-dash-border hover:border-primary/45 rounded-2xl overflow-hidden transition-all duration-300 motion-reduce:transition-none hover:shadow-[0_0_30px_rgba(19,89,255,0.15)]"
                   >
                     {/* Thumbnail */}
-                    <div className="aspect-[16/10] bg-white/5 relative overflow-hidden shrink-0">
+                    <div className="aspect-[16/10] bg-dash-surface relative overflow-hidden shrink-0">
                       {template.thumbnail ? (
                         <img
                           src={template.thumbnail}
                           alt={template.name}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          className="w-full h-full object-cover transition-transform duration-500 motion-reduce:transition-none group-hover:scale-105"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <LayoutGrid className="w-8 h-8 opacity-20" />
+                          <LayoutGrid className="w-8 h-8 opacity-40" />
                         </div>
                       )}
                       {template.is_premium && (
-                        <div className="absolute top-3 right-3 bg-[#f59e0b] text-black font-black uppercase tracking-widest text-[8px] px-2 py-1 rounded-full shadow-lg">
+                        <div className="absolute top-3 right-3 bg-amber-600 text-white font-bold text-[8px] px-2 py-1 rounded-full shadow-lg">
                           Premium
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4">
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none flex items-center justify-center p-4">
                         <Button
                           onClick={() => handleApplyTemplate(template)}
-                          className="bg-primary hover:bg-primary/95 text-white rounded-xl font-black uppercase text-[10px] tracking-widest px-6 h-10 shadow-lg active:scale-95 transition-transform"
+                          className="bg-primary hover:bg-primary/95 text-white rounded-xl font-bold text-[10px] px-6 h-10 shadow-lg active:scale-95 transition-transform motion-reduce:transition-none"
                         >
-                          Use Template
+                          Use template
                         </Button>
                       </div>
                     </div>
@@ -145,14 +145,14 @@ export const TemplateDirectoryModal = ({
                     <div className="p-4 flex-1 flex flex-col justify-between gap-4">
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-xs font-black uppercase tracking-wider text-white truncate max-w-[150px]">
+                          <h4 className="text-xs font-bold !text-dash-text truncate max-w-[150px]">
                             {template.name}
                           </h4>
-                          <span className="text-[8px] font-black uppercase text-primary tracking-widest bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full shrink-0">
+                          <span className="text-[8px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full shrink-0">
                             {template.category || 'General'}
                           </span>
                         </div>
-                        <p className="text-[10px] text-white/50 leading-relaxed font-medium line-clamp-2">
+                        <p className="text-[10px] !text-dash-textMuted leading-relaxed font-medium line-clamp-2">
                           {template.description}
                         </p>
                       </div>

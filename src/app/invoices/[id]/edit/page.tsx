@@ -3,10 +3,10 @@ import { getInvoiceById, getInvoiceSettings, getContactsForInvoicing } from "@/a
 import InvoiceClientWrapper from "@/components/invoices/InvoiceClientWrapper";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
+import { DashButton } from "@/components/dashboard-ui/Button";
 
 interface EditInvoicePageProps {
   params: Promise<{ id: string }>;
@@ -42,17 +42,17 @@ export default async function EditInvoicePage({ params }: EditInvoicePageProps) 
   return (
     <MetaData pageTitle={`Edit Invoice ${invoice.invoice_number}`}>
       <Wrapper>
-        <div className="app__slide-wrapper">
+        <div className="bg-white min-h-screen px-4 py-6">
           <div className="space-y-8">
-            <div className="flex items-center gap-4 px-2">
+            <div className="flex items-center gap-4">
               <Link href="/invoices">
-                <Button variant="ghost" size="icon" className="text-white/40 hover:text-white rounded-xl">
+                <DashButton variant="ghost" size="icon">
                   <ArrowLeft size={20} />
-                </Button>
+                </DashButton>
               </Link>
               <div>
-                <h1 className="card__title !text-3xl uppercase mb-1">Edit <span className="text-primary">Invoice</span></h1>
-                <p className="card__sub-title !text-[10px] uppercase tracking-[0.2em]">Update billing record {invoice.invoice_number}</p>
+                <h1 className="text-3xl font-bold !text-dash-text mb-1">Edit <span className="text-dash-accent">Invoice</span></h1>
+                <p className="text-[11px] !text-dash-textMuted">Update billing record {invoice.invoice_number}</p>
               </div>
             </div>
 

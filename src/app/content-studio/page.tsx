@@ -11,9 +11,9 @@ export default async function ContentStudioPage() {
 
   if (error) {
     return (
-      <div className="p-6 max-w-7xl mx-auto text-center bg-[#04091a] min-h-screen flex items-center justify-center">
-        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 font-medium text-sm">
-          Failed to load Content Studio command center: {error}
+      <div className="p-6 max-w-7xl mx-auto text-center bg-white min-h-screen flex items-center justify-center">
+        <div className="p-4 bg-red/10 border border-red/20 rounded-xl text-red font-medium text-sm">
+          Failed to load Content Studio: {error}
         </div>
       </div>
     );

@@ -11,13 +11,13 @@ export function StepNavigation() {
   const isLastStep = currentStepIndex === steps.length - 1;
 
   return (
-    <div className="flex items-center justify-between gap-4 pt-6 border-t border-white/5 mt-8">
+    <div className="flex items-center justify-between gap-4 pt-6 border-t border-dash-border mt-8">
       {/* Back Button */}
       {!isFirstStep ? (
         <button
           type="button"
           onClick={prevStep}
-          className="flex items-center gap-1.5 px-5 py-3 border border-white/10 hover:bg-white/5 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors"
+          className="flex items-center gap-1.5 px-5 py-3 border border-dash-border hover:bg-dash-surface !text-dash-text rounded-xl text-xs font-bold transition-colors motion-reduce:transition-none"
         >
           <ChevronLeft size={14} /> Back
         </button>
@@ -30,17 +30,17 @@ export function StepNavigation() {
         <button
           type="button"
           onClick={submitForm}
-          className="flex items-center gap-1.5 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors shadow-lg shadow-emerald-600/15"
+          className="flex items-center gap-1.5 px-8 py-3 bg-green hover:bg-green/90 text-white rounded-xl text-xs font-bold transition-colors motion-reduce:transition-none"
         >
-          Submit Form <Check size={14} />
+          Submit form <Check size={14} />
         </button>
       ) : (
         <button
           type="button"
           onClick={nextStep}
-          className="flex items-center gap-1.5 px-8 py-3 bg-[#2563eb] hover:bg-[#2563eb]/90 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors shadow-lg shadow-blue-600/15"
+          className="flex items-center gap-1.5 px-8 py-3 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-xs font-bold transition-colors motion-reduce:transition-none"
         >
-          Next Step <ChevronRight size={14} />
+          Next step <ChevronRight size={14} />
         </button>
       )}
     </div>

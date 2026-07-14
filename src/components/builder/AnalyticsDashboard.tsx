@@ -29,7 +29,7 @@ export const AnalyticsDashboard = ({ data }: { data: any[] }) => {
   chart: {
    type: 'bar',
    toolbar: { show: false },
-   foreColor: '#888',
+   foreColor: '#475569',
   },
   plotOptions: {
    bar: {
@@ -43,7 +43,7 @@ export const AnalyticsDashboard = ({ data }: { data: any[] }) => {
   dataLabels: { enabled: false },
   legend: { show: false },
   grid: {
-   borderColor: '#ffffff10',
+   borderColor: '#E2E8F0',
    strokeDashArray: 3,
    xaxis: { lines: { show: false } },
    yaxis: { lines: { show: true } },
@@ -52,13 +52,13 @@ export const AnalyticsDashboard = ({ data }: { data: any[] }) => {
    categories: chartData.map((d) => d.name),
    axisBorder: { show: false },
    axisTicks: { show: false },
-   labels: { style: { colors: '#888', fontSize: '12px' } },
+   labels: { style: { colors: '#475569', fontSize: '12px' } },
   },
   yaxis: {
-   labels: { style: { colors: '#888', fontSize: '12px' } },
+   labels: { style: { colors: '#475569', fontSize: '12px' } },
   },
   tooltip: {
-   theme: 'dark',
+   theme: 'light',
    style: { fontSize: '12px' },
   },
  };
@@ -69,19 +69,19 @@ export const AnalyticsDashboard = ({ data }: { data: any[] }) => {
   <div className="space-y-6 p-8">
    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
     {[
-     { label: 'Total Visitors', value: '1,842', icon: Users, color: 'text-blue-500' },
-     { label: 'Avg. Conversion', value: '12.4%', icon: Target, color: 'text-emerald-500' },
-     { label: 'Total Leads', value: '228', icon: MousePointer2, color: 'text-primary' },
-     { label: 'Revenue (Attributed)', value: '$12,450', icon: TrendingUp, color: 'text-amber-500' },
+     { label: 'Total visitors', value: '1,842', icon: Users, color: 'text-blue-500' },
+     { label: 'Avg. conversion', value: '12.4%', icon: Target, color: 'text-green' },
+     { label: 'Total leads', value: '228', icon: MousePointer2, color: 'text-primary' },
+     { label: 'Revenue (attributed)', value: '$12,450', icon: TrendingUp, color: 'text-amber-600' },
     ].map((stat, i) => (
-      <Card key={i} className="border-white/5 bg-white/[0.02]">
+      <Card key={i} className="border-dash-border bg-white">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p>
-              <p className="text-2xl font-black mt-1">{stat.value}</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{stat.label}</p>
+              <p className="text-2xl font-bold mt-1">{stat.value}</p>
             </div>
-            <div className={`p-2 rounded-lg bg-white/5 ${stat.color}`}>
+            <div className={`p-2 rounded-lg bg-dash-surface ${stat.color}`}>
               <stat.icon className="w-5 h-5" />
             </div>
           </div>
@@ -90,9 +90,9 @@ export const AnalyticsDashboard = ({ data }: { data: any[] }) => {
     ))}
    </div>
 
-   <Card className="border-white/5 bg-white/[0.02]">
+   <Card className="border-dash-border bg-white">
     <CardHeader>
-     <CardTitle className="text-lg font-bold">Funnel Conversion Flow</CardTitle>
+     <CardTitle className="text-lg font-bold">Funnel conversion flow</CardTitle>
     </CardHeader>
     <CardContent>
      <div className="h-[300px] w-full mt-4">

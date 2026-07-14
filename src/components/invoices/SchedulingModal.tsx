@@ -2,14 +2,11 @@
 
 import React, { useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Calendar, Clock, Send, Mail, MessageSquare, Phone } from 'lucide-react';
-import { PremiumInput } from '@/components/ui/premium-inputs';
+  DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter
+} from '@/components/dashboard-ui/Modal';
+import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { Clock, Send, Mail, MessageSquare, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SchedulingModalProps {
@@ -47,67 +44,62 @@ const SchedulingModal: React.FC<SchedulingModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[var(--n800)] border border-[var(--bdrh)] rounded-[var(--r24)] max-w-md p-8 shadow-2xl">
-        <DialogHeader className="mb-6">
-          <div className="w-12 h-12 rounded-[var(--r12)] bg-[var(--accentg)] flex items-center justify-center border border-[var(--accent)]/20 mb-4">
-            <Clock className="h-6 w-6 text-[var(--accent2)]" />
+    <DashModal open={open} onOpenChange={onOpenChange}>
+      <DashModalContent className="max-w-md">
+        <DashModalHeader>
+          <div className="w-11 h-11 rounded-xl bg-dash-accent/10 flex items-center justify-center border border-dash-accent/20 mb-2">
+            <Clock className="h-5 w-5 text-dash-accent" />
           </div>
-          <DialogTitle className="text-xl font-bold font-space text-[var(--t1)] uppercase tracking-tight">
-            Schedule <span className="text-[var(--accent2)]">Delivery</span>
-          </DialogTitle>
-          <p className="text-[var(--t3)] text-xs font-medium uppercase tracking-wider mt-1">
+          <DashModalTitle>Schedule delivery</DashModalTitle>
+          <p className="!text-dash-textMuted text-[13px]">
             Choose when and where to send this document
           </p>
-        </DialogHeader>
+        </DashModalHeader>
 
         <div className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest flex items-center gap-2">
-              <Calendar size={12} className="text-[var(--accent2)]" /> Desired Delivery Time
-            </label>
-            <PremiumInput
+          <DashFormField label="Desired delivery time">
+            <DashInput
               type="datetime-local"
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}
               className="h-12"
             />
-          </div>
+          </DashFormField>
 
           <div className="space-y-3">
-            <label className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">
-              Multi-Channel Distribution
+            <label className="text-[13px] font-semibold !text-dash-text">
+              Multi-channel distribution
             </label>
             <div className="grid grid-cols-1 gap-2">
               {[
-                { id: 'email', label: 'Official Email', icon: Mail, color: 'text-blue-400' },
-                { id: 'sms', label: 'SMS Text Message', icon: MessageSquare, color: 'text-emerald-400' },
-                { id: 'whatsapp', label: 'WhatsApp Business', icon: Phone, color: 'text-green-500' },
+                { id: 'email', label: 'Official email', icon: Mail, color: 'text-dash-accent' },
+                { id: 'sms', label: 'SMS text message', icon: MessageSquare, color: 'text-green' },
+                { id: 'whatsapp', label: 'WhatsApp business', icon: Phone, color: 'text-green' },
               ].map((ch) => (
                 <button
                   key={ch.id}
                   onClick={() => toggleChannel(ch.id as any)}
                   className={cn(
-                    "flex items-center justify-between p-4 rounded-[var(--r16)] border transition-all text-left",
+                    "flex items-center justify-between p-4 rounded-xl border transition-all motion-reduce:transition-none text-left",
                     channels.includes(ch.id as any)
-                      ? "bg-[var(--accentg)] border-[var(--accent)]/30"
-                      : "bg-[var(--n900)] border-[var(--bdr)] hover:border-[var(--bdrh)]"
+                      ? "bg-dash-accent/5 border-dash-accent/30"
+                      : "bg-white border-dash-border hover:border-dash-text/20"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={cn("p-2 rounded-[var(--r8)] bg-[rgba(255,255,255,0.02)] border border-[var(--bdr)]", ch.color)}>
+                    <div className={cn("p-2 rounded-lg bg-dash-surface border border-dash-border", ch.color)}>
                       <ch.icon size={16} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-[var(--t1)]">{ch.label}</p>
-                      <p className="text-[10px] text-[var(--t4)] font-medium">Automatic delivery via secure pipe</p>
+                      <p className="text-xs font-bold !text-dash-text">{ch.label}</p>
+                      <p className="text-[10px] !text-dash-textMuted font-medium">Automatic delivery via secure pipe</p>
                     </div>
                   </div>
                   <div className={cn(
-                    "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
+                    "w-5 h-5 rounded-full border flex items-center justify-center transition-all motion-reduce:transition-none",
                     channels.includes(ch.id as any)
-                      ? "bg-[var(--accent)] border-[var(--accent)]"
-                      : "border-[var(--bdr)]"
+                      ? "bg-dash-accent border-dash-accent"
+                      : "border-dash-border"
                   )}>
                     {channels.includes(ch.id as any) && <Send size={10} className="text-white" />}
                   </div>
@@ -117,16 +109,16 @@ const SchedulingModal: React.FC<SchedulingModalProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="mt-8 gap-3">
-          <button onClick={() => onOpenChange(false)} className="btn-ghost flex-1">
+        <DashModalFooter>
+          <DashButton variant="secondary" className="flex-1" onClick={() => onOpenChange(false)}>
             Cancel
-          </button>
-          <button onClick={handleConfirm} className="btn-primary flex-1 gap-2">
-            Schedule Send <Send size={14} />
-          </button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </DashButton>
+          <DashButton variant="primary" className="flex-1" onClick={handleConfirm}>
+            Schedule send <Send size={14} />
+          </DashButton>
+        </DashModalFooter>
+      </DashModalContent>
+    </DashModal>
   );
 };
 

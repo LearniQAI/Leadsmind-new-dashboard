@@ -10,6 +10,12 @@ import MetaData from '@/hooks/useMetaData';
 import { uploadBlogMedia } from '@/lib/mediaUpload';
 import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, AlertCircle, ExternalLink, Sparkles } from 'lucide-react';
 import AIAssistantSidebar from '@/components/content-studio/AIAssistantSidebar';
+import { cn } from '@/lib/utils';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import {
+  DashModal, DashModalContent, DashModalHeader, DashModalTitle
+} from '@/components/dashboard-ui/Modal';
+import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 
 interface BlogEditorClientProps {
   post: any;
@@ -29,7 +35,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
   const [showEmbedModal, setShowEmbedModal] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
   const [showAiAssistant, setShowAiAssistant] = useState(false);
-  
+
   // Image modal state fields
   const [imgFile, setImgFile] = useState<File | null>(null);
   const [imgAlt, setImgAlt] = useState('');
@@ -201,7 +207,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
         })
         .run();
     }
-    
+
     setShowEmbedModal(false);
     setEmbedUrl('');
   };
@@ -209,62 +215,59 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
   return (
     <MetaData pageTitle="Post Editor">
       <Wrapper>
-        <div className="flex flex-col min-h-screen bg-[#04091a]">
+        <div className="flex flex-col min-h-screen bg-white">
           {/* Header */}
           {!isZenMode && (
-            <div className="border-b border-white/10 bg-[#080f28]">
+            <div className="border-b border-dash-border bg-dash-surface">
               <div className="max-w-7xl mx-auto w-full px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                
+
                 <div className="flex items-center gap-3">
-                  <button onClick={() => router.push('/blog/manage')} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition">
+                  <button onClick={() => router.push('/blog/manage')} className="p-2 rounded-lg bg-white hover:bg-dash-border/40 !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
                     <ArrowLeft className="w-4 h-4" />
                   </button>
                   <div>
-                    <h1 className="font-space-grotesk text-xl font-bold text-white uppercase tracking-tight">
-                      Post <span className="text-primary">Writer</span>
+                    <h1 className="text-xl font-bold !text-dash-text">
+                      Post <span className="text-dash-accent">writer</span>
                     </h1>
-                    <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-semibold mt-0.5">
-                      Content Orchestration & SEO Delivery
+                    <p className="text-[10px] !text-dash-textMuted font-semibold mt-0.5">
+                      Content orchestration & SEO delivery
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                   {saveStatus && (
-                    <span className="text-xs text-white/50 bg-[#0c1535] border border-white/5 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs !text-dash-textMuted bg-white border border-dash-border px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse motion-reduce:animate-none" />
                       {saveStatus}
                     </span>
                   )}
-                  
+
                   <a
                     href={`/blog/${post.slug}${post.status !== 'published' ? '?preview=1' : ''}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-[#0c1535] border border-white/10 text-white/70 hover:text-white text-xs font-bold px-4 py-2 rounded-lg transition flex items-center gap-2"
+                    className="bg-white border border-dash-border !text-dash-textMuted hover:!text-dash-text text-xs font-bold px-4 py-2 rounded-lg transition-colors motion-reduce:transition-none flex items-center gap-2"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    {post.status === 'published' ? 'View Post' : 'Preview Draft'}
+                    {post.status === 'published' ? 'View post' : 'Preview draft'}
                   </a>
                   <button
                     onClick={() => setShowAiAssistant(!showAiAssistant)}
-                    className={`text-xs font-bold px-4 py-2 rounded-lg transition flex items-center gap-2 ${
-                      showAiAssistant 
-                        ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-[0_0_15px_rgba(147,51,234,0.3)]' 
-                        : 'bg-[#0c1535] border border-white/10 text-white/70 hover:text-white'
-                    }`}
+                    className={cn(
+                      "text-xs font-bold px-4 py-2 rounded-lg transition-colors motion-reduce:transition-none flex items-center gap-2",
+                      showAiAssistant
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                        : 'bg-white border border-dash-border !text-dash-textMuted hover:!text-dash-text'
+                    )}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    {showAiAssistant ? 'Hide AI Assistant' : 'AI Assistant'}
+                    {showAiAssistant ? 'Hide AI assistant' : 'AI assistant'}
                   </button>
-                  <button
-                    onClick={handleManualSave}
-                    disabled={isSaving}
-                    className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    Save Changes
-                  </button>
+                  <DashButton onClick={handleManualSave} disabled={isSaving} size="sm">
+                    {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : <Save className="w-3.5 h-3.5" />}
+                    Save changes
+                  </DashButton>
                 </div>
 
               </div>
@@ -272,7 +275,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
           )}
 
           {/* Main workspace */}
-          <div className={`flex-1 flex flex-col lg:flex-row gap-6 p-6 w-full ${isZenMode ? 'max-w-4xl mx-auto' : 'max-w-7xl mx-auto'}`}>
+          <div className={cn("flex-1 flex flex-col lg:flex-row gap-6 p-6 w-full", isZenMode ? 'max-w-4xl mx-auto' : 'max-w-7xl mx-auto')}>
             <div className="flex-1 space-y-4">
               {!isZenMode ? (
                 <>
@@ -281,12 +284,12 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
                     value={post.title || ''}
                     placeholder="Post Title (e.g. Master the LeadsMind Marketing Suite)"
                     onChange={(e) => handleUpdate({ title: e.target.value })}
-                    className="w-full bg-transparent text-white font-space-grotesk font-bold text-2xl outline-none placeholder-white/20 border-b border-white/5 pb-2 focus:border-primary transition"
+                    className="w-full bg-transparent !text-dash-text font-bold text-2xl outline-none placeholder:text-dash-textMuted border-b border-dash-border pb-2 focus:border-dash-accent transition-colors motion-reduce:transition-none"
                   />
-                  
-                  <div className="text-[11px] text-white/40 font-semibold uppercase flex items-center gap-2">
-                    <span>URL Slug:</span>
-                    <span className="text-primary tracking-normal font-normal normal-case">
+
+                  <div className="text-[11px] !text-dash-textMuted font-semibold flex items-center gap-2">
+                    <span>URL slug:</span>
+                    <span className="text-dash-accent font-normal">
                       /blog/{post.slug || 'slug-placeholder'}
                     </span>
                   </div>
@@ -298,7 +301,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
                     value={post.title || ''}
                     placeholder="Untitled Post"
                     onChange={(e) => handleUpdate({ title: e.target.value })}
-                    className="w-full bg-transparent text-white font-space-grotesk font-bold text-3xl text-center outline-none placeholder-white/10 border-none focus:outline-none transition"
+                    className="w-full bg-transparent !text-dash-text font-bold text-3xl text-center outline-none placeholder:text-dash-border border-none focus:outline-none transition-colors motion-reduce:transition-none"
                   />
                 </div>
               )}
@@ -339,114 +342,99 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
           </div>
 
           {/* MODALS */}
-          {showImageModal && (
-            <div className="fixed inset-0 z-[600] flex items-center justify-center bg-[#04091a]/85 backdrop-blur-sm p-4">
-              <div className="w-full max-w-md bg-[#080f28] border border-white/10 rounded-xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <h3 className="font-space-grotesk text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4 text-primary" /> Insert Media
-                  </h3>
-                  <button onClick={() => setShowImageModal(false)} className="text-white/40 hover:text-white text-sm">✕</button>
+          <DashModal open={showImageModal} onOpenChange={setShowImageModal}>
+            <DashModalContent className="max-w-md">
+              <DashModalHeader>
+                <DashModalTitle className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-dash-accent" /> Insert media
+                </DashModalTitle>
+              </DashModalHeader>
+
+              <form onSubmit={handleInsertImageSubmit} className="space-y-4">
+                <DashFormField label="Description / alt text" hint="Accessibility requirements require a text fallback for visually impaired users.">
+                  <DashInput
+                    type="text"
+                    value={imgAlt}
+                    placeholder="e.g. Dashboard view with financial metrics graph"
+                    onChange={(e) => setImgAlt(e.target.value)}
+                    required
+                  />
+                </DashFormField>
+
+                <DashFormField label="Select media file">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setImgFile(e.target.files?.[0] || null)}
+                    className="w-full text-xs !text-dash-textMuted bg-white border border-dash-border rounded-xl px-3 py-2.5 outline-none focus:border-dash-accent"
+                    required
+                  />
+                </DashFormField>
+
+                {imgError && (
+                  <div className="p-2.5 bg-red/10 border border-red/20 text-red rounded-lg text-[11px] flex items-start gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{imgError}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 border-t border-dash-border pt-3">
+                  <DashButton type="button" variant="secondary" onClick={() => setShowImageModal(false)}>
+                    Cancel
+                  </DashButton>
+                  <DashButton type="submit" disabled={imgUploading || !imgFile}>
+                    {imgUploading ? <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" /> : null}
+                    Optimize & insert
+                  </DashButton>
                 </div>
+              </form>
+            </DashModalContent>
+          </DashModal>
 
-                <form onSubmit={handleInsertImageSubmit} className="space-y-4 font-dm-sans">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Description / Alt Text</label>
-                    <input
-                      type="text"
-                      value={imgAlt}
-                      placeholder="e.g. Dashboard view with financial metrics graph"
-                      onChange={(e) => setImgAlt(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-primary"
-                      required
-                    />
-                    <span className="text-[9.5px] text-white/30 leading-normal block">
-                      Accessibility requirements require a text fallback for visually impaired users.
-                    </span>
-                  </div>
+          <DashModal open={showEmbedModal} onOpenChange={setShowEmbedModal}>
+            <DashModalContent className="max-w-md">
+              <DashModalHeader>
+                <DashModalTitle className="flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4 text-dash-accent" /> Insert responsive embed
+                </DashModalTitle>
+              </DashModalHeader>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Select Media File</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setImgFile(e.target.files?.[0] || null)}
-                      className="w-full text-xs text-white/60 bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-primary"
-                      required
-                    />
-                  </div>
+              <form onSubmit={handleEmbedSubmit} className="space-y-4">
+                <DashFormField label="Embed type">
+                  <select
+                    value={embedType}
+                    onChange={(e) => setEmbedType(e.target.value)}
+                    className="w-full h-11 rounded-xl border border-dash-border bg-white px-3.5 text-sm !text-dash-text outline-none focus-visible:ring-2 focus-visible:ring-dash-accent"
+                  >
+                    <option value="youtube">YouTube Video Embed</option>
+                    <option value="vimeo">Vimeo Video Embed</option>
+                    <option value="twitter">Twitter / X Post Embed</option>
+                    <option value="instagram">Instagram Post Embed</option>
+                    <option value="generic">Generic Iframe Source</option>
+                  </select>
+                </DashFormField>
 
-                  {imgError && (
-                    <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-lg text-[10px] flex items-start gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                      <span>{imgError}</span>
-                    </div>
-                  )}
+                <DashFormField label="Direct iframe / post URL">
+                  <DashInput
+                    type="url"
+                    value={embedUrl}
+                    placeholder="https://..."
+                    onChange={(e) => setEmbedUrl(e.target.value)}
+                    required
+                  />
+                </DashFormField>
 
-                  <div className="flex justify-end gap-3 border-t border-white/5 pt-3">
-                    <button type="button" onClick={() => setShowImageModal(false)} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-white/70 transition">
-                      Cancel
-                    </button>
-                    <button type="submit" disabled={imgUploading || !imgFile} className="px-4 py-2 bg-primary hover:bg-blue-600 rounded-lg text-xs font-bold text-white transition flex items-center gap-1.5 disabled:opacity-50">
-                      {imgUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                      Optimize & Insert
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {showEmbedModal && (
-            <div className="fixed inset-0 z-[600] flex items-center justify-center bg-[#04091a]/85 backdrop-blur-sm p-4">
-              <div className="w-full max-w-md bg-[#080f28] border border-white/10 rounded-xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <h3 className="font-space-grotesk text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4 text-primary" /> Insert Responsive Embed
-                  </h3>
-                  <button onClick={() => setShowEmbedModal(false)} className="text-white/40 hover:text-white text-sm">✕</button>
+                <div className="flex justify-end gap-3 border-t border-dash-border pt-3">
+                  <DashButton type="button" variant="secondary" onClick={() => setShowEmbedModal(false)}>
+                    Cancel
+                  </DashButton>
+                  <DashButton type="submit" disabled={!embedUrl}>
+                    Insert widget
+                  </DashButton>
                 </div>
-
-                <form onSubmit={handleEmbedSubmit} className="space-y-4 font-dm-sans">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Embed Type</label>
-                    <select
-                      value={embedType}
-                      onChange={(e) => setEmbedType(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-primary"
-                    >
-                      <option value="youtube" className="bg-[#080f28]">YouTube Video Embed</option>
-                      <option value="vimeo" className="bg-[#080f28]">Vimeo Video Embed</option>
-                      <option value="twitter" className="bg-[#080f28]">Twitter / X Post Embed</option>
-                      <option value="instagram" className="bg-[#080f28]">Instagram Post Embed</option>
-                      <option value="generic" className="bg-[#080f28]">Generic Iframe Source</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Direct Iframe / Post URL</label>
-                    <input
-                      type="url"
-                      value={embedUrl}
-                      placeholder="https://..."
-                      onChange={(e) => setEmbedUrl(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-primary"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3 border-t border-white/5 pt-3">
-                    <button type="button" onClick={() => setShowEmbedModal(false)} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-white/70 transition">
-                      Cancel
-                    </button>
-                    <button type="submit" disabled={!embedUrl} className="px-4 py-2 bg-primary hover:bg-blue-600 rounded-lg text-xs font-bold text-white transition disabled:opacity-50">
-                      Insert Widget
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+              </form>
+            </DashModalContent>
+          </DashModal>
         </div>
       </Wrapper>
     </MetaData>

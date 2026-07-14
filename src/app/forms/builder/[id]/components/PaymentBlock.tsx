@@ -59,20 +59,20 @@ function CheckoutForm({ onSuccess, isBuilder, disabled }: { onSuccess: (pm: any)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className={`w-full bg-white/5 border border-white/10 rounded-lg flex items-center px-3 py-2.5 gap-2 ${disabled || isBuilder ? 'opacity-70 pointer-events-none' : ''}`}>
-        <CreditCard size={14} className="text-[#4a5a82] flex-shrink-0" />
+      <div className={`w-full bg-white border border-dash-border rounded-lg flex items-center px-3 py-2.5 gap-2 ${disabled || isBuilder ? 'opacity-70 pointer-events-none' : ''}`}>
+        <CreditCard size={14} className="!text-dash-textMuted flex-shrink-0" />
         <div className="flex-1 min-w-0">
            <CardElement
             options={{
               style: {
                 base: {
                   fontSize: '13px',
-                  color: '#ffffff',
+                  color: '#0F172A',
                   fontFamily: '"DM Sans", sans-serif',
                   '::placeholder': {
-                    color: '#4a5a82',
+                    color: '#475569',
                   },
-                  iconColor: '#4a5a82',
+                  iconColor: '#475569',
                 },
                 invalid: {
                   color: '#ef4444',
@@ -84,21 +84,21 @@ function CheckoutForm({ onSuccess, isBuilder, disabled }: { onSuccess: (pm: any)
           />
         </div>
       </div>
-      
-      {error && <div className="text-rose-500 text-[11px] font-dm-sans">{error}</div>}
+
+      {error && <div className="text-red text-[11px]">{error}</div>}
 
       {!isBuilder && !disabled && (
         <button
           type="submit"
           disabled={!stripe || processing || disabled}
-          className="w-full py-3 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-[#2563eb]/50 disabled:cursor-not-allowed text-white rounded-lg text-[11px] font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3 bg-dash-accent hover:bg-dash-accent/90 disabled:bg-dash-accent/50 disabled:cursor-not-allowed text-white rounded-lg text-[11px] font-bold transition-colors motion-reduce:transition-none flex items-center justify-center gap-2"
         >
           {processing ? (
-            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin motion-reduce:animate-none" />
           ) : (
             <Lock size={12} />
           )}
-          {processing ? 'Processing...' : 'Pay Now'}
+          {processing ? 'Processing...' : 'Pay now'}
         </button>
       )}
     </form>
@@ -112,37 +112,37 @@ export function PaymentBlock({ fieldId, disabled, isBuilder, value }: Props) {
 
   return (
     <div className="w-full">
-      <div className={`p-5 rounded-xl border ${isBuilder ? 'border-white/10 bg-[#080f28]/95' : 'border-[#2563eb]/30 bg-[#2563eb]/5'} transition-all`}>
+      <div className={`p-5 rounded-xl border transition-colors motion-reduce:transition-none ${isBuilder ? 'border-dash-border bg-white' : 'border-dash-accent/30 bg-dash-accent/5'}`}>
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h4 className="text-sm font-space-grotesk font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <CreditCard size={14} className="text-[#2563eb]" />
-              Secure Payment
+            <h4 className="text-sm font-bold !text-dash-text flex items-center gap-2">
+              <CreditCard size={14} className="text-dash-accent" />
+              Secure payment
             </h4>
-            <p className="text-[11px] text-[#4a5a82] font-dm-sans mt-1">
+            <p className="text-[11px] !text-dash-textMuted mt-1">
               Your transaction is secured with 256-bit encryption.
             </p>
           </div>
           <div className="text-right">
-            <span className="text-[20px] font-space-grotesk font-black text-white block">
+            <span className="text-[20px] font-bold !text-dash-text block">
               ${amount.toFixed(2)}
             </span>
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">
+            <span className="text-[10px] font-bold !text-dash-textMuted">
               {currency}
             </span>
           </div>
         </div>
 
         {success ? (
-          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-center">
-            <span className="text-emerald-400 text-sm font-bold block mb-1">Payment Successful!</span>
-            <span className="text-emerald-400/70 text-xs font-dm-sans">Your transaction has been securely processed.</span>
+          <div className="p-4 bg-green/10 border border-green/20 rounded-lg text-center">
+            <span className="text-green text-sm font-bold block mb-1">Payment successful!</span>
+            <span className="text-green/80 text-xs">Your transaction has been securely processed.</span>
           </div>
         ) : (
           <Elements stripe={stripePromise}>
-            <CheckoutForm 
-              isBuilder={isBuilder} 
-              disabled={disabled} 
+            <CheckoutForm
+              isBuilder={isBuilder}
+              disabled={disabled}
               onSuccess={(pm: any) => {
                 setSuccess(true);
               }}
@@ -152,7 +152,7 @@ export function PaymentBlock({ fieldId, disabled, isBuilder, value }: Props) {
 
         {isBuilder && (
           <div className="text-center pt-3">
-            <span className="text-[10px] text-white/30 font-dm-sans">Payment elements will render securely on the live form.</span>
+            <span className="text-[10px] !text-dash-textMuted">Payment elements will render securely on the live form.</span>
           </div>
         )}
       </div>

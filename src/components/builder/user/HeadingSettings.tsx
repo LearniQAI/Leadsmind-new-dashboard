@@ -27,13 +27,13 @@ export const HeadingSettings = () => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Heading Level</Label>
-        <div className="grid grid-cols-3 bg-muted p-1 rounded-md border border-white/5">
+        <Label className="text-xs font-bold !text-dash-textMuted block">Heading level</Label>
+        <div className="grid grid-cols-3 bg-dash-surface p-1 rounded-md border border-dash-border">
           {['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].map((l) => (
             <button
               key={l}
               onClick={() => setProp((props: any) => props.level = l)}
-              className={`text-[10px] py-1 rounded uppercase font-bold ${level === l ? 'bg-primary text-white shadow' : 'text-muted-foreground hover:text-white'}`}
+              className={`text-[10px] py-1 rounded uppercase font-bold transition-colors motion-reduce:transition-none ${level === l ? 'bg-primary text-white shadow' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               {l}
             </button>
@@ -42,13 +42,13 @@ export const HeadingSettings = () => {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Font Weight</Label>
-        <div className="flex bg-muted p-1 rounded-md border border-white/5">
+        <Label className="text-xs font-bold !text-dash-textMuted block">Font weight</Label>
+        <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
           {['normal', 'medium', 'semibold', 'bold', 'black'].map((w) => (
             <button
               key={w}
               onClick={() => setResponsiveValue('fontWeight', w)}
-              className={`flex-1 text-[9px] py-1.5 rounded capitalize ${getDisplayValue('fontWeight', fontWeight) === w ? 'bg-primary text-white shadow font-bold' : 'text-muted-foreground hover:text-white'}`}
+              className={`flex-1 text-[9px] py-1.5 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('fontWeight', fontWeight) === w ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               {w}
             </button>
@@ -57,35 +57,35 @@ export const HeadingSettings = () => {
       </div>
 
       <div className="space-y-4">
-        <ColorPicker 
-          label="Text Color"
+        <ColorPicker
+          label="Text color"
           value={color || '#111827'}
           onChange={(val) => setProp((props: any) => props.color = val)}
         />
-        
+
         <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block flex justify-between">
-            <span>Size Custom Override (px)</span>
+          <Label className="text-xs font-bold !text-dash-textMuted flex justify-between">
+            <span>Size custom override (px)</span>
             <span className="text-primary">{getDisplayValue('fontSize', fontSize) || 'Auto'}</span>
           </Label>
-          <input 
-            type="number" 
+          <input
+            type="number"
             placeholder="Auto"
             value={getDisplayValue('fontSize', fontSize) || ''}
             onChange={(e) => setResponsiveValue('fontSize', e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full h-8 bg-white/5 border border-white/10 rounded px-2 text-xs text-white"
+            className="w-full h-8 bg-white border border-dash-border rounded px-2 text-xs !text-dash-text"
           />
         </div>
       </div>
 
-      <div className="space-y-2 pt-2 border-t border-white/5">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block mt-2">Text Align</Label>
-        <div className="flex bg-muted p-1 rounded-md border border-white/5">
+      <div className="space-y-2 pt-2 border-t border-dash-border">
+        <Label className="text-xs font-bold !text-dash-textMuted block mt-2">Text align</Label>
+        <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
           {['left', 'center', 'right', 'justify'].map((align) => (
             <button
               key={align}
               onClick={() => setResponsiveValue('textAlign', align)}
-              className={`flex-1 text-[10px] py-1 rounded capitalize ${getDisplayValue('textAlign', textAlign) === align ? 'bg-primary text-white shadow font-bold' : 'text-muted-foreground hover:text-white'}`}
+              className={`flex-1 text-[10px] py-1 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('textAlign', textAlign) === align ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               {align}
             </button>

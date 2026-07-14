@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { PremiumInput } from '@/components/ui/premium-inputs';
+import { DashInput } from '@/components/dashboard-ui/FormField';
 import { calculateInvoiceTotals, LineItem } from '@/lib/invoicing/calculations';
-import { cn } from '@/lib/utils';
 
 interface TotalsSummaryPanelProps {
   items: LineItem[];
@@ -29,25 +28,25 @@ const TotalsSummaryPanel: React.FC<TotalsSummaryPanelProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-4 p-6 bg-[var(--card)] border border-[var(--bdr)] rounded-[var(--r12)] w-full max-w-md ml-auto">
+    <div className="flex flex-col gap-4 p-6 bg-white border border-dash-border rounded-xl w-full max-w-md ml-auto">
       {/* Subtotal Row */}
-      <div className="flex justify-between items-center text-sm font-dm-sans text-[var(--t2)]">
+      <div className="flex justify-between items-center text-sm !text-dash-textMuted">
         <span>Subtotal</span>
-        <span className="font-space font-semibold text-[var(--t1)]">{formatCurrency(subtotal)}</span>
+        <span className="font-semibold !text-dash-text">{formatCurrency(subtotal)}</span>
       </div>
 
       {/* Tax Total Row */}
-      <div className="flex justify-between items-center text-sm font-dm-sans text-[var(--t2)]">
-        <span>Tax Total</span>
-        <span className="font-space font-semibold text-[var(--t1)]">{formatCurrency(taxTotal)}</span>
+      <div className="flex justify-between items-center text-sm !text-dash-textMuted">
+        <span>Tax total</span>
+        <span className="font-semibold !text-dash-text">{formatCurrency(taxTotal)}</span>
       </div>
 
       {/* Shipping Input Row */}
       <div className="flex justify-between items-center gap-4">
-        <label className="text-sm font-dm-sans text-[var(--t2)] whitespace-nowrap">Shipping Charges</label>
+        <label className="text-sm !text-dash-textMuted whitespace-nowrap">Shipping charges</label>
         <div className="relative w-32">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--t3)] text-xs">{currency}</span>
-          <PremiumInput
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted text-xs">{currency}</span>
+          <DashInput
             type="number"
             className="h-9 pl-7 text-right text-xs"
             value={shippingCharges}
@@ -58,10 +57,10 @@ const TotalsSummaryPanel: React.FC<TotalsSummaryPanelProps> = ({
 
       {/* Adjustment Input Row */}
       <div className="flex justify-between items-center gap-4">
-        <label className="text-sm font-dm-sans text-[var(--t2)] whitespace-nowrap">Adjustment</label>
+        <label className="text-sm !text-dash-textMuted whitespace-nowrap">Adjustment</label>
         <div className="relative w-32">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--t3)] text-xs">{currency}</span>
-          <PremiumInput
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted text-xs">{currency}</span>
+          <DashInput
             type="number"
             className="h-9 pl-7 text-right text-xs"
             value={adjustment}
@@ -70,12 +69,12 @@ const TotalsSummaryPanel: React.FC<TotalsSummaryPanelProps> = ({
         </div>
       </div>
 
-      <div className="h-px bg-[var(--bdr)] my-2" />
+      <div className="h-px bg-dash-border my-2" />
 
       {/* Grand Total Row */}
       <div className="flex justify-between items-center">
-        <span className="text-base font-semibold font-dm-sans text-[var(--t1)]">Grand Total</span>
-        <span className="text-2xl font-bold font-space text-[var(--accent2)]">
+        <span className="text-base font-semibold !text-dash-text">Grand total</span>
+        <span className="text-2xl font-bold text-dash-accent">
           {formatCurrency(grandTotal)}
         </span>
       </div>

@@ -132,23 +132,23 @@ export const FloatingPropertiesPanel = () => {
     <div
       ref={panelRef}
       style={{ top: `${position.y}px`, left: `${position.x}px` }}
-      className="fixed w-[320px] max-h-[550px] bg-[#0c0c16]/95 border border-white/10 shadow-2xl rounded-2xl flex flex-col font-sans backdrop-blur-xl z-[100] overflow-hidden"
+      className="fixed w-[320px] max-h-[550px] bg-white/95 border border-dash-border shadow-2xl rounded-2xl flex flex-col font-sans backdrop-blur-xl z-[100] overflow-hidden"
     >
       {/* Header and Drag Handle */}
-      <div 
+      <div
         onMouseDown={handleMouseDown}
-        className="drag-handle flex items-center justify-between p-4 border-b border-white/5 bg-white/[0.02] cursor-move select-none"
+        className="drag-handle flex items-center justify-between p-4 border-b border-dash-border bg-dash-surface cursor-move select-none"
       >
         <div className="flex items-center gap-2">
-          <GripHorizontal className="w-4 h-4 text-white/30 shrink-0" />
-          <span className="text-[10px] font-black uppercase tracking-wider text-white/70">
+          <GripHorizontal className="w-4 h-4 !text-dash-textMuted shrink-0" />
+          <span className="text-[10px] font-bold !text-dash-text">
             {selected.name}
           </span>
         </div>
         <button
           onClick={() => setPropertiesOpen(false)}
-          className="text-white/40 hover:text-white hover:bg-white/5 rounded-lg p-1 transition-colors"
-          title="Close Properties"
+          className="!text-dash-textMuted hover:!text-dash-text hover:bg-dash-border/60 rounded-lg p-1 transition-colors motion-reduce:transition-none"
+          title="Close properties"
         >
           <X size={14} />
         </button>
@@ -156,35 +156,35 @@ export const FloatingPropertiesPanel = () => {
 
       {/* Quick Actions Toolbar */}
       {selected.id !== 'ROOT' && (
-        <div className="flex items-center justify-around px-3 py-2 border-b border-white/5 bg-white/[0.01]">
+        <div className="flex items-center justify-around px-3 py-2 border-b border-dash-border bg-white">
           <button
             onClick={handleDuplicate}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white/60 hover:text-white hover:bg-primary/20 rounded-lg transition-all"
-            title="Duplicate Element"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-lg transition-all motion-reduce:transition-none"
+            title="Duplicate element"
           >
             <Copy size={11} className="text-primary" />
             Dup
           </button>
           <button
             onClick={handleResetLayout}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white/60 hover:text-white hover:bg-primary/20 rounded-lg transition-all"
-            title="Reset Margins & Padding"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-lg transition-all motion-reduce:transition-none"
+            title="Reset margins & padding"
           >
-            <RefreshCw size={11} className="text-[#3b82f6]" />
+            <RefreshCw size={11} className="text-primary" />
             Reset
           </button>
           <button
             onClick={handleSaveBlueprint}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white/60 hover:text-white hover:bg-primary/20 rounded-lg transition-all"
-            title="Save Blueprint"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-lg transition-all motion-reduce:transition-none"
+            title="Save blueprint"
           >
-            <Save size={11} className="text-[#fbbf24]" />
+            <Save size={11} className="text-amber-600" />
             Save
           </button>
           <button
             onClick={handleDelete}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-rose-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
-            title="Delete Element"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] font-bold text-red hover:text-red/80 hover:bg-red/10 rounded-lg transition-all motion-reduce:transition-none"
+            title="Delete element"
           >
             <Trash2 size={11} />
             Del
@@ -197,10 +197,10 @@ export const FloatingPropertiesPanel = () => {
         {selected.settings && React.createElement(selected.settings as any)}
         {!selected.settings && (
           <div className="text-center py-12">
-            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-3 opacity-20">
+            <div className="w-10 h-10 rounded-xl bg-dash-surface flex items-center justify-center mx-auto mb-3 opacity-40">
               <Settings className="w-5 h-5" />
             </div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-white/20">No Modulators Available</p>
+            <p className="text-[9px] font-bold !text-dash-textMuted">No settings available</p>
           </div>
         )}
       </div>

@@ -17,27 +17,27 @@ interface ConversationListProps {
 }
 
 const CHANNELS = [
-  { id: 'all', icon: 'fa-solid fa-layer-group', label: 'All', color: '#2563eb' },
-  { id: 'sms', icon: 'fa-solid fa-comment-dots', label: 'SMS', color: '#10b981' },
-  { id: 'email', icon: 'fa-solid fa-envelope', label: 'Email', color: '#3b82f6' },
-  { id: 'facebook', icon: 'fa-brands fa-facebook-messenger', label: 'Facebook', color: '#3b82f6' },
-  { id: 'instagram', icon: 'fa-brands fa-instagram', label: 'Instagram', color: '#ec4899' },
-  { id: 'whatsapp', icon: 'fa-brands fa-whatsapp', label: 'WhatsApp', color: '#25d366' },
+  { id: 'all', icon: 'fa-solid fa-layer-group', label: 'All' },
+  { id: 'sms', icon: 'fa-solid fa-comment-dots', label: 'SMS' },
+  { id: 'email', icon: 'fa-solid fa-envelope', label: 'Email' },
+  { id: 'facebook', icon: 'fa-brands fa-facebook-messenger', label: 'Facebook' },
+  { id: 'instagram', icon: 'fa-brands fa-instagram', label: 'Instagram' },
+  { id: 'whatsapp', icon: 'fa-brands fa-whatsapp', label: 'WhatsApp' },
 ];
 
 const STATUS_PILLS: Record<string, string> = {
-  open: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  in_progress: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  waiting_for_client: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  resolved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  spam: 'bg-red-500/10 text-red-400 border-red-500/20'
+  open: 'bg-dash-accent/10 text-dash-accent border-dash-accent/20',
+  in_progress: 'bg-amber/10 text-amber border-amber/20',
+  waiting_for_client: 'bg-purple/10 text-purple border-purple/20',
+  resolved: 'bg-green/10 text-green border-green/20',
+  spam: 'bg-red/10 text-red border-red/20'
 };
 
-export function ConversationList({ 
-  conversations, 
-  activeId, 
-  onSelect, 
-  filter, 
+export function ConversationList({
+  conversations,
+  activeId,
+  onSelect,
+  filter,
   onFilterChange,
   searchQuery,
   onSearchChange,
@@ -46,18 +46,18 @@ export function ConversationList({
 }: ConversationListProps) {
 
   return (
-    <div className="w-[300px] border-r border-white/5 flex flex-col bg-[#080f28] h-full shrink-0">
+    <div className="w-[300px] border-r border-dash-border flex flex-col bg-dash-surface h-full shrink-0">
       {/* Header & Tabs */}
-      <div className="p-4 border-b border-white/5 space-y-3">
+      <div className="p-4 border-b border-dash-border space-y-3">
         {/* 1. Search Input at Top */}
         <div className="relative">
-          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-[#4a5a82]"></i>
+          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[11px] !text-dash-textMuted"></i>
           <input
             type="text"
             placeholder="Search threads..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-4 py-1.5 text-[12px] text-[#eef2ff] placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb]/40 transition-all font-dm-sans"
+            className="w-full bg-white border border-dash-border rounded-xl pl-9 pr-4 py-1.5 text-[12px] !text-dash-text placeholder:!text-dash-textMuted focus:outline-none focus:border-dash-accent transition-all motion-reduce:transition-none"
           />
         </div>
 
@@ -68,10 +68,10 @@ export function ConversationList({
               key={c.id}
               onClick={() => onFilterChange(c.id)}
               className={cn(
-                "px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all shrink-0 text-[10px] font-semibold",
-                filter === c.id 
-                  ? "bg-[#2563eb] text-white" 
-                  : "bg-white/5 text-[#4a5a82] hover:text-[#eef2ff] hover:bg-white/10"
+                "px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all motion-reduce:transition-none shrink-0 text-[10px] font-semibold",
+                filter === c.id
+                  ? "bg-dash-accent text-white"
+                  : "bg-white border border-dash-border !text-dash-textMuted hover:!text-dash-text hover:bg-dash-border/40"
               )}
             >
               <i className={cn(c.icon, "text-[10px]")}></i>
@@ -81,12 +81,12 @@ export function ConversationList({
         </div>
 
         {/* 3. Slimmer Assignee Segment Control (height 28px) */}
-        <div className="grid grid-cols-3 bg-white/5 p-0.5 rounded-lg border border-white/5 text-[9.5px] h-7">
+        <div className="grid grid-cols-3 bg-white p-0.5 rounded-lg border border-dash-border text-[9.5px] h-7">
           <button
             onClick={() => onAssigneeFilterChange('all')}
             className={cn(
-              "font-bold rounded-md transition-all uppercase tracking-wide h-full flex items-center justify-center",
-              assigneeFilter === 'all' ? "bg-[#2563eb] text-white" : "text-[#4a5a82] hover:text-white"
+              "font-bold rounded-md transition-all motion-reduce:transition-none h-full flex items-center justify-center",
+              assigneeFilter === 'all' ? "bg-dash-accent text-white" : "!text-dash-textMuted hover:!text-dash-text"
             )}
           >
             All
@@ -94,8 +94,8 @@ export function ConversationList({
           <button
             onClick={() => onAssigneeFilterChange('me')}
             className={cn(
-              "font-bold rounded-md transition-all uppercase tracking-wide h-full flex items-center justify-center",
-              assigneeFilter === 'me' ? "bg-[#2563eb] text-white" : "text-[#4a5a82] hover:text-white"
+              "font-bold rounded-md transition-all motion-reduce:transition-none h-full flex items-center justify-center",
+              assigneeFilter === 'me' ? "bg-dash-accent text-white" : "!text-dash-textMuted hover:!text-dash-text"
             )}
           >
             Mine
@@ -103,8 +103,8 @@ export function ConversationList({
           <button
             onClick={() => onAssigneeFilterChange('unassigned')}
             className={cn(
-              "font-bold rounded-md transition-all uppercase tracking-wide h-full flex items-center justify-center",
-              assigneeFilter === 'unassigned' ? "bg-[#2563eb] text-white" : "text-[#4a5a82] hover:text-white"
+              "font-bold rounded-md transition-all motion-reduce:transition-none h-full flex items-center justify-center",
+              assigneeFilter === 'unassigned' ? "bg-dash-accent text-white" : "!text-dash-textMuted hover:!text-dash-text"
             )}
           >
             Unassigned
@@ -136,56 +136,56 @@ export function ConversationList({
               key={conv.id}
               onClick={() => onSelect(conv.id)}
               className={cn(
-                "p-4 border-b border-white/5 cursor-pointer transition-all relative group",
-                isActive 
-                  ? "bg-[#2563eb]/5 border-l-[3px] border-l-[#2563eb]" 
-                  : "hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
+                "p-4 border-b border-dash-border cursor-pointer transition-all motion-reduce:transition-none relative group",
+                isActive
+                  ? "bg-dash-accent/5 border-l-[3px] border-l-dash-accent"
+                  : "hover:bg-dash-border/20 border-l-[3px] border-l-transparent"
               )}
             >
               {unread && (
-                <div className="absolute left-[2px] top-1/2 -translate-y-1/2 w-[5px] h-[5px] rounded-full bg-[#3b82f6]" />
+                <div className="absolute left-[2px] top-1/2 -translate-y-1/2 w-[5px] h-[5px] rounded-full bg-dash-accent" />
               )}
-              
+
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#eef2ff] font-bold text-[12px] shrink-0 font-space-grotesk overflow-hidden mt-0.5">
+                <div className="w-9 h-9 rounded-full bg-white border border-dash-border flex items-center justify-center !text-dash-text font-bold text-[12px] shrink-0 overflow-hidden mt-0.5">
                   {conv.contacts?.avatar_url ? (
                     <img src={conv.contacts.avatar_url} alt={conv.contacts?.first_name || 'Contact avatar'} className="w-full h-full object-cover" />
                   ) : (
                     conv.contacts?.first_name?.[0] || 'U'
                   )}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-0.5">
-                    <h4 className="text-[13px] font-semibold text-[#eef2ff] truncate font-dm-sans">
+                    <h4 className="text-[13px] font-semibold !text-dash-text truncate">
                       {conv.contacts ? `${conv.contacts.first_name} ${conv.contacts.last_name}` : conv.title}
                     </h4>
-                    <span className="text-[10px] text-[#4a5a82] font-semibold font-space-grotesk shrink-0 ml-2">
+                    <span className="text-[10px] !text-dash-textMuted font-semibold shrink-0 ml-2">
                       {format(new Date(conv.last_message_at), 'hh:mm a')}
                     </span>
                   </div>
-                  
-                  <p className="text-[11px] text-[#94a3c8] truncate font-dm-sans mb-1.5">
+
+                  <p className="text-[11px] !text-dash-textMuted truncate mb-1.5">
                     {latestMessage?.content || 'No messages yet'}
                   </p>
-                  
+
                   {/* Status & SLA badges */}
                   <div className="flex flex-wrap items-center gap-1.5">
                     {/* Status Pill */}
-                    <span className={cn("text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border scale-90 origin-left", STATUS_PILLS[status])}>
+                    <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded border capitalize", STATUS_PILLS[status])}>
                       {status.replace('_', ' ')}
                     </span>
 
                     {/* SLA alert */}
                     {isBreached && (
-                      <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse">
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red/10 text-red border border-red/20 animate-pulse motion-reduce:animate-none">
                         Overdue
                       </span>
                     )}
 
                     {/* First tag display */}
                     {conv.tags && conv.tags.length > 0 && (
-                      <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple/10 text-purple border border-purple/20">
                         {conv.tags[0]}
                       </span>
                     )}

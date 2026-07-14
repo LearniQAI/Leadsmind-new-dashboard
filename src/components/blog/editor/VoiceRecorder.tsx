@@ -2,7 +2,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, Square, Loader2, Volume2, AlertCircle } from 'lucide-react';
+import { Mic, Square, Loader2, AlertCircle } from 'lucide-react';
+import { DashCard } from '@/components/dashboard-ui/Card';
+import { DashButton } from '@/components/dashboard-ui/Button';
 
 export const VoiceRecorder: React.FC = () => {
   const router = useRouter();
@@ -13,7 +15,7 @@ export const VoiceRecorder: React.FC = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Real-time voice visualiser telemetry
   const [audioLevels, setAudioLevels] = useState<number[]>(new Array(18).fill(12));
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -54,7 +56,7 @@ export const VoiceRecorder: React.FC = () => {
       // 1. Media Recorder
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = mediaRecorder;
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
@@ -167,26 +169,25 @@ export const VoiceRecorder: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#080f28]/60 border border-white/5 p-6 rounded-2xl space-y-6 text-center shadow-xl animate-fade-in relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+    <DashCard padding="default" className="text-center space-y-6 animate-in fade-in duration-300 motion-reduce:animate-none relative overflow-hidden">
 
       {status === 'idle' && (
         <div className="space-y-4 py-4">
           <div className="relative w-20 h-20 flex items-center justify-center mx-auto mb-2">
-            {/* Sonar Pulsing Halos - Emerald Green */}
-            <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping [animation-duration:2.5s] pointer-events-none" />
-            <div className="absolute inset-2 rounded-full bg-emerald-500/10 animate-pulse pointer-events-none" />
-            
+            {/* Sonar Pulsing Halos */}
+            <div className="absolute inset-0 rounded-full bg-green/20 animate-ping motion-reduce:animate-none [animation-duration:2.5s] pointer-events-none" />
+            <div className="absolute inset-2 rounded-full bg-green/10 animate-pulse motion-reduce:animate-none pointer-events-none" />
+
             <button
               onClick={startRecording}
-              className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center relative z-10 shadow-[0_0_25px_rgba(16,185,129,0.5)] hover:scale-105 transition duration-300 group"
+              className="w-16 h-16 rounded-full bg-green hover:bg-green/90 flex items-center justify-center relative z-10 shadow-md hover:scale-105 motion-reduce:hover:scale-100 transition-transform motion-reduce:transition-none duration-300 group"
             >
-              <Mic className="w-6 h-6 text-white group-hover:scale-110 transition duration-300" />
+              <Mic className="w-6 h-6 text-white group-hover:scale-110 motion-reduce:group-hover:scale-100 transition-transform motion-reduce:transition-none duration-300" />
             </button>
           </div>
           <div className="space-y-1">
-            <h4 className="font-space-grotesk text-sm font-bold uppercase tracking-wider text-white">Record Your Idea</h4>
-            <p className="text-[10px] text-white/40 max-w-xs mx-auto leading-relaxed">
+            <h4 className="text-sm font-bold !text-dash-text">Record your idea</h4>
+            <p className="text-[11px] !text-dash-textMuted max-w-xs mx-auto leading-relaxed">
               Click to capture spoken presentations or ideas. Speak directly into your microphone, with a 15-minute maximum limit.
             </p>
           </div>
@@ -196,18 +197,18 @@ export const VoiceRecorder: React.FC = () => {
       {status === 'recording' && (
         <div className="space-y-4">
           <div className="flex items-center justify-center gap-3">
-            <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
-            <span className="font-mono text-xl font-bold tracking-wider text-white">{formatTime(seconds)}</span>
-            <span className="text-[9.5px] text-white/30 uppercase tracking-widest font-bold">/ 15:00</span>
+            <div className="w-2.5 h-2.5 bg-red rounded-full animate-ping motion-reduce:animate-none" />
+            <span className="font-mono text-xl font-bold tracking-wider !text-dash-text">{formatTime(seconds)}</span>
+            <span className="text-[10px] !text-dash-textMuted font-bold">/ 15:00</span>
           </div>
 
-          {/* Symmetrical Center-Aligned WhatsApp/iPhone Sound Sticks */}
-          <div className="flex items-center justify-center gap-1.5 h-20 my-6 bg-[#04091a] border border-white/10 rounded-2xl p-4 shadow-inner">
+          {/* Symmetrical Center-Aligned Sound Sticks */}
+          <div className="flex items-center justify-center gap-1.5 h-20 my-6 bg-dash-surface border border-dash-border rounded-2xl p-4">
             {audioLevels.map((level, i) => (
               <div
                 key={i}
-                className="w-1 bg-gradient-to-t from-emerald-400 to-cyan-400 rounded-full transition-all duration-75 shadow-[0_0_12px_rgba(52,211,153,0.6)] animate-pulse"
-                style={{ 
+                className="w-1 bg-green rounded-full transition-all duration-75 motion-reduce:transition-none animate-pulse motion-reduce:animate-none"
+                style={{
                   height: `${level}%`,
                   minHeight: '6px',
                   animationDelay: `${i * 60}ms`,
@@ -217,43 +218,37 @@ export const VoiceRecorder: React.FC = () => {
             ))}
           </div>
 
-          <button
-            onClick={stopRecording}
-            className="bg-rose-500 hover:bg-rose-600 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition flex items-center justify-center gap-1.5 mx-auto shadow-lg shadow-rose-500/20"
-          >
-            <Square className="w-3.5 h-3.5 fill-current" /> Stop & Transcribe
-          </button>
+          <DashButton variant="destructive" onClick={stopRecording} className="mx-auto">
+            <Square className="w-3.5 h-3.5" /> Stop & transcribe
+          </DashButton>
         </div>
       )}
 
       {status === 'processing' && (
         <div className="space-y-4 py-6">
-          <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
+          <Loader2 className="w-8 h-8 text-dash-accent animate-spin motion-reduce:animate-none mx-auto" />
           <div className="space-y-1">
-            <h4 className="font-space-grotesk text-xs font-bold uppercase tracking-widest text-primary animate-pulse">Speech processing</h4>
-            <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold">Transcribing audio and cleaning filler words...</p>
+            <h4 className="text-xs font-bold text-dash-accent animate-pulse motion-reduce:animate-none">Speech processing</h4>
+            <p className="text-[10px] !text-dash-textMuted font-bold">Transcribing audio and cleaning filler words...</p>
           </div>
         </div>
       )}
 
       {status === 'failed' && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-left space-y-3 animate-fade-in">
+        <div className="p-4 bg-red/10 border border-red/20 text-red rounded-xl text-left space-y-3 animate-in fade-in duration-200 motion-reduce:animate-none">
           <div className="flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider">Telemetry Failure</p>
-              <p className="text-xs mt-0.5 text-white/60">{errorMessage}</p>
+              <p className="text-xs font-bold">Telemetry failure</p>
+              <p className="text-xs mt-0.5 !text-dash-textMuted">{errorMessage}</p>
             </div>
           </div>
-          <button
-            onClick={() => setStatus('idle')}
-            className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition"
-          >
-            Reset Recorder
-          </button>
+          <DashButton variant="secondary" onClick={() => setStatus('idle')} className="w-full justify-center">
+            Reset recorder
+          </DashButton>
         </div>
       )}
-    </div>
+    </DashCard>
   );
 };
 export default VoiceRecorder;

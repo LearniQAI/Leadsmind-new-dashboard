@@ -19,30 +19,30 @@ export const StarRatingSettings = () => {
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Rating ({rating})</Label>
+        <Label className="text-xs font-bold !text-dash-textMuted">Rating ({rating})</Label>
         <div className="flex flex-col gap-3">
-           <input 
-            type="range" 
-            min="0" 
-            max={count} 
-            step="0.5" 
-            value={rating} 
-            onChange={(e) => setProp((p: any) => p.rating = Number(e.target.value))} 
-            className="w-full accent-primary" 
+           <input
+            type="range"
+            min="0"
+            max={count}
+            step="0.5"
+            value={rating}
+            onChange={(e) => setProp((p: any) => p.rating = Number(e.target.value))}
+            className="w-full accent-primary"
           />
           <div className="flex justify-between items-center px-1">
-             <Button 
-              variant="ghost" 
-              size="icon" 
+             <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setProp((p: any) => p.count = Math.max(1, p.count - 1))}
               className="h-6 w-6 border"
              >
                -
              </Button>
-             <span className="text-[10px] font-bold text-muted-foreground uppercase">{count} Total Stars</span>
-             <Button 
-              variant="ghost" 
-              size="icon" 
+             <span className="text-[10px] font-bold !text-dash-textMuted">{count} total stars</span>
+             <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setProp((p: any) => p.count = Math.min(10, p.count + 1))}
               className="h-6 w-6 border"
              >
@@ -53,17 +53,17 @@ export const StarRatingSettings = () => {
       </div>
 
       <div className="space-y-4">
-        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Appearance</Label>
-        <ColorPicker label="Star Color" value={color} onChange={(val) => setProp((p: any) => p.color = val)} />
+        <Label className="text-xs font-bold !text-dash-textMuted">Appearance</Label>
+        <ColorPicker label="Star color" value={color} onChange={(val) => setProp((p: any) => p.color = val)} />
         <div className="space-y-2">
-           <Label className="text-[10px] uppercase font-bold text-muted-foreground">Star Size ({size}px)</Label>
+           <Label className="text-[10px] font-bold !text-dash-textMuted">Star size ({size}px)</Label>
            <input type="range" min="12" max="64" step="2" value={size} onChange={(e) => setProp((p: any) => p.size = Number(e.target.value))} className="w-full accent-primary" />
         </div>
       </div>
 
       <div className="space-y-4">
-        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Layout & Label</Label>
-        <div className="flex bg-muted/50 p-1 rounded-lg">
+        <Label className="text-xs font-bold !text-dash-textMuted">Layout & label</Label>
+        <div className="flex bg-dash-surface p-1 rounded-lg border border-dash-border">
           {[
             { id: 'left', icon: AlignLeft },
             { id: 'center', icon: AlignCenter },
@@ -72,7 +72,7 @@ export const StarRatingSettings = () => {
             <button
               key={item.id}
               onClick={() => setProp((p: any) => p.alignment = item.id)}
-              className={`flex-1 flex justify-center py-1.5 rounded-md transition-all ${alignment === item.id ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-white'}`}
+              className={`flex-1 flex justify-center py-1.5 rounded-md transition-all motion-reduce:transition-none ${alignment === item.id ? 'bg-white shadow-sm text-primary' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               <item.icon size={16} />
             </button>
@@ -80,17 +80,17 @@ export const StarRatingSettings = () => {
         </div>
 
         <div className="flex items-center justify-between pt-2">
-          <Label className="text-[11px] font-medium">Show Sub-Label</Label>
+          <Label className="text-[11px] font-medium">Show sub-label</Label>
           <Switch checked={showLabel} onCheckedChange={(val) => setProp((p: any) => p.showLabel = val)} />
         </div>
 
         {showLabel && (
           <div className="space-y-1">
-            <Label className="text-[9px] uppercase font-bold text-muted-foreground">Label Text</Label>
-            <Input 
+            <Label className="text-[9px] font-bold !text-dash-textMuted">Label text</Label>
+            <Input
               value={labelText}
               onChange={(e) => setProp((p: any) => p.labelText = e.target.value)}
-              className="h-8 bg-black/20 border-white/10 text-[11px]"
+              className="h-8 bg-white border-dash-border text-[11px]"
               placeholder="e.g. Based on 500+ happy clients"
             />
           </div>

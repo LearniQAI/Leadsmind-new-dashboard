@@ -212,38 +212,38 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
   };
 
   return (
-    <div className="h-full flex flex-col pt-2 bg-transparent text-white select-none">
-      <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+    <div className="h-full flex flex-col pt-2 bg-transparent !text-dash-text select-none">
+      <div className="px-4 py-3 border-b border-dash-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Globe className="w-3.5 h-3.5 text-primary" />
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-white/60">Site Settings</h2>
+          <h2 className="text-[10px] font-bold !text-dash-textMuted">Site settings</h2>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-8 common-scrollbar">
         {/* Core Identity */}
         <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-            <Shield className="w-3 h-3" /> Brand Identity
+          <h3 className="text-[10px] font-bold !text-dash-textMuted flex items-center gap-2">
+            <Shield className="w-3 h-3" /> Brand identity
           </h3>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Website Name</Label>
-              <Input 
+              <Label className="text-[10px] !text-dash-textMuted font-bold">Website name</Label>
+              <Input
                 value={localSettings.name}
                 onChange={(e) => handleChange('name', e.target.value)}
-                className="h-9 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/20"
+                className="h-9 bg-white border-dash-border !text-dash-text text-sm placeholder:text-dash-textMuted"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-white/70 font-bold tracking-tight">Subdomain</Label>
+              <Label className="text-[10px] !text-dash-textMuted font-bold">Subdomain</Label>
               <div className="relative flex-1">
-                <Input 
+                <Input
                   value={localSettings.subdomain}
                   onChange={(e) => handleChange('subdomain', e.target.value)}
-                  className="h-9 bg-white/5 border-white/10 text-white text-sm pr-20 placeholder:text-white/20"
+                  className="h-9 bg-white border-dash-border !text-dash-text text-sm pr-20 placeholder:text-dash-textMuted"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-white/40 uppercase">.leadsmind</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold !text-dash-textMuted">.leadsmind</span>
               </div>
             </div>
           </div>
@@ -251,43 +251,43 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
 
         {/* Custom SSL Domains Manager */}
         <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-            <Rocket className="w-3 h-3" /> SSL Custom Domains
+          <h3 className="text-[10px] font-bold !text-dash-textMuted flex items-center gap-2">
+            <Rocket className="w-3 h-3" /> SSL custom domains
           </h3>
           <div className="space-y-3">
             <div className="flex gap-2">
-              <Input 
+              <Input
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
                 placeholder="example.com"
-                className="h-9 bg-white/5 border-white/10 text-white text-xs placeholder:text-white/20"
+                className="h-9 bg-white border-dash-border !text-dash-text text-xs placeholder:text-dash-textMuted"
               />
-              <Button onClick={handleAddDomain} disabled={loadingDomain} size="sm" className="bg-primary text-white h-9 px-3 text-[10px] uppercase font-bold">
+              <Button onClick={handleAddDomain} disabled={loadingDomain} size="sm" className="bg-primary text-white h-9 px-3 text-[10px] font-bold">
                 Add
               </Button>
             </div>
 
             <div className="space-y-2">
               {domains.map((dom) => (
-                <div key={dom.id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between">
+                <div key={dom.id} className="p-3 bg-dash-surface border border-dash-border rounded-xl flex items-center justify-between">
                   <div className="space-y-1">
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <div className="text-xs font-bold !text-dash-text flex items-center gap-1.5">
                       {dom.domain_name}
                       {dom.verified ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green" />
                       ) : (
-                        <XCircle className="w-3.5 h-3.5 text-amber-500" />
+                        <XCircle className="w-3.5 h-3.5 text-amber-600" />
                       )}
                     </div>
-                    <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">
-                      CNAME Target: proxy.leadsmind.com | Status: {dom.ssl_status}
+                    <div className="text-[9px] font-semibold !text-dash-textMuted">
+                      CNAME target: proxy.leadsmind.com | Status: {dom.ssl_status}
                     </div>
                   </div>
                   <div className="flex gap-1.5">
-                    <Button onClick={() => handleVerifySSL(dom.id)} size="icon" variant="ghost" className="h-7 w-7 text-white/60 hover:text-white bg-white/5 hover:bg-white/10">
+                    <Button onClick={() => handleVerifySSL(dom.id)} size="icon" variant="ghost" className="h-7 w-7 !text-dash-textMuted hover:!text-dash-text bg-white hover:bg-dash-border/60">
                       <RefreshCw size={12} />
                     </Button>
-                    <Button onClick={() => handleRemoveDomain(dom.id)} size="icon" variant="ghost" className="h-7 w-7 text-white/60 hover:text-red-500 bg-white/5 hover:bg-red-500/10">
+                    <Button onClick={() => handleRemoveDomain(dom.id)} size="icon" variant="ghost" className="h-7 w-7 !text-dash-textMuted hover:text-red bg-white hover:bg-red/10">
                       <Trash2 size={12} />
                     </Button>
                   </div>
@@ -299,37 +299,37 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
 
         {/* Subdirectories Pages Setup */}
         <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-            <Globe className="w-3 h-3" /> Page Subdirectories
+          <h3 className="text-[10px] font-bold !text-dash-textMuted flex items-center gap-2">
+            <Globe className="w-3 h-3" /> Page subdirectories
           </h3>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
-              <Input 
+              <Input
                 value={newPageName}
                 onChange={(e) => setNewPageName(e.target.value)}
                 placeholder="About Us"
-                className="h-9 bg-white/5 border-white/10 text-white text-xs"
+                className="h-9 bg-white border-dash-border !text-dash-text text-xs"
               />
-              <Input 
+              <Input
                 value={newPagePath}
                 onChange={(e) => setNewPagePath(e.target.value)}
                 placeholder="about"
-                className="h-9 bg-white/5 border-white/10 text-white text-xs"
+                className="h-9 bg-white border-dash-border !text-dash-text text-xs"
               />
             </div>
-            <Button onClick={handleAddPage} className="w-full bg-white/5 border border-white/10 text-white hover:bg-white/10 h-9 text-[10px] uppercase font-bold">
-              Add New Page Path
+            <Button onClick={handleAddPage} className="w-full bg-white border border-dash-border !text-dash-text hover:bg-dash-surface h-9 text-[10px] font-bold">
+              Add new page path
             </Button>
 
             <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
               {contextPages.map((p) => (
-                <div key={p.id} className="p-2.5 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between">
+                <div key={p.id} className="p-2.5 bg-dash-surface border border-dash-border rounded-xl flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <div className="text-xs font-bold text-white">{p.name}</div>
+                    <div className="text-xs font-bold !text-dash-text">{p.name}</div>
                     <div className="text-[9px] text-primary font-bold">/{p.slug}</div>
                   </div>
                   {p.slug !== 'home' && p.slug !== '' && (
-                    <Button onClick={() => handleDeletePage(p.id)} size="icon" variant="ghost" className="h-7 w-7 text-white/60 hover:text-red-500 bg-white/5 hover:bg-red-500/10">
+                    <Button onClick={() => handleDeletePage(p.id)} size="icon" variant="ghost" className="h-7 w-7 !text-dash-textMuted hover:text-red bg-white hover:bg-red/10">
                       <Trash2 size={12} />
                     </Button>
                   )}
@@ -341,36 +341,36 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
 
         {/* Webhooks Integrations */}
         <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-            <Webhook className="w-3 h-3" /> Lead Capture Webhooks
+          <h3 className="text-[10px] font-bold !text-dash-textMuted flex items-center gap-2">
+            <Webhook className="w-3 h-3" /> Lead capture webhooks
           </h3>
           <div className="space-y-3">
             <div className="flex gap-2">
-              <Input 
+              <Input
                 value={newWebhookUrl}
                 onChange={(e) => setNewWebhookUrl(e.target.value)}
                 placeholder="https://hooks.zapier.com/..."
-                className="h-9 bg-white/5 border-white/10 text-white text-xs placeholder:text-white/20"
+                className="h-9 bg-white border-dash-border !text-dash-text text-xs placeholder:text-dash-textMuted"
               />
-              <Button onClick={handleAddWebhook} size="sm" className="bg-primary text-white h-9 px-3 text-[10px] uppercase font-bold">
+              <Button onClick={handleAddWebhook} size="sm" className="bg-primary text-white h-9 px-3 text-[10px] font-bold">
                 Connect
               </Button>
             </div>
 
             <div className="space-y-2">
               {webhooks.map((hook, idx) => (
-                <div key={idx} className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between">
+                <div key={idx} className="p-3 bg-dash-surface border border-dash-border rounded-xl flex items-center justify-between">
                   <div className="truncate pr-4 flex-1">
-                    <div className="text-xs font-bold text-white truncate">{hook.url}</div>
-                    <div className="text-[9px] font-bold text-emerald-500 uppercase">
+                    <div className="text-xs font-bold !text-dash-text truncate">{hook.url}</div>
+                    <div className="text-[9px] font-bold text-green">
                       {hook.active ? 'Active' : 'Inactive'}
                     </div>
                   </div>
                   <div className="flex gap-1.5">
-                    <Button onClick={() => handleToggleWebhook(idx)} size="icon" variant="ghost" className="h-7 w-7 text-white/60 hover:text-white bg-white/5 hover:bg-white/10">
+                    <Button onClick={() => handleToggleWebhook(idx)} size="icon" variant="ghost" className="h-7 w-7 !text-dash-textMuted hover:!text-dash-text bg-white hover:bg-dash-border/60">
                       <RefreshCw size={12} />
                     </Button>
-                    <Button onClick={() => handleRemoveWebhook(idx)} size="icon" variant="ghost" className="h-7 w-7 text-white/60 hover:text-red-500 bg-white/5 hover:bg-red-500/10">
+                    <Button onClick={() => handleRemoveWebhook(idx)} size="icon" variant="ghost" className="h-7 w-7 !text-dash-textMuted hover:text-red bg-white hover:bg-red/10">
                       <Trash2 size={12} />
                     </Button>
                   </div>
@@ -381,22 +381,22 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
         </section>
 
         {/* Design Tokens Panel */}
-        <section className="space-y-4 pt-4 border-t border-white/5">
-          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-            <Globe className="w-3 h-3 text-[#fbbf24]" /> Colors & Palettes
+        <section className="space-y-4 pt-4 border-t border-dash-border">
+          <h3 className="text-[10px] font-bold !text-dash-textMuted flex items-center gap-2">
+            <Globe className="w-3 h-3 text-amber-600" /> Colors & palettes
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <ColorPicker label="Primary" value={localSettings.config?.primaryColor || '#6c47ff'} onChange={(val) => handleConfigChange('primaryColor', val)} />
             <ColorPicker label="Secondary" value={localSettings.config?.secondaryColor || '#3b82f6'} onChange={(val) => handleConfigChange('secondaryColor', val)} />
             <ColorPicker label="Accent" value={localSettings.config?.accentColor || '#fbbf24'} onChange={(val) => handleConfigChange('accentColor', val)} />
-            <ColorPicker label="Canvas BG" value={localSettings.config?.backgroundColor || '#050508'} onChange={(val) => handleConfigChange('backgroundColor', val)} />
+            <ColorPicker label="Canvas background" value={localSettings.config?.backgroundColor || '#050508'} onChange={(val) => handleConfigChange('backgroundColor', val)} />
           </div>
         </section>
       </div>
 
-      <div className="p-4 border-t border-white/5 bg-black/20">
-        <Button onClick={handleSave} className="w-full bg-primary hover:bg-primary-dark text-white font-bold h-10 shadow-lg shadow-primary/20 uppercase text-[10px] tracking-widest">
-          Push Global Updates
+      <div className="p-4 border-t border-dash-border bg-dash-surface">
+        <Button onClick={handleSave} className="w-full bg-primary hover:bg-primary-dark text-white font-bold h-10 shadow-lg shadow-primary/20 text-[10px]">
+          Push global updates
         </Button>
       </div>
     </div>

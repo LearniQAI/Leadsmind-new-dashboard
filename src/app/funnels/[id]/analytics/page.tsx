@@ -3,8 +3,9 @@ import Wrapper from '@/components/layouts/DefaultWrapper';
 import { createClient } from '@/lib/supabase/server';
 import { notFound, redirect } from 'next/navigation';
 import { ArrowRight, BarChart2, Users, MousePointerClick, TrendingUp, Calendar, ArrowUpRight, ArrowDownRight, Globe } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
+import { DashCard } from '@/components/dashboard-ui/Card';
 
 export default async function FunnelAnalyticsPage({ params }: { params: { id: string } }) {
  const supabase = await createClient();
@@ -31,85 +32,83 @@ export default async function FunnelAnalyticsPage({ params }: { params: { id: st
   <Wrapper>
    <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)] space-y-8">
     {/* Top Header */}
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-dash-border shadow-sm">
      <div>
       <div className="flex items-center gap-3 mb-1">
-       <Badge className="bg-primary/10 text-primary border-none font-bold text-[9px] uppercase tracking-widest px-3 py-1">
-        Funnel Analytics
-       </Badge>
-       <span className="text-xs font-bold text-gray-400">•</span>
-       <span className="text-xs font-bold text-gray-500 flex items-center gap-1">
-        <Globe size={12} className="text-primary" /> /{funnel.subdomain || 'funnel'}
+       <DashStatusPill variant="accent">Funnel analytics</DashStatusPill>
+       <span className="text-xs font-bold !text-dash-textMuted">•</span>
+       <span className="text-xs font-bold !text-dash-textMuted flex items-center gap-1">
+        <Globe size={12} className="text-dash-accent" /> /{funnel.subdomain || 'funnel'}
        </span>
       </div>
-      <h1 className="text-3xl font-black text-gray-800 uppercase tracking-tight">{funnel.name}</h1>
+      <h1 className="text-3xl font-bold !text-dash-text">{funnel.name}</h1>
      </div>
 
      <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2 bg-gray-50 border border-gray-200/80 px-4 py-2 rounded-xl text-xs font-bold text-gray-600">
-       <Calendar size={14} className="text-primary" />
-       <span>Last 30 Days</span>
+      <div className="flex items-center gap-2 bg-dash-surface border border-dash-border px-4 py-2 rounded-xl text-xs font-bold !text-dash-textMuted">
+       <Calendar size={14} className="text-dash-accent" />
+       <span>Last 30 days</span>
       </div>
-      <Button variant="outline" className="rounded-xl border-gray-200 text-xs font-bold uppercase tracking-wider">
-       Export Report
-      </Button>
+      <DashButton variant="secondary">
+       Export report
+      </DashButton>
      </div>
     </div>
 
     {/* Metric Overview Cards */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-     <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between">
+     <DashCard padding="default" className="flex items-center justify-between">
       <div>
-       <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-1">Total Funnel Views</span>
-       <span className="text-4xl font-black text-gray-800 tracking-tight">{totalViews.toLocaleString()}</span>
-       <div className="flex items-center gap-1 text-emerald-600 font-bold text-[10px] mt-2">
+       <span className="text-[10px] font-bold !text-dash-textMuted block mb-1">Total funnel views</span>
+       <span className="text-4xl font-bold !text-dash-text tracking-tight">{totalViews.toLocaleString()}</span>
+       <div className="flex items-center gap-1 text-green font-bold text-[10px] mt-2">
         <ArrowUpRight size={12} />
         <span>+14.2% from previous month</span>
        </div>
       </div>
-      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+      <div className="w-14 h-14 rounded-2xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
        <BarChart2 size={24} />
       </div>
-     </div>
+     </DashCard>
 
-     <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between">
+     <DashCard padding="default" className="flex items-center justify-between">
       <div>
-       <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-1">Form Submissions</span>
-       <span className="text-4xl font-black text-gray-800 tracking-tight">{totalSubmissions.toLocaleString()}</span>
-       <div className="flex items-center gap-1 text-emerald-600 font-bold text-[10px] mt-2">
+       <span className="text-[10px] font-bold !text-dash-textMuted block mb-1">Form submissions</span>
+       <span className="text-4xl font-bold !text-dash-text tracking-tight">{totalSubmissions.toLocaleString()}</span>
+       <div className="flex items-center gap-1 text-green font-bold text-[10px] mt-2">
         <ArrowUpRight size={12} />
         <span>+8.4% conversion velocity</span>
        </div>
       </div>
-      <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+      <div className="w-14 h-14 rounded-2xl bg-green/10 flex items-center justify-center text-green">
        <Users size={24} />
       </div>
-     </div>
+     </DashCard>
 
-     <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between">
+     <DashCard padding="default" className="flex items-center justify-between">
       <div>
-       <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-1">Overall Conversion Rate</span>
-       <span className="text-4xl font-black text-primary tracking-tight">{conversionRate}%</span>
-       <div className="flex items-center gap-1 text-primary font-bold text-[10px] mt-2">
+       <span className="text-[10px] font-bold !text-dash-textMuted block mb-1">Overall conversion rate</span>
+       <span className="text-4xl font-bold text-dash-accent tracking-tight">{conversionRate}%</span>
+       <div className="flex items-center gap-1 text-dash-accent font-bold text-[10px] mt-2">
         <TrendingUp size={12} />
         <span>Opt-in standard achieved</span>
        </div>
       </div>
-      <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+      <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600">
        <MousePointerClick size={24} />
       </div>
-     </div>
+     </DashCard>
     </div>
 
     {/* Step by Step Conversion Journey */}
-    <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
+    <DashCard padding="default" className="space-y-6">
      <div>
-      <h3 className="text-lg font-black uppercase text-gray-800 tracking-tight mb-1">Step-by-Step Visual Funnel</h3>
-      <p className="text-xs text-gray-400 font-medium">Trace drop-off percentages and retention throughput across successive target stages.</p>
+      <h3 className="text-lg font-bold !text-dash-text tracking-tight mb-1">Step-by-step visual funnel</h3>
+      <p className="text-xs !text-dash-textMuted font-medium">Trace drop-off percentages and retention throughput across successive target stages.</p>
      </div>
 
      {steps.length === 0 ? (
-      <div className="text-center py-12 text-gray-400 font-bold text-xs">
+      <div className="text-center py-12 !text-dash-textMuted font-bold text-xs">
        No active steps registered for this funnel configuration.
       </div>
      ) : (
@@ -123,37 +122,37 @@ export default async function FunnelAnalyticsPage({ params }: { params: { id: st
         return (
          <div key={step.id} className="relative">
           {idx > 0 && (
-           <div className="absolute -top-4 left-[38px] z-10 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded text-[9px] font-black text-amber-700 flex items-center gap-0.5 shadow-2xs">
+           <div className="absolute -top-4 left-[38px] z-10 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[9px] font-bold text-amber-600 flex items-center gap-0.5">
             <ArrowDownRight size={10} /> Drop-off: {dropoff}%
            </div>
           )}
-          <div className="flex items-center gap-4 bg-gray-50/80 hover:bg-gray-50 p-5 rounded-2xl border border-gray-100 transition-colors">
-           <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center font-black text-xs text-gray-700 shrink-0 shadow-xs">
+          <div className="flex items-center gap-4 bg-dash-surface hover:bg-dash-border/30 p-5 rounded-2xl border border-dash-border transition-colors motion-reduce:transition-none">
+           <div className="w-10 h-10 rounded-xl bg-white border border-dash-border flex items-center justify-center font-bold text-xs !text-dash-text shrink-0">
             {idx + 1}
            </div>
 
            <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-             <h4 className="font-black text-sm text-gray-800 uppercase truncate">{step.name}</h4>
-             <span className="text-[10px] font-bold text-gray-400 lowercase truncate">({step.path})</span>
+             <h4 className="font-bold text-sm !text-dash-text truncate">{step.name}</h4>
+             <span className="text-[10px] font-bold !text-dash-textMuted lowercase truncate">({step.path})</span>
             </div>
             {/* Visual throughput bar */}
-            <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden mt-2">
-             <div 
-              className="bg-primary h-full rounded-full transition-all duration-500" 
+            <div className="w-full bg-dash-border h-2 rounded-full overflow-hidden mt-2">
+             <div
+              className="bg-dash-accent h-full rounded-full transition-all duration-500 motion-reduce:transition-none"
               style={{ width: `${Math.max(8, (stepViews / totalViews) * 100)}%` }}
              />
             </div>
            </div>
 
-           <div className="flex items-center gap-6 shrink-0 text-right pl-4 border-l border-gray-200/60">
+           <div className="flex items-center gap-6 shrink-0 text-right pl-4 border-l border-dash-border">
             <div>
-             <span className="block text-[8px] font-black uppercase tracking-wider text-gray-400">Views</span>
-             <span className="text-sm font-black text-gray-800">{stepViews.toLocaleString()}</span>
+             <span className="block text-[9px] font-bold !text-dash-textMuted">Views</span>
+             <span className="text-sm font-bold !text-dash-text">{stepViews.toLocaleString()}</span>
             </div>
             <div>
-             <span className="block text-[8px] font-black uppercase tracking-wider text-gray-400">Throughput</span>
-             <span className="text-sm font-black text-primary">{stepConvs.toLocaleString()}</span>
+             <span className="block text-[9px] font-bold !text-dash-textMuted">Throughput</span>
+             <span className="text-sm font-bold text-dash-accent">{stepConvs.toLocaleString()}</span>
             </div>
            </div>
           </div>
@@ -162,12 +161,12 @@ export default async function FunnelAnalyticsPage({ params }: { params: { id: st
        })}
       </div>
      )}
-    </div>
+    </DashCard>
 
     {/* Traffic Sources & UTM Parameters */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-     <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-      <h3 className="text-sm font-black uppercase text-gray-800 tracking-tight">Traffic Acquisition Channels</h3>
+     <DashCard padding="default" className="space-y-4">
+      <h3 className="text-sm font-bold !text-dash-text tracking-tight">Traffic acquisition channels</h3>
       <div className="space-y-3">
        {[
         { channel: 'Direct / None', sessions: 620, pct: 49 },
@@ -177,19 +176,19 @@ export default async function FunnelAnalyticsPage({ params }: { params: { id: st
        ].map((ch, i) => (
         <div key={i} className="space-y-1">
          <div className="flex justify-between text-xs font-bold">
-          <span className="text-gray-600">{ch.channel}</span>
-          <span className="text-gray-800">{ch.sessions} ({ch.pct}%)</span>
+          <span className="!text-dash-textMuted">{ch.channel}</span>
+          <span className="!text-dash-text">{ch.sessions} ({ch.pct}%)</span>
          </div>
-         <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-          <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${ch.pct}%` }} />
+         <div className="w-full bg-dash-border h-1.5 rounded-full overflow-hidden">
+          <div className="bg-dash-accent h-full rounded-full" style={{ width: `${ch.pct}%` }} />
          </div>
         </div>
        ))}
       </div>
-     </div>
+     </DashCard>
 
-     <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-      <h3 className="text-sm font-black uppercase text-gray-800 tracking-tight">Top UTM Campaigns</h3>
+     <DashCard padding="default" className="space-y-4">
+      <h3 className="text-sm font-bold !text-dash-text tracking-tight">Top UTM campaigns</h3>
       <div className="space-y-3">
        {[
         { utm: 'spring_launch_2026', leads: 142, conv: '32.1%' },
@@ -197,19 +196,19 @@ export default async function FunnelAnalyticsPage({ params }: { params: { id: st
         { utm: 'partner_webinar_promo', leads: 54, conv: '41.5%' },
         { utm: 'linkedin_cold_outreach', leads: 28, conv: '12.0%' },
        ].map((item, i) => (
-        <div key={i} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+        <div key={i} className="flex items-center justify-between p-2.5 bg-dash-surface rounded-xl border border-dash-border">
          <div>
-          <span className="block text-xs font-black text-gray-700 tracking-tight">{item.utm}</span>
-          <span className="text-[9px] font-bold text-gray-400 uppercase">Campaign tag</span>
+          <span className="block text-xs font-bold !text-dash-text tracking-tight">{item.utm}</span>
+          <span className="text-[9px] font-bold !text-dash-textMuted">Campaign tag</span>
          </div>
          <div className="text-right">
-          <span className="block text-xs font-black text-primary">{item.leads} leads</span>
-          <span className="text-[9px] font-bold text-emerald-600 uppercase">Conv: {item.conv}</span>
+          <span className="block text-xs font-bold text-dash-accent">{item.leads} leads</span>
+          <span className="text-[9px] font-bold text-green">Conv: {item.conv}</span>
          </div>
         </div>
        ))}
       </div>
-     </div>
+     </DashCard>
     </div>
    </div>
   </Wrapper>

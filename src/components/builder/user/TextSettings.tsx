@@ -15,25 +15,25 @@ export const TextSettings = () => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Font Size ({fontSize}px)</Label>
-        <input 
-          type="range" 
-          min="10" 
-          max="100" 
+        <Label className="text-xs font-bold !text-dash-textMuted block">Font size ({fontSize}px)</Label>
+        <input
+          type="range"
+          min="10"
+          max="100"
           value={fontSize || 16}
           onChange={(e) => setProp((props: any) => props.fontSize = Number(e.target.value))}
-          className="w-full"
+          className="w-full accent-primary"
         />
       </div>
-      
+
       <div className="space-y-2">
-        <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground block">Text Align</Label>
-        <div className="flex bg-muted p-1 rounded-md border border-white/5">
+        <Label className="text-xs font-bold !text-dash-textMuted block">Text align</Label>
+        <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
           {['left', 'center', 'right', 'justify'].map((align) => (
             <button
               key={align}
               onClick={() => setProp((props: any) => props.textAlign = align)}
-              className={`flex-1 text-[10px] py-1 rounded capitalize ${textAlign === align ? 'bg-primary text-white shadow font-bold' : 'text-muted-foreground hover:text-white'}`}
+              className={`flex-1 text-[10px] py-1 rounded capitalize transition-colors motion-reduce:transition-none ${textAlign === align ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
             >
               {align}
             </button>
@@ -41,8 +41,8 @@ export const TextSettings = () => {
         </div>
       </div>
 
-      <ColorPicker 
-        label="Text Color"
+      <ColorPicker
+        label="Text color"
         value={color || '#000000'}
         onChange={(val) => setProp((props: any) => props.color = val)}
       />

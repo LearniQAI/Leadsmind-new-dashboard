@@ -196,31 +196,31 @@ export default function InventoryPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+      <div className="min-h-screen bg-white px-6 py-6 max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center justify-between border-b border-dash-border pb-4">
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-[#4a5a82] hover:text-[#eef2ff] text-[12px] font-semibold">
+            <Link href="/dashboard" className="!text-dash-textMuted hover:!text-dash-text text-[12px] font-semibold transition-colors motion-reduce:transition-none">
               ← Dashboard
             </Link>
-            <h1 className="text-[20px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Inventory Management
+            <h1 className="text-[20px] font-bold !text-dash-text">
+              Inventory management
             </h1>
           </div>
           <button
             onClick={openAddModal}
-            className="h-9 px-4 rounded-[8px] bg-[#2563eb] text-white hover:bg-[#2563eb]/95 text-[12px] font-bold font-dm-sans flex items-center gap-1.5 transition-all shadow-lg shadow-[#2563eb]/10"
+            className="h-9 px-4 rounded-lg bg-dash-accent text-white hover:bg-dash-accent/90 text-[12px] font-bold flex items-center gap-1.5 transition-colors motion-reduce:transition-none shadow-lg shadow-dash-accent/10"
           >
-            <Plus size={14} /> Add Item
+            <Plus size={14} /> Add item
           </button>
         </div>
 
         {/* Low Stock Alert Section */}
         {lowStockItems.length > 0 && (
-          <div className="bg-[rgba(245,158,11,0.06)] border border-[rgba(245,158,11,0.15)] rounded-2xl p-4 flex gap-3">
-            <AlertTriangle className="text-[#f59e0b] shrink-0 mt-0.5" size={18} />
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
+            <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={18} />
             <div>
-              <h4 className="text-[12.5px] font-bold text-[#eef2ff] font-space-grotesk">Low Stock Warning</h4>
-              <p className="text-[11.5px] text-[#94a3c8] mt-0.5 leading-relaxed font-dm-sans">
+              <h4 className="text-[12.5px] font-bold !text-dash-text">Low stock warning</h4>
+              <p className="text-[11.5px] !text-dash-textMuted mt-0.5 leading-relaxed">
                 The following items are running low and require reordering: {lowStockItems.map(i => `${i.name} (${i.quantity_in_stock} remaining)`).join(', ')}.
               </p>
             </div>
@@ -229,56 +229,56 @@ export default function InventoryPage() {
 
         {/* Summary Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-white border border-dash-border rounded-2xl p-5 flex items-center justify-between shadow-sm">
             <div>
-              <span className="text-[11.5px] font-medium text-[#4a5a82] uppercase tracking-[0.8px] block mb-1">Total SKU Items</span>
-              <span className="text-[20px] font-bold text-[#eef2ff] font-space-grotesk">{totalItems} Items</span>
+              <span className="text-[11.5px] font-medium !text-dash-textMuted block mb-1">Total SKU items</span>
+              <span className="text-[20px] font-bold !text-dash-text">{totalItems} items</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-              <Layers size={18} className="text-[#3b82f6]" />
+            <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center">
+              <Layers size={18} className="text-dash-accent" />
             </div>
           </div>
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-white border border-dash-border rounded-2xl p-5 flex items-center justify-between shadow-sm">
             <div>
-              <span className="text-[11.5px] font-medium text-[#4a5a82] uppercase tracking-[0.8px] block mb-1">Low Stock Alerts</span>
-              <span className="text-[20px] font-bold text-[#f59e0b] font-space-grotesk">{lowStockItems.length} Warnings</span>
+              <span className="text-[11.5px] font-medium !text-dash-textMuted block mb-1">Low stock alerts</span>
+              <span className="text-[20px] font-bold text-amber-600">{lowStockItems.length} warnings</span>
             </div>
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-              <AlertTriangle size={18} className="text-[#f59e0b]" />
+              <AlertTriangle size={18} className="text-amber-600" />
             </div>
           </div>
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-white border border-dash-border rounded-2xl p-5 flex items-center justify-between shadow-sm">
             <div>
-              <span className="text-[11.5px] font-medium text-[#4a5a82] uppercase tracking-[0.8px] block mb-1">Total Inventory Asset Value</span>
-              <span className="text-[20px] font-bold text-[#10b981] font-space-grotesk">R{totalStockValue.toLocaleString()}</span>
+              <span className="text-[11.5px] font-medium !text-dash-textMuted block mb-1">Total inventory asset value</span>
+              <span className="text-[20px] font-bold text-green">R{totalStockValue.toLocaleString()}</span>
             </div>
             <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-              <DollarSign size={18} className="text-[#10b981]" />
+              <DollarSign size={18} className="text-green" />
             </div>
           </div>
         </div>
 
         {/* Filter Toolbar */}
-        <div className="bg-[rgba(12,21,53,0.85)] border border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="bg-white border border-dash-border rounded-2xl p-4 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-sm">
           <div className="relative w-full sm:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#4a5a82]" size={16} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 !text-dash-textMuted" size={16} />
             <input
               type="text"
               placeholder="Search by product name or SKU..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full bg-[#070d24] border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-dash-border rounded-xl pl-10 pr-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
             />
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <span className="text-[11px] text-[#4a5a82] font-bold uppercase shrink-0">Category:</span>
+            <span className="text-[11px] !text-dash-textMuted font-bold shrink-0">Category:</span>
             <select
               value={filterCategory}
               onChange={e => setFilterCategory(e.target.value)}
-              className="w-full sm:w-auto bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none"
+              className="w-full sm:w-auto bg-white border border-dash-border rounded-xl px-3 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
             >
-              <option value="all">All Categories</option>
+              <option value="all">All categories</option>
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
@@ -288,72 +288,72 @@ export default function InventoryPage() {
 
         {/* Items Grid */}
         {loading ? (
-          <div className="text-center py-20 text-[#4a5a82] animate-pulse">Loading inventory assets...</div>
+          <div className="text-center py-20 !text-dash-textMuted animate-pulse motion-reduce:animate-none">Loading inventory assets...</div>
         ) : items.length === 0 ? (
-          <div className="text-center py-20 bg-[rgba(12,21,53,0.3)] border border-white/5 rounded-2xl p-8">
-            <p className="text-[13px] text-[#4a5a82]">No inventory items found. Add items to track stock metrics.</p>
+          <div className="text-center py-20 bg-dash-surface border border-dash-border rounded-2xl p-8">
+            <p className="text-[13px] !text-dash-textMuted">No inventory items found. Add items to track stock metrics.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {items.map(item => {
-              const profitMargin = item.selling_price > 0 
+              const profitMargin = item.selling_price > 0
                 ? Math.round(((item.selling_price - item.cost_price) / item.selling_price) * 100)
                 : 0
-              
-              let stockColor = 'text-[#10b981]' // good
-              let stockLabel = 'In Stock'
+
+              let stockColor = 'text-green' // good
+              let stockLabel = 'In stock'
               if (item.quantity_in_stock === 0) {
-                stockColor = 'text-[#ef4444]'
-                stockLabel = 'Out of Stock'
+                stockColor = 'text-red'
+                stockLabel = 'Out of stock'
               } else if (item.quantity_in_stock <= item.reorder_level) {
-                stockColor = 'text-[#f59e0b]'
-                stockLabel = 'Low Stock'
+                stockColor = 'text-amber-600'
+                stockLabel = 'Low stock'
               }
 
               return (
-                <div key={item.id} className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex flex-col justify-between gap-4">
+                <div key={item.id} className="bg-white border border-dash-border rounded-2xl p-5 flex flex-col justify-between gap-4 shadow-sm">
                   <div>
                     <div className="flex justify-between items-start gap-3">
                       <div>
-                        <h3 className="text-[13.5px] font-bold text-[#eef2ff] font-space-grotesk">{item.name}</h3>
-                        <p className="text-[11.5px] text-[#94a3c8] mt-0.5 font-medium">SKU: {item.sku || 'N/A'} • Cat: {item.category || 'General'}</p>
+                        <h3 className="text-[13.5px] font-bold !text-dash-text">{item.name}</h3>
+                        <p className="text-[11.5px] !text-dash-textMuted mt-0.5 font-medium">SKU: {item.sku || 'N/A'} • Cat: {item.category || 'General'}</p>
                       </div>
-                      <span className={`text-[10.5px] font-bold uppercase tracking-[0.5px] ${stockColor}`}>
+                      <span className={`text-[10.5px] font-bold ${stockColor}`}>
                         {stockLabel}
                       </span>
                     </div>
 
                     {item.description && (
-                      <p className="text-[12px] text-[#4a5a82] mt-2 italic">"{item.description}"</p>
+                      <p className="text-[12px] !text-dash-textMuted mt-2 italic">"{item.description}"</p>
                     )}
 
                     <div className="grid grid-cols-2 gap-3 mt-4">
-                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 text-center font-dm-sans">
-                        <span className="text-[#4a5a82] text-[9.5px] font-bold uppercase tracking-[0.5px] block">Stock Qty</span>
-                        <span className="text-[#eef2ff] text-[13.5px] font-bold block mt-0.5">
-                          {item.quantity_in_stock} <span className="text-[11px] text-[#94a3c8] font-normal font-dm-sans capitalize">{item.unit}s</span>
+                      <div className="bg-dash-surface border border-dash-border rounded-xl p-2.5 text-center">
+                        <span className="!text-dash-textMuted text-[9.5px] font-bold block">Stock qty</span>
+                        <span className="!text-dash-text text-[13.5px] font-bold block mt-0.5">
+                          {item.quantity_in_stock} <span className="text-[11px] !text-dash-textMuted font-normal capitalize">{item.unit}s</span>
                         </span>
-                        <span className="text-[#4a5a82] text-[9.5px] block mt-0.5">Reorder at: {item.reorder_level}</span>
+                        <span className="!text-dash-textMuted text-[9.5px] block mt-0.5">Reorder at: {item.reorder_level}</span>
                       </div>
-                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 text-center font-dm-sans">
-                        <span className="text-[#4a5a82] text-[9.5px] font-bold uppercase tracking-[0.5px] block">Margin</span>
-                        <span className="text-[#10b981] text-[13.5px] font-bold block mt-0.5">{profitMargin}%</span>
-                        <span className="text-[#4a5a82] text-[9.5px] block mt-0.5">Cost: R{Number(item.cost_price).toLocaleString()} • Retail: R{Number(item.selling_price).toLocaleString()}</span>
+                      <div className="bg-dash-surface border border-dash-border rounded-xl p-2.5 text-center">
+                        <span className="!text-dash-textMuted text-[9.5px] font-bold block">Margin</span>
+                        <span className="text-green text-[13.5px] font-bold block mt-0.5">{profitMargin}%</span>
+                        <span className="!text-dash-textMuted text-[9.5px] block mt-0.5">Cost: R{Number(item.cost_price).toLocaleString()} • Retail: R{Number(item.selling_price).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1">
+                  <div className="flex items-center justify-between border-t border-dash-border pt-3 mt-1">
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => { setAdjustModalOpen(item); setAdjustType('add'); setAdjustQty(1); }}
-                        className="h-8 px-2.5 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981] hover:bg-[#10b981]/20 text-[11px] font-bold flex items-center gap-1 transition-all"
+                        className="h-8 px-2.5 rounded-lg bg-green/10 border border-green/20 text-green hover:bg-green/20 text-[11px] font-bold flex items-center gap-1 transition-colors motion-reduce:transition-none"
                       >
                         <Plus size={11} /> Stock
                       </button>
                       <button
                         onClick={() => { setAdjustModalOpen(item); setAdjustType('remove'); setAdjustQty(1); }}
-                        className="h-8 px-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] hover:bg-red-500/20 text-[11px] font-bold flex items-center gap-1 transition-all"
+                        className="h-8 px-2.5 rounded-lg bg-red/10 border border-red/20 text-red hover:bg-red/20 text-[11px] font-bold flex items-center gap-1 transition-colors motion-reduce:transition-none"
                       >
                         <Minus size={11} /> Stock
                       </button>
@@ -362,13 +362,13 @@ export default function InventoryPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => openEditModal(item)}
-                        className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 text-[#94a3c8] hover:text-[#eef2ff] flex items-center justify-center transition-colors"
+                        className="w-8 h-8 rounded-lg bg-dash-surface border border-dash-border !text-dash-textMuted hover:!text-dash-text flex items-center justify-center transition-colors motion-reduce:transition-none"
                       >
                         <Edit2 size={12} />
                       </button>
                       <button
                         onClick={() => handleDeleteItem(item.id)}
-                        className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                        className="w-8 h-8 rounded-lg bg-red/10 border border-red/20 text-red hover:bg-red/20 flex items-center justify-center transition-colors motion-reduce:transition-none"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -382,13 +382,13 @@ export default function InventoryPage() {
 
         {/* Item Create/Edit Modal */}
         {itemModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/[0.01]">
-                <h3 className="text-[15px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {editingItem ? 'Edit Inventory Item' : 'Add New Inventory Item'}
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="bg-white border border-dash-border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-5 border-b border-dash-border bg-dash-surface">
+                <h3 className="text-[15px] font-bold !text-dash-text">
+                  {editingItem ? 'Edit inventory item' : 'Add new inventory item'}
                 </h3>
-                <button onClick={() => setItemModalOpen(false)} className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors">
+                <button onClick={() => setItemModalOpen(false)} className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
                   <X size={16} />
                 </button>
               </div>
@@ -396,46 +396,46 @@ export default function InventoryPage() {
               <form onSubmit={handleSaveItem} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto common-scrollbar">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Item Name</label>
+                    <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">Item name</label>
                     <input
                       type="text"
                       required
                       value={name}
                       onChange={e => setName(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
+                      className="w-full bg-white border border-dash-border rounded-xl px-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">SKU</label>
+                    <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">SKU</label>
                     <input
                       type="text"
                       value={sku}
                       onChange={e => setSku(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
+                      className="w-full bg-white border border-dash-border rounded-xl px-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Category</label>
+                    <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">Category</label>
                     <input
                       type="text"
                       placeholder="e.g. Hardware, Services"
                       value={category}
                       onChange={e => setCategory(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
+                      className="w-full bg-white border border-dash-border rounded-xl px-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent placeholder:!text-dash-textMuted"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Unit Type</label>
+                    <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">Unit type</label>
                     <select
                       value={unit}
                       onChange={e => setUnit(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none"
+                      className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
                     >
                       <option value="unit">Unit</option>
                       <option value="kg">Kilogram (kg)</option>
@@ -445,32 +445,32 @@ export default function InventoryPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Initial Qty</label>
+                    <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">Initial qty</label>
                     <input
                       type="number"
                       min={0}
                       required
                       value={quantity}
                       onChange={e => setQuantity(Number(e.target.value))}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
+                      className="w-full bg-white border border-dash-border rounded-xl px-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Reorder level</label>
+                    <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">Reorder level</label>
                     <input
                       type="number"
                       min={0}
                       required
                       value={reorderLevel}
                       onChange={e => setReorderLevel(Number(e.target.value))}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
+                      className="w-full bg-white border border-dash-border rounded-xl px-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Cost Price (ZAR)</label>
+                    <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">Cost price (ZAR)</label>
                     <input
                       type="number"
                       step={0.01}
@@ -478,11 +478,11 @@ export default function InventoryPage() {
                       required
                       value={costPrice}
                       onChange={e => setCostPrice(Number(e.target.value))}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
+                      className="w-full bg-white border border-dash-border rounded-xl px-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Selling Price (ZAR)</label>
+                    <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">Selling price (ZAR)</label>
                     <input
                       type="number"
                       step={0.01}
@@ -490,58 +490,58 @@ export default function InventoryPage() {
                       required
                       value={sellingPrice}
                       onChange={e => setSellingPrice(Number(e.target.value))}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
+                      className="w-full bg-white border border-dash-border rounded-xl px-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Supplier</label>
+                    <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">Supplier</label>
                     <input
                       type="text"
                       value={supplier}
                       onChange={e => setSupplier(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
+                      className="w-full bg-white border border-dash-border rounded-xl px-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Status</label>
+                    <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">Status</label>
                     <select
                       value={status}
                       onChange={e => setStatus(e.target.value as any)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none"
+                      className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
                     >
                       <option value="active">Active</option>
                       <option value="discontinued">Discontinued</option>
-                      <option value="out_of_stock">Out of Stock</option>
+                      <option value="out_of_stock">Out of stock</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Description / Notes</label>
+                  <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">Description / notes</label>
                   <textarea
                     rows={3}
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none resize-none"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent resize-none"
                   />
                 </div>
 
-                <div className="pt-2 flex justify-end gap-3 border-t border-white/5">
+                <div className="pt-2 flex justify-end gap-3 border-t border-dash-border">
                   <button
                     type="button"
                     onClick={() => setItemModalOpen(false)}
-                    className="px-4 py-2 border border-white/5 hover:bg-white/5 text-[11px] font-bold rounded-xl text-t3 hover:text-t1 transition-colors"
+                    className="px-4 py-2 border border-dash-border hover:bg-dash-surface text-[11px] font-bold rounded-xl !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-[11px] font-bold rounded-xl text-white transition-colors"
+                    className="px-5 py-2 bg-dash-accent hover:bg-dash-accent/90 text-[11px] font-bold rounded-xl text-white transition-colors motion-reduce:transition-none"
                   >
-                    {editingItem ? 'Save Item' : 'Add Item'}
+                    {editingItem ? 'Save item' : 'Add item'}
                   </button>
                 </div>
               </form>
@@ -551,26 +551,26 @@ export default function InventoryPage() {
 
         {/* Quick Stock Adjustment Modal */}
         {adjustModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/[0.01]">
-                <h3 className="text-[14px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {adjustType === 'add' ? 'Increase Stock' : 'Decrease Stock'}
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="bg-white border border-dash-border rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-5 border-b border-dash-border bg-dash-surface">
+                <h3 className="text-[14px] font-bold !text-dash-text">
+                  {adjustType === 'add' ? 'Increase stock' : 'Decrease stock'}
                 </h3>
-                <button onClick={() => setAdjustModalOpen(null)} className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors">
+                <button onClick={() => setAdjustModalOpen(null)} className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
                   <X size={16} />
                 </button>
               </div>
 
               <form onSubmit={handleAdjustStock} className="p-5 space-y-4">
-                <div className="text-[12.5px] text-[#94a3c8] font-dm-sans">
-                  Item: <strong className="text-white">{adjustModalOpen.name}</strong><br />
-                  Current Quantity: <strong className="text-white">{adjustModalOpen.quantity_in_stock} {adjustModalOpen.unit}s</strong>
+                <div className="text-[12.5px] !text-dash-textMuted">
+                  Item: <strong className="!text-dash-text">{adjustModalOpen.name}</strong><br />
+                  Current quantity: <strong className="!text-dash-text">{adjustModalOpen.quantity_in_stock} {adjustModalOpen.unit}s</strong>
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">
-                    Quantity to {adjustType === 'add' ? 'Add' : 'Remove'}
+                  <label className="text-[10px] !text-dash-textMuted font-bold block mb-1">
+                    Quantity to {adjustType === 'add' ? 'add' : 'remove'}
                   </label>
                   <input
                     type="number"
@@ -578,25 +578,25 @@ export default function InventoryPage() {
                     required
                     value={adjustQty}
                     onChange={e => setAdjustQty(Number(e.target.value))}
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-2 text-[12px] !text-dash-text focus:outline-none focus:border-dash-accent"
                   />
                 </div>
 
-                <div className="pt-2 flex justify-end gap-3 border-t border-white/5">
+                <div className="pt-2 flex justify-end gap-3 border-t border-dash-border">
                   <button
                     type="button"
                     onClick={() => setAdjustModalOpen(null)}
-                    className="px-4 py-2 border border-white/5 hover:bg-white/5 text-[11px] font-bold rounded-xl text-t3 transition-colors"
+                    className="px-4 py-2 border border-dash-border hover:bg-dash-surface text-[11px] font-bold rounded-xl !text-dash-textMuted transition-colors motion-reduce:transition-none"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className={`px-5 py-2 text-[11px] font-bold rounded-xl text-white transition-colors ${
-                      adjustType === 'add' ? 'bg-[#10b981] hover:opacity-90' : 'bg-[#ef4444] hover:opacity-90'
+                    className={`px-5 py-2 text-[11px] font-bold rounded-xl text-white transition-colors motion-reduce:transition-none ${
+                      adjustType === 'add' ? 'bg-green hover:bg-green/90' : 'bg-red hover:bg-red/90'
                     }`}
                   >
-                    Confirm Adjust
+                    Confirm adjust
                   </button>
                 </div>
               </form>

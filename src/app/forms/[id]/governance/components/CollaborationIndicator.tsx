@@ -154,17 +154,17 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
   };
 
   return (
-    <div className="flex items-center gap-4 bg-[#0c1535] border border-white/5 px-4 py-2 rounded-xl text-white font-dm-sans">
-      
+    <div className="flex items-center gap-4 bg-dash-surface border border-dash-border px-4 py-2 rounded-xl !text-dash-text">
+
       {/* Active Avatar Rings */}
       <div className="flex items-center -space-x-2">
         <div
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-[#04081a] bg-blue-500 text-white cursor-pointer relative group`}
+          className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white bg-dash-accent text-white cursor-pointer relative group"
           title={userEmail}
         >
           {userInitials}
-          <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border border-[#04081a] animate-pulse" />
-          <div className="absolute bottom-full mb-2 hidden group-hover:block bg-[#0b132c] border border-white/10 text-[9px] font-bold uppercase tracking-wider py-1 px-2.5 rounded shadow-xl whitespace-nowrap z-50">
+          <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green border border-white animate-pulse motion-reduce:animate-none" />
+          <div className="absolute bottom-full mb-2 hidden group-hover:block bg-dash-text text-white border border-dash-border text-[9px] font-bold py-1 px-2.5 rounded shadow-lg whitespace-nowrap z-50">
             {userEmail} (You)
           </div>
         </div>
@@ -172,12 +172,12 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
         {visibleActiveUsers.map((u, i) => (
           <div
             key={i}
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-[#04081a] bg-purple-500 text-white cursor-pointer relative group`}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white bg-purple-500 text-white cursor-pointer relative group"
             title={u.email}
           >
             {u.initials}
-            <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border border-[#04081a] animate-pulse" />
-            <div className="absolute bottom-full mb-2 hidden group-hover:block bg-[#0b132c] border border-white/10 text-[9px] font-bold uppercase tracking-wider py-1 px-2.5 rounded shadow-xl whitespace-nowrap z-50">
+            <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green border border-white animate-pulse motion-reduce:animate-none" />
+            <div className="absolute bottom-full mb-2 hidden group-hover:block bg-dash-text text-white border border-dash-border text-[9px] font-bold py-1 px-2.5 rounded shadow-lg whitespace-nowrap z-50">
               {u.email} {u.locked ? '(Locked Form)' : ''}
             </div>
           </div>
@@ -185,54 +185,54 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
       </div>
 
       {/* Connection Indicator Stats & Dropdown */}
-      <div className="relative flex flex-col border-l border-white/10 pl-3" ref={dropdownRef}>
+      <div className="relative flex flex-col border-l border-dash-border pl-3" ref={dropdownRef}>
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity motion-reduce:transition-none"
         >
           <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#4a5a82] flex items-center gap-1">
-              <Eye size={10} className="text-emerald-400" /> Active Session
+            <span className="text-[9px] font-bold !text-dash-textMuted flex items-center gap-1">
+              <Eye size={10} className="text-green" /> Active session
             </span>
-            <span className="text-[10px] font-bold text-white/70">
-              Editing as {userEmail.split('@')[0]} {isOwner && <span className="text-blue-400 font-black">(Owner)</span>}
+            <span className="text-[10px] font-bold !text-dash-textMuted">
+              Editing as {userEmail.split('@')[0]} {isOwner && <span className="text-dash-accent font-bold">(Owner)</span>}
             </span>
           </div>
-          <ChevronDown size={14} className="text-white/40" />
+          <ChevronDown size={14} className="!text-dash-textMuted" />
         </button>
 
         {isDropdownOpen && (
-          <div className="absolute top-full mt-3 right-0 w-64 bg-[#0b132c] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1">
-            <div className="px-2 py-1.5 border-b border-white/5 mb-1">
-              <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Active Collaborators</span>
+          <div className="absolute top-full mt-3 right-0 w-64 bg-white border border-dash-border rounded-xl shadow-lg p-2 z-50 flex flex-col gap-1">
+            <div className="px-2 py-1.5 border-b border-dash-border mb-1">
+              <span className="text-[9px] font-bold !text-dash-textMuted">Active collaborators</span>
             </div>
 
             {/* Current User */}
-            <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-dash-surface">
               <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-blue-500 text-[8px] font-black flex items-center justify-center text-white">{userInitials}</div>
-                <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{userEmail} (You)</span>
+                <div className="w-5 h-5 rounded-full bg-dash-accent text-[8px] font-bold flex items-center justify-center text-white">{userInitials}</div>
+                <span className="text-[10px] font-bold !text-dash-text truncate max-w-[100px]">{userEmail} (You)</span>
               </div>
-              <span className="text-[8px] font-black uppercase tracking-wider text-[#4a5a82]">
+              <span className="text-[9px] font-bold !text-dash-textMuted">
                 {isOwner ? 'Owner' : isLocked ? 'Locked' : 'Editor'}
               </span>
             </div>
 
             {/* Other Users */}
             {visibleActiveUsers.map((u, i) => (
-              <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
+              <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-dash-surface transition-colors motion-reduce:transition-none">
                 <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-purple-500 text-[8px] font-black flex items-center justify-center text-white">{u.initials}</div>
-                  <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{u.email}</span>
+                  <div className="w-5 h-5 rounded-full bg-purple-500 text-[8px] font-bold flex items-center justify-center text-white">{u.initials}</div>
+                  <span className="text-[10px] font-bold !text-dash-text truncate max-w-[100px]">{u.email}</span>
                 </div>
-                
+
                 {isOwner && (
                   <button
                     onClick={() => toggleUserLock(u.email, u.locked || false)}
-                    className={`h-6 px-2 rounded border text-[8px] font-black uppercase tracking-wider transition-all flex items-center gap-1 ${
+                    className={`h-6 px-2 rounded border text-[9px] font-bold transition-colors motion-reduce:transition-none flex items-center gap-1 ${
                       u.locked
-                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20'
-                        : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20'
+                        ? 'bg-green/10 hover:bg-green/20 text-green border-green/20'
+                        : 'bg-red/10 hover:bg-red/20 text-red border-red/20'
                     }`}
                   >
                     {u.locked ? <Unlock size={10} /> : <Lock size={10} />}
@@ -243,7 +243,7 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
             ))}
 
             {visibleActiveUsers.length === 0 && (
-              <div className="p-3 text-center text-[9px] font-bold text-white/30 uppercase tracking-wider">
+              <div className="p-3 text-center text-[9px] font-bold !text-dash-textMuted">
                 No other users active right now.
               </div>
             )}

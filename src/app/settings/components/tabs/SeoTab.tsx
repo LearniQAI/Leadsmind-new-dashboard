@@ -1052,7 +1052,7 @@ export default function SeoTab() {
       </div>
 
       {/* 2d. CRM Revenue Attribution & Closed-loop ROI Dashboard */}
-      <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden group shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 motion-reduce:animate-none">
         <div className="absolute top-0 left-0 w-1 h-full bg-green"></div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-2">
           <div className="flex items-center gap-4">
@@ -1060,8 +1060,8 @@ export default function SeoTab() {
               <BarChart2 size={20} />
             </div>
             <div>
-              <h4 className="text-[15px] font-space font-bold text-t1 uppercase">CRM REVENUE ATTRIBUTION</h4>
-              <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Closed-loop ROI & Keyword Monetization</p>
+              <h4 className="text-[15px] font-bold !text-dash-text">CRM revenue attribution</h4>
+              <p className="text-[12px] !text-dash-textMuted font-medium">Closed-loop ROI & keyword monetization</p>
             </div>
           </div>
 
@@ -1069,18 +1069,18 @@ export default function SeoTab() {
             <button
               onClick={handleRunPipelineAutomation}
               disabled={isRunningAutomation}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-t2 hover:text-t1 rounded-xl text-[11px] font-bold border border-white/5 uppercase tracking-widest transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 bg-dash-surface hover:bg-dash-border/60 !text-dash-textMuted hover:!text-dash-text rounded-xl text-[12px] font-bold border border-dash-border transition-colors motion-reduce:transition-none"
             >
-              <RefreshCw size={12} className={isRunningAutomation ? 'animate-spin text-amber' : ''} />
+              <RefreshCw size={12} className={isRunningAutomation ? 'animate-spin motion-reduce:animate-none text-amber' : ''} />
               {isRunningAutomation ? 'Promoting...' : 'Run Pipeline Automation'}
             </button>
-            
+
             <button
               onClick={handleRunRollup}
               disabled={isRunningRollup}
-              className="flex items-center gap-2 px-4 py-2.5 bg-green hover:bg-green/80 text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-green/20"
+              className="flex items-center gap-2 px-4 py-2.5 bg-green hover:bg-green/90 text-white rounded-xl text-[12px] font-bold transition-colors motion-reduce:transition-none shadow-[0_4px_12px_rgba(16,185,129,0.2)]"
             >
-              <Play size={12} className={isRunningRollup ? 'animate-spin' : ''} />
+              <Play size={12} className={isRunningRollup ? 'animate-spin motion-reduce:animate-none' : ''} />
               {isRunningRollup ? 'Calculating...' : 'Run Revenue Rollup'}
             </button>
           </div>
@@ -1088,36 +1088,36 @@ export default function SeoTab() {
 
         {/* Revenue Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-          <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1">
-            <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">Total Won Revenue</p>
-            <h3 className="text-2xl font-space font-bold text-t1">R {totalWonRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-            <p className="text-[9px] text-green font-semibold">● CRM Won Deals</p>
+          <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1">
+            <p className="text-[11px] !text-dash-textMuted font-semibold">Total won revenue</p>
+            <h3 className="text-2xl font-bold !text-dash-text">R {totalWonRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+            <p className="text-[10px] text-green font-semibold">● CRM won deals</p>
           </div>
-          <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1">
-            <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">Total Content Cost</p>
-            <h3 className="text-2xl font-space font-bold text-t1">R {totalContentCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-            <p className="text-[9px] text-amber font-semibold">● Production Cost</p>
+          <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1">
+            <p className="text-[11px] !text-dash-textMuted font-semibold">Total content cost</p>
+            <h3 className="text-2xl font-bold !text-dash-text">R {totalContentCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+            <p className="text-[10px] text-amber-600 font-semibold">● Production cost</p>
           </div>
-          <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1">
-            <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">Revenue per Visitor (RPV)</p>
-            <h3 className="text-2xl font-space font-bold text-accent">R {weightedRpv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-            <p className="text-[9px] text-t3 font-medium uppercase tracking-widest">Total Value / Click</p>
+          <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1">
+            <p className="text-[11px] !text-dash-textMuted font-semibold">Revenue per visitor (RPV)</p>
+            <h3 className="text-2xl font-bold text-dash-accent">R {weightedRpv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+            <p className="text-[10px] !text-dash-textMuted font-medium">Total value / click</p>
           </div>
-          <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1">
-            <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">Aggregate SEO ROI</p>
-            <h3 className={`text-2xl font-space font-bold ${aggregateRoi >= 0 ? 'text-green' : 'text-red'}`}>
+          <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1">
+            <p className="text-[11px] !text-dash-textMuted font-semibold">Aggregate SEO ROI</p>
+            <h3 className={`text-2xl font-bold ${aggregateRoi >= 0 ? 'text-green' : 'text-red'}`}>
               {aggregateRoi.toFixed(2)}%
             </h3>
-            <p className="text-[9px] text-t3 font-medium uppercase tracking-widest">Pipeline Cost vs Return</p>
+            <p className="text-[10px] !text-dash-textMuted font-medium">Pipeline cost vs return</p>
           </div>
         </div>
 
         {/* Detailed Keyword Rollup Table */}
         {revenueAttribution.length > 0 ? (
-          <div className="border border-white/5 rounded-xl overflow-hidden pt-2">
+          <div className="border border-dash-border rounded-xl overflow-hidden pt-2">
             <table className="w-full text-left border-collapse text-[12px]">
               <thead>
-                <tr className="bg-n600 border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-t3">
+                <tr className="bg-dash-surface border-b border-dash-border text-[11px] font-bold uppercase tracking-wide !text-dash-textMuted">
                   <th className="px-5 py-3.5">Date</th>
                   <th className="px-5 py-3.5">Keyword</th>
                   <th className="px-5 py-3.5 text-center">Visitors (Clicks)</th>
@@ -1128,20 +1128,20 @@ export default function SeoTab() {
                   <th className="px-5 py-3.5 text-right">ROI</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-dash-border">
                 {revenueAttribution.map((item: any) => (
-                  <tr key={item.id} className="hover:bg-white/[0.02] transition-colors font-medium">
-                    <td className="px-5 py-3.5 text-t3 font-mono text-[11px]">{new Date(item.date).toLocaleDateString()}</td>
-                    <td className="px-5 py-3.5 text-t1 font-bold font-space">{item.keyword}</td>
-                    <td className="px-5 py-3.5 text-center text-t2">{item.total_visitors}</td>
-                    <td className="px-5 py-3.5 text-center text-t2">
+                  <tr key={item.id} className="hover:bg-dash-surface/60 transition-colors motion-reduce:transition-none font-medium">
+                    <td className="px-5 py-3.5 !text-dash-textMuted font-mono text-[11px]">{new Date(item.date).toLocaleDateString()}</td>
+                    <td className="px-5 py-3.5 !text-dash-text font-bold">{item.keyword}</td>
+                    <td className="px-5 py-3.5 text-center !text-dash-textMuted">{item.total_visitors}</td>
+                    <td className="px-5 py-3.5 text-center !text-dash-textMuted">
                       <span className="inline-flex items-center px-1.5 py-0.5 bg-green/10 text-green rounded text-[11px] font-bold">
                         {item.won_deals_count}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-right text-t1 font-mono">R {Number(item.total_revenue).toFixed(2)}</td>
-                    <td className="px-5 py-3.5 text-right text-t2 font-mono">R {Number(item.total_cost).toFixed(2)}</td>
-                    <td className="px-5 py-3.5 text-center text-accent font-mono">R {Number(item.rpv).toFixed(2)}</td>
+                    <td className="px-5 py-3.5 text-right !text-dash-text font-mono">R {Number(item.total_revenue).toFixed(2)}</td>
+                    <td className="px-5 py-3.5 text-right !text-dash-textMuted font-mono">R {Number(item.total_cost).toFixed(2)}</td>
+                    <td className="px-5 py-3.5 text-center text-dash-accent font-mono">R {Number(item.rpv).toFixed(2)}</td>
                     <td className={`px-5 py-3.5 text-right font-mono font-bold ${Number(item.roi) >= 0 ? 'text-green' : 'text-red'}`}>
                       {Number(item.roi).toFixed(1)}%
                     </td>
@@ -1151,10 +1151,10 @@ export default function SeoTab() {
             </table>
           </div>
         ) : (
-          <div className="bg-n600/10 border border-dashed border-white/5 rounded-xl py-8 flex flex-col items-center justify-center text-center space-y-2">
-            <AlertCircle className="text-t3" size={24} />
-            <h5 className="text-[12px] font-bold text-t2 uppercase">No Attribution Rollup Logs</h5>
-            <p className="text-[11px] text-t3 max-w-sm">No keyword organic contacts have closed won deals. Trigger a daily rollup to scan.</p>
+          <div className="bg-dash-surface border border-dashed border-dash-border rounded-xl py-8 flex flex-col items-center justify-center text-center space-y-2">
+            <AlertCircle className="!text-dash-textMuted" size={24} />
+            <h5 className="text-[12px] font-bold !text-dash-text">No attribution rollup logs</h5>
+            <p className="text-[11px] !text-dash-textMuted max-w-sm">No keyword organic contacts have closed won deals. Trigger a daily rollup to scan.</p>
           </div>
         )}
       </div>

@@ -25,7 +25,7 @@ export default async function CalendarPage() {
 
     return (
         <Wrapper>
-            <main className="min-h-screen bg-[var(--n900)] text-[var(--t1)]">
+            <main className="min-h-screen bg-dash-surface !text-dash-text">
                 <CalendarClient 
                     initialAppointments={appointments || []} 
                     initialCalendars={calendars || []}

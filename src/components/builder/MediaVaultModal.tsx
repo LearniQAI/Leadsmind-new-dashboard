@@ -150,17 +150,17 @@ export const MediaVaultModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#0b0b14] border-white/5 text-white rounded-3xl p-0 overflow-hidden shadow-2xl z-[9999]">
+      <DialogContent className="max-w-4xl bg-white border-dash-border !text-dash-text rounded-3xl p-0 overflow-hidden shadow-2xl z-[9999]">
         <div className="flex flex-col h-[70vh]">
           {/* Header */}
-          <DialogHeader className="p-6 pb-4 border-b border-white/5 flex flex-col gap-4">
+          <DialogHeader className="p-6 pb-4 border-b border-dash-border flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                <DialogTitle className="text-lg font-bold flex items-center gap-2">
                   <ImageIcon className="w-5 h-5 text-primary" />
-                  Media <span className="text-primary">Library Vault</span>
+                  Media <span className="text-primary">library vault</span>
                 </DialogTitle>
-                <DialogDescription className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">
+                <DialogDescription className="text-[10px] !text-dash-textMuted font-bold mt-1">
                   Manage workspace uploads and search stock photography assets
                 </DialogDescription>
               </div>
@@ -168,19 +168,19 @@ export const MediaVaultModal = ({
 
             {/* Tab Controls */}
             <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
+              <div className="flex gap-1 bg-dash-surface p-1 rounded-xl border border-dash-border">
                 {(['library', 'unsplash', 'upload'] as const).map((tab) => (
                   <Button
                     key={tab}
                     variant="ghost"
                     onClick={() => setActiveTab(tab)}
-                    className={`h-9 px-4 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                    className={`h-9 px-4 text-[10px] font-bold rounded-lg transition-all motion-reduce:transition-none ${
                       activeTab === tab
                         ? 'bg-primary text-white shadow'
-                        : 'text-white/40 hover:text-white'
+                        : '!text-dash-textMuted hover:!text-dash-text'
                     }`}
                   >
-                    {tab === 'library' ? 'Workspace Library' : tab === 'unsplash' ? 'Stock Photos' : 'Upload Asset'}
+                    {tab === 'library' ? 'Workspace library' : tab === 'unsplash' ? 'Stock photos' : 'Upload asset'}
                   </Button>
                 ))}
               </div>
@@ -191,9 +191,9 @@ export const MediaVaultModal = ({
                     placeholder="Search Unsplash..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-9 bg-white/5 border-white/10 text-xs placeholder:text-white/30 rounded-xl"
+                    className="h-9 bg-white border-dash-border text-xs placeholder:text-dash-textMuted rounded-xl"
                   />
-                  <Button onClick={handleSearchUnsplash} className="h-9 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl px-4">
+                  <Button onClick={handleSearchUnsplash} className="h-9 bg-primary text-white text-[10px] font-bold rounded-xl px-4">
                     Search
                   </Button>
                 </div>
@@ -206,12 +206,12 @@ export const MediaVaultModal = ({
             {activeTab === 'library' && (
               isLoading ? (
                 <div className="h-full flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-primary" />
                 </div>
               ) : assets.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center opacity-30 text-center">
+                <div className="h-full flex flex-col items-center justify-center opacity-50 text-center">
                   <Upload className="w-10 h-10 mb-4" />
-                  <p className="text-xs font-bold uppercase tracking-widest">No uploaded assets inside workspace yet</p>
+                  <p className="text-xs font-bold">No uploaded assets inside workspace yet</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -219,17 +219,17 @@ export const MediaVaultModal = ({
                     <div
                       key={asset.id}
                       onClick={() => { onSelect(asset.url); onOpenChange(false); }}
-                      className="group relative aspect-square bg-white/5 border border-white/5 hover:border-primary/50 rounded-xl overflow-hidden cursor-pointer transition-all"
+                      className="group relative aspect-square bg-dash-surface border border-dash-border hover:border-primary/50 rounded-xl overflow-hidden cursor-pointer transition-all motion-reduce:transition-none"
                     >
                       <img src={asset.url} alt={asset.filename} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none flex items-center justify-center">
                         <button
                           onClick={(e) => handleDelete(asset.id, e)}
-                          className="p-2 bg-rose-500/25 border border-rose-500/30 text-rose-400 hover:text-rose-500 rounded-lg transition-colors absolute top-2 right-2"
+                          className="p-2 bg-red/25 border border-red/30 text-red hover:text-red/80 rounded-lg transition-colors motion-reduce:transition-none absolute top-2 right-2"
                         >
                           <Trash2 size={12} />
                         </button>
-                        <span className="text-[8px] font-black uppercase tracking-widest text-white px-3 py-1.5 bg-primary/80 rounded-full">Select</span>
+                        <span className="text-[8px] font-bold text-white px-3 py-1.5 bg-primary/80 rounded-full">Select</span>
                       </div>
                     </div>
                   ))}
@@ -240,7 +240,7 @@ export const MediaVaultModal = ({
             {activeTab === 'unsplash' && (
               isSearchingUnsplash ? (
                 <div className="h-full flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-primary" />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -248,11 +248,11 @@ export const MediaVaultModal = ({
                     <div
                       key={photo.id}
                       onClick={() => { onSelect(photo.url); onOpenChange(false); }}
-                      className="group relative aspect-square bg-white/5 border border-white/5 hover:border-primary/50 rounded-xl overflow-hidden cursor-pointer transition-all"
+                      className="group relative aspect-square bg-dash-surface border border-dash-border hover:border-primary/50 rounded-xl overflow-hidden cursor-pointer transition-all motion-reduce:transition-none"
                     >
                       <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-[8px] font-black uppercase tracking-widest text-white px-3 py-1.5 bg-primary/80 rounded-full">Use Image</span>
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none flex items-center justify-center">
+                        <span className="text-[8px] font-bold text-white px-3 py-1.5 bg-primary/80 rounded-full">Use image</span>
                       </div>
                     </div>
                   ))}
@@ -264,16 +264,16 @@ export const MediaVaultModal = ({
               <div className="h-full flex flex-col items-center justify-center">
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full max-w-md p-10 border-2 border-dashed border-white/10 hover:border-primary/50 bg-white/[0.01] hover:bg-primary/5 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all gap-4"
+                  className="w-full max-w-md p-10 border-2 border-dashed border-dash-border hover:border-primary/50 bg-dash-surface hover:bg-primary/5 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all motion-reduce:transition-none gap-4"
                 >
                   {isUploading ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-primary" />
                   ) : (
-                    <Upload className="w-8 h-8 text-white/30" />
+                    <Upload className="w-8 h-8 !text-dash-textMuted" />
                   )}
                   <div className="text-center">
-                    <p className="text-xs font-bold uppercase tracking-wider text-white/70">Click or Drag Image to Upload</p>
-                    <p className="text-[10px] text-white/30 mt-1 uppercase tracking-widest">JPG, PNG, GIF up to 5MB</p>
+                    <p className="text-xs font-bold !text-dash-textMuted">Click or drag image to upload</p>
+                    <p className="text-[10px] !text-dash-textMuted mt-1">JPG, PNG, GIF up to 5MB</p>
                   </div>
                 </div>
                 <input

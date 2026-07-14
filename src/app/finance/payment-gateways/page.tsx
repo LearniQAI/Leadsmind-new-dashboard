@@ -49,13 +49,13 @@ export default function PaymentGatewaysPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-4xl mx-auto font-sans">
+      <div className="min-h-screen bg-white px-6 py-6 max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-[22px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Payment <span className="text-[#2563eb]">Gateways</span>
+          <h1 className="text-[22px] font-bold !text-dash-text">
+            Payment <span className="text-dash-accent">Gateways</span>
           </h1>
-          <p className="text-[11px] uppercase tracking-[0.8px] font-medium mt-1 text-[#4a5a82]">
+          <p className="text-[12px] font-medium mt-1 !text-dash-textMuted">
             Connect payment providers to automatically mark invoices as paid
           </p>
         </div>

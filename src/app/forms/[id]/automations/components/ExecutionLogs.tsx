@@ -53,17 +53,17 @@ export function ExecutionLogs({ formId }: ExecutionLogsProps) {
   }, [formId]);
 
   return (
-    <div className="flex-1 bg-[#0c1535] border border-white/5 rounded-2xl flex flex-col overflow-hidden">
+    <div className="flex-1 bg-white border border-dash-border rounded-2xl flex flex-col overflow-hidden">
       
       {/* Header */}
-      <div className="p-4 border-b border-white/5 flex items-center justify-between">
+      <div className="p-4 border-b border-dash-border flex items-center justify-between">
         <div>
-          <h3 className="text-xs font-black uppercase tracking-wider text-white font-space-grotesk">Execution History</h3>
-          <p className="text-[10px] text-[#4a5a82] font-dm-sans">Real-time automation logs & trigger logs</p>
+          <h3 className="text-xs font-bold !text-dash-text">Execution History</h3>
+          <p className="text-[10px] !text-dash-textMuted">Real-time automation logs & trigger logs</p>
         </div>
         <button
           onClick={loadLogs}
-          className="p-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-lg transition-all flex items-center justify-center"
+          className="p-2 bg-dash-surface border border-dash-border hover:bg-dash-border/60 !text-dash-text rounded-lg transition-colors motion-reduce:transition-none flex items-center justify-center"
           title="Refresh Logs"
         >
           <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
@@ -73,13 +73,13 @@ export function ExecutionLogs({ formId }: ExecutionLogsProps) {
       {/* List */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col gap-3">
         {loading ? (
-          <div className="flex items-center justify-center p-12 text-[#4a5a82]">
+          <div className="flex items-center justify-center p-12 !text-dash-textMuted">
             <RefreshCw size={20} className="animate-spin mr-2" /> Loading execution feeds...
           </div>
         ) : executions.length === 0 ? (
-          <div className="text-center p-12 text-[#4a5a82]">
+          <div className="text-center p-12 !text-dash-textMuted">
             <Clock size={32} className="mx-auto opacity-35 mb-2" />
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-white">No Executions Logged</h4>
+            <h4 className="text-[11px] font-bold !text-dash-text">No executions logged</h4>
             <p className="text-[10px] mt-1">Submit the form or trigger workflows to inspect running actions.</p>
           </div>
         ) : (
@@ -94,30 +94,30 @@ export function ExecutionLogs({ formId }: ExecutionLogsProps) {
             return (
               <div
                 key={run.id}
-                className="p-4 bg-white/1 border border-white/5 hover:border-white/10 rounded-xl flex flex-col gap-3 transition-colors"
+                className="p-4 bg-dash-surface border border-dash-border hover:border-dash-text/20 rounded-xl flex flex-col gap-3 transition-colors motion-reduce:transition-none"
               >
                 
                 {/* Meta details */}
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
-                    {isSuccess && <CheckCircle size={14} className="text-emerald-400" />}
-                    {isRunning && <RefreshCw size={14} className="text-blue-400 animate-spin" />}
-                    {isFailed && <AlertTriangle size={14} className="text-rose-400" />}
+                    {isSuccess && <CheckCircle size={14} className="text-green" />}
+                    {isRunning && <RefreshCw size={14} className="text-dash-accent animate-spin" />}
+                    {isFailed && <AlertTriangle size={14} className="text-red" />}
                     <div>
-                      <span className="text-[11px] font-bold text-white font-space-grotesk">
+                      <span className="text-[11px] font-bold !text-dash-text">
                         {run.workflows?.name || 'Automation Run'}
                       </span>
-                      <div className="flex items-center gap-1.5 text-[9px] text-[#4a5a82] font-black uppercase tracking-wider mt-0.5">
-                        <span className="text-[#60a5fa]">{run.workflows?.trigger_type?.replace(/_/g, ' ')}</span>
+                      <div className="flex items-center gap-1.5 text-[9px] !text-dash-textMuted font-bold mt-0.5">
+                        <span className="text-dash-accent">{run.workflows?.trigger_type?.replace(/_/g, ' ')}</span>
                         <span>•</span>
                         <span>{duration} duration</span>
                       </div>
                     </div>
                   </div>
 
-                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
-                    isSuccess ? 'bg-emerald-500/10 text-emerald-400' :
-                    isRunning ? 'bg-blue-500/10 text-blue-400' : 'bg-rose-500/10 text-rose-400'
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${
+                    isSuccess ? 'bg-green/10 text-green' :
+                    isRunning ? 'bg-dash-accent/10 text-dash-accent' : 'bg-red/10 text-red'
                   }`}>
                     {run.status}
                   </span>
@@ -125,18 +125,18 @@ export function ExecutionLogs({ formId }: ExecutionLogsProps) {
 
                 {/* Logs message if failed */}
                 {run.error_message && (
-                  <div className="p-3 bg-rose-500/5 border border-rose-500/10 rounded-lg text-[10px] text-rose-300 font-dm-sans leading-relaxed">
+                  <div className="p-3 bg-red/5 border border-red/10 rounded-lg text-[10px] text-red  leading-relaxed">
                     <strong>Error:</strong> {run.error_message}
                   </div>
                 )}
 
                 {/* Sub-details */}
-                <div className="text-[10px] text-white/50 font-dm-sans flex items-center justify-between border-t border-white/5 pt-2.5">
+                <div className="text-[10px] !text-dash-textMuted  flex items-center justify-between border-t border-dash-border pt-2.5">
                   <span>
                     Started: {new Date(run.started_at).toLocaleString()}
                   </span>
                   {run.context && Object.keys(run.context).length > 0 && (
-                    <span className="text-[9px] bg-white/5 px-2 py-0.5 rounded text-white/80 select-none">
+                    <span className="text-[9px] bg-dash-surface px-2 py-0.5 rounded !text-dash-text select-none">
                       Context payload logged
                     </span>
                   )}

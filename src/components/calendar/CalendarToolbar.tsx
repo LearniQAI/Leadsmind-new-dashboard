@@ -21,17 +21,17 @@ export default function CalendarToolbar({ activeView, onViewChange }: CalendarTo
   ] as const;
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-4 border-y border-[var(--bdr)] mb-8">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-4 border-y border-dash-border mb-8">
       {/* Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-        {['All Calendars', 'Personal', 'Round Robin', 'Collective', 'Class'].map((filter, i) => (
+        {['All calendars', 'Personal', 'Round robin', 'Collective', 'Class'].map((filter, i) => (
           <button
             key={filter}
             className={cn(
-              "px-4 py-1.5 rounded-full text-[12.5px] font-medium transition-all whitespace-nowrap",
-              i === 0 
-                ? "bg-[var(--accentg)] text-[var(--accent2)] border border-[rgba(37,99,235,0.2)]" 
-                : "text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[rgba(255,255,255,0.05)]"
+              "px-4 py-1.5 rounded-full text-[12.5px] font-medium transition-colors motion-reduce:transition-none whitespace-nowrap",
+              i === 0
+                ? "bg-dash-accent/10 text-dash-accent border border-dash-accent/20"
+                : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
             )}
           >
             {filter}
@@ -40,7 +40,7 @@ export default function CalendarToolbar({ activeView, onViewChange }: CalendarTo
       </div>
 
       {/* View Toggle */}
-      <div className="flex items-center bg-[rgba(255,255,255,0.03)] border border-[var(--bdr)] rounded-[var(--r8)] p-1">
+      <div className="flex items-center bg-dash-surface border border-dash-border rounded-lg p-1">
         {views.map((v) => {
           const Icon = v.icon;
           const isActive = activeView === v.id;
@@ -49,10 +49,10 @@ export default function CalendarToolbar({ activeView, onViewChange }: CalendarTo
               key={v.id}
               onClick={() => onViewChange(v.id)}
               className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-[var(--r8)] text-[12px] font-semibold transition-all",
-                isActive 
-                  ? "bg-[var(--accent)] text-white shadow-sm" 
-                  : "text-[var(--t3)] hover:text-[var(--t2)] hover:bg-[rgba(255,255,255,0.03)]"
+                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors motion-reduce:transition-none",
+                isActive
+                  ? "bg-dash-accent text-white shadow-sm"
+                  : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-border/40"
               )}
             >
               <Icon size={14} />

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Copy, Code, ExternalLink, Play } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ShareActionsBarProps {
   onCopyUrl: () => void;
@@ -24,19 +25,19 @@ export function ShareActionsBar({
       primary: false,
     },
     {
-      label: 'Copy Embed',
+      label: 'Copy embed',
       icon: <Code size={13} />,
       onClick: onCopyEmbed,
       primary: false,
     },
     {
-      label: 'Open Form',
+      label: 'Open form',
       icon: <ExternalLink size={13} />,
       onClick: onOpenUrl,
       primary: false,
     },
     {
-      label: 'Preview Live',
+      label: 'Preview live',
       icon: <Play size={13} className="fill-current" />,
       onClick: onPreview,
       primary: true,
@@ -45,23 +46,24 @@ export function ShareActionsBar({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <label className="text-[10px] font-bold uppercase tracking-widest text-[#94a3c8] font-display">
-        Quick Deployment Actions
+      <label className="text-[11px] font-bold !text-dash-textMuted">
+        Quick deployment actions
       </label>
-      
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {actions.map((act) => (
           <button
             key={act.label}
             onClick={act.onClick}
-            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold tracking-wide transition-all duration-300 ${
+            className={cn(
+              "flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold tracking-wide transition-colors motion-reduce:transition-none",
               act.primary
-                ? 'bg-blue-600 border-blue-500/20 text-white hover:bg-blue-700 hover:border-blue-600/30 hover:shadow-[0_0_15px_rgba(37,99,235,0.25)] shadow-md shadow-blue-500/10'
-                : 'bg-[#0c1535]/80 hover:bg-[#111d47] border-white/5 hover:border-white/10 text-[#94a3c8] hover:text-white'
-            }`}
+                ? 'bg-dash-accent border-dash-accent/20 text-white hover:bg-dash-accent/90'
+                : 'bg-white hover:bg-dash-surface border-dash-border !text-dash-textMuted hover:!text-dash-text'
+            )}
           >
             <span className="flex-shrink-0">{act.icon}</span>
-            <span className="font-display tracking-wide uppercase text-[10px]">{act.label}</span>
+            <span className="tracking-wide uppercase text-[10px]">{act.label}</span>
           </button>
         ))}
       </div>

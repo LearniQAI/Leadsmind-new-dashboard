@@ -1,24 +1,24 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
-  Plus, Mail, Calendar, BarChart3, Pencil, Trash2, Send, X,
-  CheckCircle, Clock, MoreVertical
+  Plus, Mail, Calendar, Pencil, Trash2, Send, Clock, MoreVertical
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
-} from '@/components/ui/dialog';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { createEmailCampaign } from '@/app/actions/marketing';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { DashCard } from '@/components/dashboard-ui/Card';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
+import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
+import { DashFormField, DashInput, DashTextarea } from '@/components/dashboard-ui/FormField';
+import {
+  DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter
+} from '@/components/dashboard-ui/Modal';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 export default function CampaignsClient({ initialCampaigns }: { initialCampaigns: any[] }) {
   const router = useRouter();
@@ -47,7 +47,7 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
       const prefillSubject = searchParams.get('prefill_subject');
       const prefillBody = searchParams.get('prefill_body');
       const prefillName = searchParams.get('prefill_name');
-      
+
       if (prefillSubject || prefillBody || prefillName) {
         setCreateName(prefillName || 'New Campaign from Content Studio');
         setCreateSubject(prefillSubject || '');
@@ -64,13 +64,13 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
     if (res.error) { toast.error(res.error); }
     else {
       toast.success('Campaign created!');
-      
+
       let newCampaign = res.data;
       if (typeof window !== 'undefined') {
         const searchParams = new URLSearchParams(window.location.search);
         const prefillBody = searchParams.get('prefill_body');
         const prefillSubject = searchParams.get('prefill_subject');
-        
+
         if (prefillBody || prefillSubject || createSubject) {
           try {
             const { updateCampaign } = await import('@/app/actions/marketing');
@@ -100,7 +100,7 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
     setEditName(campaign.name);
     setEditSubject(campaign.subject || '');
     setEditBody(campaign.preview_text || '');
-    
+
     // Extract tags from segment JSONB if available
     let tags = '';
     try {
@@ -121,11 +121,11 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
       const { updateCampaign } = await import('@/app/actions/marketing');
       const tagsArray = editTags.split(',').map(t => t.trim()).filter(Boolean);
       const segmentData = tagsArray.length > 0 ? { tags: tagsArray } : null;
-      
-      const res = await updateCampaign(editCampaign.id, { 
-        name: editName, 
-        subject: editSubject, 
-        preview_text: editBody, 
+
+      const res = await updateCampaign(editCampaign.id, {
+        name: editName,
+        subject: editSubject,
+        preview_text: editBody,
         body_html: editBody,
         segment: segmentData
       });
@@ -147,7 +147,7 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
       const res = await updateCampaign(campaign.id, { status: newStatus, sent_at: isSent ? null : new Date().toISOString() });
       if (res.error) { toast.error(res.error); return; }
       setCampaigns(prev => prev.map(c => c.id === campaign.id ? { ...c, status: newStatus } : c));
-      toast.success(isSent ? 'Campaign moved to Draft' : 'Campaign marked as Sent!');
+      toast.success(isSent ? 'Campaign moved to draft' : 'Campaign marked as sent!');
     } catch { toast.error('Status update failed'); }
   };
 
@@ -169,60 +169,64 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
     setDeleting(false);
   };
 
-  const statusColor = (status: string) => {
-    if (status === 'sent') return 'bg-emerald-100 text-emerald-700';
-    if (status === 'scheduled') return 'bg-blue-100 text-blue-700';
-    return 'bg-amber-100 text-amber-700';
+  const statusVariant = (status: string): 'success' | 'info' | 'warning' => {
+    if (status === 'sent') return 'success';
+    if (status === 'scheduled') return 'info';
+    return 'warning';
   };
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="card__title !text-4xl uppercase mb-1">Email <span className="text-primary">Campaigns</span></h1>
-          <p className="card__sub-title !text-[11px] uppercase tracking-[0.2em]">Broadcast your message with precision delivery.</p>
+          <h1 className="text-3xl font-bold !text-dash-text">
+            Email <span className="text-dash-accent">campaigns</span>
+          </h1>
+          <p className="text-[12px] !text-dash-textMuted mt-2 font-medium">
+            Broadcast your message with precision delivery.
+          </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20">
-          <Plus className="w-4 h-4 mr-2" /> New Campaign
-        </Button>
+        <DashButton onClick={() => setCreateOpen(true)}>
+          <Plus className="w-4 h-4" /> New campaign
+        </DashButton>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {campaigns.length === 0 ? (
-          <div className="col-span-full py-20 bg-[#080f28]/45 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#3b82f6]/40 hover:bg-[#080f28]/60 transition-all" onClick={() => setCreateOpen(true)}>
-            <div className="w-16 h-16 bg-[#3b82f6]/10 rounded-full flex items-center justify-center mb-6 border border-[#3b82f6]/20">
-              <Send className="w-8 h-8 text-[#3b82f6]" />
-            </div>
-            <h3 className="text-lg font-black uppercase text-[#94a3c8] tracking-widest">No Campaigns Yet</h3>
-            <p className="text-[#4a5a82] text-[10px] font-bold mt-2 uppercase tracking-widest">Click to create your first campaign</p>
+          <div className="col-span-full">
+            <DashEmptyState
+              icon={Send}
+              title="No campaigns yet"
+              description="Click to create your first campaign"
+              actionLabel="New campaign"
+              onAction={() => setCreateOpen(true)}
+            />
           </div>
         ) : campaigns.map(campaign => (
-          <div key={campaign.id} className="card__wrapper !bg-[#080f28] !border-white/5 !p-6 !mb-0 group hover:border-[#3b82f6]/50 transition-all duration-300 shadow-2xl">
+          <DashCard key={campaign.id} padding="default" className="group">
             <div className="flex justify-between items-start mb-6">
-              <div className="h-12 w-12 rounded-2xl bg-[#3b82f6]/10 flex items-center justify-center text-[#3b82f6] border border-[#3b82f6]/20">
-                <Mail size={20} />
+              <div className="h-11 w-11 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent border border-dash-accent/20">
+                <Mail size={18} />
               </div>
               <div className="flex items-center gap-2">
-                <Badge className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border-none ${statusColor(campaign.status)}`}>
-                  {campaign.status}
-                </Badge>
+                <DashStatusPill variant={statusVariant(campaign.status)}>{campaign.status}</DashStatusPill>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
-                      <MoreVertical size={14} className="text-[#94a3c8]" />
+                    <button className="h-8 w-8 rounded-lg bg-dash-surface hover:bg-dash-border/60 flex items-center justify-center transition-colors motion-reduce:transition-none">
+                      <MoreVertical size={14} className="!text-dash-textMuted" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-[#04091a] border border-white/5 shadow-2xl rounded-xl min-w-[160px] text-[#94a3c8]">
-                    <DropdownMenuItem onClick={() => router.push(`/campaigns/${campaign.id}/builder`)} className="flex items-center gap-2 cursor-pointer hover:text-white hover:bg-[#3b82f6]/10 rounded-lg mx-1 px-3 py-2">
-                      <Pencil size={14} /> Design Layout
+                  <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-lg rounded-xl min-w-[170px]">
+                    <DropdownMenuItem onClick={() => router.push(`/campaigns/${campaign.id}/builder`)} className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2 text-xs">
+                      <Pencil size={14} /> Design layout
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openEdit(campaign)} className="flex items-center gap-2 cursor-pointer hover:text-white hover:bg-[#3b82f6]/10 rounded-lg mx-1 px-3 py-2">
-                      <Pencil size={14} /> Edit Settings
+                    <DropdownMenuItem onClick={() => openEdit(campaign)} className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2 text-xs">
+                      <Pencil size={14} /> Edit settings
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handlePublish(campaign)} className="flex items-center gap-2 cursor-pointer hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg mx-1 px-3 py-2">
-                      {campaign.status === 'sent' ? <><Clock size={14} /> Move to Draft</> : <><Send size={14} /> Mark as Sent</>}
+                    <DropdownMenuItem onClick={() => handlePublish(campaign)} className="flex items-center gap-2 cursor-pointer text-green hover:bg-green/10 rounded-lg mx-1 px-3 py-2 text-xs">
+                      {campaign.status === 'sent' ? <><Clock size={14} /> Move to draft</> : <><Send size={14} /> Mark as sent</>}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openDelete(campaign)} className="flex items-center gap-2 cursor-pointer text-rose-500 hover:bg-rose-500/10 rounded-lg mx-1 px-3 py-2">
+                    <DropdownMenuItem onClick={() => openDelete(campaign)} className="flex items-center gap-2 cursor-pointer text-red hover:bg-red/10 rounded-lg mx-1 px-3 py-2 text-xs">
                       <Trash2 size={14} /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -231,105 +235,94 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
             </div>
 
             <div className="mb-6">
-              <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-1">{campaign.name}</h4>
-              <p className="text-[#4a5a82] text-[10px] font-bold tracking-widest uppercase">Subject: <span className="text-[#94a3c8]">{campaign.subject || '—'}</span></p>
+              <h4 className="text-lg font-bold !text-dash-text mb-1">{campaign.name}</h4>
+              <p className="!text-dash-textMuted text-[11px] font-semibold">Subject: <span className="!text-dash-text">{campaign.subject || '—'}</span></p>
             </div>
 
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[['Opens', campaign.open_rate ? `${campaign.open_rate}%` : '—'], ['Clicks', campaign.click_rate ? `${campaign.click_rate}%` : '—'], ['Bounced', '0%']].map(([label, val]) => (
-                <div key={label} className="p-3 bg-[#04091a] rounded-xl border border-white/5 text-center shadow-sm">
-                  <span className="block text-[9px] font-black text-[#4a5a82] uppercase tracking-widest mb-1">{label}</span>
-                  <span className="text-base font-black text-white">{val}</span>
+                <div key={label} className="p-3 bg-dash-surface rounded-xl border border-dash-border text-center">
+                  <span className="block text-[10px] font-bold !text-dash-textMuted mb-1">{label}</span>
+                  <span className="text-base font-bold !text-dash-text">{val}</span>
                 </div>
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-5 border-t border-white/5">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-[#4a5a82] uppercase">
+            <div className="flex items-center justify-between pt-5 border-t border-dash-border">
+              <div className="flex items-center gap-2 text-[11px] font-semibold !text-dash-textMuted">
                 <Calendar className="w-3.5 h-3.5" />
                 {campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Not sent'}
               </div>
               <div className="flex gap-2">
-                <Button onClick={() => openEdit(campaign)} variant="outline" className="h-9 px-3 rounded-xl border-white/5 text-[9px] font-black uppercase text-[#94a3c8] hover:text-white hover:border-white/20 hover:bg-white/5 transition-all">
+                <DashButton onClick={() => openEdit(campaign)} variant="secondary" size="sm">
                   Settings
-                </Button>
-                <Button onClick={() => router.push(`/campaigns/${campaign.id}/builder`)} className="btn-primary h-9 px-3 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-md shadow-primary/10">
+                </DashButton>
+                <DashButton onClick={() => router.push(`/campaigns/${campaign.id}/builder`)} size="sm">
                   Design
-                </Button>
+                </DashButton>
               </div>
             </div>
-          </div>
+          </DashCard>
         ))}
       </div>
 
       {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-sm p-6 shadow-2xl text-white">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight text-white">New <span className="text-primary">Campaign</span></DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Campaign Name</Label>
-              <Input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="e.g. Welcome Sequence" className="h-10 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Email Subject</Label>
-              <Input value={createSubject} onChange={e => setCreateSubject(e.target.value)} placeholder="e.g. Welcome to LeadsMind!" className="h-10 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
-            </div>
+      <DashModal open={createOpen} onOpenChange={setCreateOpen}>
+        <DashModalContent className="max-w-sm">
+          <DashModalHeader>
+            <DashModalTitle>New <span className="text-dash-accent">campaign</span></DashModalTitle>
+          </DashModalHeader>
+          <div className="space-y-3">
+            <DashFormField label="Campaign name">
+              <DashInput value={createName} onChange={e => setCreateName(e.target.value)} placeholder="e.g. Welcome Sequence" />
+            </DashFormField>
+            <DashFormField label="Email subject">
+              <DashInput value={createSubject} onChange={e => setCreateSubject(e.target.value)} placeholder="e.g. Welcome to LeadsMind!" />
+            </DashFormField>
           </div>
-          <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setCreateOpen(false)} className="border-white/5 text-[#94a3c8] hover:text-white bg-transparent rounded-xl text-xs font-bold uppercase tracking-wider">Cancel</Button>
-            <Button onClick={handleCreate} disabled={creating} className="btn-primary rounded-xl font-black uppercase text-xs px-8 shadow-lg shadow-primary/20">{creating ? 'Creating...' : 'Create'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <DashModalFooter>
+            <DashButton variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</DashButton>
+            <DashButton onClick={handleCreate} disabled={creating}>{creating ? 'Creating...' : 'Create'}</DashButton>
+          </DashModalFooter>
+        </DashModalContent>
+      </DashModal>
 
       {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-md p-6 shadow-2xl text-white">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight text-white">Edit <span className="text-primary">Campaign</span></DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Name</Label>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-10 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Subject</Label>
-              <Input value={editSubject} onChange={e => setEditSubject(e.target.value)} className="h-10 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Target Audience Tags (Comma Separated)</Label>
-              <Input value={editTags} onChange={e => setEditTags(e.target.value)} placeholder="e.g. VIP, Newsletter, Leads" className="h-10 border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
-              <p className="text-[9px] text-[#4a5a82] font-medium">Leave blank to send to all contacts.</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Email Body / plain text preview</Label>
-              <Textarea value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Write your email content..." className="min-h-[100px] border-white/5 rounded-xl text-white bg-[#04091a] placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-[#3b82f6] text-sm" />
-            </div>
+      <DashModal open={editOpen} onOpenChange={setEditOpen}>
+        <DashModalContent className="max-w-md">
+          <DashModalHeader>
+            <DashModalTitle>Edit <span className="text-dash-accent">campaign</span></DashModalTitle>
+          </DashModalHeader>
+          <div className="space-y-3">
+            <DashFormField label="Name">
+              <DashInput value={editName} onChange={e => setEditName(e.target.value)} />
+            </DashFormField>
+            <DashFormField label="Subject">
+              <DashInput value={editSubject} onChange={e => setEditSubject(e.target.value)} />
+            </DashFormField>
+            <DashFormField label="Target audience tags (comma separated)" hint="Leave blank to send to all contacts.">
+              <DashInput value={editTags} onChange={e => setEditTags(e.target.value)} placeholder="e.g. VIP, Newsletter, Leads" />
+            </DashFormField>
+            <DashFormField label="Email body / plain text preview">
+              <DashTextarea value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Write your email content..." className="min-h-[100px]" />
+            </DashFormField>
           </div>
-          <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setEditOpen(false)} className="border-white/5 text-[#94a3c8] hover:text-white bg-transparent rounded-xl text-xs font-bold uppercase tracking-wider">Cancel</Button>
-            <Button onClick={handleSaveEdit} disabled={saving} className="btn-primary rounded-xl font-black uppercase text-xs px-8 shadow-lg shadow-primary/20">{saving ? 'Saving...' : 'Save Changes'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <DashModalFooter>
+            <DashButton variant="secondary" onClick={() => setEditOpen(false)}>Cancel</DashButton>
+            <DashButton onClick={handleSaveEdit} disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</DashButton>
+          </DashModalFooter>
+        </DashModalContent>
+      </DashModal>
 
-      {/* Delete Dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="bg-[#080f28] border border-white/5 rounded-3xl max-w-sm p-6 shadow-2xl text-white">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight text-white">Delete Campaign?</DialogTitle>
-          </DialogHeader>
-          <p className="text-[#94a3c8] text-sm py-2">This will permanently delete <strong className="text-white">{deleteCampaign?.name}</strong>. This cannot be undone.</p>
-          <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)} className="border-white/5 text-[#94a3c8] hover:text-white bg-transparent rounded-xl text-xs font-bold uppercase tracking-wider">Cancel</Button>
-            <Button onClick={handleDelete} disabled={deleting} className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black uppercase text-xs px-8 shadow-lg shadow-rose-600/20">{deleting ? 'Deleting...' : 'Delete'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        isOpen={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete campaign?"
+        description={`This will permanently delete "${deleteCampaign?.name}". This cannot be undone.`}
+        confirmLabel={deleting ? 'Deleting...' : 'Delete'}
+        variant="danger"
+      />
     </div>
   );
 }

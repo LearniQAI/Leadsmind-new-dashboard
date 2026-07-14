@@ -13,26 +13,26 @@ export function BuilderSettings() {
   const selectedField = state.fields.find(f => f.id === state.selectedFieldId);
 
   return (
-    <div className="builder-panel builder-panel--right" style={{ width: 300, display: 'flex', flexDirection: 'column' }}>
-      
+    <div className="builder-panel builder-panel--right w-[300px] flex flex-col">
+
       {/* Right Sidebar Tabs */}
-      <div className="flex border-b border-white/5 bg-white/1 p-1 m-2.5 rounded-xl">
+      <div className="flex border-b border-dash-border bg-white p-1 m-2.5 rounded-xl">
         <button
           onClick={() => setActiveTab('settings')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none ${
             activeTab === 'settings'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-white/40 hover:text-white'
+              ? 'bg-dash-accent text-white shadow-md'
+              : '!text-dash-textMuted hover:!text-dash-text'
           }`}
         >
           <Settings2 size={11} /> Settings
         </button>
         <button
           onClick={() => setActiveTab('logic')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none ${
             activeTab === 'logic'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-white/40 hover:text-white'
+              ? 'bg-dash-accent text-white shadow-md'
+              : '!text-dash-textMuted hover:!text-dash-text'
           }`}
         >
           <Sliders size={11} /> Logic
@@ -43,8 +43,8 @@ export function BuilderSettings() {
         !selectedField ? (
           <>
             <div className="builder-panel__header">
-              <h2 className="builder-panel__title">Form Settings</h2>
-              <p className="builder-panel__sub" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <h2 className="builder-panel__title">Form settings</h2>
+              <p className="builder-panel__sub">
                 Global configuration controls
               </p>
             </div>
@@ -53,8 +53,8 @@ export function BuilderSettings() {
         ) : (
           <>
             <div className="builder-panel__header">
-              <h2 className="builder-panel__title">Field Settings</h2>
-              <p className="builder-panel__sub" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <h2 className="builder-panel__title">Field settings</h2>
+              <p className="builder-panel__sub capitalize">
                 {selectedField.type} input settings
               </p>
             </div>
@@ -66,7 +66,7 @@ export function BuilderSettings() {
           </>
         )
       ) : (
-        <div className="builder-panel__body custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
+        <div className="builder-panel__body custom-scrollbar flex-1 overflow-y-auto px-5 pb-5">
           <LogicBuilder />
         </div>
       )}

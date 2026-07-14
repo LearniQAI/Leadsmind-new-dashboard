@@ -239,7 +239,7 @@ export function AIAssistantSidebar({
     if (appliedPatches.length === 0) return;
     setConfirmConfig({
       isOpen: true,
-      title: 'Revert AI Patch?',
+      title: 'Revert AI patch?',
       description: 'Revert the last approved AI patch suggestion?',
       confirmLabel: 'Revert',
       onConfirm: async () => {
@@ -281,36 +281,36 @@ export function AIAssistantSidebar({
       {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
-        className={`fixed bottom-6 ${floatingOffsetClass || 'right-6'} w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center border border-blue-500/30 transition-all hover:scale-110 z-50`}
+        className={`fixed bottom-6 ${floatingOffsetClass || 'right-6'} w-12 h-12 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-full shadow-lg flex items-center justify-center border border-dash-accent/30 transition-transform motion-reduce:transition-none hover:scale-110 motion-reduce:hover:scale-100 z-50`}
         title="LeadsMind AI Assistant"
       >
-        <Sparkles size={20} className="animate-pulse" />
+        <Sparkles size={20} className="animate-pulse motion-reduce:animate-none" />
       </button>
 
       {/* Slide-out Sidebar Panel */}
-      <div className={`fixed top-0 right-0 h-full w-[420px] bg-[#0c1535]/95 border-l border-white/7 backdrop-blur-xl transition-all duration-300 z-50 flex flex-col font-dm-sans shadow-2xl ${
+      <div className={`fixed top-0 right-0 h-full w-[420px] bg-white border-l border-dash-border transition-transform duration-300 motion-reduce:transition-none z-50 flex flex-col shadow-lg ${
         open ? 'translate-x-0' : 'translate-x-full'
       }`}>
-        
+
         {/* Header */}
-        <div className="p-4 border-b border-white/5 flex items-center justify-between">
+        <div className="p-4 border-b border-dash-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-blue-400" />
-            <h3 className="text-sm font-black uppercase tracking-wider text-white font-space-grotesk">AI CRO Assistant</h3>
+            <Sparkles size={16} className="text-dash-accent" />
+            <h3 className="text-sm font-bold !text-dash-text">AI CRO assistant</h3>
           </div>
-          <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/5 rounded text-white/50 hover:text-white transition-colors">
+          <button onClick={() => setOpen(false)} className="p-1 hover:bg-dash-surface rounded !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
             <X size={16} />
           </button>
         </div>
 
         {/* Navigation tabs */}
-        <div className="grid grid-cols-4 bg-white/2 border-b border-white/5 p-1">
+        <div className="grid grid-cols-4 bg-dash-surface border-b border-dash-border p-1">
           {(['generate', 'copy', 'insights', 'workflows'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-2 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${
-                activeTab === tab ? 'bg-blue-600 text-white' : 'text-white/40 hover:text-white/80'
+              className={`py-2 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none capitalize ${
+                activeTab === tab ? 'bg-dash-accent text-white' : '!text-dash-textMuted hover:!text-dash-text'
               }`}
             >
               {tab}
@@ -320,21 +320,21 @@ export function AIAssistantSidebar({
 
         {/* Assistant panels */}
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col gap-6">
-          
+
           {activeTab === 'generate' && (
             <div className="flex flex-col gap-3">
               <textarea
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
                 placeholder="Describe your form (e.g. 'Create a real estate client intake wizard')"
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none min-h-[70px] resize-none"
+                className="bg-dash-surface border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text focus:outline-none min-h-[70px] resize-none"
               />
               <button
                 onClick={handleGenerateForm}
                 disabled={loading || !prompt.trim()}
-                className="h-9 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+                className="h-9 bg-dash-accent hover:bg-dash-accent/90 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-colors motion-reduce:transition-none flex items-center justify-center gap-1.5"
               >
-                {loading ? <Loader2 className="animate-spin" size={14} /> : <Send size={12} />} Generate Form Schema
+                {loading ? <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> : <Send size={12} />} Generate form schema
               </button>
             </div>
           )}
@@ -345,24 +345,24 @@ export function AIAssistantSidebar({
                 value={copyText}
                 onChange={e => setCopyText(e.target.value)}
                 placeholder="Enter current form headline or CTA copy to optimize..."
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none min-h-[70px] resize-none"
+                className="bg-dash-surface border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text focus:outline-none min-h-[70px] resize-none"
               />
               <div className="flex items-center gap-2">
                 <select
                   value={tone}
                   onChange={e => setTone(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white flex-1 focus:outline-none"
+                  className="bg-dash-surface border border-dash-border rounded-lg px-2.5 py-1.5 text-[11px] !text-dash-text flex-1 focus:outline-none"
                 >
-                  <option value="conversion" className="bg-[#0b132c]">Conversion / Urgent</option>
-                  <option value="playful" className="bg-[#0b132c]">Playful / Friendly</option>
-                  <option value="professional" className="bg-[#0b132c]">Professional</option>
+                  <option value="conversion">Conversion / Urgent</option>
+                  <option value="playful">Playful / Friendly</option>
+                  <option value="professional">Professional</option>
                 </select>
                 <button
                   onClick={handleOptimizeCopy}
                   disabled={loading || !copyText.trim()}
-                  className="h-8 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg text-[10px] font-black uppercase tracking-wider px-4 transition-all flex items-center justify-center gap-1.5"
+                  className="h-8 bg-dash-accent hover:bg-dash-accent/90 disabled:opacity-40 text-white rounded-lg text-[10px] font-bold px-4 transition-colors motion-reduce:transition-none flex items-center justify-center gap-1.5"
                 >
-                  {loading ? <Loader2 className="animate-spin" size={12} /> : null} Suggest
+                  {loading ? <Loader2 className="animate-spin motion-reduce:animate-none" size={12} /> : null} Suggest
                 </button>
               </div>
             </div>
@@ -370,47 +370,47 @@ export function AIAssistantSidebar({
 
           {activeTab === 'insights' && (
             <div className="flex flex-col gap-3">
-              <p className="text-[10px] text-[#4a5a82]">Audits abandonment timing, dropouts, and mobile friction factors.</p>
+              <p className="text-[11px] !text-dash-textMuted">Audits abandonment timing, dropouts, and mobile friction factors.</p>
               <button
                 onClick={handleAuditAnalytics}
                 disabled={loading}
-                className="h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+                className="h-9 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-xs font-bold transition-colors motion-reduce:transition-none flex items-center justify-center gap-1.5"
               >
-                {loading ? <Loader2 className="animate-spin" size={14} /> : null} Audit Conversion Insights
+                {loading ? <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> : null} Audit conversion insights
               </button>
             </div>
           )}
 
           {activeTab === 'workflows' && (
             <div className="flex flex-col gap-3">
-              <p className="text-[10px] text-[#4a5a82]">Inspects form context to recommend optimal recovery & notification logic.</p>
+              <p className="text-[11px] !text-dash-textMuted">Inspects form context to recommend optimal recovery & notification logic.</p>
               <button
                 onClick={handleWorkflowAdvice}
                 disabled={loading}
-                className="h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+                className="h-9 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-xs font-bold transition-colors motion-reduce:transition-none flex items-center justify-center gap-1.5"
               >
-                {loading ? <Loader2 className="animate-spin" size={14} /> : null} Recommends CRM Workflows
+                {loading ? <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> : null} Recommend CRM workflows
               </button>
               <a
                 href={`/forms/${formId}/automations`}
                 target="_blank"
                 rel="noreferrer"
-                className="h-9 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border border-white/10 hover:border-white/20 cursor-pointer decoration-transparent"
+                className="h-9 bg-dash-surface hover:bg-dash-border/60 !text-dash-text rounded-xl text-xs font-bold transition-colors motion-reduce:transition-none flex items-center justify-center gap-1.5 border border-dash-border hover:border-dash-text/20 cursor-pointer decoration-transparent"
               >
-                Go to Automations Dashboard ↗
+                Go to automations dashboard ↗
               </a>
             </div>
           )}
 
-          <div className="flex flex-col gap-3 border-t border-white/5 pt-4">
+          <div className="flex flex-col gap-3 border-t border-dash-border pt-4">
             <div className="flex justify-between items-center mb-1">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Optimization Queue</h4>
+              <h4 className="text-[11px] font-bold !text-dash-textMuted">Optimization queue</h4>
               {appliedPatches.length > 0 && (
                 <button
                   onClick={handleRevertLastPatch}
-                  className="text-[9px] font-black uppercase tracking-wider text-rose-400 hover:underline flex items-center gap-1"
+                  className="text-[10px] font-bold text-red hover:underline flex items-center gap-1"
                 >
-                  <RotateCcw size={10} /> Revert Last Approved
+                  <RotateCcw size={10} /> Revert last approved
                 </button>
               )}
             </div>

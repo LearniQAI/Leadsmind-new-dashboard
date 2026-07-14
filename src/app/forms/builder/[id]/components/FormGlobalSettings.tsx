@@ -14,15 +14,15 @@ interface FormGlobalSettingsProps {
 
 export function FormGlobalSettings({ config, dispatch }: FormGlobalSettingsProps) {
   return (
-    <div className="builder-panel__body custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20, padding: '0 20px 20px' }}>
-      
+    <div className="builder-panel__body custom-scrollbar flex-1 overflow-y-auto flex flex-col gap-5 px-5 pb-5">
+
       {/* Progress Auto-Save Toggle */}
-      <div className="flex items-center justify-between p-3 bg-white/2 border border-white/5 rounded-xl">
+      <div className="flex items-center justify-between p-3 bg-white border border-dash-border rounded-xl">
         <div>
-          <label htmlFor="form-autosave-toggle" className="text-xs font-bold text-white/80 font-dm-sans cursor-pointer select-none block">
-            Auto-Save Progress
+          <label htmlFor="form-autosave-toggle" className="text-xs font-bold !text-dash-text cursor-pointer select-none block">
+            Auto-save progress
           </label>
-          <span className="text-[9px] text-[#4a5a82] block font-dm-sans mt-0.5">Saves step data in background</span>
+          <span className="text-[10px] !text-dash-textMuted block mt-0.5">Saves step data in background</span>
         </div>
         <div className="relative flex items-center">
           <input
@@ -33,14 +33,14 @@ export function FormGlobalSettings({ config, dispatch }: FormGlobalSettingsProps
               type: 'UPDATE_CONFIG',
               config: { autoSaveEnabled: e.target.checked }
             })}
-            className="w-9 h-5 rounded-full border border-white/10 bg-white/5 checked:bg-[#2563eb] checked:border-transparent focus:outline-none transition-all appearance-none cursor-pointer relative before:content-[''] before:absolute before:w-3.5 before:h-3.5 before:rounded-full before:bg-white/40 before:top-0.5 before:left-0.5 checked:before:left-4.5 checked:before:bg-white before:transition-all"
+            className="w-9 h-5 rounded-full border border-dash-border bg-dash-surface checked:bg-dash-accent checked:border-transparent focus:outline-none transition-colors motion-reduce:transition-none appearance-none cursor-pointer relative before:content-[''] before:absolute before:w-3.5 before:h-3.5 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 checked:before:left-4.5 before:transition-all motion-reduce:before:transition-none before:shadow-sm"
           />
         </div>
       </div>
 
       {/* Expiration Timing */}
       <div>
-        <label className="settings-label" htmlFor="form-session-expiration">Session Expiration</label>
+        <label className="settings-label" htmlFor="form-session-expiration">Session expiration</label>
         <select
           id="form-session-expiration"
           value={config.sessionExpirationDays ?? 7}
@@ -48,13 +48,13 @@ export function FormGlobalSettings({ config, dispatch }: FormGlobalSettingsProps
             type: 'UPDATE_CONFIG',
             config: { sessionExpirationDays: parseInt(e.target.value, 10) }
           })}
-          className="settings-input w-full h-10 px-3 bg-white/5 border-white/10 rounded-xl text-white text-xs focus:outline-none cursor-pointer"
+          className="settings-input h-10 px-3 text-xs cursor-pointer"
         >
-          <option value={1} className="bg-[#0b132c] text-white">1 Day</option>
-          <option value={3} className="bg-[#0b132c] text-white">3 Days</option>
-          <option value={7} className="bg-[#0b132c] text-white">7 Days</option>
-          <option value={14} className="bg-[#0b132c] text-white">14 Days</option>
-          <option value={30} className="bg-[#0b132c] text-white">30 Days</option>
+          <option value={1}>1 Day</option>
+          <option value={3}>3 Days</option>
+          <option value={7}>7 Days</option>
+          <option value={14}>14 Days</option>
+          <option value={30}>30 Days</option>
         </select>
       </div>
 
@@ -68,16 +68,16 @@ export function FormGlobalSettings({ config, dispatch }: FormGlobalSettingsProps
             type: 'UPDATE_CONFIG',
             config: { partialSubmissionBehavior: e.target.value }
           })}
-          className="settings-input w-full h-10 px-3 bg-white/5 border-white/10 rounded-xl text-white text-xs focus:outline-none cursor-pointer"
+          className="settings-input h-10 px-3 text-xs cursor-pointer"
         >
-          <option value="keep" className="bg-[#0b132c] text-white">Retain details on resume</option>
-          <option value="overwrite" className="bg-[#0b132c] text-white">Overwrite existing progress</option>
-          <option value="discard" className="bg-[#0b132c] text-white">Discard on page timeout</option>
+          <option value="keep">Retain details on resume</option>
+          <option value="overwrite">Overwrite existing progress</option>
+          <option value="discard">Discard on page timeout</option>
         </select>
       </div>
 
       {/* Quick info */}
-      <div className="text-[10px] text-[#4a5a82] leading-relaxed p-4 bg-white/1 rounded-xl border border-white/5 font-dm-sans">
+      <div className="text-[11px] !text-dash-textMuted leading-relaxed p-4 bg-dash-surface rounded-xl border border-dash-border">
         Select any field on the canvas to configure that specific input, or customize form behaviors here.
       </div>
 

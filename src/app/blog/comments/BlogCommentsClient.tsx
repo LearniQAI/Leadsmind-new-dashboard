@@ -6,6 +6,9 @@ import { updateCommentStatus, deleteComment, updateBlogSettings } from '@/app/ac
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import { DashCard } from '@/components/dashboard-ui/Card';
+import { DashButton } from '@/components/dashboard-ui/Button';
 
 interface Comment {
   id: string;
@@ -65,7 +68,7 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
   const handleDelete = async (id: string) => {
     setConfirmConfig({
       isOpen: true,
-      title: 'Delete Comment?',
+      title: 'Delete comment?',
       description: 'Permanently delete this comment?',
       confirmLabel: 'Delete',
       onConfirm: async () => {
@@ -108,57 +111,62 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
   const filteredComments = comments.filter(c => c.status === activeTab);
   const tabCounts = TABS.reduce((acc, tab) => ({ ...acc, [tab]: comments.filter(c => c.status === tab).length }), {} as Record<string, number>);
 
+  const selectClass = "w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs sm:text-sm !text-dash-text focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none appearance-none cursor-pointer";
+  const labelClass = "text-xs !text-dash-textMuted font-bold block";
+
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--n900)]">
+    <div className="flex flex-col min-h-screen bg-white">
 
       {/* Page Header */}
-      <div className="page-header px-8 py-6 flex-shrink-0 bg-[var(--n900)] border-b border-white/5">
-        <div className="ph-left">
+      <div className="px-8 py-6 flex-shrink-0 bg-white border-b border-dash-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
           <div className="flex items-center gap-3.5 mb-1">
-            <Link href="/blog/manage" className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200">
+            <Link href="/blog/manage" className="p-2.5 rounded-xl bg-dash-surface hover:bg-dash-border/60 !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <h1 className="text-2xl sm:text-3xl font-extrabold font-space-grotesk text-white uppercase tracking-tight flex items-center gap-3">
-              <ShieldCheck className="w-7 h-7 text-primary shrink-0" />
-              Comments <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-400">&amp; Moderation</span>
+            <h1 className="text-2xl sm:text-3xl font-bold !text-dash-text flex items-center gap-3">
+              <ShieldCheck className="w-7 h-7 text-dash-accent shrink-0" />
+              Comments <span className="text-dash-accent">&amp; moderation</span>
             </h1>
           </div>
-          <p className="text-xs font-medium text-white/50 tracking-wide mt-1.5 ml-14">
+          <p className="text-xs font-medium !text-dash-textMuted mt-1.5 ml-14">
             Review submissions &amp; configure workspace discussion preferences
           </p>
         </div>
-        <div className="ph-right">
-          <Link href="/blog/analytics" className="btn-outline !h-10 !px-5 text-xs font-bold uppercase tracking-widest gap-2 rounded-xl">
-            Analytics
-          </Link>
-        </div>
+        <DashButton asChild variant="secondary">
+          <Link href="/blog/analytics">Analytics</Link>
+        </DashButton>
       </div>
 
       {/* Body */}
       <div className="flex-1 p-8 sm:p-10 grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
 
         {/* LEFT — Moderation Queue */}
-        <div className="xl:col-span-8 bg-[#080f28] border border-white/5 rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ minHeight: '600px', maxHeight: 'calc(100vh - 180px)' }}>
+        <DashCard padding="none" className="xl:col-span-8 flex flex-col overflow-hidden" style={{ minHeight: '600px', maxHeight: 'calc(100vh - 180px)' }}>
 
           {/* Queue Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-5 border-b border-white/5 gap-4 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-5 border-b border-dash-border gap-4 shrink-0">
             <div className="flex items-center gap-2.5">
-              <MessageSquare className="w-5 h-5 text-purple-400 shrink-0" />
-              <h2 className="text-base font-bold text-white tracking-wide">Moderation Queue</h2>
+              <MessageSquare className="w-5 h-5 text-purple-600 shrink-0" />
+              <h2 className="text-base font-bold !text-dash-text">Moderation queue</h2>
             </div>
-            <div className="flex bg-[#04091a] p-1 rounded-xl border border-white/10">
+            <div className="flex bg-dash-surface p-1 rounded-xl border border-dash-border">
               {TABS.map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-all capitalize ${activeTab === tab ? 'bg-white/10 text-white shadow-lg' : 'text-white/40 hover:text-white/70'
-                    }`}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-colors motion-reduce:transition-none capitalize",
+                    activeTab === tab ? 'bg-white !text-dash-text shadow-sm' : '!text-dash-textMuted hover:!text-dash-text'
+                  )}
                 >
                   {tab}
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${tab === 'pending' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/20' :
-                    tab === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' :
-                      'bg-rose-500/20 text-rose-400 border border-rose-500/20'
-                    }`}>
+                  <span className={cn(
+                    "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                    tab === 'pending' ? 'bg-amber-100 text-amber-600 border border-amber-200' :
+                    tab === 'approved' ? 'bg-green/10 text-green border border-green/20' :
+                      'bg-red/10 text-red border border-red/20'
+                  )}>
                     {tabCounts[tab]}
                   </span>
                 </button>
@@ -167,34 +175,34 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
           </div>
 
           {/* Comment List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
+          <div className="flex-1 overflow-y-auto divide-y divide-dash-border">
             {filteredComments.length > 0 ? filteredComments.map(comment => (
-              <div key={comment.id} className="px-6 py-6 hover:bg-white/[0.015] transition-all duration-200 group">
+              <div key={comment.id} className="px-6 py-6 hover:bg-dash-surface transition-colors motion-reduce:transition-none group">
                 <div className="flex items-start justify-between gap-4">
                   {/* Avatar */}
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
+                  <div className="w-10 h-10 rounded-xl bg-dash-accent/10 border border-dash-accent/20 flex items-center justify-center shrink-0 text-sm font-bold text-dash-accent">
                     {comment.author_name.charAt(0).toUpperCase()}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     {/* Meta */}
                     <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
-                      <span className="text-sm font-bold text-white">{comment.author_name}</span>
+                      <span className="text-sm font-bold !text-dash-text">{comment.author_name}</span>
                       {comment.author_email && (
-                        <span className="text-xs text-white/40">({comment.author_email})</span>
+                        <span className="text-xs !text-dash-textMuted">({comment.author_email})</span>
                       )}
-                      <span className="w-px h-3 bg-white/10" />
-                      <span className="flex items-center gap-1 text-xs text-white/40">
+                      <span className="w-px h-3 bg-dash-border" />
+                      <span className="flex items-center gap-1 text-xs !text-dash-textMuted">
                         <Clock className="w-3.5 h-3.5" />
                         {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     </div>
                     {comment.post && (
-                      <Link href={`/blog/${comment.post.slug}`} target="_blank" className="text-xs text-primary/80 hover:text-primary font-medium block mb-2">
+                      <Link href={`/blog/${comment.post.slug}`} target="_blank" className="text-xs text-dash-accent/80 hover:text-dash-accent font-medium block mb-2">
                         On article: {comment.post.title}
                       </Link>
                     )}
-                    <p className="text-sm text-white/70 leading-relaxed border-l-2 border-white/10 pl-4 py-0.5 mb-3">
+                    <p className="text-sm !text-dash-textMuted leading-relaxed border-l-2 border-dash-border pl-4 py-0.5 mb-3">
                       {comment.content}
                     </p>
 
@@ -203,7 +211,7 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
                       {activeTab !== 'approved' && (
                         <button
                           onClick={() => handleStatusChange(comment.id, 'approved')}
-                          className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-3.5 py-1.5 rounded-lg transition"
+                          className="flex items-center gap-1.5 text-xs font-bold text-green bg-green/10 hover:bg-green/20 px-3.5 py-1.5 rounded-lg transition-colors motion-reduce:transition-none"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Approve
                         </button>
@@ -211,7 +219,7 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
                       {activeTab !== 'spam' && (
                         <button
                           onClick={() => handleStatusChange(comment.id, 'spam')}
-                          className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-3.5 py-1.5 rounded-lg transition"
+                          className="flex items-center gap-1.5 text-xs font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 px-3.5 py-1.5 rounded-lg transition-colors motion-reduce:transition-none"
                         >
                           <ShieldAlert className="w-3.5 h-3.5" /> Spam
                         </button>
@@ -219,14 +227,14 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
                       {activeTab !== 'pending' && (
                         <button
                           onClick={() => handleStatusChange(comment.id, 'pending')}
-                          className="flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 px-3.5 py-1.5 rounded-lg transition"
+                          className="flex items-center gap-1.5 text-xs font-bold text-dash-accent bg-dash-accent/10 hover:bg-dash-accent/20 px-3.5 py-1.5 rounded-lg transition-colors motion-reduce:transition-none"
                         >
-                          <XCircle className="w-3.5 h-3.5" /> Move to Pending
+                          <XCircle className="w-3.5 h-3.5" /> Move to pending
                         </button>
                       )}
                       <button
                         onClick={() => handleDelete(comment.id)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 px-3.5 py-1.5 rounded-lg transition ml-auto"
+                        className="flex items-center gap-1.5 text-xs font-bold text-red bg-red/10 hover:bg-red/20 px-3.5 py-1.5 rounded-lg transition-colors motion-reduce:transition-none ml-auto"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Delete
                       </button>
@@ -236,32 +244,32 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
               </div>
             )) : (
               <div className="flex flex-col items-center justify-center h-full py-24 text-center px-6">
-                <CheckCircle2 className="w-12 h-12 text-white/10 mb-4 animate-pulse" />
-                <p className="text-sm text-white/40 font-bold uppercase tracking-wider capitalize">No {activeTab} comments</p>
-                <p className="text-xs text-white/20 mt-1.5">
+                <CheckCircle2 className="w-12 h-12 !text-dash-textMuted opacity-30 mb-4" />
+                <p className="text-sm !text-dash-textMuted font-bold capitalize">No {activeTab} comments</p>
+                <p className="text-xs !text-dash-textMuted opacity-70 mt-1.5">
                   {activeTab === 'pending' ? 'All caught up — no new submissions await review.' : `No comments in the ${activeTab} queue.`}
                 </p>
               </div>
             )}
           </div>
-        </div>
+        </DashCard>
 
         {/* RIGHT — Settings Panel */}
-        <div className="xl:col-span-4 bg-[#080f28] border border-white/5 rounded-2xl shadow-2xl overflow-hidden">
-          <div className="flex items-center gap-2.5 px-6 py-5 border-b border-white/5">
-            <Settings className="w-5 h-5 text-emerald-400 shrink-0" />
-            <h2 className="text-base font-bold text-white tracking-wide">Workspace Config</h2>
+        <DashCard padding="none" className="xl:col-span-4 overflow-hidden">
+          <div className="flex items-center gap-2.5 px-6 py-5 border-b border-dash-border">
+            <Settings className="w-5 h-5 text-green shrink-0" />
+            <h2 className="text-base font-bold !text-dash-text">Workspace config</h2>
           </div>
 
           <div className="p-6 space-y-6">
 
             {/* Engine selector */}
             <div className="space-y-2">
-              <label className="text-xs text-white/50 font-bold uppercase tracking-wider block">Discussion Engine</label>
+              <label className={labelClass}>Discussion engine</label>
               <select
                 value={engine}
                 onChange={(e) => setEngine(e.target.value)}
-                className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-primary/50 transition appearance-none cursor-pointer"
+                className={selectClass}
               >
                 <option value="none">Disabled (No Comments)</option>
                 <option value="native">LeadsMind Native (Moderated)</option>
@@ -271,27 +279,27 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
 
             {/* Disqus shortname */}
             {engine === 'disqus' && (
-              <div className="space-y-2 animate-fade-in">
-                <label className="text-xs text-white/50 font-bold uppercase tracking-wider block">Disqus Shortname</label>
+              <div className="space-y-2 animate-in fade-in duration-200 motion-reduce:animate-none">
+                <label className={labelClass}>Disqus shortname</label>
                 <input
                   type="text"
                   value={disqusName}
                   onChange={(e) => setDisqusName(e.target.value)}
                   placeholder="your-shortname"
-                  className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-primary/50 transition placeholder-white/20"
+                  className={selectClass}
                 />
-                <p className="text-xs text-amber-400/80 leading-relaxed">
+                <p className="text-xs text-amber-600 leading-relaxed">
                   Note: Moderation of Disqus comments occurs directly inside the Disqus publisher portal.
                 </p>
               </div>
             )}
 
             {/* Layout Configuration */}
-            <div className="pt-4 border-t border-white/5 space-y-4">
-              <p className="text-xs text-white/50 font-bold uppercase tracking-wider">Default Layout Config</p>
-              
+            <div className="pt-4 border-t border-dash-border space-y-4">
+              <p className={labelClass}>Default layout config</p>
+
               <div className="space-y-2.5">
-                <label className="text-[10px] text-white/40 font-bold uppercase tracking-wider block">Default Blog Layout</label>
+                <label className={cn(labelClass, "text-[10px]")}>Default blog layout</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { id: 'magazine', label: 'Magazine', desc: 'Bold multi-column grid' },
@@ -307,12 +315,19 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
                         key={opt.id}
                         type="button"
                         onClick={() => setLayoutStyle(opt.id)}
-                        className={`flex flex-col text-left rounded-xl border p-2 transition-all duration-200 focus:outline-none relative group ${
+                        className={cn(
+                          "flex flex-col text-left rounded-xl border p-2 transition-colors motion-reduce:transition-none focus:outline-none relative group",
                           isSelected
-                            ? 'bg-primary/10 border-primary shadow-[0_0_12px_rgba(59,130,246,0.15)]'
-                            : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/[0.08]'
-                        }`}
+                            ? 'bg-dash-accent/10 border-dash-accent'
+                            : 'bg-dash-surface border-dash-border hover:border-dash-text/20'
+                        )}
                       >
+                        {/*
+                          Thumbnail swatches below intentionally kept dark —
+                          they preview the actual public blog page's layout
+                          templates (a separate, out-of-scope surface from
+                          this dashboard), not dashboard chrome.
+                        */}
                         <div className="w-full h-11 mb-1.5 rounded overflow-hidden select-none">
                           {opt.id === 'minimal' && (
                             <div className="flex flex-col items-center justify-between h-full p-1 bg-[#04091a] rounded">
@@ -398,10 +413,10 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
                             </div>
                           )}
                         </div>
-                        <span className="text-[10px] font-bold text-white block truncate leading-tight">{opt.label}</span>
-                        <span className="text-[8px] text-white/40 block leading-tight mt-0.5 line-clamp-1">{opt.desc}</span>
+                        <span className="text-[10px] font-bold !text-dash-text block truncate leading-tight">{opt.label}</span>
+                        <span className="text-[9px] !text-dash-textMuted block leading-tight mt-0.5 line-clamp-1">{opt.desc}</span>
                         {isSelected && (
-                          <span className="absolute top-1 right-1 bg-primary text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[7px] font-black border border-white/10 shadow animate-scale-in">
+                          <span className="absolute top-1 right-1 bg-dash-accent text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[8px] font-bold shadow-sm">
                             ✓
                           </span>
                         )}
@@ -412,11 +427,11 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] text-white/40 font-bold uppercase tracking-wider block">Default Header Style</label>
+                <label className={cn(labelClass, "text-[10px]")}>Default header style</label>
                 <select
                   value={headerStyle}
                   onChange={(e) => setHeaderStyle(e.target.value)}
-                  className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 transition appearance-none cursor-pointer"
+                  className={cn(selectClass, "py-2.5")}
                 >
                   <option value="sticky-slim">Sticky Slim Navbar</option>
                   <option value="transparent-hero">Transparent Hero Overlay</option>
@@ -427,11 +442,11 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] text-white/40 font-bold uppercase tracking-wider block">Default Sidebar Style</label>
+                <label className={cn(labelClass, "text-[10px]")}>Default sidebar style</label>
                 <select
                   value={sidebarStyle}
                   onChange={(e) => setSidebarStyle(e.target.value)}
-                  className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 transition appearance-none cursor-pointer"
+                  className={cn(selectClass, "py-2.5")}
                 >
                   <option value="standard">Standard (Bio + Share + Form)</option>
                   <option value="compact">Compact</option>
@@ -443,11 +458,11 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] text-white/40 font-bold uppercase tracking-wider block">Default Lead Capture</label>
+                <label className={cn(labelClass, "text-[10px]")}>Default lead capture</label>
                 <select
                   value={leadCaptureStyle}
                   onChange={(e) => setLeadCaptureStyle(e.target.value)}
-                  className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 transition appearance-none cursor-pointer"
+                  className={cn(selectClass, "py-2.5")}
                 >
                   <option value="newsletter">Newsletter Form (Standard)</option>
                   <option value="exit-intent">Exit-Intent Modal</option>
@@ -458,13 +473,13 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
 
               {/* SA SEO Defaults */}
               <div className="space-y-3 pt-2">
-                <p className="text-[10px] text-[#fbbf24] font-bold uppercase tracking-wider">South African Local SEO defaults</p>
+                <p className="text-[10px] text-amber-600 font-bold">South African local SEO defaults</p>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider block">Default Province</label>
+                  <label className={cn(labelClass, "text-[9px]")}>Default province</label>
                   <select
                     value={saProvince}
                     onChange={(e) => setSaProvince(e.target.value)}
-                    className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-[#fbbf24] transition appearance-none cursor-pointer"
+                    className={cn(selectClass, "py-2 focus:border-amber-500")}
                   >
                     <option value="">None / National Focus</option>
                     <option value="Eastern Cape">Eastern Cape</option>
@@ -480,41 +495,41 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider block">Default City</label>
+                  <label className={cn(labelClass, "text-[9px]")}>Default city</label>
                   <input
                     type="text"
                     value={saCity}
                     placeholder="e.g. Johannesburg"
                     onChange={(e) => setSaCity(e.target.value)}
-                    className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-[#fbbf24] transition placeholder-white/20"
+                    className={cn(selectClass, "py-2 focus:border-amber-500")}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider block">Default Suburb / Area</label>
+                  <label className={cn(labelClass, "text-[9px]")}>Default suburb / area</label>
                   <input
                     type="text"
                     value={saArea}
                     placeholder="e.g. Sandton"
                     onChange={(e) => setSaArea(e.target.value)}
-                    className="w-full bg-[#04091a] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-[#fbbf24] transition placeholder-white/20"
+                    className={cn(selectClass, "py-2 focus:border-amber-500")}
                   />
                 </div>
               </div>
             </div>
 
             {/* Analytics toggle */}
-            <div className="pt-4 border-t border-white/5 space-y-4">
-              <p className="text-xs text-white/50 font-bold uppercase tracking-wider">Tracking Preferences</p>
+            <div className="pt-4 border-t border-dash-border space-y-4">
+              <p className={labelClass}>Tracking preferences</p>
               <label className="flex items-start gap-3 cursor-pointer group">
                 <div className="relative shrink-0 mt-0.5">
                   <input type="checkbox" className="sr-only" checked={analyticsEnabled} onChange={e => setAnalyticsEnabled(e.target.checked)} />
-                  <div className={`w-9 h-5 rounded-full transition-colors ${analyticsEnabled ? 'bg-primary' : 'bg-white/10'}`} />
-                  <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full shadow transition-transform ${analyticsEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <div className={cn("w-9 h-5 rounded-full transition-colors motion-reduce:transition-none", analyticsEnabled ? 'bg-dash-accent' : 'bg-dash-border')} />
+                  <div className={cn("absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full shadow transition-transform motion-reduce:transition-none", analyticsEnabled ? 'translate-x-4' : 'translate-x-0')} />
                 </div>
                 <div>
-                  <span className="text-sm font-bold text-white group-hover:text-primary transition block">Analytics Tracking</span>
-                  <span className="text-xs text-white/40 leading-relaxed block mt-0.5">Track anonymous impressions, reading time &amp; scroll depth</span>
+                  <span className="text-sm font-bold !text-dash-text group-hover:text-dash-accent transition-colors motion-reduce:transition-none block">Analytics tracking</span>
+                  <span className="text-xs !text-dash-textMuted leading-relaxed block mt-0.5">Track anonymous impressions, reading time &amp; scroll depth</span>
                 </div>
               </label>
             </div>
@@ -523,39 +538,57 @@ export default function BlogCommentsClient({ initialComments, settings, workspac
             <button
               onClick={handleSaveSettings}
               disabled={savingSettings}
-              className={`w-full py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 ${settingsSaved
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                : 'bg-primary hover:bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]'
-                } disabled:opacity-50`}
+              className={cn(
+                "w-full py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-colors motion-reduce:transition-none flex items-center justify-center gap-2 disabled:opacity-50",
+                settingsSaved
+                  ? 'bg-green/10 text-green border border-green/30'
+                  : 'bg-dash-accent hover:bg-dash-accent/90 text-white'
+              )}
             >
               {settingsSaved ? (
-                <><CheckCircle2 className="w-4 h-4" /> Saved Successfully</>
+                <><CheckCircle2 className="w-4 h-4" /> Saved successfully</>
               ) : (
-                <><Save className="w-4 h-4" /> {savingSettings ? 'Saving...' : 'Save Configuration'}</>
+                <><Save className="w-4 h-4" /> {savingSettings ? 'Saving...' : 'Save configuration'}</>
               )}
             </button>
 
             {/* Quick Stats */}
-            <div className="pt-4 border-t border-white/5 grid grid-cols-3 gap-3">
+            <div className="pt-4 border-t border-dash-border grid grid-cols-3 gap-3">
               {TABS.map(tab => (
                 <div
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`text-center p-3 rounded-xl border cursor-pointer transition ${activeTab === tab ? 'bg-white/5 border-white/15' : 'bg-[#04091a] border-white/5 hover:border-white/10'
-                    }`}
+                  className={cn(
+                    "text-center p-3 rounded-xl border cursor-pointer transition-colors motion-reduce:transition-none",
+                    activeTab === tab ? 'bg-dash-surface border-dash-text/15' : 'bg-white border-dash-border hover:border-dash-text/20'
+                  )}
                 >
-                  <div className={`text-xl font-extrabold font-space-grotesk ${tab === 'pending' ? 'text-amber-400' :
-                    tab === 'approved' ? 'text-emerald-400' : 'text-rose-400'
-                    }`}>{tabCounts[tab]}</div>
-                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold capitalize mt-1">{tab}</div>
+                  <div className={cn(
+                    "text-xl font-bold",
+                    tab === 'pending' ? 'text-amber-600' :
+                    tab === 'approved' ? 'text-green' : 'text-red'
+                  )}>{tabCounts[tab]}</div>
+                  <div className="text-[10px] !text-dash-textMuted font-bold capitalize mt-1">{tab}</div>
                 </div>
               ))}
             </div>
 
           </div>
-        </div>
+        </DashCard>
 
       </div>
+
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={confirmConfig.isOpen}
+          onClose={() => setConfirmConfig(prev => prev ? { ...prev, isOpen: false } : null)}
+          onConfirm={confirmConfig.onConfirm}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

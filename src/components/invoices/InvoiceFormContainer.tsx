@@ -6,8 +6,10 @@ import TotalsSummaryPanel from './TotalsSummaryPanel';
 import CustomFieldsRenderer, { CustomFieldDefinition } from './CustomFieldsRenderer';
 import AttachmentDropzone from './AttachmentDropzone';
 import ContactSelector from './ContactSelector';
-import { PremiumInput, PremiumTextarea } from '@/components/ui/premium-inputs';
+import { DashFormField, DashInput, DashTextarea } from '@/components/dashboard-ui/FormField';
+import { DashButton } from '@/components/dashboard-ui/Button';
 import { LineItem, calculateInvoiceTotals } from '@/lib/invoicing/calculations';
+import { Loader2 } from 'lucide-react';
 
 interface InvoiceFormContainerProps {
   initialData?: any;
@@ -59,25 +61,25 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-8 max-w-5xl mx-auto p-8 bg-[var(--n900)] min-h-screen">
+    <div className="flex flex-col gap-8 max-w-5xl mx-auto pb-24">
       {/* Header Info */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-[var(--card)] border border-[var(--bdr)] rounded-[var(--r16)]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-white border border-dash-border rounded-2xl">
         <div className="md:col-span-2 space-y-6">
-          <div className="flex flex-col gap-2">
-            <h2 className="text-[var(--t1)] font-space text-xl font-bold">
-              Invoice <span className="text-[var(--accent2)]">Details</span>
+          <div className="flex flex-col gap-1">
+            <h2 className="!text-dash-text text-xl font-bold">
+              Invoice <span className="text-dash-accent">details</span>
             </h2>
-            <p className="text-[var(--t3)] text-xs uppercase tracking-widest font-semibold">
-              General Information & Configuration
+            <p className="!text-dash-textMuted text-xs font-semibold">
+              General information & configuration
             </p>
           </div>
 
-          <ContactSelector 
-            contacts={contacts} 
-            selectedId={contactId} 
-            onChange={setContactId} 
+          <ContactSelector
+            contacts={contacts}
+            selectedId={contactId}
+            onChange={setContactId}
           />
-          
+
           <CustomFieldsRenderer
             definitions={customFieldDefinitions}
             values={customFieldValues}
@@ -85,52 +87,47 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
             onChange={(id, val) => setCustomFieldValues(prev => ({ ...prev, [id]: val }))}
           />
         </div>
-        
-        <div className="bg-[var(--n800)] p-4 rounded-[var(--r12)] border border-[var(--bdr)] flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-             <label className="text-[10px] font-bold text-[var(--t3)] uppercase">Invoice Number</label>
-             <PremiumInput 
-               placeholder="e.g. INV-001" 
-               className="h-10" 
-               value={invoiceNumber}
-               onChange={(e) => setInvoiceNumber(e.target.value)}
-             />
-          </div>
-          <div className="flex flex-col gap-1">
-             <label className="text-[10px] font-bold text-[var(--t3)] uppercase">Issue Date</label>
-             <PremiumInput 
-               type="date" 
-               className="h-10" 
-               value={issueDate}
-               onChange={(e) => setIssueDate(e.target.value)}
-             />
-          </div>
-          <div className="flex flex-col gap-1">
-             <label className="text-[10px] font-bold text-[var(--t3)] uppercase">Due Date</label>
-             <PremiumInput 
-               type="date" 
-               className="h-10" 
-               value={dueDate}
-               onChange={(e) => setDueDate(e.target.value)}
-             />
-          </div>
+
+        <div className="bg-dash-surface p-4 rounded-xl border border-dash-border flex flex-col gap-4">
+          <DashFormField label="Invoice number">
+            <DashInput
+              placeholder="e.g. INV-001"
+              className="h-10"
+              value={invoiceNumber}
+              onChange={(e) => setInvoiceNumber(e.target.value)}
+            />
+          </DashFormField>
+          <DashFormField label="Issue date">
+            <DashInput
+              type="date"
+              className="h-10"
+              value={issueDate}
+              onChange={(e) => setIssueDate(e.target.value)}
+            />
+          </DashFormField>
+          <DashFormField label="Due date">
+            <DashInput
+              type="date"
+              className="h-10"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+          </DashFormField>
         </div>
       </div>
 
       {/* Line Items */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <h3 className="text-[var(--t1)] font-space text-lg font-semibold">
-              Line <span className="text-[var(--accent2)]">Items</span>
-            </h3>
-            <p className="text-[var(--t3)] text-[11px] uppercase tracking-wider font-medium">
-              Products and services billed
-            </p>
-          </div>
+        <div className="flex flex-col gap-1">
+          <h3 className="!text-dash-text text-lg font-semibold">
+            Line <span className="text-dash-accent">items</span>
+          </h3>
+          <p className="!text-dash-textMuted text-[11px] font-medium">
+            Products and services billed
+          </p>
         </div>
-        
-        <div className="bg-[var(--card)] border border-[var(--bdr)] rounded-[var(--r16)] overflow-hidden">
+
+        <div className="bg-white border border-dash-border rounded-2xl overflow-hidden">
           <LineItemBuilder items={items} onItemsChange={setItems} />
         </div>
       </div>
@@ -138,17 +135,14 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
       {/* Footer / Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         <div className="space-y-6">
-          <div className="flex flex-col gap-4">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--t3)]">
-              Terms & Conditions
-            </label>
-            <PremiumTextarea
+          <DashFormField label="Terms & conditions">
+            <DashTextarea
               placeholder="Enter your payment terms, late fees, or special instructions..."
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
               className="min-h-[120px]"
             />
-          </div>
+          </DashFormField>
 
           <CustomFieldsRenderer
             definitions={customFieldDefinitions}
@@ -168,22 +162,23 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
       </div>
 
       {/* Action Bar */}
-      <div className="sticky bottom-8 left-0 right-0 flex justify-end gap-3 p-4 bg-[var(--n800)] border border-[var(--bdrh)] rounded-[var(--r12)] shadow-2xl backdrop-blur-md">
-        <button disabled={isSaving} className="btn-ghost px-8">Save as Draft</button>
-        <button 
+      <div className="sticky bottom-8 left-0 right-0 flex justify-end gap-3 p-4 bg-white border border-dash-border rounded-xl shadow-lg backdrop-blur-md">
+        <DashButton variant="secondary" disabled={isSaving} className="px-8">Save as draft</DashButton>
+        <DashButton
+          variant="primary"
           onClick={handleSave}
           disabled={isSaving}
-          className="btn-primary px-8 flex items-center gap-2"
+          className="px-8"
         >
           {isSaving ? (
             <>
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
               <span>Processing...</span>
             </>
           ) : (
-            'Finalise Document'
+            'Finalise document'
           )}
-        </button>
+        </DashButton>
       </div>
     </div>
   );

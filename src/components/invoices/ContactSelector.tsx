@@ -6,8 +6,10 @@ import { cn } from '@/lib/utils';
 import { createContact } from '@/app/actions/contacts';
 import { toast } from 'sonner';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
-} from '@/components/ui/dialog';
+  DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalDescription, DashModalFooter
+} from '@/components/dashboard-ui/Modal';
+import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
+import { DashButton } from '@/components/dashboard-ui/Button';
 
 interface Contact {
   id: string;
@@ -94,135 +96,121 @@ const ContactSelector: React.FC<ContactSelectorProps> = ({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">Bill To Client</label>
+        <label className="text-[13px] font-semibold !text-dash-text">Bill to client</label>
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="text-[10px] font-bold text-[var(--accent2)] hover:text-white uppercase tracking-wider flex items-center gap-1 transition-all hover:scale-105"
+          className="text-[11px] font-bold text-dash-accent hover:text-dash-accent/80 flex items-center gap-1 transition-colors motion-reduce:transition-none"
         >
-          <UserPlus size={12} /> + New Client
+          <UserPlus size={12} /> New client
         </button>
       </div>
 
       <div className="relative group">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--t4)] group-focus-within:text-[var(--accent2)] transition-colors">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 !text-dash-textMuted group-focus-within:text-dash-accent transition-colors motion-reduce:transition-none">
           <Users size={16} />
         </div>
         <select
           value={selectedId || ''}
           onChange={(e) => onChange(e.target.value)}
           className={cn(
-            "w-full h-12 bg-[var(--n800)] border border-[var(--bdr)] rounded-[var(--r12)] pl-12 pr-10 text-sm text-[var(--t1)] outline-none focus:border-[var(--accent)] transition-all appearance-none cursor-pointer",
-            !selectedId && "text-[var(--t4)]"
+            "w-full h-12 bg-white border border-dash-border rounded-xl pl-12 pr-10 text-sm !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none appearance-none cursor-pointer",
+            !selectedId && "!text-dash-textMuted"
           )}
         >
           <option value="" disabled>Select a client...</option>
           {localContacts.map((contact) => (
-            <option key={contact.id} value={contact.id} className="bg-[var(--n800)] text-[var(--t1)]">
+            <option key={contact.id} value={contact.id}>
               {contact.first_name} {contact.last_name} {contact.email ? `(${contact.email})` : ''}
             </option>
           ))}
         </select>
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--t4)] pointer-events-none">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 !text-dash-textMuted pointer-events-none">
           <ChevronDown size={16} />
         </div>
       </div>
 
       {selectedContact && (
-        <div className="mt-2 p-3 rounded-[var(--r8)] bg-[var(--accentg)] border border-[var(--accent)]/10 animate-in fade-in slide-in-from-top-1 duration-300">
-          <p className="text-[10px] font-black text-[var(--accent2)] uppercase tracking-widest">Active Client</p>
-          <p className="text-xs font-bold text-[var(--t1)] mt-0.5">{selectedContact.first_name} {selectedContact.last_name}</p>
+        <div className="mt-2 p-3 rounded-lg bg-dash-accent/5 border border-dash-accent/10 animate-in fade-in slide-in-from-top-1 duration-300 motion-reduce:animate-none">
+          <p className="text-[10px] font-bold text-dash-accent">Active client</p>
+          <p className="text-xs font-bold !text-dash-text mt-0.5">{selectedContact.first_name} {selectedContact.last_name}</p>
         </div>
       )}
 
-      {/* Premium Create Client Dialog */}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="bg-[var(--n800)] z-[1003] border border-[var(--bdrh)] text-[var(--t1)] max-w-md rounded-[var(--r16)] shadow-2xl">
+      {/* Create Client Dialog */}
+      <DashModal open={isOpen} onOpenChange={setIsOpen}>
+        <DashModalContent className="max-w-md">
           <form onSubmit={handleCreateContact}>
-            <DialogHeader className="space-y-2 mb-6">
-              <DialogTitle className="text-xl font-bold font-space uppercase">
-                CREATE <span className="text-[var(--accent2)]">CLIENT</span>
-              </DialogTitle>
-              <DialogDescription className="text-xs text-[var(--t3)] uppercase tracking-wider font-semibold">
+            <DashModalHeader>
+              <DashModalTitle>Create client</DashModalTitle>
+              <DashModalDescription>
                 Add a new client profile to register documents
-              </DialogDescription>
-            </DialogHeader>
+              </DashModalDescription>
+            </DashModalHeader>
 
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">First Name</label>
-                  <input
+                <DashFormField label="First name" required>
+                  <DashInput
                     type="text"
                     required
                     placeholder="e.g. John"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full h-10 bg-white/[0.03] border border-[var(--bdr)] rounded-[var(--r8)] px-4 text-xs text-[var(--t1)] placeholder:text-[var(--t4)] outline-none focus:border-[var(--accent)] transition-all"
+                    className="h-10"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">Last Name</label>
-                  <input
+                </DashFormField>
+                <DashFormField label="Last name" required>
+                  <DashInput
                     type="text"
                     required
                     placeholder="e.g. Doe"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full h-10 bg-white/[0.03] border border-[var(--bdr)] rounded-[var(--r8)] px-4 text-xs text-[var(--t1)] placeholder:text-[var(--t4)] outline-none focus:border-[var(--accent)] transition-all"
+                    className="h-10"
                   />
-                </div>
+                </DashFormField>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">Email Address</label>
-                <input
+              <DashFormField label="Email address">
+                <DashInput
                   type="email"
                   placeholder="e.g. client@organization.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-10 bg-white/[0.03] border border-[var(--bdr)] rounded-[var(--r8)] px-4 text-xs text-[var(--t1)] placeholder:text-[var(--t4)] outline-none focus:border-[var(--accent)] transition-all"
+                  className="h-10"
                 />
-              </div>
+              </DashFormField>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-widest">Phone Number</label>
-                <input
+              <DashFormField label="Phone number">
+                <DashInput
                   type="tel"
                   placeholder="e.g. +1 (555) 000-0000"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full h-10 bg-white/[0.03] border border-[var(--bdr)] rounded-[var(--r8)] px-4 text-xs text-[var(--t1)] placeholder:text-[var(--t4)] outline-none focus:border-[var(--accent)] transition-all"
+                  className="h-10"
                 />
-              </div>
+              </DashFormField>
             </div>
 
-            <DialogFooter className="mt-8 gap-3">
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="btn-ghost flex-1 h-10 text-xs uppercase font-bold tracking-wider"
-              >
+            <DashModalFooter>
+              <DashButton type="button" variant="secondary" className="flex-1" onClick={() => setIsOpen(false)}>
                 Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn-primary flex-1 h-10 text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-2"
-              >
+              </DashButton>
+              <DashButton type="submit" variant="primary" className="flex-1" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
                     Saving...
                   </>
                 ) : (
-                  'Create Client'
+                  'Create client'
                 )}
-              </button>
-            </DialogFooter>
+              </DashButton>
+            </DashModalFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </DashModalContent>
+      </DashModal>
     </div>
   );
 };

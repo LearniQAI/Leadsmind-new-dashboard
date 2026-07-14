@@ -43,17 +43,17 @@ export function ConflictWarnings({
   if (!staleWarning) return null;
 
   return (
-    <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl flex items-center justify-between gap-4 font-dm-sans text-white">
+    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between gap-4 !text-dash-text">
       <div className="flex gap-3 items-center">
-        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 border border-amber-500/20 text-amber-400 animate-pulse">
+        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 border border-amber-200 text-amber-600 animate-pulse motion-reduce:animate-none">
           <AlertTriangle size={16} />
         </div>
-        
+
         <div className="flex flex-col gap-0.5">
-          <h4 className="text-xs font-bold text-white font-space-grotesk">
-            Draft Outdated Warning
+          <h4 className="text-xs font-bold !text-dash-text">
+            Draft outdated warning
           </h4>
-          <p className="text-[10px] text-white/70">
+          <p className="text-[11px] !text-dash-textMuted">
             {lastEditorEmail || 'Another user'} has updated this form layout. Refreshes are suggested to prevent overwrites.
           </p>
         </div>
@@ -62,19 +62,19 @@ export function ConflictWarnings({
       <div className="flex items-center gap-2">
         <button
           onClick={() => setStaleWarning(false)}
-          className="h-8 px-3 rounded-lg border border-white/10 hover:bg-white/5 text-white/50 text-[10px] font-black uppercase tracking-wider transition-all"
+          className="h-8 px-3 rounded-lg border border-dash-border hover:bg-white !text-dash-textMuted text-[10px] font-bold transition-colors motion-reduce:transition-none"
         >
           Dismiss
         </button>
-        
+
         <button
           onClick={() => {
             setStaleWarning(false);
             onRefreshTriggered();
           }}
-          className="h-8 px-4 rounded-lg bg-amber-500 text-black hover:bg-amber-600 font-black text-[10px] uppercase tracking-wider flex items-center gap-1 transition-all"
+          className="h-8 px-4 rounded-lg bg-amber-500 text-white hover:bg-amber-600 font-bold text-[10px] flex items-center gap-1 transition-colors motion-reduce:transition-none"
         >
-          <RefreshCw size={11} className="animate-spin" /> Reload Draft
+          <RefreshCw size={11} className="animate-spin motion-reduce:animate-none" /> Reload draft
         </button>
       </div>
 

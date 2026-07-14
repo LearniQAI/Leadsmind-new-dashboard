@@ -401,56 +401,56 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
   return (
     <div className="space-y-6">
       {/* Header bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-dash-border pb-5">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push(`/courses/${course.id}`)}
-            className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white transition-all active:scale-95 shrink-0"
-            title="Back to Course Builder"
+            className="w-10 h-10 rounded-xl bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:bg-dash-border/60 hover:!text-dash-text transition-all motion-reduce:transition-none active:scale-95 shrink-0"
+            title="Back to course builder"
           >
             <ArrowLeft size={16} />
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Quiz Compiler</span>
+              <span className="text-[10px] font-bold text-dash-accent">Quiz editor</span>
             </div>
-            <h1 className="text-xl font-space-grotesk font-black uppercase tracking-tight text-white mt-1">
-              {quizTitle || "Untitled Quiz"}
+            <h1 className="text-xl font-bold !text-dash-text mt-1">
+              {quizTitle || "Untitled quiz"}
             </h1>
           </div>
         </div>
 
         {/* Tabs switcher */}
-        <div className="flex items-center bg-[#080f28] border border-white/5 rounded-xl p-1 shrink-0">
+        <div className="flex items-center bg-dash-surface border border-dash-border rounded-xl p-1 shrink-0">
           <button
             onClick={() => setActiveTab("questions")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-lg text-[10px] font-bold transition-all motion-reduce:transition-none flex items-center gap-1.5 ${
               activeTab === "questions"
-                ? "bg-primary text-white"
-                : "text-white/40 hover:text-white/60"
+                ? "bg-dash-accent text-white"
+                : "!text-dash-textMuted hover:!text-dash-text"
             }`}
           >
             <Layout size={12} /> Questions ({questions.length})
           </button>
           <button
             onClick={() => setActiveTab("settings")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-lg text-[10px] font-bold transition-all motion-reduce:transition-none flex items-center gap-1.5 ${
               activeTab === "settings"
-                ? "bg-primary text-white"
-                : "text-white/40 hover:text-white/60"
+                ? "bg-dash-accent text-white"
+                : "!text-dash-textMuted hover:!text-dash-text"
             }`}
           >
-            <Sliders size={12} /> Advanced Settings
+            <Sliders size={12} /> Advanced settings
           </button>
           <button
             onClick={() => setActiveTab("analytics")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-lg text-[10px] font-bold transition-all motion-reduce:transition-none flex items-center gap-1.5 ${
               activeTab === "analytics"
-                ? "bg-primary text-white"
-                : "text-white/40 hover:text-white/60"
+                ? "bg-dash-accent text-white"
+                : "!text-dash-textMuted hover:!text-dash-text"
             }`}
           >
-            <Eye size={12} /> Analytics & Attempts
+            <Eye size={12} /> Analytics & attempts
           </button>
         </div>
       </div>
@@ -461,24 +461,24 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
           
           {/* Question List Sidebar */}
-          <div className="bg-[#080f28] border border-white/5 p-4 rounded-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2">
-              <span className="text-[10px] font-bold text-white uppercase tracking-wider">Question List</span>
+          <div className="bg-white border border-dash-border p-4 rounded-2xl space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-dash-border pb-2">
+              <span className="text-[10px] font-bold !text-dash-text">Question list</span>
               <div className="flex items-center gap-3">
                 {questions.length > 0 && (
-                  <button 
+                  <button
                     onClick={() => {
                       setIsBulkSelectMode(!isBulkSelectMode);
                       setSelectedQuestionIds([]);
                     }}
-                    className="text-[10px] font-bold text-white/50 hover:text-white uppercase tracking-wider"
+                    className="text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text"
                   >
                     {isBulkSelectMode ? "Cancel" : "Select"}
                   </button>
                 )}
-                <button 
+                <button
                   onClick={handleNewQuestion}
-                  className="text-[10px] font-bold text-primary hover:text-primary-light flex items-center gap-0.5 uppercase tracking-wider"
+                  className="text-[10px] font-bold text-dash-accent hover:text-dash-accent/80 flex items-center gap-0.5"
                 >
                   <Plus size={12} /> Add
                 </button>
@@ -486,8 +486,8 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
             </div>
 
             {isBulkSelectMode && questions.length > 0 && (
-              <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 p-2 rounded-xl text-[10.5px]">
-                <label className="flex items-center gap-2 cursor-pointer text-white/60 hover:text-white select-none font-medium">
+              <div className="flex items-center justify-between bg-dash-surface border border-dash-border p-2 rounded-xl text-[10.5px]">
+                <label className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text select-none font-medium">
                   <input
                     type="checkbox"
                     checked={selectedQuestionIds.length === questions.length}
@@ -498,14 +498,14 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                         setSelectedQuestionIds([]);
                       }
                     }}
-                    className="accent-primary h-3.5 w-3.5 rounded"
+                    className="accent-dash-accent h-3.5 w-3.5 rounded"
                   />
-                  Select All ({questions.length})
+                  Select all ({questions.length})
                 </label>
                 {selectedQuestionIds.length > 0 && (
                   <button
                     onClick={() => setIsBulkDeleteConfirmOpen(true)}
-                    className="text-red-400 hover:text-red-300 font-black uppercase tracking-wider text-[9px] bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-lg"
+                    className="text-red-600 hover:text-red-700 font-bold text-[9px] bg-red-100 border border-red-200 px-2 py-1 rounded-lg"
                   >
                     Delete ({selectedQuestionIds.length})
                   </button>
@@ -517,15 +517,15 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
               type="button"
               onClick={handleGenerateAiQuestions}
               disabled={isGeneratingQuestions}
-              className="w-full bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb]/20 text-[#3b82f6] rounded-xl py-2 px-3 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-all disabled:opacity-50"
+              className="w-full bg-dash-accent/10 border border-dash-accent/20 hover:bg-dash-accent/20 text-dash-accent rounded-xl py-2 px-3 text-[10px] font-bold flex items-center justify-center gap-1 transition-all motion-reduce:transition-none disabled:opacity-50"
             >
-              {isGeneratingQuestions ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-              🤖 Generate with AI
+              {isGeneratingQuestions ? <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={12} />}
+              Generate with AI
             </button>
 
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
               {questions.map((q, idx) => (
-                <div 
+                <div
                   key={q.id}
                   onClick={() => {
                     if (isBulkSelectMode) {
@@ -538,12 +538,12 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                       selectQuestion(q);
                     }
                   }}
-                  className={`p-3.5 rounded-xl text-xs cursor-pointer select-none border transition-all flex items-center justify-between gap-3 ${
-                    !isBulkSelectMode && activeQuestion?.id === q.id 
-                      ? "bg-accent/10 border-accent text-white" 
+                  className={`p-3.5 rounded-xl text-xs cursor-pointer select-none border transition-all motion-reduce:transition-none flex items-center justify-between gap-3 ${
+                    !isBulkSelectMode && activeQuestion?.id === q.id
+                      ? "bg-dash-accent/10 border-dash-accent !text-dash-text"
                       : isBulkSelectMode && selectedQuestionIds.includes(q.id)
-                        ? "bg-primary/10 border-primary text-white"
-                        : "bg-white/[0.02] border-transparent text-white/50 hover:bg-white/5 hover:text-white"
+                        ? "bg-dash-accent/10 border-dash-accent !text-dash-text"
+                        : "bg-dash-surface border-transparent !text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text"
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate flex-1">
@@ -552,18 +552,18 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                         type="checkbox"
                         checked={selectedQuestionIds.includes(q.id)}
                         onChange={() => {}} // toggled on container div click
-                        className="accent-primary h-3.5 w-3.5 rounded shrink-0"
+                        className="accent-dash-accent h-3.5 w-3.5 rounded shrink-0"
                       />
                     )}
                     <span className="truncate pr-2 font-medium">Q{idx + 1}: {q.question_text || "Untitled question"}</span>
                   </div>
                   {!isBulkSelectMode && (
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setQuestionToDelete(q);
                       }}
-                      className="text-red-400 hover:text-red-300 p-0.5 shrink-0"
+                      className="text-red-600 hover:text-red-700 p-0.5 shrink-0"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -571,7 +571,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                 </div>
               ))}
               {questions.length === 0 && (
-                <span className="text-[10.5px] italic text-white/30 block text-center py-6 bg-white/[0.01] rounded-xl border border-dashed border-white/5">
+                <span className="text-[10.5px] italic !text-dash-textMuted block text-center py-6 bg-dash-surface rounded-xl border border-dashed border-dash-border">
                   No questions created yet.
                 </span>
               )}
@@ -579,51 +579,51 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
           </div>
 
           {/* Editor Workbench */}
-          <div className="bg-[#080f28] border border-white/5 rounded-2xl p-6 space-y-5">
+          <div className="bg-white border border-dash-border rounded-2xl p-6 space-y-5 shadow-sm">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">Question Type</label>
-                <select 
-                  value={type} 
+                <label className="text-[9px] font-bold !text-dash-textMuted block">Question type</label>
+                <select
+                  value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:border-primary outline-none"
+                  className="w-full bg-white border border-dash-border rounded-xl px-3 py-2.5 text-xs !text-dash-text focus:border-dash-accent outline-none"
                 >
-                  <option value="multiple_choice">Multiple Choice (MCQ)</option>
+                  <option value="multiple_choice">Multiple choice (MCQ)</option>
                   <option value="true_false">True / False</option>
-                  <option value="short_answer">Short Answer</option>
-                  <option value="matching">Matching Pairs</option>
-                  <option value="ordering">Ordering Lists</option>
-                  <option value="fill_in_blank">Fill-in-the-blank</option>
-                  <option value="code_challenge">Code Challenge</option>
-                  <option value="file_upload">File Upload Rubric</option>
+                  <option value="short_answer">Short answer</option>
+                  <option value="matching">Matching pairs</option>
+                  <option value="ordering">Ordering lists</option>
+                  <option value="fill_in_blank">Fill in the blank</option>
+                  <option value="code_challenge">Code challenge</option>
+                  <option value="file_upload">File upload rubric</option>
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">Points Value</label>
-                <input 
-                  type="number" 
-                  value={points} 
+                <label className="text-[9px] font-bold !text-dash-textMuted block">Points value</label>
+                <input
+                  type="number"
+                  value={points}
                   onChange={(e) => setPoints(parseInt(e.target.value) || 1)}
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none"
+                  className="w-full bg-white border border-dash-border rounded-xl px-3 py-2.5 text-xs !text-dash-text outline-none"
                 />
               </div>
             </div>
 
             {/* Question Text */}
             <div className="space-y-1.5">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">Question Title / Prompt</label>
-              <textarea 
-                value={questionText} 
+              <label className="text-[9px] font-bold !text-dash-textMuted block">Question title / prompt</label>
+              <textarea
+                value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
                 rows={2}
                 placeholder="e.g. Which keyword is used to define block-scoped variables in JS?"
-                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary"
+                className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text placeholder:!text-dash-textMuted/60 outline-none focus:border-dash-accent"
               />
             </div>
 
             {/* Dynamic Options Render Block */}
-            <div className="bg-[#111d47]/20 border border-white/5 rounded-xl p-4 space-y-4">
-              <span className="text-[10px] font-black uppercase text-accent2 tracking-widest block">Answer Configuration</span>
+            <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-4">
+              <span className="text-[10px] font-bold text-dash-accent block">Answer configuration</span>
 
               {/* MCQ / TrueFalse */}
               {(type === "multiple_choice" || type === "true_false") && (

@@ -63,16 +63,16 @@ class SafeFrameErrorBoundary extends React.Component<{ children: React.ReactNode
     render() {
         if (this.state.hasError) {
             return (
-                <div className="flex flex-col items-center justify-center min-h-[400px] text-white/20 bg-white/[0.02] rounded-3xl border border-white/5 m-8">
+                <div className="flex flex-col items-center justify-center min-h-[400px] !text-dash-textMuted bg-dash-surface rounded-3xl border border-dash-border m-8">
                     <AlertCircle className="w-8 h-8 mb-4 opacity-50" />
                     <p className="text-sm font-bold tracking-tight">The canvas encountered a temporary glitch.</p>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="mt-6 border-white/10 hover:bg-white/5 text-[10px] font-black uppercase tracking-widest"
+                        className="mt-6 border-dash-border hover:bg-dash-surface text-[10px] font-bold motion-reduce:transition-none"
                         onClick={() => window.location.reload()}
                     >
-                        Reset Canvas
+                        Reset canvas
                     </Button>
                 </div>
             );
@@ -207,6 +207,13 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
         }
     };
 
+    const lastLoadedPageId = React.useRef<string | null>(null);
+    const [websiteData, setWebsiteData] = React.useState<any>(null);
+    const [pages, setPages] = React.useState<any[]>([]);
+    const [isLoadingContent, setIsLoadingContent] = React.useState(true);
+    const [initialContent, setInitialContent] = React.useState<string | null>(null);
+    const updateTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
     const handleUpdateWebsite = (updates: any) => {
         if (!websiteData?.id) return;
         setWebsiteData((prev: any) => ({ ...prev, ...updates }));
@@ -220,13 +227,6 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             }
         }, 500);
     };
-
-    const lastLoadedPageId = React.useRef<string | null>(null);
-    const [websiteData, setWebsiteData] = React.useState<any>(null);
-    const [pages, setPages] = React.useState<any[]>([]);
-    const [isLoadingContent, setIsLoadingContent] = React.useState(true);
-    const [initialContent, setInitialContent] = React.useState<string | null>(null);
-    const updateTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const BLANK_CANVAS = '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
 
@@ -557,30 +557,30 @@ const BuilderEditorLayout = ({
     const { pageId } = useParams();
 
     return (
-        <div className="h-screen w-full flex flex-col overflow-hidden bg-[#050508] text-white">
+        <div className="h-screen w-full flex flex-col overflow-hidden bg-white !text-dash-text">
             {/* Header Section */}
-            <header className="h-[70px] border-b border-white/5 bg-[#0b0b14]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50 w-full select-none overflow-x-auto scrollbar-none">
+            <header className="h-[70px] border-b border-dash-border bg-white/90 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50 w-full select-none overflow-x-auto scrollbar-none">
                 <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-3 pr-6 border-r border-white/5 shrink-0">
+                    <div className="flex items-center gap-3 pr-6 border-r border-dash-border shrink-0">
                         <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-                            <span className="font-black text-lg tracking-tighter">L</span>
+                            <span className="font-bold text-lg tracking-tighter text-white">L</span>
                         </div>
                         <div className="shrink-0">
-                            <span className="block text-[11px] font-black uppercase tracking-tighter text-white leading-none whitespace-nowrap">Leadsmind</span>
-                            <span className="block text-[8px] font-bold uppercase tracking-[0.2em] text-primary mt-0.5 whitespace-nowrap">Neural Node Builder</span>
+                            <span className="block text-[11px] font-bold !text-dash-text leading-none whitespace-nowrap">Leadsmind</span>
+                            <span className="block text-[8px] font-bold text-primary mt-0.5 whitespace-nowrap">Node builder</span>
                         </div>
                     </div>
 
                     {/* Sidebar Toggles */}
-                    <div className="flex items-center gap-2 px-4 border-r border-white/5 shrink-0">
+                    <div className="flex items-center gap-2 px-4 border-r border-dash-border shrink-0">
                         <Button
                             variant="ghost"
                             size="icon"
                             title="Toggle Elements Sidebar"
                             onClick={() => setSidebarOpen(!sidebarOpen)}
                             className={cn(
-                                "h-9 w-9 rounded-lg border border-white/5 transition-all",
-                                sidebarOpen ? "bg-white/10 text-white" : "text-white/30 hover:text-white"
+                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none",
+                                sidebarOpen ? "bg-dash-accent/10 !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text"
                             )}
                         >
                             <LayoutTemplate className="w-4 h-4" />
@@ -591,8 +591,8 @@ const BuilderEditorLayout = ({
                             title="Toggle Properties Panel"
                             onClick={() => setPropertiesOpen(!propertiesOpen)}
                             className={cn(
-                                "h-9 w-9 rounded-lg border border-white/5 transition-all",
-                                propertiesOpen ? "bg-white/10 text-white" : "text-white/30 hover:text-white"
+                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none",
+                                propertiesOpen ? "bg-dash-accent/10 !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text"
                             )}
                         >
                             <Settings2 className="w-4 h-4" />
@@ -600,7 +600,7 @@ const BuilderEditorLayout = ({
                     </div>
 
                     {/* Undo / Redo Actions */}
-                    <div className="flex items-center gap-1.5 px-4 border-r border-white/5">
+                    <div className="flex items-center gap-1.5 px-4 border-r border-dash-border">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -608,8 +608,8 @@ const BuilderEditorLayout = ({
                             onClick={() => editorActions.history.undo()}
                             title="Undo (Ctrl+Z)"
                             className={cn(
-                                "h-9 w-9 rounded-lg border border-white/5 transition-all text-white/30 hover:text-white",
-                                !canUndo && "opacity-40 cursor-not-allowed text-white/10"
+                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none !text-dash-textMuted hover:!text-dash-text",
+                                !canUndo && "opacity-40 cursor-not-allowed"
                             )}
                         >
                             <span className="text-sm">↩</span>
@@ -621,8 +621,8 @@ const BuilderEditorLayout = ({
                             onClick={() => editorActions.history.redo()}
                             title="Redo (Ctrl+Y)"
                             className={cn(
-                                "h-9 w-9 rounded-lg border border-white/5 transition-all text-white/30 hover:text-white",
-                                !canRedo && "opacity-40 cursor-not-allowed text-white/10"
+                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none !text-dash-textMuted hover:!text-dash-text",
+                                !canRedo && "opacity-40 cursor-not-allowed"
                             )}
                         >
                             <span className="text-sm">↪</span>
@@ -630,28 +630,28 @@ const BuilderEditorLayout = ({
                     </div>
 
                     {/* Page Switcher */}
-                    <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5 shrink-0">
+                    <div className="flex items-center gap-4 bg-dash-surface px-4 py-2 rounded-xl border border-dash-border shrink-0">
                         <div className="flex items-center gap-2 shrink-0">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/40 whitespace-nowrap">Editing Mode:</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse motion-reduce:animate-none shrink-0" />
+                            <span className="text-[9px] font-bold !text-dash-textMuted whitespace-nowrap">Editing mode:</span>
                         </div>
                         <select
                             value={pageId as string}
                             onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
-                            className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-white outline-none cursor-pointer hover:text-primary transition-colors min-w-[120px] shrink-0"
+                            className="bg-transparent border-none text-[10px] font-bold !text-dash-text outline-none cursor-pointer hover:text-primary transition-colors motion-reduce:transition-none min-w-[120px] shrink-0"
                         >
                             {pages.map((p) => (
-                                <option key={p.id} value={p.id} className="bg-[#0b0b14] text-white">{p.name} ({p.slug})</option>
+                                <option key={p.id} value={p.id} className="bg-white text-dash-text">{p.name} ({p.slug})</option>
                             ))}
                         </select>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-2 px-4 border-r border-white/5 mr-2 shrink-0">
+                    <div className="flex items-center gap-2 px-4 border-r border-dash-border mr-2 shrink-0">
                         <div className="text-right hidden sm:block shrink-0">
-                            <span className="block text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5 whitespace-nowrap">Node Status</span>
-                            <span className="block text-[10px] font-black uppercase text-emerald-500 whitespace-nowrap">System Online</span>
+                            <span className="block text-[9px] font-bold !text-dash-textMuted mb-0.5 whitespace-nowrap">Node status</span>
+                            <span className="block text-[10px] font-bold text-green whitespace-nowrap">System online</span>
                         </div>
                     </div>
 
@@ -659,16 +659,16 @@ const BuilderEditorLayout = ({
                         variant="ghost"
                         onClick={() => setPreviewMode(!previewMode)}
                         className={cn(
-                            "h-11 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all mr-2",
-                            previewMode ? "bg-primary/20 border-primary/30 text-primary hover:bg-primary/30" : "border-white/5 hover:bg-white/5 text-white/60 hover:text-white"
+                            "h-11 px-6 text-[10px] font-bold rounded-xl border transition-all motion-reduce:transition-none mr-2",
+                            previewMode ? "bg-primary/20 border-primary/30 text-primary hover:bg-primary/30" : "border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text"
                         )}
                     >
-                        {previewMode ? "Edit Mode" : "Preview Mode"}
+                        {previewMode ? "Edit mode" : "Preview mode"}
                     </Button>
                     <Button
                         variant="ghost"
                         onClick={() => setIsTemplateDirectoryOpen(true)}
-                        className="h-11 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-primary hover:text-white transition-all mr-2"
+                        className="h-11 px-4 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface text-primary hover:!text-dash-text transition-all motion-reduce:transition-none mr-2"
                         title="Open Template Directory"
                     >
                         <Sparkles className="w-4 h-4 mr-2" />
@@ -677,7 +677,7 @@ const BuilderEditorLayout = ({
                     <Button
                         variant="ghost"
                         onClick={() => setIsImportModalOpen(true)}
-                        className="h-11 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/40 hover:text-white transition-all mr-2"
+                        className="h-11 px-4 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text transition-all motion-reduce:transition-none mr-2"
                         title="Import JSON Template"
                     >
                         <Upload className="w-4 h-4" />
@@ -685,7 +685,7 @@ const BuilderEditorLayout = ({
                     <Button
                         variant="ghost"
                         onClick={handleExportJSON}
-                        className="h-11 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/40 hover:text-white transition-all mr-2"
+                        className="h-11 px-4 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text transition-all motion-reduce:transition-none mr-2"
                         title="Export for Template System"
                     >
                         <CopyIcon className="w-4 h-4" />
@@ -694,18 +694,18 @@ const BuilderEditorLayout = ({
                         variant="ghost"
                         onClick={handleSaveDraft}
                         disabled={isSaving}
-                        className="h-11 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/5 hover:bg-white/5 text-white/60 hover:text-white transition-all"
+                        className="h-11 px-6 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text transition-all motion-reduce:transition-none"
                     >
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                        Save Node
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                        Save draft
                     </Button>
                     <Button
                         onClick={handlePublish}
                         disabled={isPublishing}
-                        className="h-11 px-8 text-[10px] font-black uppercase tracking-widest rounded-xl bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 transition-all active:scale-95"
+                        className="h-11 px-8 text-[10px] font-bold rounded-xl bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 transition-all motion-reduce:transition-none active:scale-95"
                     >
-                        {isPublishing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                        Deploy Live
+                        {isPublishing ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                        Deploy live
                     </Button>
                 </div>
             </header>
@@ -714,7 +714,7 @@ const BuilderEditorLayout = ({
                 {/* Left Sidebar Transition Wrapper */}
                 <div
                     className={cn(
-                        "transition-all duration-300 ease-in-out border-r border-white/5 bg-[#0b0b14] overflow-hidden shrink-0",
+                        "transition-all duration-300 ease-in-out motion-reduce:transition-none border-r border-dash-border bg-white overflow-hidden shrink-0",
                         sidebarOpen && !previewMode ? "w-[300px] opacity-100" : "w-0 opacity-0 border-none"
                     )}
                 >
@@ -769,7 +769,7 @@ const BuilderEditorLayout = ({
                         <div className="flex-1 pointer-events-auto min-h-[500px]">
                             {isLoadingContent ? (
                                 <div className="w-full h-full flex items-center justify-center py-40">
-                                    <Loader2 className="w-8 h-8 animate-spin text-[#6c47ff]" />
+                                    <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-dash-accent" />
                                 </div>
                             ) : (
                                 <Frame />
@@ -818,42 +818,42 @@ const BuilderEditorLayout = ({
 
             {/* Save Blueprint Modal */}
             <Dialog open={!!blueprintNodeId} onOpenChange={(open) => !open && setBlueprintNodeId(null)}>
-              <DialogContent className="sm:max-w-[420px] bg-[#080f28] border-white/[0.07] text-[#eef2ff] rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
+              <DialogContent className="sm:max-w-[420px] bg-white border-dash-border !text-dash-text rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
                 <DialogHeader className="p-6 pb-0">
-                  <DialogTitle className="text-[18px] font-bold font-display uppercase tracking-tight">Save <span className="text-[#3b82f6]">Blueprint</span></DialogTitle>
-                  <DialogDescription className="text-[11px] font-medium uppercase tracking-[0.8px] text-[#4a5a82] mt-0.5">
+                  <DialogTitle className="text-[18px] font-bold">Save <span className="text-dash-accent">blueprint</span></DialogTitle>
+                  <DialogDescription className="text-[11px] font-medium !text-dash-textMuted mt-0.5">
                     Save component layout to reuse later
                   </DialogDescription>
                 </DialogHeader>
                 <div className="p-6 space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="blueprint-name" className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Blueprint Name</Label>
+                    <Label htmlFor="blueprint-name" className="text-[10px] font-bold !text-dash-textMuted">Blueprint name</Label>
                     <Input
                       id="blueprint-name"
                       placeholder="E.g. SaaS Pricing Table..."
                       value={blueprintName}
                       onChange={(e) => setBlueprintName(e.target.value)}
-                      className="h-12 bg-white/5 border-white/10 text-[#eef2ff] rounded-[8px] px-4 font-medium focus:border-[#2563eb]/50 outline-none"
+                      className="h-12 bg-white border-dash-border !text-dash-text rounded-[8px] px-4 font-medium focus:border-dash-accent/50 outline-none"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="blueprint-desc" className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Description (Optional)</Label>
+                    <Label htmlFor="blueprint-desc" className="text-[10px] font-bold !text-dash-textMuted">Description (optional)</Label>
                     <Input
                       id="blueprint-desc"
                       placeholder="E.g. Custom 3-column pricing table section"
                       value={blueprintDesc}
                       onChange={(e) => setBlueprintDesc(e.target.value)}
-                      className="h-12 bg-white/5 border-white/10 text-[#eef2ff] rounded-[8px] px-4 font-medium focus:border-[#2563eb]/50 outline-none"
+                      className="h-12 bg-white border-dash-border !text-dash-text rounded-[8px] px-4 font-medium focus:border-dash-accent/50 outline-none"
                     />
                   </div>
                 </div>
-                <div className="p-6 bg-white/[0.02] border-t border-white/[0.07] flex items-center justify-end gap-3">
-                  <Button variant="ghost" onClick={() => setBlueprintNodeId(null)} className="text-[11px] font-bold uppercase tracking-widest text-[#4a5a82] hover:text-[#eef2ff] h-10">
+                <div className="p-6 bg-dash-surface border-t border-dash-border flex items-center justify-end gap-3">
+                  <Button variant="ghost" onClick={() => setBlueprintNodeId(null)} className="text-[11px] font-bold !text-dash-textMuted hover:!text-dash-text h-10">
                     Cancel
                   </Button>
-                  <Button onClick={handleSaveBlueprint} disabled={isSavingBlueprint || !blueprintName} className="bg-[#2563eb] hover:bg-[#1d4ed8] h-10 px-6 rounded-[8px] font-bold uppercase text-[11px]">
-                    {isSavingBlueprint ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    Save Blueprint
+                  <Button onClick={handleSaveBlueprint} disabled={isSavingBlueprint || !blueprintName} className="bg-dash-accent hover:bg-dash-accent/90 text-white h-10 px-6 rounded-[8px] font-bold text-[11px]">
+                    {isSavingBlueprint ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                    Save blueprint
                   </Button>
                 </div>
               </DialogContent>
@@ -861,31 +861,31 @@ const BuilderEditorLayout = ({
 
             {/* Import JSON Modal */}
             <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
-              <DialogContent className="sm:max-w-[500px] bg-[#080f28] border-white/[0.07] text-[#eef2ff] rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
+              <DialogContent className="sm:max-w-[500px] bg-white border-dash-border !text-dash-text rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
                 <DialogHeader className="p-6 pb-0">
-                  <DialogTitle className="text-[18px] font-bold font-display uppercase tracking-tight">Import <span className="text-[#3b82f6]">JSON Template</span></DialogTitle>
-                  <DialogDescription className="text-[11px] font-medium uppercase tracking-[0.8px] text-[#4a5a82] mt-0.5">
+                  <DialogTitle className="text-[18px] font-bold">Import <span className="text-dash-accent">JSON template</span></DialogTitle>
+                  <DialogDescription className="text-[11px] font-medium !text-dash-textMuted mt-0.5">
                     Paste CraftJS JSON template content to replace canvas layout
                   </DialogDescription>
                 </DialogHeader>
                 <div className="p-6 space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="import-json" className="text-[10px] font-bold uppercase tracking-wider text-[#4a5a82]">Template JSON</Label>
+                    <Label htmlFor="import-json" className="text-[10px] font-bold !text-dash-textMuted">Template JSON</Label>
                     <Textarea
                       id="import-json"
                       placeholder='{"ROOT": {...}}'
                       value={importJsonText}
                       onChange={(e) => setImportJsonText(e.target.value)}
-                      className="min-h-[200px] bg-white/5 border-white/10 text-[#eef2ff] rounded-[8px] p-4 font-mono text-xs focus:border-[#2563eb]/50 outline-none resize-y"
+                      className="min-h-[200px] bg-white border-dash-border !text-dash-text rounded-[8px] p-4 font-mono text-xs focus:border-dash-accent/50 outline-none resize-y"
                     />
                   </div>
                 </div>
-                <div className="p-6 bg-white/[0.02] border-t border-white/[0.07] flex items-center justify-end gap-3">
-                  <Button variant="ghost" onClick={() => setIsImportModalOpen(false)} className="text-[11px] font-bold uppercase tracking-widest text-[#4a5a82] hover:text-[#eef2ff] h-10">
+                <div className="p-6 bg-dash-surface border-t border-dash-border flex items-center justify-end gap-3">
+                  <Button variant="ghost" onClick={() => setIsImportModalOpen(false)} className="text-[11px] font-bold !text-dash-textMuted hover:!text-dash-text h-10">
                     Cancel
                   </Button>
-                  <Button onClick={handleImportJSON} disabled={!importJsonText} className="bg-[#2563eb] hover:bg-[#1d4ed8] h-10 px-6 rounded-[8px] font-bold uppercase text-[11px]">
-                    Import Layout
+                  <Button onClick={handleImportJSON} disabled={!importJsonText} className="bg-dash-accent hover:bg-dash-accent/90 text-white h-10 px-6 rounded-[8px] font-bold text-[11px]">
+                    Import layout
                   </Button>
                 </div>
               </DialogContent>

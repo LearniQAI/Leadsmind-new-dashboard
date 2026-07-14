@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Layers, Globe, Store, Compass, Laptop, Code } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Platform {
   name: string;
@@ -28,8 +29,8 @@ export function PlatformCompatibilityGrid({
       category: 'CMS / Plugin',
       icon: <Globe size={14} />,
       brandColor: 'group-hover:text-[#21759b]',
-      hoverGlow: 'hover:border-[#21759b]/40 hover:bg-[#21759b]/5 shadow-[#21759b]/5',
-      activeBorder: 'border-[#21759b] bg-[#21759b]/10 shadow-[0_0_15px_rgba(33,117,155,0.15)]',
+      hoverGlow: 'hover:border-[#21759b]/40 hover:bg-[#21759b]/5',
+      activeBorder: 'border-[#21759b] bg-[#21759b]/10',
       iconColor: 'bg-[#21759b]/10 text-[#21759b]',
     },
     {
@@ -37,8 +38,8 @@ export function PlatformCompatibilityGrid({
       category: 'Visual Design',
       icon: <Layers size={14} />,
       brandColor: 'group-hover:text-[#4353ff]',
-      hoverGlow: 'hover:border-[#4353ff]/40 hover:bg-[#4353ff]/5 shadow-[#4353ff]/5',
-      activeBorder: 'border-[#4353ff] bg-[#4353ff]/10 shadow-[0_0_15px_rgba(67,83,255,0.15)]',
+      hoverGlow: 'hover:border-[#4353ff]/40 hover:bg-[#4353ff]/5',
+      activeBorder: 'border-[#4353ff] bg-[#4353ff]/10',
       iconColor: 'bg-[#4353ff]/10 text-[#4353ff]',
     },
     {
@@ -46,8 +47,8 @@ export function PlatformCompatibilityGrid({
       category: 'E-Commerce',
       icon: <Store size={14} />,
       brandColor: 'group-hover:text-[#96bf48]',
-      hoverGlow: 'hover:border-[#96bf48]/40 hover:bg-[#96bf48]/5 shadow-[#96bf48]/5',
-      activeBorder: 'border-[#96bf48] bg-[#96bf48]/10 shadow-[0_0_15px_rgba(150,191,72,0.15)]',
+      hoverGlow: 'hover:border-[#96bf48]/40 hover:bg-[#96bf48]/5',
+      activeBorder: 'border-[#96bf48] bg-[#96bf48]/10',
       iconColor: 'bg-[#96bf48]/10 text-[#96bf48]',
     },
     {
@@ -55,8 +56,8 @@ export function PlatformCompatibilityGrid({
       category: 'Website Builder',
       icon: <Laptop size={14} />,
       brandColor: 'group-hover:text-[#f59e0b]',
-      hoverGlow: 'hover:border-[#f59e0b]/40 hover:bg-[#f59e0b]/5 shadow-[#f59e0b]/5',
-      activeBorder: 'border-[#f59e0b] bg-[#f59e0b]/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]',
+      hoverGlow: 'hover:border-[#f59e0b]/40 hover:bg-[#f59e0b]/5',
+      activeBorder: 'border-[#f59e0b] bg-[#f59e0b]/10',
       iconColor: 'bg-[#f59e0b]/10 text-[#f59e0b]',
     },
     {
@@ -64,8 +65,8 @@ export function PlatformCompatibilityGrid({
       category: 'Page Builder',
       icon: <Compass size={14} />,
       brandColor: 'group-hover:text-[#a78bfa]',
-      hoverGlow: 'hover:border-[#a78bfa]/40 hover:bg-[#a78bfa]/5 shadow-[#a78bfa]/5',
-      activeBorder: 'border-[#a78bfa] bg-[#a78bfa]/10 shadow-[0_0_15px_rgba(167,139,250,0.15)]',
+      hoverGlow: 'hover:border-[#a78bfa]/40 hover:bg-[#a78bfa]/5',
+      activeBorder: 'border-[#a78bfa] bg-[#a78bfa]/10',
       iconColor: 'bg-[#a78bfa]/10 text-[#a78bfa]',
     },
     {
@@ -73,22 +74,19 @@ export function PlatformCompatibilityGrid({
       category: 'Static / Custom',
       icon: <Code size={14} />,
       brandColor: 'group-hover:text-[#10b981]',
-      hoverGlow: 'hover:border-[#10b981]/40 hover:bg-[#10b981]/5 shadow-[#10b981]/5',
-      activeBorder: 'border-[#10b981] bg-[#10b981]/10 shadow-[0_0_15px_rgba(16,185,129,0.15)]',
+      hoverGlow: 'hover:border-[#10b981]/40 hover:bg-[#10b981]/5',
+      activeBorder: 'border-[#10b981] bg-[#10b981]/10',
       iconColor: 'bg-[#10b981]/10 text-[#10b981]',
     },
   ];
 
   return (
-    <div className="p-5 bg-gradient-to-br from-[#0c1535]/80 to-[#080f28]/90 border border-white/10 rounded-2xl relative overflow-hidden">
-      {/* Subtle background overlay */}
-      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
-      
+    <div className="p-5 bg-dash-surface border border-dash-border rounded-2xl">
       <div className="mb-4">
-        <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#94a3c8] font-display mb-1">
-          Battle-Tested Platform Integration
+        <h4 className="text-[11px] font-bold !text-dash-textMuted mb-1">
+          Platform integration
         </h4>
-        <p className="text-[10.5px] text-[#4a5a82] font-sans">
+        <p className="text-[11px] !text-dash-textMuted">
           Click on any platform to automatically select the recommended embed method and view setup tips.
         </p>
       </div>
@@ -100,22 +98,22 @@ export function PlatformCompatibilityGrid({
             <button
               key={platform.name}
               onClick={() => onSelectPlatform(platform.name)}
-              className={`flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-300 group hover:-translate-y-0.5 hover:shadow-lg text-left ${
-                isActive 
-                  ? platform.activeBorder 
-                  : `bg-white/[0.02] border border-white/5 ${platform.hoverGlow}`
-              }`}
+              className={cn(
+                "flex items-center gap-3 px-3.5 py-3 rounded-xl transition-colors motion-reduce:transition-none group text-left border",
+                isActive
+                  ? platform.activeBorder
+                  : cn("bg-white border-dash-border", platform.hoverGlow)
+              )}
             >
-              {/* Brand Colored Icon Container */}
-              <div className={`p-2 rounded-lg transition-all duration-300 flex items-center justify-center ${platform.iconColor} group-hover:scale-105`}>
+              <div className={cn("p-2 rounded-lg flex items-center justify-center", platform.iconColor)}>
                 {platform.icon}
               </div>
-              
+
               <div className="min-w-0">
-                <p className={`text-xs font-bold text-[#eef2ff] font-display truncate transition-colors duration-300 ${platform.brandColor}`}>
+                <p className={cn("text-xs font-bold !text-dash-text truncate transition-colors motion-reduce:transition-none", platform.brandColor)}>
                   {platform.name}
                 </p>
-                <p className="text-[9px] text-[#4a5a82] font-sans font-medium uppercase tracking-wider truncate">
+                <p className="text-[9px] !text-dash-textMuted font-medium truncate">
                   {platform.category}
                 </p>
               </div>

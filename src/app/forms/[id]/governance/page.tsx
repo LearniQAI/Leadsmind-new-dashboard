@@ -40,38 +40,38 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#04081a] p-8 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#2563eb] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-white p-8 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-dash-accent border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
       </div>
     );
   }
 
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#04081a] p-8 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#2563eb] border-t-transparent rounded-full animate-spin" /></div>}>
-      <div className="min-h-screen bg-[#04081a] text-white p-8 font-dm-sans">
+    <Suspense fallback={<div className="min-h-screen bg-white p-8 flex items-center justify-center"><div className="w-8 h-8 border-2 border-dash-accent border-t-transparent rounded-full animate-spin motion-reduce:animate-none" /></div>}>
+      <div className="min-h-screen bg-white !text-dash-text p-8">
       <div className="max-w-6xl mx-auto flex flex-col gap-6">
-        
+
         {/* Top Header Controls Bar */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-dash-border pb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/forms')}
-              className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/10"
+              className="p-2.5 bg-dash-surface hover:bg-dash-border/60 rounded-xl transition-colors motion-reduce:transition-none border border-dash-border"
             >
-              <ArrowLeft size={16} className="text-[#4a5a82]" />
+              <ArrowLeft size={16} className="!text-dash-textMuted" />
             </button>
             <div>
-              <h1 className="text-xl font-space-grotesk font-black uppercase tracking-tight flex items-center gap-2">
+              <h1 className="text-xl font-bold flex items-center gap-2 !text-dash-text">
                 {form?.name}{' '}
-                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${
-                  form?.status === 'published' 
-                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                    : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${
+                  form?.status === 'published'
+                    ? 'bg-green/10 border-green/20 text-green'
+                    : 'bg-amber-50 border-amber-200 text-amber-600'
                 }`}>
                   {form?.status || 'draft'}
                 </span>
               </h1>
-              <p className="text-xs text-[#4a5a82]">Version control, deployment history, and settings</p>
+              <p className="text-xs !text-dash-textMuted">Version control, deployment history, and settings</p>
             </div>
           </div>
 
