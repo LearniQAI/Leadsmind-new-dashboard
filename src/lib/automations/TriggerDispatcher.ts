@@ -1,9 +1,10 @@
 /**
  * TriggerDispatcher — routes runtime events to corresponding active workflows.
- * Operates asynchronously and isolates failures so form submissions are never blocked.
+ * Enqueues a durable Inngest event rather than running inline, so the pipeline
+ * survives the originating serverless invocation being frozen/torn down after
+ * the HTTP response is returned (see: setTimeout(...,0) does NOT survive that).
  */
-import { createAdminClient } from '@/lib/supabase/server';
-import { WorkflowEngine, WorkflowContext } from './WorkflowEngine';
+import { inngest } from '@/lib/inngest';
 
 export type AutomationTriggerEvent =
   | 'form_submitted'
@@ -27,57 +28,22 @@ export interface TriggerPayload {
 
 export const TriggerDispatcher = {
   /**
-   * Dispatches trigger events to matching workflows.
-   * Completely isolated and async.
+   * Enqueues trigger events for matching workflows onto the Inngest queue.
+   * Never throws — callers should not let dispatch failures block the
+   * originating request, but the enqueue call itself is awaited so a failure
+   * to *schedule* the job is at least caught and logged, unlike before.
    */
-  dispatch(
+  async dispatch(
     event: AutomationTriggerEvent,
     payload: TriggerPayload
-  ): void {
-    // Immediate execution inside a non-blocking macroTask
-    setTimeout(async () => {
-      const supabase = createAdminClient();
-
-      try {
-        // Query active workflows that match this formId and trigger event
-        const { data: workflows, error } = await supabase
-          .from('workflows')
-          .select('id')
-          .eq('form_id', payload.formId)
-          .eq('trigger_type', event)
-          .eq('is_active', true);
-
-        if (error) {
-          console.error(`[TriggerDispatcher] Workflow query failed for event ${event}:`, error);
-          return;
-        }
-
-        if (!workflows || workflows.length === 0) {
-          return; // No active workflow triggers for this event
-        }
-
-        // Run engine pipelines for each match in parallel
-        const context: WorkflowContext = {
-          workspaceId: payload.workspaceId,
-          formName: payload.formName,
-          values: payload.values,
-          completionPercentage: payload.completionPercentage,
-          attribution: payload.attribution,
-          isReturningContact: payload.isReturningContact,
-          metadata: payload.metadata
-        };
-
-        await Promise.all(
-          workflows.map(wf =>
-            WorkflowEngine.runWorkflow(wf.id, context).catch(err => {
-              console.error(`[TriggerDispatcher] Pipeline error for workflow ${wf.id}:`, err);
-            })
-          )
-        );
-
-      } catch (err: any) {
-        console.error(`[TriggerDispatcher] Event dispatch crash for ${event}:`, err);
-      }
-    }, 0);
+  ): Promise<void> {
+    try {
+      await inngest.send({
+        name: 'workflow/trigger',
+        data: { event, payload },
+      });
+    } catch (err: any) {
+      console.error(`[TriggerDispatcher] Failed to enqueue event ${event}:`, err);
+    }
   }
 };

@@ -109,6 +109,14 @@ export async function setActiveWorkspace(workspaceId: string) {
  return { success: true };
 }
 
+// Always returns the same generic success response regardless of whether
+// the email is registered, and regardless of which internal step failed.
+// generateLink() errors (e.g. "user not found") differ observably from the
+// success path, so branching the response on them lets an attacker
+// enumerate registered emails — every code path below funnels through the
+// same return shape.
+const FORGOT_PASSWORD_GENERIC_RESPONSE: { success: boolean; error?: string } = { success: true };
+
 export async function forgotPassword(email: string) {
  // Use service role to generate the link (bypass default Supabase email)
  const supabaseAdmin = createClient(
@@ -121,28 +129,42 @@ export async function forgotPassword(email: string) {
   const { data, error } = await supabaseAdmin.auth.admin.generateLink({
    type: 'recovery',
    email,
-   options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/auth/reset-password` }
+   options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/auth/reset-password-basic` }
   });
 
   if (error) throw error;
 
   // Send branded email via Resend
   await sendPasswordResetEmail(email, data.properties.hashed_token);
-
-  return { success: true };
  } catch (error: any) {
+  // Logged for operators, but never surfaced to the caller — see comment above.
   logger.error({ err: error, email }, 'auth.forgot_password.failed');
-  return { success: false, error: 'Unable to process password reset request. Please try again.' };
  }
+
+ return FORGOT_PASSWORD_GENERIC_RESPONSE;
 }
 
 export async function resetPassword(password: string) {
+ if (password.length < 8) {
+  return { success: false, error: 'Password must be at least 8 characters.' };
+ }
+
  const supabase = await createServerClient();
  const { error } = await supabase.auth.updateUser({ password });
  if (error) {
   logger.error({ err: error }, 'auth.reset_password.failed');
   return { success: false, error: 'Failed to reset password. Please try again.' };
  }
+
+ // Revoke every other active session/refresh token for this user (other
+ // devices, other browsers) while keeping the session that just set the
+ // new password alive. Without this, a session obtained before the reset
+ // (e.g. via a stolen refresh token) would otherwise remain valid.
+ const { error: signOutError } = await supabase.auth.signOut({ scope: 'others' });
+ if (signOutError) {
+  logger.error({ err: signOutError }, 'auth.reset_password.revoke_other_sessions.failed');
+ }
+
  return { success: true };
 }
 

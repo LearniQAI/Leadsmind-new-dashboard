@@ -7,7 +7,9 @@ export interface WorkflowExecutionLog {
   id?: string;
   workflowId: string;
   workspaceId: string;
-  contactId?: string | null;
+  // workflow_executions.contact_id is NOT NULL — callers must resolve a
+  // contact before starting an execution (see WorkflowEngine.runWorkflow).
+  contactId: string;
   status: 'running' | 'completed' | 'failed' | 'cancelled';
   currentStep?: number;
   errorMessage?: string | null;
@@ -26,8 +28,7 @@ export const AutomationLogger = {
         .insert({
           workflow_id: log.workflowId,
           workspace_id: log.workspaceId,
-          // Fallback contact UUID placeholder if contact couldn't be resolved
-          contact_id: log.contactId || null,
+          contact_id: log.contactId,
           status: 'running',
           current_step: 1,
           context: log.context || {},

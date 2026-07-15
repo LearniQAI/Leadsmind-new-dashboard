@@ -2,11 +2,13 @@
 import ErrorMessage from '@/components/error-message/ErrorMessage';
 import { IForgotForm } from '@/interface';
 import Link from 'next/link';
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { forgotPassword } from '@/app/actions/auth';
 
 const ForgotCoverForm = () => {
+  const [isLoading, setIsLoading] = useState(false);
   const {
     register,
     handleSubmit,
@@ -14,14 +16,18 @@ const ForgotCoverForm = () => {
   } = useForm<IForgotForm>();
 
   const onSubmit = async (data: IForgotForm) => {
+    setIsLoading(true);
     try {
-      toast.success("Reset link sent successfully");
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast.error(error.message);
+      const result = await forgotPassword(data.email);
+      if (result.success) {
+        toast.success("Reset link sent successfully. Please check your email.");
       } else {
-        toast.error("Something went wrong!");
+        toast.error(result.error || "Something went wrong!");
       }
+    } catch (error: unknown) {
+      toast.error("Something went wrong!");
+    } finally {
+      setIsLoading(false);
     }
   };
   return (
@@ -36,6 +42,7 @@ const ForgotCoverForm = () => {
               className="form-control"
               id="email"
               type="email"
+              disabled={isLoading}
               {...register("email", {
                 required: "Email is required",
                 pattern: {
@@ -48,7 +55,9 @@ const ForgotCoverForm = () => {
           </div>
         </div>
         <div className="mb-4">
-          <button className="btn btn-primary w-full" type="submit">Send Reset Link</button>
+          <button className="btn btn-primary w-full" type="submit" disabled={isLoading}>
+            {isLoading ? "Sending..." : "Send Reset Link"}
+          </button>
         </div>
         <div className="text-center">
           <Link className="back-to-btn" href="/auth/signin-cover">Back to login</Link>

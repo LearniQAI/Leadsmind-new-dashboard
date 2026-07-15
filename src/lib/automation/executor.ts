@@ -1,4 +1,14 @@
-import { createServerClient } from "@/lib/supabase/server";
+// This module is a system-triggered automation engine (invoked from portal
+// actions, LMS event triggers, webhooks, staff actions, etc.) — never a
+// direct end-user data surface. Callers are responsible for their own
+// authorization checks before calling in (see e.g. projects.ts's ownership
+// check ahead of triggerWorkflows). It therefore always uses the admin
+// client, matching the same pattern as WorkflowEngine.ts/AutomationLogger.ts.
+// Using the session-bound client here would silently break under RLS for
+// any caller without a Supabase Auth session — which includes client-portal
+// sessions (getPortalSession()) and LMS/event-bus triggers, both real
+// callers of this module.
+import { createAdminClient } from "@/lib/supabase/server";
 import { AutomationActions } from "./actions_registry";
 import { isWithinBusinessHours, nextWindowOpen, BusinessHoursConfig } from "./business_hours";
 import { resolveWinningBranch } from "./condition_evaluator";
@@ -10,7 +20,7 @@ import { logger } from "@/shared/logger";
  * Fetches all active workflows for the given trigger type.
  */
 export async function triggerWorkflows(workspaceId: string, triggerType: string, contactId: string) {
- const supabase = await createServerClient();
+ const supabase = createAdminClient();
  
  const { data: workflows } = await supabase
   .from("workflows")
@@ -30,7 +40,7 @@ export async function triggerWorkflows(workspaceId: string, triggerType: string,
  * Initializes a new execution record (or queues it) using the atomic stored procedure.
  */
 async function startWorkflowExecution(workflow: any, contactId: string) {
- const supabase = await createServerClient();
+ const supabase = createAdminClient();
 
  // Call the atomic enrollment procedure
  const { data: executionId, error } = await supabase.rpc('enroll_contact_in_workflow', {
@@ -56,7 +66,7 @@ async function startWorkflowExecution(workflow: any, contactId: string) {
  * Core loop: Fetches current step, executes it, and decides whether to continue.
  */
 export async function processNextStep(executionId: string) {
- const supabase = await createServerClient();
+ const supabase = createAdminClient();
 
  // 1. Fetch Execution & Current Step
  const { data: execution } = await supabase
@@ -339,7 +349,7 @@ export async function processNextStep(executionId: string) {
 export async function checkGoalAchieved(workflow: any, contactId: string): Promise<boolean> {
  if (!workflow?.goal_event_type || workflow.goal_event_type === 'none') return false;
 
- const supabase = await createServerClient();
+ const supabase = createAdminClient();
 
  switch (workflow.goal_event_type) {
   case 'appointment_booked':
@@ -369,7 +379,7 @@ export async function checkGoalAchieved(workflow: any, contactId: string): Promi
  * Terminates any active workflows for the contact that have this goal type.
  */
 export async function checkActiveWorkflowGoals(workspaceId: string, contactId: string, eventType: string) {
- const supabase = await createServerClient();
+ const supabase = createAdminClient();
 
  // Find all ACTIVE executions for this contact in this workspace that have this goal type
  const { data: executions } = await supabase

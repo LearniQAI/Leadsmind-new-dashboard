@@ -30,56 +30,66 @@ export interface WorkflowContext {
 
 export const WorkflowEngine = {
   /**
-   * Run workflow sequence asynchronously in the background.
-   * Workflow executions should never block form submission runtime.
+   * Run a single workflow's step sequence to completion. Callers are
+   * responsible for their own concurrency/background handling (e.g. the
+   * Inngest workflow-trigger function awaits this per workflow).
    */
   async runWorkflow(
     workflowId: string,
     context: WorkflowContext
   ): Promise<void> {
-    // Run async process in background, allowing early returns
-    (async () => {
-      const supabase = createAdminClient();
+    const supabase = createAdminClient();
 
-      try {
-        // 1. Fetch workflow metadata
-        const { data: workflow, error: wfErr } = await supabase
-          .from('workflows')
-          .select('*')
-          .eq('id', workflowId)
-          .single();
+    try {
+      // 1. Fetch workflow metadata
+      const { data: workflow, error: wfErr } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('id', workflowId)
+        .single();
 
-        if (wfErr || !workflow || !workflow.is_active) return;
+      if (wfErr || !workflow || !workflow.is_active) return;
 
-        // 2. Fetch steps in order of position
-        const { data: steps, error: stepsErr } = await supabase
-          .from('workflow_steps')
-          .select('*')
-          .eq('workflow_id', workflowId)
-          .order('position', { ascending: true });
+      // 2. Fetch steps in order of position
+      const { data: steps, error: stepsErr } = await supabase
+        .from('workflow_steps')
+        .select('*')
+        .eq('workflow_id', workflowId)
+        .order('position', { ascending: true });
 
-        if (stepsErr || !steps || steps.length === 0) return;
+      if (stepsErr || !steps || steps.length === 0) return;
 
-        // 3. Resolve CRM contact
-        let userEmail = '';
-        for (const [k, v] of Object.entries(context.values)) {
-          if (k.toLowerCase().includes('email') && typeof v === 'string' && v.includes('@')) {
-            userEmail = v.trim();
-            break;
-          }
+      // 3. Resolve CRM contact
+      let userEmail = '';
+      for (const [k, v] of Object.entries(context.values)) {
+        if (k.toLowerCase().includes('email') && typeof v === 'string' && v.includes('@')) {
+          userEmail = v.trim();
+          break;
         }
-        const contactId = await CRMActionHandler.resolveContactId(userEmail, context.workspaceId, supabase);
+      }
+      const contactId = await CRMActionHandler.resolveContactId(userEmail, context.workspaceId, supabase);
 
-        // 4. Start execution logging
-        const executionId = await AutomationLogger.startExecution({
-          workflowId,
-          workspaceId: context.workspaceId,
-          contactId,
-          status: 'running',
-          context: context.values
-        });
+      // workflow_executions.contact_id is NOT NULL at the DB level — attempting
+      // to start an execution without a resolved contact would fail the insert
+      // and abort silently. Fail loudly here instead so it's visible in logs.
+      if (!contactId) {
+        logger.error(
+          { workflowId, workspaceId: context.workspaceId, userEmail },
+          'workflow_engine.contact_resolution_failed'
+        );
+        return;
+      }
 
-        if (!executionId) return;
+      // 4. Start execution logging
+      const executionId = await AutomationLogger.startExecution({
+        workflowId,
+        workspaceId: context.workspaceId,
+        contactId,
+        status: 'running',
+        context: context.values
+      });
+
+      if (!executionId) return;
 
         // Goal Tracking Interceptor: Evaluate goals before executing any steps
         const goalRules = workflow.goal_rules || [];
@@ -159,10 +169,9 @@ export const WorkflowEngine = {
           currentStep: currentIdx
         });
 
-      } catch (err: any) {
-        logger.error({ err }, 'workflow_engine.critical_runtime_failure');
-      }
-    })();
+    } catch (err: any) {
+      logger.error({ err }, 'workflow_engine.critical_runtime_failure');
+    }
   },
 
   /**
