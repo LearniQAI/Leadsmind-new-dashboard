@@ -1,11 +1,12 @@
 import React from 'react';
 import Link from 'next/link';
-import { 
-  BookOpen, Calendar, Award, CheckCircle2, ChevronRight, Play 
+import {
+  BookOpen, Calendar, Award, CheckCircle2, ChevronRight, Play
 } from 'lucide-react';
 import { getCurrentProfile } from '@/lib/auth';
 import { getEnrolledCoursesWithProgress } from '@/app/actions/studentEnrollments';
 import { Progress } from '@/components/ui/progress';
+import { DashCard, DashButton, DashEmptyState } from '@/components/dashboard-ui';
 
 export default async function StudentDashboardPage() {
   const profile = await getCurrentProfile();
@@ -22,83 +23,83 @@ export default async function StudentDashboardPage() {
   return (
     <div className="space-y-10 max-w-5xl mx-auto">
       {/* Header Welcomer banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-white/5 pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-dash-border pb-6">
         <div>
-          <h1 className="text-3xl font-space-grotesk font-black uppercase text-white tracking-tight">
-            Portal <span className="text-primary">Dashboard</span>
+          <h1 className="text-3xl font-space-grotesk font-black !text-dash-text tracking-tight">
+            Portal <span className="!text-dash-accent">Dashboard</span>
           </h1>
-          <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">
+          <p className="text-[13px] font-medium !text-dash-textMuted mt-1">
             Welcome back, {profile?.firstName || 'Student'} {profile?.lastName || ''}
           </p>
         </div>
-        <Link 
-          href="/student/marketplace" 
-          className="bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-6 shadow-lg shadow-primary/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-        >
-          Explore Catalog <ChevronRight size={14} />
-        </Link>
+        <DashButton asChild variant="primary">
+          <Link href="/student/marketplace">
+            Explore Catalog <ChevronRight size={14} />
+          </Link>
+        </DashButton>
       </div>
 
       {/* Metrics widgets */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-[#080f28] border border-white/5 p-6 rounded-2xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <BookOpen size={20} />
+        <DashCard padding="default" className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-dash-accent/10 !text-dash-accent flex items-center justify-center flex-shrink-0">
+            <BookOpen size={18} />
           </div>
           <div>
-            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Enrolled Courses</span>
-            <span className="text-2xl font-space-grotesk font-black text-white block mt-0.5">{totalCourses}</span>
+            <div className="text-[28px] font-bold !text-dash-text leading-none">{totalCourses}</div>
+            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Enrolled Courses</div>
           </div>
-        </div>
+        </DashCard>
 
-        <div className="bg-[#080f28] border border-white/5 p-6 rounded-2xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-            <CheckCircle2 size={20} />
+        <DashCard padding="default" className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-purple/10 !text-purple flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 size={18} />
           </div>
           <div>
-            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Lessons Completed</span>
-            <span className="text-2xl font-space-grotesk font-black text-white block mt-0.5">{completedLessons}</span>
+            <div className="text-[28px] font-bold !text-dash-text leading-none">{completedLessons}</div>
+            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Lessons Completed</div>
           </div>
-        </div>
+        </DashCard>
 
-        <div className="bg-[#080f28] border border-white/5 p-6 rounded-2xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-            <Award size={20} />
+        <DashCard padding="default" className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-green/10 !text-green flex items-center justify-center flex-shrink-0">
+            <Award size={18} />
           </div>
           <div>
-            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Average Progress</span>
-            <span className="text-2xl font-space-grotesk font-black text-white block mt-0.5">{avgProgress}%</span>
+            <div className="text-[28px] font-bold !text-dash-text leading-none">{avgProgress}%</div>
+            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Average Progress</div>
           </div>
-        </div>
+        </DashCard>
       </div>
 
       {/* Enrolled Courses Grid */}
       <div className="space-y-5">
-        <h3 className="text-xs font-black uppercase text-white tracking-widest block border-b border-white/5 pb-2">
+        <h3 className="text-sm font-bold !text-dash-text block border-b border-dash-border pb-2">
           My Enrolled Courses
         </h3>
 
         {courses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {courses.map((course: any) => (
-              <div 
+              <DashCard
                 key={course.id}
-                className="bg-[#080f28] border border-white/5 hover:border-white/10 rounded-2xl overflow-hidden shadow-xl transition-all hover:-translate-y-0.5 duration-300 flex flex-col"
+                padding="none"
+                className="overflow-hidden flex flex-col"
               >
                 {/* Image block preview */}
-                <div className="h-40 relative bg-gradient-to-br from-indigo-950 to-slate-900 border-b border-white/5 shrink-0 flex items-center justify-center overflow-hidden">
+                <div className="h-40 relative bg-dash-surface border-b border-dash-border shrink-0 flex items-center justify-center overflow-hidden">
                   {course.thumbnail_url ? (
-                    <img 
-                      src={course.thumbnail_url} 
+                    <img
+                      src={course.thumbnail_url}
                       alt={course.title}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20 flex items-center justify-center">
-                      <BookOpen size={48} className="text-white/20" />
+                    <div className="absolute inset-0 bg-dash-accent/10 flex items-center justify-center">
+                      <BookOpen size={48} className="!text-dash-accent/40" />
                     </div>
                   )}
-                  <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-mono font-bold uppercase tracking-wider text-white border border-white/5">
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-[11px] font-bold !text-dash-text border border-dash-border">
                     {course.totalLessons} {course.totalLessons === 1 ? 'Lesson' : 'Lessons'}
                   </div>
                 </div>
@@ -106,48 +107,39 @@ export default async function StudentDashboardPage() {
                 {/* Info and Progress */}
                 <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
                   <div>
-                    <h4 className="text-base font-bold text-white tracking-tight line-clamp-1">{course.title}</h4>
-                    <p className="text-xs text-white/50 line-clamp-2 mt-1.5 leading-relaxed">{course.description}</p>
+                    <h4 className="text-base font-bold !text-dash-text tracking-tight line-clamp-1">{course.title}</h4>
+                    <p className="text-xs !text-dash-textMuted line-clamp-2 mt-1.5 leading-relaxed">{course.description}</p>
                   </div>
 
                   <div className="space-y-2 pt-2">
-                    <div className="flex justify-between items-center text-[10px] font-mono text-white/40 uppercase tracking-widest">
+                    <div className="flex justify-between items-center text-[12px] font-medium !text-dash-textMuted">
                       <span>Progress</span>
-                      <span className="font-bold text-white">{course.progressPercentage}%</span>
+                      <span className="font-bold !text-dash-text">{course.progressPercentage}%</span>
                     </div>
-                    <Progress value={course.progressPercentage} className="h-2 bg-[#04091a]" />
+                    <Progress value={course.progressPercentage} className="h-2 bg-dash-surface" />
                   </div>
 
                   <div className="pt-2">
-                    <Link 
-                      href={`/student/courses/${course.id}`}
-                      className="w-full bg-white/5 hover:bg-white/10 border border-white/5 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 flex items-center justify-center gap-1.5 transition-all"
-                    >
-                      <Play size={12} className="fill-current text-white" /> Resume Learning
-                    </Link>
+                    <DashButton asChild variant="secondary" className="w-full">
+                      <Link href={`/student/courses/${course.id}`}>
+                        <Play size={12} className="fill-current" /> Resume Learning
+                      </Link>
+                    </DashButton>
                   </div>
                 </div>
-              </div>
+              </DashCard>
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 bg-[#080f28] rounded-2xl border border-dashed border-white/5 space-y-4">
-            <div className="w-16 h-16 bg-white/[0.02] border border-white/5 rounded-full flex items-center justify-center mx-auto text-white/30">
-              <BookOpen size={24} />
-            </div>
-            <div className="space-y-1">
-              <h4 className="text-sm font-bold text-white uppercase tracking-wider">No Enrolled Courses</h4>
-              <p className="text-xs text-white/40 max-w-sm mx-auto leading-relaxed">
-                You are not registered in any course yet. Visit the catalog to explore available training tracks.
-              </p>
-            </div>
-            <Link 
-              href="/student/marketplace" 
-              className="bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-6 inline-flex items-center justify-center shadow-lg shadow-primary/20 transition-all active:scale-95 mt-2"
-            >
-              Browse Course Catalog
-            </Link>
-          </div>
+          <DashCard padding="default" interactive={false} className="border-dashed">
+            <DashEmptyState
+              icon={BookOpen}
+              title="No enrolled courses"
+              description="You are not registered in any course yet. Visit the catalog to explore available training tracks."
+              actionLabel="Browse course catalog"
+              actionHref="/student/marketplace"
+            />
+          </DashCard>
         )}
       </div>
     </div>

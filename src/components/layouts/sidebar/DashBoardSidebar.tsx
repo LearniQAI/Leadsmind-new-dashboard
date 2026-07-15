@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import useGlobalContext from "@/hooks/use-context";
 import dashboardNav from "@/data/dashboard-nav";
 import { usePathname } from "next/navigation";
@@ -31,6 +31,33 @@ const DashBoardSidebar = () => {
       setSideMenuOpen(false);
     }
   }, [pathName, setSideMenuOpen]);
+
+  // Auto-collapse to the icon-only rail once the user navigates into a
+  // module's sub-page — the expanded rail + persistent sub-nav panel both
+  // eating horizontal space stops being worth it once someone is actively
+  // working inside a page. Dashboard home is exempt (it's a landing/overview
+  // screen that benefits from labels). A user's explicit expand is a real
+  // choice, so once they toggle back open we stop auto-collapsing until they
+  // manually collapse again — userExpandedRef tracks that override for the
+  // life of this mount; it isn't persisted, so a fresh load still gets the
+  // smart default.
+  const userExpandedRef = useRef(false);
+  const prevPathRef = useRef(pathName);
+  useEffect(() => {
+    const navigated = prevPathRef.current !== pathName;
+    prevPathRef.current = pathName;
+    if (!navigated || userExpandedRef.current) return;
+    if (activeNav?.itemId && activeNav.moduleId !== "dashboard") {
+      setIsCollapse(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathName]);
+
+  const handleToggleCollapse = () => {
+    const next = !isCollapse;
+    userExpandedRef.current = !next; // true only while expanded-by-choice
+    setIsCollapse(next);
+  };
 
   // "True" active module — what the rail's own selected/highlighted state shows.
   // Never affected by hover; only by an actual click-to-pin or real navigation.
@@ -117,7 +144,7 @@ const DashBoardSidebar = () => {
             pathname={pathName}
             isCollapse={isCollapse}
             onSelectModule={setManualModuleId}
-            onToggleCollapse={() => setIsCollapse(!isCollapse)}
+            onToggleCollapse={handleToggleCollapse}
             onHoverModule={setHoveredModuleId}
           />
           {/* Gated on hasSubNav (not just previewModule?.items) so this never

@@ -32,14 +32,14 @@ export default async function ShipmentsPage() {
   return (
     <MetaData pageTitle="Courier Tracking & Shipments">
       <Wrapper>
-        <div className="flex flex-col min-h-screen bg-[#04091a]">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4 bg-[#04091a] border-b border-white/5 shrink-0">
+        <div className="flex flex-col min-h-screen bg-dash-bg">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4 bg-dash-bg border-b border-dash-border shrink-0">
             <div>
-              <h1 className="text-[20px] font-bold text-[#eef2ff] uppercase tracking-tight leading-none mb-1 font-space-grotesk">
-                Shipment <span className="text-[#3b82f6]">Tracking</span>
+              <h1 className="text-[20px] font-bold leading-none mb-1.5 !text-dash-text">
+                Shipment tracking
               </h1>
-              <p className="text-[10.5px] font-medium text-[#4a5a82] uppercase tracking-[0.8px] font-dm-sans">
-                Monitor and manage courier dispatches & branded tracking updates
+              <p className="text-[12px] font-medium !text-dash-textMuted">
+                Monitor and manage courier dispatches &amp; branded tracking updates.
               </p>
             </div>
           </div>

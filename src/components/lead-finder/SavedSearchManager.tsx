@@ -6,6 +6,7 @@ import { Clock, ArrowRight, Loader2, Trash2, Bell, BellOff, Play } from 'lucide-
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DashEmptyState } from '@/components/dashboard-ui';
 
 export function SavedSearchManager() {
   const [searches, setSearches] = useState<any[]>([]);
@@ -62,10 +63,12 @@ export function SavedSearchManager() {
 
   if (searches.length === 0) {
     return (
-      <div className="p-8 text-center bg-white border border-dash-border rounded-2xl">
-        <Clock className="w-12 h-12 !text-dash-textMuted mx-auto mb-4 opacity-50" />
-        <h3 className="!text-dash-text font-bold mb-2">No Recent Searches</h3>
-        <p className="text-sm !text-dash-textMuted">Your previous lead searches will appear here.</p>
+      <div className="bg-white border border-dash-border rounded-2xl">
+        <DashEmptyState
+          icon={Clock}
+          title="No recent searches"
+          description="Your previous lead searches will appear here."
+        />
       </div>
     );
   }

@@ -8,6 +8,7 @@ import { useDashboardContext } from '../../DashboardProvider';
 import { handleLogout } from '@/app/actions/auth';
 import LogoutModal from '@/components/auth/LogoutModal';
 import { toast } from 'sonner';
+import { DashStatusPill } from '@/components/dashboard-ui';
 
 type TUserProps = {
   handleShowUserDrowdown: () => void;
@@ -70,11 +71,11 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
             size="sm"
             showOnlineIndicator={true}
           />
-          <div className="hidden sm:flex flex-col items-start leading-none gap-0.5">
-            <span className="text-[12px] font-bold !text-slate-800">
+          <div className="hidden sm:flex flex-col items-start leading-tight gap-0.5">
+            <span className="text-sm font-semibold !text-dash-text">
               {user?.firstName || 'GulfBridge'}
             </span>
-            <span className="text-[10px] !text-slate-500 font-medium">Workspace Owner</span>
+            <span className="text-[11px] !text-dash-textMuted font-medium">Workspace Owner</span>
           </div>
         </button>
 
@@ -82,65 +83,65 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
         {isOpenUserDropdown && (
           <div
             role="menu"
-            className="absolute top-full right-0 mt-2 w-[320px] bg-white border border-[#EEF2F7] rounded-[20px] shadow-[0_20px_50px_rgba(15,23,42,0.12)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150 origin-top-right"
+            className="absolute top-full right-0 mt-2 w-[340px] bg-white border border-[#EEF2F7] rounded-[20px] shadow-[0_20px_50px_rgba(15,23,42,0.12)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150 origin-top-right"
           >
-            {/* Header Section */}
-            <div className="p-4 border-b border-[#EEF2F7] bg-slate-50/50">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex flex-col">
-                  <span className="text-[12px] font-bold !text-slate-800">{workspace?.name || 'LeadsMind Workspace'}</span>
-                </div>
-                <div className="px-2 py-0.5 bg-blue-50 border border-blue-100 rounded-md text-[9px] font-black tracking-wider !text-blue-600 uppercase">
+            {/* Header Section — accent wash anchors this as the premium account panel */}
+            <div className="relative p-5 pb-4 border-b border-[#EEF2F7] overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-dash-accent/[0.07] to-transparent pointer-events-none" />
+              <div className="absolute inset-x-0 top-0 h-[3px] bg-dash-accent" />
+              <div className="relative flex items-center justify-between mb-4">
+                <span className="text-[12px] font-bold !text-slate-500 truncate">{workspace?.name || 'LeadsMind Workspace'}</span>
+                <DashStatusPill variant="accent" className="uppercase tracking-wider text-[10px]">
                   Pro Plan
-                </div>
+                </DashStatusPill>
               </div>
-              <div className="flex items-center gap-3">
-                <UserAvatar 
+              <div className="relative flex items-center gap-3.5">
+                <UserAvatar
                   avatarUrl={user?.avatarUrl}
                   oauthImage={user?.oauthImage}
                   firstName={user?.firstName}
                   lastName={user?.lastName}
-                  size="lg"
-                  className="shadow-sm"
+                  size="xl"
+                  className="shadow-md ring-2 ring-white"
                 />
                 <div className="min-w-0">
-                  <p className="text-[14px] font-bold !text-slate-900 truncate leading-tight">{user?.firstName} {user?.lastName}</p>
-                  <p className="text-[12px] !text-slate-500 truncate leading-tight mt-0.5">{user?.email}</p>
+                  <p className="text-[17px] font-bold !text-dash-text truncate leading-tight">{user?.firstName} {user?.lastName}</p>
+                  <p className="text-[12px] !text-dash-textMuted truncate leading-tight mt-1">{user?.email}</p>
                 </div>
               </div>
             </div>
 
             {/* Usage Metrics Section */}
             <div className="p-4 border-b border-[#EEF2F7]">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] font-bold !text-slate-400 uppercase tracking-wider">Workspace Usage</span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 <div>
-                  <div className="flex justify-between text-[11px] mb-1">
+                  <div className="flex justify-between text-[11px] mb-1.5">
                     <span className="font-medium !text-slate-600">Contacts</span>
                     <span className="!text-slate-400 font-medium">234 / 500</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-1">
-                    <div className="bg-primary h-1 rounded-full w-[46%]"></div>
+                  <div className="w-full bg-dash-surface rounded-full h-2">
+                    <div className="bg-dash-accent h-2 rounded-full w-[46%]"></div>
                   </div>
                 </div>
                 <div>
-                  <div className="flex justify-between text-[11px] mb-1">
+                  <div className="flex justify-between text-[11px] mb-1.5">
                     <span className="font-medium !text-slate-600">Automations</span>
                     <span className="!text-slate-400 font-medium">18 / 50</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-1">
-                    <div className="bg-primary h-1 rounded-full w-[36%]"></div>
+                  <div className="w-full bg-dash-surface rounded-full h-2">
+                    <div className="bg-dash-accent h-2 rounded-full w-[36%]"></div>
                   </div>
                 </div>
                 <div>
-                  <div className="flex justify-between text-[11px] mb-1">
+                  <div className="flex justify-between text-[11px] mb-1.5">
                     <span className="font-medium !text-slate-600">Websites</span>
                     <span className="!text-slate-400 font-medium">3 / 10</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-1">
-                    <div className="bg-primary h-1 rounded-full w-[30%]"></div>
+                  <div className="w-full bg-dash-surface rounded-full h-2">
+                    <div className="bg-dash-accent h-2 rounded-full w-[30%]"></div>
                   </div>
                 </div>
               </div>

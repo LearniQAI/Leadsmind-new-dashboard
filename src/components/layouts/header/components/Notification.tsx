@@ -186,12 +186,12 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
         {isOpenNotification && (
           <>
             <div className="fixed inset-0 z-40" onClick={handleShowNotification} />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.98, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="absolute top-full right-0 mt-3 w-[400px] bg-white border border-[#EEF2F7] rounded-[20px] shadow-[0_20px_50px_rgba(15,23,42,0.12)] z-50 overflow-hidden flex flex-col"
+              className="absolute top-full right-0 mt-3 w-[400px] bg-white border border-dash-border rounded-[20px] shadow-[0_28px_64px_rgba(15,23,42,0.18)] z-50 overflow-hidden flex flex-col"
             >
               {/* Header */}
               <div className="px-5 pt-4 pb-3 border-b border-[#EEF2F7] bg-white flex flex-col gap-3">
@@ -224,13 +224,13 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
                 </div>
 
                 {/* Tabs */}
-                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar bg-dash-surface border border-dash-border p-1 rounded-xl">
                   {(['All', 'CRM', 'Websites', 'Automations', 'System'] as TabType[]).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
-                        activeTab === tab ? 'bg-slate-100 !text-slate-900' : '!text-slate-500 hover:bg-slate-50 hover:!text-slate-800'
+                      className={`px-3 py-1.5 rounded-lg text-[12px] font-bold whitespace-nowrap transition-all motion-reduce:transition-none ${
+                        activeTab === tab ? 'bg-white !text-dash-accent shadow-sm' : '!text-dash-textMuted hover:!text-dash-text'
                       }`}
                     >
                       {tab}
@@ -260,8 +260,8 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
                       if (groupItems.length === 0) return null;
                       return (
                         <div key={groupLabel} className="mb-2">
-                          <div className="px-5 py-2 sticky top-0 bg-white/95 backdrop-blur z-10">
-                            <span className="text-[10px] font-bold !text-slate-400 uppercase tracking-wider">{groupLabel}</span>
+                          <div className="px-5 py-2 sticky top-0 bg-dash-surface/90 backdrop-blur border-y border-dash-border/60 z-10">
+                            <span className="text-[10px] font-bold !text-slate-500 uppercase tracking-wider">{groupLabel}</span>
                           </div>
                           <div>
                             {groupItems.map((notification) => {
@@ -270,7 +270,7 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
                                 <div
                                   key={notification.id}
                                   className={`group relative flex items-start gap-3.5 px-5 py-3 transition-colors ${
-                                    isNew ? 'bg-[#F8FAFC] border-l-[3px] border-l-[#2563EB]' : 'bg-white border-l-[3px] border-l-transparent hover:bg-slate-50'
+                                    isNew ? 'bg-dash-accent/[0.05] border-l-4 border-l-dash-accent' : 'bg-white border-l-4 border-l-transparent hover:bg-slate-50'
                                   }`}
                                   onMouseEnter={() => { if(isNew) handleMarkAsRead(notification.id) }}
                                 >
