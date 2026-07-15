@@ -46,26 +46,24 @@ export default function IntegrationsHubPage() {
 
     // coming_soon: subtle dimmed card style + disabled greyed "Coming Soon" badge
     return (
-      <div key={item.name} className="bg-[rgba(12,21,53,0.5)] border border-[rgba(255,255,255,0.04)]
+      <div key={item.name} className="bg-dash-surface border border-dash-border
         rounded-xl p-5 flex items-center justify-between gap-4
-        opacity-50 select-none w-full transition-all duration-200">
-        
+        opacity-50 select-none w-full transition-all duration-200 motion-reduce:transition-none">
+
         {/* Left — icon + info */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: `${item.color}15` }}>
             <span className="text-[12px] font-bold"
-              style={{ color: item.color, fontFamily: "'Space Grotesk', sans-serif" }}>
+              style={{ color: item.color }}>
               {item.shortName.slice(0, 4)}
             </span>
           </div>
           <div className="min-w-0">
-            <span className="text-[#94a3c8] text-[14px] font-semibold truncate block"
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            <span className="!text-dash-text text-[14px] font-semibold truncate block">
               {item.name}
             </span>
-            <p className="text-[#4a5a82] text-[11.5px] mt-0.5 leading-snug"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            <p className="!text-dash-textMuted text-[11.5px] mt-0.5 leading-snug">
               {item.desc}
             </p>
           </div>
@@ -73,9 +71,8 @@ export default function IntegrationsHubPage() {
 
         {/* Right — Coming Soon badge */}
         <div className="flex-shrink-0">
-          <span className="bg-white/5 border border-white/10 text-gray-500 text-[11px] font-semibold rounded-lg px-3 py-1.5 cursor-not-allowed"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            Coming Soon
+          <span className="bg-dash-border/40 border border-dash-border !text-dash-textMuted text-[11px] font-semibold rounded-lg px-3 py-1.5 cursor-not-allowed">
+            Coming soon
           </span>
         </div>
       </div>
@@ -84,20 +81,18 @@ export default function IntegrationsHubPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-3xl">
+      <div className="min-h-screen bg-dash-bg px-6 py-6 max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-[22px] font-bold"
-            style={{ fontFamily: "'Space Grotesk', sans-serif", color: '#eef2ff' }}>
-            Integrations<span style={{ color: '#3b82f6' }}> Hub</span>
+          <h1 className="text-[22px] font-bold !text-dash-text">
+            Integrations<span className="text-dash-accent"> hub</span>
           </h1>
-          <p className="text-[11px] uppercase tracking-[0.8px] font-medium mt-1"
-            style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
+          <p className="text-[11px] font-medium mt-1 !text-dash-textMuted">
             Connect LeadsMind to the tools your business already uses
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[12px]">
+          <div className="mb-6 p-4 rounded-xl bg-red-100 border border-red-200 text-red-700 text-[12px]">
             {error}
           </div>
         )}
@@ -105,15 +100,14 @@ export default function IntegrationsHubPage() {
         {loading ? (
           <div className="flex flex-col gap-3">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-[76px] rounded-xl bg-white/[0.03] animate-pulse" />
+              <div key={i} className="h-[76px] rounded-xl bg-dash-surface animate-pulse motion-reduce:animate-none" />
             ))}
           </div>
         ) : (
           <>
             {/* Email & Calendar */}
-            <p className="text-[10px] font-semibold uppercase tracking-[1.2px] mb-3"
-              style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
-              Email & Calendar
+            <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
+              Email & calendar
             </p>
             <div className="flex flex-col gap-3 mb-8">
               {[
@@ -127,9 +121,8 @@ export default function IntegrationsHubPage() {
             </div>
 
             {/* Team Communication */}
-            <p className="text-[10px] font-semibold uppercase tracking-[1.2px] mb-3"
-              style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
-              Team Communication
+            <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
+              Team communication
             </p>
             <div className="flex flex-col gap-3 mb-8">
               {[
@@ -139,9 +132,8 @@ export default function IntegrationsHubPage() {
             </div>
 
             {/* Automation Platforms */}
-            <p className="text-[10px] font-semibold uppercase tracking-[1.2px] mb-3"
-              style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
-              Automation Platforms
+            <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
+              Automation platforms
             </p>
             <div className="flex flex-col gap-3 mb-8">
               {[
@@ -153,9 +145,8 @@ export default function IntegrationsHubPage() {
             </div>
 
             {/* E-Commerce */}
-            <p className="text-[10px] font-semibold uppercase tracking-[1.2px] mb-3"
-              style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
-              E-Commerce
+            <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
+              E-commerce
             </p>
             <div className="flex flex-col gap-3 mb-8">
               {[
@@ -167,9 +158,8 @@ export default function IntegrationsHubPage() {
             </div>
 
             {/* Marketing & Social */}
-            <p className="text-[10px] font-semibold uppercase tracking-[1.2px] mb-3"
-              style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
-              Marketing & Social
+            <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
+              Marketing & social
             </p>
             <div className="flex flex-col gap-3">
               {[

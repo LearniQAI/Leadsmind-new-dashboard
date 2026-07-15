@@ -71,32 +71,32 @@ export function IntakeFormBuilder({ calendarId, initialFields }: IntakeFormBuild
  };
 
  return (
-  <div className="card__wrapper border-primary/10 mt-[20px]">
-   <div className="card__title-wrap flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+  <div className="bg-white border border-dash-border rounded-2xl p-6 mt-[20px] shadow-sm">
+   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
     <div>
       <div className="flex items-center gap-2 mb-2">
        <ListFilter className="h-4 w-4 text-primary" />
-       <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Qualitative Acquisition</span>
+       <span className="text-[10px] font-bold text-primary">Qualitative acquisition</span>
       </div>
-      <h5 className="card__heading-title uppercase">Intake Protocol</h5>
-      <p className="card__desc style_two text-sm font-medium mt-2">Design the dynamic data payload for each booking.</p>
+      <h5 className="text-lg font-bold !text-dash-text">Intake protocol</h5>
+      <p className="text-sm font-medium !text-dash-textMuted mt-2">Design the dynamic data payload for each booking.</p>
     </div>
     <div className="flex gap-3">
-      <Button 
-       onClick={addField} 
+      <Button
+       onClick={addField}
        variant="outline"
-       className="bg-card dark:bg-card-dark border-border dark:border-border-dark text-heading dark:text-heading-dark rounded-xl gap-2 font-bold uppercase text-[10px] h-12 px-6 hover:bg-primary/5 transition-all"
+       className="bg-card border-border !text-dash-text rounded-xl gap-2 font-bold text-[10px] h-12 px-6 hover:bg-primary/5 transition-all motion-reduce:transition-none"
       >
        <Plus className="h-3.5 w-3.5" />
-       Add Question
+       Add question
       </Button>
-      <Button 
-       onClick={handleSave} 
+      <Button
+       onClick={handleSave}
        disabled={isSaving}
-       className="bg-primary hover:bg-primary-dark text-white rounded-xl gap-2 font-bold uppercase text-[10px] h-12 px-8 shadow-lg shadow-primary/10"
+       className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold text-[10px] h-12 px-8 shadow-lg shadow-primary/10 transition-colors motion-reduce:transition-none"
       >
-       {isSaving ? <Rocket className="h-3.5 w-3.5 animate-bounce" /> : <Save className="h-3.5 w-3.5" />}
-       Sync Protocol
+       {isSaving ? <Rocket className="h-3.5 w-3.5 animate-bounce motion-reduce:animate-none" /> : <Save className="h-3.5 w-3.5" />}
+       Sync protocol
       </Button>
     </div>
    </div>
@@ -104,7 +104,7 @@ export function IntakeFormBuilder({ calendarId, initialFields }: IntakeFormBuild
    <div className="space-y-4">
     {fields.map((field) => (
      <div key={field.id} className="flex flex-col md:flex-row items-start md:items-center gap-4 p-5 rounded-xl bg-bgBody dark:bg-bgBody-dark border border-border dark:border-border-dark group hover:border-primary/30 transition-all duration-500">
-       <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-body dark:text-body-dark opacity-20 group-hover:text-primary group-hover:opacity-100 transition-all">
+       <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-body opacity-40 group-hover:text-primary group-hover:opacity-100 transition-all motion-reduce:transition-none">
         <GripVertical className="h-4 w-4" />
        </div>
        

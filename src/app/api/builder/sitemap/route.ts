@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     // 2. Fetch all pages
     const { data: wsPages } = await supabase
       .from('website_pages')
-      .select('path, updated_at')
+      .select('path_name, updated_at')
       .eq('website_id', websiteId);
 
     const workspaceSlug = (website.workspaces as any)?.slug || 'default';
@@ -38,14 +38,14 @@ export async function GET(request: Request) {
 
     // 3. Construct XML
     const sitemapEntries = (wsPages || []).map((page) => {
-      const cleanPath = page.path === '/' ? '' : page.path;
+      const cleanPath = page.path_name === '/' ? '' : page.path_name;
       const lastMod = page.updated_at ? new Date(page.updated_at).toISOString() : new Date().toISOString();
       return `
         <url>
           <loc>${baseUrl}${cleanPath}</loc>
           <lastmod>${lastMod}</lastmod>
           <changefreq>daily</changefreq>
-          <priority>${page.path === '/' ? '1.0' : '0.8'}</priority>
+          <priority>${page.path_name === '/' ? '1.0' : '0.8'}</priority>
         </url>
       `;
     }).join('');

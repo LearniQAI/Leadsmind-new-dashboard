@@ -57,11 +57,11 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {calendars.map((cal) => (
-          <div key={cal.id} className="bg-[var(--card)] border border-[var(--bdr)] rounded-[var(--r16)] overflow-hidden shadow-xl hover:border-[var(--accent)] transition-all group">
+          <div key={cal.id} className="bg-white border border-dash-border rounded-2xl overflow-hidden shadow-sm hover:border-dash-accent transition-all motion-reduce:transition-none group">
             {/* Engine Preview Header */}
-            <div className="h-32 bg-[var(--n900)] flex items-center justify-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)] to-[var(--purple)] opacity-10 group-hover:opacity-20 transition-opacity" />
-              <div className="w-16 h-16 rounded-2xl bg-[var(--n800)] border border-[var(--bdr)] flex items-center justify-center text-[var(--accent2)] shadow-2xl relative z-10">
+            <div className="h-32 bg-dash-surface flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-dash-accent to-purple opacity-10 group-hover:opacity-20 transition-opacity motion-reduce:transition-none" />
+              <div className="w-16 h-16 rounded-2xl bg-white border border-dash-border flex items-center justify-center text-dash-accent shadow-sm relative z-10">
                 {getIcon(cal.calendar_type)}
               </div>
             </div>
@@ -69,14 +69,14 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-[16px] font-bold font-['Space_Grotesk'] text-[var(--t1)]">{cal.name}</h3>
-                  <p className="text-[11px] font-black text-[var(--t4)] uppercase tracking-widest mt-1">
-                    {cal.calendar_type.replace('_', ' ')} ENGINE
+                  <h3 className="text-[16px] font-bold !text-dash-text">{cal.name}</h3>
+                  <p className="text-[11px] font-bold !text-dash-textMuted mt-1 capitalize">
+                    {cal.calendar_type.replace('_', ' ')} engine
                   </p>
                 </div>
                 <button
                   onClick={() => handleEdit(cal)}
-                  className="p-1.5 text-[var(--t4)] hover:text-[var(--t1)] hover:bg-[var(--n700)] rounded-[var(--r8)] transition-all"
+                  className="p-1.5 !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none"
                 >
                   <MoreVertical size={16} />
                 </button>
@@ -84,12 +84,12 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-[12px] font-medium">
-                  <span className="text-[var(--t3)]">Duration</span>
-                  <span className="text-[var(--t1)]">{cal.slot_duration} Minutes</span>
+                  <span className="!text-dash-textMuted">Duration</span>
+                  <span className="!text-dash-text">{cal.slot_duration} Minutes</span>
                 </div>
                 <div className="flex items-center justify-between text-[12px] font-medium">
-                  <span className="text-[var(--t3)]">Meeting Mode</span>
-                  <span className="text-[var(--t1)] uppercase tracking-tighter">{cal.meeting_mode.replace('_', ' ')}</span>
+                  <span className="!text-dash-textMuted">Meeting Mode</span>
+                  <span className="!text-dash-text capitalize">{cal.meeting_mode.replace('_', ' ')}</span>
                 </div>
               </div>
 
@@ -97,27 +97,27 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
                 <Button
                   variant="outline"
                   onClick={() => copyToClipboard(cal.slug)}
-                  className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t2)] text-[11px] font-bold uppercase tracking-widest h-10"
+                  className="bg-white border-dash-border !text-dash-textMuted text-[11px] font-bold h-10"
                 >
-                  <Copy size={14} className="mr-2" /> Copy Link
+                  <Copy size={14} className="mr-2" /> Copy link
                 </Button>
-                <Button 
+                <Button
                   onClick={() => window.open(`${window.location.origin}/book/${cal.slug}`, '_blank')}
-                  className="bg-[var(--accent)] hover:bg-[var(--accent2)] text-white text-[11px] font-bold uppercase tracking-widest h-10"
+                  className="bg-dash-accent hover:bg-dash-accent/90 text-white text-[11px] font-bold h-10 transition-colors motion-reduce:transition-none"
                 >
                   <Eye size={14} className="mr-2" /> Preview
                 </Button>
               </div>
             </div>
 
-            <div className="px-6 py-3 bg-[var(--n900)] bg-opacity-50 border-t border-[var(--bdr)] flex items-center justify-between">
+            <div className="px-6 py-3 bg-dash-surface border-t border-dash-border flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-pulse" />
-                <span className="text-[10px] font-bold text-[var(--t3)] uppercase">Active Link</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse motion-reduce:animate-none" />
+                <span className="text-[10px] font-bold !text-dash-textMuted">Active link</span>
               </div>
               <button
                 onClick={() => handleEdit(cal)}
-                className="text-[var(--accent2)] hover:underline text-[10px] font-black uppercase tracking-widest"
+                className="text-dash-accent hover:underline text-[10px] font-bold"
               >
                 Settings
               </button>
@@ -128,14 +128,14 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
         {/* Create New Engine Card */}
         <div
           onClick={handleCreate}
-          className="border-2 border-dashed border-[var(--bdr)] rounded-[var(--r16)] p-6 flex flex-col items-center justify-center text-center gap-4 hover:border-[var(--accent)] hover:bg-[rgba(255,255,255,0.01)] transition-all cursor-pointer min-h-[350px] group"
+          className="border-2 border-dashed border-dash-border rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-4 hover:border-dash-accent hover:bg-dash-surface transition-all motion-reduce:transition-none cursor-pointer min-h-[350px] group"
         >
-          <div className="w-12 h-12 rounded-full bg-[var(--n800)] border border-[var(--bdr)] flex items-center justify-center text-[var(--t4)] group-hover:text-[var(--accent2)] group-hover:border-[var(--accent)] transition-all">
+          <div className="w-12 h-12 rounded-full bg-white border border-dash-border flex items-center justify-center !text-dash-textMuted group-hover:text-dash-accent group-hover:border-dash-accent transition-all motion-reduce:transition-none">
             <Zap size={20} />
           </div>
           <div>
-            <h4 className="text-[14px] font-bold text-[var(--t2)] group-hover:text-[var(--t1)]">New Booking Engine</h4>
-            <p className="text-[11px] text-[var(--t4)] mt-1 max-w-[200px]">Create a new automated scheduling workflow for your team.</p>
+            <h4 className="text-[14px] font-bold !text-dash-textMuted group-hover:!text-dash-text">New booking engine</h4>
+            <p className="text-[11px] !text-dash-textMuted mt-1 max-w-[200px]">Create a new automated scheduling workflow for your team.</p>
           </div>
         </div>
       </div>

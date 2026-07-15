@@ -36,14 +36,14 @@ export function RoundRobinSettings({ members, initialAssignments = [], onSave }:
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 motion-reduce:animate-none">
       {/* Header Orchestration */}
       <div className="space-y-1">
         <div className="flex items-center gap-2 mb-2">
-          <div className="h-6 w-1 bg-[#2563eb] rounded-full shadow-[0_0_8px_rgba(37,99,235,0.4)]"></div>
-          <h2 className="text-[14px] font-bold text-[#eef2ff] uppercase tracking-[0.15em] font-space">Team Enrollment</h2>
+          <div className="h-6 w-1 bg-dash-accent rounded-full"></div>
+          <h2 className="text-[14px] font-bold !text-dash-text">Team enrollment</h2>
         </div>
-        <p className="text-[11px] text-[#4a5a82] font-medium leading-relaxed max-w-lg">
+        <p className="text-[11px] !text-dash-textMuted font-medium leading-relaxed max-w-lg">
           Initialize the routing nodes by selecting participating team members and defining their distribution priority weighting.
         </p>
       </div>
@@ -51,8 +51,8 @@ export function RoundRobinSettings({ members, initialAssignments = [], onSave }:
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Team Selection List */}
         <div className="space-y-3">
-          <Label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest ml-1 mb-2 block">Available Personnel</Label>
-          <div className="bg-[#080f28]/40 border border-white/5 rounded-2xl overflow-hidden divide-y divide-white/5">
+          <Label className="text-[10px] font-bold !text-dash-textMuted ml-1 mb-2 block">Available personnel</Label>
+          <div className="bg-white border border-dash-border rounded-2xl overflow-hidden divide-y divide-dash-border shadow-sm">
             {members.map(member => {
               const isSelected = selectedIds.includes(member.id);
               return (
@@ -60,25 +60,25 @@ export function RoundRobinSettings({ members, initialAssignments = [], onSave }:
                   key={member.id}
                   onClick={() => toggleMember(member.id)}
                   className={cn(
-                    "w-full px-5 py-4 flex items-center justify-between transition-all group",
-                    isSelected ? "bg-[#2563eb]/5" : "hover:bg-white/[0.02]"
+                    "w-full px-5 py-4 flex items-center justify-between transition-all motion-reduce:transition-none group",
+                    isSelected ? "bg-dash-accent/5" : "hover:bg-dash-surface"
                   )}
                 >
                   <div className="flex items-center gap-3">
                     <div className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[11px] font-space transition-all",
-                      isSelected ? "bg-[#2563eb] text-white" : "bg-white/5 text-[#4a5a82] group-hover:bg-white/10"
+                      "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[11px] transition-all motion-reduce:transition-none",
+                      isSelected ? "bg-dash-accent text-white" : "bg-dash-surface !text-dash-textMuted group-hover:bg-dash-border/60"
                     )}>
                       {member.name[0]}
                     </div>
                     <div className="text-left">
-                      <p className={cn("text-[13px] font-bold transition-colors", isSelected ? "text-[#eef2ff]" : "text-[#94a3c8]")}>{member.name}</p>
-                      <p className="text-[11px] text-[#4a5a82]">{member.email}</p>
+                      <p className={cn("text-[13px] font-bold transition-colors motion-reduce:transition-none", isSelected ? "!text-dash-text" : "!text-dash-textMuted")}>{member.name}</p>
+                      <p className="text-[11px] !text-dash-textMuted">{member.email}</p>
                     </div>
                   </div>
                   <div className={cn(
-                    "w-5 h-5 rounded-md border flex items-center justify-center transition-all",
-                    isSelected ? "bg-[#2563eb] border-[#2563eb]" : "border-white/10"
+                    "w-5 h-5 rounded-md border flex items-center justify-center transition-all motion-reduce:transition-none",
+                    isSelected ? "bg-dash-accent border-dash-accent" : "border-dash-border"
                   )}>
                     {isSelected && <Target className="h-3 w-3 text-white" />}
                   </div>
@@ -90,11 +90,11 @@ export function RoundRobinSettings({ members, initialAssignments = [], onSave }:
 
         {/* Priority Weighting Configuration */}
         <div className="space-y-4">
-          <Label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-widest ml-1 block">Distribution Weights</Label>
+          <Label className="text-[10px] font-bold !text-dash-textMuted ml-1 block">Distribution weights</Label>
           {selectedIds.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center py-12 px-8 rounded-2xl border border-dashed border-white/5 bg-white/[0.01] text-center opacity-50">
-              <Users className="h-8 w-8 text-[#4a5a82] mb-3" />
-              <p className="text-[11px] font-bold text-[#4a5a82] uppercase tracking-widest">Enroll team members to configure priority</p>
+            <div className="h-full flex flex-col items-center justify-center py-12 px-8 rounded-2xl border border-dashed border-dash-border bg-dash-surface text-center opacity-70">
+              <Users className="h-8 w-8 !text-dash-textMuted mb-3" />
+              <p className="text-[11px] font-bold !text-dash-textMuted">Enroll team members to configure priority</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -102,13 +102,13 @@ export function RoundRobinSettings({ members, initialAssignments = [], onSave }:
                 const member = members.find(m => m.id === id);
                 if (!member) return null;
                 return (
-                  <div key={id} className="p-5 rounded-2xl bg-[#080f28]/60 border border-white/5 space-y-4 animate-in zoom-in-95 duration-300">
+                  <div key={id} className="p-5 rounded-2xl bg-white border border-dash-border space-y-4 animate-in zoom-in-95 duration-300 motion-reduce:animate-none shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Target className="h-3.5 w-3.5 text-[#3b82f6]" />
-                        <span className="text-[12px] font-bold text-[#eef2ff] font-dm-sans">{member.name}</span>
+                        <Target className="h-3.5 w-3.5 text-dash-accent" />
+                        <span className="text-[12px] font-bold !text-dash-text">{member.name}</span>
                       </div>
-                      <span className="text-[14px] font-bold font-space text-[#3b82f6] bg-[#2563eb]/10 px-2 py-0.5 rounded-md">
+                      <span className="text-[14px] font-bold text-dash-accent bg-dash-accent/10 px-2 py-0.5 rounded-md">
                         {weights[id] || 5}
                       </span>
                     </div>
@@ -120,9 +120,9 @@ export function RoundRobinSettings({ members, initialAssignments = [], onSave }:
                       onValueChange={(val) => handleWeightChange(id, val)}
                       className="py-2"
                     />
-                    <div className="flex justify-between text-[9px] font-bold text-[#4a5a82] uppercase tracking-widest">
-                      <span>Low Priority</span>
-                      <span>High Performance</span>
+                    <div className="flex justify-between text-[9px] font-bold !text-dash-textMuted">
+                      <span>Low priority</span>
+                      <span>High performance</span>
                     </div>
                   </div>
                 );
@@ -132,13 +132,13 @@ export function RoundRobinSettings({ members, initialAssignments = [], onSave }:
         </div>
       </div>
 
-      <div className="pt-6 border-t border-white/5 flex justify-end">
+      <div className="pt-6 border-t border-dash-border flex justify-end">
         <Button
           onClick={() => onSave(selectedIds.map(id => ({ user_id: id, weight: weights[id] })))}
           disabled={selectedIds.length === 0}
-          className="bg-[#2563eb] hover:bg-[#2563eb]/90 text-white rounded-xl font-bold text-[13px] px-8 h-11 shadow-lg shadow-[#2563eb]/20"
+          className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl font-bold text-[13px] px-8 h-11 shadow-lg shadow-dash-accent/20 transition-colors motion-reduce:transition-none"
         >
-          Confirm Distribution Engine
+          Confirm distribution engine
         </Button>
       </div>
     </div>

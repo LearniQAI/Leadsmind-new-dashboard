@@ -15,6 +15,14 @@ const nextConfig = {
                 protocol: 'https',
                 hostname: supabaseHostname,
             },
+            {
+                protocol: 'https',
+                hostname: 'lh3.googleusercontent.com',
+            },
+            {
+                protocol: 'https',
+                hostname: 'avatars.githubusercontent.com',
+            },
         ],
     },
     experimental: {

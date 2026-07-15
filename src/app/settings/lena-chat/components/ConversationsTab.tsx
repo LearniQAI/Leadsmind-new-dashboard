@@ -217,38 +217,38 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'waiting_agent':
-        return 'bg-[#f59e0b]/15 text-[#fbbf24] border-[#f59e0b]/25';
+        return 'bg-amber-50 text-amber-600 border-amber-200';
       case 'with_agent':
-        return 'bg-[#2563eb]/15 text-[#60a5fa] border-[#2563eb]/25';
+        return 'bg-dash-accent/10 text-dash-accent border-dash-accent/25';
       case 'resolved':
-        return 'bg-[#10b981]/15 text-[#34d399] border-[#10b981]/25';
+        return 'bg-green/10 text-green border-green/25';
       default:
-        return 'bg-white/5 text-[#94a3c8] border-white/10';
+        return 'bg-dash-surface !text-dash-textMuted border-dash-border';
     }
   };
 
   if (loading && conversations.length === 0) {
-    return <div className="h-40 bg-white/[0.02] animate-pulse rounded-xl" />;
+    return <div className="h-40 bg-dash-surface animate-pulse motion-reduce:animate-none rounded-xl" />;
   }
 
   return (
-    <div className="flex border border-[rgba(255,255,255,0.07)] bg-[rgba(12,21,53,0.85)] rounded-xl overflow-hidden min-h-[500px] max-h-[620px] w-full">
+    <div className="flex border border-dash-border bg-white rounded-xl overflow-hidden min-h-[500px] max-h-[620px] w-full shadow-sm">
       {/* Left panel: List */}
-      <div className="w-[300px] border-right border-[rgba(255,255,255,0.07)] flex flex-col flex-shrink-0 bg-[#080f28]">
+      <div className="w-[300px] border-r border-dash-border flex flex-col flex-shrink-0 bg-dash-surface">
         {/* Filters */}
-        <div className="p-3 border-b border-[rgba(255,255,255,0.07)] space-y-2">
-          <span className="text-[11px] font-bold text-[#4a5a82] uppercase tracking-[0.5px]">
-            Filter Chats
+        <div className="p-3 border-b border-dash-border space-y-2">
+          <span className="text-[11px] font-bold !text-dash-textMuted">
+            Filter chats
           </span>
           <div className="flex flex-wrap gap-1.5">
             {['all', 'active', 'waiting_agent', 'resolved'].map((st) => (
               <button
                 key={st}
                 onClick={() => setActiveStatus(st)}
-                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all ${
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all motion-reduce:transition-none ${
                   activeStatus === st
-                    ? 'bg-[#2563eb] text-white border-[#2563eb]'
-                    : 'bg-white/5 text-[#94a3c8] border-white/5 hover:text-white'
+                    ? 'bg-dash-accent text-white border-dash-accent'
+                    : 'bg-white !text-dash-textMuted border-dash-border hover:!text-dash-text'
                 }`}
               >
                 {st.replace('_', ' ')}
@@ -258,9 +258,9 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
         </div>
 
         {/* Scrollable list */}
-        <div className="flex-1 overflow-y-auto divide-y divide-[rgba(255,255,255,0.04)]">
+        <div className="flex-1 overflow-y-auto divide-y divide-dash-border">
           {conversations.length === 0 ? (
-            <p className="text-[11.5px] text-[#4a5a82] text-center italic py-8">
+            <p className="text-[11.5px] !text-dash-textMuted text-center italic py-8">
               No conversations found.
             </p>
           ) : (
@@ -268,28 +268,28 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
               <div
                 key={c.id}
                 onClick={() => setSelectedConv(c)}
-                className={`p-3.5 cursor-pointer transition-colors relative ${
+                className={`p-3.5 cursor-pointer transition-colors motion-reduce:transition-none relative ${
                   selectedConv?.id === c.id
-                    ? 'bg-[rgba(37,99,235,0.14)] border-l-2 border-[#2563eb]'
-                    : 'hover:bg-white/[0.03]'
+                    ? 'bg-dash-accent/10 border-l-2 border-dash-accent'
+                    : 'hover:bg-white'
                 }`}
               >
                 <div className="flex justify-between items-start gap-2">
-                  <span className="text-[12px] font-semibold text-[#eef2ff] font-space-grotesk truncate">
+                  <span className="text-[12px] font-semibold !text-dash-text truncate">
                     {c.visitor_name || c.visitor_id.substring(0, 12)}
                   </span>
-                  <span className="text-[9px] text-[#4a5a82] flex-shrink-0">
+                  <span className="text-[9px] !text-dash-textMuted flex-shrink-0">
                     {new Date(c.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                <div className="text-[10.5px] text-[#94a3c8] truncate mt-1">
+                <div className="text-[10.5px] !text-dash-textMuted truncate mt-1">
                   {c.visitor_email || 'No email captured'}
                 </div>
                 <div className="flex items-center justify-between mt-2.5">
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase ${getStatusBadge(c.status)}`}>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border capitalize ${getStatusBadge(c.status)}`}>
                     {c.status.replace('_', ' ')}
                   </span>
-                  <span className="text-[9.5px] text-[#4a5a82]">
+                  <span className="text-[9.5px] !text-dash-textMuted">
                     Mode: {c.mode.toUpperCase()}
                   </span>
                 </div>
@@ -300,16 +300,16 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
       </div>
 
       {/* Right panel: Details & Thread */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#0c1535]/35">
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
         {selectedConv ? (
           <>
             {/* Header info */}
-            <div className="p-4 border-b border-[rgba(255,255,255,0.07)] flex items-center justify-between gap-4 flex-shrink-0 bg-[#080f28]">
+            <div className="p-4 border-b border-dash-border flex items-center justify-between gap-4 flex-shrink-0 bg-dash-surface">
               <div className="min-w-0">
-                <span className="text-[14px] font-bold text-white font-space-grotesk">
+                <span className="text-[14px] font-bold !text-dash-text">
                   {selectedConv.visitor_name || 'Anonymous Visitor'}
                 </span>
-                <div className="text-[11px] text-[#94a3c8] mt-0.5 flex gap-2.5">
+                <div className="text-[11px] !text-dash-textMuted mt-0.5 flex gap-2.5">
                   <span>ID: {selectedConv.visitor_id.substring(0, 16)}</span>
                   {selectedConv.visitor_email && <span>• {selectedConv.visitor_email}</span>}
                 </div>
@@ -320,9 +320,9 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
                 {selectedConv.status !== 'resolved' && (
                   <button
                     onClick={handleResolve}
-                    className="bg-[#10b981]/10 hover:bg-[#10b981]/25 border border-[#10b981]/25 text-[#34d399] text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                    className="bg-green/10 hover:bg-green/20 border border-green/25 text-green text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors motion-reduce:transition-none"
                   >
-                    Mark Resolved
+                    Mark resolved
                   </button>
                 )}
 
@@ -331,7 +331,7 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
                     <select
                       value={selectedAgentId}
                       onChange={(e) => setSelectedAgentId(e.target.value)}
-                      className="bg-[#111d47] border border-white/5 text-[11.5px] px-2 py-1.5 rounded-lg text-[#eef2ff]"
+                      className="bg-white border border-dash-border text-[11.5px] px-2 py-1.5 rounded-lg !text-dash-text"
                     >
                       {agents.map((a) => (
                         <option key={a.id} value={a.id}>{a.display_name}</option>
@@ -339,15 +339,15 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
                     </select>
                     <button
                       onClick={handleTakeOver}
-                      className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[11.5px] font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                      className="bg-dash-accent hover:bg-dash-accent/90 text-white text-[11.5px] font-semibold px-3 py-1.5 rounded-lg transition-colors motion-reduce:transition-none"
                     >
-                      Take Over
+                      Take over
                     </button>
                   </div>
                 )}
 
                 {selectedConv.assigned_agent && (
-                  <span className="text-[11px] text-[#94a3c8]">
+                  <span className="text-[11px] !text-dash-textMuted">
                     Assigned: {selectedConv.assigned_agent.display_name}
                   </span>
                 )}
@@ -361,11 +361,11 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
                   key={m.id}
                   className={`max-w-[75%] p-3 rounded-xl text-[12.5px] leading-relaxed flex flex-col ${
                     m.sender_type === 'visitor'
-                      ? 'bg-[rgba(37,99,235,0.14)] border border-[rgba(37,99,235,0.2)] text-white self-end'
-                      : 'bg-white/5 border border-white/[0.04] text-[#eef2ff] self-start'
+                      ? 'bg-dash-accent/10 border border-dash-accent/20 !text-dash-text self-end'
+                      : 'bg-dash-surface border border-dash-border !text-dash-text self-start'
                   }`}
                 >
-                  <span className="text-[9.5px] text-[#4a5a82] font-semibold mb-1 uppercase">
+                  <span className="text-[9.5px] !text-dash-textMuted font-semibold mb-1">
                     {m.sender_type.toUpperCase()}
                   </span>
                   <span>{m.content}</span>
@@ -376,24 +376,24 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
 
             {/* Reply bar */}
             {selectedConv.status !== 'resolved' ? (
-              <form onSubmit={handleSend} className="p-3 border-t border-[rgba(255,255,255,0.07)] flex gap-2 bg-[#080f28] flex-shrink-0">
+              <form onSubmit={handleSend} className="p-3 border-t border-dash-border flex gap-2 bg-dash-surface flex-shrink-0">
                 <input
                   type="text"
                   placeholder="Type a message to reply..."
                   value={replyText}
                   onChange={handleInputChange}
-                  className="flex-1 bg-white/[0.05] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#2563eb]"
+                  className="flex-1 bg-white border border-dash-border rounded-lg px-4 py-2 !text-dash-text text-[13px] focus:outline-none focus:border-dash-accent"
                 />
                 <button
                   type="submit"
                   disabled={sending}
-                  className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-semibold px-5 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  className="bg-dash-accent hover:bg-dash-accent/90 text-white text-[13px] font-semibold px-5 py-2 rounded-lg transition-colors motion-reduce:transition-none disabled:opacity-50"
                 >
                   {sending ? 'Sending...' : 'Send'}
                 </button>
               </form>
             ) : (
-              <div className="p-3.5 bg-black/20 border-t border-[rgba(255,255,255,0.07)] text-center text-[12px] text-[#4a5a82] italic">
+              <div className="p-3.5 bg-dash-surface border-t border-dash-border text-center text-[12px] !text-dash-textMuted italic">
                 This conversation is resolved. Reopen by sending a message or taking over.
               </div>
             )}
@@ -401,8 +401,8 @@ export default function ConversationsTab({ workspaceId }: ConversationsTabProps)
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
             <span className="text-[32px] opacity-40">💬</span>
-            <span className="text-[13px] font-semibold text-[#94a3c8]">Select a Conversation</span>
-            <p className="text-[11.5px] text-[#4a5a82] max-w-[240px]">
+            <span className="text-[13px] font-semibold !text-dash-text">Select a conversation</span>
+            <p className="text-[11.5px] !text-dash-textMuted max-w-[240px]">
               Choose a visitor conversation from the left panel to review messages and coordinate replies.
             </p>
           </div>

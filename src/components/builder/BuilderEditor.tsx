@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { Viewport } from './Viewport';
 import { PropertiesPanel } from './PropertiesPanel';
 import { FloatingPropertiesPanel } from './FloatingPropertiesPanel';
+import { BuilderCommandPalette } from './BuilderCommandPalette';
 import { RenderNode } from './RenderNode';
 import { Container } from './user/Container';
 import { Section } from './user/Section';
@@ -40,7 +41,8 @@ import { TemplateDirectoryModal } from './TemplateDirectoryModal';
 import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, Send, AlertCircle, Copy as CopyIcon, Sparkles, Upload } from 'lucide-react';
+import { DashButton, DashStatusPill } from '@/components/dashboard-ui';
+import { Loader2, Save, AlertCircle, Sparkles, Upload, Monitor, Tablet, Smartphone, Check, MoreHorizontal, ChevronDown, Undo2, Redo2, DatabaseZap, Eye } from 'lucide-react';
 import { RESOLVER, wrapForReact19 } from '@/lib/builder/resolver';
 import { cn } from '@/lib/utils';
 import { LayoutTemplate, Settings2 } from 'lucide-react';
@@ -91,7 +93,7 @@ const sanitizeDraftJSON = (json: string): string => {
                 delete node.props.dragRef;
                 delete node.props.connect;
                 delete node.props.drag;
-                
+
                 // Clean class names from editor layout outlines
                 if (typeof node.props.className === 'string') {
                     node.props.className = node.props.className
@@ -113,8 +115,34 @@ const sanitizeDraftJSON = (json: string): string => {
     }
 };
 
+// A route param can arrive as the literal strings "undefined"/"null" when an
+// upstream link interpolates a missing id into the URL (e.g. `.../${maybeId}`).
+// Those are truthy, so a plain `if (!pageId)` guard misses them and a request
+// with `id=eq.undefined` gets sent, which PostgREST rejects. Treat them as absent.
+const resolvePageId = (raw: unknown): string | null => {
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (typeof value !== 'string') return null;
+    if (value === '' || value === 'undefined' || value === 'null') return null;
+    return value;
+};
+
+// Log the real error in dev so this class of failure doesn't require manual
+// network-tab archaeology; Supabase/PostgREST errors carry code/details/hint.
+const logDataError = (scope: string, err: any) => {
+    if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.error(`[Builder] ${scope} failed`, {
+            message: err?.message,
+            code: err?.code,
+            details: err?.details,
+            hint: err?.hint,
+        });
+    }
+};
+
 const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
-    const { pageId } = useParams();
+    const rawPageId = useParams().pageId;
+    const pageId = resolvePageId(rawPageId);
     const router = useRouter();
 
     const [isPublishing, setIsPublishing] = React.useState(false);
@@ -122,7 +150,15 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
     const { query, actions } = useEditor();
 
     const handleSaveDraft = async () => {
-        if (!pageId) return;
+        // ID not ready yet (initial mount / bad URL) — skip rather than send a
+        // guaranteed-to-fail request. Distinct from a save that fired and failed.
+        if (!pageId) {
+            if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.warn('[Builder] Save draft skipped: page id not ready', { rawPageId });
+            }
+            return;
+        }
         setIsSaving(true);
         const content = sanitizeDraftJSON(query.serialize());
 
@@ -140,9 +176,9 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             if (error) throw error;
             toast.success('Draft saved successfully');
         } catch (err: any) {
-            console.error('Save error:', err);
+            logDataError('Save draft', err);
             // Fallback to server action if client save fails (e.g. RLS issues)
-            const result = await updatePageContent(pageId as string, content);
+            const result = await updatePageContent(pageId, content);
             if (result.success) {
                 toast.success('Draft saved (Server Fallback)');
             } else {
@@ -171,7 +207,13 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
     };
 
     const handlePublish = async () => {
-        if (!pageId) return;
+        if (!pageId) {
+            if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.warn('[Builder] Publish skipped: page id not ready', { rawPageId });
+            }
+            return;
+        }
         setIsPublishing(true);
         const content = sanitizeDraftJSON(query.serialize());
 
@@ -186,7 +228,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             if (saveError) throw saveError;
 
             // 2. Trigger publishing logic on server (no need to send large content again)
-            const result = await publishPageStatic(pageId as string);
+            const result = await publishPageStatic(pageId);
 
             if (result.success) {
                 toast.success('Page published live!');
@@ -194,9 +236,9 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 toast.error('Failed to publish');
             }
         } catch (err: any) {
-            console.error('Publish error:', err);
+            logDataError('Publish', err);
             // Fallback
-            const result = await publishPageStatic(pageId as string);
+            const result = await publishPageStatic(pageId);
             if (result.success) {
                 toast.success('Page published (Server Fallback)');
             } else {
@@ -320,18 +362,18 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             const { data, error: pageError } = await supabase
                 .from('pages')
                 .select(`
-     content, 
-     workspace:workspaces(slug), 
+     content,
+     workspace:workspaces(slug),
      website_page:website_pages(
       id,
       name,
-      path,
+      path_name,
       website:websites(*)
      ),
      funnel_step:funnel_steps(
       id,
       name,
-      path,
+      path_name,
       funnel:funnels(*)
      )
     `)
@@ -339,8 +381,11 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 .single();
 
             if (pageError || !data) {
-                console.error('Builder load error:', pageError);
-                toast.error('Failed to load page content');
+                logDataError('Load page content', pageError);
+                toast.error('Failed to load page content. Loading blank canvas.');
+                setInitialContent(BLANK_CANVAS);
+                lastLoadedPageId.current = typeof pageId === 'string' ? pageId : 'error';
+                setIsLoadingContent(false);
                 return;
             }
 
@@ -363,29 +408,29 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 if (type === 'website') {
                     const { data: siblingPages } = await supabase
                         .from('website_pages')
-                        .select(`id, name, path, pages (id)`)
+                        .select(`id, name, path_name, pages (id)`)
                         .eq('website_id', finalResource.id);
 
                     if (siblingPages) {
                         setPages(siblingPages.map(p => ({
                             id: (p.pages as any)?.[0]?.id || p.id,
                             name: p.name,
-                            slug: p.path.replace('/', '') || 'home'
+                            slug: p.path_name.replace('/', '') || 'home'
                         })));
                     }
                 } else {
                     const { data: siblingSteps } = await supabase
                         .from('funnel_steps')
-                        .select(`id, name, path, pages (id)`)
+                        .select(`id, name, path_name, pages (id)`)
                         .eq('funnel_id', finalResource.id)
-                        .order('position', { ascending: true });
+                        .order('order', { ascending: true });
 
                     if (siblingSteps) {
                         setPages(siblingSteps.map(s => ({
                             id: (s.pages as any)?.[0]?.id || s.id,
                             stepId: s.id,
                             name: s.name,
-                            slug: s.path.replace('/', '') || 'step'
+                            slug: s.path_name.replace('/', '') || 'step'
                         })));
                     }
                 }
@@ -462,6 +507,8 @@ const BuilderEditorLayout = ({
     isPublishing,
     pages
 }: any) => {
+    const USE_DOCKED_INSPECTOR = true; // Feature flag for migration
+
     const {
         sidebarOpen,
         setSidebarOpen,
@@ -470,8 +517,16 @@ const BuilderEditorLayout = ({
         previewMode,
         setPreviewMode,
         blueprintNodeId,
-        setBlueprintNodeId
+        setBlueprintNodeId,
+        viewMode,
+        setViewMode,
+        isTemplateDirectoryOpen,
+        setIsTemplateDirectoryOpen,
+        isImportModalOpen,
+        setIsImportModalOpen
     } = useBuilder();
+
+    const [moreMenuOpen, setMoreMenuOpen] = React.useState(false);
 
     const { actions: editorActions, query, canUndo, canRedo } = useEditor((state, query) => ({
         canUndo: query.history.canUndo(),
@@ -527,8 +582,6 @@ const BuilderEditorLayout = ({
     };
 
     const [importJsonText, setImportJsonText] = React.useState('');
-    const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
-    const [isTemplateDirectoryOpen, setIsTemplateDirectoryOpen] = React.useState(false);
 
     const handleImportJSON = () => {
         if (!importJsonText) return;
@@ -559,154 +612,188 @@ const BuilderEditorLayout = ({
     return (
         <div className="h-screen w-full flex flex-col overflow-hidden bg-white !text-dash-text">
             {/* Header Section */}
-            <header className="h-[70px] border-b border-dash-border bg-white/90 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50 w-full select-none overflow-x-auto scrollbar-none">
-                <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-3 pr-6 border-r border-dash-border shrink-0">
-                        <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-                            <span className="font-bold text-lg tracking-tighter text-white">L</span>
-                        </div>
-                        <div className="shrink-0">
-                            <span className="block text-[11px] font-bold !text-dash-text leading-none whitespace-nowrap">Leadsmind</span>
-                            <span className="block text-[8px] font-bold text-primary mt-0.5 whitespace-nowrap">Node builder</span>
-                        </div>
-                    </div>
+            <header className="h-[72px] border-b border-dash-border bg-white flex items-center justify-between px-6 shrink-0 z-50 w-full select-none shadow-[0_1px_3px_rgba(0,0,0,0.04)] relative">
+                {/* Left: Logo, icon cluster, page switcher */}
+                <div className="flex items-center gap-3 shrink-0">
+                    <img
+                        src="/assets/images/brand/LeadsMind_Logo.png.png"
+                        alt="LeadsMind"
+                        className="h-8 w-auto object-contain shrink-0"
+                    />
 
-                    {/* Sidebar Toggles */}
-                    <div className="flex items-center gap-2 px-4 border-r border-dash-border shrink-0">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Toggle Elements Sidebar"
-                            onClick={() => setSidebarOpen(!sidebarOpen)}
-                            className={cn(
-                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none",
-                                sidebarOpen ? "bg-dash-accent/10 !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text"
-                            )}
-                        >
-                            <LayoutTemplate className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Toggle Properties Panel"
-                            onClick={() => setPropertiesOpen(!propertiesOpen)}
-                            className={cn(
-                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none",
-                                propertiesOpen ? "bg-dash-accent/10 !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text"
-                            )}
-                        >
-                            <Settings2 className="w-4 h-4" />
-                        </Button>
-                    </div>
+                    <div className="h-6 w-px bg-dash-border mx-1" />
 
-                    {/* Undo / Redo Actions */}
-                    <div className="flex items-center gap-1.5 px-4 border-r border-dash-border">
-                        <Button
-                            variant="ghost"
-                            size="icon"
+                    {/* Undo / Redo / Export cluster */}
+                    <div className="flex items-center gap-0.5">
+                        <button
                             disabled={!canUndo}
                             onClick={() => editorActions.history.undo()}
                             title="Undo (Ctrl+Z)"
-                            className={cn(
-                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none !text-dash-textMuted hover:!text-dash-text",
-                                !canUndo && "opacity-40 cursor-not-allowed"
-                            )}
+                            className="h-9 w-9 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-colors motion-reduce:transition-none disabled:opacity-40 disabled:pointer-events-none"
                         >
-                            <span className="text-sm">↩</span>
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
+                            <Undo2 className="w-4 h-4" />
+                        </button>
+                        <button
                             disabled={!canRedo}
                             onClick={() => editorActions.history.redo()}
                             title="Redo (Ctrl+Y)"
-                            className={cn(
-                                "h-9 w-9 rounded-lg border border-dash-border transition-all motion-reduce:transition-none !text-dash-textMuted hover:!text-dash-text",
-                                !canRedo && "opacity-40 cursor-not-allowed"
-                            )}
+                            className="h-9 w-9 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-colors motion-reduce:transition-none disabled:opacity-40 disabled:pointer-events-none"
                         >
-                            <span className="text-sm">↪</span>
-                        </Button>
+                            <Redo2 className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={handleExportJSON}
+                            title="Export template JSON"
+                            className="h-9 w-9 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-colors motion-reduce:transition-none"
+                        >
+                            <DatabaseZap className="w-4 h-4" />
+                        </button>
                     </div>
 
+                    <div className="h-6 w-px bg-dash-border mx-1" />
+
                     {/* Page Switcher */}
-                    <div className="flex items-center gap-4 bg-dash-surface px-4 py-2 rounded-xl border border-dash-border shrink-0">
-                        <div className="flex items-center gap-2 shrink-0">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse motion-reduce:animate-none shrink-0" />
-                            <span className="text-[9px] font-bold !text-dash-textMuted whitespace-nowrap">Editing mode:</span>
-                        </div>
+                    <div className="relative flex items-center bg-white rounded-xl border border-dash-border h-11 shrink-0">
                         <select
                             value={pageId as string}
                             onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
-                            className="bg-transparent border-none text-[10px] font-bold !text-dash-text outline-none cursor-pointer hover:text-primary transition-colors motion-reduce:transition-none min-w-[120px] shrink-0"
+                            className="appearance-none bg-transparent border-none h-full pl-3.5 pr-8 text-[12px] font-semibold !text-dash-text outline-none cursor-pointer min-w-[120px]"
                         >
                             {pages.map((p) => (
-                                <option key={p.id} value={p.id} className="bg-white text-dash-text">{p.name} ({p.slug})</option>
+                                <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
                             ))}
                         </select>
+                        <ChevronDown className="w-3.5 h-3.5 !text-dash-textMuted absolute right-3 pointer-events-none" />
                     </div>
+
+                    <DashStatusPill dot variant={isSaving ? 'warning' : 'success'}>
+                        {isSaving ? 'Saving…' : 'Draft'}
+                    </DashStatusPill>
                 </div>
 
-                <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-2 px-4 border-r border-dash-border mr-2 shrink-0">
-                        <div className="text-right hidden sm:block shrink-0">
-                            <span className="block text-[9px] font-bold !text-dash-textMuted mb-0.5 whitespace-nowrap">Node status</span>
-                            <span className="block text-[10px] font-bold text-green whitespace-nowrap">System online</span>
-                        </div>
-                    </div>
-
-                    <Button
-                        variant="ghost"
-                        onClick={() => setPreviewMode(!previewMode)}
+                {/* Center: Icon-only segmented device toggle */}
+                <div className="hidden md:flex bg-dash-surface p-1 rounded-[14px] border border-dash-border shrink-0 h-11 items-center">
+                    <button
+                        onClick={() => setViewMode('desktop')}
                         className={cn(
-                            "h-11 px-6 text-[10px] font-bold rounded-xl border transition-all motion-reduce:transition-none mr-2",
-                            previewMode ? "bg-primary/20 border-primary/30 text-primary hover:bg-primary/30" : "border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text"
+                            "h-9 w-9 rounded-[10px] transition-all motion-reduce:transition-none flex items-center justify-center active:scale-[0.98]",
+                            viewMode === 'desktop' ? "bg-white !text-dash-text shadow-sm border border-dash-border" : "!text-dash-textMuted hover:!text-dash-text"
                         )}
+                        title="Desktop view"
                     >
-                        {previewMode ? "Edit mode" : "Preview mode"}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        onClick={() => setIsTemplateDirectoryOpen(true)}
-                        className="h-11 px-4 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface text-primary hover:!text-dash-text transition-all motion-reduce:transition-none mr-2"
-                        title="Open Template Directory"
+                        <Monitor className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('tablet')}
+                        className={cn(
+                            "h-9 w-9 rounded-[10px] transition-all motion-reduce:transition-none flex items-center justify-center active:scale-[0.98]",
+                            viewMode === 'tablet' ? "bg-white !text-dash-text shadow-sm border border-dash-border" : "!text-dash-textMuted hover:!text-dash-text"
+                        )}
+                        title="Tablet view"
                     >
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Templates
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        onClick={() => setIsImportModalOpen(true)}
-                        className="h-11 px-4 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text transition-all motion-reduce:transition-none mr-2"
-                        title="Import JSON Template"
+                        <Tablet className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('mobile')}
+                        className={cn(
+                            "h-9 w-9 rounded-[10px] transition-all motion-reduce:transition-none flex items-center justify-center active:scale-[0.98]",
+                            viewMode === 'mobile' ? "bg-white !text-dash-text shadow-sm border border-dash-border" : "!text-dash-textMuted hover:!text-dash-text"
+                        )}
+                        title="Mobile view"
                     >
-                        <Upload className="w-4 h-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        onClick={handleExportJSON}
-                        className="h-11 px-4 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text transition-all motion-reduce:transition-none mr-2"
-                        title="Export for Template System"
+                        <Smartphone className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        onClick={() => setPreviewMode(!previewMode)}
+                        className="h-9 px-2 flex items-center gap-1.5 text-[12px] font-semibold !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none"
                     >
-                        <CopyIcon className="w-4 h-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
+                        <Eye className="w-3.5 h-3.5" />
+                        {previewMode ? "Edit" : "Preview"}
+                    </button>
+
+                    <DashButton
+                        variant="secondary"
                         onClick={handleSaveDraft}
                         disabled={isSaving}
-                        className="h-11 px-6 text-[10px] font-bold rounded-xl border border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text transition-all motion-reduce:transition-none"
+                        className="rounded-xl"
                     >
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                        {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : null}
                         Save draft
-                    </Button>
-                    <Button
+                    </DashButton>
+
+                    <DashButton
+                        variant="primary"
                         onClick={handlePublish}
                         disabled={isPublishing}
-                        className="h-11 px-8 text-[10px] font-bold rounded-xl bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 transition-all motion-reduce:transition-none active:scale-95"
+                        className="rounded-xl px-6"
                     >
-                        {isPublishing ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                        Deploy live
-                    </Button>
+                        {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : null}
+                        Publish
+                    </DashButton>
+
+                    <div className="h-6 w-px bg-dash-border mx-1" />
+
+                    {/* Sidebar / Properties panel toggles */}
+                    <button
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        title="Toggle Sidebar"
+                        className={cn(
+                            "h-9 w-9 flex items-center justify-center rounded-lg transition-colors motion-reduce:transition-none",
+                            sidebarOpen ? "bg-dash-surface !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
+                        )}
+                    >
+                        <LayoutTemplate className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setPropertiesOpen(!propertiesOpen)}
+                        title="Toggle Properties Panel"
+                        className={cn(
+                            "h-9 w-9 flex items-center justify-center rounded-lg transition-colors motion-reduce:transition-none",
+                            propertiesOpen ? "bg-dash-surface !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
+                        )}
+                    >
+                        <Settings2 className="w-4 h-4" />
+                    </button>
+
+                    {/* More Actions Dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+                            className={cn(
+                                "h-9 w-9 flex items-center justify-center rounded-lg transition-colors motion-reduce:transition-none !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface",
+                                moreMenuOpen && "bg-dash-surface !text-dash-text"
+                            )}
+                            title="More Actions"
+                        >
+                            <MoreHorizontal className="w-4 h-4" />
+                        </button>
+
+                        {moreMenuOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setMoreMenuOpen(false)} />
+                                <div className="absolute right-0 mt-2 w-48 bg-white border border-dash-border shadow-xl rounded-xl py-1.5 z-50">
+                                    <button
+                                        onClick={() => { setIsTemplateDirectoryOpen(true); setMoreMenuOpen(false); }}
+                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface w-full text-left"
+                                    >
+                                        <Sparkles className="w-4 h-4 text-dash-accent" />
+                                        Browse Templates
+                                    </button>
+                                    <button
+                                        onClick={() => { setIsImportModalOpen(true); setMoreMenuOpen(false); }}
+                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface w-full text-left"
+                                    >
+                                        <Upload className="w-4 h-4 !text-dash-textMuted" />
+                                        Import Template
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             </header>
 
@@ -715,10 +802,10 @@ const BuilderEditorLayout = ({
                 <div
                     className={cn(
                         "transition-all duration-300 ease-in-out motion-reduce:transition-none border-r border-dash-border bg-white overflow-hidden shrink-0",
-                        sidebarOpen && !previewMode ? "w-[300px] opacity-100" : "w-0 opacity-0 border-none"
+                        sidebarOpen && !previewMode ? "w-[320px] opacity-100" : "w-0 opacity-0 border-none"
                     )}
                 >
-                    <div className="w-[300px] h-full"> {/* Fixed width and height inner to prevent squishing and enable scrolling */}
+                    <div className="w-[320px] h-full"> {/* Fixed width and height inner to prevent squishing and enable scrolling */}
                         <Sidebar
                             type={type}
                             website={websiteData}
@@ -812,89 +899,142 @@ const BuilderEditorLayout = ({
                         )}
                     </div>
                 </Viewport>
-                {/* Floating Properties Panel */}
-                <FloatingPropertiesPanel />
+
+                {/* Right Docked Properties Panel */}
+                {USE_DOCKED_INSPECTOR && (
+                    <div
+                        className={cn(
+                            "transition-all duration-300 ease-in-out motion-reduce:transition-none border-l border-dash-border bg-white overflow-hidden shrink-0 z-40",
+                            propertiesOpen && !previewMode ? "w-[360px] opacity-100" : "w-0 opacity-0 border-none"
+                        )}
+                    >
+                        <div className="w-[360px] h-full">
+                            <PropertiesPanel />
+                        </div>
+                    </div>
+                )}
+
+                {/* Legacy Floating Properties Panel */}
+                {!USE_DOCKED_INSPECTOR && <FloatingPropertiesPanel />}
             </div>
+
+            {/* Status Bar */}
+            <footer className="h-7 bg-white border-t border-dash-border flex items-center justify-between px-5 text-[10.5px] font-medium !text-dash-textMuted z-50 shrink-0 select-none">
+                <div className="flex items-center gap-4">
+                    {/* Online indicator */}
+                    <div className="flex items-center gap-1.5 text-green font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse motion-reduce:animate-none" />
+                        Online
+                    </div>
+                    {/* Save status */}
+                    {isSaving ? (
+                        <div className="flex items-center gap-1.5 !text-dash-textMuted">
+                            <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" />
+                            Saving...
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1.5 text-green font-semibold">
+                            <Check className="w-3 h-3" />
+                            Draft Saved
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-1 !text-dash-textMuted font-medium">
+                    LeadsMind Website Builder &nbsp;·&nbsp; v2.0
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <span className="capitalize !text-dash-textMuted flex items-center gap-1.5">
+                        {viewMode === 'desktop' ? <Monitor className="w-3 h-3" /> : viewMode === 'tablet' ? <Tablet className="w-3 h-3" /> : <Smartphone className="w-3 h-3" />}
+                        {viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View
+                    </span>
+                    <span className="h-3 w-px bg-dash-border" />
+                    <span>Page: <span className="!text-dash-text font-semibold">{pages.find((p: any) => p.id === pageId)?.name || 'Home'}</span></span>
+                    <span className="h-3 w-px bg-dash-border" />
+                    <span className="!text-dash-textMuted">Saved 2 sec ago</span>
+                </div>
+            </footer>
 
             {/* Save Blueprint Modal */}
             <Dialog open={!!blueprintNodeId} onOpenChange={(open) => !open && setBlueprintNodeId(null)}>
-              <DialogContent className="sm:max-w-[420px] bg-white border-dash-border !text-dash-text rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
-                <DialogHeader className="p-6 pb-0">
-                  <DialogTitle className="text-[18px] font-bold">Save <span className="text-dash-accent">blueprint</span></DialogTitle>
-                  <DialogDescription className="text-[11px] font-medium !text-dash-textMuted mt-0.5">
-                    Save component layout to reuse later
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="p-6 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="blueprint-name" className="text-[10px] font-bold !text-dash-textMuted">Blueprint name</Label>
-                    <Input
-                      id="blueprint-name"
-                      placeholder="E.g. SaaS Pricing Table..."
-                      value={blueprintName}
-                      onChange={(e) => setBlueprintName(e.target.value)}
-                      className="h-12 bg-white border-dash-border !text-dash-text rounded-[8px] px-4 font-medium focus:border-dash-accent/50 outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="blueprint-desc" className="text-[10px] font-bold !text-dash-textMuted">Description (optional)</Label>
-                    <Input
-                      id="blueprint-desc"
-                      placeholder="E.g. Custom 3-column pricing table section"
-                      value={blueprintDesc}
-                      onChange={(e) => setBlueprintDesc(e.target.value)}
-                      className="h-12 bg-white border-dash-border !text-dash-text rounded-[8px] px-4 font-medium focus:border-dash-accent/50 outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="p-6 bg-dash-surface border-t border-dash-border flex items-center justify-end gap-3">
-                  <Button variant="ghost" onClick={() => setBlueprintNodeId(null)} className="text-[11px] font-bold !text-dash-textMuted hover:!text-dash-text h-10">
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSaveBlueprint} disabled={isSavingBlueprint || !blueprintName} className="bg-dash-accent hover:bg-dash-accent/90 text-white h-10 px-6 rounded-[8px] font-bold text-[11px]">
-                    {isSavingBlueprint ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    Save blueprint
-                  </Button>
-                </div>
-              </DialogContent>
+                <DialogContent className="sm:max-w-[420px] bg-white border-dash-border !text-dash-text rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
+                    <DialogHeader className="p-6 pb-0">
+                        <DialogTitle className="text-[18px] font-bold">Save <span className="text-dash-accent">blueprint</span></DialogTitle>
+                        <DialogDescription className="text-[11px] font-medium !text-dash-textMuted mt-0.5">
+                            Save component layout to reuse later
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="p-6 space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="blueprint-name" className="text-[10px] font-bold !text-dash-textMuted">Blueprint name</Label>
+                            <Input
+                                id="blueprint-name"
+                                placeholder="E.g. SaaS Pricing Table..."
+                                value={blueprintName}
+                                onChange={(e) => setBlueprintName(e.target.value)}
+                                className="h-12 bg-white border-dash-border !text-dash-text rounded-[8px] px-4 font-medium focus:border-dash-accent/50 outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="blueprint-desc" className="text-[10px] font-bold !text-dash-textMuted">Description (optional)</Label>
+                            <Input
+                                id="blueprint-desc"
+                                placeholder="E.g. Custom 3-column pricing table section"
+                                value={blueprintDesc}
+                                onChange={(e) => setBlueprintDesc(e.target.value)}
+                                className="h-12 bg-white border-dash-border !text-dash-text rounded-[8px] px-4 font-medium focus:border-dash-accent/50 outline-none"
+                            />
+                        </div>
+                    </div>
+                    <div className="p-6 bg-dash-surface border-t border-dash-border flex items-center justify-end gap-3">
+                        <Button variant="ghost" onClick={() => setBlueprintNodeId(null)} className="text-[11px] font-bold !text-dash-textMuted hover:!text-dash-text h-10">
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSaveBlueprint} disabled={isSavingBlueprint || !blueprintName} className="bg-dash-accent hover:bg-dash-accent/90 text-white h-10 px-6 rounded-[8px] font-bold text-[11px]">
+                            {isSavingBlueprint ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                            Save blueprint
+                        </Button>
+                    </div>
+                </DialogContent>
             </Dialog>
 
             {/* Import JSON Modal */}
             <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
-              <DialogContent className="sm:max-w-[500px] bg-white border-dash-border !text-dash-text rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
-                <DialogHeader className="p-6 pb-0">
-                  <DialogTitle className="text-[18px] font-bold">Import <span className="text-dash-accent">JSON template</span></DialogTitle>
-                  <DialogDescription className="text-[11px] font-medium !text-dash-textMuted mt-0.5">
-                    Paste CraftJS JSON template content to replace canvas layout
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="p-6 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="import-json" className="text-[10px] font-bold !text-dash-textMuted">Template JSON</Label>
-                    <Textarea
-                      id="import-json"
-                      placeholder='{"ROOT": {...}}'
-                      value={importJsonText}
-                      onChange={(e) => setImportJsonText(e.target.value)}
-                      className="min-h-[200px] bg-white border-dash-border !text-dash-text rounded-[8px] p-4 font-mono text-xs focus:border-dash-accent/50 outline-none resize-y"
-                    />
-                  </div>
-                </div>
-                <div className="p-6 bg-dash-surface border-t border-dash-border flex items-center justify-end gap-3">
-                  <Button variant="ghost" onClick={() => setIsImportModalOpen(false)} className="text-[11px] font-bold !text-dash-textMuted hover:!text-dash-text h-10">
-                    Cancel
-                  </Button>
-                  <Button onClick={handleImportJSON} disabled={!importJsonText} className="bg-dash-accent hover:bg-dash-accent/90 text-white h-10 px-6 rounded-[8px] font-bold text-[11px]">
-                    Import layout
-                  </Button>
-                </div>
-              </DialogContent>
+                <DialogContent className="sm:max-w-[500px] bg-white border-dash-border !text-dash-text rounded-[16px] shadow-2xl p-0 overflow-hidden z-[9999]">
+                    <DialogHeader className="p-6 pb-0">
+                        <DialogTitle className="text-[18px] font-bold">Import <span className="text-dash-accent">JSON template</span></DialogTitle>
+                        <DialogDescription className="text-[11px] font-medium !text-dash-textMuted mt-0.5">
+                            Paste CraftJS JSON template content to replace canvas layout
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="p-6 space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="import-json" className="text-[10px] font-bold !text-dash-textMuted">Template JSON</Label>
+                            <Textarea
+                                id="import-json"
+                                placeholder='{"ROOT": {...}}'
+                                value={importJsonText}
+                                onChange={(e) => setImportJsonText(e.target.value)}
+                                className="min-h-[200px] bg-white border-dash-border !text-dash-text rounded-[8px] p-4 font-mono text-xs focus:border-dash-accent/50 outline-none resize-y"
+                            />
+                        </div>
+                    </div>
+                    <div className="p-6 bg-dash-surface border-t border-dash-border flex items-center justify-end gap-3">
+                        <Button variant="ghost" onClick={() => setIsImportModalOpen(false)} className="text-[11px] font-bold !text-dash-textMuted hover:!text-dash-text h-10">
+                            Cancel
+                        </Button>
+                        <Button onClick={handleImportJSON} disabled={!importJsonText} className="bg-dash-accent hover:bg-dash-accent/90 text-white h-10 px-6 rounded-[8px] font-bold text-[11px]">
+                            Import layout
+                        </Button>
+                    </div>
+                </DialogContent>
             </Dialog>
 
             {/* Template Directory Modal */}
             <TemplateDirectoryModal
-              isOpen={isTemplateDirectoryOpen}
-              onOpenChange={setIsTemplateDirectoryOpen}
+                isOpen={isTemplateDirectoryOpen}
+                onOpenChange={setIsTemplateDirectoryOpen}
             />
         </div>
     );
@@ -906,8 +1046,14 @@ export const BuilderEditor = ({ type }: { type: 'website' | 'funnel' }) => {
             resolver={RESOLVER}
             enabled={true}
             onRender={({ render }) => <RenderNode render={render} />}
+            indicator={{
+                success: '#2563EB',
+                error: '#EF4444',
+                thickness: 3,
+            }}
         >
             <BuilderEditorContent type={type} />
+            <BuilderCommandPalette />
         </Editor>
     );
 };

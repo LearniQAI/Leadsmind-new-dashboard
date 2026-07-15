@@ -8,6 +8,7 @@ interface User {
  firstName?: string;
  lastName?: string | null;
  avatarUrl?: string | null;
+ oauthImage?: string | null;
 }
 
 interface Workspace {

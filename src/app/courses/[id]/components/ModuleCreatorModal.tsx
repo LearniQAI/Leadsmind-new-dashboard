@@ -65,7 +65,7 @@ export default function ModuleCreatorModal({
             setNqfLevel(m.nqf_level || "None");
             setRequiredForCompletion(m.required_for_completion !== false);
             setDripDays(m.drip_days || 0);
-            
+
             if (EMOJI_OPTIONS.includes(m.icon)) {
               setIcon(m.icon);
               setCustomIcon("");
@@ -105,7 +105,7 @@ export default function ModuleCreatorModal({
           prompt: `Write a student-facing module description for a module called: ${title}. Keep it 2-3 sentences. Friendly, motivating tone.`
         })
       });
-      
+
       const result = await res.json();
       if (result.error) {
         toast.error(result.error);
@@ -137,7 +137,7 @@ export default function ModuleCreatorModal({
     try {
       const url = moduleId ? `/api/lms/modules?id=${moduleId}` : "/api/lms/modules";
       const method = moduleId ? "PATCH" : "POST";
-      const bodyPayload = moduleId 
+      const bodyPayload = moduleId
         ? { title, description, icon: finalIcon, publish_status: publishStatus, nqf_level: nqfLevel, required_for_completion: requiredForCompletion, drip_days: dripDays }
         : { course_id: courseId, workspace_id: workspaceId, title, description, icon: finalIcon, publish_status: publishStatus, nqf_level: nqfLevel, required_for_completion: requiredForCompletion, drip_days: dripDays };
 
@@ -163,46 +163,46 @@ export default function ModuleCreatorModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-[#04091a]/75 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
-      <div className="bg-[#080f28] border border-[rgba(255,255,255,0.07)] rounded-xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col text-white">
-        
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
+      <div className="bg-white border border-dash-border rounded-xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col !text-dash-text">
+
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-[rgba(255,255,255,0.07)]">
-          <h2 className="text-base font-semibold font-space-grotesk uppercase tracking-wide">
+        <div className="flex items-center justify-between p-5 border-b border-dash-border">
+          <h2 className="text-base font-semibold">
             {moduleId ? "Edit Module" : "Create Module"}
           </h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+          <button onClick={onClose} className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
             <X size={18} />
           </button>
         </div>
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          
+
           {/* Module Name */}
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Module Name</label>
+            <label className="text-[11px] font-semibold !text-dash-textMuted">Module Name</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Advanced Invoicing"
-              className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#2563eb] transition-all"
+              className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-sm outline-none focus:border-dash-accent transition-all motion-reduce:transition-none !text-dash-text"
               required
             />
           </div>
 
           {/* Icon Selection */}
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50 block">Module Icon</label>
+            <label className="text-[11px] font-semibold !text-dash-textMuted block">Module Icon</label>
             <div className="flex flex-wrap gap-2 items-center">
               {EMOJI_OPTIONS.map((emoji) => (
                 <button
                   key={emoji}
                   type="button"
                   onClick={() => { setIcon(emoji); setCustomIcon(""); }}
-                  className={`w-9 h-9 rounded-lg border text-lg flex items-center justify-center transition-all ${
-                    icon === emoji ? "border-[#2563eb] bg-[rgba(37,99,235,0.14)]" : "border-[rgba(255,255,255,0.07)] bg-white/5 hover:bg-white/10"
+                  className={`w-9 h-9 rounded-lg border text-lg flex items-center justify-center transition-all motion-reduce:transition-none ${
+                    icon === emoji ? "border-dash-accent bg-dash-accent/10" : "border-dash-border bg-dash-surface hover:bg-dash-border/60"
                   }`}
                 >
                   {emoji}
@@ -211,8 +211,8 @@ export default function ModuleCreatorModal({
               <button
                 type="button"
                 onClick={() => setIcon("custom")}
-                className={`px-3 h-9 rounded-lg border text-xs transition-all ${
-                  icon === "custom" ? "border-[#2563eb] bg-[rgba(37,99,235,0.14)]" : "border-[rgba(255,255,255,0.07)] bg-white/5 hover:bg-white/10"
+                className={`px-3 h-9 rounded-lg border text-xs transition-all motion-reduce:transition-none ${
+                  icon === "custom" ? "border-dash-accent bg-dash-accent/10" : "border-dash-border bg-dash-surface hover:bg-dash-border/60"
                 }`}
               >
                 Custom Emoji
@@ -223,7 +223,7 @@ export default function ModuleCreatorModal({
                   value={customIcon}
                   onChange={(e) => setCustomIcon(e.target.value)}
                   placeholder="Paste emoji"
-                  className="w-16 bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-2 py-1.5 text-sm outline-none text-center"
+                  className="w-16 bg-dash-surface border border-dash-border rounded-lg px-2 py-1.5 text-sm outline-none text-center !text-dash-text"
                   maxLength={4}
                 />
               )}
@@ -233,24 +233,24 @@ export default function ModuleCreatorModal({
           {/* Status & NQF Level */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Publish Status</label>
+              <label className="text-[11px] font-semibold !text-dash-textMuted">Publish Status</label>
               <select
                 value={publishStatus}
                 onChange={(e) => setPublishStatus(e.target.value as any)}
-                className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#2563eb]"
+                className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-xs outline-none focus:border-dash-accent !text-dash-text"
               >
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
                 <option value="coming_soon">Coming Soon</option>
               </select>
             </div>
-            
+
             <div className="space-y-1">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">NQF Level</label>
+              <label className="text-[11px] font-semibold !text-dash-textMuted">NQF Level</label>
               <select
                 value={nqfLevel}
                 onChange={(e) => setNqfLevel(e.target.value)}
-                className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#2563eb]"
+                className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-xs outline-none focus:border-dash-accent !text-dash-text"
               >
                 {NQF_LEVELS.map((level) => (
                   <option key={level} value={level}>{level}</option>
@@ -260,17 +260,17 @@ export default function ModuleCreatorModal({
           </div>
 
           {/* Drip Days & Completion Checkbox */}
-          <div className="grid grid-cols-2 gap-4 items-center bg-white/5 p-3 rounded-lg border border-[rgba(255,255,255,0.07)]">
+          <div className="grid grid-cols-2 gap-4 items-center bg-dash-surface p-3 rounded-lg border border-dash-border">
             <div className="space-y-1">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Drip Days</label>
+              <label className="text-[11px] font-semibold !text-dash-textMuted">Drip Days</label>
               <input
                 type="number"
                 value={dripDays}
                 onChange={(e) => setDripDays(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-2.5 py-1 text-xs outline-none"
+                className="w-full bg-white border border-dash-border rounded-lg px-2.5 py-1 text-xs outline-none !text-dash-text"
                 min={0}
               />
-              <span className="text-[9px] text-white/40 block leading-tight">0 = available immediately</span>
+              <span className="text-[9px] !text-dash-textMuted block leading-tight">0 = available immediately</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -279,28 +279,28 @@ export default function ModuleCreatorModal({
                 id="required_for_completion"
                 checked={requiredForCompletion}
                 onChange={(e) => setRequiredForCompletion(e.target.checked)}
-                className="rounded border-[rgba(255,255,255,0.07)] text-[#2563eb] accent-[#2563eb]"
+                className="rounded border-dash-border text-dash-accent accent-dash-accent"
               />
-              <label htmlFor="required_for_completion" className="text-xs font-semibold text-white/80 cursor-pointer">
+              <label htmlFor="required_for_completion" className="text-xs font-semibold !text-dash-text cursor-pointer">
                 Required for Completion
               </label>
             </div>
           </div>
 
           {/* LENA AI Description Generator Block */}
-          <div className="bg-[rgba(99,102,241,0.06)] border border-[rgba(99,102,241,0.15)] rounded-xl p-4 mt-4 space-y-1">
+          <div className="bg-dash-accent/5 border border-dash-accent/15 rounded-xl p-4 mt-4 space-y-1">
             <div className="flex justify-between items-start">
               <div>
-                <h4 className="text-xs font-bold text-white">✨ Generate description with LENA</h4>
-                <p className="text-[10px] text-white/60">Generate a student-facing description based on the module name</p>
+                <h4 className="text-xs font-bold !text-dash-text">✨ Generate description with LENA</h4>
+                <p className="text-[10px] !text-dash-textMuted">Generate a student-facing description based on the module name</p>
               </div>
               <button
                 type="button"
                 onClick={handleLenaGenerate}
                 disabled={isGenerating}
-                className="text-[10px] font-bold text-[#3b82f6] hover:text-white transition-colors bg-[#2563eb]/10 border border-[#2563eb]/20 rounded-md px-2 py-1 flex items-center gap-1 disabled:opacity-50"
+                className="text-[10px] font-bold text-dash-accent hover:opacity-80 transition-colors motion-reduce:transition-none bg-dash-accent/10 border border-dash-accent/20 rounded-md px-2 py-1 flex items-center gap-1 disabled:opacity-50"
               >
-                {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                {isGenerating ? <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={12} />}
                 Generate with AI
               </button>
             </div>
@@ -308,33 +308,33 @@ export default function ModuleCreatorModal({
 
           {/* Description Textarea */}
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Description</label>
+            <label className="text-[11px] font-semibold !text-dash-textMuted">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Provide a detailed module curriculum overview..."
               rows={3}
-              className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#2563eb] font-mono leading-relaxed"
+              className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-xs outline-none focus:border-dash-accent font-mono leading-relaxed !text-dash-text"
             />
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[rgba(255,255,255,0.07)]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-dash-border">
             <Button
               type="button"
               variant="ghost"
               onClick={onClose}
               disabled={isSaving}
-              className="rounded-lg text-white/60 hover:bg-white/5 uppercase tracking-wider text-[10px] font-black"
+              className="rounded-lg !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSaving}
-              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg uppercase tracking-wider text-[10px] font-black px-5 shadow-lg shadow-primary/20"
+              className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg text-[10px] font-bold px-5 shadow-lg shadow-dash-accent/20 transition-colors motion-reduce:transition-none"
             >
-              {isSaving ? <Loader2 size={14} className="animate-spin mr-2" /> : "Save Module"}
+              {isSaving ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none mr-2" /> : "Save Module"}
             </Button>
           </div>
 

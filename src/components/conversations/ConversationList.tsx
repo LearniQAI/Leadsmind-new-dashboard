@@ -3,6 +3,8 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { Layers, MessageCircle, Mail, Search } from 'lucide-react';
+import { Instagram } from '@/components/icons/BrandIcons';
 
 interface ConversationListProps {
   conversations: any[];
@@ -17,12 +19,12 @@ interface ConversationListProps {
 }
 
 const CHANNELS = [
-  { id: 'all', icon: 'fa-solid fa-layer-group', label: 'All' },
-  { id: 'sms', icon: 'fa-solid fa-comment-dots', label: 'SMS' },
-  { id: 'email', icon: 'fa-solid fa-envelope', label: 'Email' },
-  { id: 'facebook', icon: 'fa-brands fa-facebook-messenger', label: 'Facebook' },
-  { id: 'instagram', icon: 'fa-brands fa-instagram', label: 'Instagram' },
-  { id: 'whatsapp', icon: 'fa-brands fa-whatsapp', label: 'WhatsApp' },
+  { id: 'all', icon: Layers, label: 'All' },
+  { id: 'sms', icon: MessageCircle, label: 'SMS' },
+  { id: 'email', icon: Mail, label: 'Email' },
+  { id: 'facebook', icon: MessageCircle, label: 'Facebook' },
+  { id: 'instagram', icon: Instagram, label: 'Instagram' },
+  { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
 ];
 
 const STATUS_PILLS: Record<string, string> = {
@@ -51,7 +53,7 @@ export function ConversationList({
       <div className="p-4 border-b border-dash-border space-y-3">
         {/* 1. Search Input at Top */}
         <div className="relative">
-          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[11px] !text-dash-textMuted"></i>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-[11px] h-[11px] !text-dash-textMuted" />
           <input
             type="text"
             placeholder="Search threads..."
@@ -74,7 +76,7 @@ export function ConversationList({
                   : "bg-white border border-dash-border !text-dash-textMuted hover:!text-dash-text hover:bg-dash-border/40"
               )}
             >
-              <i className={cn(c.icon, "text-[10px]")}></i>
+              <c.icon className="w-[10px] h-[10px]" />
               <span>{c.label}</span>
             </button>
           ))}

@@ -56,10 +56,9 @@ export async function createFunnel(name: string) {
    .from('funnel_steps')
    .insert({
     funnel_id: data.id,
-    workspace_id: workspaceId,
     name: 'Opt-in Page',
-    path: '/',
-    position: 1
+    path_name: '/',
+    order: 1
    })
    .select()
    .single();
@@ -524,7 +523,7 @@ export async function duplicateFunnelAction(id: string) {
    .from('funnel_steps')
    .select('*, pages(*)')
    .eq('funnel_id', id)
-   .order('position', { ascending: true });
+   .order('order', { ascending: true });
 
   if (steps) {
    for (const step of steps) {
@@ -534,9 +533,8 @@ export async function duplicateFunnelAction(id: string) {
      .insert({
       funnel_id: duplicate.id,
       name: step.name,
-      path: step.path,
-      workspace_id: workspaceId,
-					position: step.position
+      path_name: step.path_name,
+      order: step.order
      })
      .select()
      .single();

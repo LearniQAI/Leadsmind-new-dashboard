@@ -402,7 +402,7 @@ export default function SettingsClient({
         setActiveTab={setActiveTab}
       />
 
-      <div className="flex-1 min-w-0 bg-[#04091a] relative overflow-y-auto">
+      <div className="flex-1 min-w-0 bg-dash-bg relative overflow-y-auto">
         <SettingsHeader
           title={currentMenu?.label || ''}
           description={currentMenu?.description || ''}

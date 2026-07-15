@@ -142,40 +142,40 @@ export default function WorkspaceTab({
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 motion-reduce:animate-none">
       <div className="grid gap-8">
-        <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-1 h-full bg-accent"></div>
+        <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-1 h-full bg-dash-accent"></div>
           <div className="flex items-center gap-4 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+            <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
               <Globe size={20} />
             </div>
             <div>
-              <h4 className="text-[15px] font-space font-bold text-t1 uppercase">Core Configuration</h4>
-              <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Global workspace identity</p>
+              <h4 className="text-[15px] font-bold !text-dash-text">Core configuration</h4>
+              <p className="text-[11px] !text-dash-textMuted font-medium">Global workspace identity</p>
             </div>
           </div>
 
           <div className="grid gap-6">
             <div className="space-y-2">
-              <label className="text-[11px] font-black uppercase tracking-widest text-t3">Workspace Name</label>
+              <label className="text-[11px] font-bold !text-dash-textMuted">Workspace name</label>
               <input
                 type="text"
                 disabled={!isAdmin}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-accent/50 transition-all outline-none text-sm disabled:opacity-60"
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-bold focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm disabled:opacity-60"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[11px] font-black uppercase tracking-widest text-t3">Permanent Slug</label>
+              <label className="text-[11px] font-bold !text-dash-textMuted">Permanent slug</label>
               <div className="flex gap-2">
-                <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-xl px-4 py-3 text-t3 font-mono text-[11px] flex items-center">
+                <div className="flex-1 bg-dash-surface border border-dash-border rounded-xl px-4 py-3 !text-dash-textMuted font-mono text-[11px] flex items-center">
                   leadsmind.io/w/{branding?.workspace_id || 'neural-node-01'}
                 </div>
                 <button
                   onClick={() => onCopy(`leadsmind.io/w/${branding?.workspace_id}`, 'slug')}
-                  className="px-4 bg-white/5 border border-white/5 text-t3 hover:text-t1 rounded-xl transition-colors"
+                  className="px-4 bg-dash-surface border border-dash-border !text-dash-textMuted hover:!text-dash-text rounded-xl transition-colors motion-reduce:transition-none"
                 >
                   {copiedId === 'slug' ? <Check size={14} className="text-green" /> : <Copy size={14} />}
                 </button>
@@ -188,9 +188,9 @@ export default function WorkspaceTab({
               <button
                 onClick={() => onSave(name)}
                 disabled={isSaving}
-                className="bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-accent/20 transition-all disabled:opacity-50"
+                className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-dash-accent/20 transition-all motion-reduce:transition-none disabled:opacity-50"
               >
-                {isSaving ? 'Processing...' : 'Save Configuration'}
+                {isSaving ? 'Processing...' : 'Save configuration'}
               </button>
             </div>
           )}
@@ -198,52 +198,52 @@ export default function WorkspaceTab({
 
         {/* KYC & POPIA Consent Configurations */}
         {isAdmin && (
-          <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+          <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden shadow-sm">
+            <div className="absolute top-0 left-0 w-1 h-full bg-purple-600"></div>
             <div className="flex items-center gap-4 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+              <div className="w-10 h-10 rounded-xl bg-purple-600/10 flex items-center justify-center text-purple-600">
                 <Shield size={20} />
               </div>
               <div>
-                <h4 className="text-[15px] font-space font-bold text-t1 uppercase">KYC & POPIA Consent Configuration</h4>
-                <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">FICA and POPIA Statutory Identity verification settings</p>
+                <h4 className="text-[15px] font-bold !text-dash-text">KYC & POPIA consent configuration</h4>
+                <p className="text-[11px] !text-dash-textMuted font-medium">FICA and POPIA statutory identity verification settings</p>
               </div>
             </div>
 
             <div className="grid gap-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-t3">Legal / Registered Name</label>
+                  <label className="text-[11px] font-bold !text-dash-textMuted">Legal / registered name</label>
                   <input
                     type="text"
                     value={kycSettings.registered_name}
                     onChange={(e) => setKycSettings({ ...kycSettings, registered_name: e.target.value })}
                     placeholder="e.g. Acme Holdings (Pty) Ltd"
-                    className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-purple-500/50 transition-all outline-none text-sm"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-bold focus:border-purple-600 transition-all motion-reduce:transition-none outline-none text-sm"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-t3">Business Registration Number</label>
+                  <label className="text-[11px] font-bold !text-dash-textMuted">Business registration number</label>
                   <input
                     type="text"
                     value={kycSettings.company_reg_number}
                     onChange={(e) => setKycSettings({ ...kycSettings, company_reg_number: e.target.value })}
                     placeholder="e.g. 2026/123456/07"
-                    className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-purple-500/50 transition-all outline-none text-sm"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-bold focus:border-purple-600 transition-all motion-reduce:transition-none outline-none text-sm"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-black uppercase tracking-widest text-t3">Data-Sharing Entities (Comma-separated)</label>
+                <label className="text-[11px] font-bold !text-dash-textMuted">Data-sharing entities (comma-separated)</label>
                 <input
                   type="text"
                   value={kycSettings.kyc_data_sharing_entities_str}
                   onChange={(e) => setKycSettings({ ...kycSettings, kyc_data_sharing_entities_str: e.target.value })}
                   placeholder="e.g. TransUnion, Experian, HANIS, Home Affairs, Conveyancing Attorneys"
-                  className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-purple-500/50 transition-all outline-none text-sm"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-bold focus:border-purple-600 transition-all motion-reduce:transition-none outline-none text-sm"
                 />
-                <p className="text-[10px] text-t3">Specify third-party agencies and credit bureaus that verification checks will be processed through.</p>
+                <p className="text-[10px] !text-dash-textMuted">Specify third-party agencies and credit bureaus that verification checks will be processed through.</p>
               </div>
             </div>
 
@@ -251,46 +251,46 @@ export default function WorkspaceTab({
               <button
                 onClick={handleSaveKycSettings}
                 disabled={isKycSaving}
-                className="bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-widest text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50"
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-purple-600/20 transition-all motion-reduce:transition-none disabled:opacity-50"
               >
-                {isKycSaving ? 'Saving...' : 'Save KYC Settings'}
+                {isKycSaving ? 'Saving...' : 'Save KYC settings'}
               </button>
             </div>
           </div>
         )}
 
         {isAdmin && !loadingSettings && (
-          <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+          <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden shadow-sm">
+            <div className="absolute top-0 left-0 w-1 h-full bg-dash-accent"></div>
             <div className="flex items-center gap-4 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
                 <CreditCard size={20} />
               </div>
               <div>
-                <h4 className="text-[15px] font-space font-bold text-t1 uppercase">Financial & Portal Configurations</h4>
-                <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Customer portal visibility & payment protocols</p>
+                <h4 className="text-[15px] font-bold !text-dash-text">Financial & portal configurations</h4>
+                <p className="text-[11px] !text-dash-textMuted font-medium">Customer portal visibility & payment protocols</p>
               </div>
             </div>
 
-            <div className="grid gap-6 divide-y divide-white/5">
+            <div className="grid gap-6 divide-y divide-dash-border">
               {/* Toggle 1: Show Draft Invoices */}
               <div className="flex items-center justify-between pt-4 first:pt-0">
                 <div className="space-y-1 pr-4">
-                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Show Draft Invoices</p>
-                  <p className="text-[11px] text-t3">Allow clients to view draft-status invoices inside their billing portal directory.</p>
+                  <p className="text-xs font-bold !text-dash-text">Show draft invoices</p>
+                  <p className="text-[11px] !text-dash-textMuted">Allow clients to view draft-status invoices inside their billing portal directory.</p>
                 </div>
                 <button
                   role="switch"
                   aria-checked={settings.show_draft_invoices}
                   onClick={() => handleToggle('show_draft_invoices', !settings.show_draft_invoices)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
-                    settings.show_draft_invoices ? "bg-accent" : "bg-white/10"
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 motion-reduce:transition-none outline-none",
+                    settings.show_draft_invoices ? "bg-dash-accent" : "bg-dash-border"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 motion-reduce:transition-none",
                       settings.show_draft_invoices ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -300,21 +300,21 @@ export default function WorkspaceTab({
               {/* Toggle 2: Custom Partial Payments */}
               <div className="flex items-center justify-between pt-4">
                 <div className="space-y-1 pr-4">
-                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Allow Custom Partial Payments</p>
-                  <p className="text-[11px] text-t3">Enable clients to key in custom payment amounts when checking out outstanding balances.</p>
+                  <p className="text-xs font-bold !text-dash-text">Allow custom partial payments</p>
+                  <p className="text-[11px] !text-dash-textMuted">Enable clients to key in custom payment amounts when checking out outstanding balances.</p>
                 </div>
                 <button
                   role="switch"
                   aria-checked={settings.allow_partial_payments}
                   onClick={() => handleToggle('allow_partial_payments', !settings.allow_partial_payments)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
-                    settings.allow_partial_payments ? "bg-accent" : "bg-white/10"
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 motion-reduce:transition-none outline-none",
+                    settings.allow_partial_payments ? "bg-dash-accent" : "bg-dash-border"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 motion-reduce:transition-none",
                       settings.allow_partial_payments ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -324,21 +324,21 @@ export default function WorkspaceTab({
               {/* Toggle 3: Overdue Banner Alert */}
               <div className="flex items-center justify-between pt-4">
                 <div className="space-y-1 pr-4">
-                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Dashboard Overdue Alert Banner</p>
-                  <p className="text-[11px] text-t3">Display a warning alert banner at the top of the client portal dashboard if outstanding balances are overdue.</p>
+                  <p className="text-xs font-bold !text-dash-text">Dashboard overdue alert banner</p>
+                  <p className="text-[11px] !text-dash-textMuted">Display a warning alert banner at the top of the client portal dashboard if outstanding balances are overdue.</p>
                 </div>
                 <button
                   role="switch"
                   aria-checked={settings.enable_overdue_alert_banner}
                   onClick={() => handleToggle('enable_overdue_alert_banner', !settings.enable_overdue_alert_banner)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
-                    settings.enable_overdue_alert_banner ? "bg-accent" : "bg-white/10"
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 motion-reduce:transition-none outline-none",
+                    settings.enable_overdue_alert_banner ? "bg-dash-accent" : "bg-dash-border"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 motion-reduce:transition-none",
                       settings.enable_overdue_alert_banner ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -348,21 +348,21 @@ export default function WorkspaceTab({
               {/* Toggle 4: Show Line Items */}
               <div className="flex items-center justify-between pt-4">
                 <div className="space-y-1 pr-4">
-                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Show Invoice Line Items</p>
-                  <p className="text-[11px] text-t3">Display detailed itemized breakdowns (lines) on customer invoices instead of just totals.</p>
+                  <p className="text-xs font-bold !text-dash-text">Show invoice line items</p>
+                  <p className="text-[11px] !text-dash-textMuted">Display detailed itemized breakdowns (lines) on customer invoices instead of just totals.</p>
                 </div>
                 <button
                   role="switch"
                   aria-checked={settings.show_line_items}
                   onClick={() => handleToggle('show_line_items', !settings.show_line_items)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
-                    settings.show_line_items ? "bg-accent" : "bg-white/10"
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 motion-reduce:transition-none outline-none",
+                    settings.show_line_items ? "bg-dash-accent" : "bg-dash-border"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 motion-reduce:transition-none",
                       settings.show_line_items ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -373,37 +373,37 @@ export default function WorkspaceTab({
         )}
 
         {isAdmin && !loadingSettings && (
-          <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+          <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden shadow-sm">
+            <div className="absolute top-0 left-0 w-1 h-full bg-amber-600"></div>
             <div className="flex items-center gap-4 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400">
+              <div className="w-10 h-10 rounded-xl bg-amber-600/10 flex items-center justify-center text-amber-600">
                 <Globe size={20} />
               </div>
               <div>
-                <h4 className="text-[15px] font-space font-bold text-t1 uppercase">Projects Visibility & Delivery Controls</h4>
-                <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Client portal project settings & safety filters</p>
+                <h4 className="text-[15px] font-bold !text-dash-text">Projects visibility & delivery controls</h4>
+                <p className="text-[11px] !text-dash-textMuted font-medium">Client portal project settings & safety filters</p>
               </div>
             </div>
 
-            <div className="grid gap-6 divide-y divide-white/5">
+            <div className="grid gap-6 divide-y divide-dash-border">
               {/* Toggle 1: Show Team Tasks */}
               <div className="flex items-center justify-between pt-4 first:pt-0">
                 <div className="space-y-1 pr-4">
-                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Show Team Tasks</p>
-                  <p className="text-[11px] text-t3">Allow clients to see individual non-milestone team tasks. If disabled, clients will only see milestones.</p>
+                  <p className="text-xs font-bold !text-dash-text">Show team tasks</p>
+                  <p className="text-[11px] !text-dash-textMuted">Allow clients to see individual non-milestone team tasks. If disabled, clients will only see milestones.</p>
                 </div>
                 <button
                   role="switch"
                   aria-checked={projectSettings.show_tasks}
                   onClick={() => handleProjectToggle('show_tasks', !projectSettings.show_tasks)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
-                    projectSettings.show_tasks ? "bg-accent" : "bg-white/10"
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 motion-reduce:transition-none outline-none",
+                    projectSettings.show_tasks ? "bg-dash-accent" : "bg-dash-border"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 motion-reduce:transition-none",
                       projectSettings.show_tasks ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -413,21 +413,21 @@ export default function WorkspaceTab({
               {/* Toggle 2: Show Employee Names */}
               <div className="flex items-center justify-between pt-4">
                 <div className="space-y-1 pr-4">
-                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Show Internal Employee Names</p>
-                  <p className="text-[11px] text-t3">Allow clients to see internal names of assignees. If disabled, assignees are masked under "Delivery Team".</p>
+                  <p className="text-xs font-bold !text-dash-text">Show internal employee names</p>
+                  <p className="text-[11px] !text-dash-textMuted">Allow clients to see internal names of assignees. If disabled, assignees are masked under "Delivery Team".</p>
                 </div>
                 <button
                   role="switch"
                   aria-checked={projectSettings.show_employee_names}
                   onClick={() => handleProjectToggle('show_employee_names', !projectSettings.show_employee_names)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
-                    projectSettings.show_employee_names ? "bg-accent" : "bg-white/10"
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 motion-reduce:transition-none outline-none",
+                    projectSettings.show_employee_names ? "bg-dash-accent" : "bg-dash-border"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 motion-reduce:transition-none",
                       projectSettings.show_employee_names ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -437,21 +437,21 @@ export default function WorkspaceTab({
               {/* Toggle 3: Show Financial Metrics */}
               <div className="flex items-center justify-between pt-4">
                 <div className="space-y-1 pr-4">
-                  <p className="text-xs font-bold text-t1 uppercase tracking-wider">Show Project Budget & Tracked Hours</p>
-                  <p className="text-[11px] text-t3">Display financial columns including project budget, costs, and internal tracked hours in the portal.</p>
+                  <p className="text-xs font-bold !text-dash-text">Show project budget & tracked hours</p>
+                  <p className="text-[11px] !text-dash-textMuted">Display financial columns including project budget, costs, and internal tracked hours in the portal.</p>
                 </div>
                 <button
                   role="switch"
                   aria-checked={projectSettings.show_financials}
                   onClick={() => handleProjectToggle('show_financials', !projectSettings.show_financials)}
                   className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 outline-none",
-                    projectSettings.show_financials ? "bg-accent" : "bg-white/10"
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 motion-reduce:transition-none outline-none",
+                    projectSettings.show_financials ? "bg-dash-accent" : "bg-dash-border"
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300",
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 motion-reduce:transition-none",
                       projectSettings.show_financials ? "translate-x-6" : "translate-x-1"
                     )}
                   />
@@ -462,16 +462,16 @@ export default function WorkspaceTab({
         )}
 
         {isAdmin && (
-          <div className="bg-n800 border border-white/5 rounded-2xl p-8">
+          <div className="bg-white border border-dash-border rounded-2xl p-8 shadow-sm">
             <div className="flex items-start justify-between gap-6">
               <div className="space-y-1">
-                <h4 className="text-[14px] font-bold text-t1 uppercase font-space">Workspace Deletion</h4>
-                <p className="text-[12px] text-t3 leading-relaxed">
+                <h4 className="text-[14px] font-bold !text-dash-text">Workspace deletion</h4>
+                <p className="text-[12px] !text-dash-textMuted leading-relaxed">
                   Permanently remove this workspace and all its data. This action is irreversible.
                 </p>
               </div>
-              <button className="flex-shrink-0 px-4 py-2.5 bg-red/10 text-red hover:bg-red/20 border border-red/20 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all">
-                Terminate Node
+              <button className="flex-shrink-0 px-4 py-2.5 bg-red/10 text-red hover:bg-red/20 border border-red/20 rounded-xl text-[11px] font-bold transition-all motion-reduce:transition-none">
+                Delete workspace
               </button>
             </div>
           </div>

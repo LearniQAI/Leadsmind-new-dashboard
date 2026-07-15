@@ -5,7 +5,7 @@ import { useNode, useEditor } from '@craftjs/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useBuilder } from './BuilderContext';
-import { Save, Copy, Trash2, RefreshCw, Settings } from 'lucide-react';
+import { Save, Copy, Trash2, RefreshCw, Settings, Move, Plus, MoreHorizontal } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -13,7 +13,7 @@ function cn(...inputs: ClassValue[]) {
 
 export const RenderNode = ({ render }: { render: React.ReactNode }) => {
   const { id } = useNode();
-  const { setBlueprintNodeId, setPropertiesOpen } = useBuilder();
+  const { setBlueprintNodeId, setPropertiesOpen, setSidebarOpen } = useBuilder();
   const { actions: editorActions, query } = useEditor();
 
   const { isActive, isHovered, dom, name, parentId } = useNode((node) => ({
@@ -99,7 +99,7 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
           else connect(drag(ref));
         }
       }}
-      className="relative"
+      className="relative group"
       onContextMenu={(e) => {
         if (!isEnabled) return;
         e.preventDefault();
@@ -108,29 +108,90 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
         setContextMenu({ x: e.clientX, y: e.clientY });
       }}
     >
+      {/* Selection badge, top-left */}
       {isActive && id !== 'ROOT' && (
-        <div className="absolute -top-6 left-0 bg-primary text-white text-[9px] px-3 py-1.5 rounded-t-lg flex items-center gap-2 z-30 shadow-md">
-          <span className="font-bold pointer-events-none">{name}</span>
+        <div className="absolute -top-[22px] left-0 bg-dash-accent text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 z-40 pointer-events-none">
+          {name}
+        </div>
+      )}
+
+      {/* Glass Floating Action Bar on hover/selection */}
+      {(isHovered || isActive) && id !== 'ROOT' && (
+        <div className="absolute -top-[42px] right-0 bg-white/95 border border-dash-border text-dash-textMuted h-[36px] px-1 rounded-xl flex items-center justify-center gap-0.5 z-40 shadow-2xl backdrop-blur-xl transition-opacity motion-reduce:transition-none">
+          <button
+            onClick={(e) => { e.stopPropagation(); setSidebarOpen(true); }}
+            className="w-7 h-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-accent hover:bg-dash-accent/10 rounded-lg transition-colors motion-reduce:transition-none"
+            title="Add element"
+          >
+            <Plus size={14} />
+          </button>
+          <div className="flex items-center justify-center h-full px-1 cursor-grab active:cursor-grabbing !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none" title="Move element">
+            <Move size={14} />
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDuplicate(); }}
+            className="w-7 h-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-accent hover:bg-dash-accent/10 rounded-lg transition-colors motion-reduce:transition-none"
+            title="Duplicate"
+          >
+            <Copy size={14} />
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
-              e.preventDefault();
-              setBlueprintNodeId(id);
+              editorActions.selectNode(id);
+              setPropertiesOpen(true);
             }}
-            className="text-white hover:text-green cursor-pointer flex items-center justify-center p-0.5"
-            title="Save component blueprint"
+            className="w-7 h-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-accent hover:bg-dash-accent/10 rounded-lg transition-colors motion-reduce:transition-none"
+            title="Settings"
           >
-            <Save size={10} />
+            <Settings size={14} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+            className="w-7 h-7 flex items-center justify-center !text-dash-textMuted hover:text-red hover:bg-red/10 rounded-lg transition-colors motion-reduce:transition-none"
+            title="Delete"
+          >
+            <Trash2 size={14} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              editorActions.selectNode(id);
+              const rect = (e.target as HTMLElement).getBoundingClientRect();
+              setContextMenu({ x: rect.left, y: rect.bottom + 6 });
+            }}
+            className="w-7 h-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-colors motion-reduce:transition-none"
+            title="More"
+          >
+            <MoreHorizontal size={14} />
           </button>
         </div>
       )}
+
+      {/* Hover Outline */}
       {isHovered && !isActive && (
-        <div className="absolute inset-0 border border-primary/40 border-dashed rounded-[inherit] pointer-events-none z-10" />
+        <div className="absolute inset-0 border-[1.5px] border-dash-accent/50 rounded-[inherit] pointer-events-none z-10 transition-colors duration-200 motion-reduce:transition-none" />
       )}
+      {/* Active Outline */}
       {isActive && (
-        <div className="absolute inset-0 border-2 border-primary rounded-[inherit] pointer-events-none z-20 shadow-xl" />
+        <div className="absolute inset-0 border-[2px] border-dashed border-dash-accent rounded-[inherit] pointer-events-none z-20" />
       )}
       {render}
+
+      {/* Section Inserter */}
+      {isHovered && parentId === 'ROOT' && (
+         <div className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none duration-200">
+           <button
+             onClick={(e) => {
+               e.stopPropagation();
+               setSidebarOpen(true);
+             }}
+             className="bg-dash-accent text-white h-7 px-3 rounded-full text-[11px] font-bold shadow-[0_4px_12px_rgba(19,89,255,0.3)] flex items-center gap-1.5 hover:bg-dash-accent/90 hover:scale-105 transition-all motion-reduce:transition-none motion-reduce:hover:scale-100"
+           >
+             <Plus className="w-3.5 h-3.5" /> Add Section
+           </button>
+         </div>
+      )}
 
       {/* Right-click Context Menu */}
       {contextMenu && (
@@ -147,29 +208,29 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
               }));
               setContextMenu(null);
             }}
-            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
+            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-accent/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
           >
-            <Settings size={12} className="text-purple-600 shrink-0" />
+            <Settings size={12} className="text-dash-accent shrink-0" />
             Properties
           </button>
           <div className="h-[1px] bg-dash-border my-1" />
           <button
             onClick={handleDuplicate}
-            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
+            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-accent/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
           >
-            <Copy size={12} className="text-primary shrink-0" />
+            <Copy size={12} className="text-dash-accent shrink-0" />
             Duplicate
           </button>
           <button
             onClick={handleResetLayout}
-            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
+            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-accent/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
           >
-            <RefreshCw size={12} className="text-primary shrink-0" />
+            <RefreshCw size={12} className="text-dash-accent shrink-0" />
             Reset layout
           </button>
           <button
             onClick={handleSaveBlueprint}
-            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-primary/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
+            className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-accent/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"
           >
             <Save size={12} className="text-amber-600 shrink-0" />
             Save blueprint

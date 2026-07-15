@@ -22,24 +22,24 @@ export default function CourseWorkspaceHeader({
   return (
     <div className="space-y-6">
       {/* Breadcrumbs */}
-      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-white/30 font-mono">
-        <span className="hover:text-primary transition-colors cursor-pointer" onClick={() => router.push("/courses")}>Courses</span>
+      <div className="flex items-center gap-1.5 text-[10px] font-bold !text-dash-textMuted font-mono">
+        <span className="hover:text-dash-accent transition-colors motion-reduce:transition-none cursor-pointer" onClick={() => router.push("/courses")}>Courses</span>
         <span>›</span>
-        <span className="text-white/60">{courseTitle}</span>
+        <span className="!text-dash-text">{courseTitle}</span>
       </div>
 
       {/* Back button */}
       <div>
         <button
           onClick={() => router.push("/courses")}
-          className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white uppercase tracking-wider font-bold bg-white/5 border border-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl transition-all"
+          className="flex items-center gap-1.5 text-xs !text-dash-textMuted hover:!text-dash-text font-bold bg-dash-surface border border-dash-border hover:bg-dash-border/60 px-3 py-1.5 rounded-xl transition-all motion-reduce:transition-none"
         >
           <ArrowLeft size={13} /> Back to Courses
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center bg-[#080f28] border border-white/5 rounded-xl p-1 w-fit shrink-0">
+      <div className="flex items-center bg-white border border-dash-border rounded-xl p-1 w-fit shrink-0 shadow-sm">
         {(["settings", "modules", "landing-page", "pricing", "emails", "submissions", "automations", "analytics"] as const).map((tab) => (
           <button
             key={tab}
@@ -50,9 +50,9 @@ export default function CourseWorkspaceHeader({
                 setActiveTab(tab);
               }
             }}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab
+            className={`px-4 py-2 rounded-lg text-[10px] font-bold capitalize transition-all motion-reduce:transition-none ${activeTab === tab
                 ? "bg-primary text-white"
-                : "text-white/40 hover:text-white/60"
+                : "!text-dash-textMuted hover:!text-dash-text"
               }`}
           >
             {tab === "landing-page" ? "landing page" : tab}

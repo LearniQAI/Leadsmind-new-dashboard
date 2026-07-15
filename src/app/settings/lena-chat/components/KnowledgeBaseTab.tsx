@@ -137,69 +137,69 @@ export default function KnowledgeBaseTab({ workspaceId }: KnowledgeBaseTabProps)
   };
 
   if (loading) {
-    return <div className="h-40 bg-white/[0.02] animate-pulse rounded-xl" />;
+    return <div className="h-40 bg-dash-surface animate-pulse motion-reduce:animate-none rounded-xl" />;
   }
 
   return (
     <div className="space-y-6 w-full">
       {/* Header toolbar */}
-      <div className="flex justify-between items-center bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] p-4 rounded-xl">
+      <div className="flex justify-between items-center bg-white border border-dash-border p-4 rounded-xl shadow-sm">
         <div>
-          <span className="text-[14px] font-semibold text-[#eef2ff] block font-space-grotesk">
-            Articles & Sources
+          <span className="text-[14px] font-semibold !text-dash-text block">
+            Articles & sources
           </span>
-          <span className="text-[11.5px] text-[#4a5a82] font-dm-sans">
+          <span className="text-[11.5px] !text-dash-textMuted">
             Add information below that LENA can use to answer visitor queries.
           </span>
         </div>
         <button
           type="button"
           onClick={openAddModal}
-          className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[12px] font-semibold px-4 py-2 rounded-lg transition-colors"
+          className="bg-dash-accent hover:bg-dash-accent/90 text-white text-[12px] font-semibold px-4 py-2 rounded-lg transition-colors motion-reduce:transition-none"
         >
-          + Add Article
+          + Add article
         </button>
       </div>
 
       {/* Articles list */}
       <div className="space-y-3">
         {articles.length === 0 ? (
-          <div className="bg-[rgba(12,21,53,0.85)] border border-dashed border-[rgba(255,255,255,0.1)] p-8 rounded-xl text-center flex flex-col items-center gap-3">
-            <span className="text-[28px] text-[#4a5a82] opacity-55">📝</span>
-            <span className="text-[13px] font-semibold text-[#94a3c8]">No Articles Added Yet</span>
-            <p className="text-[12px] text-[#4a5a82] max-w-[280px]">
+          <div className="bg-white border border-dashed border-dash-border p-8 rounded-xl text-center flex flex-col items-center gap-3">
+            <span className="text-[28px] opacity-55">📝</span>
+            <span className="text-[13px] font-semibold !text-dash-text">No articles added yet</span>
+            <p className="text-[12px] !text-dash-textMuted max-w-[280px]">
               LENA has no information to learn from. Add articles containing details about your services or FAQs.
             </p>
             <button
               onClick={openAddModal}
-              className="bg-[#2563eb] text-white text-[12px] font-semibold rounded-lg px-4 py-1.5 mt-2 hover:bg-[#1d4ed8]"
+              className="bg-dash-accent text-white text-[12px] font-semibold rounded-lg px-4 py-1.5 mt-2 hover:bg-dash-accent/90 transition-colors motion-reduce:transition-none"
             >
-              + Create First Article
+              + Create first article
             </button>
           </div>
         ) : (
           articles.map((art) => (
             <div
               key={art.id}
-              className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+              className="bg-white border border-dash-border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3">
-                  <span className="text-[#eef2ff] font-semibold text-[13.5px] font-space-grotesk truncate">
+                  <span className="!text-dash-text font-semibold text-[13.5px] truncate">
                     {art.title}
                   </span>
                   {art.category && (
-                    <span className="bg-[#8b5cf6]/10 border border-[#8b5cf6]/35 text-[#a78bfa] text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                    <span className="bg-purple-50 border border-purple-200 text-purple-600 text-[10px] px-2 py-0.5 rounded-full font-semibold">
                       {art.category}
                     </span>
                   )}
                   {art.always_include && (
-                    <span className="bg-[#f59e0b]/10 border border-[#f59e0b]/35 text-[#fbbf24] text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                    <span className="bg-amber-50 border border-amber-200 text-amber-600 text-[10px] px-2 py-0.5 rounded-full font-semibold">
                       Proactive
                     </span>
                   )}
                 </div>
-                <p className="text-[12px] text-[#94a3c8] line-clamp-2 mt-1.5 font-dm-sans max-w-2xl">
+                <p className="text-[12px] !text-dash-textMuted line-clamp-2 mt-1.5 max-w-2xl">
                   {art.content}
                 </p>
               </div>
@@ -210,8 +210,8 @@ export default function KnowledgeBaseTab({ workspaceId }: KnowledgeBaseTabProps)
                   onClick={() => toggleActive(art)}
                   className={`text-[10px] font-semibold rounded-full px-2.5 py-0.5 border ${
                     art.active
-                      ? 'bg-[#10b981]/10 text-[#34d399] border-[#10b981]/30'
-                      : 'bg-white/5 text-[#94a3c8] border-white/10'
+                      ? 'bg-green/10 text-green border-green/30'
+                      : 'bg-dash-surface !text-dash-textMuted border-dash-border'
                   }`}
                 >
                   {art.active ? 'Active' : 'Paused'}
@@ -220,13 +220,13 @@ export default function KnowledgeBaseTab({ workspaceId }: KnowledgeBaseTabProps)
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openEditModal(art)}
-                    className="bg-white/5 hover:bg-white/10 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                    className="bg-dash-surface hover:bg-dash-border/60 !text-dash-text text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors motion-reduce:transition-none"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(art.id)}
-                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                    className="bg-red/10 hover:bg-red/20 text-red text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors motion-reduce:transition-none"
                   >
                     Delete
                   </button>
@@ -239,16 +239,16 @@ export default function KnowledgeBaseTab({ workspaceId }: KnowledgeBaseTabProps)
 
       {/* Add/Edit Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-[#04091a]/75 backdrop-blur-[4px] z-[500] flex items-center justify-center p-4">
-          <div className="bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-[560px] p-6 max-h-[90vh] overflow-y-auto flex flex-col">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
-              <span className="text-[15px] font-semibold text-white font-space-grotesk">
-                {editingArticle ? 'Edit Article' : 'Add Knowledge Source'}
+        <div className="fixed inset-0 bg-dash-text/40 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
+          <div className="bg-white border border-dash-border rounded-2xl w-full max-w-[560px] p-6 max-h-[90vh] overflow-y-auto flex flex-col shadow-xl">
+            <div className="flex items-center justify-between border-b border-dash-border pb-3 mb-4">
+              <span className="text-[15px] font-semibold !text-dash-text">
+                {editingArticle ? 'Edit article' : 'Add knowledge source'}
               </span>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="text-[#94a3c8] hover:text-white text-[16px]"
+                className="!text-dash-textMuted hover:!text-dash-text text-[16px]"
               >
                 ✕
               </button>
@@ -256,7 +256,7 @@ export default function KnowledgeBaseTab({ workspaceId }: KnowledgeBaseTabProps)
 
             <form onSubmit={handleSave} className="space-y-4 flex-1">
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-[0.6px] text-[#4a5a82] mb-1.5 block">
+                <label className="text-[11px] font-semibold !text-dash-textMuted mb-1.5 block">
                   Title
                 </label>
                 <input
@@ -265,12 +265,12 @@ export default function KnowledgeBaseTab({ workspaceId }: KnowledgeBaseTabProps)
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  className="bg-white/[0.05] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#2563eb] w-full"
+                  className="bg-white border border-dash-border rounded-lg px-4 py-2 !text-dash-text text-[13px] focus:outline-none focus:border-dash-accent w-full"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-[0.6px] text-[#4a5a82] mb-1.5 block">
+                <label className="text-[11px] font-semibold !text-dash-textMuted mb-1.5 block">
                   Category
                 </label>
                 <input
@@ -278,13 +278,13 @@ export default function KnowledgeBaseTab({ workspaceId }: KnowledgeBaseTabProps)
                   placeholder="e.g. Sales, Support, FAQs"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="bg-white/[0.05] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#2563eb] w-full"
+                  className="bg-white border border-dash-border rounded-lg px-4 py-2 !text-dash-text text-[13px] focus:outline-none focus:border-dash-accent w-full"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-[0.6px] text-[#4a5a82] mb-1.5 block">
-                  Content (LENA's Context Source)
+                <label className="text-[11px] font-semibold !text-dash-textMuted mb-1.5 block">
+                  Content (LENA's context source)
                 </label>
                 <textarea
                   placeholder="Provide precise details. LENA will read this to answer visitor queries."
@@ -292,37 +292,37 @@ export default function KnowledgeBaseTab({ workspaceId }: KnowledgeBaseTabProps)
                   onChange={(e) => setContent(e.target.value)}
                   required
                   rows={8}
-                  className="bg-white/[0.05] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-3.5 text-white text-[13px] focus:outline-none focus:border-[#2563eb] w-full resize-none leading-relaxed"
+                  className="bg-white border border-dash-border rounded-lg px-4 py-3.5 !text-dash-text text-[13px] focus:outline-none focus:border-dash-accent w-full resize-none leading-relaxed"
                 />
               </div>
 
-              <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-lg border border-white/5">
+              <div className="flex items-center gap-3 bg-dash-surface p-3 rounded-lg border border-dash-border">
                 <input
                   type="checkbox"
                   id="alwaysInclude"
                   checked={alwaysInclude}
                   onChange={(e) => setAlwaysInclude(e.target.checked)}
-                  className="w-4 h-4 rounded border-white/10 bg-transparent text-[#2563eb] focus:ring-0"
+                  className="w-4 h-4 rounded border-dash-border bg-transparent text-dash-accent focus:ring-0"
                 />
-                <label htmlFor="alwaysInclude" className="text-[12px] text-[#94a3c8] cursor-pointer">
+                <label htmlFor="alwaysInclude" className="text-[12px] !text-dash-textMuted cursor-pointer">
                   <strong>Proactive mention</strong>: LENA reads this automatically for every visitor conversation.
                 </label>
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-white/5 mt-6">
+              <div className="flex justify-end gap-3 pt-3 border-t border-dash-border mt-6">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="bg-white/5 hover:bg-white/10 text-white text-[12.5px] font-semibold px-4 py-2 rounded-lg transition-colors"
+                  className="bg-dash-surface hover:bg-dash-border/60 !text-dash-text text-[12.5px] font-semibold px-4 py-2 rounded-lg transition-colors motion-reduce:transition-none"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[12.5px] font-semibold px-5 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  className="bg-dash-accent hover:bg-dash-accent/90 text-white text-[12.5px] font-semibold px-5 py-2 rounded-lg transition-colors motion-reduce:transition-none disabled:opacity-50"
                 >
-                  {saving ? 'Saving...' : 'Save Article'}
+                  {saving ? 'Saving...' : 'Save article'}
                 </button>
               </div>
             </form>

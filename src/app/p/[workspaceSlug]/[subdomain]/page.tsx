@@ -46,18 +46,18 @@ export default async function PublishedSubdomainRootPage({
         // Fetch all routing pages for context
         const { data: wsPages } = await supabase
             .from('website_pages')
-            .select('id, name, path, pages(content)')
+            .select('id, name, path_name, pages(content)')
             .eq('website_id', website.id);
 
         if (wsPages) {
             allPages = wsPages.map(p => ({
                 id: p.id,
                 name: p.name,
-                slug: p.path.replace(/^\/+/, '') || 'home'
+                slug: p.path_name.replace(/^\/+/, '') || 'home'
             }));
 
             // Find Home page content
-            const homePage = wsPages.find(p => p.path === '/');
+            const homePage = wsPages.find(p => p.path_name === '/');
             targetPageContent = (homePage?.pages as any)?.[0]?.content || null;
 
             if (!targetPageContent && wsPages.length > 0) {
@@ -81,15 +81,15 @@ export default async function PublishedSubdomainRootPage({
             // Fetch all funnel steps
             const { data: steps } = await supabase
                 .from('funnel_steps')
-                .select('id, name, path, pages(content)')
+                .select('id, name, path_name, pages(content)')
                 .eq('funnel_id', funnel.id)
-                .order('position', { ascending: true });
+                .order('order', { ascending: true });
 
             if (steps) {
                 allPages = steps.map(s => ({
                     id: s.id,
                     name: s.name,
-                    slug: s.path.replace(/^\/+/, '') || 'step'
+                    slug: s.path_name.replace(/^\/+/, '') || 'step'
                 }));
 
                 targetPageContent = (steps[0]?.pages as any)?.[0]?.content || null;

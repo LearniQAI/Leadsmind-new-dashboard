@@ -31,33 +31,37 @@ export default function CalendarStats({ appointments }: CalendarStatsProps) {
   }, 0);
 
   const stats = [
-    { 
-      label: 'Total Bookings', 
-      value: totalBookings.toString(), 
-      trend: '+0%', 
-      icon: Calendar, 
-      color: 'var(--accent)' 
+    {
+      label: 'Total Bookings',
+      value: totalBookings.toString(),
+      trend: '+0%',
+      icon: Calendar,
+      color: '#1359FF',
+      rgb: '19, 89, 255'
     },
-    { 
-      label: 'Completion Rate', 
-      value: `${completionRate}%`, 
-      trend: 'Neutral', 
-      icon: TrendingUp, 
-      color: 'var(--green)' 
+    {
+      label: 'Completion Rate',
+      value: `${completionRate}%`,
+      trend: 'Neutral',
+      icon: TrendingUp,
+      color: '#10b981',
+      rgb: '16, 185, 129'
     },
-    { 
-      label: 'Avg. Duration', 
-      value: `${avgDuration}m`, 
-      trend: 'Neutral', 
-      icon: Clock, 
-      color: 'var(--purple)' 
+    {
+      label: 'Avg. Duration',
+      value: `${avgDuration}m`,
+      trend: 'Neutral',
+      icon: Clock,
+      color: '#8b5cf6',
+      rgb: '139, 92, 246'
     },
-    { 
-      label: 'Revenue Generated', 
-      value: `$${totalRevenue.toLocaleString()}`, 
-      trend: '+0%', 
-      icon: DollarSign, 
-      color: 'var(--amber)' 
+    {
+      label: 'Revenue Generated',
+      value: `$${totalRevenue.toLocaleString()}`,
+      trend: '+0%',
+      icon: DollarSign,
+      color: '#f59e0b',
+      rgb: '245, 158, 11'
     },
   ];
 
@@ -66,36 +70,36 @@ export default function CalendarStats({ appointments }: CalendarStatsProps) {
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
-          <div 
+          <div
             key={stat.label}
-            className="relative bg-[var(--card)] border border-[var(--bdr)] rounded-[var(--r12)] p-5 overflow-hidden group hover:bg-[var(--card-hover)] hover:border-[var(--bdrh)] transition-all"
+            className="relative bg-white border border-dash-border rounded-xl p-5 overflow-hidden group hover:bg-dash-surface hover:border-dash-text/10 transition-all motion-reduce:transition-none shadow-sm"
           >
             {/* Top Accent Bar */}
-            <div 
-              className="absolute top-0 left-0 right-0 h-[2px]" 
+            <div
+              className="absolute top-0 left-0 right-0 h-[2px]"
               style={{ backgroundColor: stat.color }}
             />
-            
+
             <div className="flex items-start justify-between mb-4">
-              <div 
+              <div
                 className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: `rgba(${stat.color === 'var(--accent)' ? '37, 99, 235' : stat.color === 'var(--green)' ? '16, 185, 129' : stat.color === 'var(--purple)' ? '139, 92, 246' : '245, 158, 11'}, 0.14)` }}
+                style={{ backgroundColor: `rgba(${stat.rgb}, 0.14)` }}
               >
                 <Icon size={18} style={{ color: stat.color }} />
               </div>
               <div className={cn(
                 "text-[11px] font-bold flex items-center gap-1",
-                stat.trend.startsWith('+') ? "text-[var(--green)]" : "text-[var(--t4)]"
+                stat.trend.startsWith('+') ? "text-green" : "!text-dash-textMuted"
               )}>
                 {stat.trend}
               </div>
             </div>
 
             <div className="space-y-1">
-              <div className="text-[26px] font-bold font-['Space_Grotesk'] text-[var(--t1)]">
+              <div className="text-[26px] font-bold !text-dash-text">
                 {stat.value}
               </div>
-              <div className="text-[12px] font-medium text-[var(--t3)] uppercase tracking-wider font-['DM_Sans']">
+              <div className="text-[12px] font-medium !text-dash-textMuted">
                 {stat.label}
               </div>
             </div>

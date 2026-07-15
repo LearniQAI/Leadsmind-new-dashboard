@@ -58,9 +58,9 @@ interface CalendarSettingsModalProps {
   onSave: (data: any) => Promise<void>;
 }
 
-export default function CalendarSettingsModal({ 
-  isOpen, 
-  onClose, 
+export default function CalendarSettingsModal({
+  isOpen,
+  onClose,
   calendar,
   onSave
 }: CalendarSettingsModalProps) {
@@ -118,10 +118,10 @@ export default function CalendarSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px] z-[1002] bg-[var(--n800)] border-[var(--bdr)] text-[var(--t1)]">
+      <DialogContent className="sm:max-w-[550px] z-[1002] bg-white border-dash-border !text-dash-text">
         <DialogHeader>
-          <DialogTitle className="text-[22px] font-bold font-['Space_Grotesk'] text-[var(--t1)] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--accent)] bg-opacity-10 flex items-center justify-center text-[var(--accent2)]">
+          <DialogTitle className="text-[22px] font-bold !text-dash-text flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
               <Settings2 size={22} />
             </div>
             {calendar ? 'Engine Settings' : 'New Scheduling Engine'}
@@ -137,11 +137,11 @@ export default function CalendarSettingsModal({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">Engine Name</FormLabel>
+                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Engine Name</FormLabel>
                     <FormControl>
-                      <Input {...field} className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t1)] h-11" placeholder="e.g. Sales Discovery" />
+                      <Input {...field} className="bg-white border-dash-border !text-dash-text h-11" placeholder="e.g. Sales Discovery" />
                     </FormControl>
-                    <FormMessage className="text-red-400 text-[10px]" />
+                    <FormMessage className="text-red text-[10px]" />
                   </FormItem>
                 )}
               />
@@ -152,14 +152,14 @@ export default function CalendarSettingsModal({
                 name="calendar_type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">Engine Type</FormLabel>
+                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Engine Type</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t2)] h-11">
+                        <SelectTrigger className="bg-white border-dash-border !text-dash-text h-11">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="bg-[var(--n900)] border-[var(--bdr)] z-[1100]">
+                      <SelectContent className="bg-white border-dash-border z-[1100]">
                         <SelectItem value="personal">Personal Booking</SelectItem>
                         <SelectItem value="round_robin">Round Robin (Team)</SelectItem>
                         <SelectItem value="collective">Collective Booking</SelectItem>
@@ -177,22 +177,22 @@ export default function CalendarSettingsModal({
               name="meeting_mode"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">Meeting Mode</FormLabel>
+                  <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Meeting Mode</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t2)] h-11">
+                      <SelectTrigger className="bg-white border-dash-border !text-dash-text h-11">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="bg-[var(--n900)] border-[var(--bdr)] z-[1100]">
-                      <SelectItem value="internal_meet" className="focus:bg-[var(--accent)]">
+                    <SelectContent className="bg-white border-dash-border z-[1100]">
+                      <SelectItem value="internal_meet" className="focus:bg-dash-accent/10">
                         <div className="flex items-center gap-2">
-                           <Sparkles size={14} className="text-[var(--accent2)]" /> LeadsMind Video (Internal)
+                           <Sparkles size={14} className="text-dash-accent" /> LeadsMind Video (Internal)
                         </div>
                       </SelectItem>
                       <SelectItem value="google_meet">
                         <div className="flex items-center gap-2">
-                           <Video size={14} className="text-blue-400" /> Google Meet (Auto-Generate)
+                           <Video size={14} className="text-blue-500" /> Google Meet (Auto-Generate)
                         </div>
                       </SelectItem>
                       <SelectItem value="zoom">
@@ -202,19 +202,19 @@ export default function CalendarSettingsModal({
                       </SelectItem>
                       <SelectItem value="custom_link">
                         <div className="flex items-center gap-2">
-                           <LinkIcon size={14} className="text-[var(--t4)]" /> Custom Static Link
+                           <LinkIcon size={14} className="!text-dash-textMuted" /> Custom Static Link
                         </div>
                       </SelectItem>
                       <SelectItem value="in_person">
                         <div className="flex items-center gap-2">
-                           <Globe size={14} className="text-orange-400" /> In-Person Meeting
+                           <Globe size={14} className="text-orange-500" /> In-Person Meeting
                         </div>
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormDescription className="text-[10px] text-[var(--t4)]">
-                    {meetingMode === 'internal_meet' 
-                      ? 'Uses the built-in LeadsMind branded meeting experience.' 
+                  <FormDescription className="text-[10px] !text-dash-textMuted">
+                    {meetingMode === 'internal_meet'
+                      ? 'Uses the built-in LeadsMind branded meeting experience.'
                       : 'Choose how you want to connect with your clients.'}
                   </FormDescription>
                 </FormItem>
@@ -228,13 +228,13 @@ export default function CalendarSettingsModal({
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">
+                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted">
                       {meetingMode === 'custom_link' ? 'Meeting Link' : 'Address'}
                     </FormLabel>
                     <FormControl>
-                      <Input {...field} className="bg-[var(--n900)] border-[var(--accent)] border-opacity-30 text-[var(--t1)] h-11" placeholder={meetingMode === 'custom_link' ? 'https://meet.jit.si/my-room' : '123 Business Way, Suite 100'} />
+                      <Input {...field} className="bg-white border-dash-accent/30 !text-dash-text h-11" placeholder={meetingMode === 'custom_link' ? 'https://meet.jit.si/my-room' : '123 Business Way, Suite 100'} />
                     </FormControl>
-                    <FormMessage className="text-red-400 text-[10px]" />
+                    <FormMessage className="text-red text-[10px]" />
                   </FormItem>
                 )}
               />
@@ -246,27 +246,27 @@ export default function CalendarSettingsModal({
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">Booking Fee ($)</FormLabel>
+                  <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Booking Fee ($)</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t1)] h-11" placeholder="0.00" />
+                    <Input type="number" {...field} className="bg-white border-dash-border !text-dash-text h-11" placeholder="0.00" />
                   </FormControl>
-                  <FormDescription className="text-[10px] text-[var(--t4)]">Set to 0 if the booking is free.</FormDescription>
+                  <FormDescription className="text-[10px] !text-dash-textMuted">Set to 0 if the booking is free.</FormDescription>
                 </FormItem>
               )}
             />
           </form>
         </Form>
 
-        <DialogFooter className="border-t border-[var(--bdr)] pt-4 mt-2">
-          <Button variant="ghost" onClick={onClose} className="text-[var(--t3)] hover:text-[var(--t1)] font-bold uppercase tracking-widest text-[11px]">
+        <DialogFooter className="border-t border-dash-border pt-4 mt-2">
+          <Button variant="ghost" onClick={onClose} className="!text-dash-textMuted hover:!text-dash-text font-bold text-[11px]">
             Cancel
           </Button>
           <Button
             onClick={form.handleSubmit(handleSubmit)}
             disabled={isSubmitting}
-            className="bg-[var(--accent)] hover:bg-[var(--accent2)] text-white font-bold uppercase tracking-widest text-[11px] px-8 h-11 rounded-[var(--r8)] transition-all"
+            className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] px-8 h-11 rounded-lg transition-all motion-reduce:transition-none"
           >
-            {isSubmitting ? <Loader2 className="animate-spin mr-2" size={16} /> : <Check className="mr-2" size={16} />}
+            {isSubmitting ? <Loader2 className="animate-spin motion-reduce:animate-none mr-2" size={16} /> : <Check className="mr-2" size={16} />}
             {calendar ? 'Update Engine' : 'Create Engine'}
           </Button>
         </DialogFooter>

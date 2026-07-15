@@ -205,93 +205,93 @@ export default function AiTab({ workspaceId }: AiTabProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 bg-n800 border border-white/5 rounded-2xl">
-        <i className="fa-solid fa-spinner animate-spin text-[24px] text-accent"></i>
+      <div className="flex items-center justify-center py-20 bg-white border border-dash-border rounded-2xl shadow-sm">
+        <i className="fa-solid fa-spinner animate-spin motion-reduce:animate-none text-[24px] text-dash-accent"></i>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 animate-in fade-in slide-in-from-right-4 duration-500">
-      
+    <div className="flex flex-col lg:flex-row gap-8 animate-in fade-in slide-in-from-right-4 duration-500 motion-reduce:animate-none">
+
       {/* Left side: Voice Form (60%) */}
       <div className="flex-1 space-y-6">
-        <div className="bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-1 h-full bg-accent"></div>
-          
+        <div className="bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-1 h-full bg-dash-accent"></div>
+
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+            <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
               <Sparkles size={20} />
             </div>
             <div>
-              <h4 className="text-[15px] font-space font-bold text-t1 uppercase">Core Brand Voice Profile</h4>
-              <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Train LeadsMind AI on your corporate identity</p>
+              <h4 className="text-[15px] font-bold !text-dash-text">Core brand voice profile</h4>
+              <p className="text-[11px] !text-dash-textMuted font-medium">Train LeadsMind AI on your corporate identity</p>
             </div>
           </div>
 
           <div className="grid gap-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Business Legal Name</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted">Business legal name</label>
                 <input
                   type="text"
                   placeholder="e.g. Cape Tax Pros"
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
-                  className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-accent/50 transition-all outline-none text-sm"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-bold focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Vertical Industry Domain</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted">Vertical industry domain</label>
                 <input
                   type="text"
                   placeholder="e.g. Financial Advisory"
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
-                  className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-accent/50 transition-all outline-none text-sm"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-bold focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Core Offerings & Services Portfolio</label>
+              <label className="text-[10px] font-bold !text-dash-textMuted">Core offerings & services portfolio</label>
               <textarea
                 rows={3}
                 placeholder="Provide a comprehensive breakdown of the products, licenses, packages, or services your firm distributes..."
                 value={servicesDescription}
                 onChange={(e) => setServicesDescription(e.target.value)}
-                className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 focus:border-accent/50 transition-all outline-none text-sm resize-none"
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm resize-none"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Target Buyer Persona Audience</label>
+              <label className="text-[10px] font-bold !text-dash-textMuted">Target buyer persona audience</label>
               <textarea
                 rows={2}
                 placeholder="Define your typical enterprise client or consumer demographics (e.g. SME VAT owners in Western Cape)..."
                 value={targetAudience}
                 onChange={(e) => setTargetAudience(e.target.value)}
-                className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 focus:border-accent/50 transition-all outline-none text-sm resize-none"
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm resize-none"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Brand Archetype/Personality</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted">Brand archetype/personality</label>
                 <input
                   type="text"
                   placeholder="e.g. Professional yet warm"
                   value={brandPersonality}
                   onChange={(e) => setBrandPersonality(e.target.value)}
-                  className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 focus:border-accent/50 transition-all outline-none text-sm"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Primary Language</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted">Primary language</label>
                 <select
                   value={primaryLanguage}
                   onChange={(e) => setPrimaryLanguage(e.target.value as any)}
-                  className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 focus:border-accent/50 transition-all outline-none text-sm"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm"
                 >
                   <option value="en">English (en)</option>
                   <option value="af">Afrikaans (af)</option>
@@ -301,11 +301,11 @@ export default function AiTab({ workspaceId }: AiTabProps) {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Secondary Language (Optional)</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted">Secondary language (optional)</label>
                 <select
                   value={secondaryLanguage}
                   onChange={(e) => setSecondaryLanguage(e.target.value as any)}
-                  className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 focus:border-accent/50 transition-all outline-none text-sm"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm"
                 >
                   <option value="">None</option>
                   <option value="en">English (en)</option>
@@ -319,10 +319,10 @@ export default function AiTab({ workspaceId }: AiTabProps) {
 
             {/* Token Chips Array: Style Adjectives */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Approved Style Adjectives</label>
-              <div className="min-h-12 w-full bg-n600 border border-white/5 rounded-xl p-2 flex flex-wrap gap-2 items-center">
+              <label className="text-[10px] font-bold !text-dash-textMuted">Approved style adjectives</label>
+              <div className="min-h-12 w-full bg-white border border-dash-border rounded-xl p-2 flex flex-wrap gap-2 items-center">
                 {toneAdjectives.map(tag => (
-                  <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accentg text-accent2 border border-accent2/20 text-[11px] font-bold">
+                  <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-dash-accent/10 text-dash-accent border border-dash-accent/20 text-[11px] font-bold">
                     {tag}
                     <button type="button" onClick={() => handleRemoveTag(tag, toneAdjectives, setToneAdjectives)} className="hover:text-red">
                       <X size={12} />
@@ -336,17 +336,17 @@ export default function AiTab({ workspaceId }: AiTabProps) {
                   onChange={(e) => setToneInput(e.target.value)}
                   onKeyDown={(e) => handleAddTag(e, toneInput, setToneInput, toneAdjectives, setToneAdjectives)}
                   onBlur={(e) => handleAddTag(e, toneInput, setToneInput, toneAdjectives, setToneAdjectives)}
-                  className="flex-1 bg-transparent border-none outline-none text-t1 text-sm min-w-[120px] px-2"
+                  className="flex-1 bg-transparent border-none outline-none !text-dash-text text-sm min-w-[120px] px-2"
                 />
               </div>
             </div>
 
             {/* Token Chips Array: words_to_use */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Approved Lexicon (Words to Use)</label>
-              <div className="min-h-12 w-full bg-n600 border border-white/5 rounded-xl p-2 flex flex-wrap gap-2 items-center">
+              <label className="text-[10px] font-bold !text-dash-textMuted">Approved lexicon (words to use)</label>
+              <div className="min-h-12 w-full bg-white border border-dash-border rounded-xl p-2 flex flex-wrap gap-2 items-center">
                 {wordsToUse.map(tag => (
-                  <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-green/10 text-[#34d399] border border-green/20 text-[11px] font-bold">
+                  <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-green/10 text-green border border-green/20 text-[11px] font-bold">
                     {tag}
                     <button type="button" onClick={() => handleRemoveTag(tag, wordsToUse, setWordsToUse)} className="hover:text-red">
                       <X size={12} />
@@ -360,15 +360,15 @@ export default function AiTab({ workspaceId }: AiTabProps) {
                   onChange={(e) => setUseInput(e.target.value)}
                   onKeyDown={(e) => handleAddTag(e, useInput, setUseInput, wordsToUse, setWordsToUse)}
                   onBlur={(e) => handleAddTag(e, useInput, setUseInput, wordsToUse, setWordsToUse)}
-                  className="flex-1 bg-transparent border-none outline-none text-t1 text-sm min-w-[120px] px-2"
+                  className="flex-1 bg-transparent border-none outline-none !text-dash-text text-sm min-w-[120px] px-2"
                 />
               </div>
             </div>
 
             {/* Token Chips Array: words_to_avoid */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Excluded Lexicon (Words to Avoid)</label>
-              <div className="min-h-12 w-full bg-n600 border border-white/5 rounded-xl p-2 flex flex-wrap gap-2 items-center">
+              <label className="text-[10px] font-bold !text-dash-textMuted">Excluded lexicon (words to avoid)</label>
+              <div className="min-h-12 w-full bg-white border border-dash-border rounded-xl p-2 flex flex-wrap gap-2 items-center">
                 {wordsToAvoid.map(tag => (
                   <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red/10 text-red border border-red/20 text-[11px] font-bold">
                     {tag}
@@ -384,41 +384,41 @@ export default function AiTab({ workspaceId }: AiTabProps) {
                   onChange={(e) => setAvoidInput(e.target.value)}
                   onKeyDown={(e) => handleAddTag(e, avoidInput, setAvoidInput, wordsToAvoid, setWordsToAvoid)}
                   onBlur={(e) => handleAddTag(e, avoidInput, setAvoidInput, wordsToAvoid, setWordsToAvoid)}
-                  className="flex-1 bg-transparent border-none outline-none text-t1 text-sm min-w-[120px] px-2"
+                  className="flex-1 bg-transparent border-none outline-none !text-dash-text text-sm min-w-[120px] px-2"
                 />
               </div>
             </div>
 
-            <div className="border-t border-white/5 pt-6 space-y-4">
-              <h5 className="text-[12px] font-space font-bold text-t2 uppercase tracking-wide">Brand Copy Library</h5>
-              <p className="text-[11px] text-t3">Upload sample copywriting slots to anchor the LLM temperature style</p>
-              
+            <div className="border-t border-dash-border pt-6 space-y-4">
+              <h5 className="text-[12px] font-bold !text-dash-textMuted">Brand copy library</h5>
+              <p className="text-[11px] !text-dash-textMuted">Upload sample copywriting slots to anchor the LLM temperature style</p>
+
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-t3">Reference Document Slot 1 (Social Copy, SMS, etc.)</label>
+                  <label className="text-[10px] font-bold !text-dash-textMuted">Reference document slot 1 (social copy, SMS, etc.)</label>
                   <textarea
                     rows={2}
                     value={sampleContent1}
                     onChange={(e) => setSampleContent1(e.target.value)}
-                    className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 focus:border-accent/50 transition-all outline-none text-sm resize-none"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm resize-none"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-t3">Reference Document Slot 2 (Outreach Emails)</label>
+                  <label className="text-[10px] font-bold !text-dash-textMuted">Reference document slot 2 (outreach emails)</label>
                   <textarea
                     rows={2}
                     value={sampleContent2}
                     onChange={(e) => setSampleContent2(e.target.value)}
-                    className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 focus:border-accent/50 transition-all outline-none text-sm resize-none"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm resize-none"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-t3">Reference Document Slot 3 (Corporate Press/Funnels)</label>
+                  <label className="text-[10px] font-bold !text-dash-textMuted">Reference document slot 3 (corporate press/funnels)</label>
                   <textarea
                     rows={2}
                     value={sampleContent3}
                     onChange={(e) => setSampleContent3(e.target.value)}
-                    className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 focus:border-accent/50 transition-all outline-none text-sm resize-none"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-sm resize-none"
                   />
                 </div>
               </div>
@@ -429,9 +429,9 @@ export default function AiTab({ workspaceId }: AiTabProps) {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-accent/20 transition-all disabled:opacity-50"
+              className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-dash-accent/20 transition-all motion-reduce:transition-none disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Sync Voice Config'}
+              {saving ? 'Saving...' : 'Sync voice config'}
             </button>
           </div>
         </div>
@@ -439,58 +439,58 @@ export default function AiTab({ workspaceId }: AiTabProps) {
 
       {/* Right side: Sticky Live Preview Sandbox (40%) */}
       <div className="w-full lg:w-[360px] flex-shrink-0">
-        <div className="sticky top-20 bg-n800 border border-white/5 rounded-2xl p-6 space-y-6">
+        <div className="sticky top-20 bg-white border border-dash-border rounded-2xl p-6 space-y-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accentg text-accent2 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-dash-accent/10 text-dash-accent flex items-center justify-center">
               <Eye size={16} />
             </div>
             <div>
-              <h4 className="text-[13px] font-space font-bold text-t1 uppercase">Live Preview Sandbox</h4>
-              <p className="text-[10px] text-t3 uppercase font-medium tracking-wide">Test prompting alignment in real-time</p>
+              <h4 className="text-[13px] font-bold !text-dash-text">Live preview sandbox</h4>
+              <p className="text-[10px] !text-dash-textMuted font-medium">Test prompting alignment in real-time</p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Direct Generation Test Brief</label>
+            <label className="text-[10px] font-bold !text-dash-textMuted">Direct generation test brief</label>
             <textarea
               rows={3}
               value={testBrief}
               onChange={(e) => setTestBrief(e.target.value)}
-              className="w-full bg-n600 border border-white/5 rounded-xl px-3 py-2 text-t1 focus:border-accent/50 transition-all outline-none text-xs resize-none font-medium"
+              className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 !text-dash-text focus:border-dash-accent transition-all motion-reduce:transition-none outline-none text-xs resize-none font-medium"
             />
           </div>
 
           <button
             onClick={handleRunSandbox}
             disabled={testing}
-            className="w-full bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[10px] h-10 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-accent/15 transition-all disabled:opacity-50"
+            className="w-full bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[10px] h-10 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-dash-accent/15 transition-all motion-reduce:transition-none disabled:opacity-50"
           >
             {testing ? (
               <>
-                <i className="fa-solid fa-spinner animate-spin text-[10px]"></i>
+                <i className="fa-solid fa-spinner animate-spin motion-reduce:animate-none text-[10px]"></i>
                 Executing...
               </>
             ) : (
               <>
                 <Play size={12} fill="white" />
-                Run Engine Generation
+                Run engine generation
               </>
             )}
           </button>
 
           {previewPrompt && (
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Compiled System Instructions</label>
-              <div className="bg-n900 border border-white/5 rounded-xl p-3 h-32 overflow-y-auto text-[10px] font-mono text-t2 space-y-2 common-scrollbar whitespace-pre-wrap select-all">
+              <label className="text-[10px] font-bold !text-dash-textMuted">Compiled system instructions</label>
+              <div className="bg-dash-surface border border-dash-border rounded-xl p-3 h-32 overflow-y-auto text-[10px] font-mono !text-dash-textMuted space-y-2 common-scrollbar whitespace-pre-wrap select-all">
                 {previewPrompt.system}
               </div>
             </div>
           )}
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Output Preview Document Content</label>
-            <div className="bg-n900 border border-white/5 rounded-xl p-3 min-h-24 max-h-40 overflow-y-auto text-[11px] text-t2 font-medium common-scrollbar whitespace-pre-wrap leading-relaxed select-text">
-              {previewOutput || <span className="italic text-t4">Compiled AI response displays here...</span>}
+            <label className="text-[10px] font-bold !text-dash-textMuted">Output preview document content</label>
+            <div className="bg-dash-surface border border-dash-border rounded-xl p-3 min-h-24 max-h-40 overflow-y-auto text-[11px] !text-dash-textMuted font-medium common-scrollbar whitespace-pre-wrap leading-relaxed select-text">
+              {previewOutput || <span className="italic !text-dash-textMuted">Compiled AI response displays here...</span>}
             </div>
           </div>
         </div>

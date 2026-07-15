@@ -633,8 +633,8 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                       key={idx} 
                       className={`flex items-center gap-3 p-3 rounded-lg border transition-all duration-300 ${
                         opt.is_correct 
-                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
-                          : "bg-[#111d47]/30 border-white/5 text-white/70"
+                          ? "bg-green/10 border-green/30 text-green"
+                          : "bg-dash-surface border-dash-border !text-dash-textMuted"
                       }`}
                     >
                       <input 
@@ -658,15 +658,15 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                           updated[idx].text = e.target.value;
                           setOptionsList(updated);
                         }}
-                        className="flex-1 bg-transparent border-none outline-none text-xs text-white"
+                        className="flex-1 bg-transparent border-none outline-none text-xs !text-dash-text"
                       />
                       <span className="text-[9px] font-mono shrink-0">
                         {opt.is_correct ? "✓ Correct" : "Incorrect"}
                       </span>
                       {type === "multiple_choice" && (
-                        <button 
+                        <button
                           onClick={() => setOptionsList(optionsList.filter((_, i) => i !== idx))}
-                          className="text-red-400 hover:text-red-300 p-0.5 shrink-0"
+                          className="text-red hover:text-red/80 p-0.5 shrink-0"
                         >
                           <Trash2 size={12} />
                         </button>
@@ -674,9 +674,9 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                     </div>
                   ))}
                   {type === "multiple_choice" && (
-                    <Button 
+                    <Button
                       onClick={() => setOptionsList([...optionsList, { text: `New Option`, is_correct: false }])}
-                      className="h-8 bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider"
+                      className="h-8 bg-dash-surface border border-dash-border hover:bg-dash-border/60 !text-dash-text rounded-lg text-[10px] font-bold"
                     >
                       + Add Option Choice
                     </Button>
@@ -687,22 +687,22 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
               {/* Short Answer synonyms */}
               {type === "short_answer" && (
                 <div className="space-y-3">
-                  <input 
+                  <input
                     type="text"
                     value={synonyms}
                     onChange={(e) => setSynonyms(e.target.value)}
                     placeholder="Comma separated accepted synonyms (e.g. const, let, const/let)"
-                    className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white"
+                    className="w-full bg-white border border-dash-border rounded-xl px-3 py-2.5 text-xs !text-dash-text"
                   />
                   <div className="flex items-center gap-2">
-                    <input 
+                    <input
                       type="checkbox"
                       checked={caseSensitive}
                       onChange={(e) => setCaseSensitive(e.target.checked)}
                       id="case_sens"
                       className="accent-primary"
                     />
-                    <label htmlFor="case_sens" className="text-[10px] text-white/50">Case-sensitive matches</label>
+                    <label htmlFor="case_sens" className="text-[10px] !text-dash-textMuted">Case-sensitive matches</label>
                   </div>
                 </div>
               )}
@@ -721,7 +721,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                           setMatchingPairs(updated);
                         }}
                         placeholder="Left Item"
-                        className="flex-1 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white"
+                        className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1.5 text-xs !text-dash-text"
                       />
                       <input 
                         type="text"
@@ -732,12 +732,12 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                           setMatchingPairs(updated);
                         }}
                         placeholder="Right Item Match"
-                        className="flex-1 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white"
+                        className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1.5 text-xs !text-dash-text"
                       />
-                      <button onClick={() => setMatchingPairs(matchingPairs.filter((_, i) => i !== idx))} className="text-red-400 shrink-0"><Trash2 size={12} /></button>
+                      <button onClick={() => setMatchingPairs(matchingPairs.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
                     </div>
                   ))}
-                  <Button onClick={() => setMatchingPairs([...matchingPairs, { left: "", right: "" }])} className="h-8 bg-white/5 text-white rounded-lg text-[10px] font-bold">+ Add Pair</Button>
+                  <Button onClick={() => setMatchingPairs([...matchingPairs, { left: "", right: "" }])} className="h-8 bg-dash-surface !text-dash-text rounded-lg text-[10px] font-bold">+ Add Pair</Button>
                 </div>
               )}
 
@@ -746,7 +746,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                 <div className="space-y-3">
                   {orderingItems.map((item, idx) => (
                     <div key={idx} className="flex gap-2">
-                      <span className="text-[10px] text-white/30 py-1 font-mono shrink-0">{idx + 1}.</span>
+                      <span className="text-[10px] !text-dash-textMuted py-1 font-mono shrink-0">{idx + 1}.</span>
                       <input 
                         type="text"
                         value={item}
@@ -756,24 +756,24 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                           setOrderingItems(updated);
                         }}
                         placeholder="Sequence Item"
-                        className="flex-1 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white"
+                        className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1.5 text-xs !text-dash-text"
                       />
-                      <button onClick={() => setOrderingItems(orderingItems.filter((_, i) => i !== idx))} className="text-red-400 shrink-0"><Trash2 size={12} /></button>
+                      <button onClick={() => setOrderingItems(orderingItems.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
                     </div>
                   ))}
-                  <Button onClick={() => setOrderingItems([...orderingItems, ""])} className="h-8 bg-white/5 text-white rounded-lg text-[10px] font-bold">+ Add Item</Button>
+                  <Button onClick={() => setOrderingItems([...orderingItems, ""])} className="h-8 bg-dash-surface !text-dash-text rounded-lg text-[10px] font-bold">+ Add Item</Button>
                 </div>
               )}
 
               {/* Fill-in-the-blank */}
               {type === "fill_in_blank" && (
                 <div className="space-y-3">
-                  <label className="text-[10px] text-white/40 block">Sentence with [blank] spots:</label>
-                  <textarea 
+                  <label className="text-[10px] !text-dash-textMuted block">Sentence with [blank] spots:</label>
+                  <textarea
                     value={blankText}
                     onChange={(e) => setBlankText(e.target.value)}
                     rows={2}
-                    className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                    className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text"
                   />
                 </div>
               )}
@@ -781,14 +781,14 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
               {/* Code Challenge */}
               {type === "code_challenge" && (
                 <div className="space-y-3">
-                  <textarea 
+                  <textarea
                     value={starterCode}
                     onChange={(e) => setStarterCode(e.target.value)}
                     rows={4}
                     placeholder="// Starter challenge code..."
-                    className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text font-mono"
                   />
-                  <span className="text-[10px] text-white/50 block font-bold">Assertions test suite</span>
+                  <span className="text-[10px] !text-dash-textMuted block font-bold">Assertions test suite</span>
                   {codeAssertions.map((assert, idx) => (
                     <div key={idx} className="flex gap-2">
                       <input 
@@ -800,7 +800,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                           setCodeAssertions(updated);
                         }}
                         placeholder="Inputs parameter"
-                        className="flex-1 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white font-mono"
+                        className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1.5 text-xs !text-dash-text font-mono"
                       />
                       <input 
                         type="text"
@@ -811,19 +811,19 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                           setCodeAssertions(updated);
                         }}
                         placeholder="Expected outcome"
-                        className="flex-1 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white font-mono"
+                        className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1.5 text-xs !text-dash-text font-mono"
                       />
-                      <button onClick={() => setCodeAssertions(codeAssertions.filter((_, i) => i !== idx))} className="text-red-400 shrink-0"><Trash2 size={12} /></button>
+                      <button onClick={() => setCodeAssertions(codeAssertions.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
                     </div>
                   ))}
-                  <Button onClick={() => setCodeAssertions([...codeAssertions, { input: "", expected: "" }])} className="h-8 bg-white/5 text-white rounded-lg text-[10px] font-bold">+ Add Assertion</Button>
+                  <Button onClick={() => setCodeAssertions([...codeAssertions, { input: "", expected: "" }])} className="h-8 bg-dash-surface !text-dash-text rounded-lg text-[10px] font-bold">+ Add Assertion</Button>
                 </div>
               )}
 
               {/* File Upload Rubrics */}
               {type === "file_upload" && (
                 <div className="space-y-3">
-                  <span className="text-[10px] text-white/50 block font-bold">Grading criteria rubric:</span>
+                  <span className="text-[10px] !text-dash-textMuted block font-bold">Grading criteria rubric:</span>
                   {rubrics.map((rubric, idx) => (
                     <div key={idx} className="flex gap-2">
                       <input 
@@ -835,7 +835,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                           setRubrics(updated);
                         }}
                         placeholder="Criteria"
-                        className="flex-1 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white"
+                        className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1.5 text-xs !text-dash-text"
                       />
                       <input 
                         type="number"
@@ -846,29 +846,29 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                           setRubrics(updated);
                         }}
                         placeholder="Max Points"
-                        className="w-24 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white"
+                        className="w-24 bg-white border border-dash-border rounded-lg px-2 py-1.5 text-xs !text-dash-text"
                       />
-                      <button onClick={() => setRubrics(rubrics.filter((_, i) => i !== idx))} className="text-red-400 shrink-0"><Trash2 size={12} /></button>
+                      <button onClick={() => setRubrics(rubrics.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
                     </div>
                   ))}
-                  <Button onClick={() => setRubrics([...rubrics, { criteria: "", max_points: 5 }])} className="h-8 bg-white/5 text-white rounded-lg text-[10px] font-bold">+ Add Rubric Item</Button>
+                  <Button onClick={() => setRubrics([...rubrics, { criteria: "", max_points: 5 }])} className="h-8 bg-dash-surface !text-dash-text rounded-lg text-[10px] font-bold">+ Add Rubric Item</Button>
                 </div>
               )}
             </div>
 
             {/* Explanation Block with LENA */}
-            <div className="space-y-2 border-t border-white/5 pt-4">
+            <div className="space-y-2 border-t border-dash-border pt-4">
               <div className="flex items-center justify-between">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">Pedagogical Explanation</label>
+                <label className="text-[9px] font-bold !text-dash-textMuted block">Pedagogical Explanation</label>
                 <button
                   type="button"
                   onClick={handleLenaGenerate}
                   disabled={isGenerating}
-                  className="text-[10px] font-bold text-primary flex items-center gap-1 hover:text-primary-light transition-all disabled:opacity-50"
+                  className="text-[10px] font-bold text-primary flex items-center gap-1 hover:opacity-80 transition-all motion-reduce:transition-none disabled:opacity-50"
                 >
                   {isGenerating ? (
                     <>
-                      <Loader2 size={12} className="animate-spin" /> Customising Context...
+                      <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> Customising Context...
                     </>
                   ) : (
                     <>
@@ -877,25 +877,25 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                   )}
                 </button>
               </div>
-              <textarea 
-                value={explanation} 
+              <textarea
+                value={explanation}
                 onChange={(e) => setExplanation(e.target.value)}
                 rows={3}
                 placeholder="Pedagogical rationale displayed to student after answering..."
-                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary font-mono leading-relaxed"
+                className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary font-mono leading-relaxed"
               />
             </div>
 
             {/* Action button */}
-            <div className="flex items-center justify-end gap-3 border-t border-white/5 pt-4 shrink-0">
+            <div className="flex items-center justify-end gap-3 border-t border-dash-border pt-4 shrink-0">
               <Button
                 onClick={handleSaveQuestion}
                 disabled={isPending}
-                className="h-11 bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black px-6 shadow-lg shadow-primary/20"
+                className="h-11 bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-bold px-6 shadow-lg shadow-primary/20 transition-colors motion-reduce:transition-none"
               >
                 {isPending ? (
                   <>
-                    <Loader2 size={14} className="animate-spin mr-2" /> Saving...
+                    <Loader2 size={14} className="animate-spin motion-reduce:animate-none mr-2" /> Saving...
                   </>
                 ) : (
                   "Save Question Node"
@@ -906,15 +906,15 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
         </div>
       ) : activeTab === "settings" ? (
         /* Advanced Settings Panel */
-        <div className="bg-[#080f28] border border-white/5 rounded-2xl p-6 max-w-2xl mx-auto space-y-6">
-          <div className="flex items-center justify-between border-b border-white/5 pb-3">
+        <div className="bg-white border border-dash-border rounded-2xl p-6 max-w-2xl mx-auto space-y-6 shadow-sm">
+          <div className="flex items-center justify-between border-b border-dash-border pb-3">
             <div className="flex items-center gap-2">
               <Sliders className="text-primary" size={18} />
-              <h3 className="text-sm font-space-grotesk font-black uppercase text-white tracking-wider">Advanced Configuration Settings</h3>
+              <h3 className="text-sm font-bold !text-dash-text">Advanced Configuration Settings</h3>
             </div>
             <Button
               onClick={() => setIsConfigPaneOpen(true)}
-              className="bg-white/5 hover:bg-white/10 text-white rounded-lg text-[9px] font-bold uppercase tracking-wider h-8 px-3 border border-white/5 flex items-center gap-1"
+              className="bg-dash-surface hover:bg-dash-border/60 !text-dash-text rounded-lg text-[9px] font-bold h-8 px-3 border border-dash-border flex items-center gap-1 transition-colors motion-reduce:transition-none"
             >
               <Sliders size={12} className="text-primary" /> Global Overrides Pane
             </Button>
@@ -922,69 +922,69 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
           <div className="space-y-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Quiz Title</label>
+              <label className="text-[10px] font-bold !text-dash-textMuted block">Quiz Title</label>
               <input
                 type="text"
                 value={quizTitle}
                 onChange={(e) => setQuizTitle(e.target.value)}
-                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all"
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary transition-all motion-reduce:transition-none"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Description (Optional)</label>
+              <label className="text-[10px] font-bold !text-dash-textMuted block">Description (Optional)</label>
               <textarea
                 value={quizDesc}
                 onChange={(e) => setQuizDesc(e.target.value)}
                 rows={3}
                 placeholder="Provide additional guidelines for this quiz..."
-                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all leading-relaxed"
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary transition-all motion-reduce:transition-none leading-relaxed"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Passing Score (%)</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted block">Passing Score (%)</label>
                 <input
                   type="number"
                   value={passingScore}
                   onChange={(e) => setPassingScore(parseInt(e.target.value) || 80)}
                   min={0}
                   max={100}
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Time Limit (Minutes)</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted block">Time Limit (Minutes)</label>
                 <input
                   type="number"
                   value={timeLimit}
                   onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
                   min={0}
                   placeholder="0 = No limit"
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Max Retakes</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted block">Max Retakes</label>
                 <input
                   type="number"
                   value={maxRetakes}
                   onChange={(e) => setMaxRetakes(parseInt(e.target.value) || -1)}
                   min={-1}
                   placeholder="-1 = Unlimited"
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none"
                 />
               </div>
 
-              <div className="flex items-center justify-between bg-[#111d47]/20 border border-white/5 rounded-xl p-4 mt-2">
+              <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4 mt-2">
                 <div>
-                  <span className="text-xs font-bold text-white block">Required for Course Completion</span>
-                  <span className="text-[10px] text-white/40 block mt-0.5">Students must pass this quiz to continue</span>
+                  <span className="text-xs font-bold !text-dash-text block">Required for Course Completion</span>
+                  <span className="text-[10px] !text-dash-textMuted block mt-0.5">Students must pass this quiz to continue</span>
                 </div>
                 <Switch
                   checked={isRequired}
@@ -995,15 +995,15 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
             </div>
           </div>
 
-          <div className="flex items-center justify-end border-t border-white/5 pt-4">
+          <div className="flex items-center justify-end border-t border-dash-border pt-4">
             <Button
               onClick={handleSaveSettings}
               disabled={isSavingSettings}
-              className="bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-6 shadow-lg shadow-primary/20 flex items-center gap-1.5"
+              className="bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-bold h-11 px-6 shadow-lg shadow-primary/20 flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
             >
               {isSavingSettings ? (
                 <>
-                  <Loader2 className="animate-spin" size={14} /> Saving Settings...
+                  <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> Saving Settings...
                 </>
               ) : (
                 <>
@@ -1019,16 +1019,16 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
       {/* Global Overrides configurations Sheet overlay */}
       <Sheet open={isConfigPaneOpen} onOpenChange={setIsConfigPaneOpen}>
-        <SheetContent className="w-[400px] bg-[#080f28] border-l border-white/5 p-0 overflow-y-auto max-h-screen">
+        <SheetContent className="w-[400px] bg-white border-l border-dash-border p-0 overflow-y-auto max-h-screen">
           <div className="flex flex-col h-full">
-            <SheetHeader className="p-8 border-b border-white/5 bg-[#04091a]/40">
+            <SheetHeader className="p-8 border-b border-dash-border bg-dash-surface">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-4">
                 <Sliders size={20} />
               </div>
-              <SheetTitle className="text-[20px] font-bold text-white font-space-grotesk uppercase tracking-tight">
+              <SheetTitle className="text-[20px] font-bold !text-dash-text">
                 Global <span className="text-primary">Overrides</span>
               </SheetTitle>
-              <SheetDescription className="text-[10px] text-white/40 font-mono uppercase tracking-widest mt-1">
+              <SheetDescription className="text-[10px] !text-dash-textMuted font-mono mt-1">
                 LMS Engine Behavioral Rules
               </SheetDescription>
             </SheetHeader>
@@ -1037,7 +1037,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
               {/* Pass grade threshold slider percentage */}
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Passing Score Threshold</label>
+                  <label className="text-[10px] font-bold !text-dash-textMuted block">Passing Score Threshold</label>
                   <span className="text-xs font-mono font-bold text-primary">{passingScore}%</span>
                 </div>
                 <input
@@ -1046,42 +1046,42 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                   max="100"
                   value={passingScore}
                   onChange={(e) => setPassingScore(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-[#111d47] rounded-lg appearance-none cursor-pointer accent-primary"
+                  className="w-full h-1.5 bg-dash-surface rounded-lg appearance-none cursor-pointer accent-primary"
                 />
               </div>
 
               {/* Attempt limits selector numeric counters */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Attempt Limits (Max Retakes)</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted block">Attempt Limits (Max Retakes)</label>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setMaxRetakes(Math.max(-1, maxRetakes - 1))}
-                    className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white"
+                    className="w-8 h-8 rounded-lg bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:bg-dash-border/60 hover:!text-dash-text"
                   >
                     -
                   </button>
-                  <span className="text-xs font-mono font-bold text-white min-w-[40px] text-center">
+                  <span className="text-xs font-mono font-bold !text-dash-text min-w-[40px] text-center">
                     {maxRetakes === -1 ? "∞" : maxRetakes}
                   </span>
                   <button
                     type="button"
                     onClick={() => setMaxRetakes(maxRetakes === -1 ? 1 : maxRetakes + 1)}
-                    className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white"
+                    className="w-8 h-8 rounded-lg bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:bg-dash-border/60 hover:!text-dash-text"
                   >
                     +
                   </button>
                 </div>
-                <span className="text-[9px] text-white/30 block mt-1">-1 represents unlimited attempts.</span>
+                <span className="text-[9px] !text-dash-textMuted block mt-1">-1 represents unlimited attempts.</span>
               </div>
 
               {/* Exceeded threshold event behaviors */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Exceeded Threshold Behavior</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted block">Exceeded Threshold Behavior</label>
                 <select
                   value={exceededBehavior}
                   onChange={(e) => setExceededBehavior(e.target.value as any)}
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-primary"
+                  className="w-full bg-white border border-dash-border rounded-xl px-3 py-2.5 text-xs !text-dash-text outline-none focus:border-primary"
                 >
                   <option value="lock">Lock (Require instructor manual unlock)</option>
                   <option value="remedial">Trigger Remedial Lesson Path</option>
@@ -1090,11 +1090,11 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
               {/* Feedback execution triggers */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Feedback Execution Trigger</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted block">Feedback Execution Trigger</label>
                 <select
                   value={feedbackTrigger}
                   onChange={(e) => setFeedbackTrigger(e.target.value as any)}
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-primary"
+                  className="w-full bg-white border border-dash-border rounded-xl px-3 py-2.5 text-xs !text-dash-text outline-none focus:border-primary"
                 >
                   <option value="immediate">Immediate Rationale</option>
                   <option value="post-submission">Post-submission Details</option>
@@ -1104,10 +1104,10 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
               {/* Shuffle toggles */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between bg-[#111d47]/20 border border-white/5 rounded-xl p-4">
+                <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4">
                   <div>
-                    <span className="text-xs font-bold text-white block">Shuffle Questions</span>
-                    <span className="text-[10px] text-white/40 block mt-0.5">Randomize question order</span>
+                    <span className="text-xs font-bold !text-dash-text block">Shuffle Questions</span>
+                    <span className="text-[10px] !text-dash-textMuted block mt-0.5">Randomize question order</span>
                   </div>
                   <Switch
                     checked={shuffleQuestions}
@@ -1115,10 +1115,10 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                     className="data-[state=checked]:bg-primary"
                   />
                 </div>
-                <div className="flex items-center justify-between bg-[#111d47]/20 border border-white/5 rounded-xl p-4">
+                <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4">
                   <div>
-                    <span className="text-xs font-bold text-white block">Shuffle Options</span>
-                    <span className="text-[10px] text-white/40 block mt-0.5">Randomize option ordering</span>
+                    <span className="text-xs font-bold !text-dash-text block">Shuffle Options</span>
+                    <span className="text-[10px] !text-dash-textMuted block mt-0.5">Randomize option ordering</span>
                   </div>
                   <Switch
                     checked={shuffleOptions}
@@ -1130,37 +1130,37 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
               {/* Question Pool Drawing counts */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Question Drawing Pool Count</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted block">Question Drawing Pool Count</label>
                 <input
                   type="number"
                   value={poolCount}
                   onChange={(e) => setPoolCount(parseInt(e.target.value) || 0)}
                   min={0}
                   placeholder="0 = Draw all questions"
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
                 />
-                <span className="text-[9px] text-white/30 block mt-1">If non-zero, draws a random subset of questions.</span>
+                <span className="text-[9px] !text-dash-textMuted block mt-1">If non-zero, draws a random subset of questions.</span>
               </div>
 
               {/* Count-down timers */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Count-down Timer (Minutes)</label>
+                <label className="text-[10px] font-bold !text-dash-textMuted block">Count-down Timer (Minutes)</label>
                 <input
                   type="number"
                   value={timeLimit}
                   onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
                   min={0}
                   placeholder="0 = No limit"
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
                 />
-                <span className="text-[9px] text-white/30 block mt-1">Triggers a flashing 5-minute warning prompt before submission.</span>
+                <span className="text-[9px] !text-dash-textMuted block mt-1">Triggers a flashing 5-minute warning prompt before submission.</span>
               </div>
 
               {/* Require pass to unlock next lesson */}
-              <div className="flex items-center justify-between bg-[#111d47]/20 border border-white/5 rounded-xl p-4">
+              <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4">
                 <div>
-                  <span className="text-xs font-bold text-white block">Require Pass to Unlock Next Lesson</span>
-                  <span className="text-[10px] text-white/40 block mt-0.5">Blocks progression unless passing grade is met</span>
+                  <span className="text-xs font-bold !text-dash-text block">Require Pass to Unlock Next Lesson</span>
+                  <span className="text-[10px] !text-dash-textMuted block mt-0.5">Blocks progression unless passing grade is met</span>
                 </div>
                 <Switch
                   checked={requirePass}
@@ -1170,10 +1170,10 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
               </div>
             </div>
 
-            <div className="p-8 border-t border-white/5 bg-[#04091a]/40 grid grid-cols-2 gap-4 shrink-0">
+            <div className="p-8 border-t border-dash-border bg-dash-surface grid grid-cols-2 gap-4 shrink-0">
               <button
                 onClick={() => setIsConfigPaneOpen(false)}
-                className="h-11 rounded-xl bg-white/5 border border-white/5 text-white hover:bg-white/10 text-xs font-bold transition-all"
+                className="h-11 rounded-xl bg-white border border-dash-border !text-dash-text hover:bg-dash-border/60 text-xs font-bold transition-all motion-reduce:transition-none"
               >
                 Close Overrides
               </button>
@@ -1182,7 +1182,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                   handleSaveSettings();
                   setIsConfigPaneOpen(false);
                 }}
-                className="h-11 rounded-xl bg-primary text-white hover:bg-primary/95 text-xs font-bold transition-all shadow-lg shadow-primary/20"
+                className="h-11 rounded-xl bg-primary text-white hover:bg-primary/90 text-xs font-bold transition-all motion-reduce:transition-none shadow-lg shadow-primary/20"
               >
                 Save & Apply
               </button>
@@ -1193,14 +1193,14 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
       {/* Delete Question Confirmation Dialog */}
       <Dialog open={!!questionToDelete} onOpenChange={(open) => !open && setQuestionToDelete(null)}>
-        <DialogContent className="bg-[#080f28] border border-white/5 text-white max-w-md p-6">
+        <DialogContent className="bg-white border border-dash-border !text-dash-text max-w-md p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg font-space-grotesk font-black uppercase text-white tracking-wider flex items-center gap-2">
-              <AlertTriangle className="text-red-500" size={20} /> Confirm Deletion
+            <DialogTitle className="text-lg font-bold !text-dash-text flex items-center gap-2">
+              <AlertTriangle className="text-red" size={20} /> Confirm Deletion
             </DialogTitle>
-            <DialogDescription className="text-xs text-white/60 mt-2">
+            <DialogDescription className="text-xs !text-dash-textMuted mt-2">
               Are you sure you want to delete the question:
-              <strong className="block text-white mt-1.5 italic font-normal text-sm bg-white/5 p-3 rounded-xl border border-white/5">
+              <strong className="block !text-dash-text mt-1.5 italic font-normal text-sm bg-dash-surface p-3 rounded-xl border border-dash-border">
                 "{questionToDelete?.question_text || "Untitled question"}"?
               </strong>
               This action cannot be undone.
@@ -1209,7 +1209,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
           <DialogFooter className="mt-4 gap-2 sm:gap-0 flex justify-end">
             <Button
               onClick={() => setQuestionToDelete(null)}
-              className="bg-white/5 border border-white/5 text-white hover:bg-white/10 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider h-11"
+              className="bg-dash-surface border border-dash-border !text-dash-text hover:bg-dash-border/60 rounded-xl px-4 py-2.5 text-xs font-bold h-11"
             >
               Cancel
             </Button>
@@ -1220,7 +1220,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                   setQuestionToDelete(null);
                 }
               }}
-              className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider h-11"
+              className="bg-red hover:bg-red/90 text-white rounded-xl px-4 py-2.5 text-xs font-bold h-11 transition-colors motion-reduce:transition-none"
             >
               Delete Question
             </Button>
@@ -1230,20 +1230,20 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
       {/* Bulk Delete Questions Confirmation Dialog */}
       <Dialog open={isBulkDeleteConfirmOpen} onOpenChange={setIsBulkDeleteConfirmOpen}>
-        <DialogContent className="bg-[#080f28] border border-white/5 text-white max-w-md p-6">
+        <DialogContent className="bg-white border border-dash-border !text-dash-text max-w-md p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg font-space-grotesk font-black uppercase text-white tracking-wider flex items-center gap-2">
-              <AlertTriangle className="text-red-500" size={20} /> Confirm Bulk Deletion
+            <DialogTitle className="text-lg font-bold !text-dash-text flex items-center gap-2">
+              <AlertTriangle className="text-red" size={20} /> Confirm Bulk Deletion
             </DialogTitle>
-            <DialogDescription className="text-xs text-white/60 mt-2">
-              Are you sure you want to delete the <strong className="text-white">{selectedQuestionIds.length}</strong> selected questions?
+            <DialogDescription className="text-xs !text-dash-textMuted mt-2">
+              Are you sure you want to delete the <strong className="!text-dash-text">{selectedQuestionIds.length}</strong> selected questions?
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 gap-2 sm:gap-0 flex justify-end">
             <Button
               onClick={() => setIsBulkDeleteConfirmOpen(false)}
-              className="bg-white/5 border border-white/5 text-white hover:bg-white/10 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider h-11"
+              className="bg-dash-surface border border-dash-border !text-dash-text hover:bg-dash-border/60 rounded-xl px-4 py-2.5 text-xs font-bold h-11"
             >
               Cancel
             </Button>
@@ -1267,7 +1267,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                   toast.error("Failed to delete selected questions");
                 }
               }}
-              className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider h-11"
+              className="bg-red hover:bg-red/90 text-white rounded-xl px-4 py-2.5 text-xs font-bold h-11 transition-colors motion-reduce:transition-none"
             >
               Delete Questions
             </Button>

@@ -40,15 +40,15 @@ export default function LessonTypePicker({
   };
 
   return (
-    <div className="fixed inset-0 bg-[#04091a]/75 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
-      <div className="bg-[#080f28] border border-[rgba(255,255,255,0.07)] rounded-xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col text-white">
-        
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
+      <div className="bg-white border border-dash-border rounded-xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col !text-dash-text">
+
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-[rgba(255,255,255,0.07)]">
-          <h2 className="text-base font-semibold font-space-grotesk uppercase tracking-wide">
+        <div className="flex items-center justify-between p-5 border-b border-dash-border">
+          <h2 className="text-base font-semibold">
             Select Lesson Type
           </h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+          <button onClick={onClose} className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
             <X size={18} />
           </button>
         </div>
@@ -63,22 +63,22 @@ export default function LessonTypePicker({
                 <div
                   key={item.type}
                   onClick={() => setSelectedType(item.type)}
-                  className={`border rounded-xl p-4 cursor-pointer transition-all flex items-start gap-4 ${
-                    isSelected 
-                      ? "border-[#6366f1] bg-[rgba(99,102,241,0.1)]" 
-                      : "bg-[rgba(12,21,53,0.85)] border-[rgba(255,255,255,0.07)] hover:border-[rgba(99,102,241,0.4)] hover:bg-[rgba(99,102,241,0.06)]"
+                  className={`border rounded-xl p-4 cursor-pointer transition-all motion-reduce:transition-none flex items-start gap-4 ${
+                    isSelected
+                      ? "border-dash-accent bg-dash-accent/10"
+                      : "bg-white border-dash-border hover:border-dash-accent/40 hover:bg-dash-accent/5"
                   }`}
                 >
-                  <div className={`p-2.5 rounded-lg border transition-colors ${
-                    isSelected 
-                      ? "bg-[#6366f1]/20 border-[#6366f1] text-white" 
-                      : "bg-white/5 border-white/5 text-white/50"
+                  <div className={`p-2.5 rounded-lg border transition-colors motion-reduce:transition-none ${
+                    isSelected
+                      ? "bg-dash-accent/20 border-dash-accent !text-dash-text"
+                      : "bg-dash-surface border-dash-border !text-dash-textMuted"
                   }`}>
                     <Icon size={18} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-white">{item.label}</h4>
-                    <p className="text-xs text-white/40 mt-1">{item.desc}</p>
+                    <h4 className="text-sm font-semibold !text-dash-text">{item.label}</h4>
+                    <p className="text-xs !text-dash-textMuted mt-1">{item.desc}</p>
                   </div>
                 </div>
               );
@@ -87,12 +87,12 @@ export default function LessonTypePicker({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-[rgba(255,255,255,0.07)]">
+        <div className="flex items-center justify-end gap-3 p-5 border-t border-dash-border">
           <Button
             type="button"
             variant="ghost"
             onClick={onClose}
-            className="rounded-lg text-white/60 hover:bg-white/5 uppercase tracking-wider text-[10px] font-black"
+            className="rounded-lg !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold"
           >
             Cancel
           </Button>
@@ -100,7 +100,7 @@ export default function LessonTypePicker({
             type="button"
             onClick={handleConfirm}
             disabled={!selectedType}
-            className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg uppercase tracking-wider text-[10px] font-black px-5"
+            className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg text-[10px] font-bold px-5 transition-colors motion-reduce:transition-none"
           >
             Next
           </Button>

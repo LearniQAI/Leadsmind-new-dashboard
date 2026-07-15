@@ -39,22 +39,22 @@ export function OutcomeManager({ calendarId, initialOutcomes }: OutcomeManagerPr
  };
 
  return (
-  <div className="card__wrapper border-primary/10">
+  <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm">
    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-    <div className="card__title-wrap">
+    <div>
       <div className="flex items-center gap-2 mb-2">
        <Target className="h-4 w-4 text-primary" />
-       <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Decision Engine</span>
+       <span className="text-[10px] font-bold text-primary">Decision engine</span>
       </div>
-      <h5 className="card__heading-title uppercase">Routing Targets</h5>
-      <p className="card__desc style_two text-sm font-medium mt-2">Map meeting goals to automated team workflows.</p>
+      <h5 className="text-lg font-bold !text-dash-text">Routing targets</h5>
+      <p className="text-sm font-medium !text-dash-textMuted mt-2">Map meeting goals to automated team workflows.</p>
     </div>
-    <Button 
-     onClick={() => setIsAdding(true)} 
-     className="bg-primary hover:bg-primary-dark text-white rounded-xl gap-2 font-bold uppercase text-[10px] h-12 px-8 shadow-lg shadow-primary/10"
+    <Button
+     onClick={() => setIsAdding(true)}
+     className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold text-[10px] h-12 px-8 shadow-lg shadow-primary/10 transition-colors motion-reduce:transition-none"
     >
      <Plus className="h-3.5 w-3.5" />
-     Add Target
+     Add target
     </Button>
    </div>
 
@@ -71,7 +71,7 @@ export function OutcomeManager({ calendarId, initialOutcomes }: OutcomeManagerPr
        </div>
        
        <div className="flex flex-wrap gap-2 relative z-10">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-[9px] font-black text-body dark:text-body-dark opacity-30 uppercase tracking-[0.2em]">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bgBody border border-border/10 text-[9px] font-bold text-body">
           <Users className="h-3 w-3" /> Round Robin
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-[9px] font-black text-primary uppercase tracking-[0.2em]">

@@ -193,7 +193,7 @@ export async function createSubdirectoryPage(websiteId: string, name: string, pa
       .insert({
         website_id: websiteId,
         name,
-        path: cleanPath
+        path_name: cleanPath
       })
       .select()
       .single();
@@ -282,13 +282,15 @@ export async function renameSubdirectoryPage(pageId: string, newName: string, ne
 
     // 3. Update routing path
     if (page.website_page_id) {
+      // website_pages has no workspace_id column; scope via the website_page id
+      // (RLS enforces workspace ownership through the parent website).
       const { error: routeUpdateErr } = await supabase
         .from('website_pages')
         .update({
           name: newName,
-          path: cleanPath
+          path_name: cleanPath
         })
-        .eq("id", page.website_page_id).eq("workspace_id", workspaceId);
+        .eq("id", page.website_page_id);
 
       if (routeUpdateErr) throw routeUpdateErr;
     }

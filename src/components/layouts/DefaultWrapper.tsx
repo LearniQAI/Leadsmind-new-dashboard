@@ -17,7 +17,6 @@ import dashboardNav from "@/data/dashboard-nav";
 import LenaVisitorChat from "../support/LenaVisitorChat";
 import HelpDrawer from "../platform/HelpDrawer";
 import { FeedbackCenter } from "@/components/production/FeedbackCenter";
-import { GlobalCommandPalette } from "@/components/production/GlobalCommandPalette";
 
 interface WrapperProps {
  children: React.ReactNode;
@@ -99,7 +98,6 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       <LenaVisitorChat workspaceId={workspaceId} />
       <HelpDrawer />
       <FeedbackCenter />
-      <GlobalCommandPalette />
      </div>
     </div>
    </>

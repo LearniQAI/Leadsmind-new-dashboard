@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { 
-  Video, Copy, Check, ExternalLink, Calendar, Loader2, 
-  Settings2, Activity, Play, ArrowRight, UserCheck, ShieldCheck 
+import {
+  Video, Copy, Check, ExternalLink, Calendar, Loader2,
+  Settings2, Activity, Play, ArrowRight, UserCheck, ShieldCheck
 } from 'lucide-react';
 import { createInstantMeeting } from '@/app/actions/calendar/appointments';
 
@@ -14,10 +14,10 @@ interface InstantMeetClientProps {
   initialAppointments: any[];
 }
 
-export default function InstantMeetClient({ 
-  workspaceId, 
-  initialCalendars, 
-  initialAppointments 
+export default function InstantMeetClient({
+  workspaceId,
+  initialCalendars,
+  initialAppointments
 }: InstantMeetClientProps) {
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState(60);
@@ -66,29 +66,29 @@ export default function InstantMeetClient({
       case 'showed_up': return 'text-success bg-success/10 border-success/20';
       case 'cancelled': return 'text-danger bg-danger/10 border-danger/20';
       case 'no_show': return 'text-warning bg-warning/10 border-warning/20';
-      default: return 'text-white/50 bg-white/5 border-white/10';
+      default: return '!text-dash-textMuted bg-dash-surface border-dash-border';
     }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
-      
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500 motion-reduce:animate-none">
+
       {/* Left Columns (Form & Generated Meeting Status) */}
       <div className="lg:col-span-2 space-y-8">
-        
+
         {/* Setup Form Card */}
-        <div className="bg-[#0b0b1a] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl">
-          <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-            <Settings2 className="w-5 h-5 text-primary" /> Start an Instant Meeting
+        <div className="bg-white border border-dash-border rounded-3xl p-6 sm:p-8 shadow-sm">
+          <h2 className="text-xl font-bold !text-dash-text mb-2 flex items-center gap-3">
+            <Settings2 className="w-5 h-5 text-primary" /> Start an instant meeting
           </h2>
-          <p className="text-white/40 text-xs mb-6 font-medium">
+          <p className="!text-dash-textMuted text-xs mb-6 font-medium">
             Launch a private Jitsi WebRTC video room immediately. The system generates matching appointment hooks so transcripts and attendance can be recorded.
           </p>
 
           <form onSubmit={handleGenerate} className="space-y-6">
             <div>
-              <label htmlFor="title" className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">
-                Meeting Title
+              <label htmlFor="title" className="block text-xs font-bold !text-dash-textMuted mb-2">
+                Meeting title
               </label>
               <input
                 type="text"
@@ -96,40 +96,40 @@ export default function InstantMeetClient({
                 placeholder="e.g. Quick Catchup with Client"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white placeholder-white/20 focus:outline-none focus:border-primary transition-colors text-sm font-medium"
+                className="w-full h-12 bg-white border border-dash-border rounded-xl px-4 !text-dash-text placeholder:!text-dash-textMuted focus:outline-none focus:border-primary transition-colors motion-reduce:transition-none text-sm font-medium"
                 maxLength={100}
               />
             </div>
 
             <div>
-              <label htmlFor="duration" className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">
-                Room Lifespan / Duration
+              <label htmlFor="duration" className="block text-xs font-bold !text-dash-textMuted mb-2">
+                Room lifespan / duration
               </label>
               <select
                 id="duration"
                 value={duration}
                 onChange={(e) => setDuration(Number(e.target.value))}
-                className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-primary transition-colors text-sm font-medium appearance-none cursor-pointer"
+                className="w-full h-12 bg-white border border-dash-border rounded-xl px-4 !text-dash-text focus:outline-none focus:border-primary transition-colors motion-reduce:transition-none text-sm font-medium appearance-none cursor-pointer"
               >
-                <option value={15} className="bg-[#0b0b1a]">15 Minutes</option>
-                <option value={30} className="bg-[#0b0b1a]">30 Minutes</option>
-                <option value={60} className="bg-[#0b0b1a]">1 Hour</option>
-                <option value={120} className="bg-[#0b0b1a]">2 Hours</option>
+                <option value={15}>15 Minutes</option>
+                <option value={30}>30 Minutes</option>
+                <option value={60}>1 Hour</option>
+                <option value={120}>2 Hours</option>
               </select>
             </div>
 
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-xs border-none shadow-lg shadow-primary/20 transition-all rounded-xl"
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold text-xs border-none shadow-lg shadow-primary/20 transition-all motion-reduce:transition-none rounded-xl"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Provisioning Video Room...
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin motion-reduce:animate-none" /> Provisioning video room...
                 </>
               ) : (
                 <>
-                  <Video className="w-4 h-4 mr-2" /> Generate Instant Meeting
+                  <Video className="w-4 h-4 mr-2" /> Generate instant meeting
                 </>
               )}
             </Button>
@@ -138,35 +138,35 @@ export default function InstantMeetClient({
 
         {/* Result Card */}
         {meeting && (
-          <div className="bg-gradient-to-br from-[#0c0c24] to-[#12082e] border border-primary/20 rounded-3xl p-6 sm:p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-white border border-primary/20 rounded-3xl p-6 sm:p-8 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300 motion-reduce:animate-none">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
               <div>
-                <h3 className="text-xl font-bold text-white mb-1">{meeting.title}</h3>
-                <div className="flex items-center gap-2 text-xs font-medium text-white/40">
+                <h3 className="text-xl font-bold !text-dash-text mb-1">{meeting.title}</h3>
+                <div className="flex items-center gap-2 text-xs font-medium !text-dash-textMuted">
                   <Calendar className="w-3.5 h-3.5" />
                   Expires at {new Date(meeting.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-success/20 text-success bg-success/10">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-success/20 text-success bg-success/10">
                 Room Active
               </span>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">
-                  Shareable Meeting Link
+                <label className="block text-[10px] font-bold !text-dash-textMuted mb-2">
+                  Shareable meeting link
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     readOnly
                     value={meeting.meeting_link || ''}
-                    className="flex-1 h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white text-xs font-semibold focus:outline-none truncate select-all"
+                    className="flex-1 h-12 bg-dash-surface border border-dash-border rounded-xl px-4 !text-dash-text text-xs font-semibold focus:outline-none truncate select-all"
                   />
                   <Button
                     onClick={handleCopy}
-                    className="h-12 w-12 bg-white/5 border border-white/10 hover:bg-white/10 text-white transition-all rounded-xl p-0 flex items-center justify-center flex-shrink-0"
+                    className="h-12 w-12 bg-dash-surface border border-dash-border hover:bg-dash-border/60 !text-dash-text transition-all motion-reduce:transition-none rounded-xl p-0 flex items-center justify-center flex-shrink-0"
                   >
                     {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                   </Button>
@@ -176,9 +176,9 @@ export default function InstantMeetClient({
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button
                   onClick={() => window.open(meeting.meeting_link, '_blank')}
-                  className="flex-1 h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-bold uppercase tracking-wider text-xs border-none shadow-lg shadow-primary/20 transition-all rounded-xl"
+                  className="flex-1 h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-bold text-xs border-none shadow-lg shadow-primary/20 transition-all motion-reduce:transition-none rounded-xl"
                 >
-                  Join Meeting Now <ExternalLink className="w-4 h-4 ml-2" />
+                  Join meeting now <ExternalLink className="w-4 h-4 ml-2" />
                 </Button>
               </div>
             </div>
@@ -186,46 +186,46 @@ export default function InstantMeetClient({
         )}
 
         {/* Diagnostic Testing Views Section */}
-        <div className="bg-[#0b0b1a] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl">
-          <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-            <Activity className="w-5 h-5 text-accent2" /> Testing & Verification Cockpit
+        <div className="bg-white border border-dash-border rounded-3xl p-6 sm:p-8 shadow-sm">
+          <h2 className="text-xl font-bold !text-dash-text mb-6 flex items-center gap-3">
+            <Activity className="w-5 h-5 text-dash-accent" /> Testing & verification cockpit
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             {/* Quick Testing Links */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-white/50">Core Testing Pages</h3>
+            <div className="bg-dash-surface border border-dash-border rounded-2xl p-5 space-y-4">
+              <h3 className="text-xs font-bold !text-dash-textMuted">Core testing pages</h3>
               <div className="space-y-3">
                 <button
                   onClick={() => window.open(`/workspaces/${workspaceId}/meet-analytics`, '_blank')}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-primary/30 text-white hover:text-primary transition-all text-xs font-bold"
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-white border border-dash-border hover:border-primary/30 !text-dash-text hover:text-primary transition-all motion-reduce:transition-none text-xs font-bold"
                 >
-                  <span>Meet Analytics Cockpit</span>
+                  <span>Meet analytics cockpit</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => window.open('/portal/dashboard', '_blank')}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-primary/30 text-white hover:text-primary transition-all text-xs font-bold"
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-white border border-dash-border hover:border-primary/30 !text-dash-text hover:text-primary transition-all motion-reduce:transition-none text-xs font-bold"
                 >
-                  <span>Customer Portal Simulation</span>
+                  <span>Customer portal simulation</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
             {/* Public Calendars Slot Previews */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-white/50">Calendars Slot Lookup</h3>
+            <div className="bg-dash-surface border border-dash-border rounded-2xl p-5 space-y-4">
+              <h3 className="text-xs font-bold !text-dash-textMuted">Calendars slot lookup</h3>
               {initialCalendars.length === 0 ? (
-                <p className="text-white/20 text-xs font-medium py-2">No active calendars found to test booking.</p>
+                <p className="!text-dash-textMuted text-xs font-medium py-2">No active calendars found to test booking.</p>
               ) : (
                 <div className="space-y-2">
                   {initialCalendars.map(cal => (
                     <button
                       key={cal.id}
                       onClick={() => window.open(`/book/${cal.slug}`, '_blank')}
-                      className="w-full flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-primary/30 text-left text-xs font-bold text-white hover:text-accent2 transition-all truncate"
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-white border border-dash-border hover:border-primary/30 text-left text-xs font-bold !text-dash-text hover:text-dash-accent transition-all motion-reduce:transition-none truncate"
                     >
                       <span className="truncate pr-2">{cal.name}</span>
                       <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
@@ -242,41 +242,41 @@ export default function InstantMeetClient({
 
       {/* Right Column (Recent Active Meeting Rooms) */}
       <div className="space-y-8">
-        
-        <div className="bg-[#0b0b1a] border border-white/10 rounded-3xl p-6 shadow-2xl">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Play className="w-4 h-4 text-success" /> Active Rooms Lobby
+
+        <div className="bg-white border border-dash-border rounded-3xl p-6 shadow-sm">
+          <h3 className="text-sm font-bold !text-dash-text mb-4 flex items-center gap-2">
+            <Play className="w-4 h-4 text-success" /> Active rooms lobby
           </h3>
-          <p className="text-white/40 text-xs mb-6 font-medium">
-            Recent rooms in this workspace. Click **Launch Lobby** to test the pre-join canvas setup, webcam rendering, and Jitsi media streaming.
+          <p className="!text-dash-textMuted text-xs mb-6 font-medium">
+            Recent rooms in this workspace. Click <strong>Launch Lobby</strong> to test the pre-join canvas setup, webcam rendering, and Jitsi media streaming.
           </p>
 
           <div className="space-y-4">
             {appointmentsList.length === 0 ? (
-              <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/5">
-                <Video className="w-8 h-8 text-white/20 mx-auto mb-3" />
-                <h4 className="text-white text-xs font-medium mb-1">No meeting rooms provisioned</h4>
-                <p className="text-white/30 text-[10px]">Create an instant meeting above to start testing.</p>
+              <div className="text-center py-12 border border-dashed border-dash-border rounded-2xl bg-dash-surface">
+                <Video className="w-8 h-8 !text-dash-textMuted opacity-50 mx-auto mb-3" />
+                <h4 className="!text-dash-text text-xs font-medium mb-1">No meeting rooms provisioned</h4>
+                <p className="!text-dash-textMuted text-[10px]">Create an instant meeting above to start testing.</p>
               </div>
             ) : (
               appointmentsList.map(appt => (
-                <div key={appt.id} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 hover:border-primary/20 transition-colors">
+                <div key={appt.id} className="p-4 rounded-2xl bg-dash-surface border border-dash-border space-y-3 hover:border-primary/20 transition-colors motion-reduce:transition-none">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-white font-bold text-xs truncate flex-1">{appt.title}</span>
-                    <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${getStatusColor(appt.status)}`}>
+                    <span className="!text-dash-text font-bold text-xs truncate flex-1">{appt.title}</span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${getStatusColor(appt.status)}`}>
                       {appt.status}
                     </span>
                   </div>
-                  <div className="text-[10px] text-white/40 font-medium">
+                  <div className="text-[10px] !text-dash-textMuted font-medium">
                     {new Date(appt.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     {' - '}
                     {new Date(appt.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                   <Button
                     onClick={() => window.open(appt.meeting_link || `/meet/${appt.id}`, '_blank')}
-                    className="w-full h-8 bg-white/5 hover:bg-white/10 text-white font-bold uppercase tracking-widest text-[9px] rounded-lg p-0 flex items-center justify-center gap-1.5 border border-white/5"
+                    className="w-full h-8 bg-white hover:bg-dash-border/60 !text-dash-text font-bold text-[9px] rounded-lg p-0 flex items-center justify-center gap-1.5 border border-dash-border transition-colors motion-reduce:transition-none"
                   >
-                    Launch Lobby <ExternalLink className="w-3 h-3" />
+                    Launch lobby <ExternalLink className="w-3 h-3" />
                   </Button>
                 </div>
               ))
@@ -285,20 +285,20 @@ export default function InstantMeetClient({
         </div>
 
         {/* Security / System Audit Status */}
-        <div className="bg-[#0b0b1a] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-4">
-          <h3 className="text-xs font-black uppercase tracking-widest text-white/50">Meet Infrastructure</h3>
+        <div className="bg-white border border-dash-border rounded-3xl p-6 shadow-sm space-y-4">
+          <h3 className="text-xs font-bold !text-dash-textMuted">Meet infrastructure</h3>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <ShieldCheck className="w-4 h-4 text-success" />
-              <span className="text-xs font-bold text-white">Strict Workspace RLS active</span>
+              <span className="text-xs font-bold !text-dash-text">Strict Workspace RLS active</span>
             </div>
             <div className="flex items-center gap-3">
               <UserCheck className="w-4 h-4 text-success" />
-              <span className="text-xs font-bold text-white">Accent-Aware Whisper Configured</span>
+              <span className="text-xs font-bold !text-dash-text">Accent-Aware Whisper Configured</span>
             </div>
             <div className="flex items-center gap-3">
               <ShieldCheck className="w-4 h-4 text-success" />
-              <span className="text-xs font-bold text-white">PayFast double-entry ledger balancing active</span>
+              <span className="text-xs font-bold !text-dash-text">PayFast double-entry ledger balancing active</span>
             </div>
           </div>
         </div>

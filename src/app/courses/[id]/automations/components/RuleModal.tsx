@@ -173,15 +173,15 @@ export default function RuleModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-[#04091a]/75 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
-      <div className="bg-[#080f28] border border-[rgba(255,255,255,0.07)] rounded-xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col text-white">
-        
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
+      <div className="bg-white border border-dash-border rounded-xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col !text-dash-text">
+
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-[rgba(255,255,255,0.07)]">
-          <h2 className="text-base font-semibold font-space-grotesk uppercase tracking-wide">
+        <div className="flex items-center justify-between p-5 border-b border-dash-border">
+          <h2 className="text-base font-semibold">
             {editingRule ? "Edit Rule" : "Create Automation Rule"}
           </h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+          <button onClick={onClose} className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
             <X size={18} />
           </button>
         </div>
@@ -189,24 +189,24 @@ export default function RuleModal({
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Rule Name</label>
+            <label className="text-[11px] font-semibold !text-dash-textMuted">Rule Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Auto-Enroll in Advanced CRM on Quiz Pass"
-              className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#2563eb]"
+              className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-sm outline-none focus:border-dash-accent !text-dash-text"
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Trigger Event</label>
+              <label className="text-[11px] font-semibold !text-dash-textMuted">Trigger Event</label>
               <select
                 value={triggerType}
                 onChange={(e) => setTriggerType(e.target.value)}
-                className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#2563eb]"
+                className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-xs outline-none focus:border-dash-accent !text-dash-text"
               >
                 {TRIGGERS.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -215,11 +215,11 @@ export default function RuleModal({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Action Response</label>
+              <label className="text-[11px] font-semibold !text-dash-textMuted">Action Response</label>
               <select
                 value={actionType}
                 onChange={(e) => setActionType(e.target.value)}
-                className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#2563eb]"
+                className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-xs outline-none focus:border-dash-accent !text-dash-text"
               >
                 {ACTIONS.map((a) => (
                   <option key={a.value} value={a.value}>{a.label}</option>
@@ -230,16 +230,16 @@ export default function RuleModal({
 
           {/* Trigger Config Block */}
           {(triggerType === "quiz_passed" || triggerType === "quiz_failed" || triggerType === "struggling_detected") && (
-            <div className="bg-white/5 p-4 rounded-lg border border-[rgba(255,255,255,0.07)] space-y-3">
-              <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#3b82f6]">Trigger Settings</h4>
+            <div className="bg-dash-surface p-4 rounded-lg border border-dash-border space-y-3">
+              <h4 className="text-[10px] font-bold text-dash-accent">Trigger Settings</h4>
               {(triggerType === "quiz_passed" || triggerType === "quiz_failed") && (
                 <div className="space-y-1">
-                  <label className="text-[11px] text-white/50">Minimum Score (%)</label>
+                  <label className="text-[11px] !text-dash-textMuted">Minimum Score (%)</label>
                   <input
                     type="number"
                     value={minScore}
                     onChange={(e) => setMinScore(parseInt(e.target.value) || 0)}
-                    className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-1.5 text-xs outline-none"
+                    className="w-full bg-white border border-dash-border rounded-lg px-3 py-1.5 text-xs outline-none !text-dash-text"
                     min={0}
                     max={100}
                   />
@@ -247,12 +247,12 @@ export default function RuleModal({
               )}
               {triggerType === "struggling_detected" && (
                 <div className="space-y-1">
-                  <label className="text-[11px] text-white/50">Struggle Score Threshold (Consecutive failures)</label>
+                  <label className="text-[11px] !text-dash-textMuted">Struggle Score Threshold (Consecutive failures)</label>
                   <input
                     type="number"
                     value={struggleThreshold}
                     onChange={(e) => setStruggleThreshold(parseInt(e.target.value) || 3)}
-                    className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-1.5 text-xs outline-none"
+                    className="w-full bg-white border border-dash-border rounded-lg px-3 py-1.5 text-xs outline-none !text-dash-text"
                     min={1}
                   />
                 </div>
@@ -261,17 +261,17 @@ export default function RuleModal({
           )}
 
           {/* Action Config Block */}
-          <div className="bg-white/5 p-4 rounded-lg border border-[rgba(255,255,255,0.07)] space-y-3">
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#3b82f6]">Action Settings</h4>
+          <div className="bg-dash-surface p-4 rounded-lg border border-dash-border space-y-3">
+            <h4 className="text-[10px] font-bold text-dash-accent">Action Settings</h4>
             
             {(actionType === "enroll_course" || actionType === "revoke_course") && (
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] text-white/50">Select Course</label>
+                  <label className="text-[11px] !text-dash-textMuted">Select Course</label>
                   <select
                     value={targetCourseId}
                     onChange={(e) => setTargetCourseId(e.target.value)}
-                    className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#2563eb]"
+                    className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-xs outline-none focus:border-dash-accent !text-dash-text"
                     required
                   >
                     <option value="">-- Choose Course --</option>
@@ -282,12 +282,12 @@ export default function RuleModal({
                 </div>
                 {actionType === "revoke_course" && (
                   <div className="space-y-1">
-                    <label className="text-[11px] text-white/50">Grace Period (Days)</label>
+                    <label className="text-[11px] !text-dash-textMuted">Grace Period (Days)</label>
                     <input
                       type="number"
                       value={gracePeriod}
                       onChange={(e) => setGracePeriod(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-1.5 text-xs outline-none"
+                      className="w-full bg-white border border-dash-border rounded-lg px-3 py-1.5 text-xs outline-none !text-dash-text"
                       min={0}
                     />
                   </div>
@@ -297,13 +297,13 @@ export default function RuleModal({
 
             {actionType === "add_tag" && (
               <div className="space-y-1">
-                <label className="text-[11px] text-white/50">Tag Name</label>
+                <label className="text-[11px] !text-dash-textMuted">Tag Name</label>
                 <input
                   type="text"
                   value={tagName}
                   onChange={(e) => setTagName(e.target.value)}
                   placeholder="e.g. lead-pass-quiz"
-                  className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none"
+                  className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs outline-none !text-dash-text"
                   required
                 />
               </div>
@@ -312,24 +312,24 @@ export default function RuleModal({
             {actionType === "send_email" && (
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] text-white/50">Subject</label>
+                  <label className="text-[11px] !text-dash-textMuted">Subject</label>
                   <input
                     type="text"
                     value={emailSubject}
                     onChange={(e) => setEmailSubject(e.target.value)}
                     placeholder="Subject line"
-                    className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none"
+                    className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs outline-none !text-dash-text"
                     required
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] text-white/50">Body</label>
+                  <label className="text-[11px] !text-dash-textMuted">Body</label>
                   <textarea
                     value={emailBody}
                     onChange={(e) => setEmailBody(e.target.value)}
                     placeholder="Write email body..."
                     rows={3}
-                    className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none font-mono"
+                    className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs outline-none font-mono !text-dash-text"
                     required
                   />
                 </div>
@@ -338,13 +338,13 @@ export default function RuleModal({
 
             {actionType === "send_whatsapp" && (
               <div className="space-y-1">
-                <label className="text-[11px] text-white/50">WhatsApp Message</label>
+                <label className="text-[11px] !text-dash-textMuted">WhatsApp Message</label>
                 <textarea
                   value={whatsappMessage}
                   onChange={(e) => setWhatsappMessage(e.target.value)}
                   placeholder="WhatsApp message body..."
                   rows={3}
-                  className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none font-mono"
+                  className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs outline-none font-mono !text-dash-text"
                   required
                 />
               </div>
@@ -352,41 +352,41 @@ export default function RuleModal({
 
             {actionType === "notify_instructor" && (
               <div className="space-y-1">
-                <label className="text-[11px] text-white/50">Instructor Name / Email</label>
+                <label className="text-[11px] !text-dash-textMuted">Instructor Name / Email</label>
                 <input
                   type="text"
                   value={instructorId}
                   onChange={(e) => setInstructorId(e.target.value)}
                   placeholder="e.g. instructor@workspace.com"
-                  className="w-full bg-[#111d47] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-xs outline-none"
+                  className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs outline-none !text-dash-text"
                   required
                 />
               </div>
             )}
 
             {!(["enroll_course", "revoke_course", "add_tag", "send_email", "send_whatsapp", "notify_instructor"].includes(actionType)) && (
-              <div className="text-[10px] text-white/40 italic">No configuration required for this action response.</div>
+              <div className="text-[10px] !text-dash-textMuted italic">No configuration required for this action response.</div>
             )}
 
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[rgba(255,255,255,0.07)]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-dash-border">
             <Button
               type="button"
               variant="ghost"
               onClick={onClose}
               disabled={saving}
-              className="rounded-lg text-white/60 hover:bg-white/5 uppercase tracking-wider text-[10px] font-black"
+              className="rounded-lg !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={saving}
-              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg uppercase tracking-wider text-[10px] font-black px-5"
+              className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg text-[10px] font-bold px-5 transition-colors motion-reduce:transition-none"
             >
-              {saving ? <Loader2 size={14} className="animate-spin mr-2" /> : "Save Rule"}
+              {saving ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none mr-2" /> : "Save Rule"}
             </Button>
           </div>
 

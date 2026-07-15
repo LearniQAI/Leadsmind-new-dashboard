@@ -225,19 +225,19 @@ export default function LessonCreatorModal({
   const TypeIcon = activeTypeInfo.icon;
 
   return (
-    <div className="fixed inset-0 bg-[#04091a]/85 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
-      <div className="bg-[#080f28] border border-white/10 rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
+      <div className="bg-white border border-dash-border rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5">
+        <div className="flex items-center justify-between p-6 border-b border-dash-border">
           <div className="flex items-center gap-2">
-            {step === 2 && <TypeIcon className="text-accent2" size={18} />}
-            <h2 className="text-sm font-space-grotesk font-bold text-white uppercase tracking-tight">
+            {step === 2 && <TypeIcon className="text-dash-accent" size={18} />}
+            <h2 className="text-sm font-bold !text-dash-text">
               {step === 1 ? "Select Lecture Format Layout" : `${editingLesson ? "Edit" : "Create"} ${type} Lesson`}
             </h2>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="text-white/40 hover:text-white transition-colors"
+            className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none"
           >
             <X size={18} />
           </button>
@@ -246,7 +246,7 @@ export default function LessonCreatorModal({
         {/* Step 1: Type Selection Panel */}
         {step === 1 && (
           <div className="p-6 space-y-4">
-            <p className="text-[10px] text-t3 font-black uppercase tracking-widest">
+            <p className="text-[10px] !text-dash-textMuted font-bold">
               Choose a template mapping structure
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto pr-1">
@@ -256,16 +256,16 @@ export default function LessonCreatorModal({
                   <div
                     key={item.type}
                     onClick={() => handleSelectType(item.type)}
-                    className="bg-[#111d47]/30 border border-white/5 hover:border-accent/40 rounded-xl p-4 cursor-pointer hover:bg-[#111d47]/50 transition-all flex items-start gap-3 group"
+                    className="bg-dash-surface border border-dash-border hover:border-dash-accent/40 rounded-xl p-4 cursor-pointer hover:bg-dash-border/30 transition-all motion-reduce:transition-none flex items-start gap-3 group"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent2 shrink-0 group-hover:bg-accent group-hover:text-white transition-all">
+                    <div className="w-10 h-10 rounded-lg bg-dash-accent/10 border border-dash-accent/20 flex items-center justify-center text-dash-accent shrink-0 group-hover:bg-dash-accent group-hover:text-white transition-all motion-reduce:transition-none">
                       <Icon size={18} />
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-white block group-hover:text-accent2 transition-colors">
+                      <span className="text-xs font-bold !text-dash-text block group-hover:text-dash-accent transition-colors motion-reduce:transition-none">
                         {item.label}
                       </span>
-                      <span className="text-[10px] text-white/40 block mt-0.5 leading-relaxed">
+                      <span className="text-[10px] !text-dash-textMuted block mt-0.5 leading-relaxed">
                         {item.desc}
                       </span>
                     </div>
@@ -284,7 +284,7 @@ export default function LessonCreatorModal({
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary-light uppercase tracking-wider mb-2"
+                className="flex items-center gap-1 text-[10px] font-bold text-primary hover:opacity-80 mb-2 transition-opacity motion-reduce:transition-none"
               >
                 <ArrowLeft size={12} /> Back to formats selection
               </button>
@@ -292,7 +292,7 @@ export default function LessonCreatorModal({
 
             {/* Lesson Title */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">
+              <label className="text-[10px] font-bold !text-dash-textMuted block">
                 Lesson Title <span className="text-red-500">*</span>
               </label>
               <input
@@ -300,7 +300,7 @@ export default function LessonCreatorModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Setting up the payfast hook endpoint"
-                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-body"
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-sm !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary transition-all motion-reduce:transition-none"
                 required
               />
             </div>
@@ -308,7 +308,7 @@ export default function LessonCreatorModal({
             {/* Video / Audio / Live / PDF / SCORM URL Input */}
             {["Video", "Audio", "Live Session", "PDF", "SCORM"].includes(type) && (
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">
+                <label className="text-[10px] font-bold !text-dash-textMuted block">
                   {type === "Live Session" ? "Broadcast Stream Meeting URL" : `${type} Asset URL`}
                 </label>
                 <div className="flex gap-2">
@@ -317,7 +317,7 @@ export default function LessonCreatorModal({
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
                     placeholder={`https://example.com/assets/${type.toLowerCase()}`}
-                    className="flex-1 bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-mono"
+                    className="flex-1 bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary transition-all motion-reduce:transition-none font-mono"
                     required
                   />
                   {["Video", "Audio", "PDF", "SCORM"].includes(type) && (
@@ -337,7 +337,7 @@ export default function LessonCreatorModal({
                       <Button
                         type="button"
                         disabled={uploadingType !== null}
-                        className="h-full bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-wider px-4 rounded-xl flex items-center gap-1.5"
+                        className="h-full bg-dash-surface border border-dash-border hover:bg-dash-border/60 !text-dash-text text-[10px] font-bold px-4 rounded-xl flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
                       >
                         {uploadingType === type.toLowerCase() ? "Uploading..." : "Upload File"}
                       </Button>
@@ -349,14 +349,14 @@ export default function LessonCreatorModal({
 
             {/* SCORM Config Parameters */}
             {type === "SCORM" && (
-              <div className="space-y-2 bg-[#111d47]/30 border border-white/5 rounded-xl p-4">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">
+              <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
+                <label className="text-[10px] font-bold !text-dash-textMuted block">
                   SCORM Standards Version Compliance
                 </label>
                 <select
                   value={scormVersion}
                   onChange={(e) => setScormVersion(e.target.value)}
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
                 >
                   <option value="scorm12">SCORM 1.2 standard</option>
                   <option value="scorm2004">SCORM 2004 standard</option>
@@ -366,15 +366,15 @@ export default function LessonCreatorModal({
 
             {/* Live Session Scheduling Parameters */}
             {type === "Live Session" && (
-              <div className="space-y-2 bg-[#111d47]/30 border border-white/5 rounded-xl p-4">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">
+              <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
+                <label className="text-[10px] font-bold !text-dash-textMuted block">
                   Broadcast Start Date & Time
                 </label>
                 <input
                   type="datetime-local"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
                   required
                 />
               </div>
@@ -382,15 +382,15 @@ export default function LessonCreatorModal({
 
             {/* Code editor inputs */}
             {type === "Code" && (
-              <div className="grid grid-cols-1 gap-4 bg-[#111d47]/20 border border-white/5 rounded-xl p-4">
+              <div className="grid grid-cols-1 gap-4 bg-dash-surface border border-dash-border rounded-xl p-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">
+                  <label className="text-[10px] font-bold !text-dash-textMuted block">
                     Programming Language
                   </label>
                   <select
                     value={codeLanguage}
                     onChange={(e) => setCodeLanguage(e.target.value)}
-                    className="bg-[#111d47] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary"
+                    className="bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary"
                   >
                     <option value="javascript">JavaScript</option>
                     <option value="typescript">TypeScript</option>
@@ -400,7 +400,7 @@ export default function LessonCreatorModal({
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">
+                  <label className="text-[10px] font-bold !text-dash-textMuted block">
                     Starter Template Code
                   </label>
                   <textarea
@@ -408,7 +408,7 @@ export default function LessonCreatorModal({
                     onChange={(e) => setStarterCode(e.target.value)}
                     rows={4}
                     placeholder="// Write starter code challenge template here..."
-                    className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none font-mono"
+                    className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text outline-none font-mono"
                   />
                 </div>
               </div>
@@ -416,33 +416,33 @@ export default function LessonCreatorModal({
 
             {/* Flashcards System Builder */}
             {type === "Flashcards" && (
-              <div className="bg-[#111d47]/20 border border-white/5 rounded-xl p-4 space-y-4">
+              <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                  <span className="text-[10px] font-bold !text-dash-textMuted">
                     Flashcard Deck System
                   </span>
                   <button
                     type="button"
                     onClick={handleAddFlashcard}
-                    className="text-[10px] font-black text-primary hover:text-primary-light flex items-center gap-1 uppercase tracking-wider"
+                    className="text-[10px] font-bold text-primary hover:opacity-80 flex items-center gap-1 transition-opacity motion-reduce:transition-none"
                   >
                     <Plus size={12} /> Add Card
                   </button>
                 </div>
                 {flashcards.length === 0 ? (
-                  <div className="py-6 text-center text-[11px] text-white/30 font-medium">
+                  <div className="py-6 text-center text-[11px] !text-dash-textMuted font-medium">
                     No flashcards in this deck. Add cards to begin.
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
                     {flashcards.map((card, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-[#111d47]/30 border border-white/5 p-3 rounded-lg">
+                      <div key={idx} className="flex items-center gap-2 bg-white border border-dash-border p-3 rounded-lg">
                         <input
                           type="text"
                           value={card.front}
                           onChange={(e) => handleFlashcardChange(idx, "front", e.target.value)}
                           placeholder="Front Question"
-                          className="flex-1 bg-[#111d47] border border-white/10 rounded px-2 py-1 text-xs text-white outline-none"
+                          className="flex-1 bg-dash-surface border border-dash-border rounded px-2 py-1 text-xs !text-dash-text outline-none"
                           required
                         />
                         <input
@@ -450,13 +450,13 @@ export default function LessonCreatorModal({
                           value={card.back}
                           onChange={(e) => handleFlashcardChange(idx, "back", e.target.value)}
                           placeholder="Back Explanation"
-                          className="flex-1 bg-[#111d47] border border-white/10 rounded px-2 py-1 text-xs text-white outline-none"
+                          className="flex-1 bg-dash-surface border border-dash-border rounded px-2 py-1 text-xs !text-dash-text outline-none"
                           required
                         />
                         <button
                           type="button"
                           onClick={() => handleRemoveFlashcard(idx)}
-                          className="text-red-400 hover:text-red-300 transition-colors"
+                          className="text-red hover:text-red/80 transition-colors motion-reduce:transition-none"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -469,18 +469,18 @@ export default function LessonCreatorModal({
 
             {/* Interactive Quiz Builder */}
             {type === "Quiz" && (
-              <div className="bg-[#111d47]/20 border border-white/5 rounded-xl p-4 space-y-4">
-                <span className="text-[10px] font-black uppercase text-accent2 tracking-widest block">Quiz Questions Workbench</span>
+              <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-4">
+                <span className="text-[10px] font-bold text-dash-accent block">Quiz Questions Workbench</span>
                 {editingLesson ? (
                   isLoadingQuiz ? (
-                    <div className="py-6 text-center text-xs text-white/30 flex items-center justify-center gap-2">
-                      <Loader2 className="animate-spin" size={14} /> Loading Quiz Workbench...
+                    <div className="py-6 text-center text-xs !text-dash-textMuted flex items-center justify-center gap-2">
+                      <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> Loading Quiz Workbench...
                     </div>
                   ) : quizId ? (
-                    <div className="py-6 px-4 text-center bg-[#111d47]/30 border border-dashed border-white/10 rounded-xl space-y-4">
+                    <div className="py-6 px-4 text-center bg-white border border-dashed border-dash-border rounded-xl space-y-4">
                       <div className="space-y-1.5">
-                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">Quiz Ready to Configure</h4>
-                        <p className="text-[10px] text-white/40 max-w-sm mx-auto leading-relaxed">
+                        <h4 className="text-xs font-bold !text-dash-text">Quiz Ready to Configure</h4>
+                        <p className="text-[10px] !text-dash-textMuted max-w-sm mx-auto leading-relaxed">
                           Build evaluation questions, configure passing scores, time limits, and write LENA AI explanation rationales in the dedicated Quiz Workbench.
                         </p>
                       </div>
@@ -490,37 +490,37 @@ export default function LessonCreatorModal({
                           onClose();
                           router.push(`/courses/${courseId}/quiz/${quizId}`);
                         }}
-                        className="bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-10 px-5 shadow-lg shadow-primary/20 flex items-center gap-1.5 mx-auto"
+                        className="bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-bold h-10 px-5 shadow-lg shadow-primary/20 flex items-center gap-1.5 mx-auto transition-colors motion-reduce:transition-none"
                       >
                         <Settings size={12} /> Open Quiz Workbench
                       </Button>
                     </div>
                   ) : (
-                    <div className="py-6 text-center text-xs text-white/30 flex items-center justify-center gap-1.5 bg-[#111d47]/30 border border-dashed border-white/5 rounded-xl text-red-400">
+                    <div className="py-6 text-center text-xs flex items-center justify-center gap-1.5 bg-white border border-dashed border-dash-border rounded-xl text-red">
                       Failed to initialize Quiz database record.
                     </div>
                   )
                 ) : (
-                  <div className="py-6 text-center text-xs text-white/30 flex items-center justify-center gap-1.5 bg-[#111d47]/30 border border-dashed border-white/5 rounded-xl">
-                    <AlertTriangle size={14} className="text-amber" /> Please save the lesson first before building quiz questions.
+                  <div className="py-6 text-center text-xs !text-dash-textMuted flex items-center justify-center gap-1.5 bg-white border border-dashed border-dash-border rounded-xl">
+                    <AlertTriangle size={14} className="text-amber-600" /> Please save the lesson first before building quiz questions.
                   </div>
                 )}
               </div>
             )}
 
             {/* Access Level Selector */}
-            <div className="space-y-2 bg-[#111d47]/30 border border-white/5 rounded-xl p-4">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">Access Control Visibility</label>
+            <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
+              <label className="text-[10px] font-bold !text-dash-textMuted block">Access Control Visibility</label>
               <select
                 value={accessLevel}
                 onChange={(e) => setAccessLevel(e.target.value as any)}
-                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all font-body font-bold"
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary transition-all motion-reduce:transition-none font-bold"
               >
                 <option value="public">🔓 Public (Accessible without enrollment or login)</option>
                 <option value="enrolled">👥 Free for Enrolled (Requires login & enrollment)</option>
                 <option value="paid">💳 Paid Only (Locked behind paid enrollment verification)</option>
               </select>
-              <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest mt-1">
+              <p className="text-[8px] !text-dash-textMuted font-bold mt-1">
                 {accessLevel === 'public' && "Perfect for SEO indexation, search web crawlers, and course previews."}
                 {accessLevel === 'enrolled' && "Forces student registration. Free access for anyone who registers."}
                 {accessLevel === 'paid' && "Hard-locked. Accessible only after confirming payment verification state."}
@@ -529,7 +529,7 @@ export default function LessonCreatorModal({
 
             {/* Content (Text description, Rich Text, etc.) */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block">
+              <label className="text-[10px] font-bold !text-dash-textMuted block">
                 {type === "Text" ? "Lesson Rich Text (Markdown supported)" : `${type} Lesson Instructions / Body`}
               </label>
               <textarea
@@ -537,29 +537,29 @@ export default function LessonCreatorModal({
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Explain lesson concepts or add learning guidelines..."
                 rows={5}
-                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-mono leading-relaxed"
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary transition-all motion-reduce:transition-none font-mono leading-relaxed"
               />
             </div>
 
             {/* Footer Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-dash-border">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={onClose}
                 disabled={isSaving}
-                className="h-11 rounded-xl text-white/60 hover:bg-white/5 uppercase tracking-wider text-[10px] font-black"
+                className="h-11 rounded-xl !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSaving}
-                className="h-11 bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black px-6 shadow-lg shadow-primary/20"
+                className="h-11 bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-bold px-6 shadow-lg shadow-primary/20 transition-colors motion-reduce:transition-none"
               >
                 {isSaving ? (
                   <>
-                    <Loader2 size={14} className="animate-spin mr-2" /> Saving...
+                    <Loader2 size={14} className="animate-spin motion-reduce:animate-none mr-2" /> Saving...
                   </>
                 ) : (
                   "Save Lesson Node"

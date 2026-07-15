@@ -413,45 +413,45 @@ export default function SeoTab() {
   const getRankBadgeProps = (rank: number | null) => {
     if (rank === null) {
       return {
-        className: 'bg-red-500/10 text-red-400 border border-red-500/20',
-        label: 'UNRANKED'
+        className: 'bg-red-50 text-red-700 border border-red-200',
+        label: 'Unranked'
       };
     }
     if (rank >= 1 && rank <= 3) {
       return {
-        className: 'bg-teal-500/10 text-teal-400 border border-teal-500/20',
-        label: `RANK #${rank}`
+        className: 'bg-teal-50 text-teal-700 border border-teal-200',
+        label: `Rank #${rank}`
       };
     }
     if (rank >= 4 && rank <= 10) {
       return {
-        className: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
-        label: `RANK #${rank}`
+        className: 'bg-purple-50 text-purple-700 border border-purple-200',
+        label: `Rank #${rank}`
       };
     }
     if (rank >= 11 && rank <= 20) {
       return {
-        className: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
-        label: `RANK #${rank}`
+        className: 'bg-amber-50 text-amber-700 border border-amber-200',
+        label: `Rank #${rank}`
       };
     }
     if (rank >= 21 && rank <= 50) {
       return {
-        className: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
-        label: `RANK #${rank}`
+        className: 'bg-dash-surface !text-dash-textMuted border border-dash-border',
+        label: `Rank #${rank}`
       };
     }
     return {
-      className: 'bg-red-500/10 text-red-400 border border-red-500/20',
-      label: `RANK #${rank}`
+      className: 'bg-red-50 text-red-700 border border-red-200',
+      label: `Rank #${rank}`
     };
   };
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
-        <RefreshCw className="animate-spin text-accent" size={32} />
-        <p className="text-t3 font-medium uppercase tracking-widest text-[11px]">Syncing with Supabase Ledger...</p>
+        <RefreshCw className="animate-spin motion-reduce:animate-none text-dash-accent" size={32} />
+        <p className="!text-dash-textMuted font-medium text-[11px]">Syncing with Supabase ledger...</p>
       </div>
     );
   }
@@ -525,18 +525,18 @@ export default function SeoTab() {
       {/* SEO & Technical Health Dashboard Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Card 1: Domain & Crawler Controller */}
-        <div className="bg-n800 border border-white/5 rounded-2xl p-6 flex flex-col justify-between min-h-[200px] relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-1 h-full bg-accent"></div>
+        <div className="bg-white border border-dash-border rounded-2xl p-6 flex flex-col justify-between min-h-[200px] relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-1 h-full bg-dash-accent"></div>
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-accent">
+            <div className="flex items-center gap-2 text-dash-accent">
               <Activity size={16} />
-              <span className="text-[10px] font-black uppercase tracking-widest">Onsite Health Audit</span>
+              <span className="text-[10px] font-bold">Onsite Health Audit</span>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-t1 uppercase font-space truncate" title={project?.domain_url || 'Domain Not Configured'}>
+              <h3 className="text-sm font-bold !text-dash-text uppercase truncate" title={project?.domain_url || 'Domain Not Configured'}>
                 {project?.domain_url || 'No Domain Configured'}
               </h3>
-              <p className="text-[9px] text-t3 font-medium uppercase tracking-widest mt-0.5">
+              <p className="text-[9px] !text-dash-textMuted font-medium mt-0.5">
                 {latestCrawl ? `Last Scanned: ${new Date(latestCrawl.created_at).toLocaleDateString()}` : 'Never Scanned'}
               </p>
             </div>
@@ -544,7 +544,7 @@ export default function SeoTab() {
           <button
             onClick={handleTriggerHealthCrawl}
             disabled={isCrawlingHealth || !project?.domain_url}
-            className="w-full mt-4 flex items-center justify-center gap-2 bg-accent hover:bg-accent2 disabled:bg-white/5 disabled:text-t3 disabled:opacity-50 text-white font-black uppercase tracking-widest text-[11px] py-2.5 rounded-xl transition-all shadow-lg shadow-accent/10"
+            className="w-full mt-4 flex items-center justify-center gap-2 bg-dash-accent hover:bg-dash-accent/90 disabled:bg-dash-surface disabled:!text-dash-textMuted disabled:opacity-50 text-white font-bold text-[11px] py-2.5 rounded-xl transition-all motion-reduce:transition-none shadow-lg shadow-dash-accent/10"
           >
             <RefreshCw size={12} className={isCrawlingHealth ? 'animate-spin' : ''} />
             {isCrawlingHealth ? 'Auditing...' : 'Run Health Audit'}
@@ -552,46 +552,46 @@ export default function SeoTab() {
         </div>
 
         {/* Card 2: Composite Health Score */}
-        <div className="bg-n800 border border-white/5 rounded-2xl p-6 flex flex-col justify-between min-h-[200px] relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-1 h-full bg-green"></div>
+        <div className="bg-white border border-dash-border rounded-2xl p-6 flex flex-col justify-between min-h-[200px] relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-1 h-full bg-green-600"></div>
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-green">
+              <div className="flex items-center gap-2 text-green-600">
                 <ShieldCheck size={16} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Composite Health</span>
+                <span className="text-[10px] font-bold">Composite health</span>
               </div>
-              <h3 className="text-3xl font-space font-bold mt-2 text-t1">
+              <h3 className="text-3xl font-bold mt-2 !text-dash-text">
                 {latestCrawl ? `${latestCrawl.health_score}/100` : '--'}
               </h3>
             </div>
             {latestCrawl && (
-              <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
-                latestCrawl.health_score >= 80 ? 'bg-green/10 text-green' :
-                latestCrawl.health_score >= 50 ? 'bg-amber/10 text-amber' : 'bg-red/10 text-red'
+              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                latestCrawl.health_score >= 80 ? 'bg-green-50 text-green-700' :
+                latestCrawl.health_score >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
               }`}>
-                {latestCrawl.health_score >= 80 ? 'OPTIMAL' :
-                 latestCrawl.health_score >= 50 ? 'WARNING' : 'CRITICAL'}
+                {latestCrawl.health_score >= 80 ? 'Optimal' :
+                 latestCrawl.health_score >= 50 ? 'Warning' : 'Critical'}
               </span>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-2 text-[10px] border-t border-white/5 pt-3 mt-2 text-t3 font-medium">
+          <div className="grid grid-cols-2 gap-2 text-[10px] border-t border-dash-border pt-3 mt-2 !text-dash-textMuted font-medium">
             <div className="flex justify-between">
               <span>Pages:</span>
-              <span className="text-t2 font-bold">{latestCrawl ? latestCrawl.pages_crawled : '--'}</span>
+              <span className="!text-dash-textMuted font-bold">{latestCrawl ? latestCrawl.pages_crawled : '--'}</span>
             </div>
             <div className="flex justify-between">
               <span>Errors:</span>
-              <span className={`font-bold ${latestCrawl?.pages_with_errors?.length > 0 ? 'text-red' : 'text-t2'}`}>
+              <span className={`font-bold ${latestCrawl?.pages_with_errors?.length > 0 ? 'text-red-600' : '!text-dash-textMuted'}`}>
                 {latestCrawl ? latestCrawl.pages_with_errors?.length : '--'}
               </span>
             </div>
             <div className="flex justify-between">
               <span>Redirects:</span>
-              <span className="text-t2 font-bold">{latestCrawl ? latestCrawl.redirect_chains?.length : '--'}</span>
+              <span className="!text-dash-textMuted font-bold">{latestCrawl ? latestCrawl.redirect_chains?.length : '--'}</span>
             </div>
             <div className="flex justify-between">
               <span>Missing Alt:</span>
-              <span className="text-t2 font-bold">
+              <span className="!text-dash-textMuted font-bold">
                 {latestCrawl ? latestCrawl.missing_alts?.reduce((acc: number, curr: any) => acc + (curr.images?.length || 0), 0) : '--'}
               </span>
             </div>
@@ -599,83 +599,83 @@ export default function SeoTab() {
         </div>
 
         {/* Card 3: Core Web Vitals (Desktop) */}
-        <div className="bg-n800 border border-white/5 rounded-2xl p-6 flex flex-col justify-between min-h-[200px] relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-1 h-full bg-purple"></div>
+        <div className="bg-white border border-dash-border rounded-2xl p-6 flex flex-col justify-between min-h-[200px] relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-1 h-full bg-purple-600"></div>
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <span className="text-[10px] text-purple font-black uppercase tracking-widest block">PageSpeed Desktop</span>
-              <h3 className="text-3xl font-space font-bold mt-1 text-t1">
+              <span className="text-[10px] text-purple-600 font-bold block">PageSpeed desktop</span>
+              <h3 className="text-3xl font-bold mt-1 !text-dash-text">
                 {latestCrawl?.desktop_performance ? `${latestCrawl.desktop_performance}` : '--'}
               </h3>
             </div>
             {latestCrawl?.desktop_performance && (
-              <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
-                latestCrawl.desktop_performance >= 90 ? 'bg-green/10 text-green' :
-                latestCrawl.desktop_performance >= 50 ? 'bg-amber/10 text-amber' : 'bg-red/10 text-red'
+              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                latestCrawl.desktop_performance >= 90 ? 'bg-green-50 text-green-700' :
+                latestCrawl.desktop_performance >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
               }`}>
-                {latestCrawl.desktop_performance >= 90 ? 'FAST' :
-                 latestCrawl.desktop_performance >= 50 ? 'AVERAGE' : 'SLOW'}
+                {latestCrawl.desktop_performance >= 90 ? 'Fast' :
+                 latestCrawl.desktop_performance >= 50 ? 'Average' : 'Slow'}
               </span>
             )}
           </div>
           
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px] border-t border-white/5 pt-3 mt-2 text-t3">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px] border-t border-dash-border pt-3 mt-2 !text-dash-textMuted">
             <div className="flex justify-between">
               <span>FCP:</span>
-              <span className="text-t2 font-bold font-mono">{latestCrawl?.desktop_fcp ? `${latestCrawl.desktop_fcp}s` : '--'}</span>
+              <span className="!text-dash-textMuted font-bold font-mono">{latestCrawl?.desktop_fcp ? `${latestCrawl.desktop_fcp}s` : '--'}</span>
             </div>
             <div className="flex justify-between">
               <span>LCP:</span>
-              <span className="text-t2 font-bold font-mono">{latestCrawl?.desktop_lcp ? `${latestCrawl.desktop_lcp}s` : '--'}</span>
+              <span className="!text-dash-textMuted font-bold font-mono">{latestCrawl?.desktop_lcp ? `${latestCrawl.desktop_lcp}s` : '--'}</span>
             </div>
             <div className="flex justify-between">
               <span>CLS:</span>
-              <span className="text-t2 font-bold font-mono">{latestCrawl?.desktop_cls ? `${latestCrawl.desktop_cls}` : '--'}</span>
+              <span className="!text-dash-textMuted font-bold font-mono">{latestCrawl?.desktop_cls ? `${latestCrawl.desktop_cls}` : '--'}</span>
             </div>
             <div className="flex justify-between">
               <span>TBT:</span>
-              <span className="text-t2 font-bold font-mono">{latestCrawl?.desktop_tbt ? `${latestCrawl.desktop_tbt}ms` : '--'}</span>
+              <span className="!text-dash-textMuted font-bold font-mono">{latestCrawl?.desktop_tbt ? `${latestCrawl.desktop_tbt}ms` : '--'}</span>
             </div>
           </div>
         </div>
 
         {/* Card 4: Core Web Vitals (Mobile) */}
-        <div className="bg-n800 border border-white/5 rounded-2xl p-6 flex flex-col justify-between min-h-[200px] relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-1 h-full bg-amber"></div>
+        <div className="bg-white border border-dash-border rounded-2xl p-6 flex flex-col justify-between min-h-[200px] relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-1 h-full bg-amber-600"></div>
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <span className="text-[10px] text-amber font-black uppercase tracking-widest block">PageSpeed Mobile</span>
-              <h3 className="text-3xl font-space font-bold mt-1 text-t1">
+              <span className="text-[10px] text-amber-600 font-bold block">PageSpeed mobile</span>
+              <h3 className="text-3xl font-bold mt-1 !text-dash-text">
                 {latestCrawl?.mobile_performance ? `${latestCrawl.mobile_performance}` : '--'}
               </h3>
             </div>
             {latestCrawl?.mobile_performance && (
-              <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
-                latestCrawl.mobile_performance >= 90 ? 'bg-green/10 text-green' :
-                latestCrawl.mobile_performance >= 50 ? 'bg-amber/10 text-amber' : 'bg-red/10 text-red'
+              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                latestCrawl.mobile_performance >= 90 ? 'bg-green-50 text-green-700' :
+                latestCrawl.mobile_performance >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
               }`}>
-                {latestCrawl.mobile_performance >= 90 ? 'FAST' :
-                 latestCrawl.mobile_performance >= 50 ? 'AVERAGE' : 'SLOW'}
+                {latestCrawl.mobile_performance >= 90 ? 'Fast' :
+                 latestCrawl.mobile_performance >= 50 ? 'Average' : 'Slow'}
               </span>
             )}
           </div>
           
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px] border-t border-white/5 pt-3 mt-2 text-t3">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px] border-t border-dash-border pt-3 mt-2 !text-dash-textMuted">
             <div className="flex justify-between">
               <span>FCP:</span>
-              <span className="text-t2 font-bold font-mono">{latestCrawl?.mobile_fcp ? `${latestCrawl.mobile_fcp}s` : '--'}</span>
+              <span className="!text-dash-textMuted font-bold font-mono">{latestCrawl?.mobile_fcp ? `${latestCrawl.mobile_fcp}s` : '--'}</span>
             </div>
             <div className="flex justify-between">
               <span>LCP:</span>
-              <span className="text-t2 font-bold font-mono">{latestCrawl?.mobile_lcp ? `${latestCrawl.mobile_lcp}s` : '--'}</span>
+              <span className="!text-dash-textMuted font-bold font-mono">{latestCrawl?.mobile_lcp ? `${latestCrawl.mobile_lcp}s` : '--'}</span>
             </div>
             <div className="flex justify-between">
               <span>CLS:</span>
-              <span className="text-t2 font-bold font-mono">{latestCrawl?.mobile_cls ? `${latestCrawl.mobile_cls}` : '--'}</span>
+              <span className="!text-dash-textMuted font-bold font-mono">{latestCrawl?.mobile_cls ? `${latestCrawl.mobile_cls}` : '--'}</span>
             </div>
             <div className="flex justify-between">
               <span>TBT:</span>
-              <span className="text-t2 font-bold font-mono">{latestCrawl?.mobile_tbt ? `${latestCrawl.mobile_tbt}ms` : '--'}</span>
+              <span className="!text-dash-textMuted font-bold font-mono">{latestCrawl?.mobile_tbt ? `${latestCrawl.mobile_tbt}ms` : '--'}</span>
             </div>
           </div>
         </div>
@@ -683,15 +683,15 @@ export default function SeoTab() {
 
       {/* Onsite Crawl Issues Checklist */}
       {latestCrawl && latestCrawl.issues_list && latestCrawl.issues_list.length > 0 && (
-        <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
+        <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-1 h-full bg-red"></div>
           <div className="flex items-center gap-4 mb-2">
             <div className="w-10 h-10 rounded-xl bg-red/10 flex items-center justify-center text-red">
               <AlertTriangle size={20} />
             </div>
             <div>
-              <h4 className="text-[15px] font-space font-bold text-t1 uppercase">ON-SITE SEO CHECKLIST & VULNERABILITIES</h4>
-              <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">
+              <h4 className="text-[15px] font-bold !text-dash-text uppercase">ON-SITE SEO CHECKLIST & VULNERABILITIES</h4>
+              <p className="text-[11px] !text-dash-textMuted font-medium">
                 Itemized issues linkable to Content Studio editor fix recommendations
               </p>
             </div>
@@ -705,30 +705,30 @@ export default function SeoTab() {
               return (
                 <div 
                   key={index} 
-                  className={`border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all bg-n600/30 ${
-                    isCritical ? 'border-red-500/20' : isWarning ? 'border-amber-500/20' : 'border-white/5'
+                  className={`border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all motion-reduce:transition-none bg-dash-surface ${
+                    isCritical ? 'border-red-200' : isWarning ? 'border-amber-200' : 'border-dash-border'
                   }`}
                 >
                   <div className="flex gap-3">
-                    <div className={`mt-0.5 shrink-0 ${isCritical ? 'text-red' : isWarning ? 'text-amber' : 'text-accent'}`}>
+                    <div className={`mt-0.5 shrink-0 ${isCritical ? 'text-red' : isWarning ? 'text-amber' : 'text-dash-accent'}`}>
                       {isCritical ? <AlertCircle size={16} /> : isWarning ? <AlertTriangle size={16} /> : <Info size={16} />}
                     </div>
                     <div className="space-y-1">
-                      <span className={`text-[9px] font-black uppercase tracking-widest ${
-                        isCritical ? 'text-red' : isWarning ? 'text-amber' : 'text-accent'
+                      <span className={`text-[9px] font-bold ${
+                        isCritical ? 'text-red' : isWarning ? 'text-amber' : 'text-dash-accent'
                       }`}>
                         {issue.type.toUpperCase()}
                       </span>
-                      <p className="text-[12px] font-space font-bold text-t1 uppercase leading-snug">
+                      <p className="text-[12px] font-bold !text-dash-text uppercase leading-snug">
                         {issue.message}
                       </p>
                       {issue.pageUrl && (
-                        <p className="text-[10px] text-t3 font-mono break-all font-medium">
+                        <p className="text-[10px] !text-dash-textMuted font-mono break-all font-medium">
                           Page: {issue.pageUrl}
                         </p>
                       )}
-                      <p className="text-[11px] text-t3 leading-relaxed">
-                        <strong className="text-t2">Recommended Fix: </strong> {issue.fix}
+                      <p className="text-[11px] !text-dash-textMuted leading-relaxed">
+                        <strong className="!text-dash-textMuted">Recommended Fix: </strong> {issue.fix}
                       </p>
                     </div>
                   </div>
@@ -736,10 +736,10 @@ export default function SeoTab() {
                   <div className="shrink-0 flex items-center">
                     <a
                       href={issue.contentStudioLinkId ? `/blog/editor/${issue.contentStudioLinkId}` : '/blog/manage'}
-                      className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all ${
+                      className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-xl text-[10px] font-extrabold transition-all ${
                         issue.contentStudioLinkId 
-                          ? 'bg-accent/15 hover:bg-accent/25 text-accent border-accent/25' 
-                          : 'bg-white/[0.04] hover:bg-white/[0.08] text-t2 border-white/5'
+                          ? 'bg-dash-accent/15 hover:bg-dash-accent/25 text-dash-accent border-dash-accent/25' 
+                          : 'bg-white/[0.04] hover:bg-white/[0.08] !text-dash-textMuted border-dash-border'
                       }`}
                     >
                       {issue.contentStudioLinkId ? (
@@ -760,41 +760,41 @@ export default function SeoTab() {
       )}
 
       {/* 1. Core Domain Target Configuration Card */}
-      <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
-        <div className="absolute top-0 left-0 w-1 h-full bg-accent"></div>
+      <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden group">
+        <div className="absolute top-0 left-0 w-1 h-full bg-dash-accent"></div>
         <div className="flex items-center gap-4 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+          <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
             <Globe size={20} />
           </div>
           <div>
-            <h4 className="text-[15px] font-space font-bold text-t1 uppercase">SEO TARGET PROPERTIES</h4>
-            <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Workspace Domain Configuration</p>
+            <h4 className="text-[15px] font-bold !text-dash-text uppercase">SEO TARGET PROPERTIES</h4>
+            <p className="text-[11px] !text-dash-textMuted font-medium">Workspace Domain Configuration</p>
           </div>
         </div>
 
         <form onSubmit={handleSaveDomain} className="grid gap-6">
           <div className="space-y-2">
-            <label className="text-[11px] font-black uppercase tracking-widest text-t3">Active Project Domain</label>
+            <label className="text-[11px] font-bold !text-dash-textMuted">Active Project Domain</label>
             <div className="flex gap-3">
               <div className="relative flex-1">
-                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-t3" size={16} />
+                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 !text-dash-textMuted" size={16} />
                 <input
                   type="text"
                   value={domainInput}
                   onChange={(e) => setDomainInput(e.target.value)}
                   placeholder="e.g. mybusiness.co.za"
-                  className="w-full bg-n600 border border-white/5 rounded-xl pl-11 pr-4 py-3 text-t1 font-bold focus:border-accent/50 transition-all outline-none text-sm"
+                  className="w-full bg-dash-surface border border-dash-border rounded-xl pl-11 pr-4 py-3 !text-dash-text font-bold focus:border-dash-accent/50 transition-all outline-none text-sm"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isSavingDomain}
-                className="bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[11px] px-8 rounded-xl shadow-lg shadow-accent/20 transition-all disabled:opacity-50 h-[46px]"
+                className="bg-dash-accent hover:bg-dash-accent text-white font-bold text-[11px] px-8 rounded-xl shadow-lg shadow-dash-accent/20 transition-all disabled:opacity-50 h-[46px]"
               >
                 {isSavingDomain ? 'Updating...' : 'Save Domain'}
               </button>
             </div>
-            <p className="text-[10px] text-t3 font-medium leading-relaxed">
+            <p className="text-[10px] !text-dash-textMuted font-medium leading-relaxed">
               * Configure your clean domain (without https://) so search indexes match GSC properties correctly.
             </p>
           </div>
@@ -802,42 +802,42 @@ export default function SeoTab() {
       </div>
 
       {/* 1b. Competitor and Google Business Profile Registry Card */}
-      <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
+      <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden group">
         <div className="absolute top-0 left-0 w-1 h-full bg-purple"></div>
         <div className="flex items-center gap-4 mb-2">
           <div className="w-10 h-10 rounded-xl bg-purple/10 flex items-center justify-center text-purple">
             <Users size={20} />
           </div>
           <div>
-            <h4 className="text-[15px] font-space font-bold text-t1 uppercase">COMPETITOR INTELLIGENCE & LOCAL SEO</h4>
-            <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Alternative Domains & GBP Match</p>
+            <h4 className="text-[15px] font-bold !text-dash-text uppercase">COMPETITOR INTELLIGENCE & LOCAL SEO</h4>
+            <p className="text-[11px] !text-dash-textMuted font-medium">Alternative Domains & GBP Match</p>
           </div>
         </div>
 
         <form onSubmit={handleSaveCompetitors} className="grid gap-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[11px] font-black uppercase tracking-widest text-t3">Competitor Domains (Up to 5)</label>
+              <label className="text-[11px] font-bold !text-dash-textMuted">Competitor Domains (Up to 5)</label>
               <input
                 type="text"
                 value={competitorsInput}
                 onChange={(e) => setCompetitorsInput(e.target.value)}
                 placeholder="e.g. competitor1.co.za, competitor2.co.za"
-                className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-purple/50 transition-all outline-none text-sm"
+                className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-bold focus:border-purple/50 transition-all outline-none text-sm"
               />
-              <p className="text-[9px] text-t3">Separate multiple domains with commas.</p>
+              <p className="text-[9px] !text-dash-textMuted">Separate multiple domains with commas.</p>
             </div>
             
             <div className="space-y-2">
-              <label className="text-[11px] font-black uppercase tracking-widest text-t3">Google Business Profile Name</label>
+              <label className="text-[11px] font-bold !text-dash-textMuted">Google Business Profile Name</label>
               <input
                 type="text"
                 value={gbpInput}
                 onChange={(e) => setGbpInput(e.target.value)}
                 placeholder="e.g. LeadsMind Johannesburg"
-                className="w-full bg-n600 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold focus:border-purple/50 transition-all outline-none text-sm"
+                className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-bold focus:border-purple/50 transition-all outline-none text-sm"
               />
-              <p className="text-[9px] text-t3">GBP name to detect in Local Map Pack organic pins.</p>
+              <p className="text-[9px] !text-dash-textMuted">GBP name to detect in Local Map Pack organic pins.</p>
             </div>
           </div>
 
@@ -845,7 +845,7 @@ export default function SeoTab() {
             <button
               type="submit"
               disabled={isSavingCompetitors}
-              className="bg-purple hover:bg-purple/80 text-white font-black uppercase tracking-widest text-[11px] px-8 py-3 rounded-xl shadow-lg shadow-purple/20 transition-all disabled:opacity-50"
+              className="bg-purple hover:bg-purple/80 text-white font-bold text-[11px] px-8 py-3 rounded-xl shadow-lg shadow-purple/20 transition-all disabled:opacity-50"
             >
               {isSavingCompetitors ? 'Saving...' : 'Save Competitors'}
             </button>
@@ -854,16 +854,16 @@ export default function SeoTab() {
       </div>
 
       {/* 2. Google Search Console OAuth Connection & Metrics Averages */}
-      <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
-        <div className="absolute top-0 left-0 w-1 h-full bg-accent2"></div>
+      <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden group">
+        <div className="absolute top-0 left-0 w-1 h-full bg-dash-accent"></div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-2">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-accent2/10 flex items-center justify-center text-accent2">
+            <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
               <TrendingUp size={20} />
             </div>
             <div>
-              <h4 className="text-[15px] font-space font-bold text-t1 uppercase">GOOGLE SEARCH CONSOLE</h4>
-              <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">South Africa Telemetry Sync</p>
+              <h4 className="text-[15px] font-bold !text-dash-text uppercase">GOOGLE SEARCH CONSOLE</h4>
+              <p className="text-[11px] !text-dash-textMuted font-medium">South Africa Telemetry Sync</p>
             </div>
           </div>
 
@@ -872,18 +872,18 @@ export default function SeoTab() {
               <button
                 onClick={handleManualSync}
                 disabled={isSyncingGSC}
-                className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] hover:bg-white/[0.08] text-t2 hover:text-t1 rounded-xl text-[11px] font-bold transition-all border border-white/5 uppercase tracking-widest"
+                className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] hover:bg-white/[0.08] !text-dash-textMuted hover:!text-dash-text rounded-xl text-[11px] font-bold transition-all border border-dash-border"
               >
-                <RefreshCw size={12} className={isSyncingGSC ? 'animate-spin text-accent' : ''} />
+                <RefreshCw size={12} className={isSyncingGSC ? 'animate-spin text-dash-accent' : ''} />
                 Sync Telemetry
               </button>
             )}
             <button
               onClick={handleConnectGSC}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[11px] font-bold transition-all ${
                 project?.gsc_connected 
                   ? 'bg-green/10 text-green border border-green/20 hover:bg-green/20' 
-                  : 'bg-accent hover:bg-accent2 text-white shadow-lg shadow-accent/20'
+                  : 'bg-dash-accent hover:bg-dash-accent text-white shadow-lg shadow-dash-accent/20'
               }`}
             >
               <CheckCircle size={14} />
@@ -895,33 +895,33 @@ export default function SeoTab() {
         {/* Sync telemetry highlights */}
         {project?.gsc_connected ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-            <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1">
-              <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">30-Day Clicks (ZAF)</p>
-              <h3 className="text-2xl font-space font-bold text-t1">{project.cached_gsc_clicks}</h3>
-              <p className="text-[9px] text-green font-semibold">● Active Sync</p>
+            <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1">
+              <p className="text-[10px] !text-dash-textMuted font-bold">30-Day Clicks (ZAF)</p>
+              <h3 className="text-2xl font-bold !text-dash-text">{project.cached_gsc_clicks}</h3>
+              <p className="text-[9px] text-green-600 font-semibold">● Active Sync</p>
             </div>
-            <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1">
-              <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">30-Day Impressions</p>
-              <h3 className="text-2xl font-space font-bold text-t1">{project.cached_gsc_impressions}</h3>
-              <p className="text-[9px] text-accent2 font-semibold">● Clean Telemetry</p>
+            <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1">
+              <p className="text-[10px] !text-dash-textMuted font-bold">30-Day Impressions</p>
+              <h3 className="text-2xl font-bold !text-dash-text">{project.cached_gsc_impressions}</h3>
+              <p className="text-[9px] text-dash-accent font-semibold">● Clean Telemetry</p>
             </div>
-            <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1">
-              <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">Average CTR</p>
-              <h3 className="text-2xl font-space font-bold text-amber">{(project.cached_gsc_ctr * 100).toFixed(2)}%</h3>
-              <p className="text-[9px] text-t3 font-medium uppercase tracking-widest">South African queries</p>
+            <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1">
+              <p className="text-[10px] !text-dash-textMuted font-bold">Average CTR</p>
+              <h3 className="text-2xl font-bold text-amber">{(project.cached_gsc_ctr * 100).toFixed(2)}%</h3>
+              <p className="text-[9px] !text-dash-textMuted font-medium">South African queries</p>
             </div>
-            <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1">
-              <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">Average Position</p>
-              <h3 className="text-2xl font-space font-bold text-purple">{project.cached_gsc_position.toFixed(1)}</h3>
-              <p className="text-[9px] text-t3 font-medium uppercase tracking-widest">Avg SERP Ranking</p>
+            <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1">
+              <p className="text-[10px] !text-dash-textMuted font-bold">Average Position</p>
+              <h3 className="text-2xl font-bold text-purple">{project.cached_gsc_position.toFixed(1)}</h3>
+              <p className="text-[9px] !text-dash-textMuted font-medium">Avg SERP Ranking</p>
             </div>
           </div>
         ) : (
-          <div className="bg-n600/30 border border-dashed border-white/10 rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-3">
+          <div className="bg-dash-surface/30 border border-dashed border-dash-border rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-3">
             <AlertCircle size={28} className="text-amber" />
             <div>
-              <h5 className="text-[13px] font-bold text-t1 uppercase">Telemetry Not Linked</h5>
-              <p className="text-[11px] text-t3 max-w-md mt-1">
+              <h5 className="text-[13px] font-bold !text-dash-text uppercase">Telemetry Not Linked</h5>
+              <p className="text-[11px] !text-dash-textMuted max-w-md mt-1">
                 Link your Google Search Console to dynamically fetch South African clicks, impressions, and keyword rankings automatically.
               </p>
             </div>
@@ -930,20 +930,20 @@ export default function SeoTab() {
       </div>
 
       {/* 2b. Live SERP Feature Averages & Sync Controllers */}
-      <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
-        <div className="absolute top-0 left-0 w-1 h-full bg-accent2"></div>
+      <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden group">
+        <div className="absolute top-0 left-0 w-1 h-full bg-dash-accent"></div>
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-2">
           <div>
-            <h4 className="text-[15px] font-space font-bold text-t1 uppercase">SERP TELEMETRY ENGINE</h4>
-            <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">DataForSEO Organic Features Status</p>
+            <h4 className="text-[15px] font-bold !text-dash-text uppercase">SERP TELEMETRY ENGINE</h4>
+            <p className="text-[11px] !text-dash-textMuted font-medium">DataForSEO Organic Features Status</p>
           </div>
           
           <div className="flex items-center gap-3">
             <button
               onClick={handleSyncRanks}
               disabled={isSyncingRanks}
-              className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent2 text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-accent/20"
+              className="flex items-center gap-2 px-4 py-2.5 bg-dash-accent hover:bg-dash-accent text-white rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-dash-accent/20"
             >
               <RefreshCw size={12} className={isSyncingRanks ? 'animate-spin' : ''} />
               {isSyncingRanks ? 'Checking SERPs...' : 'Sync Rank Telemetry'}
@@ -952,7 +952,7 @@ export default function SeoTab() {
             <button
               onClick={handleSyncCompetitorKeywords}
               disabled={isSyncingCompetitorKeywords}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-t2 hover:text-t1 rounded-xl text-[11px] font-bold border border-white/5 uppercase tracking-widest transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] !text-dash-textMuted hover:!text-dash-text rounded-xl text-[11px] font-bold border border-dash-border transition-all"
             >
               <Calendar size={12} className={isSyncingCompetitorKeywords ? 'animate-spin text-purple' : ''} />
               {isSyncingCompetitorKeywords ? 'Scanning...' : 'Weekly Competitor Scan'}
@@ -961,64 +961,64 @@ export default function SeoTab() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-          <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1 relative overflow-hidden">
+          <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1 relative overflow-hidden">
             <div className="absolute top-2 right-2 text-amber bg-amber/10 p-1.5 rounded-lg">
               <Star size={16} />
             </div>
-            <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">Featured Snippets Owned</p>
-            <h3 className="text-2xl font-space font-bold text-amber">{totalFeaturedSnippets}</h3>
-            <p className="text-[9px] text-t3">Target queries holding Rank #1 snippet</p>
+            <p className="text-[10px] !text-dash-textMuted font-bold">Featured Snippets Owned</p>
+            <h3 className="text-2xl font-bold text-amber">{totalFeaturedSnippets}</h3>
+            <p className="text-[9px] !text-dash-textMuted">Target queries holding Rank #1 snippet</p>
           </div>
 
-          <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1 relative overflow-hidden">
+          <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1 relative overflow-hidden">
             <div className="absolute top-2 right-2 text-green bg-green/10 p-1.5 rounded-lg">
               <MapPin size={16} />
             </div>
-            <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">GBP Map Pack Presence</p>
-            <h3 className="text-2xl font-space font-bold text-green">{totalLocalPacks}</h3>
-            <p className="text-[9px] text-t3">Keywords where your GBP name is pinned</p>
+            <p className="text-[10px] !text-dash-textMuted font-bold">GBP Map Pack Presence</p>
+            <h3 className="text-2xl font-bold text-green">{totalLocalPacks}</h3>
+            <p className="text-[9px] !text-dash-textMuted">Keywords where your GBP name is pinned</p>
           </div>
 
-          <div className="bg-n600/50 border border-white/5 rounded-xl p-5 space-y-1 relative overflow-hidden">
+          <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1 relative overflow-hidden">
             <div className="absolute top-2 right-2 text-purple bg-purple/10 p-1.5 rounded-lg">
               <Search size={16} />
             </div>
-            <p className="text-[10px] text-t3 font-bold uppercase tracking-widest">Average PAA Questions</p>
-            <h3 className="text-2xl font-space font-bold text-purple">{avgPAAQuestions}</h3>
-            <p className="text-[9px] text-t3">Average question cards surfaced on SERPs</p>
+            <p className="text-[10px] !text-dash-textMuted font-bold">Average PAA Questions</p>
+            <h3 className="text-2xl font-bold text-purple">{avgPAAQuestions}</h3>
+            <p className="text-[9px] !text-dash-textMuted">Average question cards surfaced on SERPs</p>
           </div>
         </div>
       </div>
 
       {/* 2c. SA Competitor Gap Comparison Card */}
-      <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
+      <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden group">
         <div className="absolute top-0 left-0 w-1 h-full bg-amber"></div>
         <div className="flex items-center gap-4 mb-2">
           <div className="w-10 h-10 rounded-xl bg-amber/10 flex items-center justify-center text-amber">
             <TrendingUp size={20} />
           </div>
           <div>
-            <h4 className="text-[15px] font-space font-bold text-t1 uppercase">SA COMPETITOR KEYWORD GAP</h4>
-            <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Competitor ranks ≤ 20, Client does not rank</p>
+            <h4 className="text-[15px] font-bold !text-dash-text uppercase">SA COMPETITOR KEYWORD GAP</h4>
+            <p className="text-[11px] !text-dash-textMuted font-medium">Competitor ranks ≤ 20, Client does not rank</p>
           </div>
         </div>
 
         {metrics?.gapAnalysis?.length > 0 ? (
-          <div className="border border-white/5 rounded-xl overflow-hidden">
+          <div className="border border-dash-border rounded-xl overflow-hidden">
             <table className="w-full text-left border-collapse text-[12px]">
               <thead>
-                <tr className="bg-n600 border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-t3">
+                <tr className="bg-dash-surface border-b border-dash-border text-[10px] font-bold !text-dash-textMuted">
                   <th className="px-5 py-3.5">Keyword</th>
                   <th className="px-5 py-3.5">Threat Domain</th>
                   <th className="px-5 py-3.5 text-center">Competitor Rank</th>
                   <th className="px-5 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-dash-border">
                 {metrics.gapAnalysis.map((gap: any, idx: number) => (
                   <tr key={idx} className="hover:bg-white/[0.02] transition-colors font-medium">
-                    <td className="px-5 py-3.5 text-t1 font-bold font-space">{gap.keyword}</td>
-                    <td className="px-5 py-3.5 text-t2 font-mono text-[11px]">{gap.competitor_domain}</td>
+                    <td className="px-5 py-3.5 !text-dash-text font-bold">{gap.keyword}</td>
+                    <td className="px-5 py-3.5 !text-dash-textMuted font-mono text-[11px]">{gap.competitor_domain}</td>
                     <td className="px-5 py-3.5 text-center">
                       <span className="inline-flex items-center px-2 py-0.5 bg-amber/10 text-amber rounded text-[11px] font-bold">
                         Rank #{gap.competitor_rank}
@@ -1031,7 +1031,7 @@ export default function SeoTab() {
                           setPipelineTitleInput(`SEO Capture Campaign: ${gap.keyword}`);
                           toast.info(`Pre-filled Content Pipeline form for "${gap.keyword}". Create your campaign card below.`);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1 bg-amber text-black hover:bg-amber/80 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ml-auto shadow-md"
+                        className="flex items-center gap-1.5 px-3 py-1 bg-amber text-black hover:bg-amber/80 text-[10px] font-bold rounded-lg transition-all ml-auto shadow-md"
                       >
                         <Plus size={10} />
                         Queue Editorial
@@ -1043,10 +1043,10 @@ export default function SeoTab() {
             </table>
           </div>
         ) : (
-          <div className="bg-n600/10 border border-dashed border-white/5 rounded-xl py-8 flex flex-col items-center justify-center text-center space-y-2">
-            <AlertCircle className="text-t3" size={24} />
-            <h5 className="text-[12px] font-bold text-t2 uppercase">No Competitor Gaps Found</h5>
-            <p className="text-[11px] text-t3 max-w-sm">No competitor domains rank in the top 20 for keywords you aren't indexing.</p>
+          <div className="bg-dash-surface/10 border border-dashed border-dash-border rounded-xl py-8 flex flex-col items-center justify-center text-center space-y-2">
+            <AlertCircle className="!text-dash-textMuted" size={24} />
+            <h5 className="text-[12px] font-bold !text-dash-textMuted uppercase">No Competitor Gaps Found</h5>
+            <p className="text-[11px] !text-dash-textMuted max-w-sm">No competitor domains rank in the top 20 for keywords you aren't indexing.</p>
           </div>
         )}
       </div>
@@ -1091,7 +1091,7 @@ export default function SeoTab() {
           <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1">
             <p className="text-[11px] !text-dash-textMuted font-semibold">Total won revenue</p>
             <h3 className="text-2xl font-bold !text-dash-text">R {totalWonRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-            <p className="text-[10px] text-green font-semibold">● CRM won deals</p>
+            <p className="text-[10px] text-green-600 font-semibold">● CRM won deals</p>
           </div>
           <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-1">
             <p className="text-[11px] !text-dash-textMuted font-semibold">Total content cost</p>
@@ -1117,7 +1117,7 @@ export default function SeoTab() {
           <div className="border border-dash-border rounded-xl overflow-hidden pt-2">
             <table className="w-full text-left border-collapse text-[12px]">
               <thead>
-                <tr className="bg-dash-surface border-b border-dash-border text-[11px] font-bold uppercase tracking-wide !text-dash-textMuted">
+                <tr className="bg-dash-surface border-b border-dash-border text-[11px] font-bold !text-dash-textMuted">
                   <th className="px-5 py-3.5">Date</th>
                   <th className="px-5 py-3.5">Keyword</th>
                   <th className="px-5 py-3.5 text-center">Visitors (Clicks)</th>
@@ -1160,7 +1160,7 @@ export default function SeoTab() {
       </div>
 
       {/* 3. Tracked Keywords & SERP Monitor */}
-      <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
+      <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden group">
         <div className="absolute top-0 left-0 w-1 h-full bg-purple"></div>
         <div className="flex items-center justify-between gap-4 mb-2">
           <div className="flex items-center gap-4">
@@ -1168,40 +1168,40 @@ export default function SeoTab() {
               <Search size={20} />
             </div>
             <div>
-              <h4 className="text-[15px] font-space font-bold text-t1 uppercase">KEYWORD SERP MONITOR</h4>
-              <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">Active Search Target Queries</p>
+              <h4 className="text-[15px] font-bold !text-dash-text uppercase">KEYWORD SERP MONITOR</h4>
+              <p className="text-[11px] !text-dash-textMuted font-medium">Active Search Target Queries</p>
             </div>
           </div>
         </div>
 
         {/* Add keyword form */}
-        <form onSubmit={handleAddKeyword} className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-n600/40 p-4 border border-white/5 rounded-xl">
+        <form onSubmit={handleAddKeyword} className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-dash-surface/40 p-4 border border-dash-border rounded-xl">
           <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Keyword</label>
+            <label className="text-[10px] font-bold !text-dash-textMuted">Keyword</label>
             <input
               type="text"
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
               placeholder="e.g. CRM software South Africa"
-              className="w-full bg-n900 border border-white/5 rounded-lg px-3 py-2 text-t1 text-[12px] font-semibold focus:border-accent/40 outline-none"
+              className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 !text-dash-text text-[12px] font-semibold focus:border-dash-accent/40 outline-none"
               required
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Target URL (Optional)</label>
+            <label className="text-[10px] font-bold !text-dash-textMuted">Target URL (Optional)</label>
             <input
               type="text"
               value={targetUrlInput}
               onChange={(e) => setTargetUrlInput(e.target.value)}
               placeholder="e.g. /features/crm"
-              className="w-full bg-n900 border border-white/5 rounded-lg px-3 py-2 text-t1 text-[12px] font-semibold focus:border-accent/40 outline-none"
+              className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 !text-dash-text text-[12px] font-semibold focus:border-dash-accent/40 outline-none"
             />
           </div>
           <div className="flex items-end justify-end">
             <button
               type="submit"
               disabled={isAddingKeyword || !project}
-              className="w-full bg-purple hover:bg-purple/80 text-white font-black uppercase tracking-widest text-[10px] h-[34px] px-6 rounded-lg shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+              className="w-full bg-purple hover:bg-purple/80 text-white font-bold text-[10px] h-[34px] px-6 rounded-lg shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-1"
             >
               <Plus size={12} />
               {isAddingKeyword ? 'Adding...' : 'Add Keyword'}
@@ -1211,10 +1211,10 @@ export default function SeoTab() {
 
         {/* Keywords list */}
         {keywords.length > 0 ? (
-          <div className="border border-white/5 rounded-xl overflow-hidden">
+          <div className="border border-dash-border rounded-xl overflow-hidden">
             <table className="w-full text-left border-collapse text-[12px]">
               <thead>
-                <tr className="bg-n600 border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-t3">
+                <tr className="bg-dash-surface border-b border-dash-border text-[10px] font-bold !text-dash-textMuted">
                   <th className="px-5 py-3.5">Keyword</th>
                   <th className="px-5 py-3.5">Target Landing URL</th>
                   <th className="px-5 py-3.5 text-center">Your Rank</th>
@@ -1222,7 +1222,7 @@ export default function SeoTab() {
                   <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-dash-border">
                 {keywords.map((kw) => {
                   const latestLog = latestRankLogMap.get(kw.keyword);
                   const clientRank = latestLog ? latestLog.rank : null;
@@ -1232,17 +1232,17 @@ export default function SeoTab() {
 
                   return (
                     <tr key={kw.id} className="hover:bg-white/[0.02] transition-colors font-medium">
-                      <td className="px-5 py-3.5 text-t1 font-bold font-space">
+                      <td className="px-5 py-3.5 !text-dash-text font-bold">
                         <div className="flex flex-col">
                           <span className="flex items-center gap-1.5">
                             {kw.keyword}
                             {hasSnippet && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 bg-amber/10 text-amber text-[8px] font-black rounded uppercase tracking-wider gap-0.5" title="Owns Featured Snippet">
+                              <span className="inline-flex items-center px-1.5 py-0.5 bg-amber/10 text-amber text-[8px] font-bold rounded gap-0.5" title="Owns Featured Snippet">
                                 🌟 Snippet
                               </span>
                             )}
                             {hasMapPack && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 bg-green/10 text-green text-[8px] font-black rounded uppercase tracking-wider gap-0.5" title="GBP in Local Map Pack">
+                              <span className="inline-flex items-center px-1.5 py-0.5 bg-green/10 text-green text-[8px] font-bold rounded gap-0.5" title="GBP in Local Map Pack">
                                 📍 Map Pack
                               </span>
                             )}
@@ -1252,19 +1252,19 @@ export default function SeoTab() {
                               href={latestLog.ranking_url} 
                               target="_blank" 
                               rel="noreferrer" 
-                              className="text-[10px] text-accent hover:underline flex items-center gap-1 mt-0.5 font-normal"
+                              className="text-[10px] text-dash-accent hover:underline flex items-center gap-1 mt-0.5 font-normal"
                             >
                               <ExternalLink size={8} /> View SERP landing page
                             </a>
                           )}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-t2 font-mono text-[11px]">{kw.target_url || '—'}</td>
+                      <td className="px-5 py-3.5 !text-dash-textMuted font-mono text-[11px]">{kw.target_url || '—'}</td>
                       <td className="px-5 py-3.5 text-center">
                         {(() => {
                           const badge = getRankBadgeProps(clientRank);
                           return (
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${badge.className}`}>
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded text-[10px] font-bold ${badge.className}`}>
                               {badge.label}
                             </span>
                           );
@@ -1272,19 +1272,19 @@ export default function SeoTab() {
                       </td>
                       <td className="px-5 py-3.5 text-left max-w-[180px] overflow-hidden truncate">
                         {project?.competitor_domains?.length > 0 ? (
-                          <div className="flex flex-col gap-1 text-[10px] text-t3">
+                          <div className="flex flex-col gap-1 text-[10px] !text-dash-textMuted">
                             {project.competitor_domains.map((comp: string) => {
                               const r = compRanks?.[comp];
                               return (
-                                <div key={comp} className="flex justify-between gap-2 border-b border-white/[0.02] pb-0.5">
+                                <div key={comp} className="flex justify-between gap-2 border-b border-dash-border pb-0.5">
                                   <span className="truncate">{comp}:</span>
-                                  <span className={r ? 'text-amber font-bold' : 'text-t3'}>{r ? `#${r}` : '—'}</span>
+                                  <span className={r ? 'text-amber font-bold' : '!text-dash-textMuted'}>{r ? `#${r}` : '—'}</span>
                                 </div>
                               );
                             })}
                           </div>
                         ) : (
-                          <span className="text-[10px] text-t3 italic">No competitors</span>
+                          <span className="text-[10px] !text-dash-textMuted italic">No competitors</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-right">
@@ -1295,14 +1295,14 @@ export default function SeoTab() {
                               setPipelineTitleInput(`SEO Article: ${kw.keyword}`);
                               toast.info(`Pre-filled content pipeline card for "${kw.keyword}". Scroll to Content Pipeline below.`);
                             }}
-                            className="p-1.5 text-t3 hover:text-accent hover:bg-accent/10 border border-transparent hover:border-accent/10 rounded-lg transition-all"
+                            className="p-1.5 !text-dash-textMuted hover:text-dash-accent hover:bg-dash-accent/10 border border-transparent hover:border-dash-accent/10 rounded-lg transition-all"
                             title="Send to Content Pipeline"
                           >
                             <FileText size={14} />
                           </button>
                           <button
                             onClick={() => handleDeleteKeyword(kw.id)}
-                            className="p-1.5 text-t3 hover:text-red hover:bg-red/10 border border-transparent hover:border-red/10 rounded-lg transition-all"
+                            className="p-1.5 !text-dash-textMuted hover:text-red hover:bg-red/10 border border-transparent hover:border-red/10 rounded-lg transition-all"
                             title="Remove Keyword"
                           >
                             <Trash2 size={14} />
@@ -1316,56 +1316,56 @@ export default function SeoTab() {
             </table>
           </div>
         ) : (
-          <div className="bg-n600/10 border border-dashed border-white/5 rounded-xl py-12 flex flex-col items-center justify-center text-center space-y-2">
-            <Search className="text-t3" size={24} />
-            <h5 className="text-[12px] font-bold text-t2 uppercase">No tracked keywords</h5>
-            <p className="text-[11px] text-t3 max-w-sm">Add target search keywords above to begin indexing search impressions.</p>
+          <div className="bg-dash-surface/10 border border-dashed border-dash-border rounded-xl py-12 flex flex-col items-center justify-center text-center space-y-2">
+            <Search className="!text-dash-textMuted" size={24} />
+            <h5 className="text-[12px] font-bold !text-dash-textMuted uppercase">No tracked keywords</h5>
+            <p className="text-[11px] !text-dash-textMuted max-w-sm">Add target search keywords above to begin indexing search impressions.</p>
           </div>
         )}
       </div>
 
       {/* 4. Content Pipeline Manager */}
-      <div className="space-y-6 bg-n800 border border-white/5 rounded-2xl p-8 relative overflow-hidden group">
+      <div className="space-y-6 bg-white border border-dash-border rounded-2xl p-8 relative overflow-hidden group">
         <div className="absolute top-0 left-0 w-1 h-full bg-amber"></div>
         <div className="flex items-center gap-4 mb-2">
           <div className="w-10 h-10 rounded-xl bg-amber/10 flex items-center justify-center text-amber">
             <FileText size={20} />
           </div>
           <div>
-            <h4 className="text-[15px] font-space font-bold text-t1 uppercase">SEO CONTENT PIPELINE</h4>
-            <p className="text-[11px] text-t3 font-medium uppercase tracking-widest">8-Stage Structural Editorial Workflow</p>
+            <h4 className="text-[15px] font-bold !text-dash-text uppercase">SEO CONTENT PIPELINE</h4>
+            <p className="text-[11px] !text-dash-textMuted font-medium">8-Stage Structural Editorial Workflow</p>
           </div>
         </div>
 
         {/* Content Pipeline Form */}
-        <form onSubmit={handleAddPipelineItem} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-n600/40 p-4 border border-white/5 rounded-xl text-[12px]">
+        <form onSubmit={handleAddPipelineItem} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-dash-surface/40 p-4 border border-dash-border rounded-xl text-[12px]">
           <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Keyword</label>
+            <label className="text-[10px] font-bold !text-dash-textMuted">Keyword</label>
             <input
               type="text"
               value={pipelineKeywordInput}
               onChange={(e) => setPipelineKeywordInput(e.target.value)}
               placeholder="e.g. Sales Funnels guide"
-              className="w-full bg-n900 border border-white/5 rounded-lg px-3 py-2 text-t1 text-[12px] font-semibold focus:border-accent/40 outline-none"
+              className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 !text-dash-text text-[12px] font-semibold focus:border-dash-accent/40 outline-none"
               required
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Article Working Title</label>
+            <label className="text-[10px] font-bold !text-dash-textMuted">Article Working Title</label>
             <input
               type="text"
               value={pipelineTitleInput}
               onChange={(e) => setPipelineTitleInput(e.target.value)}
               placeholder="e.g. Complete Guide to Sales Funnels"
-              className="w-full bg-n900 border border-white/5 rounded-lg px-3 py-2 text-t1 text-[12px] font-semibold focus:border-accent/40 outline-none"
+              className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 !text-dash-text text-[12px] font-semibold focus:border-dash-accent/40 outline-none"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-t3">Workflow Stage</label>
+            <label className="text-[10px] font-bold !text-dash-textMuted">Workflow Stage</label>
             <select
               value={pipelineStatusInput}
               onChange={(e: any) => setPipelineStatusInput(e.target.value)}
-              className="w-full bg-n900 border border-white/5 rounded-lg px-3 py-2.5 text-t1 text-[11px] font-bold focus:border-accent/40 outline-none uppercase tracking-wider"
+              className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2.5 !text-dash-text text-[11px] font-bold focus:border-dash-accent/40 outline-none"
             >
               {pipelineStages.map((stage) => (
                 <option key={stage} value={stage}>{stage.toUpperCase()}</option>
@@ -1376,7 +1376,7 @@ export default function SeoTab() {
             <button
               type="submit"
               disabled={isAddingPipeline || !project}
-              className="w-full bg-amber hover:bg-amber/80 text-white font-black uppercase tracking-widest text-[10px] h-[34px] px-6 rounded-lg shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+              className="w-full bg-amber hover:bg-amber/80 text-white font-bold text-[10px] h-[34px] px-6 rounded-lg shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-1"
             >
               <Plus size={12} />
               {isAddingPipeline ? 'Create Card' : 'Create Card'}
@@ -1390,14 +1390,14 @@ export default function SeoTab() {
             {KANBAN_COLUMNS.map((col) => {
               const colItems = pipelineItems.filter(item => col.stages.includes(item.status));
               return (
-                <div key={col.id} className="min-w-[280px] max-w-[320px] flex-1 bg-n900/60 border border-white/5 rounded-2xl p-4 flex flex-col space-y-4">
+                <div key={col.id} className="min-w-[280px] max-w-[320px] flex-1 bg-dash-surface/60 border border-dash-border rounded-2xl p-4 flex flex-col space-y-4">
                   {/* Column Header */}
-                  <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <div className="flex items-center justify-between border-b border-dash-border pb-2">
                     <div>
-                      <h5 className="text-[12px] font-space font-extrabold text-t1 uppercase">{col.title}</h5>
-                      <p className="text-[8px] text-t3 tracking-wider font-semibold uppercase">{col.stages.join(' / ')}</p>
+                      <h5 className="text-[12px] font-bold !text-dash-text">{col.title}</h5>
+                      <p className="text-[8px] !text-dash-textMuted font-semibold">{col.stages.join(' / ')}</p>
                     </div>
-                    <span className="text-[10px] font-bold bg-white/5 text-t3 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold bg-dash-surface !text-dash-textMuted px-2 py-0.5 rounded-full">
                       {colItems.length}
                     </span>
                   </div>
@@ -1408,20 +1408,20 @@ export default function SeoTab() {
                       colItems.map((item) => (
                         <div 
                           key={item.id} 
-                          className={`bg-n800 border rounded-xl p-4 flex flex-col gap-3 hover:border-white/10 transition-all relative overflow-hidden group ${
-                            item.is_stuck ? 'border-amber/30 shadow-lg shadow-amber/5' : 'border-white/5'
+                          className={`bg-white border rounded-xl p-4 flex flex-col gap-3 hover:border-dash-border transition-all relative overflow-hidden group ${
+                            item.is_stuck ? 'border-amber/30 shadow-lg shadow-amber/5' : 'border-dash-border'
                           }`}
                         >
                           <div className={`absolute top-0 left-0 h-full w-1 ${item.is_stuck ? 'bg-amber' : 'bg-amber/50'}`}></div>
                           
                           {/* Card Header */}
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-[9px] text-t3 font-black uppercase tracking-widest truncate max-w-[150px]" title={item.keyword}>
+                            <span className="text-[9px] !text-dash-textMuted font-bold truncate max-w-[150px]" title={item.keyword}>
                               {item.keyword}
                             </span>
                             <button
                               onClick={() => handleDeletePipelineItem(item.id)}
-                              className="text-t3 hover:text-red p-1 rounded hover:bg-red/10 transition-all"
+                              className="!text-dash-textMuted hover:text-red p-1 rounded hover:bg-red/10 transition-all"
                               title="Delete Card"
                             >
                               <Trash2 size={12} />
@@ -1430,26 +1430,26 @@ export default function SeoTab() {
 
                           {/* Card Title */}
                           <div className="space-y-1">
-                            <h6 className="text-[12px] font-space font-bold text-t1 uppercase leading-snug">
+                            <h6 className="text-[12px] font-bold !text-dash-text uppercase leading-snug">
                               {item.title || 'Untitled Campaign'}
                             </h6>
-                            <p className="text-[9px] text-t3 font-medium">
+                            <p className="text-[9px] !text-dash-textMuted font-medium">
                               Created: {new Date(item.created_at).toLocaleDateString()}
                             </p>
                             {item.is_stuck && (
-                              <div className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-amber/10 text-amber text-[8px] font-black rounded border border-amber/20 uppercase tracking-widest animate-pulse">
+                              <div className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-amber/10 text-amber text-[8px] font-bold rounded border border-amber/20 animate-pulse">
                                 ⚠️ STUCK (&gt;21 DAYS)
                               </div>
                             )}
                           </div>
 
                           {/* Card Controls */}
-                          <div className="pt-2 border-t border-white/5 space-y-2.5">
+                          <div className="pt-2 border-t border-dash-border space-y-2.5">
                             {/* Inline cost */}
                             <div className="flex items-center justify-between gap-2">
-                              <label className="text-[9px] text-t3 font-bold uppercase tracking-widest">Cost (ZAR)</label>
+                              <label className="text-[9px] !text-dash-textMuted font-bold">Cost (ZAR)</label>
                               <div className="relative">
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-t3 font-mono text-[9px]">R</span>
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 !text-dash-textMuted font-mono text-[9px]">R</span>
                                 <input
                                   type="number"
                                   defaultValue={item.cost || 0}
@@ -1465,18 +1465,18 @@ export default function SeoTab() {
                                       }
                                     }
                                   }}
-                                  className="bg-n900 border border-white/5 text-t1 font-mono text-[9px] pl-5 pr-1 py-1 rounded outline-none w-20 text-right focus:border-accent/40"
+                                  className="bg-dash-surface border border-dash-border !text-dash-text font-mono text-[9px] pl-5 pr-1 py-1 rounded outline-none w-20 text-right focus:border-dash-accent/40"
                                 />
                               </div>
                             </div>
 
                             {/* Workflow Stage */}
                             <div className="flex items-center justify-between gap-2">
-                              <label className="text-[9px] text-t3 font-bold uppercase tracking-widest">Stage</label>
+                              <label className="text-[9px] !text-dash-textMuted font-bold">Stage</label>
                               <select
                                 value={item.status}
                                 onChange={(e) => handleUpdatePipelineStatus(item.id, e.target.value as any)}
-                                className="bg-n900 border border-white/5 text-amber text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded outline-none cursor-pointer focus:border-accent/40 w-28"
+                                className="bg-dash-surface border border-dash-border text-amber text-[9px] font-bold px-2 py-1 rounded outline-none cursor-pointer focus:border-dash-accent/40 w-28"
                               >
                                 {pipelineStages.map((stage) => (
                                   <option key={stage} value={stage}>{stage.toUpperCase()}</option>
@@ -1486,13 +1486,13 @@ export default function SeoTab() {
 
                             {/* Quick Shift Arrows */}
                             <div className="flex items-center justify-between pt-1">
-                              <span className="text-[8px] text-t3 font-semibold uppercase">Shift Stage</span>
+                              <span className="text-[8px] !text-dash-textMuted font-semibold">Shift stage</span>
                               <div className="flex items-center gap-1">
                                 <button
                                   type="button"
                                   onClick={() => handleShiftColumn(item.id, item.status, 'left')}
                                   disabled={col.id === 'research'}
-                                  className="p-1 rounded bg-white/5 border border-white/5 hover:bg-white/10 hover:text-accent disabled:opacity-30 disabled:hover:bg-white/5 disabled:hover:text-t3 transition-all text-t3"
+                                  className="p-1 rounded bg-dash-surface border border-dash-border hover:bg-dash-border/60 hover:text-dash-accent disabled:opacity-30 disabled:hover:bg-dash-surface disabled:hover:!text-dash-textMuted transition-all motion-reduce:transition-none !text-dash-textMuted"
                                   title="Shift Left"
                                 >
                                   <ChevronLeft size={12} />
@@ -1501,7 +1501,7 @@ export default function SeoTab() {
                                   type="button"
                                   onClick={() => handleShiftColumn(item.id, item.status, 'right')}
                                   disabled={col.id === 'ranking'}
-                                  className="p-1 rounded bg-white/5 border border-white/5 hover:bg-white/10 hover:text-accent disabled:opacity-30 disabled:hover:bg-white/5 disabled:hover:text-t3 transition-all text-t3"
+                                  className="p-1 rounded bg-dash-surface border border-dash-border hover:bg-dash-border/60 hover:text-dash-accent disabled:opacity-30 disabled:hover:bg-dash-surface disabled:hover:!text-dash-textMuted transition-all motion-reduce:transition-none !text-dash-textMuted"
                                   title="Shift Right"
                                 >
                                   <ChevronRight size={12} />
@@ -1512,7 +1512,7 @@ export default function SeoTab() {
                         </div>
                       ))
                     ) : (
-                      <div className="flex-1 py-12 flex flex-col items-center justify-center text-center border border-dashed border-white/5 rounded-xl text-t3 text-[10px] space-y-1">
+                      <div className="flex-1 py-12 flex flex-col items-center justify-center text-center border border-dashed border-dash-border rounded-xl !text-dash-textMuted text-[10px] space-y-1">
                         <span>Empty Stage</span>
                       </div>
                     )}
@@ -1522,10 +1522,10 @@ export default function SeoTab() {
             })}
           </div>
         ) : (
-          <div className="bg-n600/10 border border-dashed border-white/5 rounded-xl py-12 flex flex-col items-center justify-center text-center space-y-2">
-            <FileText className="text-t3" size={24} />
-            <h5 className="text-[12px] font-bold text-t2 uppercase">Content pipeline empty</h5>
-            <p className="text-[11px] text-t3 max-w-sm">Construct editorial workflow stages to schedule publications.</p>
+          <div className="bg-dash-surface/10 border border-dashed border-dash-border rounded-xl py-12 flex flex-col items-center justify-center text-center space-y-2">
+            <FileText className="!text-dash-textMuted" size={24} />
+            <h5 className="text-[12px] font-bold !text-dash-textMuted uppercase">Content pipeline empty</h5>
+            <p className="text-[11px] !text-dash-textMuted max-w-sm">Construct editorial workflow stages to schedule publications.</p>
           </div>
         )}
       </div>

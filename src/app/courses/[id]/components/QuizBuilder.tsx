@@ -466,9 +466,9 @@ export default function QuizBuilder({ quizId }: QuizBuilderProps) {
                 onChange={(e) => setStarterCode(e.target.value)}
                 rows={3}
                 placeholder="// Starter challenge code..."
-                className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text font-mono"
               />
-              <span className="text-[10px] text-white/50 block font-bold">Assertions test suite</span>
+              <span className="text-[10px] !text-dash-textMuted block font-bold">Assertions test suite</span>
               {codeAssertions.map((assert, idx) => (
                 <div key={idx} className="flex gap-2">
                   <input 
@@ -480,7 +480,7 @@ export default function QuizBuilder({ quizId }: QuizBuilderProps) {
                       setCodeAssertions(updated);
                     }}
                     placeholder="Inputs parameter"
-                    className="flex-1 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono"
+                    className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1 text-xs !text-dash-text font-mono"
                   />
                   <input 
                     type="text"
@@ -491,19 +491,19 @@ export default function QuizBuilder({ quizId }: QuizBuilderProps) {
                       setCodeAssertions(updated);
                     }}
                     placeholder="Expected outcome"
-                    className="flex-1 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono"
+                    className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1 text-xs !text-dash-text font-mono"
                   />
-                  <button onClick={() => setCodeAssertions(codeAssertions.filter((_, i) => i !== idx))} className="text-red-400 shrink-0"><Trash2 size={12} /></button>
+                  <button onClick={() => setCodeAssertions(codeAssertions.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
                 </div>
               ))}
-              <Button onClick={() => setCodeAssertions([...codeAssertions, { input: "", expected: "" }])} className="h-8 bg-white/5 text-white rounded-lg text-[10px] font-bold">+ Add Assertion</Button>
+              <Button onClick={() => setCodeAssertions([...codeAssertions, { input: "", expected: "" }])} className="h-8 bg-dash-surface !text-dash-text rounded-lg text-[10px] font-bold">+ Add Assertion</Button>
             </div>
           )}
 
           {/* File Upload Rubrics */}
           {type === "file_upload" && (
             <div className="space-y-3">
-              <span className="text-[10px] text-white/50 block font-bold">Grading criteria rubric:</span>
+              <span className="text-[10px] !text-dash-textMuted block font-bold">Grading criteria rubric:</span>
               {rubrics.map((rubric, idx) => (
                 <div key={idx} className="flex gap-2">
                   <input 
@@ -515,9 +515,9 @@ export default function QuizBuilder({ quizId }: QuizBuilderProps) {
                       setRubrics(updated);
                     }}
                     placeholder="Criteria"
-                    className="flex-1 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1 text-xs text-white"
+                    className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1 text-xs !text-dash-text"
                   />
-                  <input 
+                  <input
                     type="number"
                     value={rubric.max_points}
                     onChange={(e) => {
@@ -526,29 +526,29 @@ export default function QuizBuilder({ quizId }: QuizBuilderProps) {
                       setRubrics(updated);
                     }}
                     placeholder="Max Points"
-                    className="w-24 bg-[#111d47] border border-white/10 rounded-lg px-2 py-1 text-xs text-white"
+                    className="w-24 bg-white border border-dash-border rounded-lg px-2 py-1 text-xs !text-dash-text"
                   />
-                  <button onClick={() => setRubrics(rubrics.filter((_, i) => i !== idx))} className="text-red-400 shrink-0"><Trash2 size={12} /></button>
+                  <button onClick={() => setRubrics(rubrics.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
                 </div>
               ))}
-              <Button onClick={() => setRubrics([...rubrics, { criteria: "", max_points: 5 }])} className="h-8 bg-white/5 text-white rounded-lg text-[10px] font-bold">+ Add Rubric Item</Button>
+              <Button onClick={() => setRubrics([...rubrics, { criteria: "", max_points: 5 }])} className="h-8 bg-dash-surface !text-dash-text rounded-lg text-[10px] font-bold">+ Add Rubric Item</Button>
             </div>
           )}
         </div>
 
         {/* Explanation Block with LENA */}
-        <div className="space-y-2 border-t border-white/5 pt-4">
+        <div className="space-y-2 border-t border-dash-border pt-4">
           <div className="flex items-center justify-between">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 block">Pedagogical Explanation</label>
+            <label className="text-[9px] font-bold !text-dash-textMuted block">Pedagogical Explanation</label>
             <button
               type="button"
               onClick={handleLenaGenerate}
               disabled={isGenerating}
-              className="text-[10px] font-bold text-primary flex items-center gap-1 hover:text-primary-light transition-all disabled:opacity-50"
+              className="text-[10px] font-bold text-primary flex items-center gap-1 hover:opacity-80 transition-all motion-reduce:transition-none disabled:opacity-50"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 size={12} className="animate-spin" /> Customising Context...
+                  <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> Customising Context...
                 </>
               ) : (
                 <>
@@ -557,25 +557,25 @@ export default function QuizBuilder({ quizId }: QuizBuilderProps) {
               )}
             </button>
           </div>
-          <textarea 
-            value={explanation} 
+          <textarea
+            value={explanation}
             onChange={(e) => setExplanation(e.target.value)}
             rows={3}
             placeholder="Pedagogical rationale displayed to student after answering..."
-            className="w-full bg-[#111d47] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary font-mono leading-relaxed"
+            className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary font-mono leading-relaxed"
           />
         </div>
 
         {/* Action button */}
-        <div className="flex items-center justify-end gap-3 border-t border-white/5 pt-4 shrink-0">
+        <div className="flex items-center justify-end gap-3 border-t border-dash-border pt-4 shrink-0">
           <Button
             onClick={handleSaveQuestion}
             disabled={isPending}
-            className="h-11 bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black px-6 shadow-lg shadow-primary/20"
+            className="h-11 bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-bold px-6 shadow-lg shadow-primary/20 transition-colors motion-reduce:transition-none"
           >
             {isPending ? (
               <>
-                <Loader2 size={14} className="animate-spin mr-2" /> Saving...
+                <Loader2 size={14} className="animate-spin motion-reduce:animate-none mr-2" /> Saving...
               </>
             ) : (
               "Save Question Node"

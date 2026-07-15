@@ -1,8 +1,9 @@
 "use client";
 import Image from 'next/image';
+import UserAvatar from '@/components/ui/UserAvatar';
 import Link from 'next/link';
 import React, { useEffect, useRef } from 'react';
-import { User, MessageSquare, Bell, LogOut as LogOutIcon } from 'lucide-react';
+import { User, Settings, CreditCard, Bell, HelpCircle, LogOut as LogOutIcon, CheckCircle2 } from 'lucide-react';
 import { useDashboardContext } from '../../DashboardProvider';
 import { handleLogout } from '@/app/actions/auth';
 import LogoutModal from '@/components/auth/LogoutModal';
@@ -14,13 +15,11 @@ type TUserProps = {
 };
 
 const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUserProps) => {
-  const { user } = useDashboardContext();
+  const { user, workspace } = useDashboardContext();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = React.useState(false);
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click / Escape — the dropdown previously had no way to
-  // dismiss itself other than re-clicking the trigger.
   useEffect(() => {
     if (!isOpenUserDropdown) return;
 
@@ -39,8 +38,7 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpenUserDropdown]);
+  }, [isOpenUserDropdown, handleShowUserDrowdown]);
 
   const onConfirmLogout = async () => {
     setIsLoggingOut(true);
@@ -57,107 +55,149 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
   return (
     <>
       <div className="nav-item relative" ref={containerRef}>
+        {/* Trigger */}
         <button
           onClick={handleShowUserDrowdown}
           aria-haspopup="menu"
           aria-expanded={isOpenUserDropdown}
-          className="flex items-center gap-3 hover:bg-dash-surface p-1.5 rounded-xl transition-colors group focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-accent focus-visible:outline-offset-2"
+          className="flex items-center gap-2.5 hover:bg-slate-50 p-1.5 rounded-xl transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/20 border border-transparent hover:border-slate-200"
         >
-          <div className="relative">
-            {user?.avatarUrl ? (
-              <Image
-                src={user.avatarUrl}
-                alt={user?.firstName || "user"}
-                width={32}
-                height={32}
-                className="rounded-full object-cover w-8 h-8 border border-dash-border"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-dash-accent flex items-center justify-center text-white font-black text-xs">
-                {user?.firstName?.[0]?.toUpperCase() || 'U'}
-              </div>
-            )}
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-dash-bg"></span>
-          </div>
-          <div className="hidden sm:flex flex-col items-start leading-tight">
-            <span className="text-[13px] font-bold !text-dash-text group-hover:!text-dash-accent transition-colors">
+          <UserAvatar 
+            avatarUrl={user?.avatarUrl}
+            oauthImage={user?.oauthImage}
+            firstName={user?.firstName}
+            lastName={user?.lastName}
+            size="sm"
+            showOnlineIndicator={true}
+          />
+          <div className="hidden sm:flex flex-col items-start leading-none gap-0.5">
+            <span className="text-[12px] font-bold !text-slate-800">
               {user?.firstName || 'GulfBridge'}
             </span>
-            <span className="text-[10px] !text-dash-textMuted uppercase font-bold tracking-wider">Online</span>
+            <span className="text-[10px] !text-slate-500 font-medium">Workspace Owner</span>
           </div>
         </button>
 
+        {/* Dropdown Menu */}
         {isOpenUserDropdown && (
           <div
             role="menu"
-            className="absolute top-full right-0 mt-2 w-64 bg-dash-bg border border-dash-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            className="absolute top-full right-0 mt-2 w-[320px] bg-white border border-[#EEF2F7] rounded-[20px] shadow-[0_20px_50px_rgba(15,23,42,0.12)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150 origin-top-right"
           >
-            {/* Identity block — anchoring text, given more presence than the menu rows below */}
-            <div className="flex items-center gap-3 p-4 bg-dash-surface border-b border-dash-border">
-              {user?.avatarUrl ? (
-                <Image
-                  src={user.avatarUrl}
-                  alt={user?.firstName || "user"}
-                  width={44}
-                  height={44}
-                  className="rounded-full object-cover w-11 h-11 border border-dash-border flex-shrink-0"
-                />
-              ) : (
-                <div className="w-11 h-11 rounded-full bg-dash-accent flex items-center justify-center text-white font-black text-base flex-shrink-0">
-                  {user?.firstName?.[0]?.toUpperCase() || 'U'}
+            {/* Header Section */}
+            <div className="p-4 border-b border-[#EEF2F7] bg-slate-50/50">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col">
+                  <span className="text-[12px] font-bold !text-slate-800">{workspace?.name || 'LeadsMind Workspace'}</span>
                 </div>
-              )}
-              <div className="min-w-0">
-                <p className="text-[14px] font-bold !text-dash-text truncate">{user?.firstName} {user?.lastName}</p>
-                <p className="text-[12px] !text-dash-textMuted truncate">{user?.email}</p>
+                <div className="px-2 py-0.5 bg-blue-50 border border-blue-100 rounded-md text-[9px] font-black tracking-wider !text-blue-600 uppercase">
+                  Pro Plan
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <UserAvatar 
+                  avatarUrl={user?.avatarUrl}
+                  oauthImage={user?.oauthImage}
+                  firstName={user?.firstName}
+                  lastName={user?.lastName}
+                  size="lg"
+                  className="shadow-sm"
+                />
+                <div className="min-w-0">
+                  <p className="text-[14px] font-bold !text-slate-900 truncate leading-tight">{user?.firstName} {user?.lastName}</p>
+                  <p className="text-[12px] !text-slate-500 truncate leading-tight mt-0.5">{user?.email}</p>
+                </div>
               </div>
             </div>
 
-            <ul className="p-1.5">
-              <li>
-                <Link
-                  href="/dashboard/settings/account"
-                  role="menuitem"
-                  onClick={handleShowUserDrowdown}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium !text-dash-text hover:bg-dash-accent/10 hover:!text-dash-accent transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-accent focus-visible:outline-offset-2"
-                >
-                  <User size={16} className="flex-shrink-0" /> Profile Settings
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/conversations"
-                  role="menuitem"
-                  onClick={handleShowUserDrowdown}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium !text-dash-text hover:bg-dash-accent/10 hover:!text-dash-accent transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-accent focus-visible:outline-offset-2"
-                >
-                  <MessageSquare size={16} className="flex-shrink-0" /> Direct Messages
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/activities"
-                  role="menuitem"
-                  onClick={handleShowUserDrowdown}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium !text-dash-text hover:bg-dash-accent/10 hover:!text-dash-accent transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-accent focus-visible:outline-offset-2"
-                >
-                  <Bell size={16} className="flex-shrink-0" /> Notifications
-                </Link>
-              </li>
-              <li className="my-1.5 border-t border-dash-border"></li>
-              <li>
-                <button
-                  role="menuitem"
-                  onClick={() => {
-                    setIsLogoutModalOpen(true);
-                    handleShowUserDrowdown();
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-red-600 hover:bg-red-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500 focus-visible:outline-offset-2"
-                >
-                  <LogOutIcon size={16} className="flex-shrink-0" /> Log Out
-                </button>
-              </li>
-            </ul>
+            {/* Usage Metrics Section */}
+            <div className="p-4 border-b border-[#EEF2F7]">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold !text-slate-400 uppercase tracking-wider">Workspace Usage</span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="font-medium !text-slate-600">Contacts</span>
+                    <span className="!text-slate-400 font-medium">234 / 500</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1">
+                    <div className="bg-primary h-1 rounded-full w-[46%]"></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="font-medium !text-slate-600">Automations</span>
+                    <span className="!text-slate-400 font-medium">18 / 50</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1">
+                    <div className="bg-primary h-1 rounded-full w-[36%]"></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="font-medium !text-slate-600">Websites</span>
+                    <span className="!text-slate-400 font-medium">3 / 10</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1">
+                    <div className="bg-primary h-1 rounded-full w-[30%]"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Menu Links */}
+            <div className="p-1.5">
+              <Link
+                href="/dashboard/settings/account"
+                onClick={handleShowUserDrowdown}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium !text-slate-700 hover:bg-slate-50 hover:!text-slate-900 transition-colors"
+              >
+                <Settings size={15} className="!text-slate-400" /> Profile Settings
+              </Link>
+              <Link
+                href="/dashboard/settings/billing"
+                onClick={handleShowUserDrowdown}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium !text-slate-700 hover:bg-slate-50 hover:!text-slate-900 transition-colors"
+              >
+                <CreditCard size={15} className="!text-slate-400" /> Billing
+              </Link>
+              <Link
+                href="/activities"
+                onClick={handleShowUserDrowdown}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium !text-slate-700 hover:bg-slate-50 hover:!text-slate-900 transition-colors"
+              >
+                <Bell size={15} className="!text-slate-400" /> Notifications
+              </Link>
+              <Link
+                href="/help"
+                onClick={handleShowUserDrowdown}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium !text-slate-700 hover:bg-slate-50 hover:!text-slate-900 transition-colors"
+              >
+                <HelpCircle size={15} className="!text-slate-400" /> Help Center
+              </Link>
+            </div>
+
+            {/* System Status */}
+            <div className="px-4 py-3 bg-slate-50/50 border-t border-b border-[#EEF2F7] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={14} className="!text-emerald-500" />
+                <span className="text-[11px] font-medium !text-slate-600">All systems operational</span>
+              </div>
+            </div>
+
+            {/* Logout Area */}
+            <div className="p-1.5 bg-slate-50">
+              <button
+                onClick={() => {
+                  setIsLogoutModalOpen(true);
+                  handleShowUserDrowdown();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium !text-slate-600 hover:bg-red-50 hover:!text-red-600 transition-colors group"
+              >
+                <LogOutIcon size={15} className="!text-slate-400 group-hover:!text-red-500 transition-colors" /> Log Out
+              </button>
+            </div>
           </div>
         )}
       </div>

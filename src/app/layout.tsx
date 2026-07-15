@@ -69,7 +69,9 @@ export default async function RootLayout({
    id: authUser.id,
    email: authUser.email,
    firstName: profile?.firstName || authUser.user_metadata?.full_name?.split(' ')[0] || authUser.email?.split('@')[0] || 'User',
+   lastName: profile?.lastName || authUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') || null,
    avatarUrl: profile?.avatarUrl ?? null,
+   oauthImage: authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || null,
   };
 
   if (workspaceData) {
