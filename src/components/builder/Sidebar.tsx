@@ -52,10 +52,10 @@ const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: an
           connectors.create(ref, component);
         }
       }}
-      className="flex flex-col items-center justify-center h-[80px] rounded-[14px] border border-slate-200/60 bg-slate-50/50 hover:-translate-y-1 hover:border-primary/40 hover:bg-white hover:shadow-[0_8px_20px_rgba(19,89,255,0.08)] transition-all cursor-grab active:cursor-grabbing group"
+      className="flex flex-col items-center justify-center h-[72px] rounded-[14px] border border-[#E5E7EB] bg-slate-50/50 hover:-translate-y-[2px] hover:border-primary/40 hover:bg-white hover:shadow-sm transition-all duration-150 cursor-grab active:cursor-grabbing active:border-primary active:bg-blue-50/50 active:scale-[0.98] group"
     >
-      <div className="h-8 w-8 rounded-lg bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-1.5 group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all duration-300">
-        <Icon className="w-4 h-4 text-slate-500 group-hover:text-white group-hover:scale-110 transition-transform pointer-events-none" />
+      <div className="h-7 w-7 rounded-lg bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-1 group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all duration-200">
+        <Icon className="w-3.5 h-3.5 text-slate-500 group-hover:text-white group-hover:scale-105 transition-transform pointer-events-none" />
       </div>
       <span className="text-[10px] font-semibold text-slate-500 group-hover:text-slate-800 text-center leading-tight">{name}</span>
     </div>
@@ -312,12 +312,12 @@ export const Sidebar = ({
   return (
     <div className="w-[320px] h-full bg-white border-r border-slate-200 flex flex-col font-sans select-none z-40">
       <div className="p-3 border-b border-slate-200 shrink-0">
-        <div className="flex bg-slate-100/80 p-1 rounded-[10px] border border-slate-200/60">
+        <div className="flex bg-slate-100 p-1 rounded-[12px] h-10 items-center gap-0.5">
           <button
             onClick={() => setActiveTab('elements')}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-semibold rounded-[6px] transition-all",
-              activeTab === 'elements' ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+              "flex-1 flex items-center justify-center gap-1.5 h-8 text-[11px] font-semibold rounded-[8px] transition-all duration-150 active:scale-[0.97]",
+              activeTab === 'elements' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"
             )}
           >
             Elements
@@ -325,8 +325,8 @@ export const Sidebar = ({
           <button
             onClick={() => setActiveTab('layers')}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-semibold rounded-[6px] transition-all",
-              activeTab === 'layers' ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+              "flex-1 flex items-center justify-center gap-1.5 h-8 text-[11px] font-semibold rounded-[8px] transition-all duration-150 active:scale-[0.97]",
+              activeTab === 'layers' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"
             )}
           >
             Layers
@@ -334,8 +334,8 @@ export const Sidebar = ({
           <button
             onClick={() => setActiveTab('settings')}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-semibold rounded-[6px] transition-all",
-              activeTab === 'settings' ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+              "flex-1 flex items-center justify-center gap-1.5 h-8 text-[11px] font-semibold rounded-[8px] transition-all duration-150 active:scale-[0.97]",
+              activeTab === 'settings' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"
             )}
           >
             Globals
@@ -435,7 +435,7 @@ export const Sidebar = ({
           )}
 
           <section>
-            <h3 className="text-[10px] font-bold !text-dash-textMuted mb-4 px-1">Structure nodes</h3>
+            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Structure nodes</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Section" icon={SectionIcon} component={<RESOLVER.Section canvas paddingBottom={64} paddingTop={64} paddingLeft={24} paddingRight={24} backgroundColor="transparent" />} />
               <DraggableItem name="Container" icon={Square} component={<RESOLVER.Container canvas layoutType="fixed" maxWidth="1200px" padding={16} backgroundColor="transparent" />} />
@@ -446,7 +446,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Typography</h3>
+            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Typography</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Heading" icon={HeadingIcon} component={<RESOLVER.Heading level="h2" text="Heading" fontWeight="bold" textAlign="left" color="#111827" />} />
               <DraggableItem name="Paragraph" icon={AlignLeft} component={<RESOLVER.Paragraph text="Type your paragraph here." fontSize={16} textAlign="left" color="#4b5563" lineHeight="relaxed" />} />
@@ -455,7 +455,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Media & assets</h3>
+            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Media & assets</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Image" icon={ImageIcon} component={<RESOLVER.Image src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="Placeholder" borderRadius={16} objectFit="cover" />} />
               <DraggableItem name="Video" icon={VideoIcon} component={<RESOLVER.Video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" provider="youtube" autoPlay={false} controls={true} loop={false} muted={false} borderRadius={16} />} />
@@ -464,7 +464,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Layout & authority</h3>
+            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Layout & authority</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Ultra Hero" icon={SectionIcon} component={<RESOLVER.Hero />} />
               <DraggableItem name="Global Navbar" icon={Navigation} component={<RESOLVER.Navbar />} />
@@ -474,7 +474,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Trust & social proof</h3>
+            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Trust & social proof</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Testimonial" icon={MessageCircleQuestion} component={<RESOLVER.Testimonial />} />
               <DraggableItem name="Star Rating" icon={Star} component={<RESOLVER.StarRating />} />
@@ -484,7 +484,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Conversion & logic</h3>
+            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Conversion & logic</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem name="Button" icon={ButtonIcon} component={<RESOLVER.Button text="Click Here" size="md" variant="primary" color="#6c47ff" textColor="#ffffff" borderRadius={8} width="fit" link="#" iconPosition="right" />} />
               <DraggableItem name="Lead Form" icon={FormInput} component={<RESOLVER.Form />} />
@@ -495,7 +495,7 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground mb-3 px-1">Advanced</h3>
+            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Advanced</h3>
             <div className="grid grid-cols-2 gap-2">
               <DraggableItem
                 name="Embed Code"

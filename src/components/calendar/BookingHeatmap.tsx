@@ -61,7 +61,7 @@ export function BookingHeatmap({ data }: HeatmapProps) {
                  }}
                 />
              </TooltipTrigger>
-             <TooltipContent className="bg-black border border-white/10 text-[10px] font-bold py-1 px-2">
+             <TooltipContent className="bg-dash-text text-white border-none text-[10px] font-bold py-1 px-2">
                {day} at {h}:00 — {count} Bookings
              </TooltipContent>
             </Tooltip>

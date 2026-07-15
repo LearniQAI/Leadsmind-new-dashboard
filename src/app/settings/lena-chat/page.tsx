@@ -24,41 +24,34 @@ export default function LenaChatSettingsPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 w-full flex flex-col">
+      <div className="min-h-screen bg-dash-bg px-6 py-6 w-full flex flex-col">
         {/* Header */}
         <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1
-              className="text-[22px] font-bold leading-tight"
-              style={{ fontFamily: "'Space Grotesk', sans-serif", color: '#eef2ff' }}
-            >
-              LENA <span className="text-[#3b82f6]">Chat</span>
+            <h1 className="text-[22px] font-bold leading-tight !text-dash-text">
+              Lena <span className="text-dash-accent">Chat</span>
             </h1>
-            <p
-              className="text-[11.5px] uppercase tracking-[0.8px] font-medium mt-1 text-[#4a5a82]"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
-              AI + LIVE AGENT CHATBOT FOR YOUR WEBSITE
+            <p className="text-[11.5px] font-medium mt-1 !text-dash-textMuted">
+              AI + live agent chatbot for your website
             </p>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-[rgba(255,255,255,0.07)] mb-6 gap-6">
+        <div className="flex border-b border-dash-border mb-6 gap-6">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`pb-3 text-[13px] font-medium transition-colors relative ${
+              className={`pb-3 text-[13px] font-medium transition-colors motion-reduce:transition-none relative ${
                 activeTab === tab.id
-                  ? 'text-[#3b82f6]'
-                  : 'text-[#94a3c8] hover:text-[#eef2ff]'
+                  ? 'text-dash-accent'
+                  : '!text-dash-textMuted hover:!text-dash-text'
               }`}
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
             >
               {tab.label}
               {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#3b82f6]" />
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-dash-accent" />
               )}
             </button>
           ))}
@@ -66,7 +59,7 @@ export default function LenaChatSettingsPage() {
 
         {/* Tab Content */}
         {!workspaceId ? (
-          <div className="p-8 text-center text-[#4a5a82] italic">
+          <div className="p-8 text-center !text-dash-textMuted italic">
             Connecting workspace context...
           </div>
         ) : (

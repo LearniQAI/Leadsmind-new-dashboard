@@ -188,20 +188,20 @@ export default function CourseWorkspaceClient({
       {activeTab === "modules" && (
         <>
           {/* Page Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-dash-border pb-6">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-primary">Control Room</span>
-              <h1 className="text-3xl font-space-grotesk font-black uppercase tracking-tighter text-white mt-1.5">
-                Course <span className="text-[#3b82f6]">{currentCourse.title}</span>
+              <span className="text-[10px] font-bold text-primary">Control Room</span>
+              <h1 className="text-3xl font-bold !text-dash-text mt-1.5">
+                Course <span className="text-dash-accent">{currentCourse.title}</span>
               </h1>
-              <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-2">
+              <p className="text-[10px] !text-dash-textMuted font-bold mt-2">
                 Curriculum builder & modular execution node
               </p>
             </div>
 
             <Button
               onClick={() => { setEditingModule(undefined); setIsModuleModalOpen(true); }}
-              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-6 shadow-lg shadow-primary/20 flex items-center gap-1.5"
+              className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-[10px] font-bold h-11 px-6 shadow-lg shadow-dash-accent/20 flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
             >
               <Plus size={14} /> New Module
             </Button>
@@ -217,16 +217,16 @@ export default function CourseWorkspaceClient({
 
           {/* Modules List */}
           {filteredModules.length === 0 ? (
-            <div className="py-20 bg-[#080f28] border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center text-center px-4">
-              <div className="w-16 h-16 bg-[#111d47] rounded-full flex items-center justify-center mb-5 border border-white/5">
-                <Layers className="w-8 h-8 text-white/20" />
+            <div className="py-20 bg-dash-surface border-2 border-dashed border-dash-border rounded-3xl flex flex-col items-center justify-center text-center px-4">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-5 border border-dash-border">
+                <Layers className="w-8 h-8 !text-dash-textMuted" />
               </div>
-              <h3 className="text-lg font-space-grotesk font-black text-white/50 uppercase tracking-widest">
+              <h3 className="text-lg font-bold !text-dash-textMuted">
                 No Modules Found
               </h3>
               <Button
                 onClick={() => { setEditingModule(undefined); setIsModuleModalOpen(true); }}
-                className="mt-6 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-10 px-5"
+                className="mt-6 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-[10px] font-bold h-10 px-5 transition-colors motion-reduce:transition-none"
               >
                 + Create First Module
               </Button>

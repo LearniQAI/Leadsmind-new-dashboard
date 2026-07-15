@@ -9,6 +9,8 @@ import { VoiceNoteCard } from '@/components/common/VoiceNoteCard';
 import { sendInternalNote } from '@/app/actions/messaging';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { Inbox, MessageCircle, Mail, MessageSquare, Info, Circle, AlertTriangle, AlertCircle, Clock, Check } from 'lucide-react';
+import { Instagram } from '@/components/icons/BrandIcons';
 
 interface ConversationThreadProps {
   conversation: any;
@@ -46,7 +48,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white">
         <div className="w-24 h-24 bg-dash-accent/10 rounded-[2rem] flex items-center justify-center mb-8 relative z-10 rotate-12">
-          <i className="fa-solid fa-inbox text-[32px] text-dash-accent"></i>
+          <Inbox className="w-8 h-8 text-dash-accent" />
         </div>
         <h2 className="text-3xl font-bold !text-dash-text mb-4 relative z-10 tracking-tight">
           Select a <span className="text-dash-accent">thread</span>
@@ -109,13 +111,13 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
       <div className="h-14 border-b border-dash-border flex items-center justify-between px-6 z-10 bg-dash-surface/80 backdrop-blur-xl shrink-0 gap-6">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 shrink-0 rounded-lg bg-white flex items-center justify-center border border-dash-border">
-            {selectedPlatform === 'sms' && <i className="fa-solid fa-comment-dots text-[13px] text-green"></i>}
-            {selectedPlatform === 'email' && <i className="fa-solid fa-envelope text-[13px] text-dash-accent"></i>}
-            {selectedPlatform === 'whatsapp' && <i className="fa-brands fa-whatsapp text-[14px] text-[#25d366]"></i>}
-            {selectedPlatform === 'instagram' && <i className="fa-brands fa-instagram text-[14px] text-pink"></i>}
-            {selectedPlatform === 'facebook' && <i className="fa-brands fa-facebook-messenger text-[14px] text-dash-accent"></i>}
+            {selectedPlatform === 'sms' && <MessageCircle className="w-[13px] h-[13px] text-green" />}
+            {selectedPlatform === 'email' && <Mail className="w-[13px] h-[13px] text-dash-accent" />}
+            {selectedPlatform === 'whatsapp' && <MessageCircle className="w-3.5 h-3.5 text-green" />}
+            {selectedPlatform === 'instagram' && <Instagram className="w-3.5 h-3.5" />}
+            {selectedPlatform === 'facebook' && <MessageCircle className="w-3.5 h-3.5 text-dash-accent" />}
             {!['sms', 'email', 'whatsapp', 'instagram', 'facebook'].includes(selectedPlatform) && (
-              <i className="fa-solid fa-comment text-[13px] text-dash-accent"></i>
+              <MessageSquare className="w-[13px] h-[13px] text-dash-accent" />
             )}
           </div>
           <div>
@@ -138,12 +140,12 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
             <>
               {!isWhatsAppWindowClosed ? (
                 <span className="px-2 py-0.5 rounded-full bg-green/10 text-green border border-green/20 text-[8px] font-bold flex items-center gap-1">
-                  <i className="fa-solid fa-circle text-[4px]"></i>
+                  <Circle className="w-1 h-1 fill-current" />
                   24h open ({windowTimeRemainingText})
                 </span>
               ) : (
                 <span className="px-2 py-0.5 rounded-full bg-red/10 text-red border border-red/20 text-[8px] font-bold flex items-center gap-1">
-                  <i className="fa-solid fa-triangle-exclamation text-[8px]"></i>
+                  <AlertTriangle className="w-2 h-2" />
                   24h closed
                 </span>
               )}
@@ -153,19 +155,19 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
           {/* SLA display */}
           {slaStatus === 'breached' && (
             <span className="px-2 py-0.5 rounded-full bg-red/10 text-red border border-red/20 text-[8px] font-bold flex items-center gap-1 animate-pulse motion-reduce:animate-none">
-              <i className="fa-solid fa-circle-exclamation text-[8px]"></i>
+              <AlertCircle className="w-2 h-2" />
               SLA overdue ({slaText})
             </span>
           )}
           {slaStatus === 'pending' && (
             <span className="px-2 py-0.5 rounded-full bg-amber/10 text-amber border border-amber/20 text-[8px] font-bold flex items-center gap-1">
-              <i className="fa-regular fa-clock text-[8px]"></i>
+              <Clock className="w-2 h-2" />
               SLA due ({slaText})
             </span>
           )}
           {slaStatus === 'met' && (
             <span className="px-2 py-0.5 rounded-full bg-green/10 text-green border border-green/20 text-[8px] font-bold flex items-center gap-1">
-              <i className="fa-solid fa-check text-[8px]"></i>
+              <Check className="w-2 h-2" />
               SLA met
             </span>
           )}
@@ -176,7 +178,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
             className="w-8 h-8 rounded-lg bg-dash-accent/10 border border-dash-accent/20 hover:bg-dash-accent/20 flex items-center justify-center text-dash-accent hover:text-dash-accent transition-all motion-reduce:transition-none ml-2 shrink-0"
             title="Toggle contact panel"
           >
-            <i className="fa-solid fa-circle-info text-[13px]"></i>
+            <Info className="w-[13px] h-[13px]" />
           </button>
         </div>
       </div>

@@ -111,42 +111,42 @@ export default function DomainsTab() {
   const getExpectedDMARCValue = (domainName: string) => `v=DMARC1; p=quarantine; pct=100; rua=mailto:dmarc@${domainName || 'yourdomain.com'}`;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-      
+    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 motion-reduce:animate-none">
+
       {/* Security Hard Block Warning Card */}
-      <div className="bg-amber/10 border border-amber/20 rounded-2xl p-6 flex gap-4 items-start relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-1 h-full bg-amber"></div>
-        <div className="w-10 h-10 rounded-xl bg-amber/10 flex items-center justify-center text-amber flex-shrink-0">
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex gap-4 items-start relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+        <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 flex-shrink-0">
           <AlertTriangle size={20} />
         </div>
         <div className="space-y-1">
-          <h4 className="text-sm font-bold text-t1 uppercase font-space tracking-tight">Security Protocol Gate (Hard Block)</h4>
-          <p className="text-sm text-t2 leading-relaxed max-w-2xl font-sans">
+          <h4 className="text-sm font-bold !text-dash-text">Security protocol gate (hard block)</h4>
+          <p className="text-sm !text-dash-textMuted leading-relaxed max-w-2xl">
             In compliance with global email security rules, LeadsMind enforces a strict campaign send block. You will not be allowed to <strong>Send</strong> or <strong>Schedule</strong> campaigns unless the sending domain has verified <strong>SPF</strong> and <strong>DKIM</strong> records.
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        
+
         {/* Left Column: Domains list & Add Domain */}
         <div className="xl:col-span-1 space-y-6">
-          <div className="bg-n800 border border-white/5 rounded-2xl p-6 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-accent"></div>
+          <div className="bg-white border border-dash-border rounded-2xl p-6 relative overflow-hidden shadow-sm">
+            <div className="absolute top-0 left-0 w-1 h-full bg-dash-accent"></div>
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+              <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
                 <ShieldCheck size={20} />
               </div>
               <div>
-                <h4 className="text-[15px] font-space font-bold text-t1 uppercase">Domains Config</h4>
-                <p className="text-xs text-t3 font-medium uppercase tracking-widest">Verify sending identity</p>
+                <h4 className="text-[15px] font-bold !text-dash-text">Domains config</h4>
+                <p className="text-xs !text-dash-textMuted font-medium">Verify sending identity</p>
               </div>
             </div>
 
             {/* Register Input Form */}
             <form onSubmit={handleRegister} className="space-y-4 mb-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-t3 block">Add Sending Domain</label>
+                <label className="text-xs font-bold !text-dash-textMuted block">Add sending domain</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -154,12 +154,12 @@ export default function DomainsTab() {
                     onChange={(e) => setNewDomainName(e.target.value)}
                     placeholder="e.g. company.com"
                     disabled={isRegistering}
-                    className="flex-1 min-w-0 bg-n600 border border-white/5 rounded-xl px-4 py-2.5 text-t1 font-bold focus:border-accent/50 transition-all outline-none text-sm placeholder:text-t3 placeholder:font-normal"
+                    className="flex-1 min-w-0 bg-white border border-dash-border rounded-xl px-4 py-2.5 !text-dash-text font-bold focus:border-dash-accent/50 transition-all motion-reduce:transition-none outline-none text-sm placeholder:!text-dash-textMuted placeholder:font-normal"
                   />
                   <button
                     type="submit"
                     disabled={isRegistering}
-                    className="px-4 py-2.5 bg-accent hover:bg-accent2 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-accent/20 shrink-0"
+                    className="px-4 py-2.5 bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-sm rounded-xl transition-all motion-reduce:transition-none flex items-center justify-center gap-1.5 shadow-lg shadow-dash-accent/20 shrink-0"
                   >
                     <Plus size={16} />
                     <span>Add</span>
@@ -168,13 +168,13 @@ export default function DomainsTab() {
               </div>
             </form>
 
-            <div className="border-t border-white/5 pt-4">
-              <label className="text-xs font-black uppercase tracking-widest text-t3 block mb-3">Registered Nodes</label>
-              
+            <div className="border-t border-dash-border pt-4">
+              <label className="text-xs font-bold !text-dash-textMuted block mb-3">Registered nodes</label>
+
               {isLoading ? (
-                <div className="py-8 text-center text-sm text-t3">Loading domains...</div>
+                <div className="py-8 text-center text-sm !text-dash-textMuted">Loading domains...</div>
               ) : domains.length === 0 ? (
-                <div className="py-8 text-center text-sm text-t3 border border-dashed border-white/5 rounded-xl">
+                <div className="py-8 text-center text-sm !text-dash-textMuted border border-dashed border-dash-border rounded-xl">
                   No domains registered.
                 </div>
               ) : (
@@ -186,17 +186,17 @@ export default function DomainsTab() {
                       <div
                         key={d.id}
                         onClick={() => setSelectedDomain(d)}
-                        className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                          isSelected 
-                            ? 'bg-accent/10 border-accent2/40' 
-                            : 'bg-white/[0.01] border-white/5 hover:bg-white/[0.03]'
+                        className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all motion-reduce:transition-none ${
+                          isSelected
+                            ? 'bg-dash-accent/10 border-dash-accent/40'
+                            : 'bg-white border-dash-border hover:bg-dash-surface'
                         }`}
                       >
                         <div className="space-y-1">
-                          <span className="text-sm font-bold text-t1">{d.domain_name}</span>
+                          <span className="text-sm font-bold !text-dash-text">{d.domain_name}</span>
                           <div className="flex gap-2">
-                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                              isVerified ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isVerified ? 'bg-green/10 text-green' : 'bg-amber-50 text-amber-600'
                             }`}>
                               {isVerified ? 'Verified' : 'Pending'}
                             </span>
@@ -207,7 +207,7 @@ export default function DomainsTab() {
                             e.stopPropagation();
                             handleDelete(d.id);
                           }}
-                          className="p-1.5 text-t3 hover:text-red rounded-lg transition-colors"
+                          className="p-1.5 !text-dash-textMuted hover:text-red rounded-lg transition-colors motion-reduce:transition-none"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -223,13 +223,13 @@ export default function DomainsTab() {
         {/* Right Column: Guide view for selected domain */}
         <div className="xl:col-span-2">
           {selectedDomain ? (
-            <div className="bg-n800 border border-white/5 rounded-2xl p-6 space-y-6 relative">
-              <div className="flex items-center justify-between border-b border-white/5 pb-4 gap-4 flex-wrap">
+            <div className="bg-white border border-dash-border rounded-2xl p-6 space-y-6 relative shadow-sm">
+              <div className="flex items-center justify-between border-b border-dash-border pb-4 gap-4 flex-wrap">
                 <div>
-                  <h4 className="text-[16px] font-bold text-t1 font-space uppercase">Authentication Guide</h4>
-                  <p className="text-sm text-t2 font-medium">Domain: <span className="text-accent2 font-bold">{selectedDomain.domain_name}</span></p>
+                  <h4 className="text-[16px] font-bold !text-dash-text">Authentication guide</h4>
+                  <p className="text-sm !text-dash-textMuted font-medium">Domain: <span className="text-dash-accent font-bold">{selectedDomain.domain_name}</span></p>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   {selectedDomain.verified_at && (
                     <div className="flex items-center gap-1.5 text-green text-sm font-bold">
@@ -239,46 +239,46 @@ export default function DomainsTab() {
                   <button
                     onClick={() => handleVerify(selectedDomain.id)}
                     disabled={isVerifying}
-                    className="flex items-center gap-2 bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-xs h-10 px-6 rounded-xl transition-all shadow-lg shadow-accent/20 disabled:opacity-50"
+                    className="flex items-center gap-2 bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-xs h-10 px-6 rounded-xl transition-all motion-reduce:transition-none shadow-lg shadow-dash-accent/20 disabled:opacity-50"
                   >
-                    <RefreshCw size={12} className={isVerifying ? 'animate-spin' : ''} />
-                    {isVerifying ? 'Verifying...' : 'Verify Records'}
+                    <RefreshCw size={12} className={isVerifying ? 'animate-spin motion-reduce:animate-none' : ''} />
+                    {isVerifying ? 'Verifying...' : 'Verify records'}
                   </button>
                 </div>
               </div>
 
               {/* Records List */}
               <div className="space-y-6">
-                
+
                 {/* SPF Card */}
-                <div className="bg-n700 border border-white/5 rounded-xl p-5 space-y-4">
+                <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-black bg-accent/20 text-accent2 px-2.5 py-1 rounded">TXT</span>
-                      <span className="text-sm font-bold text-t1 font-space uppercase">SPF (Sender Policy Framework)</span>
+                      <span className="text-xs font-bold bg-dash-accent/10 text-dash-accent px-2.5 py-1 rounded">TXT</span>
+                      <span className="text-sm font-bold !text-dash-text">SPF (Sender Policy Framework)</span>
                     </div>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                      selectedDomain.spf_status ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'
+                      selectedDomain.spf_status ? 'bg-green/10 text-green' : 'bg-amber-50 text-amber-600'
                     }`}>
                       {selectedDomain.spf_status ? '● Configured' : '○ Unverified'}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-t3">Host / Name</span>
-                      <div className="font-mono text-xs text-t2 bg-n600 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                      <span className="block text-xs font-bold !text-dash-textMuted">Host / Name</span>
+                      <div className="font-mono text-xs !text-dash-textMuted bg-white border border-dash-border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                         <span className="break-all whitespace-pre-wrap">@</span>
-                        <button onClick={() => copyToClipboard('@', 'spf-host')} className="text-t3 hover:text-t1 p-1 hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
+                        <button onClick={() => copyToClipboard('@', 'spf-host')} className="!text-dash-textMuted hover:!text-dash-text p-1 hover:bg-dash-border/60 rounded-lg transition-colors motion-reduce:transition-none flex-shrink-0">
                           {copiedId === 'spf-host' ? <Check size={14} className="text-green" /> : <Copy size={14} />}
                         </button>
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-t3">Value</span>
-                      <div className="font-mono text-xs text-t2 bg-n600 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                      <span className="block text-xs font-bold !text-dash-textMuted">Value</span>
+                      <div className="font-mono text-xs !text-dash-textMuted bg-white border border-dash-border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                         <span className="break-all whitespace-pre-wrap">{getExpectedSPFValue()}</span>
-                        <button onClick={() => copyToClipboard(getExpectedSPFValue(), 'spf-val')} className="text-t3 hover:text-t1 p-1 hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
+                        <button onClick={() => copyToClipboard(getExpectedSPFValue(), 'spf-val')} className="!text-dash-textMuted hover:!text-dash-text p-1 hover:bg-dash-border/60 rounded-lg transition-colors motion-reduce:transition-none flex-shrink-0">
                           {copiedId === 'spf-val' ? <Check size={14} className="text-green" /> : <Copy size={14} />}
                         </button>
                       </div>
@@ -287,14 +287,14 @@ export default function DomainsTab() {
                 </div>
 
                 {/* DKIM Card */}
-                <div className="bg-n700 border border-white/5 rounded-xl p-5 space-y-4">
+                <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-black bg-accent/20 text-accent2 px-2.5 py-1 rounded">TXT</span>
-                      <span className="text-sm font-bold text-t1 font-space uppercase">DKIM (DomainKeys Identified Mail)</span>
+                      <span className="text-xs font-bold bg-dash-accent/10 text-dash-accent px-2.5 py-1 rounded">TXT</span>
+                      <span className="text-sm font-bold !text-dash-text">DKIM (DomainKeys Identified Mail)</span>
                     </div>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                      selectedDomain.dkim_status ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'
+                      selectedDomain.dkim_status ? 'bg-green/10 text-green' : 'bg-amber-50 text-amber-600'
                     }`}>
                       {selectedDomain.dkim_status ? '● Configured' : '○ Unverified'}
                     </span>
@@ -302,19 +302,19 @@ export default function DomainsTab() {
 
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-t3">Host / Name</span>
-                      <div className="font-mono text-xs text-t2 bg-n600 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                      <span className="block text-xs font-bold !text-dash-textMuted">Host / Name</span>
+                      <div className="font-mono text-xs !text-dash-textMuted bg-white border border-dash-border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                         <span className="break-all whitespace-pre-wrap">{getExpectedDKIMHost()}</span>
-                        <button onClick={() => copyToClipboard(getExpectedDKIMHost(), 'dkim-host')} className="text-t3 hover:text-t1 p-1 hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
+                        <button onClick={() => copyToClipboard(getExpectedDKIMHost(), 'dkim-host')} className="!text-dash-textMuted hover:!text-dash-text p-1 hover:bg-dash-border/60 rounded-lg transition-colors motion-reduce:transition-none flex-shrink-0">
                           {copiedId === 'dkim-host' ? <Check size={14} className="text-green" /> : <Copy size={14} />}
                         </button>
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-t3">Value</span>
-                      <div className="font-mono text-xs text-t2 bg-n600 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                      <span className="block text-xs font-bold !text-dash-textMuted">Value</span>
+                      <div className="font-mono text-xs !text-dash-textMuted bg-white border border-dash-border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                         <span className="break-all whitespace-pre-wrap">{getExpectedDKIMValue()}</span>
-                        <button onClick={() => copyToClipboard(getExpectedDKIMValue(), 'dkim-val')} className="text-t3 hover:text-t1 p-1 hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
+                        <button onClick={() => copyToClipboard(getExpectedDKIMValue(), 'dkim-val')} className="!text-dash-textMuted hover:!text-dash-text p-1 hover:bg-dash-border/60 rounded-lg transition-colors motion-reduce:transition-none flex-shrink-0">
                           {copiedId === 'dkim-val' ? <Check size={14} className="text-green" /> : <Copy size={14} />}
                         </button>
                       </div>
@@ -323,21 +323,21 @@ export default function DomainsTab() {
                 </div>
 
                 {/* DMARC Card */}
-                <div className="bg-n700 border border-white/5 rounded-xl p-5 space-y-4">
+                <div className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-black bg-accent/20 text-accent2 px-2.5 py-1 rounded">TXT</span>
-                      <span className="text-sm font-bold text-t1 font-space uppercase">DMARC Policy (Recommended)</span>
+                      <span className="text-xs font-bold bg-dash-accent/10 text-dash-accent px-2.5 py-1 rounded">TXT</span>
+                      <span className="text-sm font-bold !text-dash-text">DMARC Policy (Recommended)</span>
                     </div>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                      selectedDomain.dmarc_status ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'
+                      selectedDomain.dmarc_status ? 'bg-green/10 text-green' : 'bg-amber-50 text-amber-600'
                     }`}>
                       {selectedDomain.dmarc_status ? '● Configured' : '○ Pending'}
                     </span>
                   </div>
 
-                  <div className="bg-accent/5 border border-accent/15 rounded-xl p-4 flex gap-2.5 items-start text-sm text-t2 leading-relaxed">
-                    <Info size={16} className="text-accent2 mt-0.5 flex-shrink-0" />
+                  <div className="bg-dash-accent/5 border border-dash-accent/15 rounded-xl p-4 flex gap-2.5 items-start text-sm !text-dash-textMuted leading-relaxed">
+                    <Info size={16} className="text-dash-accent mt-0.5 flex-shrink-0" />
                     <span>
                       DMARC guarantees that sender validation records (SPF & DKIM) are enforced. We recommend a quarantine policy (<strong>p=quarantine</strong>) to protect your domains from malicious spoofing attempts.
                     </span>
@@ -345,19 +345,19 @@ export default function DomainsTab() {
 
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-t3">Host / Name</span>
-                      <div className="font-mono text-xs text-t2 bg-n600 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                      <span className="block text-xs font-bold !text-dash-textMuted">Host / Name</span>
+                      <div className="font-mono text-xs !text-dash-textMuted bg-white border border-dash-border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                         <span className="break-all whitespace-pre-wrap">{getExpectedDMARCHost()}</span>
-                        <button onClick={() => copyToClipboard(getExpectedDMARCHost(), 'dmarc-host')} className="text-t3 hover:text-t1 p-1 hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
+                        <button onClick={() => copyToClipboard(getExpectedDMARCHost(), 'dmarc-host')} className="!text-dash-textMuted hover:!text-dash-text p-1 hover:bg-dash-border/60 rounded-lg transition-colors motion-reduce:transition-none flex-shrink-0">
                           {copiedId === 'dmarc-host' ? <Check size={14} className="text-green" /> : <Copy size={14} />}
                         </button>
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-t3">Value</span>
-                      <div className="font-mono text-xs text-t2 bg-n600 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                      <span className="block text-xs font-bold !text-dash-textMuted">Value</span>
+                      <div className="font-mono text-xs !text-dash-textMuted bg-white border border-dash-border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                         <span className="break-all whitespace-pre-wrap">{getExpectedDMARCValue(selectedDomain.domain_name)}</span>
-                        <button onClick={() => copyToClipboard(getExpectedDMARCValue(selectedDomain.domain_name), 'dmarc-val')} className="text-t3 hover:text-t1 p-1 hover:bg-white/5 rounded-lg transition-colors flex-shrink-0">
+                        <button onClick={() => copyToClipboard(getExpectedDMARCValue(selectedDomain.domain_name), 'dmarc-val')} className="!text-dash-textMuted hover:!text-dash-text p-1 hover:bg-dash-border/60 rounded-lg transition-colors motion-reduce:transition-none flex-shrink-0">
                           {copiedId === 'dmarc-val' ? <Check size={14} className="text-green" /> : <Copy size={14} />}
                         </button>
                       </div>
@@ -369,12 +369,12 @@ export default function DomainsTab() {
 
             </div>
           ) : (
-            <div className="bg-n800 border border-white/5 rounded-2xl p-16 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-6 border border-accent/20 text-accent">
+            <div className="bg-white border border-dash-border rounded-2xl p-16 flex flex-col items-center justify-center text-center shadow-sm">
+              <div className="w-16 h-16 bg-dash-accent/10 rounded-full flex items-center justify-center mb-6 border border-dash-accent/20 text-dash-accent">
                 <ShieldCheck size={28} />
               </div>
-              <h4 className="text-[16px] font-space font-bold text-t1 uppercase">No Domain Selected</h4>
-              <p className="text-sm text-t3 max-w-sm mt-2">
+              <h4 className="text-[16px] font-bold !text-dash-text">No domain selected</h4>
+              <p className="text-sm !text-dash-textMuted max-w-sm mt-2">
                 Register a domain or select an existing one from the sidebar list to retrieve its DNS configuration instructions.
               </p>
             </div>

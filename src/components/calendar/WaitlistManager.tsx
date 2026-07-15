@@ -76,21 +76,21 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
    <div className="md:col-span-1 space-y-6">
      {/* Session Selection */}
      <div className="space-y-4">
-      <span className="text-[10px] font-black text-white/20 uppercase tracking-widest border-b border-white/5 pb-2 block">Select Event Stream</span>
+      <span className="text-[10px] font-bold !text-dash-textMuted border-b border-dash-border pb-2 block">Select event stream</span>
       {allSessions.map(s => (
-        <button 
+        <button
          key={s.id}
          onClick={() => changeSession(s)}
          className={cn(
-           "w-full p-4 rounded-2xl border transition-all text-left group",
-           activeSession.id === s.id ? "bg-[#6c47ff]/10 border-[#6c47ff]" : "bg-white/[0.02] border-white/5 hover:border-white/20"
+           "w-full p-4 rounded-2xl border transition-all motion-reduce:transition-none text-left group",
+           activeSession.id === s.id ? "bg-dash-accent/10 border-dash-accent" : "bg-white border-dash-border hover:border-dash-text/20"
          )}
         >
          <div className="flex flex-col">
-           <span className={cn("text-xs font-bold transition-colors", activeSession.id === s.id ? "text-white" : "text-white/40 group-hover:text-white/80")}>
+           <span className={cn("text-xs font-bold transition-colors motion-reduce:transition-none", activeSession.id === s.id ? "!text-dash-text" : "!text-dash-textMuted group-hover:!text-dash-text")}>
             {s.title}
            </span>
-           <span className="text-[10px] text-white/20 uppercase font-bold tracking-tighter mt-1">
+           <span className="text-[10px] !text-dash-textMuted font-bold mt-1">
             {format(new Date(s.start_time), 'MMM d, HH:mm')}
            </span>
          </div>
@@ -98,76 +98,76 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
       ))}
      </div>
 
-     <Card className="bg-[#0b0b14] border-white/5 rounded-[32px] overflow-hidden">
+     <Card className="bg-white border-dash-border rounded-[32px] overflow-hidden shadow-sm">
       <CardHeader className="pb-4">
-       <CardTitle className="text-lg font-bold text-white uppercase tracking-wider">Session Capacity</CardTitle>
+       <CardTitle className="text-lg font-bold !text-dash-text">Session capacity</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-       <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+       <div className="flex items-center justify-between p-4 rounded-2xl bg-dash-surface border border-dash-border">
          <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Attendance</span>
-          <span className="text-2xl font-black text-white">{activeSession.current_attendee_count}/{activeSession.max_attendees}</span>
+          <span className="text-[10px] font-bold !text-dash-textMuted">Attendance</span>
+          <span className="text-2xl font-bold !text-dash-text">{activeSession.current_attendee_count}/{activeSession.max_attendees}</span>
          </div>
          <Badge className={cn(
-          "px-3 py-1 rounded-lg border-none text-[10px] font-black uppercase tracking-widest",
-          activeSession.current_attendee_count >= activeSession.max_attendees ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500"
+          "px-3 py-1 rounded-lg border-none text-[10px] font-bold",
+          activeSession.current_attendee_count >= activeSession.max_attendees ? "bg-red/10 text-red" : "bg-green/10 text-green"
          )}>
           {activeSession.current_attendee_count >= activeSession.max_attendees ? 'Waitlist Active' : 'Spots Open'}
          </Badge>
        </div>
 
        <div className="space-y-3">
-         <div className="flex items-center gap-2 text-white/40">
-          <div className="h-1.5 w-1.5 rounded-full bg-[#6c47ff]" />
-          <span className="text-[10px] font-bold uppercase tracking-widest">Real-time Sync Enabled</span>
+         <div className="flex items-center gap-2 !text-dash-textMuted">
+          <div className="h-1.5 w-1.5 rounded-full bg-dash-accent" />
+          <span className="text-[10px] font-bold">Real-time sync enabled</span>
          </div>
-         <div className="flex items-center gap-2 text-white/40">
-          <div className="h-1.5 w-1.5 rounded-full bg-[#fdab3d]" />
-          <span className="text-[10px] font-bold uppercase tracking-widest">Automatic Promotion: ON</span>
+         <div className="flex items-center gap-2 !text-dash-textMuted">
+          <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          <span className="text-[10px] font-bold">Automatic promotion: on</span>
          </div>
        </div>
       </CardContent>
      </Card>
 
      {/* Add User Form */}
-     <div className="p-8 rounded-[32px] bg-white/[0.02] border border-white/5 space-y-4">
+     <div className="p-8 rounded-[32px] bg-white border border-dash-border space-y-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <UserPlus className="h-4 w-4 text-[#6c47ff]" />
-        <span className="text-xs font-bold text-white uppercase">Manual Enrollment</span>
+        <UserPlus className="h-4 w-4 text-dash-accent" />
+        <span className="text-xs font-bold !text-dash-text">Manual enrollment</span>
       </div>
       <div className="flex gap-2">
-        <Input 
-         placeholder="user@email.com" 
+        <Input
+         placeholder="user@email.com"
          value={emailToAdd}
          onChange={(e) => setEmailToAdd(e.target.value)}
-         className="bg-white/5 border-white/10 text-white rounded-xl h-10 text-xs"
+         className="bg-white border-dash-border !text-dash-text rounded-xl h-10 text-xs"
         />
-        <Button 
+        <Button
          onClick={handleAddUser}
          disabled={isAdding}
-         className="h-10 w-10 p-0 rounded-xl bg-[#6c47ff] hover:bg-[#5b3ce0]"
+         className="h-10 w-10 p-0 rounded-xl bg-dash-accent hover:bg-dash-accent/90 transition-colors motion-reduce:transition-none"
         >
-         {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
+         {isAdding ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <PlusCircle className="h-4 w-4" />}
         </Button>
       </div>
-      <p className="text-[10px] text-white/20">Adds user to waitlist or books immediately if spot opens.</p>
+      <p className="text-[10px] !text-dash-textMuted">Adds user to waitlist or books immediately if spot opens.</p>
      </div>
    </div>
 
    {/* Waitlist Table */}
    <div className="md:col-span-2">
-     <Card className="bg-[#0b0b14] border-white/5 rounded-[32px] overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 bg-white/[0.01]">
+     <Card className="bg-white border-dash-border rounded-[32px] overflow-hidden shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between border-b border-dash-border bg-dash-surface">
        <div>
-         <CardTitle className="text-lg font-bold text-white uppercase tracking-wider">Queue: {activeSession.title}</CardTitle>
-         <CardDescription className="text-white/30 text-xs">Sequential promotion queue</CardDescription>
+         <CardTitle className="text-lg font-bold !text-dash-text">Queue: {activeSession.title}</CardTitle>
+         <CardDescription className="!text-dash-textMuted text-xs">Sequential promotion queue</CardDescription>
        </div>
-       <Badge variant="outline" className="bg-[#6c47ff]/5 border-[#6c47ff]/20 text-[#6c47ff]">{waitlist.length} Waiting</Badge>
+       <Badge variant="outline" className="bg-dash-accent/5 border-dash-accent/20 text-dash-accent">{waitlist.length} Waiting</Badge>
       </CardHeader>
       <CardContent className="p-0">
        <div className="overflow-x-auto text-[13px]">
          <table className="w-full text-left">
-          <thead className="text-[10px] font-bold text-white/20 uppercase tracking-widest border-b border-white/5">
+          <thead className="text-[10px] font-bold !text-dash-textMuted border-b border-dash-border">
            <tr>
             <th className="px-6 py-4">Pos</th>
             <th className="py-4">Contact</th>
@@ -175,54 +175,54 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
             <th className="px-6 py-4 text-right">Actions</th>
            </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-dash-border">
            {waitlist.length === 0 && (
             <tr>
-              <td colSpan={4} className="px-6 py-20 text-center text-white/10">
+              <td colSpan={4} className="px-6 py-20 text-center !text-dash-textMuted opacity-60">
                Waitlist is currently empty.
               </td>
             </tr>
            )}
            {waitlist.map((entry) => (
-            <tr key={entry.id} className="group hover:bg-white/[0.01] transition-colors">
-             <td className="px-6 py-6 border-r border-white/5">
-              <span className="text-xl font-black text-white">#{entry.position}</span>
+            <tr key={entry.id} className="group hover:bg-dash-surface transition-colors motion-reduce:transition-none">
+             <td className="px-6 py-6 border-r border-dash-border">
+              <span className="text-xl font-bold !text-dash-text">#{entry.position}</span>
              </td>
              <td className="py-6 px-4">
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-white tracking-tight">{entry.contact?.first_name || 'Guest'} {entry.contact?.last_name || ''}</span>
-                <span className="text-[11px] text-white/30">{entry.contact?.email}</span>
+                <span className="text-sm font-bold !text-dash-text">{entry.contact?.first_name || 'Guest'} {entry.contact?.last_name || ''}</span>
+                <span className="text-[11px] !text-dash-textMuted">{entry.contact?.email}</span>
               </div>
              </td>
              <td className="py-6">
               {entry.offered_at ? (
                <div className="flex flex-col gap-1.5">
                  <div className="flex items-center gap-1.5">
-                  <Timer className="h-3 w-3 text-[#fdab3d] animate-pulse" />
-                  <span className="text-[10px] font-black text-[#fdab3d] uppercase tracking-tighter">Offer Sent</span>
+                  <Timer className="h-3 w-3 text-amber-600 animate-pulse motion-reduce:animate-none" />
+                  <span className="text-[10px] font-bold text-amber-600">Offer sent</span>
                  </div>
-                 <div className="text-[9px] font-bold text-white/20 uppercase tracking-widest tabular-nums font-mono">
+                 <div className="text-[9px] font-bold !text-dash-textMuted tabular-nums font-mono">
                   Expires: {format(new Date(entry.offer_expires_at), 'HH:mm')}
                  </div>
                </div>
               ) : (
-               <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Waiting</span>
+               <span className="text-[10px] font-bold !text-dash-textMuted">Waiting</span>
               )}
              </td>
              <td className="px-6 py-6 text-right">
               {!entry.offered_at && (
-               <Button 
+               <Button
                 onClick={() => handleManualOffer(entry.id)}
                 disabled={isPending}
-                className="h-9 px-4 rounded-xl bg-white/5 border border-white/5 text-[11px] font-bold text-white hover:bg-[#6c47ff] hover:border-[#6c47ff] transition-all group/btn"
+                className="h-9 px-4 rounded-xl bg-dash-surface border border-dash-border text-[11px] font-bold !text-dash-text hover:bg-dash-accent hover:border-dash-accent hover:text-white transition-all motion-reduce:transition-none group/btn"
                >
-                 {isPending ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : 'Offer Spot'}
-                 <Send className="h-3 w-3 ml-2 group-hover/btn:translate-x-1 transition-transform" />
+                 {isPending ? <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none mr-2" /> : 'Offer Spot'}
+                 <Send className="h-3 w-3 ml-2 group-hover/btn:translate-x-1 motion-reduce:group-hover/btn:translate-x-0 transition-transform motion-reduce:transition-none" />
                </Button>
               )}
               {entry.offered_at && (
-               <div className="flex items-center justify-end gap-2 text-[#6c47ff]">
-                 <span className="text-[10px] font-black uppercase tracking-widest">Active Offer</span>
+               <div className="flex items-center justify-end gap-2 text-dash-accent">
+                 <span className="text-[10px] font-bold">Active offer</span>
                  <ArrowRight className="h-3 w-3" />
                </div>
               )}

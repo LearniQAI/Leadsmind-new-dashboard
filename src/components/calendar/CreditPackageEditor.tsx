@@ -39,22 +39,22 @@ export function CreditPackageEditor({ calendarId }: CreditPackageEditorProps) {
  };
 
  return (
-  <div className="card__wrapper border-primary/10">
-   <div className="card__title-wrap flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
+  <div className="bg-white border border-dash-border rounded-2xl p-6 shadow-sm">
+   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
     <div>
       <div className="flex items-center gap-2 mb-2">
        <CreditCard className="h-4 w-4 text-primary" />
-       <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Monetization Layer</span>
+       <span className="text-[10px] font-bold text-primary">Monetization layer</span>
       </div>
-      <h5 className="card__heading-title uppercase">Value Credits</h5>
-      <p className="card__desc style_two text-sm font-medium mt-2">Manage session monetization and token yields.</p>
+      <h5 className="text-lg font-bold !text-dash-text">Value credits</h5>
+      <p className="text-sm font-medium !text-dash-textMuted mt-2">Manage session monetization and token yields.</p>
     </div>
-    <Button 
+    <Button
      onClick={addPackage}
-     className="bg-primary hover:bg-primary-dark text-white rounded-xl gap-2 font-bold uppercase text-[10px] h-12 px-8 shadow-lg shadow-primary/10"
+     className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold text-[10px] h-12 px-8 shadow-lg shadow-primary/10 transition-colors motion-reduce:transition-none"
     >
      <Plus className="h-3.5 w-3.5" />
-     Deploy Package
+     Deploy package
     </Button>
    </div>
 

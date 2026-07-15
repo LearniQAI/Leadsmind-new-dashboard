@@ -37,17 +37,17 @@ export default function ConfirmationModal({
 }: ConfirmationModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] z-[1100] bg-[var(--n800)] border-[var(--bdr)] text-[var(--t1)]">
+      <DialogContent className="sm:max-w-[400px] z-[1100] bg-white border-dash-border !text-dash-text">
         <DialogHeader>
           <div className="flex items-center gap-4 mb-2">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDestructive ? 'bg-red-500/10 text-red-500' : 'bg-[var(--accent)]/10 text-[var(--accent2)]'}`}>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDestructive ? 'bg-red/10 text-red' : 'bg-dash-accent/10 text-dash-accent'}`}>
                <AlertTriangle size={24} />
             </div>
             <div>
-               <DialogTitle className="text-[18px] font-bold font-['Space_Grotesk'] text-[var(--t1)]">
+               <DialogTitle className="text-[18px] font-bold !text-dash-text">
                  {title}
                </DialogTitle>
-               <DialogDescription className="text-[13px] text-[var(--t4)] mt-1">
+               <DialogDescription className="text-[13px] !text-dash-textMuted mt-1">
                  {description}
                </DialogDescription>
             </div>
@@ -55,23 +55,23 @@ export default function ConfirmationModal({
         </DialogHeader>
 
         <DialogFooter className="mt-6 gap-3">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="text-[var(--t3)] hover:text-[var(--t1)] text-[11px] font-bold uppercase tracking-widest"
+            className="!text-dash-textMuted hover:!text-dash-text text-[11px] font-bold"
           >
             {cancelText}
           </Button>
           <Button
             onClick={onConfirm}
             disabled={isLoading}
-            className={`min-w-[120px] h-11 text-[11px] font-bold uppercase tracking-widest rounded-xl transition-all ${
-              isDestructive 
-                ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20' 
-                : 'bg-[var(--accent)] hover:bg-[var(--accent2)] text-white'
+            className={`min-w-[120px] h-11 text-[11px] font-bold rounded-xl transition-all motion-reduce:transition-none ${
+              isDestructive
+                ? 'bg-red hover:bg-red/90 text-white shadow-lg shadow-red/20'
+                : 'bg-dash-accent hover:bg-dash-accent/90 text-white'
             }`}
           >
-            {isLoading ? <Loader2 className="animate-spin mr-2" size={16} /> : confirmText}
+            {isLoading ? <Loader2 className="animate-spin motion-reduce:animate-none mr-2" size={16} /> : confirmText}
           </Button>
         </DialogFooter>
       </DialogContent>

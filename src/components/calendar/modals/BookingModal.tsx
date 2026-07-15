@@ -64,10 +64,10 @@ interface BookingModalProps {
   onViewAppointment?: (apt: any) => void;
 }
 
-export default function BookingModal({ 
-  isOpen, 
-  onClose, 
-  calendars, 
+export default function BookingModal({
+  isOpen,
+  onClose,
+  calendars,
   initialDate,
   initialAppointment,
   allAppointments = [],
@@ -108,7 +108,7 @@ export default function BookingModal({
         });
       } else if (initialDate) {
         const dateStr = format(initialDate, 'yyyy-MM-dd');
-        const dayEvents = allAppointments.filter(apt => 
+        const dayEvents = allAppointments.filter(apt =>
           format(parseISO(apt.start_time), 'yyyy-MM-dd') === dateStr
         );
 
@@ -201,16 +201,16 @@ export default function BookingModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] z-[1002] bg-[var(--n800)] border-[var(--bdr)] text-[var(--t1)]">
+      <DialogContent className="sm:max-w-[500px] z-[1002] bg-white border-dash-border !text-dash-text">
         <DialogHeader>
-          <DialogTitle className="text-[20px] font-bold font-['Space_Grotesk'] uppercase tracking-wider text-[var(--accent2)] flex items-center justify-between">
+          <DialogTitle className="text-[20px] font-bold text-dash-accent flex items-center justify-between">
             {view === 'agenda' ? (
-              <span>Daily <span className="text-[var(--t1)]">Agenda</span></span>
+              <span>Daily <span className="!text-dash-text">Agenda</span></span>
             ) : (
-              <span>{initialAppointment ? 'Edit' : 'Book'} <span className="text-[var(--t1)]">Appointment</span></span>
+              <span>{initialAppointment ? 'Edit' : 'Book'} <span className="!text-dash-text">Appointment</span></span>
             )}
             {initialDate && (
-              <span className="text-[12px] font-medium text-[var(--t4)] normal-case tracking-normal">
+              <span className="text-[12px] font-medium !text-dash-textMuted normal-case tracking-normal">
                 {format(initialDate, 'MMM do, yyyy')}
               </span>
             )}
@@ -224,24 +224,24 @@ export default function BookingModal({
                 .filter(apt => format(parseISO(apt.start_time), 'yyyy-MM-dd') === form.getValues('date'))
                 .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
                 .map(apt => (
-                  <div 
+                  <div
                     key={apt.id}
                     onClick={() => onViewAppointment?.(apt)}
-                    className="group p-4 bg-[var(--n900)] border border-[var(--bdr)] rounded-[var(--r12)] hover:border-[var(--accent)] transition-all cursor-pointer flex items-center justify-between"
+                    className="group p-4 bg-dash-surface border border-dash-border rounded-xl hover:border-dash-accent transition-all motion-reduce:transition-none cursor-pointer flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-[var(--accent)] bg-opacity-10 flex items-center justify-center text-[var(--accent2)]">
+                      <div className="w-10 h-10 rounded-full bg-dash-accent/10 flex items-center justify-center text-dash-accent">
                         <Clock size={18} />
                       </div>
                       <div>
-                        <p className="text-[14px] font-bold text-[var(--t1)] group-hover:text-[var(--accent2)] transition-colors">{apt.title}</p>
-                        <p className="text-[11px] text-[var(--t4)] flex items-center gap-1.5 mt-0.5 uppercase font-black tracking-widest">
+                        <p className="text-[14px] font-bold !text-dash-text group-hover:text-dash-accent transition-colors motion-reduce:transition-none">{apt.title}</p>
+                        <p className="text-[11px] !text-dash-textMuted flex items-center gap-1.5 mt-0.5 font-bold">
                           {format(parseISO(apt.start_time), 'h:mm a')} - {format(parseISO(apt.end_time), 'h:mm a')}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                       <div className="px-2 py-1 rounded bg-[rgba(255,255,255,0.03)] border border-[var(--bdr)] text-[9px] font-black uppercase text-[var(--t4)]">
+                       <div className="px-2 py-1 rounded bg-white border border-dash-border text-[9px] font-bold !text-dash-textMuted">
                          {apt.calendar?.name || 'Meeting'}
                        </div>
                     </div>
@@ -249,9 +249,9 @@ export default function BookingModal({
                 ))}
             </div>
 
-            <Button 
+            <Button
               onClick={() => setView('form')}
-              className="w-full bg-[var(--accent)]/10 hover:bg-[var(--accent)] text-[var(--accent2)] hover:text-white border border-[var(--accent)] border-opacity-20 h-12 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all"
+              className="w-full bg-dash-accent/10 hover:bg-dash-accent text-dash-accent hover:text-white border border-dash-accent/20 h-12 text-[11px] font-bold rounded-xl transition-all motion-reduce:transition-none"
             >
               <Sparkles size={16} className="mr-2" /> Add New Session
             </Button>
@@ -267,22 +267,22 @@ export default function BookingModal({
               name="calendarId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">Calendar Engine</FormLabel>
+                  <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Calendar Engine</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t2)] h-11">
+                      <SelectTrigger className="bg-white border-dash-border !text-dash-text h-11">
                         <SelectValue placeholder="Select a calendar" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="bg-[var(--n900)] border-[var(--bdr)] z-[1100]">
+                    <SelectContent className="bg-white border-dash-border z-[1100]">
                       {calendars.map(cal => (
-                        <SelectItem key={cal.id} value={cal.id} className="text-[var(--t2)] focus:bg-[var(--accent)] focus:text-white">
+                        <SelectItem key={cal.id} value={cal.id} className="!text-dash-text focus:bg-dash-accent focus:text-white">
                           {cal.name} ({cal.calendar_type})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage className="text-red-400 text-[10px]" />
+                  <FormMessage className="text-red text-[10px]" />
                 </FormItem>
               )}
             />
@@ -293,22 +293,22 @@ export default function BookingModal({
               name="meetingMode"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">Meeting Mode</FormLabel>
+                  <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Meeting Mode</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t2)] h-11">
+                      <SelectTrigger className="bg-white border-dash-border !text-dash-text h-11">
                         <SelectValue placeholder="Select mode" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="bg-[var(--n900)] border-[var(--bdr)] z-[1100]">
-                      <SelectItem value="internal_meet" className="focus:bg-[var(--accent)]">
+                    <SelectContent className="bg-white border-dash-border z-[1100]">
+                      <SelectItem value="internal_meet" className="focus:bg-dash-accent/10">
                         <div className="flex items-center gap-2">
-                           <Sparkles size={14} className="text-[var(--accent2)]" /> LeadsMind Video (Internal)
+                           <Sparkles size={14} className="text-dash-accent" /> LeadsMind Video (Internal)
                         </div>
                       </SelectItem>
                       <SelectItem value="google_meet">
                         <div className="flex items-center gap-2">
-                           <Video size={14} className="text-blue-400" /> Google Meet
+                           <Video size={14} className="text-blue-500" /> Google Meet
                         </div>
                       </SelectItem>
                       <SelectItem value="zoom">
@@ -318,7 +318,7 @@ export default function BookingModal({
                       </SelectItem>
                       <SelectItem value="custom_link">
                         <div className="flex items-center gap-2">
-                           <LinkIcon size={14} className="text-[var(--t4)]" /> Custom Link / Address
+                           <LinkIcon size={14} className="!text-dash-textMuted" /> Custom Link / Address
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -333,11 +333,11 @@ export default function BookingModal({
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">Meeting Title</FormLabel>
+                  <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Meeting Title</FormLabel>
                   <FormControl>
-                    <Input {...field} className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t1)] h-11" placeholder="e.g. Discovery Call" />
+                    <Input {...field} className="bg-white border-dash-border !text-dash-text h-11" placeholder="e.g. Discovery Call" />
                   </FormControl>
-                  <FormMessage className="text-red-400 text-[10px]" />
+                  <FormMessage className="text-red text-[10px]" />
                 </FormItem>
               )}
             />
@@ -348,21 +348,21 @@ export default function BookingModal({
               name="contactId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">Contact / Client</FormLabel>
+                  <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Contact / Client</FormLabel>
                   <div className="relative">
                     {selectedContact ? (
-                      <div className="flex items-center justify-between bg-[var(--n900)] border border-[var(--accent)] rounded-[var(--r8)] h-11 px-4 text-[13px] text-[var(--t1)]">
+                      <div className="flex items-center justify-between bg-white border border-dash-accent rounded-lg h-11 px-4 text-[13px] !text-dash-text">
                         <div className="flex items-center gap-2">
-                           <div className="w-6 h-6 rounded-full bg-[var(--accent)] flex items-center justify-center text-[10px] font-bold">
+                           <div className="w-6 h-6 rounded-full bg-dash-accent flex items-center justify-center text-[10px] font-bold text-white">
                               {selectedContact.first_name[0]}{selectedContact.last_name[0]}
                            </div>
                            <span className="font-bold">{selectedContact.first_name} {selectedContact.last_name}</span>
-                           <span className="text-[var(--t4)] text-[11px]">({selectedContact.email})</span>
+                           <span className="!text-dash-textMuted text-[11px]">({selectedContact.email})</span>
                         </div>
-                        <button 
+                        <button
                           type="button"
                           onClick={clearContact}
-                          className="text-[var(--t4)] hover:text-red-400 transition-colors text-[10px] font-black uppercase"
+                          className="!text-dash-textMuted hover:text-red transition-colors motion-reduce:transition-none text-[10px] font-bold"
                         >
                           Change
                         </button>
@@ -370,31 +370,31 @@ export default function BookingModal({
                     ) : (
                       <>
                         <Input
-                          className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t1)] h-11 pl-10"
+                          className="bg-white border-dash-border !text-dash-text h-11 pl-10"
                           placeholder="Search by name or email..."
                           autoComplete="off"
                           onChange={(e) => handleSearchContacts(e.target.value)}
                         />
-                        <User size={16} className="absolute left-3 top-3 text-[var(--t4)]" />
-                        {isSearching && <Loader2 className="absolute right-3 top-3 animate-spin text-[var(--accent)]" size={16} />}
+                        <User size={16} className="absolute left-3 top-3 !text-dash-textMuted" />
+                        {isSearching && <Loader2 className="absolute right-3 top-3 animate-spin motion-reduce:animate-none text-dash-accent" size={16} />}
                       </>
                     )}
                   </div>
                   {!selectedContact && contacts.length > 0 && (
-                    <div className="mt-2 bg-[var(--n900)] border border-[var(--bdr)] rounded-[var(--r8)] overflow-hidden max-h-[150px] overflow-y-auto shadow-2xl z-50">
+                    <div className="mt-2 bg-white border border-dash-border rounded-lg overflow-hidden max-h-[150px] overflow-y-auto shadow-2xl z-50">
                       {contacts.map(c => (
                         <div
                           key={c.id}
-                          className="p-3 text-[12px] cursor-pointer hover:bg-[rgba(255,255,255,0.03)] border-b border-[rgba(255,255,255,0.05)] last:border-0 transition-colors flex flex-col gap-0.5"
+                          className="p-3 text-[12px] cursor-pointer hover:bg-dash-surface border-b border-dash-border last:border-0 transition-colors motion-reduce:transition-none flex flex-col gap-0.5"
                           onClick={() => selectContact(c)}
                         >
-                          <span className="font-bold text-[var(--t1)]">{c.first_name} {c.last_name}</span>
-                          <span className="text-[var(--t4)] text-[11px]">{c.email}</span>
+                          <span className="font-bold !text-dash-text">{c.first_name} {c.last_name}</span>
+                          <span className="!text-dash-textMuted text-[11px]">{c.email}</span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <FormMessage className="text-red-400 text-[10px]" />
+                  <FormMessage className="text-red text-[10px]" />
                 </FormItem>
               )}
             />
@@ -406,11 +406,11 @@ export default function BookingModal({
                 name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">Date</FormLabel>
+                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t1)] h-11 px-2" />
+                      <Input type="date" {...field} className="bg-white border-dash-border !text-dash-text h-11 px-2" />
                     </FormControl>
-                    <FormMessage className="text-red-400 text-[10px]" />
+                    <FormMessage className="text-red text-[10px]" />
                   </FormItem>
                 )}
               />
@@ -421,11 +421,11 @@ export default function BookingModal({
                 name="startTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">Start</FormLabel>
+                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Start</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t1)] h-11 px-2" />
+                      <Input type="time" {...field} className="bg-white border-dash-border !text-dash-text h-11 px-2" />
                     </FormControl>
-                    <FormMessage className="text-red-400 text-[10px]" />
+                    <FormMessage className="text-red text-[10px]" />
                   </FormItem>
                 )}
               />
@@ -436,11 +436,11 @@ export default function BookingModal({
                 name="endTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[var(--t3)]">End</FormLabel>
+                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted">End</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} className="bg-[var(--n900)] border-[var(--bdr)] text-[var(--t1)] h-11 px-2" />
+                      <Input type="time" {...field} className="bg-white border-dash-border !text-dash-text h-11 px-2" />
                     </FormControl>
-                    <FormMessage className="text-red-400 text-[10px]" />
+                    <FormMessage className="text-red text-[10px]" />
                   </FormItem>
                 )}
               />
@@ -448,16 +448,16 @@ export default function BookingModal({
               </form>
             </Form>
 
-            <DialogFooter className="border-t border-[var(--bdr)] pt-4 mt-2">
-              <Button variant="ghost" onClick={() => setView('agenda')} className="flex-1 text-[var(--t3)] hover:text-[var(--t1)] font-bold uppercase tracking-widest text-[11px]">
+            <DialogFooter className="border-t border-dash-border pt-4 mt-2">
+              <Button variant="ghost" onClick={() => setView('agenda')} className="flex-1 !text-dash-textMuted hover:!text-dash-text font-bold text-[11px]">
                 Back to Agenda
               </Button>
               <Button
                 onClick={form.handleSubmit(onSubmit)}
                 disabled={isSubmitting}
-                className="bg-[var(--accent)] hover:bg-[var(--accent2)] text-white font-bold uppercase tracking-widest text-[11px] px-8 h-11 rounded-[var(--r8)] transition-all"
+                className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] px-8 h-11 rounded-lg transition-all motion-reduce:transition-none"
               >
-                {isSubmitting ? <Loader2 className="animate-spin mr-2" size={16} /> : <Check className="mr-2" size={16} />}
+                {isSubmitting ? <Loader2 className="animate-spin motion-reduce:animate-none mr-2" size={16} /> : <Check className="mr-2" size={16} />}
                 Confirm Booking
               </Button>
             </DialogFooter>

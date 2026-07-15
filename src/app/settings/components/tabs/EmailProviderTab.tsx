@@ -89,8 +89,8 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-gray-500">
-        <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+      <div className="flex items-center gap-2 text-sm !text-dash-textMuted">
+        <RefreshCw className="w-4 h-4 animate-spin motion-reduce:animate-none text-dash-accent" />
         <span>Loading configuration…</span>
       </div>
     );
@@ -99,33 +99,33 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center gap-3">
-        <Mail className="w-5 h-5 text-blue-500" />
+        <Mail className="w-5 h-5 text-dash-accent" />
         <div>
-          <h3 className="text-lg font-semibold">Custom Email Provider</h3>
-          <p className="text-sm text-gray-500">
+          <h3 className="text-lg font-semibold !text-dash-text">Custom email provider</h3>
+          <p className="text-sm !text-dash-textMuted">
             Route transactional emails (invoices, courier tracking, affiliate welcomes) through your own Resend account.
           </p>
         </div>
       </div>
 
-      <div className="p-4 bg-white/5 border border-white/10 rounded-lg flex items-start gap-3">
+      <div className="p-4 bg-dash-surface border border-dash-border rounded-lg flex items-start gap-3">
         {verified ? (
           <>
-            <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+            <CheckCircle2 className="w-5 h-5 text-green flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Status: Verified</p>
-              <p className="text-xs text-gray-400">
+              <p className="text-sm font-semibold !text-dash-text">Status: Verified</p>
+              <p className="text-xs !text-dash-textMuted">
                 Last verified: {lastVerifiedAt ? new Date(lastVerifiedAt).toLocaleString() : 'N/A'}
               </p>
             </div>
           </>
         ) : (
           <>
-            <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Status: Unverified</p>
-              <p className="text-xs text-gray-400">
-                Please save your configuration and click "Send Test Email" to verify domain alignment.
+              <p className="text-sm font-semibold !text-dash-text">Status: Unverified</p>
+              <p className="text-xs !text-dash-textMuted">
+                Please save your configuration and click "Send test email" to verify domain alignment.
               </p>
             </div>
           </>
@@ -134,35 +134,35 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
 
       <form onSubmit={handleSave} className="space-y-4">
         <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
-            Email Provider
+          <label className="block text-xs font-bold !text-dash-textMuted mb-1.5">
+            Email provider
           </label>
           <select
             value={provider}
             disabled
-            className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-white focus:outline-none opacity-60"
+            className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-surface text-sm !text-dash-text focus:outline-none opacity-60"
           >
             <option value="resend">Resend (Standard)</option>
           </select>
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
-            Resend API Key
+          <label className="block text-xs font-bold !text-dash-textMuted mb-1.5">
+            Resend API key
           </label>
           <input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="re_••••••••••••••••••••••••"
-            className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-white focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2 rounded-lg border border-dash-border bg-white text-sm !text-dash-text focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
-              From Email
+            <label className="block text-xs font-bold !text-dash-textMuted mb-1.5">
+              From email
             </label>
             <input
               type="email"
@@ -170,20 +170,20 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
               value={fromEmail}
               onChange={(e) => setFromEmail(e.target.value)}
               placeholder="no-reply@yourdomain.com"
-              className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 rounded-lg border border-dash-border bg-white text-sm !text-dash-text focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
-              From Name
+            <label className="block text-xs font-bold !text-dash-textMuted mb-1.5">
+              From name
             </label>
             <input
               type="text"
               value={fromName}
               onChange={(e) => setFromName(e.target.value)}
               placeholder="e.g. Acme Corp"
-              className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 rounded-lg border border-dash-border bg-white text-sm !text-dash-text focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
             />
           </div>
         </div>
@@ -192,10 +192,10 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
           <button
             type="submit"
             disabled={saving}
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-dash-accent hover:bg-dash-accent/90 text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-colors motion-reduce:transition-none"
           >
-            {saving && <RefreshCw className="w-4 h-4 animate-spin" />}
-            {saving ? 'Saving…' : 'Save Settings'}
+            {saving && <RefreshCw className="w-4 h-4 animate-spin motion-reduce:animate-none" />}
+            {saving ? 'Saving…' : 'Save settings'}
           </button>
 
           {verified === false && apiKey && (
@@ -203,10 +203,10 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
               type="button"
               disabled={verifying}
               onClick={handleVerify}
-              className="px-4 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg border border-dash-border hover:bg-dash-surface !text-dash-text text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-colors motion-reduce:transition-none"
             >
-              {verifying && <RefreshCw className="w-4 h-4 animate-spin" />}
-              {verifying ? 'Verifying…' : 'Send Test Email'}
+              {verifying && <RefreshCw className="w-4 h-4 animate-spin motion-reduce:animate-none" />}
+              {verifying ? 'Verifying…' : 'Send test email'}
             </button>
           )}
 
@@ -215,10 +215,10 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
               type="button"
               disabled={verifying}
               onClick={handleVerify}
-              className="px-4 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg border border-dash-border hover:bg-dash-surface !text-dash-text text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-colors motion-reduce:transition-none"
             >
-              {verifying && <RefreshCw className="w-4 h-4 animate-spin" />}
-              {verifying ? 'Retesting…' : 'Send Test Email'}
+              {verifying && <RefreshCw className="w-4 h-4 animate-spin motion-reduce:animate-none" />}
+              {verifying ? 'Retesting…' : 'Send test email'}
             </button>
           )}
         </div>

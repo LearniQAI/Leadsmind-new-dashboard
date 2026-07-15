@@ -5,12 +5,12 @@ import { Globe, Plus, CheckCircle2, AlertTriangle, Clock, Trash2, RefreshCw, Cop
 import { addDomain, getDomains, deleteDomain } from '@/app/actions/domains';
 import { toast } from 'sonner';
 
-const STATUS: Record<string, { label: string; color: string; icon: any }> = {
-  pending:          { label: 'Pending',          color: '#eab308', icon: Clock },
-  verifying:        { label: 'Verifying',        color: '#eab308', icon: RefreshCw },
-  ssl_provisioning: { label: 'Provisioning SSL', color: '#3b82f6', icon: RefreshCw },
-  active:           { label: 'Active',           color: '#22c55e', icon: CheckCircle2 },
-  error:            { label: 'Error',            color: '#ef4444', icon: AlertTriangle },
+const STATUS: Record<string, { label: string; className: string; icon: any }> = {
+  pending:          { label: 'Pending',          className: 'text-amber-600 bg-amber-50', icon: Clock },
+  verifying:        { label: 'Verifying',        className: 'text-amber-600 bg-amber-50', icon: RefreshCw },
+  ssl_provisioning: { label: 'Provisioning SSL', className: 'text-dash-accent bg-dash-accent/10', icon: RefreshCw },
+  active:           { label: 'Active',           className: 'text-green bg-green/10', icon: CheckCircle2 },
+  error:            { label: 'Error',            className: 'text-red bg-red/10', icon: AlertTriangle },
 };
 
 export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string }) {
@@ -62,10 +62,10 @@ export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Globe className="w-5 h-5 text-blue-500" />
+        <Globe className="w-5 h-5 text-dash-accent" />
         <div>
-          <h3 className="text-lg font-semibold">Custom Domains</h3>
-          <p className="text-sm text-gray-500">Connect your own domain to your CRM, courses, and billing portals.</p>
+          <h3 className="text-lg font-semibold !text-dash-text">Custom domains</h3>
+          <p className="text-sm !text-dash-textMuted">Connect your own domain to your CRM, courses, and billing portals.</p>
         </div>
       </div>
 
@@ -74,21 +74,21 @@ export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string
           value={hostname}
           onChange={(e) => setHostname(e.target.value)}
           placeholder="app.yourdomain.com"
-          className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm"
+          className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-dash-border bg-white !text-dash-text text-sm focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
         />
         <button
           type="submit"
           disabled={adding || !hostname.trim()}
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+          className="px-4 py-2 rounded-lg bg-dash-accent hover:bg-dash-accent/90 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-colors motion-reduce:transition-none"
         >
-          <Plus className="w-4 h-4" /> {adding ? 'Adding…' : 'Add Domain'}
+          <Plus className="w-4 h-4" /> {adding ? 'Adding…' : 'Add domain'}
         </button>
       </form>
 
       {loading ? (
-        <div className="text-sm text-gray-500">Loading…</div>
+        <div className="text-sm !text-dash-textMuted">Loading…</div>
       ) : domains.length === 0 ? (
-        <div className="text-sm text-gray-500 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
+        <div className="text-sm !text-dash-textMuted border border-dashed border-dash-border rounded-lg p-6 text-center">
           No custom domains yet. Add one above to get started.
         </div>
       ) : (
@@ -97,34 +97,33 @@ export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string
             const s = STATUS[d.status] || STATUS.pending;
             const Icon = s.icon;
             return (
-              <div key={d.id} className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <div key={d.id} className="border border-dash-border rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{d.hostname}</span>
-                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-                          style={{ color: s.color, background: `${s.color}1a` }}>
+                    <span className="font-medium !text-dash-text">{d.hostname}</span>
+                    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${s.className}`}>
                       <Icon className="w-3 h-3" /> {s.label}
                     </span>
                   </div>
-                  <button onClick={() => handleDelete(d.id)} className="text-gray-400 hover:text-red-500">
+                  <button onClick={() => handleDelete(d.id)} className="!text-dash-textMuted hover:text-red transition-colors motion-reduce:transition-none">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
                 {d.status !== 'active' && (
                   <div className="mt-3 space-y-2 text-xs">
-                    <p className="text-gray-500">Add these DNS records at your registrar:</p>
-                    <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 rounded p-2 font-mono">
+                    <p className="!text-dash-textMuted">Add these DNS records at your registrar:</p>
+                    <div className="flex items-center justify-between bg-dash-surface rounded p-2 font-mono !text-dash-text">
                       <span>CNAME&nbsp;&nbsp;{d.domain_type === 'apex' ? '@' : d.hostname.split('.')[0]} → domains.leadsmind.com</span>
                       <button onClick={() => copy('domains.leadsmind.com', `${d.id}-c`)}>
-                        {copied === `${d.id}-c` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                        {copied === `${d.id}-c` ? <Check className="w-3 h-3 text-green" /> : <Copy className="w-3 h-3 !text-dash-textMuted" />}
                       </button>
                     </div>
                     {d.verification_token && (
-                      <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 rounded p-2 font-mono">
+                      <div className="flex items-center justify-between bg-dash-surface rounded p-2 font-mono !text-dash-text">
                         <span>TXT&nbsp;&nbsp;_leadsmind-verify → {d.verification_token}</span>
                         <button onClick={() => copy(d.verification_token, `${d.id}-t`)}>
-                          {copied === `${d.id}-t` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                          {copied === `${d.id}-t` ? <Check className="w-3 h-3 text-green" /> : <Copy className="w-3 h-3 !text-dash-textMuted" />}
                         </button>
                       </div>
                     )}

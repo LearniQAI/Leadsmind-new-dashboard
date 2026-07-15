@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { 
-  Download, RefreshCw, BarChart2, TrendingUp, TrendingDown, 
+import {
+  Download, RefreshCw, BarChart2, TrendingUp, TrendingDown,
   Minus, Clock, Info, ShieldCheck, XCircle, ChevronRight, X
 } from "lucide-react";
 import { getQuizSubmissionsAction } from "@/app/actions/quizzes";
@@ -72,17 +72,17 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
 
   // Compute performance delta trend
   const getPerformanceTrend = (attempts: any[]) => {
-    if (attempts.length <= 1) return { label: "Flat", icon: Minus, style: "bg-white/5 text-white/40 border-white/5" };
-    
+    if (attempts.length <= 1) return { label: "Flat", icon: Minus, style: "bg-dash-surface !text-dash-textMuted border-dash-border" };
+
     const firstScore = attempts[0].score || 0;
     const latestScore = attempts[attempts.length - 1].score || 0;
-    
+
     if (latestScore > firstScore) {
-      return { label: "Improving", icon: TrendingUp, style: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" };
+      return { label: "Improving", icon: TrendingUp, style: "bg-green/10 text-green border-green/20" };
     } else if (latestScore < firstScore) {
-      return { label: "Declining", icon: TrendingDown, style: "bg-red-500/10 text-red-400 border-red-500/20" };
+      return { label: "Declining", icon: TrendingDown, style: "bg-red/10 text-red border-red/20" };
     } else {
-      return { label: "Flat", icon: Minus, style: "bg-white/5 text-white/40 border-white/5" };
+      return { label: "Flat", icon: Minus, style: "bg-dash-surface !text-dash-textMuted border-dash-border" };
     }
   };
 
@@ -98,7 +98,7 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
       const contactName = sub.contact ? `${sub.contact.first_name || ""} ${sub.contact.last_name || ""}`.trim() : "Student";
       const contactEmail = sub.contact?.email || "";
       const dateStr = sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : "Started";
-      
+
       // Determine attempt number
       const siblings = studentAttemptsMap[sub.contact_id] || [];
       const attemptNum = siblings.findIndex(s => s.id === sub.id) + 1;
@@ -114,9 +114,9 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
       ];
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -136,8 +136,8 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
 
     // SETA auditing template format
     const headers = [
-      "Student Email ID", "Student Full Name", "Course Title", "Assessment Title", 
-      "Assessment Date", "Score Achieved", "Passing Threshold", "Result Status", 
+      "Student Email ID", "Student Full Name", "Course Title", "Assessment Title",
+      "Assessment Date", "Score Achieved", "Passing Threshold", "Result Status",
       "SETA Outcome Code"
     ];
 
@@ -160,9 +160,9 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
       ];
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -176,8 +176,8 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
   if (loading) {
     return (
       <div className="py-20 text-center flex flex-col items-center justify-center min-h-[300px]">
-        <RefreshCw size={24} className="animate-spin text-primary mb-3" />
-        <span className="text-xs text-white/40 uppercase tracking-widest font-black">Compiling Submissions Analytics...</span>
+        <RefreshCw size={24} className="animate-spin motion-reduce:animate-none text-primary mb-3" />
+        <span className="text-xs !text-dash-textMuted font-bold">Compiling Submissions Analytics...</span>
       </div>
     );
   }
@@ -188,24 +188,24 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
     <div className="space-y-6">
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[#0c1535] border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-white border border-dash-border p-5 rounded-2xl flex items-center justify-between shadow-sm">
           <div>
-            <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">Total Attempts</span>
-            <span className="text-2xl font-space-grotesk font-black text-white mt-1 block">{submissions.length}</span>
+            <span className="text-[10px] font-bold !text-dash-textMuted block">Total Attempts</span>
+            <span className="text-2xl font-bold !text-dash-text mt-1 block">{submissions.length}</span>
           </div>
           <BarChart2 className="text-primary opacity-60" size={24} />
         </div>
-        <div className="bg-[#0c1535] border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-white border border-dash-border p-5 rounded-2xl flex items-center justify-between shadow-sm">
           <div>
-            <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">Unique Students</span>
-            <span className="text-2xl font-space-grotesk font-black text-white mt-1 block">{studentIds.length}</span>
+            <span className="text-[10px] font-bold !text-dash-textMuted block">Unique Students</span>
+            <span className="text-2xl font-bold !text-dash-text mt-1 block">{studentIds.length}</span>
           </div>
-          <BarChart2 className="text-accent2 opacity-60" size={24} />
+          <BarChart2 className="text-dash-accent opacity-60" size={24} />
         </div>
-        <div className="bg-[#0c1535] border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-white border border-dash-border p-5 rounded-2xl flex items-center justify-between shadow-sm">
           <div>
-            <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">Average Group Speed</span>
-            <span className="text-2xl font-space-grotesk font-black text-white mt-1 block">
+            <span className="text-[10px] font-bold !text-dash-textMuted block">Average Group Speed</span>
+            <span className="text-2xl font-bold !text-dash-text mt-1 block">
               {groupAverageDuration > 0 ? formatDuration(groupAverageDuration) : "N/A"}
             </span>
           </div>
@@ -214,18 +214,18 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
       </div>
 
       {/* Export Toolbar */}
-      <div className="flex items-center justify-between bg-[#080f28] border border-white/5 p-4 rounded-xl">
-        <span className="text-[10px] font-black uppercase text-white/40 tracking-wider">Reports Extraction</span>
+      <div className="flex items-center justify-between bg-white border border-dash-border p-4 rounded-xl shadow-sm">
+        <span className="text-[10px] font-bold !text-dash-textMuted">Reports Extraction</span>
         <div className="flex gap-2">
-          <Button 
+          <Button
             onClick={exportToCSV}
-            className="bg-white/5 hover:bg-white/10 text-white rounded-lg text-[9px] font-bold uppercase tracking-wider h-8 px-3 border border-white/5"
+            className="bg-dash-surface hover:bg-dash-border/60 !text-dash-text rounded-lg text-[9px] font-bold h-8 px-3 border border-dash-border transition-colors motion-reduce:transition-none"
           >
             <Download size={11} className="mr-1.5" /> CSV Array
           </Button>
-          <Button 
+          <Button
             onClick={exportToSETA}
-            className="bg-purple/20 hover:bg-purple/35 text-purple-300 rounded-lg text-[9px] font-bold uppercase tracking-wider h-8 px-3 border border-purple/30"
+            className="bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-[9px] font-bold h-8 px-3 border border-purple-200 transition-colors motion-reduce:transition-none"
           >
             <Download size={11} className="mr-1.5" /> SETA Compliance
           </Button>
@@ -233,9 +233,9 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
       </div>
 
       {/* Student List */}
-      <div className="bg-[#080f28] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
-        <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-          <span className="text-[10px] font-bold text-white uppercase tracking-wider">Assessor Review Console</span>
+      <div className="bg-white border border-dash-border rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-dash-border flex items-center justify-between">
+          <span className="text-[10px] font-bold !text-dash-text">Assessor Review Console</span>
           <button onClick={loadSubmissions} className="text-[10px] font-bold text-primary flex items-center gap-1">
             <RefreshCw size={10} /> Reload
           </button>
@@ -243,15 +243,15 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
 
         {studentIds.length === 0 ? (
           <div className="py-12 text-center">
-            <Info className="mx-auto text-white/20 mb-2" size={24} />
-            <span className="text-[10.5px] italic text-white/30 block">No students have attempted this quiz yet.</span>
+            <Info className="mx-auto !text-dash-textMuted opacity-60 mb-2" size={24} />
+            <span className="text-[10.5px] italic !text-dash-textMuted block">No students have attempted this quiz yet.</span>
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-dash-border">
             {studentIds.map((cid) => {
               const attempts = studentAttemptsMap[cid];
               const latest = attempts[attempts.length - 1];
-              
+
               // CRM details
               const contact = latest.contact || {};
               const fullName = `${contact.first_name || ""} ${contact.last_name || ""}`.trim() || "Student";
@@ -272,15 +272,15 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
               const TrendIcon = trend.icon;
 
               return (
-                <div key={cid} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-white/[0.01] transition-colors">
+                <div key={cid} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-dash-surface transition-colors motion-reduce:transition-none">
                   {/* CRM profile data card */}
                   <div className="flex items-start gap-3.5 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-xs font-black uppercase shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-xs font-bold uppercase shrink-0">
                       {fullName.charAt(0)}
                     </div>
                     <div className="min-w-0">
-                      <h4 className="text-xs font-bold text-white leading-tight truncate">{fullName}</h4>
-                      <span className="text-[10px] text-white/40 font-mono block mt-0.5">{email}</span>
+                      <h4 className="text-xs font-bold !text-dash-text leading-tight truncate">{fullName}</h4>
+                      <span className="text-[10px] !text-dash-textMuted font-mono block mt-0.5">{email}</span>
                       {tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1.5">
                           {tags.slice(0, 3).map((tag: string) => (
@@ -297,20 +297,20 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-center shrink-0">
                     {/* Score */}
                     <div className="space-y-1">
-                      <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest block">Latest Score</span>
-                      <span className="text-xs font-bold text-white flex items-center gap-1">
-                        {latest.score}% 
+                      <span className="text-[9px] font-bold !text-dash-textMuted block">Latest Score</span>
+                      <span className="text-xs font-bold !text-dash-text flex items-center gap-1">
+                        {latest.score}%
                         {latest.status === "passed" ? (
-                          <span className="text-[9px] text-emerald-400">Passed</span>
+                          <span className="text-[9px] text-green">Passed</span>
                         ) : (
-                          <span className="text-[9px] text-red-400">Failed</span>
+                          <span className="text-[9px] text-red">Failed</span>
                         )}
                       </span>
                     </div>
 
                     {/* Trend Vector */}
                     <div className="space-y-1">
-                      <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest block">Trend Vector</span>
+                      <span className="text-[9px] font-bold !text-dash-textMuted block">Trend Vector</span>
                       <Badge className={`text-[8.5px] font-bold px-2 py-0.5 flex items-center gap-1 rounded border shrink-0 max-w-[85px] justify-center ${trend.style}`}>
                         <TrendIcon size={10} /> {trend.label}
                       </Badge>
@@ -318,22 +318,22 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
 
                     {/* Timing relative to benchmark */}
                     <div className="space-y-1">
-                      <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest block">Timing Benchmark</span>
-                      <span className="text-[10px] font-mono text-white/60 block">{timeDiffText}</span>
+                      <span className="text-[9px] font-bold !text-dash-textMuted block">Timing Benchmark</span>
+                      <span className="text-[10px] font-mono !text-dash-textMuted block">{timeDiffText}</span>
                     </div>
 
                     {/* Attempts count */}
                     <div className="space-y-1">
-                      <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest block">Attempts</span>
-                      <span className="text-xs font-bold text-white/80 block">{attempts.length} attempts</span>
+                      <span className="text-[9px] font-bold !text-dash-textMuted block">Attempts</span>
+                      <span className="text-xs font-bold !text-dash-text block">{attempts.length} attempts</span>
                     </div>
                   </div>
 
                   {/* View Diagnostic CTA */}
                   <div className="shrink-0 flex items-center justify-end">
-                    <Button 
+                    <Button
                       onClick={() => setSelectedSubmission(latest)}
-                      className="bg-white/5 hover:bg-white/10 text-white rounded-xl text-[9px] font-bold uppercase tracking-wider h-9 px-4 border border-white/5 flex items-center gap-1"
+                      className="bg-dash-surface hover:bg-dash-border/60 !text-dash-text rounded-xl text-[9px] font-bold h-9 px-4 border border-dash-border flex items-center gap-1 transition-colors motion-reduce:transition-none"
                     >
                       Diagnostics <ChevronRight size={12} />
                     </Button>
@@ -352,19 +352,19 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
         const answers = selectedSubmission.answers || {};
 
         return (
-          <div className="fixed inset-0 bg-[#04091a]/85 backdrop-blur-sm z-[1001] flex items-center justify-center p-4">
-            <div className="bg-[#080f28] border border-white/10 rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[1001] flex items-center justify-center p-4">
+            <div className="bg-white border border-dash-border rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col">
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-white/5">
+              <div className="flex items-center justify-between p-6 border-b border-dash-border">
                 <div>
-                  <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em] block">Submission Diagnostics</span>
-                  <h3 className="text-sm font-space-grotesk font-black text-white uppercase tracking-tight mt-0.5">
+                  <span className="text-[9px] font-bold text-primary block">Submission Diagnostics</span>
+                  <h3 className="text-sm font-bold !text-dash-text mt-0.5">
                     {fullName} - Attempts Diagnostics
                   </h3>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedSubmission(null)}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none"
                 >
                   <X size={18} />
                 </button>
@@ -372,15 +372,15 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
 
               {/* Modal Body */}
               <div className="p-6 overflow-y-auto flex-1 space-y-5">
-                <div className="grid grid-cols-2 gap-4 bg-[#111d47]/20 border border-white/5 p-4 rounded-xl text-xs">
+                <div className="grid grid-cols-2 gap-4 bg-dash-surface border border-dash-border p-4 rounded-xl text-xs">
                   <div>
-                    <span className="text-[10px] text-white/30 block uppercase tracking-wider">Attempt Score</span>
-                    <span className="font-bold text-white mt-0.5 block">{selectedSubmission.score}%</span>
+                    <span className="text-[10px] !text-dash-textMuted block">Attempt Score</span>
+                    <span className="font-bold !text-dash-text mt-0.5 block">{selectedSubmission.score}%</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-white/30 block uppercase tracking-wider">Duration Spent</span>
-                    <span className="font-bold text-white mt-0.5 block">
-                      {selectedSubmission.metadata?.total_duration_seconds 
+                    <span className="text-[10px] !text-dash-textMuted block">Duration Spent</span>
+                    <span className="font-bold !text-dash-text mt-0.5 block">
+                      {selectedSubmission.metadata?.total_duration_seconds
                         ? formatDuration(selectedSubmission.metadata.total_duration_seconds)
                         : "N/A"}
                     </span>
@@ -388,11 +388,11 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
                 </div>
 
                 <div className="space-y-4">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Question Breakdown</span>
+                  <span className="text-[10px] font-bold !text-dash-textMuted block">Question Breakdown</span>
                   {questions.map((q, qIdx) => {
                     const ansVal = answers[q.id];
                     let isCorrect = false;
-                    
+
                     if (q.type === "multiple_choice") {
                       const selected = Array.isArray(ansVal) ? ansVal : [];
                       const correctIndices = (q.options || [])
@@ -413,16 +413,16 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
                     }
 
                     return (
-                      <div key={q.id} className="bg-[#111d47]/10 border border-white/5 rounded-xl p-4.5 space-y-2.5">
+                      <div key={q.id} className="bg-dash-surface border border-dash-border rounded-xl p-4.5 space-y-2.5">
                         <div className="flex items-start justify-between gap-4">
-                          <span className="text-xs font-bold text-white">Q{qIdx + 1}: {q.question_text}</span>
+                          <span className="text-xs font-bold !text-dash-text">Q{qIdx + 1}: {q.question_text}</span>
                           <span className="shrink-0">
                             {isCorrect ? (
-                              <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-bold flex items-center gap-0.5">
+                              <Badge className="bg-green/10 text-green border border-green/20 text-[8px] font-bold flex items-center gap-0.5">
                                 <ShieldCheck size={9} /> Correct
                               </Badge>
                             ) : (
-                              <Badge className="bg-red-500/10 text-red-400 border border-red-500/20 text-[8px] font-bold flex items-center gap-0.5">
+                              <Badge className="bg-red/10 text-red border border-red/20 text-[8px] font-bold flex items-center gap-0.5">
                                 <XCircle size={9} /> Incorrect
                               </Badge>
                             )}
@@ -430,10 +430,10 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
                         </div>
 
                         {/* Student Response */}
-                        <div className="text-[11px] text-white/50 bg-[#080f28] p-2.5 rounded-lg border border-white/5 space-y-1 font-mono">
+                        <div className="text-[11px] !text-dash-textMuted bg-white p-2.5 rounded-lg border border-dash-border space-y-1 font-mono">
                           <div className="flex justify-between">
-                            <span className="text-white/30">Student Answer:</span>
-                            <span className="text-white/70">
+                            <span className="!text-dash-textMuted">Student Answer:</span>
+                            <span className="!text-dash-text">
                               {q.type === "multiple_choice"
                                 ? (Array.isArray(ansVal) ? ansVal.map(idx => q.options?.[idx]?.text).join(", ") : "None")
                                 : q.type === "true_false"
@@ -441,9 +441,9 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
                                   : (ansVal || "No response")}
                             </span>
                           </div>
-                          <div className="flex justify-between border-t border-white/5 pt-1 mt-1">
-                            <span className="text-white/30">Correct Answer:</span>
-                            <span className="text-emerald-400">
+                          <div className="flex justify-between border-t border-dash-border pt-1 mt-1">
+                            <span className="!text-dash-textMuted">Correct Answer:</span>
+                            <span className="text-green">
                               {q.type === "multiple_choice"
                                 ? (q.options || []).filter((o: any) => o.is_correct).map((o: any) => o.text).join(", ")
                                 : q.type === "true_false"
@@ -459,10 +459,10 @@ export default function QuizAnalyticsConsole({ quiz, course, questions }: QuizAn
               </div>
 
               {/* Modal Footer */}
-              <div className="p-6 border-t border-white/5 flex items-center justify-end">
-                <Button 
+              <div className="p-6 border-t border-dash-border flex items-center justify-end">
+                <Button
                   onClick={() => setSelectedSubmission(null)}
-                  className="bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-6 shadow-lg"
+                  className="bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-bold h-11 px-6 shadow-lg transition-colors motion-reduce:transition-none"
                 >
                   Close Diagnostic Log
                 </Button>

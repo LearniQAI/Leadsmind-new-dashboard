@@ -7,13 +7,15 @@ import { Container } from './user/Container';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useBuilder } from './BuilderContext';
+import { useParams } from 'next/navigation';
 
 function cn(...inputs: ClassValue[]) {
  return twMerge(clsx(inputs));
 }
 
 export const Viewport = ({ children }: { children?: React.ReactNode }) => {
- const { viewMode, setViewMode, websiteData } = useBuilder();
+ const { viewMode, setViewMode, websiteData, pages } = useBuilder();
+ const { pageId } = useParams();
  const { connectors, actions } = useEditor();
 
  const config = websiteData?.config || {};
@@ -61,16 +63,31 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
   };
 
   return (
-  <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden relative shadow-[inset_0_0_20px_rgba(0,0,0,0.02)]">
+  <div className="flex-1 flex flex-col bg-[#F8FAFC] overflow-hidden relative shadow-[inset_0_0_20px_rgba(0,0,0,0.02)]">
    <link href={googleFontsLink} rel="stylesheet" />
    <style dangerouslySetInnerHTML={{ __html: themeVariablesCss }} />
 
+   {/* Canvas Top Bar */}
+   <div className="h-11 border-b border-slate-200 bg-white px-6 flex items-center justify-between shrink-0 text-xs text-slate-500 z-10">
+     <div className="flex items-center gap-2 font-semibold">
+       <span className="text-slate-800 font-bold text-[12px]">{pages?.find((p: any) => p.id === pageId)?.name || 'Home'} Page</span>
+       <span className="h-3.5 w-px bg-slate-200 mx-1" />
+       <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] border border-emerald-100/80 flex items-center gap-1 font-bold">
+         <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+         Autosave Active
+       </span>
+     </div>
+     <div className="flex items-center gap-1 font-medium text-slate-400 text-[11px]">
+       <span>Saved 2 sec ago</span>
+     </div>
+   </div>
+
    {/* Canvas Area */}
    <div className={cn(
-    "flex-1 overflow-auto w-full flex justify-center p-4 md:p-8 transition-all duration-300 ease-in-out motion-reduce:transition-none"
+    "flex-1 overflow-auto w-full flex justify-center p-6 md:p-12 transition-all duration-300 ease-in-out motion-reduce:transition-none"
    )}>
     <div
-     className="node-canvas-area bg-[var(--theme-bg)] transition-all duration-300 ease-in-out motion-reduce:transition-none rounded-[16px] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.08)] ring-1 ring-black/5"
+     className="node-canvas-area bg-[var(--theme-bg)] transition-all duration-300 ease-in-out motion-reduce:transition-none rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(15,23,42,0.08)] ring-1 ring-black/5"
      style={{
       width: getWidth(),
       maxWidth: viewMode === 'desktop' ? '1440px' : 'none',

@@ -82,20 +82,20 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
   };
 
   if (loading) {
-    return <div className="h-40 bg-white/[0.02] animate-pulse rounded-xl" />;
+    return <div className="h-40 bg-dash-surface animate-pulse motion-reduce:animate-none rounded-xl" />;
   }
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
       {/* Editor Panel */}
-      <div className="flex-1 bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-xl p-6 space-y-5">
-        <h3 className="text-[14px] font-semibold text-[#eef2ff] mb-2 font-space-grotesk">
-          Widget Settings
+      <div className="flex-1 bg-white border border-dash-border rounded-xl p-6 space-y-5 shadow-sm">
+        <h3 className="text-[14px] font-semibold !text-dash-text mb-2">
+          Widget settings
         </h3>
 
         {message && (
-          <div className={`p-3 rounded-lg text-[12px] font-dm-sans ${
-            message.type === 'success' ? 'bg-[#10b981]/15 text-[#34d399]' : 'bg-[#ef4444]/15 text-[#f87171]'
+          <div className={`p-3 rounded-lg text-[12px] ${
+            message.type === 'success' ? 'bg-green/10 text-green' : 'bg-red/10 text-red'
           }`}>
             {message.text}
           </div>
@@ -103,60 +103,60 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
 
         <div className="space-y-4">
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-[0.6px] text-[#4a5a82] mb-1.5 block">
-              Bot Name
+            <label className="text-[11px] font-semibold !text-dash-textMuted mb-1.5 block">
+              Bot name
             </label>
             <input
               type="text"
               value={botName}
               onChange={(e) => setBotName(e.target.value)}
-              className="bg-white/[0.05] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#2563eb] w-full"
+              className="bg-white border border-dash-border rounded-lg px-4 py-2 !text-dash-text text-[13px] focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none w-full"
             />
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-[0.6px] text-[#4a5a82] mb-1.5 block">
-              Welcome Message
+            <label className="text-[11px] font-semibold !text-dash-textMuted mb-1.5 block">
+              Welcome message
             </label>
             <textarea
               value={welcomeMessage}
               onChange={(e) => setWelcomeMessage(e.target.value)}
               rows={3}
-              className="bg-white/[0.05] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#2563eb] w-full resize-none"
+              className="bg-white border border-dash-border rounded-lg px-4 py-2 !text-dash-text text-[13px] focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none w-full resize-none"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[11px] font-semibold uppercase tracking-[0.6px] text-[#4a5a82] mb-1.5 block">
-                Primary Color
+              <label className="text-[11px] font-semibold !text-dash-textMuted mb-1.5 block">
+                Primary color
               </label>
               <div className="flex gap-2 items-center">
                 <input
                   type="color"
                   value={primaryColor}
                   onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="w-10 h-10 border-0 rounded bg-transparent cursor-pointer"
+                  className="w-10 h-10 border border-dash-border rounded bg-white cursor-pointer"
                 />
                 <input
                   type="text"
                   value={primaryColor}
                   onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="bg-white/[0.05] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#2563eb] flex-1"
+                  className="bg-white border border-dash-border rounded-lg px-3 py-2 !text-dash-text text-[13px] focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none flex-1"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold uppercase tracking-[0.6px] text-[#4a5a82] mb-1.5 block">
+              <label className="text-[11px] font-semibold !text-dash-textMuted mb-1.5 block">
                 Position
               </label>
-              <div className="flex bg-white/[0.04] p-1 rounded-lg border border-[rgba(255,255,255,0.07)]">
+              <div className="flex bg-dash-surface p-1 rounded-lg border border-dash-border">
                 <button
                   type="button"
                   onClick={() => setPosition('left')}
-                  className={`flex-1 py-1.5 text-[12px] font-semibold rounded-md transition-colors ${
-                    position === 'left' ? 'bg-[#2563eb] text-white' : 'text-[#94a3c8] hover:text-[#eef2ff]'
+                  className={`flex-1 py-1.5 text-[12px] font-semibold rounded-md transition-colors motion-reduce:transition-none ${
+                    position === 'left' ? 'bg-dash-accent text-white' : '!text-dash-textMuted hover:!text-dash-text'
                   }`}
                 >
                   Left
@@ -164,8 +164,8 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
                 <button
                   type="button"
                   onClick={() => setPosition('right')}
-                  className={`flex-1 py-1.5 text-[12px] font-semibold rounded-md transition-colors ${
-                    position === 'right' ? 'bg-[#2563eb] text-white' : 'text-[#94a3c8] hover:text-[#eef2ff]'
+                  className={`flex-1 py-1.5 text-[12px] font-semibold rounded-md transition-colors motion-reduce:transition-none ${
+                    position === 'right' ? 'bg-dash-accent text-white' : '!text-dash-textMuted hover:!text-dash-text'
                   }`}
                 >
                   Right
@@ -175,8 +175,8 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-[0.6px] text-[#4a5a82] mb-1.5 block">
-              Quick Replies (Max 5)
+            <label className="text-[11px] font-semibold !text-dash-textMuted mb-1.5 block">
+              Quick replies (max 5)
             </label>
             <div className="flex gap-2 mb-3">
               <input
@@ -185,12 +185,12 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
                 value={newReply}
                 onChange={(e) => setNewReply(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && addQuickReply()}
-                className="bg-white/[0.05] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2 text-white text-[13px] focus:outline-none focus:border-[#2563eb] flex-1"
+                className="bg-white border border-dash-border rounded-lg px-4 py-2 !text-dash-text text-[13px] focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none flex-1"
               />
               <button
                 type="button"
                 onClick={addQuickReply}
-                className="bg-white/10 hover:bg-white/20 text-[13px] font-semibold text-white px-4 py-2 rounded-lg transition-colors"
+                className="bg-dash-surface hover:bg-dash-border/60 border border-dash-border text-[13px] font-semibold !text-dash-text px-4 py-2 rounded-lg transition-colors motion-reduce:transition-none"
               >
                 Add
               </button>
@@ -199,20 +199,20 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
               {quickReplies.map((qr, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-1.5 bg-[#2563eb]/10 border border-[#2563eb]/30 rounded-full px-3 py-1 text-[11.5px] text-[#60a5fa]"
+                  className="flex items-center gap-1.5 bg-dash-accent/10 border border-dash-accent/30 rounded-full px-3 py-1 text-[11.5px] text-dash-accent"
                 >
                   <span>{qr}</span>
                   <button
                     type="button"
                     onClick={() => removeQuickReply(i)}
-                    className="hover:text-red-400 font-bold"
+                    className="hover:text-red font-bold"
                   >
                     ✕
                   </button>
                 </div>
               ))}
               {quickReplies.length === 0 && (
-                <span className="text-[11.5px] text-[#4a5a82] italic">
+                <span className="text-[11.5px] !text-dash-textMuted italic">
                   No quick replies configured.
                 </span>
               )}
@@ -225,30 +225,30 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-semibold px-6 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+            className="bg-dash-accent hover:bg-dash-accent/90 text-white text-[13px] font-semibold px-6 py-2.5 rounded-lg transition-colors motion-reduce:transition-none disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : 'Save changes'}
           </button>
         </div>
       </div>
 
       {/* Live Preview Panel */}
       <div className="w-full lg:w-[340px] flex flex-col items-center flex-shrink-0">
-        <h4 className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#4a5a82] mb-3 align-self-start">
-          Live Preview
+        <h4 className="text-[11px] font-bold !text-dash-textMuted mb-3 align-self-start">
+          Live preview
         </h4>
-        <div className="w-[300px] h-[500px] bg-[#04091a] rounded-[32px] border-[6px] border-[#172458] shadow-2xl relative overflow-hidden flex flex-col">
+        <div className="w-[300px] h-[500px] bg-white rounded-[32px] border-[6px] border-dash-border shadow-2xl relative overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="bg-[#0c1535] px-4 py-3 flex items-center gap-2.5 border-b border-white/5 flex-shrink-0">
+          <div className="bg-dash-surface px-4 py-3 flex items-center gap-2.5 border-b border-dash-border flex-shrink-0">
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold text-white uppercase" style={{ backgroundColor: primaryColor }}>
               {botName[0]}
             </div>
             <div>
-              <div className="text-[13px] font-bold text-[#eef2ff] leading-none">
+              <div className="text-[13px] font-bold !text-dash-text leading-none">
                 {botName}
               </div>
-              <div className="text-[10px] text-[#10b981] mt-0.5 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-[#10b981] rounded-full inline-block" />
+              <div className="text-[10px] text-green mt-0.5 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-green rounded-full inline-block" />
                 Online
               </div>
             </div>
@@ -256,7 +256,7 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
 
           {/* Messages */}
           <div className="flex-1 p-3 overflow-y-auto space-y-3 flex flex-col justify-end">
-            <div className="bg-[#0c1535] border border-white/5 text-[12px] text-[#eef2ff] px-3.5 py-2 rounded-xl max-w-[85%] self-start leading-relaxed">
+            <div className="bg-dash-surface border border-dash-border text-[12px] !text-dash-text px-3.5 py-2 rounded-xl max-w-[85%] self-start leading-relaxed">
               {welcomeMessage || 'How can I assist you today?'}
             </div>
 
@@ -264,7 +264,7 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
               {quickReplies.map((qr, idx) => (
                 <div
                   key={idx}
-                  className="bg-white/5 border border-white/10 hover:border-white/20 text-[#94a3c8] text-[10.5px] px-2.5 py-1 rounded-full cursor-default"
+                  className="bg-dash-surface border border-dash-border hover:border-dash-accent/30 transition-colors motion-reduce:transition-none !text-dash-textMuted text-[10.5px] px-2.5 py-1 rounded-full cursor-default"
                 >
                   {qr}
                 </div>
@@ -273,12 +273,12 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
           </div>
 
           {/* Reply Area */}
-          <div className="bg-[#0c1535] p-2 border-t border-white/5 flex items-center gap-2 flex-shrink-0">
+          <div className="bg-dash-surface p-2 border-t border-dash-border flex items-center gap-2 flex-shrink-0">
             <input
               type="text"
               placeholder="Ask me anything..."
               disabled
-              className="bg-white/[0.03] border border-white/5 text-[11px] px-3 py-1.5 rounded-lg flex-1 outline-none text-[#eef2ff]"
+              className="bg-white border border-dash-border text-[11px] px-3 py-1.5 rounded-lg flex-1 outline-none !text-dash-text"
             />
             <button
               type="button"

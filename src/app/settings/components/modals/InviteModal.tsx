@@ -46,45 +46,45 @@ export default function InviteModal({
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-n900/90 backdrop-blur-md animate-in fade-in duration-300"
+        className="absolute inset-0 bg-dash-text/40 backdrop-blur-sm animate-in fade-in duration-300 motion-reduce:animate-none"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-xl bg-n800 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
-        <div className="absolute top-0 left-0 w-full h-1 bg-accent"></div>
+      <div className="relative w-full max-w-xl bg-white border border-dash-border rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 motion-reduce:animate-none max-h-[90vh] overflow-y-auto">
+        <div className="absolute top-0 left-0 w-full h-1 bg-dash-accent"></div>
 
         <div className="p-6">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-accent border border-accent/20">
+              <div className="w-12 h-12 rounded-2xl bg-dash-accent/10 flex items-center justify-center text-dash-accent border border-dash-accent/20">
                 <Users size={24} />
               </div>
               <div>
-                <h4 className="text-[20px] font-space font-bold text-t1 uppercase tracking-tight">
-                  Add <span className="text-accent2">Team Member</span>
+                <h4 className="text-[20px] font-bold !text-dash-text tracking-tight">
+                  Add <span className="text-dash-accent">team member</span>
                 </h4>
-                <p className="text-[11px] text-t3 font-medium uppercase tracking-[0.2em]">Authorize a new workspace node</p>
+                <p className="text-[11px] !text-dash-textMuted font-medium">Add a new member to this workspace</p>
               </div>
             </div>
-            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 text-t3 hover:text-t1 transition-all">
+            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-xl bg-dash-surface !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
               <X size={20} />
             </button>
           </div>
 
           {/* Toggle Mode */}
-          <div className="flex p-1 bg-n900 border border-white/5 rounded-xl mb-5">
+          <div className="flex p-1 bg-dash-surface border border-dash-border rounded-xl mb-5">
             <button
               onClick={() => setInviteMode('invite')}
-              className={`flex-1 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${inviteMode === 'invite' ? "bg-white/5 text-t1 shadow-sm" : "text-t3 hover:text-t2"
+              className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-colors motion-reduce:transition-none ${inviteMode === 'invite' ? "bg-white !text-dash-text shadow-sm" : "!text-dash-textMuted hover:!text-dash-text"
                 }`}
             >
-              Send Invitation Email
+              Send invitation email
             </button>
             <button
               onClick={() => setInviteMode('create')}
-              className={`flex-1 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${inviteMode === 'create' ? "bg-white/5 text-t1 shadow-sm" : "text-t3 hover:text-t2"
+              className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-colors motion-reduce:transition-none ${inviteMode === 'create' ? "bg-white !text-dash-text shadow-sm" : "!text-dash-textMuted hover:!text-dash-text"
                 }`}
             >
-              Direct Account Creation
+              Create account directly
             </button>
           </div>
 
@@ -92,68 +92,68 @@ export default function InviteModal({
             <div className="grid md:grid-cols-2 gap-6">
               {inviteMode === 'create' && (
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-t3">Full Name</label>
+                  <label className="text-[11px] font-bold !text-dash-textMuted">Full name</label>
                   <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-t4" size={14} />
+                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted" size={14} />
                     <input
                       type="text"
                       required
                       placeholder="John Doe"
                       value={inviteName}
                       onChange={(e) => setInviteName(e.target.value)}
-                      className="w-full bg-n900 border border-white/5 rounded-xl py-3 pl-10 pr-4 text-t1 font-bold outline-none focus:border-accent/50 transition-all text-sm"
+                      className="w-full bg-white border border-dash-border rounded-xl py-3 pl-10 pr-4 !text-dash-text font-medium outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none text-sm"
                     />
                   </div>
                 </div>
               )}
               <div className="space-y-2">
-                <label className="text-[11px] font-black uppercase tracking-widest text-t3">Email Address</label>
+                <label className="text-[11px] font-bold !text-dash-textMuted">Email address</label>
                 <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-t4" size={14} />
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted" size={14} />
                   <input
                     type="email"
                     required
                     placeholder="teammate@example.com"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
-                    className="w-full bg-n900 border border-white/5 rounded-xl py-3 pl-10 pr-4 text-t1 font-bold outline-none focus:border-accent/50 transition-all text-sm"
+                    className="w-full bg-white border border-dash-border rounded-xl py-3 pl-10 pr-4 !text-dash-text font-medium outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none text-sm"
                   />
                 </div>
               </div>
               {inviteMode === 'create' && (
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-t3">Initial Password</label>
+                  <label className="text-[11px] font-bold !text-dash-textMuted">Initial password</label>
                   <div className="relative">
-                    <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-t4" size={14} />
+                    <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted" size={14} />
                     <input
                       type="password"
                       required
                       placeholder="••••••••"
                       value={invitePassword}
                       onChange={(e) => setInvitePassword(e.target.value)}
-                      className="w-full bg-n900 border border-white/5 rounded-xl py-3 pl-10 pr-4 text-t1 font-bold outline-none focus:border-accent/50 transition-all text-sm"
+                      className="w-full bg-white border border-dash-border rounded-xl py-3 pl-10 pr-4 !text-dash-text font-medium outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none text-sm"
                     />
                   </div>
                 </div>
               )}
               <div className="space-y-2">
-                <label className="text-[11px] font-black uppercase tracking-widest text-t3">Access Protocol (Role)</label>
+                <label className="text-[11px] font-bold !text-dash-textMuted">Role</label>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value)}
-                  className="w-full bg-n900 border border-white/5 rounded-xl px-4 py-3 text-t1 font-bold outline-none focus:border-accent/50 transition-all text-sm appearance-none cursor-pointer"
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-medium outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none text-sm appearance-none cursor-pointer"
                 >
-                  <option value="member">Member (Restricted Access)</option>
-                  <option value="admin">Admin (Full System Access)</option>
-                  <option value="viewer">Viewer (Read-Only Access)</option>
-                  <option value="hr">HR (Human Resources Manager)</option>
-                  <option value="payroll">Payroll (Finance & Payroll Clerk)</option>
+                  <option value="member">Member (restricted access)</option>
+                  <option value="admin">Admin (full access)</option>
+                  <option value="viewer">Viewer (read-only access)</option>
+                  <option value="hr">HR (human resources manager)</option>
+                  <option value="payroll">Payroll (finance & payroll clerk)</option>
                 </select>
               </div>
             </div>
 
             <div className="space-y-4">
-              <label className="text-[11px] font-black uppercase tracking-widest text-t3 block">Module Permissions</label>
+              <label className="text-[11px] font-bold !text-dash-textMuted block">Module permissions</label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {permissionModules.map((module) => {
                   const Icon = module.icon;
@@ -164,11 +164,11 @@ export default function InviteModal({
                       type="button"
                       disabled={inviteRole === 'admin'}
                       onClick={() => togglePermission(module.id)}
-                      className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-left ${inviteRole === 'admin'
-                        ? "bg-accent/5 border-accent/20 text-accent opacity-60 cursor-not-allowed"
+                      className={`flex items-center gap-2 p-3 rounded-xl border transition-colors motion-reduce:transition-none text-left ${inviteRole === 'admin'
+                        ? "bg-dash-accent/5 border-dash-accent/20 text-dash-accent opacity-60 cursor-not-allowed"
                         : isSelected
-                          ? "bg-accent/10 border-accent/30 text-accent2 shadow-sm"
-                          : "bg-n900 border-white/5 text-t3 hover:border-white/10 hover:text-t2"
+                          ? "bg-dash-accent/10 border-dash-accent/30 text-dash-accent shadow-sm"
+                          : "bg-dash-surface border-dash-border !text-dash-textMuted hover:border-dash-accent/30 hover:!text-dash-text"
                         }`}
                     >
                       <Icon size={14} />
@@ -184,16 +184,16 @@ export default function InviteModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-6 py-4 rounded-xl border border-white/5 text-t3 font-bold hover:bg-white/5 hover:text-t1 transition-all text-[11px] uppercase tracking-widest"
+                className="flex-1 px-6 py-4 rounded-xl border border-dash-border !text-dash-textMuted font-bold hover:bg-dash-surface hover:!text-dash-text transition-colors motion-reduce:transition-none text-[11px]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex-[2] bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[11px] h-14 rounded-xl shadow-lg shadow-accent/20 transition-all disabled:opacity-50"
+                className="flex-[2] bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] h-14 rounded-xl shadow-[0_4px_16px_rgba(19,89,255,0.3)] transition-colors motion-reduce:transition-none disabled:opacity-50"
               >
-                {isSaving ? 'Processing Neural Handshake...' : inviteMode === 'invite' ? 'Send Invitation' : 'Create Account Directly'}
+                {isSaving ? 'Processing...' : inviteMode === 'invite' ? 'Send invitation' : 'Create account directly'}
               </button>
             </div>
           </form>
