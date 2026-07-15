@@ -6,31 +6,107 @@ import Link from 'next/link';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { setupWorkspace, setActiveWorkspace } from '@/app/actions/auth';
 
 const SignUpCoverForm = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isVerificationSent, setIsVerificationSent] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<ISignUpForm>();
 
-  const onSubmit = async (data: ISignUpForm) => {
+  const onSubmit = async (values: ISignUpForm) => {
+    setIsLoading(true);
     try {
-      toast.success("Sign Up successfully")
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("Something went wrong!");
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: values.email,
+        password: values.password,
+        options: {
+          data: { full_name: values.name },
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/`,
+        },
+      });
+
+      if (authError) {
+        if (authError.message.toLowerCase().includes('already registered')) {
+          toast.error('An account with this email already exists. Try logging in.');
+        } else {
+          toast.error(authError.message);
+        }
+        return;
       }
+
+      if (!authData.user) {
+        toast.error('Signup succeeded but no user was returned. Please try logging in.');
+        return;
+      }
+
+      const userId = authData.user.id;
+      const session = authData.session;
+
+      if (!session) {
+        setIsVerificationSent(true);
+        toast.success('Verification email sent! Please check your inbox.');
+        return;
+      }
+
+      const nameParts = values.name.trim().split(' ');
+      const firstName = nameParts[0] ?? values.email.split('@')[0];
+      const lastName = nameParts.slice(1).join(' ');
+
+      try {
+        const result = await setupWorkspace({
+          userId,
+          email: values.email,
+          firstName,
+          lastName,
+          workspaceName: `${values.name}'s Workspace`,
+        });
+
+        if (result.success && result.workspaceId) {
+          await setActiveWorkspace(result.workspaceId);
+        }
+      } catch (setupErr) {
+        console.warn('[SignupCoverForm] setupWorkspace threw (non-blocking):', setupErr);
+      }
+
+      toast.success('Account created! Welcome to LeadsMind.');
+      router.push('/');
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
   //password visibility handle
   const togglePasswordVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);
   };
+
+  if (isVerificationSent) {
+    return (
+      <div className="text-center">
+        <h4 className="mb-2">Check your email</h4>
+        <p className="mb-4">
+          We&apos;ve sent a verification link to <strong>{getValues("email")}</strong>.
+          Click the link in the email to activate your account.
+        </p>
+        <button className="btn btn-primary w-full" onClick={() => setIsVerificationSent(false)}>
+          ← Back to signup
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -93,7 +169,9 @@ const SignUpCoverForm = () => {
           </div>
         </div>
         <div className="mb-4">
-          <button className="btn btn-primary w-full" type="submit">Sign Up</button>
+          <button className="btn btn-primary w-full" type="submit" disabled={isLoading}>
+            {isLoading ? "Signing up..." : "Sign Up"}
+          </button>
         </div>
       </form>
     </>

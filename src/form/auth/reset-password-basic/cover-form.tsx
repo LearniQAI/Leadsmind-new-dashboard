@@ -5,10 +5,14 @@ import Link from 'next/link';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { resetPassword } from '@/app/actions/auth';
+import { useRouter } from 'next/navigation';
 
 const ResetPasswordCoverForm = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const {
     register,
@@ -18,14 +22,19 @@ const ResetPasswordCoverForm = () => {
   } = useForm<IResetPasswordForm>();
 
   const onSubmit = async (data: IResetPasswordForm) => {
+    setIsLoading(true);
     try {
-      toast.success("Password reset successfully");
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast.error(error.message);
+      const result = await resetPassword(data.password);
+      if (result.success) {
+        toast.success("Password reset successfully. You can now log in.");
+        router.push('/auth/signin-basic');
       } else {
-        toast.error("Something went wrong!");
+        toast.error(result.error || "Something went wrong!");
       }
+    } catch (error: unknown) {
+      toast.error("Something went wrong!");
+    } finally {
+      setIsLoading(false);
     }
   };
   //handle password visible toggle
@@ -80,7 +89,9 @@ const ResetPasswordCoverForm = () => {
           </div>
         </div>
         <div className="mb-4">
-          <button className="btn btn-primary w-full" type="submit">Set new password</button>
+          <button className="btn btn-primary w-full" type="submit" disabled={isLoading}>
+            {isLoading ? "Setting..." : "Set new password"}
+          </button>
         </div>
         <div className="text-center">
           <Link href="/auth/signin-basic">Back to login</Link>

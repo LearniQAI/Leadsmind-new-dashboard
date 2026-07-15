@@ -15,6 +15,7 @@ export const createServerClient = async () => {
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
+   auth: { flowType: 'pkce' },
    cookies: {
     get(name: string) {
      return cookieStore?.get(name)?.value

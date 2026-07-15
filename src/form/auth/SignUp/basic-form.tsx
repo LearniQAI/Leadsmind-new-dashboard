@@ -39,7 +39,7 @@ const SignUpBasicForm = () => {
         password: values.password,
         options: {
           data: { full_name: values.name },
-          emailRedirectTo: 'https://www.leadsmind.io/auth/callback?next=/',
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/`,
         },
       });
 

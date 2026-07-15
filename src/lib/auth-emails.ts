@@ -24,7 +24,7 @@ export async function sendVerificationEmail(email: string, token: string) {
 }
 
 export async function sendPasswordResetEmail(email: string, token: string) {
-  const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?token_hash=${token}&type=recovery&next=/auth/reset-password`;
+  const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?token_hash=${token}&type=recovery&next=/auth/reset-password-basic`;
 
   await sendEmail({
     to: email,

@@ -15,6 +15,8 @@ export const createClient = () => {
     throw new Error('[FATAL] Supabase env vars are not set')
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    auth: { flowType: 'pkce' },
+  })
 }
 

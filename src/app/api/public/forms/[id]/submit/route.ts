@@ -137,7 +137,10 @@ export async function POST(
       f.type === 'text' && f.label?.toLowerCase().includes('company')
     );
 
-    const submissionEmail = emailField && formData[emailField.id] ? String(formData[emailField.id]).trim() : null;
+    // Lowercased to match CRMActionHandler.resolveContactId's lookup — a mismatch here
+    // leaves newly-created contacts unresolvable by the workflow engine (NOT NULL contact_id
+    // failures in workflow_executions).
+    const submissionEmail = emailField && formData[emailField.id] ? String(formData[emailField.id]).trim().toLowerCase() : null;
     const submissionPhone = phoneField && formData[phoneField.id] ? String(formData[phoneField.id]).trim() : null;
     const submissionCompany = companyField && formData[companyField.id] ? String(formData[companyField.id]).trim() : null;
 
@@ -379,10 +382,11 @@ export async function POST(
       }).catch(() => {});
     } catch (e) { console.error('[webhook-dispatch-form-submitted-error]', e); }
 
-    // Trigger workflow automations asynchronously
+    // Enqueue workflow automations onto Inngest (durable — survives this
+    // function's teardown after the response is sent)
     try {
       const { TriggerDispatcher } = await import('@/lib/automations/TriggerDispatcher');
-      TriggerDispatcher.dispatch('form_submitted', {
+      await TriggerDispatcher.dispatch('form_submitted', {
         formId: id,
         workspaceId: workspace_id,
         formName: form.name || 'Form',
