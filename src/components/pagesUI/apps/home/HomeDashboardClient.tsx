@@ -215,7 +215,7 @@ const HomeDashboardClient = ({
       fontSize: "11px",
       fontWeight: 500,
       labels: { colors: "#64748B" },
-      markers: { radius: 12 }
+      markers: { shape: "circle" }
     },
     xaxis: {
       categories: contactsOverTime.map((p) => p.label.slice(5)),
