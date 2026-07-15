@@ -20,6 +20,10 @@ interface BuilderContextType {
   setBuilderSettings: (settings: any) => void;
   blueprintNodeId: string | null;
   setBlueprintNodeId: (id: string | null) => void;
+  isTemplateDirectoryOpen: boolean;
+  setIsTemplateDirectoryOpen: (open: boolean) => void;
+  isImportModalOpen: boolean;
+  setIsImportModalOpen: (open: boolean) => void;
 }
 
 const BuilderContext = createContext<BuilderContextType | undefined>(undefined);
@@ -47,6 +51,8 @@ export function BuilderProvider({
   const [previewMode, setPreviewMode] = useState(false);
   const [builderSettings, setBuilderSettings] = useState<any>({});
   const [blueprintNodeId, setBlueprintNodeId] = useState<string | null>(null);
+  const [isTemplateDirectoryOpen, setIsTemplateDirectoryOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Load settings on mount
   useEffect(() => {
@@ -83,7 +89,11 @@ export function BuilderProvider({
         builderSettings,
         setBuilderSettings,
         blueprintNodeId,
-        setBlueprintNodeId
+        setBlueprintNodeId,
+        isTemplateDirectoryOpen,
+        setIsTemplateDirectoryOpen,
+        isImportModalOpen,
+        setIsImportModalOpen
       }}
     >
       {children}
@@ -112,6 +122,10 @@ export function useBuilder() {
       setBuilderSettings: () => {},
       blueprintNodeId: null,
       setBlueprintNodeId: () => {},
+      isTemplateDirectoryOpen: false,
+      setIsTemplateDirectoryOpen: () => {},
+      isImportModalOpen: false,
+      setIsImportModalOpen: () => {},
     };
   }
   return context;

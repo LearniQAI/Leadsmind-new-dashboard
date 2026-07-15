@@ -41,7 +41,8 @@ import { TemplateDirectoryModal } from './TemplateDirectoryModal';
 import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, Send, AlertCircle, Copy as CopyIcon, Sparkles, Upload, Monitor, Tablet, Smartphone, Check, MoreHorizontal, ChevronDown } from 'lucide-react';
+import { DashButton, DashStatusPill } from '@/components/dashboard-ui';
+import { Loader2, Save, AlertCircle, Sparkles, Upload, Monitor, Tablet, Smartphone, Check, MoreHorizontal, ChevronDown, Undo2, Redo2, DatabaseZap, Eye } from 'lucide-react';
 import { RESOLVER, wrapForReact19 } from '@/lib/builder/resolver';
 import { cn } from '@/lib/utils';
 import { LayoutTemplate, Settings2 } from 'lucide-react';
@@ -114,8 +115,34 @@ const sanitizeDraftJSON = (json: string): string => {
     }
 };
 
+// A route param can arrive as the literal strings "undefined"/"null" when an
+// upstream link interpolates a missing id into the URL (e.g. `.../${maybeId}`).
+// Those are truthy, so a plain `if (!pageId)` guard misses them and a request
+// with `id=eq.undefined` gets sent, which PostgREST rejects. Treat them as absent.
+const resolvePageId = (raw: unknown): string | null => {
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (typeof value !== 'string') return null;
+    if (value === '' || value === 'undefined' || value === 'null') return null;
+    return value;
+};
+
+// Log the real error in dev so this class of failure doesn't require manual
+// network-tab archaeology; Supabase/PostgREST errors carry code/details/hint.
+const logDataError = (scope: string, err: any) => {
+    if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.error(`[Builder] ${scope} failed`, {
+            message: err?.message,
+            code: err?.code,
+            details: err?.details,
+            hint: err?.hint,
+        });
+    }
+};
+
 const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
-    const { pageId } = useParams();
+    const rawPageId = useParams().pageId;
+    const pageId = resolvePageId(rawPageId);
     const router = useRouter();
 
     const [isPublishing, setIsPublishing] = React.useState(false);
@@ -123,7 +150,15 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
     const { query, actions } = useEditor();
 
     const handleSaveDraft = async () => {
-        if (!pageId) return;
+        // ID not ready yet (initial mount / bad URL) — skip rather than send a
+        // guaranteed-to-fail request. Distinct from a save that fired and failed.
+        if (!pageId) {
+            if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.warn('[Builder] Save draft skipped: page id not ready', { rawPageId });
+            }
+            return;
+        }
         setIsSaving(true);
         const content = sanitizeDraftJSON(query.serialize());
 
@@ -141,9 +176,9 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             if (error) throw error;
             toast.success('Draft saved successfully');
         } catch (err: any) {
-            console.error('Save error:', err);
+            logDataError('Save draft', err);
             // Fallback to server action if client save fails (e.g. RLS issues)
-            const result = await updatePageContent(pageId as string, content);
+            const result = await updatePageContent(pageId, content);
             if (result.success) {
                 toast.success('Draft saved (Server Fallback)');
             } else {
@@ -172,7 +207,13 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
     };
 
     const handlePublish = async () => {
-        if (!pageId) return;
+        if (!pageId) {
+            if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.warn('[Builder] Publish skipped: page id not ready', { rawPageId });
+            }
+            return;
+        }
         setIsPublishing(true);
         const content = sanitizeDraftJSON(query.serialize());
 
@@ -187,7 +228,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             if (saveError) throw saveError;
 
             // 2. Trigger publishing logic on server (no need to send large content again)
-            const result = await publishPageStatic(pageId as string);
+            const result = await publishPageStatic(pageId);
 
             if (result.success) {
                 toast.success('Page published live!');
@@ -195,9 +236,9 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 toast.error('Failed to publish');
             }
         } catch (err: any) {
-            console.error('Publish error:', err);
+            logDataError('Publish', err);
             // Fallback
-            const result = await publishPageStatic(pageId as string);
+            const result = await publishPageStatic(pageId);
             if (result.success) {
                 toast.success('Page published (Server Fallback)');
             } else {
@@ -321,18 +362,18 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             const { data, error: pageError } = await supabase
                 .from('pages')
                 .select(`
-     content, 
-     workspace:workspaces(slug), 
+     content,
+     workspace:workspaces(slug),
      website_page:website_pages(
       id,
       name,
-      path,
+      path_name,
       website:websites(*)
      ),
      funnel_step:funnel_steps(
       id,
       name,
-      path,
+      path_name,
       funnel:funnels(*)
      )
     `)
@@ -340,7 +381,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 .single();
 
             if (pageError || !data) {
-                console.error('Builder load error:', pageError, 'PageID:', pageId);
+                logDataError('Load page content', pageError);
                 toast.error('Failed to load page content. Loading blank canvas.');
                 setInitialContent(BLANK_CANVAS);
                 lastLoadedPageId.current = typeof pageId === 'string' ? pageId : 'error';
@@ -367,29 +408,29 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 if (type === 'website') {
                     const { data: siblingPages } = await supabase
                         .from('website_pages')
-                        .select(`id, name, path, pages (id)`)
+                        .select(`id, name, path_name, pages (id)`)
                         .eq('website_id', finalResource.id);
 
                     if (siblingPages) {
                         setPages(siblingPages.map(p => ({
                             id: (p.pages as any)?.[0]?.id || p.id,
                             name: p.name,
-                            slug: p.path.replace('/', '') || 'home'
+                            slug: p.path_name.replace('/', '') || 'home'
                         })));
                     }
                 } else {
                     const { data: siblingSteps } = await supabase
                         .from('funnel_steps')
-                        .select(`id, name, path, pages (id)`)
+                        .select(`id, name, path_name, pages (id)`)
                         .eq('funnel_id', finalResource.id)
-                        .order('position', { ascending: true });
+                        .order('order', { ascending: true });
 
                     if (siblingSteps) {
                         setPages(siblingSteps.map(s => ({
                             id: (s.pages as any)?.[0]?.id || s.id,
                             stepId: s.id,
                             name: s.name,
-                            slug: s.path.replace('/', '') || 'step'
+                            slug: s.path_name.replace('/', '') || 'step'
                         })));
                     }
                 }
@@ -478,7 +519,11 @@ const BuilderEditorLayout = ({
         blueprintNodeId,
         setBlueprintNodeId,
         viewMode,
-        setViewMode
+        setViewMode,
+        isTemplateDirectoryOpen,
+        setIsTemplateDirectoryOpen,
+        isImportModalOpen,
+        setIsImportModalOpen
     } = useBuilder();
 
     const [moreMenuOpen, setMoreMenuOpen] = React.useState(false);
@@ -537,8 +582,6 @@ const BuilderEditorLayout = ({
     };
 
     const [importJsonText, setImportJsonText] = React.useState('');
-    const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
-    const [isTemplateDirectoryOpen, setIsTemplateDirectoryOpen] = React.useState(false);
 
     const handleImportJSON = () => {
         if (!importJsonText) return;
@@ -569,217 +612,183 @@ const BuilderEditorLayout = ({
     return (
         <div className="h-screen w-full flex flex-col overflow-hidden bg-white !text-dash-text">
             {/* Header Section */}
-            <header className="h-[72px] border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0 z-50 w-full select-none shadow-[0_1px_3px_rgba(0,0,0,0.04)] relative">
-                {/* Left: Brand & Sidebar Toggles */}
-                <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-3">
-                        {/* Premium 40x40 Logo Mark */}
-                        <div className="h-10 w-10 rounded-[12px] bg-white border border-slate-200 flex items-center justify-center shadow-sm shrink-0">
-                            <svg viewBox="0 0 40 40" className="w-6 h-6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 10V30H28" stroke="url(#logoGrad1)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M20 14L24 22L28 14L32 22" stroke="url(#logoGrad2)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-                                <defs>
-                                    <linearGradient id="logoGrad1" x1="12" y1="10" x2="28" y2="30" gradientUnits="userSpaceOnUse">
-                                        <stop stopColor="#2563EB" />
-                                        <stop offset="1" stopColor="#1D4ED8" />
-                                    </linearGradient>
-                                    <linearGradient id="logoGrad2" x1="20" y1="14" x2="32" y2="22" gradientUnits="userSpaceOnUse">
-                                        <stop stopColor="#3B82F6" />
-                                        <stop offset="1" stopColor="#60A5FA" />
-                                    </linearGradient>
-                                </defs>
-                            </svg>
-                        </div>
-                        {/* Brand Status Dot — changes color while saving */}
-                        <div className="flex flex-col">
-                            <span className="text-[13px] font-semibold text-slate-800 leading-none">LeadsMind Website Builder</span>
-                            <div className="flex items-center gap-1.5 mt-1">
-                                <span className={cn(
-                                    "inline-block w-1.5 h-1.5 rounded-full transition-colors duration-300",
-                                    isSaving ? "bg-amber-400 animate-pulse" : "bg-emerald-500"
-                                )} />
-                                <span className={cn(
-                                    "text-[10px] font-medium transition-colors duration-300",
-                                    isSaving ? "text-amber-500" : "text-slate-400"
-                                )}>{isSaving ? 'Saving...' : 'Draft'}</span>
-                            </div>
-                        </div>
+            <header className="h-[72px] border-b border-dash-border bg-white flex items-center justify-between px-6 shrink-0 z-50 w-full select-none shadow-[0_1px_3px_rgba(0,0,0,0.04)] relative">
+                {/* Left: Logo, icon cluster, page switcher */}
+                <div className="flex items-center gap-3 shrink-0">
+                    <img
+                        src="/assets/images/brand/LeadsMind_Logo.png.png"
+                        alt="LeadsMind"
+                        className="h-8 w-auto object-contain shrink-0"
+                    />
+
+                    <div className="h-6 w-px bg-dash-border mx-1" />
+
+                    {/* Undo / Redo / Export cluster */}
+                    <div className="flex items-center gap-0.5">
+                        <button
+                            disabled={!canUndo}
+                            onClick={() => editorActions.history.undo()}
+                            title="Undo (Ctrl+Z)"
+                            className="h-9 w-9 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-colors motion-reduce:transition-none disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                            <Undo2 className="w-4 h-4" />
+                        </button>
+                        <button
+                            disabled={!canRedo}
+                            onClick={() => editorActions.history.redo()}
+                            title="Redo (Ctrl+Y)"
+                            className="h-9 w-9 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-colors motion-reduce:transition-none disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                            <Redo2 className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={handleExportJSON}
+                            title="Export template JSON"
+                            className="h-9 w-9 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-colors motion-reduce:transition-none"
+                        >
+                            <DatabaseZap className="w-4 h-4" />
+                        </button>
                     </div>
 
-                    <div className="h-6 w-px bg-slate-200 mx-2" />
-
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setSidebarOpen(!sidebarOpen)}
-                            className={cn(
-                                "h-9 w-9 rounded-lg transition-all active:scale-95",
-                                sidebarOpen ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-                            )}
-                            title="Toggle Sidebar"
-                        >
-                            <LayoutTemplate className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setPropertiesOpen(!propertiesOpen)}
-                            className={cn(
-                                "h-9 w-9 rounded-lg transition-all active:scale-95",
-                                propertiesOpen ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-                            )}
-                            title="Toggle Properties Panel"
-                        >
-                            <Settings2 className="w-4 h-4" />
-                        </Button>
-                    </div>
+                    <div className="h-6 w-px bg-dash-border mx-1" />
 
                     {/* Page Switcher */}
-                    <div className="flex items-center bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shrink-0">
+                    <div className="relative flex items-center bg-white rounded-xl border border-dash-border h-11 shrink-0">
                         <select
                             value={pageId as string}
                             onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
-                            className="bg-transparent border-none text-[12px] font-semibold text-slate-700 outline-none cursor-pointer hover:text-primary transition-colors min-w-[120px]"
+                            className="appearance-none bg-transparent border-none h-full pl-3.5 pr-8 text-[12px] font-semibold !text-dash-text outline-none cursor-pointer min-w-[120px]"
                         >
                             {pages.map((p) => (
                                 <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
                             ))}
                         </select>
+                        <ChevronDown className="w-3.5 h-3.5 !text-dash-textMuted absolute right-3 pointer-events-none" />
                     </div>
+
+                    <DashStatusPill dot variant={isSaving ? 'warning' : 'success'}>
+                        {isSaving ? 'Saving…' : 'Draft'}
+                    </DashStatusPill>
                 </div>
 
-                {/* Center: Framer-Style Segmented Viewport Controls */}
-                <div className="hidden md:flex bg-slate-100 p-1 rounded-[14px] border border-slate-200/80 shrink-0 h-11 items-center">
+                {/* Center: Icon-only segmented device toggle */}
+                <div className="hidden md:flex bg-dash-surface p-1 rounded-[14px] border border-dash-border shrink-0 h-11 items-center">
                     <button
                         onClick={() => setViewMode('desktop')}
                         className={cn(
-                            "h-9 px-3.5 rounded-[10px] transition-all flex items-center justify-center gap-1.5 text-xs font-semibold active:scale-[0.98]",
-                            viewMode === 'desktop' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900"
+                            "h-9 w-9 rounded-[10px] transition-all motion-reduce:transition-none flex items-center justify-center active:scale-[0.98]",
+                            viewMode === 'desktop' ? "bg-white !text-dash-text shadow-sm border border-dash-border" : "!text-dash-textMuted hover:!text-dash-text"
                         )}
                         title="Desktop view"
                     >
                         <Monitor className="w-4 h-4" />
-                        <span className="text-[11px]">Desktop</span>
                     </button>
                     <button
                         onClick={() => setViewMode('tablet')}
                         className={cn(
-                            "h-9 px-3.5 rounded-[10px] transition-all flex items-center justify-center gap-1.5 text-xs font-semibold active:scale-[0.98]",
-                            viewMode === 'tablet' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900"
+                            "h-9 w-9 rounded-[10px] transition-all motion-reduce:transition-none flex items-center justify-center active:scale-[0.98]",
+                            viewMode === 'tablet' ? "bg-white !text-dash-text shadow-sm border border-dash-border" : "!text-dash-textMuted hover:!text-dash-text"
                         )}
                         title="Tablet view"
                     >
                         <Tablet className="w-4 h-4" />
-                        <span className="text-[11px]">Tablet</span>
                     </button>
                     <button
                         onClick={() => setViewMode('mobile')}
                         className={cn(
-                            "h-9 px-3.5 rounded-[10px] transition-all flex items-center justify-center gap-1.5 text-xs font-semibold active:scale-[0.98]",
-                            viewMode === 'mobile' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900"
+                            "h-9 w-9 rounded-[10px] transition-all motion-reduce:transition-none flex items-center justify-center active:scale-[0.98]",
+                            viewMode === 'mobile' ? "bg-white !text-dash-text shadow-sm border border-dash-border" : "!text-dash-textMuted hover:!text-dash-text"
                         )}
                         title="Mobile view"
                     >
                         <Smartphone className="w-4 h-4" />
-                        <span className="text-[11px]">Mobile</span>
                     </button>
                 </div>
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-2 shrink-0">
-                    <div className="flex items-center gap-1 pr-3 border-r border-slate-200">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={!canUndo}
-                            onClick={() => editorActions.history.undo()}
-                            title="Undo (Ctrl+Z)"
-                            className="h-9 w-9 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md disabled:opacity-40"
-                        >
-                            <span className="text-sm">↩</span>
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={!canRedo}
-                            onClick={() => editorActions.history.redo()}
-                            title="Redo (Ctrl+Y)"
-                            className="h-9 w-9 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md disabled:opacity-40"
-                        >
-                            <span className="text-sm">↪</span>
-                        </Button>
-                    </div>
-
-                    <Button
-                        variant="ghost"
+                    <button
                         onClick={() => setPreviewMode(!previewMode)}
-                        className={cn(
-                            "h-11 px-4 text-[12px] font-semibold rounded-xl border transition-all active:scale-[0.98]",
-                            previewMode ? "bg-slate-900 text-white hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                        )}
+                        className="h-9 px-2 flex items-center gap-1.5 text-[12px] font-semibold !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none"
                     >
+                        <Eye className="w-3.5 h-3.5" />
                         {previewMode ? "Edit" : "Preview"}
-                    </Button>
+                    </button>
 
-                    <Button
-                        variant="ghost"
+                    <DashButton
+                        variant="secondary"
                         onClick={handleSaveDraft}
                         disabled={isSaving}
-                        className="h-11 px-4 text-[12px] font-semibold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all bg-white active:scale-[0.98]"
+                        className="rounded-xl"
                     >
-                        {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                        {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : null}
                         Save draft
-                    </Button>
+                    </DashButton>
 
-                    <Button
+                    <DashButton
+                        variant="primary"
                         onClick={handlePublish}
                         disabled={isPublishing}
-                        className="h-11 px-6 text-[12px] font-semibold rounded-xl bg-primary hover:bg-blue-700 text-white shadow-sm transition-all active:scale-[0.98]"
+                        className="rounded-xl px-6"
                     >
-                        {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                        {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : null}
                         Publish
-                    </Button>
+                    </DashButton>
+
+                    <div className="h-6 w-px bg-dash-border mx-1" />
+
+                    {/* Sidebar / Properties panel toggles */}
+                    <button
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        title="Toggle Sidebar"
+                        className={cn(
+                            "h-9 w-9 flex items-center justify-center rounded-lg transition-colors motion-reduce:transition-none",
+                            sidebarOpen ? "bg-dash-surface !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
+                        )}
+                    >
+                        <LayoutTemplate className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setPropertiesOpen(!propertiesOpen)}
+                        title="Toggle Properties Panel"
+                        className={cn(
+                            "h-9 w-9 flex items-center justify-center rounded-lg transition-colors motion-reduce:transition-none",
+                            propertiesOpen ? "bg-dash-surface !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
+                        )}
+                    >
+                        <Settings2 className="w-4 h-4" />
+                    </button>
 
                     {/* More Actions Dropdown */}
                     <div className="relative">
-                        <Button
-                            variant="ghost"
-                            size="icon"
+                        <button
                             onClick={() => setMoreMenuOpen(!moreMenuOpen)}
                             className={cn(
-                                "h-11 w-11 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]",
-                                moreMenuOpen && "bg-slate-100 text-slate-900"
+                                "h-9 w-9 flex items-center justify-center rounded-lg transition-colors motion-reduce:transition-none !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface",
+                                moreMenuOpen && "bg-dash-surface !text-dash-text"
                             )}
                             title="More Actions"
                         >
                             <MoreHorizontal className="w-4 h-4" />
-                        </Button>
+                        </button>
 
                         {moreMenuOpen && (
                             <>
                                 <div className="fixed inset-0 z-40" onClick={() => setMoreMenuOpen(false)} />
-                                <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 shadow-xl rounded-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                                <div className="absolute right-0 mt-2 w-48 bg-white border border-dash-border shadow-xl rounded-xl py-1.5 z-50">
                                     <button
                                         onClick={() => { setIsTemplateDirectoryOpen(true); setMoreMenuOpen(false); }}
-                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 w-full text-left"
+                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface w-full text-left"
                                     >
-                                        <Sparkles className="w-4 h-4 text-primary" />
+                                        <Sparkles className="w-4 h-4 text-dash-accent" />
                                         Browse Templates
                                     </button>
                                     <button
                                         onClick={() => { setIsImportModalOpen(true); setMoreMenuOpen(false); }}
-                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 w-full text-left"
+                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface w-full text-left"
                                     >
-                                        <Upload className="w-4 h-4 text-slate-400" />
+                                        <Upload className="w-4 h-4 !text-dash-textMuted" />
                                         Import Template
-                                    </button>
-                                    <button
-                                        onClick={() => { handleExportJSON(); setMoreMenuOpen(false); }}
-                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 w-full text-left"
-                                    >
-                                        <CopyIcon className="w-4 h-4 text-slate-400" />
-                                        Export Template
                                     </button>
                                 </div>
                             </>
@@ -895,7 +904,7 @@ const BuilderEditorLayout = ({
                 {USE_DOCKED_INSPECTOR && (
                     <div
                         className={cn(
-                            "transition-all duration-300 ease-in-out motion-reduce:transition-none border-l border-slate-200 bg-white overflow-hidden shrink-0 z-40",
+                            "transition-all duration-300 ease-in-out motion-reduce:transition-none border-l border-dash-border bg-white overflow-hidden shrink-0 z-40",
                             propertiesOpen && !previewMode ? "w-[360px] opacity-100" : "w-0 opacity-0 border-none"
                         )}
                     >
@@ -909,38 +918,41 @@ const BuilderEditorLayout = ({
                 {!USE_DOCKED_INSPECTOR && <FloatingPropertiesPanel />}
             </div>
 
-            {/* Professional Status Bar */}
-            <footer className="h-7 bg-white border-t border-slate-200 flex items-center justify-between px-5 text-[10.5px] font-medium text-slate-400 z-50 shrink-0 select-none">
+            {/* Status Bar */}
+            <footer className="h-7 bg-white border-t border-dash-border flex items-center justify-between px-5 text-[10.5px] font-medium !text-dash-textMuted z-50 shrink-0 select-none">
                 <div className="flex items-center gap-4">
                     {/* Online indicator */}
-                    <div className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <div className="flex items-center gap-1.5 text-green font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse motion-reduce:animate-none" />
                         Online
                     </div>
                     {/* Save status */}
                     {isSaving ? (
-                        <div className="flex items-center gap-1.5 text-slate-400">
-                            <Loader2 className="w-3 h-3 animate-spin" />
+                        <div className="flex items-center gap-1.5 !text-dash-textMuted">
+                            <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" />
                             Saving...
                         </div>
                     ) : (
-                        <div className="flex items-center gap-1.5 text-emerald-600 font-semibold">
+                        <div className="flex items-center gap-1.5 text-green font-semibold">
                             <Check className="w-3 h-3" />
                             Draft Saved
                         </div>
                     )}
                 </div>
 
-                <div className="flex items-center gap-1 text-slate-400 font-medium">
+                <div className="flex items-center gap-1 !text-dash-textMuted font-medium">
                     LeadsMind Website Builder &nbsp;·&nbsp; v2.0
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <span className="capitalize text-slate-500">{viewMode === 'desktop' ? '🖥' : viewMode === 'tablet' ? '📱' : '📱'} {viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View</span>
-                    <span className="h-3 w-px bg-slate-200" />
-                    <span>Page: <span className="text-slate-600 font-semibold">{pages.find((p: any) => p.id === pageId)?.name || 'Home'}</span></span>
-                    <span className="h-3 w-px bg-slate-200" />
-                    <span className="text-slate-400">Saved 2 sec ago</span>
+                    <span className="capitalize !text-dash-textMuted flex items-center gap-1.5">
+                        {viewMode === 'desktop' ? <Monitor className="w-3 h-3" /> : viewMode === 'tablet' ? <Tablet className="w-3 h-3" /> : <Smartphone className="w-3 h-3" />}
+                        {viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View
+                    </span>
+                    <span className="h-3 w-px bg-dash-border" />
+                    <span>Page: <span className="!text-dash-text font-semibold">{pages.find((p: any) => p.id === pageId)?.name || 'Home'}</span></span>
+                    <span className="h-3 w-px bg-dash-border" />
+                    <span className="!text-dash-textMuted">Saved 2 sec ago</span>
                 </div>
             </footer>
 

@@ -48,18 +48,18 @@ export default async function PublishedSubdomainChildPage({
         // Fetch all routing pages for context
         const { data: wsPages } = await supabase
             .from('website_pages')
-            .select('id, name, path, pages(content)')
+            .select('id, name, path_name, pages(content)')
             .eq('website_id', website.id);
 
         if (wsPages) {
             allPages = wsPages.map(p => ({
                 id: p.id,
                 name: p.name,
-                slug: p.path.replace(/^\/+/, '') || 'home'
+                slug: p.path_name.replace(/^\/+/, '') || 'home'
             }));
 
             // Match specific path
-            const matchPage = wsPages.find(p => p.path === targetPath);
+            const matchPage = wsPages.find(p => p.path_name === targetPath);
             targetPageContent = (matchPage?.pages as any)?.[0]?.content || null;
         }
     } else {
@@ -79,18 +79,18 @@ export default async function PublishedSubdomainChildPage({
             // Fetch all funnel steps
             const { data: steps } = await supabase
                 .from('funnel_steps')
-                .select('id, name, path, pages(content)')
+                .select('id, name, path_name, pages(content)')
                 .eq('funnel_id', funnel.id)
-                .order('position', { ascending: true });
+                .order('order', { ascending: true });
 
             if (steps) {
                 allPages = steps.map(s => ({
                     id: s.id,
                     name: s.name,
-                    slug: s.path.replace(/^\/+/, '') || 'step'
+                    slug: s.path_name.replace(/^\/+/, '') || 'step'
                 }));
 
-                const matchStep = steps.find(s => s.path === targetPath);
+                const matchStep = steps.find(s => s.path_name === targetPath);
                 targetPageContent = (matchStep?.pages as any)?.[0]?.content || null;
             }
         }

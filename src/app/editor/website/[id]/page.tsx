@@ -11,7 +11,7 @@ export default async function WebsiteEditorRedirectPage({ params }: { params: { 
         .from('website_pages')
         .select('id, pages(id)')
         .eq('website_id', id)
-        .eq('path', '/')
+        .eq('path_name', '/')
         .single();
 
     const homePageId = (websitePage?.pages as any)?.[0]?.id;
@@ -51,7 +51,7 @@ export default async function WebsiteEditorRedirectPage({ params }: { params: { 
         .insert({
             website_id: id,
             name: 'Home',
-            path: '/'
+            path_name: '/'
         })
         .select()
         .single();

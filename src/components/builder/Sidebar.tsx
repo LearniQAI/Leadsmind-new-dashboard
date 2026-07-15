@@ -27,11 +27,13 @@ import { Hero } from './user/Hero';
 import { Navbar } from './user/Navbar';
 import { Footer } from './user/Footer';
 import { PageSettings } from './PageSettings';
-import { Layout, Type, Image as ImageIcon, RectangleHorizontal as ButtonIcon, Square, Columns as ColumnsIcon, FormInput, Timer, CreditCard, MessageCircleQuestion, Section as SectionIcon, ArrowUpDown, Minus, Heading as HeadingIcon, AlignLeft, Video as VideoIcon, Star, Navigation, LayoutGrid, Layers, Settings, Search, Code as CodeIcon, ListOrdered, Sparkles, ArrowLeft, Trash2 } from 'lucide-react';
+import { Layout, Type, Image as ImageIcon, RectangleHorizontal as ButtonIcon, Square, Columns as ColumnsIcon, FormInput, Timer, CreditCard, MessageCircleQuestion, Section as SectionIcon, ArrowUpDown, Minus, Heading as HeadingIcon, AlignLeft, Video as VideoIcon, Star, Navigation, LayoutGrid, Layers, Search, Code as CodeIcon, ListOrdered, Sparkles, Plus, Paintbrush, PackageSearch } from 'lucide-react';
 import { BlogFeed } from './user/BlogFeed';
 import { RESOLVER } from '@/lib/builder/resolver';
 import { WebsiteSettings } from './WebsiteSettings';
 import { useBuilder } from './BuilderContext';
+import { useDashboardContext } from '@/components/layouts/DashboardProvider';
+import UserAvatar from '@/components/ui/UserAvatar';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -41,6 +43,19 @@ import { Input } from '@/components/ui/input';
 import { generateAISectionLayout } from '@/app/actions/builderAI';
 import { saveCustomComponent } from '@/app/actions/builder';
 import { cn } from '@/lib/utils';
+
+const RailButton = ({ active, onClick, title, icon: Icon }: { active: boolean; onClick: () => void; title: string; icon: any }) => (
+  <button
+    onClick={onClick}
+    title={title}
+    className={cn(
+      "h-11 w-11 rounded-xl flex items-center justify-center transition-colors motion-reduce:transition-none",
+      active ? "bg-dash-accent/10 text-dash-accent" : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
+    )}
+  >
+    <Icon className="w-[18px] h-[18px]" />
+  </button>
+);
 
 const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: any, component: React.ReactElement }) => {
   const { connectors } = useEditor();
@@ -52,12 +67,12 @@ const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: an
           connectors.create(ref, component);
         }
       }}
-      className="flex flex-col items-center justify-center h-[72px] rounded-[14px] border border-[#E5E7EB] bg-slate-50/50 hover:-translate-y-[2px] hover:border-primary/40 hover:bg-white hover:shadow-sm transition-all duration-150 cursor-grab active:cursor-grabbing active:border-primary active:bg-blue-50/50 active:scale-[0.98] group"
+      className="flex flex-col items-center justify-center h-[68px] rounded-2xl border border-dash-border bg-white hover:-translate-y-[2px] hover:border-dash-accent/40 hover:shadow-md transition-all duration-150 motion-reduce:transition-none motion-reduce:hover:translate-y-0 cursor-grab active:cursor-grabbing active:border-dash-accent active:bg-dash-accent/5 active:scale-[0.98] group"
     >
-      <div className="h-7 w-7 rounded-lg bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-1 group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all duration-200">
-        <Icon className="w-3.5 h-3.5 text-slate-500 group-hover:text-white group-hover:scale-105 transition-transform pointer-events-none" />
+      <div className="h-6 w-6 rounded-lg bg-dash-surface flex items-center justify-center mb-1 group-hover:bg-dash-accent group-hover:text-white transition-colors duration-200 motion-reduce:transition-none">
+        <Icon className="w-3.5 h-3.5 !text-dash-textMuted group-hover:!text-white transition-colors motion-reduce:transition-none pointer-events-none" />
       </div>
-      <span className="text-[10px] font-semibold text-slate-500 group-hover:text-slate-800 text-center leading-tight">{name}</span>
+      <span className="text-[9.5px] font-semibold !text-dash-textMuted group-hover:!text-dash-text text-center leading-tight px-1 truncate w-full">{name}</span>
     </div>
   );
 };
@@ -77,27 +92,11 @@ export const Sidebar = ({
 }) => {
   const router = useRouter();
   const { pageId } = useParams();
-  const { pages, websiteData } = useBuilder();
+  const { pages, websiteData, setIsTemplateDirectoryOpen } = useBuilder();
   const [activeTab, setActiveTab] = React.useState<'elements' | 'layers' | 'settings' | 'page' | 'steps'>('elements');
 
-  const { selected } = useEditor((state) => {
-    const selectedId = Array.from(state.events.selected)[0];
-    let selectedNode;
-
-    if (selectedId) {
-      selectedNode = {
-        id: selectedId,
-        name: state.nodes[selectedId].data.custom?.displayName || state.nodes[selectedId].data.displayName,
-        settings: state.nodes[selectedId].related && state.nodes[selectedId].related.settings,
-        isDeletable: (state.nodes[selectedId].data as any).rules?.canDelete ? (state.nodes[selectedId].data as any).rules.canDelete() : true,
-      };
-    }
-
-    return {
-      selected: selectedNode
-    };
-  });
-  const { connectors, actions: editorActions } = useEditor();
+  const { connectors } = useEditor();
+  const { user } = useDashboardContext();
   const [customBlueprints, setCustomBlueprints] = React.useState<any[]>([]);
   const [searchQuery, setSearchQuery] = React.useState('');
   
@@ -183,10 +182,9 @@ export const Sidebar = ({
         .from('funnel_steps')
         .insert({
           funnel_id: websiteData.id,
-          workspace_id: websiteData.workspace_id,
           name: stepName,
-          path: stepPath,
-          position: nextOrder
+          path_name: stepPath,
+          order: nextOrder
         })
         .select()
         .single();
@@ -197,7 +195,7 @@ export const Sidebar = ({
       const { data: page, error: pageError } = await supabase
         .from('pages')
         .insert({
-          workspace_id: step.workspace_id,
+          workspace_id: websiteData.workspace_id,
           funnel_step_id: step.id,
           name: stepName,
           content: initialContent,
@@ -224,7 +222,7 @@ export const Sidebar = ({
         newSteps.map((step, idx) =>
           supabase
             .from('funnel_steps')
-            .update({ position: idx + 1 })
+            .update({ order: idx + 1 })
             .eq('id', step.id)
         )
       );
@@ -258,112 +256,48 @@ export const Sidebar = ({
     }
   };
 
-  if (selected && selected.id !== 'ROOT') {
-    return (
-      <div className="w-[300px] h-full bg-white border-r border-dash-border flex flex-col font-sans select-none z-40 animate-in fade-in slide-in-from-left duration-200 motion-reduce:animate-none">
-        <div className="p-4 border-b border-dash-border flex items-center gap-3 bg-dash-surface">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => editorActions.selectNode(null)}
-            className="h-8 w-8 !text-dash-textMuted hover:!text-dash-text hover:bg-white rounded-lg transition-colors motion-reduce:transition-none shrink-0"
-            title="Back to elements"
-          >
-            <ArrowLeft size={16} />
-          </Button>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-[11px] font-bold flex items-center gap-2 truncate">
-              <div className="h-6 w-6 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30 shrink-0">
-                <Settings className="w-3 h-3 text-primary" />
-              </div>
-              <span className="truncate">{selected.name}</span>
-            </h2>
-          </div>
-          {selected.id !== 'ROOT' && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                editorActions.delete(selected.id);
-              }}
-              className="h-8 w-8 hover:bg-red/10 text-red rounded-lg transition-all motion-reduce:transition-none shrink-0"
-              title="Delete element"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5 space-y-8 common-scrollbar">
-          {selected.settings && React.createElement(selected.settings as any)}
-          {!selected.settings && (
-            <div className="text-center py-20">
-              <div className="w-12 h-12 rounded-2xl bg-dash-surface flex items-center justify-center mx-auto mb-4 opacity-40">
-                <Settings className="w-6 h-6" />
-              </div>
-              <p className="text-[9px] font-bold !text-dash-textMuted">No settings available</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-[320px] h-full bg-white border-r border-slate-200 flex flex-col font-sans select-none z-40">
-      <div className="p-3 border-b border-slate-200 shrink-0">
-        <div className="flex bg-slate-100 p-1 rounded-[12px] h-10 items-center gap-0.5">
-          <button
-            onClick={() => setActiveTab('elements')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 h-8 text-[11px] font-semibold rounded-[8px] transition-all duration-150 active:scale-[0.97]",
-              activeTab === 'elements' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"
-            )}
-          >
-            Elements
-          </button>
-          <button
-            onClick={() => setActiveTab('layers')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 h-8 text-[11px] font-semibold rounded-[8px] transition-all duration-150 active:scale-[0.97]",
-              activeTab === 'layers' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"
-            )}
-          >
-            Layers
-          </button>
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 h-8 text-[11px] font-semibold rounded-[8px] transition-all duration-150 active:scale-[0.97]",
-              activeTab === 'settings' ? "bg-white text-slate-900 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"
-            )}
-          >
-            Globals
-          </button>
+    <div className="w-[320px] h-full bg-white flex font-sans select-none z-40">
+      {/* Icon rail */}
+      <div className="w-[60px] h-full border-r border-dash-border flex flex-col items-center py-4 shrink-0">
+        <div className="flex flex-col items-center gap-1.5">
+          <RailButton active={activeTab === 'elements'} onClick={() => setActiveTab('elements')} title="Elements" icon={Plus} />
+          <RailButton active={activeTab === 'layers'} onClick={() => setActiveTab('layers')} title="Layers" icon={Layers} />
+          <RailButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} title="Globals" icon={Paintbrush} />
         </div>
+        <div className="flex-1" />
+        <UserAvatar
+          avatarUrl={user?.avatarUrl}
+          oauthImage={user?.oauthImage}
+          firstName={user?.firstName}
+          lastName={user?.lastName}
+          size="xs"
+        />
       </div>
 
+      {/* Content panel */}
+      <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
       {activeTab === 'elements' ? (
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Sticky Search */}
-          <div className="px-4 py-3 border-b border-slate-100 bg-white/95 backdrop-blur-sm z-10 shrink-0">
+          <div className="px-4 py-3 border-b border-dash-border bg-white/95 backdrop-blur-sm z-10 shrink-0">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input 
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 !text-dash-textMuted" />
+              <input
                 type="text"
                 placeholder="Search widgets..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-[12px] bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-400 text-slate-700"
+                className="w-full pl-9 pr-3 h-10 text-[12px] bg-white border border-dash-border rounded-xl outline-none focus:border-dash-accent focus:ring-1 focus:ring-dash-accent transition-colors motion-reduce:transition-none placeholder:text-dash-textMuted !text-dash-text"
               />
             </div>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-4 space-y-8 common-scrollbar">
           {/* AI Generator Panel */}
-          <section className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-3">
-            <h3 className="text-[10px] font-bold text-primary flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 animate-pulse motion-reduce:animate-none text-primary" />
+          <section className="p-4 bg-dash-accent/5 rounded-2xl border border-dash-accent/10 space-y-3">
+            <h3 className="text-[10px] font-bold text-dash-accent flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 animate-pulse motion-reduce:animate-none text-dash-accent" />
               AI section generator
             </h3>
             <Input
@@ -376,7 +310,7 @@ export const Sidebar = ({
               onClick={handleGenerateLayout}
               disabled={generatingLayout}
               size="sm"
-              className="w-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[10px] font-bold h-8"
+              className="w-full bg-dash-accent/10 hover:bg-dash-accent/20 text-dash-accent border border-dash-accent/20 text-[10px] font-bold h-8"
             >
               {generatingLayout ? 'Generating...' : 'Ingest canvas block'}
             </Button>
@@ -388,7 +322,7 @@ export const Sidebar = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-green" />
                 Saved blueprints
               </h3>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {customBlueprints.map((blueprint) => (
                   <div
                     key={blueprint.id}
@@ -435,8 +369,8 @@ export const Sidebar = ({
           )}
 
           <section>
-            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Structure nodes</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Structure nodes</h3>
+            <div className="grid grid-cols-3 gap-2">
               <DraggableItem name="Section" icon={SectionIcon} component={<RESOLVER.Section canvas paddingBottom={64} paddingTop={64} paddingLeft={24} paddingRight={24} backgroundColor="transparent" />} />
               <DraggableItem name="Container" icon={Square} component={<RESOLVER.Container canvas layoutType="fixed" maxWidth="1200px" padding={16} backgroundColor="transparent" />} />
               <DraggableItem name="Columns" icon={ColumnsIcon} component={<RESOLVER.Columns canvas layout="2" gap={16} padding={16} />} />
@@ -446,8 +380,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Typography</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Typography</h3>
+            <div className="grid grid-cols-3 gap-2">
               <DraggableItem name="Heading" icon={HeadingIcon} component={<RESOLVER.Heading level="h2" text="Heading" fontWeight="bold" textAlign="left" color="#111827" />} />
               <DraggableItem name="Paragraph" icon={AlignLeft} component={<RESOLVER.Paragraph text="Type your paragraph here." fontSize={16} textAlign="left" color="#4b5563" lineHeight="relaxed" />} />
               <DraggableItem name="Text / Edit" icon={Type} component={<RESOLVER.Text text="Custom Text" fontSize={16} />} />
@@ -455,8 +389,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Media & assets</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Media & assets</h3>
+            <div className="grid grid-cols-3 gap-2">
               <DraggableItem name="Image" icon={ImageIcon} component={<RESOLVER.Image src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="Placeholder" borderRadius={16} objectFit="cover" />} />
               <DraggableItem name="Video" icon={VideoIcon} component={<RESOLVER.Video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" provider="youtube" autoPlay={false} controls={true} loop={false} muted={false} borderRadius={16} />} />
               <DraggableItem name="Icon" icon={Star} component={<RESOLVER.Icon name="Star" size={24} color="#000000" strokeWidth={2} alignment="center" />} />
@@ -464,8 +398,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Layout & authority</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Layout & authority</h3>
+            <div className="grid grid-cols-3 gap-2">
               <DraggableItem name="Ultra Hero" icon={SectionIcon} component={<RESOLVER.Hero />} />
               <DraggableItem name="Global Navbar" icon={Navigation} component={<RESOLVER.Navbar />} />
               <DraggableItem name="Global Footer" icon={Layout} component={<RESOLVER.Footer />} />
@@ -474,8 +408,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Trust & social proof</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Trust & social proof</h3>
+            <div className="grid grid-cols-3 gap-2">
               <DraggableItem name="Testimonial" icon={MessageCircleQuestion} component={<RESOLVER.Testimonial />} />
               <DraggableItem name="Star Rating" icon={Star} component={<RESOLVER.StarRating />} />
               <DraggableItem name="Logo Cloud" icon={ImageIcon} component={<RESOLVER.LogoStrip />} />
@@ -484,8 +418,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Conversion & logic</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Conversion & logic</h3>
+            <div className="grid grid-cols-3 gap-2">
               <DraggableItem name="Button" icon={ButtonIcon} component={<RESOLVER.Button text="Click Here" size="md" variant="primary" color="#6c47ff" textColor="#ffffff" borderRadius={8} width="fit" link="#" iconPosition="right" />} />
               <DraggableItem name="Lead Form" icon={FormInput} component={<RESOLVER.Form />} />
               <DraggableItem name="Countdown" icon={Timer} component={<RESOLVER.Countdown />} />
@@ -495,8 +429,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold text-slate-400 tracking-wider mb-3.5 uppercase px-1">Advanced</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Advanced</h3>
+            <div className="grid grid-cols-3 gap-2">
               <DraggableItem
                 name="Embed Code"
                 icon={CodeIcon}
@@ -504,6 +438,22 @@ export const Sidebar = ({
               />
             </div>
           </section>
+
+          <button
+            onClick={() => setIsTemplateDirectoryOpen(true)}
+            className="w-full flex items-start gap-3 p-4 bg-dash-accent/5 rounded-2xl border border-dash-accent/10 text-left hover:bg-dash-accent/10 transition-colors motion-reduce:transition-none"
+          >
+            <div className="h-9 w-9 rounded-xl bg-white flex items-center justify-center shrink-0 border border-dash-accent/10">
+              <PackageSearch className="w-4 h-4 text-dash-accent" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold !text-dash-text">Need more elements?</p>
+              <p className="text-[10px] !text-dash-textMuted leading-relaxed mt-0.5">
+                Explore our templates and pre-built sections.
+              </p>
+              <span className="text-[10px] font-bold text-dash-accent mt-1 inline-block">Browse Templates →</span>
+            </div>
+          </button>
         </div>
       </div>
       ) : activeTab === 'layers' ? (
@@ -534,6 +484,7 @@ export const Sidebar = ({
           />
         </div>
       )}
+      </div>
     </div>
   );
 };

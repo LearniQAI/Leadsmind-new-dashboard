@@ -476,7 +476,9 @@ export default function WebsiteManager() {
                           <ExternalLink size={14} />
                         </button>
                       </Link>
-                      <Link href={`/editor/website/${site.id}/${site.website_pages?.[0]?.pages?.[0]?.id}`}>
+                      <Link href={site.website_pages?.[0]?.pages?.[0]?.id
+                        ? `/editor/website/${site.id}/${site.website_pages[0].pages[0].id}`
+                        : `/editor/website/${site.id}`}>
                         <DashButton size="sm">
                           Manage <ArrowRight size={13} />
                         </DashButton>
@@ -545,7 +547,9 @@ export default function WebsiteManager() {
                     {formatDistanceToNow(new Date(site.updated_at || site.created_at))} ago
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <Link href={`/editor/website/${site.id}/${site.website_pages?.[0]?.pages?.[0]?.id}`}>
+                    <Link href={site.website_pages?.[0]?.pages?.[0]?.id
+                      ? `/editor/website/${site.id}/${site.website_pages[0].pages[0].id}`
+                      : `/editor/website/${site.id}`}>
                       <button className="h-8 w-8 flex items-center justify-center rounded-lg bg-dash-surface !text-dash-textMuted hover:text-dash-accent hover:bg-dash-accent/10 transition-colors motion-reduce:transition-none">
                         <Edit3 size={14} />
                       </button>

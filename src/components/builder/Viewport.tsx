@@ -14,7 +14,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export const Viewport = ({ children }: { children?: React.ReactNode }) => {
- const { viewMode, setViewMode, websiteData, pages } = useBuilder();
+ const { viewMode, setViewMode, websiteData, pages, setSidebarOpen, setIsTemplateDirectoryOpen, setIsImportModalOpen } = useBuilder();
  const { pageId } = useParams();
  const { connectors, actions } = useEditor();
 
@@ -68,16 +68,16 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
    <style dangerouslySetInnerHTML={{ __html: themeVariablesCss }} />
 
    {/* Canvas Top Bar */}
-   <div className="h-11 border-b border-slate-200 bg-white px-6 flex items-center justify-between shrink-0 text-xs text-slate-500 z-10">
+   <div className="h-11 border-b border-dash-border bg-white px-6 flex items-center justify-between shrink-0 text-xs !text-dash-textMuted z-10">
      <div className="flex items-center gap-2 font-semibold">
-       <span className="text-slate-800 font-bold text-[12px]">{pages?.find((p: any) => p.id === pageId)?.name || 'Home'} Page</span>
-       <span className="h-3.5 w-px bg-slate-200 mx-1" />
-       <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] border border-emerald-100/80 flex items-center gap-1 font-bold">
-         <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+       <span className="!text-dash-text font-bold text-[12px]">{pages?.find((p: any) => p.id === pageId)?.name || 'Home'} Page</span>
+       <span className="h-3.5 w-px bg-dash-border mx-1" />
+       <span className="px-1.5 py-0.5 rounded-md bg-green/10 text-green text-[10px] border border-green/20 flex items-center gap-1 font-bold">
+         <span className="w-1 h-1 rounded-full bg-green animate-pulse motion-reduce:animate-none" />
          Autosave Active
        </span>
      </div>
-     <div className="flex items-center gap-1 font-medium text-slate-400 text-[11px]">
+     <div className="flex items-center gap-1 font-medium !text-dash-textMuted text-[11px]">
        <span>Saved 2 sec ago</span>
      </div>
    </div>
@@ -99,44 +99,35 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
      >
       {isEmpty && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
-          <div className="w-[480px] bg-white border border-slate-200/60 rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.04)] p-12 flex flex-col items-center text-center pointer-events-auto">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-              <Sparkles className="w-8 h-8 text-primary" />
+          <div className="w-[480px] bg-white border border-dash-border rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.04)] p-12 flex flex-col items-center text-center pointer-events-auto">
+            <div className="w-16 h-16 rounded-2xl bg-dash-accent/10 flex items-center justify-center mb-6">
+              <Sparkles className="w-8 h-8 text-dash-accent" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Start building your website</h2>
-            <p className="text-sm text-slate-500 mb-8 max-w-sm">
+            <h2 className="text-xl font-bold !text-dash-text mb-2">Start building your website</h2>
+            <p className="text-sm !text-dash-textMuted mb-8 max-w-sm">
               Drag and drop elements from the left sidebar, or start quickly with a pre-built section.
             </p>
             <div className="flex flex-col w-full gap-3">
-              <button 
-                onClick={() => {
-                  const el = document.querySelector('[title="Toggle Elements Sidebar"]') as HTMLButtonElement;
-                  if (el) el.click();
-                }}
-                className="w-full flex items-center justify-center gap-2 h-11 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-sm"
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="w-full flex items-center justify-center gap-2 h-11 bg-dash-accent text-white rounded-xl font-semibold text-sm hover:bg-dash-accent/90 transition-colors motion-reduce:transition-none shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 Add Section
               </button>
               <div className="flex gap-3">
-                <button 
-                  onClick={() => {
-                    const el = document.querySelector('[title="Open Template Directory"]') as HTMLButtonElement;
-                    if (el) el.click();
-                  }}
-                  className="flex-1 flex items-center justify-center gap-2 h-11 bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-semibold text-sm hover:bg-slate-100 transition-all"
+                <button
+                  onClick={() => setIsTemplateDirectoryOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-2 h-11 bg-dash-surface !text-dash-text border border-dash-border rounded-xl font-semibold text-sm hover:bg-dash-border/60 transition-colors motion-reduce:transition-none"
                 >
-                  <Sparkles className="w-4 h-4 text-slate-400" />
+                  <Sparkles className="w-4 h-4 !text-dash-textMuted" />
                   Templates
                 </button>
-                <button 
-                  onClick={() => {
-                    const el = document.querySelector('[title="Import JSON Template"]') as HTMLButtonElement;
-                    if (el) el.click();
-                  }}
-                  className="flex-1 flex items-center justify-center gap-2 h-11 bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-semibold text-sm hover:bg-slate-100 transition-all"
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-2 h-11 bg-dash-surface !text-dash-text border border-dash-border rounded-xl font-semibold text-sm hover:bg-dash-border/60 transition-colors motion-reduce:transition-none"
                 >
-                  <Download className="w-4 h-4 text-slate-400" />
+                  <Download className="w-4 h-4 !text-dash-textMuted" />
                   Import
                 </button>
               </div>
