@@ -11,13 +11,11 @@ import {
   FileText,
   CheckSquare,
   Briefcase,
-  Command,
   Loader2,
   Plus,
   Clock,
   Star,
-  CornerDownLeft,
-  Sparkles
+  CornerDownLeft
 } from 'lucide-react';
 import Link from 'next/link';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
@@ -45,14 +43,6 @@ const FAVORITES = [
   { key: 'pipeline', label: 'Pipeline', href: '/pipelines', icon: Star, color: 'text-amber-400' },
   { key: 'automation', label: 'Automation', href: '/automations', icon: Star, color: 'text-amber-400' },
   { key: 'websites', label: 'Website Builder', href: '/websites', icon: Star, color: 'text-amber-400' },
-];
-
-const AI_EXAMPLES = [
-  "show unpaid invoices",
-  "find john smith",
-  "open website builder",
-  "show leads from last week",
-  "create invoice"
 ];
 
 const CATEGORY_ORDER: ReadonlyArray<'CONTACT' | 'OPPORTUNITY' | 'INVOICE' | 'TASK' | 'PROJECT'> = ['CONTACT', 'OPPORTUNITY', 'INVOICE', 'TASK', 'PROJECT'];
@@ -83,19 +73,8 @@ const GlobalSearchModal = () => {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [aiPlaceholder, setAiPlaceholder] = useState(AI_EXAMPLES[0]);
   const inputRef = useRef<HTMLInputElement>(null);
   const supabase = useMemo(() => createClient(), []);
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    let i = 0;
-    const interval = setInterval(() => {
-      i = (i + 1) % AI_EXAMPLES.length;
-      setAiPlaceholder(AI_EXAMPLES[i]);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [searchOpen]);
 
   const isBrowsingDefault = query.trim().length < 2;
 
@@ -246,14 +225,6 @@ const GlobalSearchModal = () => {
                       onChange={(e) => setQuery(e.target.value)}
                       onKeyDown={handleKeyDown}
                     />
-                    {!query && (
-                      <div className="absolute inset-y-0 left-48 flex items-center pointer-events-none overflow-hidden">
-                        <div className="flex items-center gap-1.5 !text-slate-400 text-[16px] animate-pulse">
-                          <Sparkles size={16} className="!text-primary/60" />
-                          <span className="truncate max-w-[300px]">Ask LeadsMind... {aiPlaceholder}</span>
-                        </div>
-                      </div>
-                    )}
                     <div className="absolute inset-y-0 right-5 flex items-center gap-2">
                       <button
                         onClick={() => setSearchOpen(false)}
@@ -266,7 +237,7 @@ const GlobalSearchModal = () => {
                   </div>
 
                   {/* Content Area */}
-                  <div className="flex-1 overflow-y-auto common-scrollbar p-3 max-h-[calc(100dvh-64px)] md:max-h-[60vh]">
+                  <div className="flex-1 overflow-y-auto common-scrollbar p-3 pb-4 rounded-b-none md:rounded-b-[20px] max-h-[calc(100dvh-64px)] md:max-h-[60vh]">
                     {isBrowsingDefault ? (
                       <div className="space-y-4 pb-2">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -411,27 +382,6 @@ const GlobalSearchModal = () => {
                         </div>
                       </div>
                     )}
-                  </div>
-
-                  {/* Footer Bar */}
-                  <div className="px-4 py-2.5 bg-slate-50/80 border-t border-[#EEF2F7] flex items-center justify-between flex-shrink-0 rounded-b-[20px]">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1.5 text-[11px] !text-slate-500 font-medium">
-                        <span className="bg-white border border-[#EEF2F7] shadow-sm px-1 rounded flex items-center">↑↓</span> Navigate
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] !text-slate-500 font-medium">
-                        <span className="bg-white border border-[#EEF2F7] shadow-sm px-1 rounded">↵</span> Open
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] !text-slate-500 font-medium">
-                        <span className="bg-white border border-[#EEF2F7] shadow-sm px-1 flex items-center rounded gap-0.5"><Command size={10}/> ↵</span> Open New Tab
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] !text-slate-500 font-medium">
-                        <span className="bg-white border border-[#EEF2F7] shadow-sm px-1 rounded">ESC</span> Close
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-[10px] !text-slate-400 font-bold uppercase tracking-widest">
-                      LeadsMind
-                    </div>
                   </div>
                 </motion.div>
               </div>

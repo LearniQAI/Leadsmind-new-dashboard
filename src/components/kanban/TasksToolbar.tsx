@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { getAssignableMembers } from '@/app/actions/tasks';
 import { cn } from '@/lib/utils';
+import { DashButton } from '@/components/dashboard-ui';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,15 +79,16 @@ export function TasksToolbar({
       {/* Primary Row: Search & Global Actions */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="flex flex-col md:flex-row items-center gap-3 flex-1 max-w-5xl">
-          {/* Search */}
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 !text-dash-textMuted" />
+          {/* Search — the primary way to navigate a large task list, so it
+              gets more visual presence than the secondary controls beside it */}
+          <div className="relative flex-[2] w-full min-w-[220px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 !text-dash-textMuted" />
             <input
               type="text"
               placeholder="Search objectives, assets, or personnel..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full h-9 bg-dash-surface border border-dash-border rounded-lg py-1.5 pl-9 pr-4 text-[12px] font-semibold !text-dash-text placeholder:!text-dash-textMuted focus:outline-none focus:border-dash-accent/40 transition-colors"
+              className="w-full h-10 bg-white border border-dash-border rounded-xl py-2 pl-10 pr-4 text-[13px] font-semibold !text-dash-text placeholder:!text-dash-textMuted placeholder:font-medium focus:outline-none focus:border-dash-accent focus:ring-4 focus:ring-dash-accent/10 transition-all motion-reduce:transition-none"
             />
           </div>
 
@@ -140,13 +142,10 @@ export function TasksToolbar({
 
         <div className="flex items-center gap-3">
           {onInitializeTask && (
-            <button
-              onClick={onInitializeTask}
-              className="flex items-center gap-2 px-4 h-9 rounded-lg bg-dash-accent text-white text-[12px] font-bold shadow-lg shadow-dash-accent/20 hover:bg-dash-accent/90 transition-all active:scale-95"
-            >
-              <Plus className="w-3 h-3" />
-              <span>New task</span>
-            </button>
+            <DashButton onClick={onInitializeTask} size="default">
+              <Plus className="w-4 h-4" />
+              New task
+            </DashButton>
           )}
         </div>
       </div>

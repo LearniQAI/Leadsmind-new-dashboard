@@ -25,7 +25,7 @@ export function TasksBoard() {
   const [role, setRole] = useState<string | null>(null);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'kanban' | 'list' | 'calendar'>('kanban');
+  const [view, setView] = useState<'kanban' | 'list' | 'calendar'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Filters

@@ -95,14 +95,14 @@ export default function PipelinesClient({
         <div className="h-[72px] px-8 border-b border-dash-border flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-6">
             <div className="flex flex-col">
-              <h1 className="text-[14px] font-bold text-dash-accent tracking-[2px] font-display leading-none mb-1.5">
-                Strategic <span className="!text-dash-text">Pipelines</span>
+              <h1 className="text-[11px] font-bold text-dash-accent tracking-[2px] leading-none mb-2.5">
+                Pipelines
               </h1>
               <div className="flex items-center gap-2">
                 <select
                   value={activePipeline.id}
                   onChange={(e) => router.push(`/pipelines?pipelineId=${e.target.value}`)}
-                  className="bg-transparent text-[16px] font-extrabold !text-dash-text focus:outline-none cursor-pointer hover:text-dash-accent transition-colors appearance-none min-w-[140px]"
+                  className="bg-transparent text-[16px] font-extrabold font-display !text-dash-text focus:outline-none cursor-pointer hover:text-dash-accent transition-colors appearance-none min-w-[140px]"
                 >
                   {pipelines.map(p => (
                     <option key={p.id} value={p.id}>
@@ -147,34 +147,46 @@ export default function PipelinesClient({
         <PipelineStats opportunities={optimisticOpps} members={members} />
       </div>
 
-      {/* 2. Responsive Grid Board Area */}
-      <div className="flex-1 overflow-x-auto common-scrollbar bg-white p-8">
+      {/* 2. Compact Board Area — narrow fixed-width columns so a typical
+          5-7 stage pipeline fits a standard desktop width without scrolling;
+          horizontal scroll is a deliberate fallback for unusually long
+          pipelines, not the default experience. */}
+      <div className="relative flex-1 min-h-0">
+        <div className="h-full overflow-x-auto common-scrollbar bg-white p-6">
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex items-start gap-8 min-h-full">
-            {initialStages.map((stage) => (
-              <div key={stage.id} className="w-[320px] shrink-0">
+          <div className="flex items-start gap-4 min-h-full">
+            {initialStages.map((stage, idx) => (
+              <div key={stage.id} className="w-[240px] shrink-0">
                 <KanbanColumn
                   stage={stage}
+                  stageIndex={idx}
+                  stageCount={initialStages.length}
                   opportunities={optimisticOpps.filter(opp => opp.stage_id === stage.id)}
                   onEditDeal={handleEditDeal}
                   onAddDeal={() => handleCreateDeal(stage.id)}
+                  showEmptyStateAction={optimisticOpps.length === 0}
                 />
               </div>
             ))}
 
             {/* Add Stage Placeholder */}
-            <div 
+            <div
               onClick={() => setIsStageModalOpen(true)}
-              className="w-[320px] shrink-0 h-[400px] flex flex-col items-center justify-center border-2 border-dashed border-dash-border rounded-[24px] group hover:border-dash-accent/30 transition-all cursor-pointer bg-dash-surface hover:bg-dash-accent/5"
+              className="w-[240px] shrink-0 h-[260px] flex flex-col items-center justify-center border-2 border-dashed border-dash-border rounded-2xl group hover:border-dash-accent/30 transition-all motion-reduce:transition-none cursor-pointer bg-dash-surface hover:bg-dash-accent/5"
             >
-              <div className="w-14 h-14 rounded-[16px] bg-dash-surface border border-dash-border flex items-center justify-center mb-4 group-hover:bg-dash-accent/10 group-hover:border-dash-accent/20 group-hover:scale-110 transition-all shadow-inner">
-                <Plus size={20} className="!text-dash-textMuted group-hover:text-dash-accent" />
+              <div className="w-11 h-11 rounded-2xl bg-white border border-dash-border flex items-center justify-center mb-3 group-hover:bg-dash-accent/10 group-hover:border-dash-accent/20 group-hover:scale-110 transition-all motion-reduce:group-hover:scale-100 shadow-inner">
+                <Plus size={18} className="!text-dash-textMuted group-hover:text-dash-accent" />
               </div>
-              <p className="text-[12px] font-bold !text-dash-textMuted tracking-[2px] group-hover:!text-dash-text transition-colors">Add pipeline stage</p>
-              <p className="text-[10px] !text-dash-textMuted mt-2 font-medium opacity-0 group-hover:opacity-100 transition-opacity tracking-widest">Architect Level</p>
+              <p className="text-[11px] font-bold !text-dash-textMuted tracking-wider group-hover:!text-dash-text transition-colors text-center px-4">Add pipeline stage</p>
             </div>
           </div>
         </DragDropContext>
+        </div>
+        {/* Fade hint — signals more stages exist off-screen instead of an
+            abrupt hard cut when the board overflows horizontally. Only the
+            columns themselves scroll (see overflow-x-auto above); this sits
+            on top as a purely visual cue. */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-14 bg-gradient-to-l from-white to-transparent" />
       </div>
 
       {/* 3. Modals */}

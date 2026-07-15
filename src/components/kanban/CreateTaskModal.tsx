@@ -2,18 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
+  Dialog, DialogContent, DialogTitle, DialogDescription
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { PremiumInput, PremiumTextarea } from '@/components/ui/premium-inputs';
-import { Loader2, Layout, Target } from 'lucide-react';
+import { DashButton, DashInput, DashTextarea } from '@/components/dashboard-ui';
+import { Loader2, Target } from 'lucide-react';
 import { PremiumDatePicker } from '@/components/ui/premium-date-picker';
 import { PriorityToggleGroup } from '@/components/tasks/PriorityToggleGroup';
 import { AssigneeSelector } from '@/components/tasks/AssigneeSelector';
 import { getAssignableMembers, createTask } from '@/app/actions/tasks';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 interface CreateTaskModalProps {
   open: boolean;
@@ -74,7 +72,7 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
     if (res.error) {
       toast.error(res.error);
     } else {
-      toast.success('Task deployed successfully');
+      toast.success('Task created successfully');
       onTaskCreated();
       onOpenChange(false);
     }
@@ -83,7 +81,7 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-white border-dash-border p-0 overflow-hidden rounded-lg z-[2000]">
+      <DialogContent className="max-w-4xl bg-white border-dash-border p-0 overflow-hidden rounded-2xl shadow-2xl z-[2000]">
         <div className="flex flex-col max-h-[90vh]">
           {/* Header Section */}
           <div className="px-6 py-4 border-b border-dash-border">
@@ -92,11 +90,11 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
                 <Target className="w-5 h-5 text-dash-accent" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold tracking-tight !text-dash-text flex items-center gap-3">
-                  Create <span className="text-dash-accent">task</span>
+                <DialogTitle className="text-xl font-bold tracking-tight !text-dash-text">
+                  Create task
                 </DialogTitle>
-                <DialogDescription className="text-[11px] font-semibold !text-dash-textMuted mt-1">
-                  Strategic deployment & asset allocation
+                <DialogDescription className="text-[12px] font-medium !text-dash-textMuted mt-0.5">
+                  Add a task to your team's board.
                 </DialogDescription>
               </div>
             </div>
@@ -105,28 +103,27 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
           <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Primary Configuration (Left) */}
-              <div className="lg:col-span-7 space-y-8">
-                <div className="space-y-3">
-                  <label className="text-[12px] font-bold !text-dash-textMuted">
-                    Objective identity
+              <div className="lg:col-span-7 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[13px] font-semibold !text-dash-text">
+                    Task name
                   </label>
-                  <PremiumInput
+                  <DashInput
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Define core target..."
-                    className="text-[13px] py-3 rounded-xl"
+                    placeholder="e.g. Follow up with Acme Corp"
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-[12px] font-bold !text-dash-textMuted">
-                    Strategic context
+                <div className="space-y-2">
+                  <label className="text-[13px] font-semibold !text-dash-text">
+                    Description
                   </label>
-                  <PremiumTextarea
+                  <DashTextarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Outline the execution path..."
-                    className="min-h-[120px] text-[13px] p-4 rounded-xl"
+                    placeholder="Add any extra detail (optional)..."
+                    className="min-h-[120px]"
                   />
                 </div>
               </div>
@@ -142,6 +139,8 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
                   <PremiumDatePicker
                     date={dueDate}
                     setDate={setDueDate}
+                    variant="light"
+                    fieldLabel="Due date"
                   />
 
                   <AssigneeSelector
@@ -156,29 +155,28 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
           </div>
 
           {/* Footer Control Bar */}
-          <div className="px-10 py-2.5 border-t border-dash-border bg-dash-surface flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Layout className="w-4 h-4 !text-dash-textMuted" />
-              <span className="text-[11px] font-semibold !text-dash-textMuted">
-                Ready for initialization
-              </span>
-            </div>
+          <div className="px-6 py-3.5 border-t border-dash-border bg-dash-surface flex items-center justify-between">
+            <span className="text-[12px] font-medium !text-dash-textMuted">
+              Assignees and due date are optional.
+            </span>
 
-            <div className="flex items-center gap-4">
-              <Button
+            <div className="flex items-center gap-3">
+              <DashButton
+                type="button"
                 variant="ghost"
+                size="sm"
                 onClick={() => onOpenChange(false)}
-                className="px-4 py-1 text-[12px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-md transition-all"
               >
                 Cancel
-              </Button>
-              <Button
+              </DashButton>
+              <DashButton
+                type="button"
+                size="sm"
                 onClick={handleSubmit}
                 disabled={loading}
-                className="bg-dash-accent hover:bg-dash-accent/90 text-white px-4 py-1 rounded-md text-[12px] font-bold shadow-lg shadow-dash-accent/20 transition-all active:scale-[0.98]"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> : 'Deploy task'}
-              </Button>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> : 'Create task'}
+              </DashButton>
             </div>
           </div>
         </div>

@@ -257,3 +257,21 @@ export const icons = {
   sizeInline: 14, // section header icons, HomeDashboardClient SectionHeader
   sizeStandalone: 20,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Chart series colors — charts get more color energy than static UI chrome
+// ---------------------------------------------------------------------------
+// HomeDashboardClient's "Lead Growth" bar chart (New/Qualified/Converted
+// Leads). Two of the three are existing tokens reused verbatim; #00C875 is a
+// genuinely new hex, added here deliberately per the Phase-1 UI/UX pass that
+// brightened this chart (2026-07) — a punchier, more saturated emerald than
+// `color.success` (#10b981) reads better against the vivid accent blue and
+// warning amber it sits next to on this chart. Chart-only: do not reuse
+// #00C875 for status/UI chrome, which stays on `color.success`.
+export const chart = {
+  leadGrowth: {
+    newLeads: '#1359FF', // = color.accent, reused verbatim
+    qualifiedLeads: '#00C875', // NEW — vivid emerald, chart-only
+    convertedLeads: '#FF8A00', // = tailwind.config.js `warning.DEFAULT`, reused verbatim
+  },
+} as const;

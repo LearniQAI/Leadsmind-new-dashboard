@@ -23,7 +23,9 @@ import {
   Calendar,
   Clock,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  ChevronRight,
+  Trophy
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -79,9 +81,9 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
 // Clean horizontal progress bar for conversion tracking
 function ProgressBar({ value, colorClass = "bg-primary" }: { value: number; colorClass?: string }) {
   return (
-    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-      <div 
-        className={`h-full rounded-full transition-all duration-500 ${colorClass}`}
+    <div className="w-full bg-slate-200/70 h-2.5 rounded-full overflow-hidden">
+      <div
+        className={`h-full rounded-full transition-all duration-500 motion-reduce:transition-none ${colorClass}`}
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
     </div>
@@ -187,6 +189,13 @@ const HomeDashboardClient = ({
 
   // Lead Growth chart options (Multi-series visualization)
   const contactsOverTime = metrics?.contactsOverTime ?? [];
+  // Brighter, more saturated chart-only series palette — stays in the brand
+  // family (dash-accent blue + established warning amber) with one new,
+  // documented addition. See src/lib/design/dashboardDesignTokens.ts `chart`
+  // for the source of truth; charts are allowed more color energy than
+  // static UI chrome per that file's notes.
+  const LEAD_GROWTH_COLORS = ["#1359FF", "#00C875", "#FF8A00"];
+
   const leadsChartOptions: ApexOptions = {
     chart: {
       type: "bar",
@@ -194,10 +203,11 @@ const HomeDashboardClient = ({
       toolbar: { show: false },
       fontFamily: "Inter, sans-serif"
     },
-    colors: ["#2563EB", "#10B981", "#F59E0B"],
+    colors: LEAD_GROWTH_COLORS,
     plotOptions: {
       bar: {
-        borderRadius: 4,
+        borderRadius: 8,
+        borderRadiusApplication: "end",
         columnWidth: "60%",
         dataLabels: { position: "top" }
       }
@@ -226,7 +236,23 @@ const HomeDashboardClient = ({
     yaxis: {
       labels: { style: { colors: "#64748B", fontSize: "11px", fontWeight: 500 } }
     },
-    tooltip: { theme: "light" }
+    tooltip: {
+      custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
+        const label = w.globals.labels[dataPointIndex];
+        const color = LEAD_GROWTH_COLORS[seriesIndex % LEAD_GROWTH_COLORS.length];
+        const seriesName = w.globals.seriesNames[seriesIndex];
+        const value = series[seriesIndex][dataPointIndex];
+        return `
+          <div style="font-family:Inter,sans-serif;background:#fff;border:1px solid #E2E8F0;border-radius:16px;box-shadow:0 12px 32px rgba(15,23,42,0.12);padding:10px 14px;min-width:140px;">
+            <div style="font-size:11px;font-weight:700;color:#94A3B8;margin-bottom:6px;">${label}</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="width:8px;height:8px;border-radius:9999px;background:${color};display:inline-block;flex-shrink:0;"></span>
+              <span style="font-size:12px;font-weight:600;color:#0F172A;">${seriesName}: ${value}</span>
+            </div>
+          </div>
+        `;
+      }
+    }
   };
 
   const leadsChartSeries = [
@@ -553,36 +579,50 @@ const HomeDashboardClient = ({
                   const dealCount = stage.value;
                   const estimatedValue = dealCount * 12500;
                   const conversionPercent = Math.max(10, 100 - idx * 20);
-                  const colors = [
-                    "border-l-blue-500", 
-                    "border-l-indigo-500", 
-                    "border-l-amber-500", 
-                    "border-l-purple-500", 
-                    "border-l-emerald-500"
+                  const isWon = idx === pipelineStages.length - 1;
+                  const stageStyles = [
+                    { border: "border-l-blue-500", tint: "bg-blue-500/[0.05]", value: "!text-blue-600", bar: "bg-blue-500" },
+                    { border: "border-l-indigo-500", tint: "bg-indigo-500/[0.05]", value: "!text-indigo-600", bar: "bg-indigo-500" },
+                    { border: "border-l-amber-500", tint: "bg-amber-500/[0.05]", value: "!text-amber-600", bar: "bg-amber-500" },
+                    { border: "border-l-purple-500", tint: "bg-purple-500/[0.05]", value: "!text-purple-600", bar: "bg-purple-500" },
+                    { border: "border-l-emerald-500", tint: "bg-emerald-500/[0.07]", value: "!text-emerald-600", bar: "bg-emerald-500" },
                   ];
-                  const borderClass = colors[idx % colors.length];
+                  const s = stageStyles[idx % stageStyles.length];
 
                   return (
-                    <div 
-                      key={stage.label} 
-                      className={`bg-slate-50 border-l-[3.5px] ${borderClass} border border-y-[#E5E7EB] border-r-[#E5E7EB] rounded-xl p-3.5 flex flex-col justify-between h-[120px] hover:bg-slate-100/50 transition-colors`}
-                    >
-                      <div>
-                        <div className="text-[11px] font-bold !text-slate-400 uppercase tracking-wider truncate">
-                          {stage.label}
+                    <div key={stage.label} className="relative">
+                      <div
+                        className={`${s.tint} border-l-[3.5px] ${s.border} border border-y-[#E5E7EB] border-r-[#E5E7EB] rounded-xl p-3.5 flex flex-col justify-between h-[128px] transition-all duration-200 motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-md ${
+                          isWon ? "ring-1 ring-emerald-500/25 shadow-[0_4px_16px_rgba(16,185,129,0.08)]" : ""
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold !text-slate-500 uppercase tracking-wider truncate">
+                            {isWon && <Trophy size={11} className="!text-emerald-500 flex-shrink-0" />}
+                            {stage.label}
+                          </div>
+                          <div className="text-[20px] font-bold !text-[#0F172A] mt-1">
+                            {dealCount} <span className="text-[11px] font-normal !text-slate-500">deals</span>
+                          </div>
                         </div>
-                        <div className="text-[20px] font-bold !text-[#0F172A] mt-1">
-                          {dealCount} <span className="text-[11px] font-normal !text-slate-500">deals</span>
+
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-end">
+                            <span className={`font-bold text-[11px] ${s.value}`}>${estimatedValue.toLocaleString()}</span>
+                            <span className={`font-extrabold text-[15px] leading-none ${isWon ? "!text-emerald-600" : "!text-[#0F172A]"}`}>
+                              {conversionPercent}%
+                            </span>
+                          </div>
+                          <ProgressBar value={conversionPercent} colorClass={s.bar} />
                         </div>
                       </div>
-                      
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center text-[10px] !text-slate-500">
-                          <span className="font-bold !text-[#2563EB]">${estimatedValue.toLocaleString()}</span>
-                          <span>{conversionPercent}%</span>
+
+                      {/* Funnel connector to the next stage */}
+                      {idx < pipelineStages.length - 1 && (
+                        <div className="hidden sm:flex absolute top-1/2 -right-[9px] -translate-y-1/2 z-10 w-4 h-4 rounded-full bg-white border border-[#E5E7EB] items-center justify-center shadow-sm">
+                          <ChevronRight size={10} className="!text-slate-300" />
                         </div>
-                        <ProgressBar value={conversionPercent} colorClass={idx === 4 ? "bg-[#10B981]" : "bg-[#2563EB]"} />
-                      </div>
+                      )}
                     </div>
                   );
                 })}
@@ -810,20 +850,20 @@ const HomeDashboardClient = ({
                 {/* Stats row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 bg-slate-50 border border-[#EEF2F7] rounded-xl text-center">
-                    <span className="block text-[10px] font-bold !text-slate-400 uppercase tracking-wider">Rand Revenue</span>
+                    <span className="block text-[11px] font-medium !text-slate-400">Rand revenue</span>
                     <span className="block text-[14px] font-bold !text-[#0F172A] mt-1 truncate">
                       R{attributionMetrics.totalRandRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                   <div className="p-3 bg-slate-50 border border-[#EEF2F7] rounded-xl text-center">
-                    <span className="block text-[10px] font-bold !text-slate-400 uppercase tracking-wider">CTO Rate</span>
+                    <span className="block text-[11px] font-medium !text-slate-400">CTO rate</span>
                     <span className="block text-[14px] font-bold !text-[#0F172A] mt-1">{attributionMetrics.ctor}%</span>
                   </div>
                 </div>
 
                 {/* Automation step details */}
                 <div className="pt-3 border-t border-slate-100">
-                  <div className="text-[11px] font-bold !text-slate-400 uppercase tracking-wider mb-2">Sequence Revenue</div>
+                  <div className="text-[11px] font-medium !text-slate-400 mb-2">Sequence revenue</div>
                   {Object.values(attributionMetrics.stepRevenue).length === 0 ? (
                     <p className="text-[11px] !text-slate-400 italic">No attribution metrics recorded</p>
                   ) : (

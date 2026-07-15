@@ -17,8 +17,8 @@ const CrmDashboardMainArea = () => {
     {/* Page Header */}
     <div className="page-header">
      <div className="ph-left">
-      <h1>HELLO, <span style={{ color: "var(--accent2)" }}>{user?.firstName?.toUpperCase() || 'USER'}</span> 👋</h1>
-      <p>OVERVIEW OF YOUR BUSINESS OPERATIONS & REVENUE TRENDS</p>
+      <h1>Hello, <span style={{ color: "var(--accent2)" }}>{user?.firstName || 'there'}</span> 👋</h1>
+      <p>Overview of your business operations &amp; revenue trends</p>
      </div>
     <div className="ph-right">
      <button className="btn-ghost mr-2">

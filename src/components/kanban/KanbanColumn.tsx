@@ -15,30 +15,34 @@ interface KanbanColumnProps {
   onCardClick?: (taskId: string) => void;
 }
 
+// Deliberate status progression rather than an arbitrary color-per-column:
+// not-started reads neutral gray, active work reads dash-accent blue, review
+// reads violet (one step "hotter"), and done always reads success green —
+// mirrors the same fixed-progression convention used for pipeline stages.
 const COLUMN_THEMES: Record<string, { border: string, bg: string, text: string, shadow: string }> = {
-  todo: { 
-    border: 'border-l-amber', 
-    bg: 'bg-amber/5', 
-    text: 'text-amber',
-    shadow: 'shadow-[0_0_20px_rgba(245,158,11,0.05)]'
+  todo: {
+    border: 'border-l-dash-textMuted/50',
+    bg: 'bg-dash-textMuted/[0.06]',
+    text: 'text-dash-textMuted',
+    shadow: 'shadow-[0_0_20px_rgba(71,85,105,0.05)]'
   },
-  in_progress: { 
-    border: 'border-l-accent', 
-    bg: 'bg-accent/5', 
-    text: 'text-accent',
-    shadow: 'shadow-[0_0_20px_rgba(37,99,235,0.05)]'
+  in_progress: {
+    border: 'border-l-dash-accent',
+    bg: 'bg-dash-accent/5',
+    text: 'text-dash-accent',
+    shadow: 'shadow-[0_0_20px_rgba(19,89,255,0.06)]'
   },
-  in_review: { 
-    border: 'border-l-purple', 
-    bg: 'bg-purple/5', 
+  in_review: {
+    border: 'border-l-purple',
+    bg: 'bg-purple/5',
     text: 'text-purple',
     shadow: 'shadow-[0_0_20px_rgba(139,92,246,0.05)]'
   },
-  done: { 
-    border: 'border-l-green', 
-    bg: 'bg-green/5', 
+  done: {
+    border: 'border-l-green',
+    bg: 'bg-green/5',
     text: 'text-green',
-    shadow: 'shadow-[0_0_20px_rgba(16,185,129,0.05)]'
+    shadow: 'shadow-[0_0_20px_rgba(16,185,129,0.06)]'
   },
 };
 
@@ -71,27 +75,18 @@ export function KanbanColumn({ id, title, tasks, onAddTask, onCardClick }: Kanba
             <ChevronDown className="w-4 h-4" />
           </div>
           
-          <div className="flex flex-col">
+          <div className="flex items-center gap-2.5">
             <h3 className="text-sm font-black tracking-[0.1em] !text-dash-text">
               {title}
             </h3>
-            <span className="text-[10px] font-bold !text-dash-textMuted tracking-widest">
-              {tasks.length} {tasks.length === 1 ? 'Task' : 'Tasks'}
+            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", theme.bg, theme.text)}>
+              {tasks.length}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center -space-x-2 mr-4">
-             {/* Mock avatars for the row */}
-             <div className="w-6 h-6 rounded-full border-2 border-white bg-dash-surface flex items-center justify-center text-[8px] font-bold !text-dash-textMuted">
-                +{tasks.length}
-             </div>
-          </div>
-
-
-          
-          <button 
+          <button
             onClick={(e) => e.stopPropagation()}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-textMuted transition-all"
           >
@@ -112,14 +107,12 @@ export function KanbanColumn({ id, title, tasks, onAddTask, onCardClick }: Kanba
                 ref={provided.innerRef}
                 {...provided.droppableProps}
                 className={cn(
-                  "p-6 transition-colors duration-200",
+                  "p-6 transition-colors duration-200 motion-reduce:transition-none",
                   snapshot.isDraggingOver ? "bg-dash-accent/5" : "bg-transparent"
                 )}
               >
                 {tasks.length === 0 && !snapshot.isDraggingOver ? (
-                  <div className="py-8">
-                    <EmptyColumnState onAddTask={() => onAddTask?.(id)} />
-                  </div>
+                  <EmptyColumnState onAddTask={() => onAddTask?.(id)} />
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {tasks.map((task, index) => (

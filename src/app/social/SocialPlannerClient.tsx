@@ -69,9 +69,11 @@ export default function SocialPlannerClient({
   }
  };
 
+ // Real brand marks are self-colored (see BrandIcons.tsx) — no separate
+ // platform tint color needed to fill a badge behind them anymore.
  const platforms = [
-  { id: 'facebook', icon: <Facebook className="w-4 h-4 stroke-current" />, color: 'bg-[#1877F2]' },
-  { id: 'instagram', icon: <Instagram className="w-4 h-4 stroke-current" />, color: 'bg-[#E4405F]' },
+  { id: 'facebook', icon: <Facebook className="w-full h-full" /> },
+  { id: 'instagram', icon: <Instagram className="w-full h-full" /> },
  ];
 
  const togglePlatform = (id: string) => {
@@ -133,8 +135,10 @@ export default function SocialPlannerClient({
             key={p.id}
             onClick={() => togglePlatform(p.id)}
             className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center transition-all motion-reduce:transition-none",
-              selectedPlatforms.includes(p.id) ? `${p.color} text-white scale-110 shadow-md motion-reduce:scale-100` : 'bg-dash-surface !text-dash-textMuted hover:bg-dash-border/60 hover:!text-dash-text'
+              "w-10 h-10 p-2 rounded-xl flex items-center justify-center transition-all motion-reduce:transition-none border-2",
+              selectedPlatforms.includes(p.id)
+                ? "border-dash-accent bg-white scale-110 shadow-md motion-reduce:scale-100"
+                : "border-transparent bg-dash-surface opacity-50 hover:opacity-80"
             )}
            >
             {p.icon}
@@ -221,7 +225,7 @@ export default function SocialPlannerClient({
           <div className="flex items-start justify-between mb-3">
            <div className="flex gap-1">
             {post.platforms?.map((p: string) => (
-             <div key={p} className="w-6 h-6 rounded-md bg-dash-surface flex items-center justify-center !text-dash-textMuted">
+             <div key={p} className="w-5 h-5 rounded-md overflow-hidden flex items-center justify-center">
               {platforms.find(pl => pl.id === p)?.icon}
              </div>
             ))}
@@ -270,7 +274,7 @@ export default function SocialPlannerClient({
            return (
             <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border">
              <div className="flex items-center gap-3">
-              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white", p.color)}>
+              <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shadow-sm">
                {p.icon}
               </div>
               <span className="text-xs font-bold !text-dash-text capitalize">{p.id}</span>

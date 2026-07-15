@@ -53,7 +53,7 @@ export function AssigneeSelector({ members, selectedIds, onChange, currentUserId
         <div className="relative group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 !text-dash-textMuted group-focus-within:text-dash-accent transition-colors" />
           <input
-            placeholder="Search team database..."
+            placeholder="Search team members..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full h-9 bg-dash-surface border-none text-[12px] font-bold !text-dash-text focus:ring-0 pl-10 placeholder:!text-dash-textMuted"
@@ -108,7 +108,7 @@ export function AssigneeSelector({ members, selectedIds, onChange, currentUserId
               )}
             </div>
             <span className="text-[11px] font-bold !text-dash-textMuted">
-              {selectedIds.length} allocated
+              {selectedIds.length} assigned
             </span>
           </div>
         )}

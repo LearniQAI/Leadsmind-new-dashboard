@@ -91,8 +91,8 @@ const HrmDashboardClient = ({ stats, upcomingMeetings, recentTasks }: HrmDashboa
             {/* Page Header */}
             <div className="page-header">
                 <div className="ph-left">
-                    <h1>HELLO, <span style={{ color: "var(--accent2)" }}>{user?.firstName?.toUpperCase() || 'USER'}</span> 👋</h1>
-                    <p>MANAGE YOUR TEAM, PROJECTS AND WORKFLOWS</p>
+                    <h1>Hello, <span style={{ color: "var(--accent2)" }}>{user?.firstName || 'there'}</span> 👋</h1>
+                    <p>Manage your team, projects, and workflows</p>
                 </div>
                 <div className="ph-right">
                     <button className="btn-ghost mr-2">

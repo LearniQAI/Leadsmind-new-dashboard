@@ -6,6 +6,7 @@ import { MoreHorizontal, UserCircle2, Zap, User } from 'lucide-react';
 import { Opportunity } from '@/types/crm';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { CurrencyValue } from '@/components/dashboard-ui';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -38,9 +39,7 @@ export function OpportunityCard({ opportunity, index, onClick }: OpportunityCard
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[14px]  font-bold text-amber-600 tracking-tight">
-                R {Number(opportunity.value).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </span>
+              <CurrencyValue value={opportunity.value} className="text-[14px] font-bold !text-amber" />
             </div>
 
             <div className="flex flex-col gap-2 pt-2 border-t border-dash-border">

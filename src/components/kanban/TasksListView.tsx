@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { ListFilter } from 'lucide-react';
+import { DashEmptyState } from '@/components/dashboard-ui';
 
 interface TasksListViewProps {
   tasks: any[];
@@ -22,9 +23,11 @@ const PRIORITY_COLORS = {
   high: 'text-red bg-red/10 border-red/20',
 };
 
+// Same fixed status progression as the Kanban board (KanbanColumn.tsx):
+// neutral -> accent -> violet -> success green, not an arbitrary color set.
 const STATUS_COLORS: Record<string, string> = {
-  todo: 'text-amber bg-amber/5',
-  in_progress: 'text-accent bg-accent/5',
+  todo: 'text-dash-textMuted bg-dash-textMuted/[0.06]',
+  in_progress: 'text-dash-accent bg-dash-accent/5',
   in_review: 'text-purple bg-purple/5',
   done: 'text-green bg-green/5',
 };
@@ -129,10 +132,11 @@ export function TasksListView({ tasks, onTaskClick }: TasksListViewProps) {
           ))}
 
           {tasks.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-24 opacity-20">
-              <ListFilter className="w-12 h-12 mb-4" />
-              <p className="text-xs font-black tracking-widest">No tasks matching your filters</p>
-            </div>
+            <DashEmptyState
+              icon={ListFilter}
+              title="No tasks matching your filters"
+              description="Try adjusting search, sort, or the personnel filter."
+            />
           )}
         </div>
       </div>

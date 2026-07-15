@@ -115,7 +115,7 @@ export function TasksCalendarView({ tasks, onTaskClick, onDateClick }: TasksCale
                     onTaskClick(task.id);
                   }}
                   className={cn(
-                    "px-2 py-1.5 rounded-lg border text-left transition-all hover:scale-105 active:scale-95 group relative",
+                    "px-2 py-1.5 rounded-lg border text-left transition-all motion-reduce:transition-none motion-reduce:hover:scale-100 hover:scale-105 active:scale-95 group relative",
                     task.priority === 'high' ? "bg-red/10 border-red/20 text-red" :
                       task.priority === 'medium' ? "bg-amber/10 border-amber/20 text-amber" :
                         "bg-green/10 border-green/20 text-green"
