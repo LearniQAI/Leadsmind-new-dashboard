@@ -2,67 +2,26 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 
 export async function convertQuoteToInvoice(quoteId: string) {
+  const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
 
-  // 1. Fetch quote data
-  const { data: quote, error: quoteError } = await supabase
-    .from('quotes')
-    .select('*')
-    .eq('id', quoteId)
-    .single();
+  const { data, error } = await supabase.rpc('convert_quote_to_invoice', {
+    p_quote_id: quoteId,
+    p_workspace_id: workspaceId,
+  });
 
-  if (quoteError || !quote) return { success: false, error: 'Quote not found' };
-  if (quote.status !== 'accepted') return { success: false, error: 'Only accepted quotes can be converted' };
-
-  // 2. Generate unique invoice number (Current Year + Sequence)
-  const year = new Date().getFullYear();
-  const { count } = await supabase
-    .from('invoices')
-    .select('*', { count: 'exact', head: true })
-    .eq('workspace_id', quote.workspace_id);
-  
-  const invoiceNumber = `INV-${year}-${(count || 0) + 1001}`;
-
-  // 3. Atomic Transaction: Insert Invoice and Update Quote
-  const { data: invoice, error: invoiceError } = await supabase
-    .from('invoices')
-    .insert({
-      workspace_id: quote.workspace_id,
-      contact_id: quote.contact_id,
-      invoice_number: invoiceNumber,
-      status: 'draft',
-      items: quote.items,
-      subtotal: quote.subtotal,
-      tax_total: quote.tax_total,
-      total_amount: quote.total_amount,
-      shipping_charges: quote.shipping_charges,
-      adjustment: quote.adjustment,
-      terms_and_conditions: quote.terms_and_conditions,
-    })
-    .select()
-    .single();
-
-  if (invoiceError) {
-    logger.error({ err: invoiceError, quoteId }, 'quotes.convert_to_invoice.insert.failed');
-    return { success: false, error: 'Failed to create invoice.' };
+  if (error) {
+    logger.error({ err: error, quoteId, workspaceId }, 'quotes.convert_to_invoice.rpc.failed');
+    return { success: false, error: error.message || 'Failed to convert quote to invoice.' };
   }
 
-  const { error: updateError } = await supabase
-    .from('quotes')
-    .update({
-      status: 'converted',
-      converted_invoice_id: invoice.id
-    })
-    .eq('id', quoteId);
-
-  if (updateError) {
-    logger.error({ err: updateError, quoteId }, 'quotes.convert_to_invoice.update.failed');
-    return { success: false, error: 'Failed to update quote status.' };
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result?.success) {
+    return { success: false, error: result?.error_message || 'Failed to convert quote to invoice.' };
   }
 
   try {
@@ -71,25 +30,27 @@ export async function convertQuoteToInvoice(quoteId: string) {
   } catch (e) {
     logger.warn({ err: e }, 'quotes.revalidate_path.failed');
   }
-  return { success: true, invoiceId: invoice.id };
+  return { success: true, invoiceId: result.invoice_id, alreadyConverted: !!result.already_converted };
 }
 
 export async function updateQuoteStatus(id: string, status: string) {
+  const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
 
   const { data, error } = await supabase
     .from('quotes')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', id)
+    .eq('workspace_id', workspaceId)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    logger.error({ err: error, quoteId: id }, 'quotes.status.update.failed');
+    logger.error({ err: error, quoteId: id, workspaceId }, 'quotes.status.update.failed');
     return { success: false, error: 'Failed to update quote status.' };
   }
+  if (!data) return { success: false, error: 'Quote not found.' };
+
   try {
     revalidatePath('/quotes');
   } catch (e) {
@@ -99,19 +60,23 @@ export async function updateQuoteStatus(id: string, status: string) {
 }
 
 export async function deleteQuote(id: string) {
+  const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('quotes')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('workspace_id', workspaceId)
+    .select('id')
+    .maybeSingle();
 
   if (error) {
-    logger.error({ err: error, quoteId: id }, 'quotes.delete.failed');
+    logger.error({ err: error, quoteId: id, workspaceId }, 'quotes.delete.failed');
     return { success: false, error: 'Failed to delete quote.' };
   }
+  if (!data) return { success: false, error: 'Quote not found.' };
+
   try {
     revalidatePath('/quotes');
   } catch (e) {
@@ -121,18 +86,20 @@ export async function deleteQuote(id: string) {
 }
 
 export async function saveQuote(data: any) {
+  const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
+
+  // workspace_id is never trusted from the caller — always the verified one.
+  const { workspace_id: _ignoredWorkspaceId, ...rest } = data ?? {};
 
   const { data: quote, error } = await supabase
     .from('quotes')
-    .insert(data)
+    .insert({ ...rest, workspace_id: workspaceId })
     .select()
     .single();
 
   if (error) {
-    logger.error({ err: error }, 'quotes.save.failed');
+    logger.error({ err: error, workspaceId }, 'quotes.save.failed');
     return { success: false, error: 'Failed to save quote.' };
   }
   try {
@@ -144,28 +111,33 @@ export async function saveQuote(data: any) {
 }
 
 export async function getQuoteById(id: string) {
-  const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return null;
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return null;
+  }
 
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from('quotes')
     .select('*, contact:contacts(*)')
     .eq('id', id)
-    .single();
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
 
-  if (error) return null;
+  if (error || !data) return null;
   return data;
 }
 
 export async function updateQuote(id: string, data: any) {
+  const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
 
-  // Filter out any potential invalid columns
-  const { amount_due, amount_paid, custom_field_values, invoice_number, due_date, ...validData } = data;
-  
+  // Filter out any potential invalid columns, and never let the caller move
+  // a quote into a different workspace.
+  const { amount_due, amount_paid, custom_field_values, invoice_number, due_date, workspace_id: _ignoredWorkspaceId, ...validData } = data;
+
   const { data: quote, error } = await supabase
     .from('quotes')
     .update({
@@ -175,13 +147,16 @@ export async function updateQuote(id: string, data: any) {
       updated_at: new Date().toISOString()
     })
     .eq('id', id)
+    .eq('workspace_id', workspaceId)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    logger.error({ err: error, quoteId: id }, 'quotes.update.failed');
+    logger.error({ err: error, quoteId: id, workspaceId }, 'quotes.update.failed');
     return { success: false, error: 'Failed to update quote.' };
   }
+  if (!quote) return { success: false, error: 'Quote not found.' };
+
   try {
     revalidatePath('/quotes');
   } catch (e) {
@@ -190,11 +165,15 @@ export async function updateQuote(id: string, data: any) {
   return { success: true, data: quote };
 }
 
-export async function getQuotes(workspaceId: string) {
-  const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return [];
+export async function getQuotes(_workspaceId?: string) {
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return [];
+  }
 
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from('quotes')
     .select('*, contact:contacts(*)')

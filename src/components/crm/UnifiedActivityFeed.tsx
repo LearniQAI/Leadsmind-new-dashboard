@@ -111,9 +111,18 @@ export function UnifiedActivityFeed({
                       </p>
                       
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
-                          <LinkIcon size={10} /> {item.entity_type}
-                        </span>
+                        {item.entity_type === 'contact' && item.entity_id ? (
+                          <Link
+                            href={`/contacts/${item.entity_id}`}
+                            className="inline-flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4 hover:text-white transition-colors"
+                          >
+                            <LinkIcon size={10} /> {item.entity_type}
+                          </Link>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
+                            <LinkIcon size={10} /> {item.entity_type}
+                          </span>
+                        )}
                         {item.metadata?.channel === 'whatsapp' && (
                           <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
                             WhatsApp {item.metadata.destination ? `(${item.metadata.destination})` : ''}

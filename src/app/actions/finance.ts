@@ -3,10 +3,10 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
 import { revalidatePath } from 'next/cache';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { requireWorkspaceAccess, getUser } from '@/lib/auth';
 import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
 import { logger } from '@/shared/logger';
-import { toClientError } from '@/shared/errors/AppError';
+import { toClientError, ValidationError } from '@/shared/errors/AppError';
 
 function safeRevalidatePath(path: string) {
   try {
@@ -18,7 +18,14 @@ function safeRevalidatePath(path: string) {
 
 // --- Invoice & Quote Actions (Restored) ---
 
-export async function getInvoices(workspaceId: string, contactId?: string) {
+export async function getInvoices(_workspaceId?: string, contactId?: string) {
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return [];
+ }
+
  const supabase = await createServerClient();
  let query = supabase
   .from('invoices')
@@ -39,21 +46,36 @@ export async function getInvoices(workspaceId: string, contactId?: string) {
 }
 
 export async function getInvoiceById(id: string) {
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return null;
+ }
+
  const supabase = await createServerClient();
  const { data, error } = await supabase
   .from('invoices')
   .select('*, contact:contacts(*)')
   .eq('id', id)
-  .single();
+  .eq('workspace_id', workspaceId)
+  .maybeSingle();
 
  if (error) {
-  logger.error({ err: error, invoiceId: id }, 'finance.invoice.fetch.failed');
+  logger.error({ err: error, invoiceId: id, workspaceId }, 'finance.invoice.fetch.failed');
   return null;
  }
  return data;
 }
 
-export async function getInvoiceSettings(workspaceId: string) {
+export async function getInvoiceSettings(_workspaceId?: string) {
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return null;
+ }
+
  const supabase = await createServerClient();
  const { data, error } = await supabase
   .from('workspaces')
@@ -68,7 +90,14 @@ export async function getInvoiceSettings(workspaceId: string) {
  return data.invoice_settings;
 }
 
-export async function getContactsForInvoicing(workspaceId: string) {
+export async function getContactsForInvoicing(_workspaceId?: string) {
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return [];
+ }
+
  const supabase = await createServerClient();
  const { data, error } = await supabase
   .from('contacts')
@@ -83,7 +112,14 @@ export async function getContactsForInvoicing(workspaceId: string) {
  return data || [];
 }
 
-export async function getProducts(workspaceId: string) {
+export async function getProducts(_workspaceId?: string) {
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return [];
+ }
+
  const supabase = await createServerClient();
  const { data, error } = await supabase
   .from('products')
@@ -98,7 +134,14 @@ export async function getProducts(workspaceId: string) {
  return data || [];
 }
 
-export async function getQuotes(workspaceId: string, contactId?: string) {
+export async function getQuotes(_workspaceId?: string, contactId?: string) {
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return [];
+ }
+
  const supabase = await createServerClient();
  let query = supabase
   .from('quotes')
@@ -118,11 +161,68 @@ export async function getQuotes(workspaceId: string, contactId?: string) {
  return data || [];
 }
 
+// Columns that actually exist on public.invoices. The invoice form used to
+// spread its raw form state (including a `custom_field_values` key with no
+// matching column) straight into `.insert(data)` — PostgREST rejects any
+// unknown key in the body with a schema-cache error (PGRST204) *before* RLS
+// is even evaluated, which is why every single save/update failed with a
+// generic toast regardless of what was actually filled in. Whitelisting
+// here means a stray or renamed frontend field can never silently break
+// inserts like this again — an unexpected key is just dropped, not fatal.
+const INVOICE_COLUMNS = [
+ 'contact_id',
+ 'invoice_number',
+ 'issue_date',
+ 'due_date',
+ 'items',
+ 'shipping_charges',
+ 'adjustment',
+ 'subtotal',
+ 'tax_total',
+ 'total_amount',
+ 'amount_due',
+ 'amount_paid',
+ 'terms_and_conditions',
+ 'status',
+ 'currency',
+] as const;
+
+function pickInvoiceColumns(data: Record<string, any>) {
+ const picked: Record<string, any> = {};
+ for (const key of INVOICE_COLUMNS) {
+  if (data[key] !== undefined) picked[key] = data[key];
+ }
+ // Custom field values have no dedicated column — they live in the
+ // freeform `metadata` JSONB column instead of a phantom top-level key.
+ if (data.custom_field_values !== undefined) {
+  picked.metadata = { ...(data.metadata || {}), custom_field_values: data.custom_field_values };
+ }
+ return picked;
+}
+
+function validateInvoicePayload(data: Record<string, any>) {
+ if (!data.contact_id || typeof data.contact_id !== 'string') {
+  throw new ValidationError('Please select a contact before saving the invoice.');
+ }
+ if (!Array.isArray(data.items) || data.items.length === 0) {
+  throw new ValidationError('Add at least one line item before saving the invoice.');
+ }
+}
+
 export async function saveInvoice(data: any) {
+ const { workspaceId } = await requireWorkspaceAccess();
+
+ try {
+  validateInvoicePayload(data);
+ } catch (err) {
+  const clientError = toClientError(err);
+  return { success: false, error: clientError.error };
+ }
+
  const supabase = await createServerClient();
  const { data: invoice, error } = await supabase
   .from('invoices')
-  .insert(data)
+  .insert({ ...pickInvoiceColumns(data), workspace_id: workspaceId, status: data.status || 'draft' })
   .select()
   .single();
 
@@ -143,36 +243,55 @@ export async function saveInvoice(data: any) {
     }
   }
 
+ safeRevalidatePath('/invoices');
  return { success: true, data: invoice };
 }
 
 export async function updateInvoice(id: string, data: any) {
+ const { workspaceId } = await requireWorkspaceAccess();
+
+ try {
+  validateInvoicePayload(data);
+ } catch (err) {
+  const clientError = toClientError(err);
+  return { success: false, error: clientError.error };
+ }
+
  const supabase = await createServerClient();
  const { data: invoice, error } = await supabase
   .from('invoices')
-  .update(data)
+  .update(pickInvoiceColumns(data))
   .eq('id', id)
+  .eq('workspace_id', workspaceId)
   .select()
-  .single();
+  .maybeSingle();
 
  if (error) {
-  logger.error({ err: error, invoiceId: id }, 'finance.invoice.update.failed');
+  logger.error({ err: error, invoiceId: id, workspaceId }, 'finance.invoice.update.failed');
   const clientError = toClientError(error);
   return { success: false, error: clientError.error };
  }
+ if (!invoice) return { success: false, error: 'Invoice not found.' };
+
+ safeRevalidatePath('/invoices');
  return { success: true, data: invoice };
 }
 
 export async function saveQuote(data: any) {
+ const { workspaceId } = await requireWorkspaceAccess();
  const supabase = await createServerClient();
+
+ // workspace_id is never trusted from the caller — always the verified one.
+ const { workspace_id: _ignoredWorkspaceId, ...rest } = data ?? {};
+
  const { data: quote, error } = await supabase
   .from('quotes')
-  .insert(data)
+  .insert({ ...rest, workspace_id: workspaceId })
   .select()
   .single();
 
  if (error) {
-  logger.error({ err: error }, 'finance.quote.save.failed');
+  logger.error({ err: error, workspaceId }, 'finance.quote.save.failed');
   const clientError = toClientError(error);
   return { success: false, error: clientError.error };
  }
@@ -180,104 +299,97 @@ export async function saveQuote(data: any) {
 }
 
 export async function updateQuote(id: string, data: any) {
+ const { workspaceId } = await requireWorkspaceAccess();
  const supabase = await createServerClient();
+
+ // Never let the caller move a quote into a different workspace.
+ const { workspace_id: _ignoredWorkspaceId, ...validData } = data ?? {};
+
  const { data: quote, error } = await supabase
   .from('quotes')
-  .update(data)
+  .update(validData)
   .eq('id', id)
+  .eq('workspace_id', workspaceId)
   .select()
-  .single();
+  .maybeSingle();
 
  if (error) {
-  logger.error({ err: error, quoteId: id }, 'finance.quote.update.failed');
+  logger.error({ err: error, quoteId: id, workspaceId }, 'finance.quote.update.failed');
   const clientError = toClientError(error);
   return { success: false, error: clientError.error };
  }
+ if (!quote) return { success: false, error: 'Quote not found.' };
  return { success: true, data: quote };
 }
 
 export async function convertToInvoice(quoteId: string) {
+ const { workspaceId } = await requireWorkspaceAccess();
  const supabase = await createServerClient();
 
- // 1. Fetch the quote
- const { data: quote, error: fetchError } = await supabase
-  .from('quotes')
-  .select('*')
-  .eq('id', quoteId)
-  .single();
+ const { data, error } = await supabase.rpc('convert_quote_to_invoice', {
+  p_quote_id: quoteId,
+  p_workspace_id: workspaceId,
+ });
 
- if (fetchError || !quote) {
-  if (fetchError) logger.error({ err: fetchError, quoteId }, 'finance.quote_to_invoice.fetch.failed');
-  return { success: false, error: 'Quote not found' };
+ if (error) {
+  logger.error({ err: error, quoteId, workspaceId }, 'finance.quote_to_invoice.rpc.failed');
+  return { success: false, error: error.message || 'Failed to convert quote to invoice.' };
  }
 
- // 2. Check if already converted
- if (quote.status === 'converted') {
-  return { success: false, error: 'Quote already converted to invoice' };
+ const result = Array.isArray(data) ? data[0] : data;
+ if (!result?.success) {
+  return { success: false, error: result?.error_message || 'Failed to convert quote to invoice.' };
  }
 
- // 3. Create the invoice
- const { data: invoice, error: insertError } = await supabase
-  .from('invoices')
-  .insert({
-   workspace_id: quote.workspace_id,
-   contact_id: quote.contact_id,
-   invoice_number: quote.quote_number.replace('Q-', 'INV-'), // Simple replacement
-   items: quote.items,
-   subtotal: quote.subtotal,
-   tax_total: quote.tax_total,
-   total_amount: quote.total_amount,
-   currency: quote.currency,
-   notes: quote.notes,
-   terms: quote.terms,
-   status: 'draft',
-   amount_due: quote.total_amount,
-   amount_paid: 0
-  })
-  .select()
-  .single();
-
- if (insertError) {
-  logger.error({ err: insertError, quoteId }, 'finance.quote_to_invoice.insert.failed');
-  return { success: false, error: 'Failed to convert quote to invoice.' };
- }
-
- // 4. Update quote status
- await supabase
-  .from('quotes')
-  .update({ status: 'converted' })
-  .eq('id', quoteId);
-
-  if (invoice) {
-    try {
-      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
-      dispatchWebhook(invoice.workspace_id, 'invoice.created', {
-        invoice: { id: invoice.id, number: invoice.invoice_number, amount: invoice.total_amount ?? invoice.amount, currency: invoice.currency || 'ZAR', status: invoice.status, contact_id: invoice.contact_id },
-      }).catch(() => {});
-    } catch (e) {
-      logger.error({ err: e, invoiceId: invoice.id }, 'finance.quote_to_invoice.webhook_dispatch.failed');
-    }
+ if (!result.already_converted) {
+  try {
+   const { data: invoice } = await supabase.from('invoices').select('*').eq('id', result.invoice_id).single();
+   if (invoice) {
+    const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+    dispatchWebhook(invoice.workspace_id, 'invoice.created', {
+     invoice: { id: invoice.id, number: invoice.invoice_number, amount: invoice.total_amount ?? invoice.amount, currency: invoice.currency || 'ZAR', status: invoice.status, contact_id: invoice.contact_id },
+    }).catch(() => {});
+   }
+  } catch (e) {
+   logger.error({ err: e, invoiceId: result.invoice_id }, 'finance.quote_to_invoice.webhook_dispatch.failed');
   }
+ }
 
- return { success: true, data: invoice };
+ safeRevalidatePath('/invoices');
+ safeRevalidatePath('/quotes');
+ return { success: true, data: { id: result.invoice_id } };
 }
 
 export async function deleteInvoice(id: string) {
+ const { workspaceId } = await requireWorkspaceAccess();
  const supabase = await createServerClient();
- const { data: { user } } = await supabase.auth.getUser();
- if (!user) throw new UnauthorizedError();
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) throw new ForbiddenError('No active workspace');
- const { error } = await supabase.from('invoices').delete().eq('id', id).eq('workspace_id', workspaceId);
+ const { data, error } = await supabase.from('invoices').delete().eq('id', id).eq('workspace_id', workspaceId).select('id').maybeSingle();
  if (error) {
   logger.error({ err: error, workspaceId, invoiceId: id }, 'finance.invoice.delete.failed');
   return { success: false, error: 'Failed to delete invoice.' };
  }
+  if (!data) return { success: false, error: 'Invoice not found.' };
   safeRevalidatePath('/invoices');
   return { success: true };
 }
 
 export async function updateInvoiceStatus(id: string, status: string) {
+  const { workspaceId } = await requireWorkspaceAccess();
+  const supabase = await createServerClient();
+
+  // Verify the invoice actually belongs to this workspace before doing
+  // anything else — including before triggering AttributionEngine, webhooks,
+  // auto-shipment, or affiliate commission side effects below.
+  const { data: owned, error: ownedError } = await supabase
+    .from('invoices')
+    .select('id')
+    .eq('id', id)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+  if (ownedError || !owned) {
+    return { success: false, error: 'Invoice not found.' };
+  }
+
   let data: any = null;
 
   if (status === 'paid') {
@@ -295,17 +407,18 @@ export async function updateInvoiceStatus(id: string, status: string) {
   }
 
   if (!data) {
-    const supabase = await createServerClient();
     const { data: updatedData, error } = await supabase
      .from('invoices')
      .update({ status, updated_at: new Date().toISOString() })
      .eq('id', id)
+     .eq('workspace_id', workspaceId)
      .select('*, contact:contacts(*)')
-     .single();
+     .maybeSingle();
     if (error) {
-      logger.error({ err: error, invoiceId: id }, 'finance.invoice_status.update.failed');
+      logger.error({ err: error, invoiceId: id, workspaceId }, 'finance.invoice_status.update.failed');
       return { success: false, error: 'Failed to update invoice status.' };
     }
+    if (!updatedData) return { success: false, error: 'Invoice not found.' };
     data = updatedData;
   }
 
@@ -422,32 +535,33 @@ export async function updateInvoiceStatus(id: string, status: string) {
 }
 
 export async function deleteQuote(id: string) {
+ const { workspaceId } = await requireWorkspaceAccess();
  const supabase = await createServerClient();
- const { data: { user } } = await supabase.auth.getUser();
- if (!user) throw new UnauthorizedError();
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) throw new ForbiddenError('No active workspace');
- const { error } = await supabase.from('quotes').delete().eq('id', id).eq('workspace_id', workspaceId);
+ const { data, error } = await supabase.from('quotes').delete().eq('id', id).eq('workspace_id', workspaceId).select('id').maybeSingle();
  if (error) {
   logger.error({ err: error, workspaceId, quoteId: id }, 'finance.quote.delete.failed');
   return { success: false, error: 'Failed to delete quote.' };
  }
+  if (!data) return { success: false, error: 'Quote not found.' };
   safeRevalidatePath('/quotes');
   return { success: true };
 }
 
 export async function updateQuoteStatus(id: string, status: string) {
+ const { workspaceId } = await requireWorkspaceAccess();
  const supabase = await createServerClient();
  const { data, error } = await supabase
   .from('quotes')
   .update({ status, updated_at: new Date().toISOString() })
   .eq('id', id)
+  .eq('workspace_id', workspaceId)
   .select()
-  .single();
+  .maybeSingle();
  if (error) {
-  logger.error({ err: error, quoteId: id }, 'finance.quote_status.update.failed');
+  logger.error({ err: error, quoteId: id, workspaceId }, 'finance.quote_status.update.failed');
   return { success: false, error: 'Failed to update quote status.' };
  }
+  if (!data) return { success: false, error: 'Quote not found.' };
   safeRevalidatePath('/quotes');
   return { success: true, data };
 }
@@ -524,9 +638,21 @@ export async function createCheckoutSession(tierId: string, interval: 'month' | 
 
  return { url: session.url };
 }
-export async function writeOffInvoice(invoiceId: string, workspaceId: string, amount: number, reason: string) {
+export async function writeOffInvoice(invoiceId: string, _workspaceId: string, amount: number, reason: string) {
+  const { userId, workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+
+  // Verify the invoice actually belongs to this workspace before creating a
+  // write-off record against it at all.
+  const { data: owned, error: ownedError } = await supabase
+    .from('invoices')
+    .select('id')
+    .eq('id', invoiceId)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+  if (ownedError || !owned) {
+    return { success: false, error: 'Invoice not found.' };
+  }
 
   // 1. Create write-off record
   const { error: writeOffError } = await supabase
@@ -536,7 +662,7 @@ export async function writeOffInvoice(invoiceId: string, workspaceId: string, am
       workspace_id: workspaceId,
       amount_written_off: amount,
       reason: reason,
-      logged_by: user?.id
+      logged_by: userId
     });
 
   if (writeOffError) {
@@ -544,16 +670,21 @@ export async function writeOffInvoice(invoiceId: string, workspaceId: string, am
     return { success: false, error: 'Failed to record write-off.' };
   }
 
-  // 2. Update invoice status
-  const { error: updateError } = await supabase
+  // 2. Update invoice status — scoped to this workspace so a write-off
+  // record can't be attached to another workspace's invoice.
+  const { data: updated, error: updateError } = await supabase
     .from('invoices')
     .update({ status: 'written_off' })
-    .eq('id', invoiceId);
+    .eq('id', invoiceId)
+    .eq('workspace_id', workspaceId)
+    .select('id')
+    .maybeSingle();
 
   if (updateError) {
     logger.error({ err: updateError, invoiceId, workspaceId }, 'finance.invoice.write_off.status_update_failed');
     return { success: false, error: 'Failed to update invoice status.' };
   }
+  if (!updated) return { success: false, error: 'Invoice not found.' };
 
   safeRevalidatePath('/invoices');
   return { success: true };
@@ -561,7 +692,13 @@ export async function writeOffInvoice(invoiceId: string, workspaceId: string, am
 
 export async function createInvoiceCheckoutSession(invoiceId: string) {
   try {
-    const supabase = createAdminClient(); // Bypasses auth so public guest portal visitors can execute checkout
+    // This runs on the admin client so unauthenticated guest portal visitors
+    // can pay — but that means it has no RLS backstop of its own, so it must
+    // do its own ownership check rather than trusting a raw invoiceId.
+    const user = await getUser();
+    if (!user) return { error: 'Not authenticated' };
+
+    const supabase = createAdminClient();
     const { data: invoice, error } = await supabase
       .from('invoices')
       .select('*, contact:contacts(*)')
@@ -570,6 +707,18 @@ export async function createInvoiceCheckoutSession(invoiceId: string) {
 
     if (error || !invoice) {
       return { error: 'Invoice not found or could not be loaded' };
+    }
+
+    const isClientOwner = invoice.contact && invoice.contact.email === user.email;
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', invoice.workspace_id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!isClientOwner && !membership) {
+      return { error: 'You are not authorized to pay this invoice' };
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -612,6 +761,11 @@ export async function generateInvoicePayFastUrl(
   cancelUrl: string
 ) {
   try {
+    // Same as createInvoiceCheckoutSession above: admin client means no RLS
+    // backstop, so ownership must be verified explicitly here.
+    const user = await getUser();
+    if (!user) return { error: 'Not authenticated' };
+
     const supabase = createAdminClient();
     const { data: invoice, error } = await supabase
       .from('invoices')
@@ -621,6 +775,18 @@ export async function generateInvoicePayFastUrl(
 
     if (error || !invoice) {
       return { error: 'Invoice not found or could not be loaded' };
+    }
+
+    const isClientOwner = invoice.contact && invoice.contact.email === user.email;
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', invoice.workspace_id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!isClientOwner && !membership) {
+      return { error: 'You are not authorized to pay this invoice' };
     }
 
     const outstanding = Number(invoice.amount_due || invoice.total_amount || 0) - Number(invoice.amount_paid || 0);
@@ -669,10 +835,11 @@ export async function generateInvoicePayFastUrl(
   }
 }
 
-export async function saveInvoiceSettings(workspaceId: string, settings: any) {
+export async function saveInvoiceSettings(_workspaceId: string, settings: any) {
   try {
+    const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
-    
+
     // Fetch current invoice settings
     const { data: workspace, error: fetchError } = await supabase
       .from('workspaces')
@@ -704,7 +871,7 @@ export async function saveInvoiceSettings(workspaceId: string, settings: any) {
     safeRevalidatePath('/settings');
     return { success: true };
   } catch (err: any) {
-    logger.error({ err, workspaceId }, 'finance.invoice_settings.save.failed');
+    logger.error({ err }, 'finance.invoice_settings.save.failed');
     return { error: 'Failed to save settings' };
   }
 }

@@ -1,4 +1,4 @@
-import { AppError, DatabaseError } from '@/shared/errors/AppError';
+import { AppError, DatabaseError, NotFoundError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 
 export class ContactRepository {
@@ -256,10 +256,10 @@ export class ContactRepository {
     if (error) throw new Error(error.message);
   }
 
-  async createTask(workspaceId: string, contactId: string, title: string) {
+  async createTask(workspaceId: string, contactId: string, title: string, dueDate?: string) {
     const { data, error } = await this.db
       .from('contact_tasks')
-      .insert({ workspace_id: workspaceId, contact_id: contactId, title, status: 'todo' })
+      .insert({ workspace_id: workspaceId, contact_id: contactId, title, status: 'todo', due_date: dueDate ?? null })
       .select()
       .single();
     if (error) throw new Error(error.message);
@@ -267,20 +267,24 @@ export class ContactRepository {
   }
 
   async updateTaskStatus(id: string, workspaceId: string, status: string): Promise<void> {
-    const { error } = await this.db
+    const { data, error } = await this.db
       .from('contact_tasks')
       .update({ status })
       .eq('id', id)
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .select('id');
     if (error) throw new Error(error.message);
+    if (!data || data.length === 0) throw new NotFoundError('Task');
   }
 
   async deleteTask(id: string, workspaceId: string): Promise<void> {
-    const { error } = await this.db
+    const { data, error } = await this.db
       .from('contact_tasks')
       .delete()
       .eq('id', id)
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .select('id');
     if (error) throw new Error(error.message);
+    if (!data || data.length === 0) throw new NotFoundError('Task');
   }
 }

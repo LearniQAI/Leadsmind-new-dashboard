@@ -268,8 +268,8 @@ export class ContactService {
 
   // ---------- tasks ----------
 
-  async createTask(workspaceId: string, contactId: string, title: string) {
-    return toResult(() => this.repo.createTask(workspaceId, contactId, title), "contacts.createTask");
+  async createTask(workspaceId: string, contactId: string, title: string, dueDate?: string) {
+    return toResult(() => this.repo.createTask(workspaceId, contactId, title, dueDate), "contacts.createTask");
   }
 
   async toggleTaskStatus(id: string, workspaceId: string, currentStatus: string) {

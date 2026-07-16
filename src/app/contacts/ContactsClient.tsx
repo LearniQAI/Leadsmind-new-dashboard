@@ -85,14 +85,25 @@ export default function ContactsClient({ initialContacts, initialTags, owners = 
     setIsDeleting(true);
     const ids = Array.from(selectedIds);
     let successCount = 0;
+    const failedIds: string[] = [];
 
     for (const id of ids) {
       const res = await deleteContact(id);
       if (res.success) successCount++;
+      else failedIds.push(id);
     }
 
-    toast.success(`Successfully deleted ${successCount} leads`);
-    setSelectedIds(new Set());
+    if (failedIds.length === 0) {
+      toast.success(`Successfully deleted ${successCount} leads`);
+      setSelectedIds(new Set());
+    } else if (successCount === 0) {
+      toast.error(`Failed to delete ${failedIds.length} lead${failedIds.length === 1 ? '' : 's'}. Please try again.`);
+      setSelectedIds(new Set(failedIds));
+    } else {
+      toast.error(`${successCount} of ${ids.length} contacts deleted — ${failedIds.length} failed, still selected for retry`);
+      setSelectedIds(new Set(failedIds));
+    }
+
     setIsDeleting(false);
   };
 

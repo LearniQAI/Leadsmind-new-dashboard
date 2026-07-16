@@ -209,10 +209,25 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
       tags: [...(lead.smart_tags || []), ...(lead.tags || []), ...tags, 'Lead Finder'],
     };
 
-    const { error: contactError } = await supabase.from('contacts').insert(contactPayload);
+    const { data: contact, error: contactError } = await supabase
+      .from('contacts')
+      .insert(contactPayload)
+      .select('id')
+      .single();
 
     if (!contactError) {
       addedCount++;
+
+      // Contact-only import: no opportunity is auto-created. Log how/when this
+      // contact entered the CRM so it doesn't show up with no history.
+      await supabase.from('contact_activities').insert({
+        workspace_id: workspaceId,
+        contact_id: contact.id,
+        type: 'system',
+        description: 'Imported from Lead Finder',
+        metadata: { place_id: lead.place_id, business_name: lead.business_name },
+      });
+
       // Update result status
       await supabase
         .from('lead_finder_results')

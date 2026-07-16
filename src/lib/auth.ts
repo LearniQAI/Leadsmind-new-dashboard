@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createServerClient } from './supabase/server';
 import { cookies } from 'next/headers';
 import { logger } from '@/shared/logger';
+import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Session & User
@@ -121,6 +122,38 @@ export interface Workspace {
 export async function getCurrentWorkspaceId(): Promise<string | null> {
  const cookieStore = cookies();
  return cookieStore.get('active_workspace_id')?.value ?? null;
+}
+
+// Confirms the caller is authenticated and a member of the active workspace.
+// Throws UnauthorizedError/ForbiddenError otherwise. Unlike getCurrentWorkspaceId
+// (which only reads a client-supplied cookie with no verification at all), this
+// actually checks a workspace_members row exists for the user — use this for
+// any mutation/read of a specific record, not the cookie value alone.
+export async function requireWorkspaceAccess(): Promise<{ userId: string; workspaceId: string }> {
+ const supabase = await createServerClient();
+
+ const { data: { user }, error: userError } = await supabase.auth.getUser();
+ if (userError || !user) {
+  throw new UnauthorizedError();
+ }
+
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) {
+  throw new ForbiddenError('No active workspace');
+ }
+
+ const { data: membership } = await supabase
+  .from('workspace_members')
+  .select('id')
+  .eq('workspace_id', workspaceId)
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+ if (!membership) {
+  throw new ForbiddenError('Not a member of this workspace');
+ }
+
+ return { userId: user.id, workspaceId };
 }
 
 export const getCurrentWorkspace = cache(async (existingUser?: any): Promise<Workspace | null> => {

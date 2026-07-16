@@ -367,16 +367,41 @@ export async function updateCampaign(id: string, updates: any) {
   const { data, error } = await supabase.from('email_campaigns').update(updates).eq("id", id).eq("workspace_id", workspaceId).select().single();
   if (error) throw error;
   
-  // Count matching contacts for the user's peace of mind
+  // Recipient count shown to the user — derived from the exact same
+  // contact-id set that gets queued below, not a separately-computed count,
+  // so the number displayed always matches what was actually enqueued.
   let matchedContactsCount = 0;
   if (updates.status === 'scheduled') {
    if (updates.segment?.tags?.length > 0 && data.workspace_id) {
-    const { count, error: countError } = await supabase
+    const { data: matchedContacts, error: matchError } = await supabase
      .from('contacts')
-     .select('id', { count: 'exact', head: true })
+     .select('id')
      .eq('workspace_id', data.workspace_id)
      .contains('tags', updates.segment.tags);
-    if (!countError) matchedContactsCount = count || 0;
+
+    if (matchError) {
+     logger.error({ err: matchError, campaignId: id }, 'update.campaign.tag_match.failed');
+    } else if (matchedContacts && matchedContacts.length > 0) {
+     // Dedupe defensively — a contact must only ever get one queue row per
+     // campaign even if future matching logic can return the same contact
+     // via more than one path.
+     const uniqueContactIds = [...new Set(matchedContacts.map(c => c.id))];
+
+     const queueRows = uniqueContactIds.map(contactId => ({
+      campaign_id: id,
+      workspace_id: data.workspace_id,
+      contact_id: contactId,
+      status: 'pending',
+     }));
+
+     const { error: queueError } = await supabase.from('campaign_dispatch_queue').insert(queueRows);
+     if (queueError) {
+      logger.error({ err: queueError, campaignId: id }, 'update.campaign.dispatch_queue.insert.failed');
+      throw new Error('Failed to queue campaign recipients. Please try again.');
+     }
+
+     matchedContactsCount = uniqueContactIds.length;
+    }
    }
 
    // If specific emails were provided, instantly dispatch to them!

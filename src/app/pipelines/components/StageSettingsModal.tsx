@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { PipelineStage } from '@/types/crm';
 import { Layers, GripVertical, Pencil, Trash2 } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { updateStageOrder, updateStage, deleteStage, updatePipelineStages } from '@/app/actions/pipelines';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -46,25 +46,6 @@ export function StageSettingsModal({
     setStages(initialStages);
   }, [initialStages, isOpen]);
 
-  const handleDragEnd = async (result: DropResult) => {
-    if (!result.destination) return;
-
-    const items = Array.from(stages);
-    const [reorderedItem] = items.splice(source.index, 1);
-    items.splice(destination.index, 0, reorderedItem);
-
-    const updatedItems = items.map((item, index) => ({
-      ...item,
-      position: index
-    }));
-
-    setStages(updatedItems);
-
-    // Persist reorder
-    const res = await updateStageOrder(pipelineId, updatedItems.map(s => ({ id: s.id, position: s.position })));
-    if (!res.success) toast.error('Failed to sync stage order');
-  };
-
   const handleRename = async (id: string) => {
     if (!editName.trim()) return setEditingId(null);
 
@@ -91,18 +72,41 @@ export function StageSettingsModal({
     setConfirmConfig({
       isOpen: true,
       title: 'Delete Stage?',
-      description: 'Are you sure? All deals in this stage will be permanently detached.',
+      description: 'Deleting a stage cannot be undone. If it still has deals in it, you will be asked to confirm what happens to them.',
       confirmLabel: 'Delete',
       onConfirm: async () => {
         setIsProcessing(true);
         const res = await deleteStage(id);
-        if (res.success) {
+        if (!('error' in res)) {
           setStages(prev => prev.filter(s => s.id !== id));
           toast.success('Stage purged');
-        } else {
-          toast.error('Failed to delete stage');
+          setIsProcessing(false);
+          return;
         }
+
         setIsProcessing(false);
+
+        if (res.requiresFallback) {
+          setConfirmConfig({
+            isOpen: true,
+            title: 'Stage Has Active Deals',
+            description: `This stage has ${res.dealCount} active deal(s). Deleting it now will permanently DELETE those deals — this cannot be undone. Move the deals to another stage first if you want to keep them.`,
+            confirmLabel: 'Delete Anyway',
+            onConfirm: async () => {
+              setIsProcessing(true);
+              const forced = await deleteStage(id, { force: true });
+              if ('error' in forced) {
+                toast.error(forced.error || 'Failed to delete stage');
+              } else {
+                setStages(prev => prev.filter(s => s.id !== id));
+                toast.success('Stage and its deals permanently deleted');
+              }
+              setIsProcessing(false);
+            }
+          });
+        } else {
+          toast.error(res.error || 'Failed to delete stage');
+        }
       }
     });
   };
@@ -133,8 +137,6 @@ export function StageSettingsModal({
     }
     setIsProcessing(false);
   };
-
-  const { destination, source } = { destination: null, source: { index: 0 } } as any; // Dummy for type safety in splice above
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

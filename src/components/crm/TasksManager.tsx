@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, CalendarDays } from 'lucide-react';
 import { DashButton } from '@/components/dashboard-ui/Button';
+import { PremiumDatePicker } from '@/components/ui/premium-date-picker';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
@@ -18,16 +19,18 @@ interface TasksManagerProps {
 
 export function TasksManager({ contactId, tasks }: TasksManagerProps) {
   const [title, setTitle] = useState('');
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const handleAddTask = async () => {
     if (!title.trim()) return;
     setIsSubmitting(true);
-    const res = await createTask({ contactId, title });
+    const res = await createTask({ contactId, title, dueDate: dueDate?.toISOString() });
     if (res.success) {
       toast.success('Task created');
       setTitle('');
+      setDueDate(undefined);
     } else {
       toast.error(res.error || 'Failed to create task');
     }
@@ -36,16 +39,27 @@ export function TasksManager({ contactId, tasks }: TasksManagerProps) {
 
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
-    await deleteTask(deleteId);
-    toast.success('Task deleted');
+    const res = await deleteTask(deleteId);
+    if (res.success) {
+      toast.success('Task deleted');
+    } else {
+      toast.error(res.error || 'Failed to delete task');
+    }
     setDeleteId(null);
+  };
+
+  const handleToggleTask = async (task: any) => {
+    const res = await toggleTaskStatus(task.id, contactId, task.status);
+    if (!res.success) {
+      toast.error(res.error || 'Failed to update task');
+    }
   };
 
   return (
     <div className="space-y-8">
       {/* Quick Add */}
-      <div className="flex gap-3">
-        <div className="flex-1 bg-dash-surface border border-dash-border rounded-lg h-10 px-4 flex items-center gap-3 focus-within:border-dash-accent/40 transition-all">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-[200px] bg-dash-surface border border-dash-border rounded-lg h-10 px-4 flex items-center gap-3 focus-within:border-dash-accent/40 transition-all">
           <Plus size={11} className="text-dash-textMuted" />
           <input
             value={title}
@@ -53,6 +67,14 @@ export function TasksManager({ contactId, tasks }: TasksManagerProps) {
             placeholder="Assign a new tactical task..."
             className="flex-1 bg-transparent border-none text-[13px] !text-dash-text placeholder:text-dash-textMuted focus:outline-none focus:ring-0"
             onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+          />
+        </div>
+        <div className="w-52">
+          <PremiumDatePicker
+            date={dueDate}
+            setDate={setDueDate}
+            variant="light"
+            fieldLabel="Due date"
           />
         </div>
         <DashButton
@@ -83,7 +105,7 @@ export function TasksManager({ contactId, tasks }: TasksManagerProps) {
               >
                 <Checkbox
                   checked={task.status === 'completed'}
-                  onCheckedChange={() => toggleTaskStatus(task.id, contactId, task.status)}
+                  onCheckedChange={() => handleToggleTask(task)}
                   className="border-dash-textMuted data-[state=checked]:bg-dash-accent data-[state=checked]:border-dash-accent"
                 />
 

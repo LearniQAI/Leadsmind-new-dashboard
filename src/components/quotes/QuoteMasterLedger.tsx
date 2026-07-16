@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Search, FileText, MoreVertical,
-  CheckCircle2, XCircle, Send, Pencil, Trash2, ArrowRight
+  CheckCircle2, XCircle, Send, Pencil, Trash2, ArrowRight, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -27,6 +27,7 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setBy] = useState('newest');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   // Sync props to state dynamically
   useEffect(() => {
@@ -93,6 +94,78 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
       }
     });
   };
+  const handleDownloadPdf = async (quote: any) => {
+    if (!quote?.id) return;
+    setDownloadingId(quote.id);
+    try {
+      const clientName = quote.contact
+        ? `${quote.contact.first_name || ''} ${quote.contact.last_name || ''}`.trim() || 'Unknown Client'
+        : 'Unknown Client';
+      const items: any[] = Array.isArray(quote.items) ? quote.items : [];
+      const money = (n: any) => `$${(Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      const itemRows = items.map(item => `
+        <tr>
+          <td style="padding:8px 0;">${item.description || ''}</td>
+          <td style="padding:8px 0; text-align:center;">${item.quantity ?? ''}</td>
+          <td style="padding:8px 0; text-align:right;">${money(item.unit_amount ?? item.unit_price)}</td>
+          <td style="padding:8px 0; text-align:right;">${money((item.quantity || 0) * (item.unit_amount ?? item.unit_price ?? 0))}</td>
+        </tr>
+      `).join('');
+
+      const html = `
+        <div style="margin-bottom:24px;">
+          <p><strong>Quote #:</strong> ${quote.quote_number || 'N/A'}</p>
+          <p><strong>Client:</strong> ${clientName}${quote.contact?.email ? ` (${quote.contact.email})` : ''}</p>
+          <p><strong>Status:</strong> ${quote.status || 'draft'}</p>
+        </div>
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+          <thead>
+            <tr style="border-bottom:2px solid #e2e8f0; text-align:left;">
+              <th style="padding:8px 0;">Description</th>
+              <th style="padding:8px 0; text-align:center;">Qty</th>
+              <th style="padding:8px 0; text-align:right;">Unit Price</th>
+              <th style="padding:8px 0; text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemRows}</tbody>
+        </table>
+        <div style="margin-top:16px; text-align:right; font-size:12px;">
+          <p>Subtotal: ${money(quote.subtotal)}</p>
+          <p>Tax: ${money(quote.tax_total)}</p>
+          ${quote.shipping_charges ? `<p>Shipping: ${money(quote.shipping_charges)}</p>` : ''}
+          ${quote.adjustment ? `<p>Adjustment: ${money(quote.adjustment)}</p>` : ''}
+          <p style="font-size:16px; font-weight:700;">Total: ${money(quote.total_amount)}</p>
+        </div>
+        ${quote.terms_and_conditions ? `<div style="margin-top:24px;"><h3>Terms & Conditions</h3><p style="white-space:pre-wrap;">${quote.terms_and_conditions}</p></div>` : ''}
+      `;
+
+      const docTitle = `Quote ${quote.quote_number || quote.id}`;
+      const response = await fetch('/api/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: docTitle, html })
+      });
+
+      if (!response.ok) throw new Error('PDF render failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${docTitle.toLowerCase().replace(/[^a-z0-9]/g, '-')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Quote PDF downloaded');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to generate quote PDF');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteId) return;
 
@@ -225,6 +298,13 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
                           className="flex items-center gap-2 cursor-pointer text-xs py-2.5"
                         >
                           <Pencil size={14} /> Edit Proposal
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDownloadPdf(q)}
+                          disabled={downloadingId === q?.id}
+                          className="flex items-center gap-2 cursor-pointer text-xs py-2.5"
+                        >
+                          <Download size={14} /> {downloadingId === q?.id ? 'Generating...' : 'Download PDF'}
                         </DropdownMenuItem>
                         {q?.status === 'accepted' && q?.id && (
                           <DropdownMenuItem onClick={() => handleConvert(q.id)} className="flex items-center gap-2 cursor-pointer text-dash-accent text-xs py-2.5 font-bold">

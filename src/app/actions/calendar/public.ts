@@ -7,6 +7,7 @@ import { addMinutes, parseISO } from 'date-fns';
 import { logPopiaConsent } from '@/lib/calendar/popia';
 import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/calendar/payfast';
 import { syncBookingToExternal } from '@/lib/calendar/calendarSync';
+import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 import { logger } from '@/shared/logger';
 
 /**
@@ -137,7 +138,12 @@ export async function bookAppointment(
     .single();
 
   if (aptError || !appointment) {
-    if (aptError) logger.error({ err: aptError, calendarId, workspaceId: calendar.workspace_id }, 'calendar.public_booking.appointment_create.failed');
+    if (aptError) {
+      if (isSlotConflictError(aptError)) {
+        return { success: false, error: SLOT_CONFLICT_MESSAGE };
+      }
+      logger.error({ err: aptError, calendarId, workspaceId: calendar.workspace_id }, 'calendar.public_booking.appointment_create.failed');
+    }
     return { success: false, error: 'Failed to record appointment' };
   }
 

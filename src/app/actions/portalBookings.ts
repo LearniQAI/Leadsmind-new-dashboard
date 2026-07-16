@@ -8,6 +8,7 @@ import { addMinutes, parseISO } from 'date-fns';
 import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/calendar/payfast';
 import { syncBookingToExternal } from '@/lib/calendar/calendarSync';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
+import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 import { logger } from '@/shared/logger';
 
 /**
@@ -106,7 +107,12 @@ export async function bookAppointmentFromPortal(payload: {
       .single();
 
     if (aptError || !appointment) {
-      if (aptError) logger.error({ err: aptError, workspaceId: workspace.id }, 'portal_bookings.appointment.create.failed');
+      if (aptError) {
+        if (isSlotConflictError(aptError)) {
+          return { success: false, error: SLOT_CONFLICT_MESSAGE };
+        }
+        logger.error({ err: aptError, workspaceId: workspace.id }, 'portal_bookings.appointment.create.failed');
+      }
       return { success: false, error: 'Failed to record appointment.' };
     }
 

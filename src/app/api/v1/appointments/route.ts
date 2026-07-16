@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData, parsePagination } from '@/lib/api/auth'
+import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     title: body.title,
     start_time: body.start_time,
     end_time: body.end_time,
-    status: body.status ?? 'confirmed',
+    status: body.status ?? 'scheduled',
     created_by: body.created_by ?? null,
     calendar_id: body.calendar_id ?? null,
     deal_id: body.deal_id ?? null,
@@ -66,7 +67,14 @@ export async function POST(req: NextRequest) {
   }
 
   const { data, error } = await supabase.from('appointments').insert(payload).select('*').single()
-  if (error) return apiError(error.message, 500)
+  if (error) {
+    // This endpoint had no server-side slot-conflict check at all before —
+    // the `appointments_no_overlap` EXCLUDE constraint is what actually
+    // catches an overlapping booking here; surface it as a normal 409
+    // instead of a raw 500 database error.
+    if (isSlotConflictError(error)) return apiError(SLOT_CONFLICT_MESSAGE, 409)
+    return apiError(error.message, 500)
+  }
 
   return apiData(data, 201)
 }

@@ -46,6 +46,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   for (const k of allowed) if (k in body) updates[k] = body[k]
   if (Object.keys(updates).length === 0) return apiError('No updatable fields provided')
 
+  if (updates.stage_id) {
+    const { data: stage } = await supabase
+      .from('pipeline_stages')
+      .select('id')
+      .eq('id', updates.stage_id)
+      .eq('workspace_id', auth.workspaceId)
+      .maybeSingle()
+    if (!stage) return apiError('stage_id does not belong to this workspace', 422)
+  }
+
   const { data: updated, error } = await supabase
     .from('opportunities')
     .update(updates)

@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { ArrowLeft, Mail, Database, Search, Eye, CheckCircle, X } from 'lucide-react';
+import { useDashboardContext } from '@/components/layouts/DashboardProvider';
+import { ArrowLeft, Mail, Database, Search, Eye, CheckCircle, X, AlertTriangle } from 'lucide-react';
 import { DashModal, DashModalContent } from '@/components/dashboard-ui/Modal';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashInput } from '@/components/dashboard-ui/FormField';
@@ -15,43 +16,86 @@ import {
 export default function SubmissionsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const supabase = createClient();
+  const { workspace } = useDashboardContext();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
+      if (!workspace?.id) return;
+      setLoadError(null);
       try {
-        const { data: formData } = await supabase
+        // Explicit workspace_id filter on both queries — defense in depth
+        // on top of RLS, not a substitute for it.
+        const { data: formData, error: formError } = await supabase
           .from('forms')
           .select('name, config, id')
           .eq('id', params.id)
-          .single();
+          .eq('workspace_id', workspace.id)
+          .maybeSingle();
+
+        if (formError) {
+          setLoadError('Failed to load this form. Please try again.');
+          return;
+        }
+        if (!formData) {
+          setLoadError('Form not found.');
+          return;
+        }
 
         setForm(formData);
 
-        const { data: submissionData } = await supabase
+        const { data: submissionData, error: submissionsError } = await supabase
           .from('form_submissions')
           .select('*, contact:contacts(first_name, last_name, email)')
           .eq('form_id', params.id)
+          .eq('workspace_id', workspace.id)
           .order('submitted_at', { ascending: false });
+
+        if (submissionsError) {
+          setLoadError('Failed to load submissions for this form. Please try again.');
+          return;
+        }
 
         setSubmissions(submissionData || []);
       } catch (err) {
         console.error('Failed to load submissions data:', err);
+        setLoadError('Failed to load submissions data. Please try again.');
       } finally {
         setLoading(false);
       }
     }
     loadData();
-  }, [params.id, supabase]);
+  }, [params.id, supabase, workspace?.id]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-white p-8 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-dash-accent border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-white p-8 flex items-center justify-center">
+        <div className="max-w-md text-center">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6 mx-auto">
+            <AlertTriangle className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-xl font-bold !text-dash-text mb-2">Couldn't load submissions</h2>
+          <p className="!text-dash-textMuted mb-6">{loadError}</p>
+          <button
+            onClick={() => router.push('/forms')}
+            className="px-6 py-3 bg-dash-accent text-white font-bold tracking-wider rounded-xl hover:bg-dash-accent/90 transition-colors"
+          >
+            Back to Forms
+          </button>
+        </div>
       </div>
     );
   }
@@ -156,9 +200,19 @@ export default function SubmissionsPage({ params }: { params: { id: string } }) 
                         })}
                       </DashTableCell>
                       <DashTableCell>
-                        <span className="text-[9px] font-bold bg-dash-surface px-2 py-1 rounded-md !text-dash-textMuted">
-                          {sub.source_type || 'Unknown'}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[9px] font-bold bg-dash-surface px-2 py-1 rounded-md !text-dash-textMuted">
+                            {sub.source_type || 'Unknown'}
+                          </span>
+                          {sub.contact_sync_error && (
+                            <span
+                              title={sub.contact_sync_error}
+                              className="inline-flex items-center gap-1 text-[9px] font-bold bg-red-500/10 text-red-600 px-2 py-1 rounded-md"
+                            >
+                              <AlertTriangle size={10} /> Sync Failed
+                            </span>
+                          )}
+                        </div>
                       </DashTableCell>
                       <DashTableCell>
                         <div className="text-[11px] !text-dash-textMuted max-w-[200px] truncate">
@@ -199,6 +253,15 @@ export default function SubmissionsPage({ params }: { params: { id: string } }) 
             </div>
 
             <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar bg-white">
+              {selectedSubmission?.contact_sync_error && (
+                <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3">
+                  <AlertTriangle size={16} className="text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-red-600">CRM contact sync failed for this submission</p>
+                    <p className="text-[11px] !text-dash-textMuted mt-1">{selectedSubmission.contact_sync_error}</p>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4 mb-8">
                 <div className="bg-dash-surface rounded-xl p-4 border border-dash-border">
                   <span className="text-[9px] font-bold !text-dash-textMuted mb-1 block">Contact email</span>
