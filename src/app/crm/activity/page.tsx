@@ -119,9 +119,18 @@ export default async function GlobalActivityPage() {
                             </p>
                             
                             <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-3 flex-wrap">
-                              <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
-                                <LinkIcon size={10} /> {item.entity_type} Record
-                              </span>
+                              {item.entity_type === 'contact' && item.entity_id ? (
+                                <Link
+                                  href={`/contacts/${item.entity_id}`}
+                                  className="inline-flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4 hover:text-white transition-colors"
+                                >
+                                  <LinkIcon size={10} /> {item.entity_type} Record
+                                </Link>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
+                                  <LinkIcon size={10} /> {item.entity_type} Record
+                                </span>
+                              )}
                               <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
                                 <Activity size={10} /> {item.activity_type.replace('_', ' ')}
                               </span>

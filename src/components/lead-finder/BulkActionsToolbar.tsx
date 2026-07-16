@@ -131,6 +131,7 @@ export function BulkActionsToolbar({
             <button
               onClick={handleBulkAdd}
               disabled={loading}
+              title="Creates CRM contacts only. Convert a contact to a pipeline opportunity separately from its detail page."
               className="flex items-center gap-2 px-6 py-2 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-sm font-bold tracking-wider transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] disabled:opacity-50"
             >
               {loading ? <Loader2 size={16} className="animate-spin" /> : <Users size={16} />}

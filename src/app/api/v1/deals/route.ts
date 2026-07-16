@@ -47,7 +47,15 @@ export async function POST(req: NextRequest) {
 
   // Resolve stage: explicit stage_id, else first stage of the workspace's pipeline.
   let stageId: string | null = body.stage_id ?? null
-  if (!stageId) {
+  if (stageId) {
+    const { data: stage } = await supabase
+      .from('pipeline_stages')
+      .select('id')
+      .eq('id', stageId)
+      .eq('workspace_id', auth.workspaceId)
+      .maybeSingle()
+    if (!stage) return apiError('stage_id does not belong to this workspace', 422)
+  } else {
     const { data: stage } = await supabase
       .from('pipeline_stages')
       .select('id')

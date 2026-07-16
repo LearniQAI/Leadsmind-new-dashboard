@@ -164,8 +164,9 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData?.user?.id;
   const workspaceId = await getCurrentWorkspaceId();
-  
+
   if (!userId || !workspaceId) return { success: false, error: 'Unauthorized' };
+  if (!pipelineId || !stageId) return { success: false, error: 'A pipeline and stage are required.' };
 
   // 1. Fetch the lead details
   const { data: lead, error: leadError } = await supabase
@@ -176,22 +177,17 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
 
   if (leadError || !lead) return { success: false, error: leadError?.message || 'Lead not found' };
 
-  // 2. Fetch or select pipeline stage
-  let finalStageId = stageId;
-  if (stageId === 'default-stage-id') {
-    const { data: stages } = await supabase
-      .from('pipeline_stages')
-      .select('id')
-      .eq('workspace_id', workspaceId)
-      .order('position', { ascending: true })
-      .limit(1);
-      
-    if (stages && stages.length > 0) {
-      finalStageId = stages[0].id;
-    } else {
-      return { success: false, error: 'No pipeline stages found in this workspace. Please create a pipeline first.' };
-    }
-  }
+  // 2. Verify the selected stage belongs to the selected pipeline, in this workspace
+  const { data: stage, error: stageError } = await supabase
+    .from('pipeline_stages')
+    .select('id')
+    .eq('id', stageId)
+    .eq('pipeline_id', pipelineId)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+
+  if (stageError || !stage) return { success: false, error: 'Selected stage was not found in this workspace.' };
+  const finalStageId = stage.id;
 
   // 3. Create Contact in Legacy CRM
   const { data: contact, error: contactError } = await supabase

@@ -2,45 +2,14 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { headers } from 'next/headers';
-import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 import { ContactRepository } from '@/modules/crm/repository/ContactRepository';
 import { ContactService } from '@/modules/crm/service/ContactService';
 
 async function getContactService() {
  const supabase = await createServerClient();
  return new ContactService(new ContactRepository(supabase));
-}
-
-// Confirms the caller is authenticated and a member of the active workspace.
-// Throws UnauthorizedError/ForbiddenError otherwise — used by mutations that
-// previously duplicated this check inline.
-async function requireWorkspaceAccess(): Promise<{ userId: string; workspaceId: string }> {
- const supabase = await createServerClient();
-
- const { data: { user }, error: userError } = await supabase.auth.getUser();
- if (userError || !user) {
-  throw new UnauthorizedError();
- }
-
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) {
-  throw new ForbiddenError('No active workspace');
- }
-
- const { data: membership } = await supabase
-  .from('workspace_members')
-  .select('id')
-  .eq('workspace_id', workspaceId)
-  .eq('user_id', user.id)
-  .maybeSingle();
-
- if (!membership) {
-  throw new ForbiddenError('Not a member of this workspace');
- }
-
- return { userId: user.id, workspaceId };
 }
 
 export async function getContact(id: string) {
@@ -145,8 +114,7 @@ export async function checkDuplicateContact(email: string) {
 }
 
 export async function createContact(values: any) {
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) return { success: false, error: 'No active workspace' };
+ const { workspaceId } = await requireWorkspaceAccess();
 
  // Resolve consent IP from request headers when the caller didn't supply one.
  let consentIp = values.consentIp;
@@ -251,12 +219,12 @@ export async function deleteNote(id: string, contactId: string) {
  return { success: true };
 }
 
-export async function createTask(values: { contactId: string; title: string }) {
+export async function createTask(values: { contactId: string; title: string; dueDate?: string }) {
  const workspaceId = await getCurrentWorkspaceId();
  if (!workspaceId) return { success: false, error: 'No active workspace' };
 
  const service = await getContactService();
- const result = await service.createTask(workspaceId, values.contactId, values.title);
+ const result = await service.createTask(workspaceId, values.contactId, values.title, values.dueDate);
  if (result.success === false) return { success: false, error: result.error };
 
  revalidatePath(`/contacts/${values.contactId}`);

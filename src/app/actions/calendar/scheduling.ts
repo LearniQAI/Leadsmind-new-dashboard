@@ -1,8 +1,9 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
-import { addMinutes, isWithinInterval, parseISO, format, getDay, setHours, setMinutes, addDays } from 'date-fns';
+import { addMinutes, isWithinInterval, parseISO, addDays } from 'date-fns';
 import { getEskomOutages } from '@/lib/calendar/eskomsepush';
 import { getHolidaysInRange } from '@/lib/calendar/saHolidays';
+import { zonedTimeToUtc, isoDateDayOfWeek, formatInTimeZone } from '@/lib/calendar/timezone';
 
 export async function validateSlot(calendarId: string, startTime: string, endTime: string) {
   const supabase = await createServerClient();
@@ -140,7 +141,10 @@ export async function getAvailableSlots(calendarId: string, date: string) {
   if (overrides && overrides.enabled && overrides.slots) {
     daySlots = overrides.slots;
   } else {
-    const dayOfWeek = getDay(targetDate);
+    // Computed from the plain date string, not the server's local
+    // interpretation of a Date object — avoids day-of-week drift when the
+    // server process timezone differs from UTC.
+    const dayOfWeek = isoDateDayOfWeek(date);
     daySlots = calendar.availability?.[dayOfWeek.toString()] || [];
     if (daySlots.length === 0 && dayOfWeek >= 1 && dayOfWeek <= 5) {
       daySlots = [{ start: '09:00', end: '17:00' }]; // fallback weekday
@@ -195,12 +199,16 @@ export async function getAvailableSlots(calendarId: string, date: string) {
   const slots = [];
   const duration = calendar.slot_duration || 30;
 
-  for (const slot of daySlots) {
-    const [sH, sM] = slot.start.split(':').map(Number);
-    const [eH, eM] = slot.end.split(':').map(Number);
+  const calendarTimeZone = calendar.timezone || 'UTC';
 
-    let current = setMinutes(setHours(targetDate, sH), sM);
-    const end = setMinutes(setHours(targetDate, eH), eM);
+  for (const slot of daySlots) {
+    // "09:00"-"17:00" are wall-clock times in the workspace's configured
+    // calendar timezone, not the server process's timezone — interpreting
+    // them with setHours()/setMinutes() on a Date silently used whatever
+    // timezone the server happened to be running in (UTC on Vercel),
+    // shifting every business-hours slot by the workspace's UTC offset.
+    let current = zonedTimeToUtc(date, slot.start, calendarTimeZone);
+    const end = zonedTimeToUtc(date, slot.end, calendarTimeZone);
 
     while (addMinutes(current, duration) <= end) {
       const slotEnd = addMinutes(current, duration);
@@ -234,7 +242,7 @@ export async function getAvailableSlots(calendarId: string, date: string) {
         slots.push({
           start: current.toISOString(),
           end: slotEnd.toISOString(),
-          timeLabel: format(current, 'h:mm a')
+          timeLabel: formatInTimeZone(current, calendarTimeZone)
         });
       }
       current = addMinutes(current, duration);

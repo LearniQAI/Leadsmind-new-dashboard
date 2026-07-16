@@ -1,18 +1,7 @@
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import LeadsMainArea from "@/components/pagesUI/crm/leads/LeadsMainArea";
-import MetaData from "@/hooks/useMetaData";
-import React from "react";
+import { redirect } from "next/navigation";
 
 const LeadsMain = () => {
- return (
-  <>
-   <MetaData pageTitle="Leads">
-    <Wrapper>
-     <LeadsMainArea/>
-    </Wrapper>
-   </MetaData>
-  </>
- );
+ redirect("/lead-finder");
 };
 
 export default LeadsMain;

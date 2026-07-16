@@ -62,11 +62,27 @@ async function startWorkflowExecution(workflow: any, contactId: string) {
  }
 }
 
+// Hard ceiling on synchronous step chaining within a single invocation. Workflow
+// graphs are user-editable (workflow_edges), so a misconfigured or malicious
+// edge cycle (e.g. a stage-change automation that moves the deal back to a
+// stage that re-triggers the same workflow) would otherwise recurse forever
+// inside one serverless invocation until it crashes on stack/time limits.
+const MAX_WORKFLOW_STEP_DEPTH = 15;
+
 /**
  * Core loop: Fetches current step, executes it, and decides whether to continue.
  */
-export async function processNextStep(executionId: string) {
+export async function processNextStep(executionId: string, depth = 0) {
  const supabase = createAdminClient();
+
+ if (depth > MAX_WORKFLOW_STEP_DEPTH) {
+  logger.error({ executionId, depth }, 'executor.loop_protection.triggered');
+  await supabase.from('workflow_executions').update({
+   status: 'failed',
+   error_message: `Loop protection triggered: workflow exceeded ${MAX_WORKFLOW_STEP_DEPTH} chained steps in a single run.`,
+  }).eq('id', executionId);
+  return;
+ }
 
  // 1. Fetch Execution & Current Step
  const { data: execution } = await supabase
@@ -151,7 +167,7 @@ export async function processNextStep(executionId: string) {
    }).eq("id", executionId);
    
    if (nextEdge?.target_step_id) {
-    await processNextStep(executionId);
+    await processNextStep(executionId, depth + 1);
    }
    return;
   }
@@ -260,7 +276,7 @@ export async function processNextStep(executionId: string) {
 
    if (edge?.target_step_id) {
     await supabase.from("workflow_executions").update({ current_step_id: edge.target_step_id }).eq("id", executionId);
-    await processNextStep(executionId);
+    await processNextStep(executionId, depth + 1);
    } else {
     await supabase.from("workflow_executions").update({ status: 'completed', completed_at: new Date().toISOString() }).eq("id", executionId);
    }
@@ -302,7 +318,7 @@ export async function processNextStep(executionId: string) {
 
    if (edge?.target_step_id) {
     await supabase.from("workflow_executions").update({ current_step_id: edge.target_step_id }).eq("id", executionId);
-    await processNextStep(executionId);
+    await processNextStep(executionId, depth + 1);
    } else {
     await supabase.from("workflow_executions").update({ status: 'completed', completed_at: new Date().toISOString() }).eq("id", executionId);
    }
@@ -327,7 +343,7 @@ export async function processNextStep(executionId: string) {
 
   if (nextEdge?.target_step_id) {
    await supabase.from("workflow_executions").update({ current_step_id: nextEdge.target_step_id }).eq("id", executionId);
-   await processNextStep(executionId);
+   await processNextStep(executionId, depth + 1);
   } else {
    await supabase.from("workflow_executions").update({ status: 'completed', completed_at: new Date().toISOString() }).eq("id", executionId);
   }

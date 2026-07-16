@@ -33,7 +33,7 @@ export function StageManager({ pipelineId, initialStages }: StageManagerProps) {
   const action = async () => {
    if (!id.startsWith('new-')) {
     const res = await deleteStage(id);
-    if (!res.success) return toast.error(res.error);
+    if ('error' in res) return toast.error(res.error);
    }
    setStages(stages.filter((_, i) => i !== index));
   };

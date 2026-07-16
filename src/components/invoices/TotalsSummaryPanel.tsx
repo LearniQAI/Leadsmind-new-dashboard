@@ -17,15 +17,17 @@ const TotalsSummaryPanel: React.FC<TotalsSummaryPanelProps> = ({
   items,
   shippingCharges,
   adjustment,
-  currency = '$',
+  currency = 'ZAR',
   onShippingChange,
   onAdjustmentChange,
 }) => {
   const { subtotal, taxTotal, grandTotal } = calculateInvoiceTotals(items, shippingCharges, adjustment);
 
   const formatCurrency = (amount: number) => {
-    return `${currency}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return new Intl.NumberFormat('en-ZA', { style: 'currency', currency }).format(amount);
   };
+
+  const currencySymbol = currency === 'ZAR' ? 'R' : currency;
 
   return (
     <div className="flex flex-col gap-4 p-6 bg-white border border-dash-border rounded-xl w-full max-w-md ml-auto">
@@ -45,7 +47,7 @@ const TotalsSummaryPanel: React.FC<TotalsSummaryPanelProps> = ({
       <div className="flex justify-between items-center gap-4">
         <label className="text-sm !text-dash-textMuted whitespace-nowrap">Shipping charges</label>
         <div className="relative w-32">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted text-xs">{currency}</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted text-xs">{currencySymbol}</span>
           <DashInput
             type="number"
             className="h-9 pl-7 text-right text-xs"
@@ -59,7 +61,7 @@ const TotalsSummaryPanel: React.FC<TotalsSummaryPanelProps> = ({
       <div className="flex justify-between items-center gap-4">
         <label className="text-sm !text-dash-textMuted whitespace-nowrap">Adjustment</label>
         <div className="relative w-32">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted text-xs">{currency}</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted text-xs">{currencySymbol}</span>
           <DashInput
             type="number"
             className="h-9 pl-7 text-right text-xs"

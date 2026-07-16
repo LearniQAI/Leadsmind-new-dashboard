@@ -1,4 +1,15 @@
-import { createServerClient } from '@/lib/supabase/server';
+// This module is invoked from public/portal booking actions that have no
+// Supabase Auth session (public visitors, client-portal contacts) as well
+// as from internal dashboard flows — never exclusively from an
+// authenticated user session. createServerClient() is session-bound: with
+// no auth.uid(), the RLS policies on user_calendar_connections/appointments
+// silently filter out all rows rather than erroring, so every read/update
+// in this file would quietly no-op (no sync, no token-refresh-failure
+// flagging) whenever called from those contexts, with the try/catch
+// wrappers around it never seeing anything go wrong. Always use the
+// admin client here, matching the same fix already applied to the
+// equivalent case in lib/automation/executor.ts.
+import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
 
 export interface BusySlot {
@@ -64,7 +75,7 @@ export async function refreshUserCalendarToken(
       newExpiresAt = Date.now() + (data.expires_in * 1000);
     }
 
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
     await supabase
       .from('user_calendar_connections')
       .update({
@@ -81,7 +92,7 @@ export async function refreshUserCalendarToken(
   } catch (error) {
     logger.error({ err: error, provider }, 'calendar_refresh.token_refresh.failed');
     // Mark status as error on refresh failure
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
     await supabase
       .from('user_calendar_connections')
       .update({ status: 'error' })
@@ -98,7 +109,7 @@ export async function getExternalBusySlots(
   startStr: string,
   endStr: string
 ): Promise<BusySlot[]> {
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
   const { data: connections } = await supabase
     .from('user_calendar_connections')
     .select('*')
@@ -160,7 +171,15 @@ export async function getExternalBusySlots(
         const data = await response.json();
         if (response.ok && data.value?.[0]?.scheduleItems) {
           data.value[0].scheduleItems.forEach((item: any) => {
-            if (item.status === 'busy' || item.status === 'oof') {
+            // A malformed/partial schedule item (missing start or end)
+            // used to throw here, aborting this connection's entire
+            // busy-slot fetch for the whole range rather than just
+            // skipping the one bad event.
+            if (
+              (item.status === 'busy' || item.status === 'oof') &&
+              item.start?.dateTime &&
+              item.end?.dateTime
+            ) {
               busySlots.push({
                 start: item.start.dateTime + 'Z',
                 end: item.end.dateTime + 'Z',
@@ -191,7 +210,7 @@ export async function getExternalBusySlots(
  * Pushes native booking downstream to Google/Outlook calendar.
  */
 export async function syncBookingToExternal(appointmentId: string): Promise<boolean> {
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
 
   // Fetch appointment details along with contact and calendar info
   const { data: appointment } = await supabase

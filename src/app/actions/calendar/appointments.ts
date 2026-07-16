@@ -7,6 +7,7 @@ import { validateSlot, getRoundRobinAssignee, updateRoundRobinStats } from './sc
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { logger } from '@/shared/logger';
 import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
+import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
@@ -111,7 +112,10 @@ export async function createAppointment(payload: {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (isSlotConflictError(error)) throw new ValidationError(SLOT_CONFLICT_MESSAGE);
+      throw error;
+    }
 
     // 7. Post-Insert Update for Internal Meet Links
     if (effectiveMode === 'internal_meet' || (effectiveMode === 'custom_link' && !meetingLink)) {

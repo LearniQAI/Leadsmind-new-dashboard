@@ -40,7 +40,7 @@ export default function NewPipelinePage() {
    const res = await createPipeline({ name, stages });
    if (res.success) {
     toast.success('Pipeline created!');
-    router.push('/apps/pipelines');
+    router.push(res.data?.id ? `/pipelines?pipelineId=${res.data.id}` : '/pipelines');
     router.refresh();
    } else {
     toast.error(res.error || 'Failed to create pipeline');

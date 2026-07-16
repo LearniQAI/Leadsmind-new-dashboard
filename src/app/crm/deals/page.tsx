@@ -1,18 +1,7 @@
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import DealsMainArea from "@/components/pagesUI/crm/deals/DealsMainArea";
-import MetaData from "@/hooks/useMetaData";
-import React from "react";
+import { redirect } from "next/navigation";
 
 const DealsMain = () => {
- return (
-  <>
-   <MetaData pageTitle="Deals">
-    <Wrapper>
-     <DealsMainArea />
-    </Wrapper>
-   </MetaData>
-  </>
- );
+ redirect("/pipelines");
 };
 
 export default DealsMain;

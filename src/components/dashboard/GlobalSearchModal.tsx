@@ -56,7 +56,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function resolveResultLink(result: { category: string; link: string }): string {
   switch (result.category) {
-    case 'OPPORTUNITY': return '/pipelines';
+    // global_search now emits a real, specific destination for opportunities
+    // (the contact detail page, or the deal's own pipeline board) — no
+    // longer overridden to a blunt static '/pipelines'.
     case 'TASK': return '/tasks';
     case 'PROJECT': return '/projects';
     default: return result.link;

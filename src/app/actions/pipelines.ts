@@ -1,11 +1,28 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 
 import { Pipeline, PipelineStage, Opportunity } from '@/types/crm';
 import { logger } from '@/shared/logger';
+
+/**
+ * Confirms a stage_id actually belongs to the caller's workspace before it's
+ * trusted for a write. Uses the admin client so the lookup itself can't be
+ * quietly hidden by RLS one way or the other — the workspace_id comparison
+ * below is the real check.
+ */
+async function assertStageInWorkspace(stageId: string, workspaceId: string): Promise<boolean> {
+  const adminClient = createAdminClient();
+  const { data: stage } = await adminClient
+    .from('pipeline_stages')
+    .select('id, workspace_id')
+    .eq('id', stageId)
+    .maybeSingle();
+
+  return !!stage && stage.workspace_id === workspaceId;
+}
 
 export async function createPipeline({ name, stages }: { name: string, stages: string[] }) {
   const supabase = await createServerClient();
@@ -169,6 +186,11 @@ export async function updateDealStage(dealId: string, stageId: string, position:
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'No active workspace' };
 
+  if (!(await assertStageInWorkspace(stageId, workspaceId))) {
+    logger.error({ workspaceId, dealId, stageId }, 'pipelines.deal_stage.cross_tenant_stage_rejected');
+    return { success: false, error: 'Unauthorized: target stage does not belong to this workspace.' };
+  }
+
   const { data: dealBefore } = await supabase
     .from('opportunities')
     .select('workspace_id, contact_id, status')
@@ -241,6 +263,11 @@ export async function updateOpportunity(id: string, values: any) {
 
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'No active workspace' };
+
+  if (values.stage_id && !(await assertStageInWorkspace(values.stage_id, workspaceId))) {
+    logger.error({ workspaceId, opportunityId: id, stageId: values.stage_id }, 'pipelines.opportunity_update.cross_tenant_stage_rejected');
+    return { success: false, error: 'Unauthorized: target stage does not belong to this workspace.' };
+  }
 
   const { data: dealBefore } = await supabase
     .from('opportunities')
@@ -355,17 +382,14 @@ export async function updateStageOrder(pipelineId: string, stages: { id: string,
   if (!workspaceId) return { success: false, error: 'No active workspace' };
 
   const { error } = await supabase.rpc('update_stage_positions', {
-    stage_updates: stages
+    p_workspace_id: workspaceId,
+    p_stage_ids: stages.map(s => s.id),
+    p_positions: stages.map(s => s.position),
   });
 
   if (error) {
-    // Fallback if RPC doesn't exist yet
-    for (const stage of stages) {
-      await supabase
-        .from('pipeline_stages')
-        .update({ position: stage.position })
-        .eq("id", stage.id).eq("workspace_id", workspaceId);
-    }
+    logger.error({ err: error, workspaceId, pipelineId }, 'pipelines.stage_order.rpc_failed');
+    return { success: false, error: 'Failed to update stage order.' };
   }
 
   revalidatePath('/pipelines');
@@ -393,13 +417,70 @@ export async function updateStage(id: string, name: string) {
   return { success: true };
 }
 
-export async function deleteStage(id: string) {
+/**
+ * Deletes a pipeline stage. `pipeline_stages.id` cascades to `opportunities`
+ * (ON DELETE CASCADE), so a stage with active deals is never dropped silently:
+ * - With no `fallbackStageId` and no `force`, it refuses and reports how many
+ *   deals are in the way so the caller can offer a fallback stage.
+ * - With a `fallbackStageId`, those deals are migrated to it first.
+ * - With `force: true` and no fallback, the caller has explicitly accepted
+ *   that the deals will be permanently deleted along with the stage.
+ */
+type DeleteStageResult =
+  | { success: true }
+  | { success: false; error: string; requiresFallback?: boolean; dealCount?: number };
+
+export async function deleteStage(
+  id: string,
+  options?: { fallbackStageId?: string; force?: boolean }
+): Promise<DeleteStageResult> {
   const supabase = await createServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return { success: false, error: 'Unauthorized' };
 
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'No active workspace' };
+
+  const fallbackStageId = options?.fallbackStageId;
+  const force = options?.force ?? false;
+
+  if (fallbackStageId) {
+    if (fallbackStageId === id) {
+      return { success: false, error: 'Fallback stage cannot be the stage being deleted.' };
+    }
+    if (!(await assertStageInWorkspace(fallbackStageId, workspaceId))) {
+      return { success: false, error: 'Unauthorized: fallback stage does not belong to this workspace.' };
+    }
+  }
+
+  const { count: dealCount } = await supabase
+    .from('opportunities')
+    .select('id', { count: 'exact', head: true })
+    .eq('stage_id', id)
+    .eq('workspace_id', workspaceId);
+
+  if (dealCount && dealCount > 0) {
+    if (fallbackStageId) {
+      const { error: migrateError } = await supabase
+        .from('opportunities')
+        .update({ stage_id: fallbackStageId, stage_entered_at: new Date().toISOString() })
+        .eq('stage_id', id)
+        .eq('workspace_id', workspaceId);
+
+      if (migrateError) {
+        logger.error({ err: migrateError, workspaceId, stageId: id, fallbackStageId }, 'pipelines.stage.delete.migrate_deals_failed');
+        return { success: false, error: 'Failed to migrate deals to the fallback stage.' };
+      }
+    } else if (!force) {
+      return {
+        success: false,
+        requiresFallback: true,
+        dealCount,
+        error: `This stage has ${dealCount} active deal(s). Provide a fallback stage or confirm permanent deletion.`,
+      };
+    }
+    // force === true, no fallback: fall through and let ON DELETE CASCADE remove the deals.
+  }
 
   const { error } = await supabase.from('pipeline_stages').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) {

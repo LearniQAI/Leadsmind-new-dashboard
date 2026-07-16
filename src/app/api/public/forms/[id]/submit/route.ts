@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server';
 import { corsResponse, corsError, getAdminSupabase } from '../../_lib/cors';
+import { evaluateLogicRules, LogicRule } from '@/app/forms/builder/[id]/components/LogicEngine';
+import { validatePublicStep, PublicFieldSchema } from '@/app/public/forms/[id]/PublicValidationEngine';
 
 // Simple in-memory rate limit scaffold (per IP, per form, per minute)
 // In production this would be backed by Redis or Upstash
@@ -116,6 +118,31 @@ export async function POST(
 
     // 2. Extract and Validate configured contact fields
     const formFields = (form.fields as any[]) || [];
+
+    // Server-side re-validation of conditional show/hide logic and required
+    // fields — the client (usePublicForm.ts/LogicEngine) only enforces this
+    // in the browser, so a client could previously POST arbitrary formData
+    // bypassing all show/hide and required rules entirely. Re-running the
+    // exact same LogicEngine/validator here (not a re-implementation, the
+    // same pure functions the client uses) closes that gap and also covers
+    // per-field required/format checks beyond just email/phone.
+    const logicRules: LogicRule[] = (form.config as any)?.logicRules || [];
+    const { hiddenFieldIds } = evaluateLogicRules(logicRules, formData);
+
+    const validationErrors = validatePublicStep(formFields as PublicFieldSchema[], formData, hiddenFieldIds);
+    const firstErrorFieldId = Object.keys(validationErrors)[0];
+    if (firstErrorFieldId) {
+      return corsError(validationErrors[firstErrorFieldId], 400);
+    }
+
+    // Strip any value submitted for a conditionally-hidden field rather
+    // than trusting it — a tampered client could leave a hidden field's
+    // last-known value in the payload while satisfying the trigger
+    // condition that's supposed to hide it.
+    for (const hiddenId of hiddenFieldIds) {
+      delete formData[hiddenId];
+    }
+
     const emailField = formFields.find((f: any) => f.type === 'email');
     const phoneField = formFields.find((f: any) => f.type === 'phone');
 
@@ -153,27 +180,9 @@ export async function POST(
       lastName = parts.slice(1).join(' ') || null;
     }
 
-    // Run backend validations for Email field if present
-    if (emailField) {
-      if (!submissionEmail) {
-        return corsError(`${emailField.label || 'Email Address'} is required`, 400);
-      }
-      const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRx.test(submissionEmail)) {
-        return corsError('Please enter a valid email address', 400);
-      }
-    }
-
-    // Run backend validations for Phone field if present
-    if (phoneField) {
-      if (!submissionPhone) {
-        return corsError(`${phoneField.label || 'Phone Number'} is required`, 400);
-      }
-      const phoneRx = /^\+?[0-9\s\-()]{7,15}$/;
-      if (!phoneRx.test(submissionPhone)) {
-        return corsError('Please enter a valid phone number', 400);
-      }
-    }
+    // Email/phone required + format checks now happen once, above, via
+    // validatePublicStep (which is hidden-field-aware and covers every
+    // field type, not just email/phone).
 
     // 3. Identify or create CRM Contact (Duplicate Detection Engine)
     let contactId: string | null = null;
@@ -250,6 +259,12 @@ export async function POST(
       console.error('[public-submit-resolve-attribution-error]', e);
     }
 
+    // Tracks a contact-sync failure so it can be flagged on the submission
+    // row for admin visibility, rather than silently indistinguishable from
+    // a normal successful submission (the visitor still gets a success
+    // response either way — this is an internal/admin-facing signal only).
+    let contactSyncError: string | null = null;
+
     if (existingContact) {
       // Safe merge: update only if new data is provided
       const updates: any = {};
@@ -288,11 +303,15 @@ export async function POST(
       updates.processing_purpose_scope = form.name || 'Lead Submission';
 
       if (Object.keys(updates).length > 0) {
-        const { data: updatedContact } = await supabase.from('contacts')
+        const { data: updatedContact, error: updateError } = await supabase.from('contacts')
           .update(updates)
           .eq('id', existingContact.id)
           .select('id')
           .single();
+        if (updateError) {
+          console.error('[Public Submit] Contact update error:', updateError);
+          contactSyncError = `Contact update failed: ${updateError.message}`;
+        }
         contactId = updatedContact?.id || contactId;
       }
     } else if (submissionEmail || submissionPhone) {
@@ -301,54 +320,78 @@ export async function POST(
       const firstTouchKeyword = attribution?.first_touch_keyword || null;
       const firstTouchPage = attribution?.first_touch_page || null;
 
-      const { data: newContact } = await supabase.from('contacts')
-        .insert({
-          workspace_id: workspace_id,
-          email: submissionEmail || null,
-          phone: submissionPhone || null,
-          first_name: firstName || 'Anonymous',
-          last_name: lastName || '',
-          company: submissionCompany || null,
-          source: 'form_submission',
-          metadata: { form_id: id },
-          form_attribution: attribution || {},
-          first_touch_source: firstTouchSource,
-          first_touch_keyword: firstTouchKeyword,
-          first_touch_page: firstTouchPage,
-          referred_by_affiliate_id: referredByAffiliateId,
-          referred_programme_id: referredProgrammeId,
-          // POPIA consent parameter logging on creation
-          consent_timestamp: new Date().toISOString(),
-          consent_ip: ip,
-          consent_form_id: id,
-          processing_purpose_scope: form.name || 'Lead Submission'
-        })
-        .select('id')
-        .single();
-      if (newContact) contactId = newContact.id;
-    }
+      const newContactPayload = {
+        workspace_id: workspace_id,
+        email: submissionEmail || null,
+        phone: submissionPhone || null,
+        first_name: firstName || 'Anonymous',
+        last_name: lastName || '',
+        company: submissionCompany || null,
+        source: 'form_submission',
+        metadata: { form_id: id },
+        form_attribution: attribution || {},
+        first_touch_source: firstTouchSource,
+        first_touch_keyword: firstTouchKeyword,
+        first_touch_page: firstTouchPage,
+        referred_by_affiliate_id: referredByAffiliateId,
+        referred_programme_id: referredProgrammeId,
+        // POPIA consent parameter logging on creation
+        consent_timestamp: new Date().toISOString(),
+        consent_ip: ip,
+        consent_form_id: id,
+        processing_purpose_scope: form.name || 'Lead Submission'
+      };
 
-    // 5. Append form submission activity to CRM contact if available
-    if (contactId) {
-      try {
-        await supabase.from('contact_activities').insert({
-          workspace_id: workspace_id,
-          contact_id: contactId,
-          type: 'system',
-          description: `Submitted Form: ${form.name || 'Form'}`,
-          metadata: {
-            form_id: id,
-            form_name: form.name,
-            source_url: sourceUrl,
-            submitted_at: new Date().toISOString()
-          }
-        });
-      } catch (err) {
-        console.error('Failed to append CRM form submission activity:', err);
+      if (submissionEmail) {
+        // The earlier SELECT-then-INSERT here was a TOCTOU race: two
+        // concurrent submissions for the same email could both pass the
+        // "no existing contact" check and both attempt an insert, with the
+        // loser's unique-violation on contacts(workspace_id, email) never
+        // even checked — contactId silently stayed null for that request.
+        // Upserting on the real DB constraint makes this atomic: a losing
+        // race becomes a no-op (ignoreDuplicates) and we fetch the winner's id.
+        const { data: inserted, error: upsertError } = await supabase
+          .from('contacts')
+          .upsert(newContactPayload, { onConflict: 'workspace_id,email', ignoreDuplicates: true })
+          .select('id')
+          .maybeSingle();
+
+        if (upsertError) {
+          console.error('[Public Submit] Contact upsert error:', upsertError);
+          contactSyncError = `Contact upsert failed: ${upsertError.message}`;
+        } else if (inserted) {
+          contactId = inserted.id;
+        } else {
+          // Conflict occurred concurrently and our insert was skipped — the
+          // winning row already exists, fetch its id.
+          const { data: winner } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('workspace_id', workspace_id)
+            .eq('email', submissionEmail)
+            .maybeSingle();
+          contactId = winner?.id || null;
+        }
+      } else {
+        const { data: newContact, error: insertError } = await supabase
+          .from('contacts')
+          .insert(newContactPayload)
+          .select('id')
+          .single();
+        if (insertError) {
+          console.error('[Public Submit] Contact insert error:', insertError);
+          contactSyncError = `Contact insert failed: ${insertError.message}`;
+        } else if (newContact) {
+          contactId = newContact.id;
+        }
       }
     }
 
-    // 4. Insert the form submission record with tracking metadata
+    // 4. Insert the form submission record first — the activity logged just
+    // below references its id, so an activity can never exist without a
+    // corresponding submission row. (Full three-way transaction — contact
+    // upsert + submission insert + activity log — is a further improvement;
+    // this is the ordering-only fix: submission before activity.)
     const { data: submission, error: submissionError } = await supabase
       .from('form_submissions')
       .insert({
@@ -364,7 +407,8 @@ export async function POST(
         contact_id: contactId,
         attachments: parsedAttachments,
         transaction_id: transaction_id || null,
-        transaction_status: transaction_status || (transaction_id ? 'processing' : 'pending')
+        transaction_status: transaction_status || (transaction_id ? 'processing' : 'pending'),
+        contact_sync_error: contactSyncError
       })
       .select('id')
       .single();
@@ -372,6 +416,28 @@ export async function POST(
     if (submissionError) {
       console.error('[Public Submit] Submission error:', submissionError);
       return corsError(`Database error: ${submissionError.message || JSON.stringify(submissionError)}`, 500);
+    }
+
+    // 5. Append form submission activity to CRM contact if available — logged
+    // only after the submission row exists, referencing its id.
+    if (contactId) {
+      try {
+        await supabase.from('contact_activities').insert({
+          workspace_id: workspace_id,
+          contact_id: contactId,
+          type: 'system',
+          description: `Submitted Form: ${form.name || 'Form'}`,
+          metadata: {
+            form_id: id,
+            form_name: form.name,
+            source_url: sourceUrl,
+            submission_id: submission.id,
+            submitted_at: new Date().toISOString()
+          }
+        });
+      } catch (err) {
+        console.error('Failed to append CRM form submission activity:', err);
+      }
     }
 
     try {

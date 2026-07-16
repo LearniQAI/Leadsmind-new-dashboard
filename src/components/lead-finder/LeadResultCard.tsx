@@ -142,6 +142,7 @@ export function LeadResultCard({ lead, selected, onSelect, onPreview }: LeadResu
         <button
           onClick={handleAddSingle}
           disabled={added || adding}
+          title="Creates a CRM contact only. Convert to a pipeline opportunity separately from the contact's detail page."
           className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold tracking-wider transition-all ${
             added 
               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 

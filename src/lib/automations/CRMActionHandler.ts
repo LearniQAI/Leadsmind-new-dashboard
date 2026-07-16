@@ -116,22 +116,38 @@ export const CRMActionHandler = {
    * Action: Update Pipeline Stage
    */
   async updatePipelineStage(supabase: any, workspaceId: string, contactId: string, stageId: string) {
+    // Reject a stage_id that doesn't belong to this workflow's own workspace —
+    // an automation action is config the workspace owner wrote, but the stage
+    // it targets must still be one of theirs.
+    const { data: targetStage } = await supabase
+      .from('pipeline_stages')
+      .select('id')
+      .eq('id', stageId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (!targetStage) {
+      return { success: false, error: 'stage_id does not belong to this workspace.' };
+    }
+
     // Find or upsert opportunity for contact
     const { data: existingOpp } = await supabase
       .from('opportunities')
-      .select('id')
+      .select('id, stage_id')
       .eq('workspace_id', workspaceId)
       .eq('contact_id', contactId)
       .maybeSingle();
 
     let res;
+    const previousStageId = existingOpp?.stage_id ?? null;
+    let opportunityId = existingOpp?.id ?? null;
+
     if (existingOpp) {
       res = await supabase
         .from('opportunities')
         .update({ stage_id: stageId, updated_at: new Date().toISOString() })
         .eq('id', existingOpp.id);
     } else {
-      res = await supabase
+      const { data: inserted, error: insertError } = await supabase
         .from('opportunities')
         .insert({
           workspace_id: workspaceId,
@@ -139,10 +155,44 @@ export const CRMActionHandler = {
           title: 'Form Qualified Lead',
           stage_id: stageId,
           value: 0.00
-        });
+        })
+        .select('id')
+        .single();
+      res = { error: insertError };
+      opportunityId = inserted?.id ?? null;
     }
 
-    return res.error ? { success: false, error: res.error.message } : { success: true };
+    if (res.error) return { success: false, error: res.error.message };
+
+    // Keep automation-driven stage moves consistent with drag-and-drop /
+    // API-driven ones: both should fire the same downstream trigger event
+    // and webhook, or integrations relying on 'deal.stage_changed' silently
+    // miss every move that came from a workflow instead of the UI.
+    if (previousStageId !== stageId) {
+      try {
+        const { publishEvent } = await import('@/lib/events/EventBus');
+        await publishEvent(workspaceId, 'opportunity_stage_changed', contactId, {
+          dealId: opportunityId,
+          stageId,
+          previousStageId,
+        });
+      } catch (e) {
+        console.error('[CRMActionHandler] Failed to publish opportunity_stage_changed event:', e);
+      }
+
+      try {
+        const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+        dispatchWebhook(workspaceId, 'deal.stage_changed', {
+          deal: { id: opportunityId, contact_id: contactId },
+          previous_stage_id: previousStageId,
+          new_stage_id: stageId,
+        }).catch(() => {});
+      } catch (e) {
+        console.error('[CRMActionHandler] Failed to dispatch deal.stage_changed webhook:', e);
+      }
+    }
+
+    return { success: true };
   },
 
   /**

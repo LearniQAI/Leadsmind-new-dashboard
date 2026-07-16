@@ -10,6 +10,7 @@ import { DashFormField, DashInput, DashTextarea } from '@/components/dashboard-u
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { LineItem, calculateInvoiceTotals } from '@/lib/invoicing/calculations';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface InvoiceFormContainerProps {
   initialData?: any;
@@ -28,7 +29,9 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
 }) => {
   const [contactId, setContactId] = useState(initialData?.contact_id || '');
   const [invoiceNumber, setInvoiceNumber] = useState(initialData?.invoice_number || '');
-  const [issueDate, setIssueDate] = useState(initialData?.created_at || new Date().toISOString().split('T')[0]);
+  const [issueDate, setIssueDate] = useState(
+    initialData?.issue_date || new Date().toISOString().split('T')[0]
+  );
   const [dueDate, setDueDate] = useState(initialData?.due_date || '');
   const [items, setItems] = useState<(LineItem & { id: string; description: string })[]>(
     initialData?.items || []
@@ -40,12 +43,21 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
     initialData?.custom_field_values || {}
   );
 
-  const handleSave = () => {
+  const handleSave = (status: 'draft' | 'sent') => {
+    if (!contactId) {
+      toast.error('Please select a contact before saving the invoice.');
+      return;
+    }
+    if (items.length === 0) {
+      toast.error('Add at least one line item before saving the invoice.');
+      return;
+    }
+
     const totals = calculateInvoiceTotals(items, shippingCharges, adjustment);
     onSave({
       contact_id: contactId,
       invoice_number: invoiceNumber,
-      created_at: issueDate,
+      issue_date: issueDate,
       due_date: dueDate,
       items,
       shipping_charges: shippingCharges,
@@ -57,6 +69,7 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
       amount_paid: 0,
       terms_and_conditions: terms,
       custom_field_values: customFieldValues,
+      status,
     });
   };
 
@@ -163,10 +176,17 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
 
       {/* Action Bar */}
       <div className="sticky bottom-8 left-0 right-0 flex justify-end gap-3 p-4 bg-white border border-dash-border rounded-xl shadow-lg backdrop-blur-md">
-        <DashButton variant="secondary" disabled={isSaving} className="px-8">Save as draft</DashButton>
+        <DashButton
+          variant="secondary"
+          onClick={() => handleSave('draft')}
+          disabled={isSaving}
+          className="px-8"
+        >
+          Save as draft
+        </DashButton>
         <DashButton
           variant="primary"
-          onClick={handleSave}
+          onClick={() => handleSave('sent')}
           disabled={isSaving}
           className="px-8"
         >
