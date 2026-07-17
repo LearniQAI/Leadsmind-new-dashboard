@@ -33,7 +33,7 @@ export async function registerForClass(classSessionId: string, contactId: string
     return { success: false, error: 'Unable to register for this class. Please try again.' };
   }
 
-  revalidatePath('/apps/calendar');
+  revalidatePath('/calendar');
   return { success: true, data };
 }
 
@@ -70,7 +70,7 @@ export async function cancelRegistration(registrationId: string) {
   // 3. Trigger the promotion engine to offer the seat to the next person
   await promoteWaitlist(reg.class_session_id);
 
-  revalidatePath('/apps/calendar');
+  revalidatePath('/calendar');
   return { success: true };
 }
 

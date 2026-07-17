@@ -4,6 +4,7 @@ import { verifyPayFastSignature } from '@/lib/calendar/payfast';
 import { parseISO, addMinutes } from 'date-fns';
 import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
+import { sendBookingConfirmation } from '@/lib/calendar/notifications';
 import { logger } from '@/shared/logger';
 
 export async function POST(req: NextRequest) {
@@ -186,8 +187,17 @@ export async function POST(req: NextRequest) {
               },
             });
 
-          // 8. Simulate Receipts via WhatsApp and Email
-          logger.info({ invoiceNumber, email: contact.email, phone: contact.phone || 'N/A' }, 'payfast_webhook.receipt.notified');
+          // 8. Real booking confirmation email (previously this only logged
+          // "receipt.notified" and never actually sent anything — see
+          // calendar.md Part B / the corresponding fix in public.ts's free
+          // booking path). WhatsApp receipts remain out of scope — no
+          // WhatsApp sending integration exists anywhere in this codebase to
+          // reuse, so not fabricated here.
+          try {
+            await sendBookingConfirmation(appointment.id, { reason: 'booked' });
+          } catch (notifyErr) {
+            logger.error({ err: notifyErr, appointmentId: appointment.id }, 'payfast_webhook.confirmation_email.failed');
+          }
 
           // Auto-create Support Ticket if support calendar
           try {

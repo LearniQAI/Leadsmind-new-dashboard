@@ -34,15 +34,21 @@ interface OpportunityModalProps {
   stageId?: string;
   contacts: Contact[];
   stages: PipelineStage[];
+  /** Called synchronously the instant a create/update/delete server action
+   *  resolves successfully, with the real row and what happened to it — the
+   *  direct link the board uses to show a new/changed deal immediately,
+   *  instead of only via router.refresh()'s indirect prop cascade. */
+  onSaved?: (opportunity: Opportunity, action: 'create' | 'update' | 'delete') => void;
 }
 
-export function OpportunityModal({ 
-  isOpen, 
-  onClose, 
-  opportunity, 
+export function OpportunityModal({
+  isOpen,
+  onClose,
+  opportunity,
   stageId,
   contacts,
-  stages
+  stages,
+  onSaved
 }: OpportunityModalProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -92,13 +98,25 @@ export function OpportunityModal({
       console.log(`[TACTICAL DEBUG] Syncing deal. Action: ${opportunity ? 'UPDATE' : 'CREATE'}, Payload:`, payload);
     }
 
-    const res = opportunity 
+    const res = opportunity
       ? await updateOpportunity(opportunity.id, payload)
       : await createOpportunity(payload);
 
     if ((res as any).success) {
       toast.success(opportunity ? 'Strategic deal synchronized' : 'Tactical deal launched');
-      
+
+      // The server action's own `.select().single()` returns only the raw
+      // `opportunities` row (no joined contact) — enrich it with the
+      // matching contact from this modal's own `contacts` prop so the board
+      // can render a fully-correct card immediately, not a name-less one
+      // until the next refresh backfills it.
+      const savedRow = (res as any).data as Opportunity;
+      const matchedContact = contacts.find(c => c.id === savedRow.contact_id);
+      onSaved?.(
+        matchedContact ? { ...savedRow, contact: matchedContact } : savedRow,
+        opportunity ? 'update' : 'create'
+      );
+
       // Use transition to ensure refresh completes before closing
       startTransition(() => {
         router.refresh();
@@ -118,6 +136,7 @@ export function OpportunityModal({
     const res = await deleteOpportunity(opportunity.id);
     if (res.success) {
       toast.success('Deal purged from pipeline');
+      onSaved?.(opportunity, 'delete');
       startTransition(() => {
         router.refresh();
         setIsProcessing(false);

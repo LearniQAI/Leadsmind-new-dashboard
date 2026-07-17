@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Calendar, FileText, Download, Printer, X, ShieldCheck, Scale } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { DOCUMENT_MUTED_TEXT } from '@/lib/design/documentTemplateTokens';
 
 interface StatementGeneratorModalProps {
   contact: any;
@@ -205,7 +206,7 @@ export default function StatementGeneratorModal({
                       </div>
                     </div>
                     <div className="text-right text-xs">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Statement Period</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>Statement Period</p>
                       <p className="font-bold font-mono">
                         {format(new Date(startDate), 'dd MMM yyyy')} – {format(new Date(endDate), 'dd MMM yyyy')}
                       </p>
@@ -215,9 +216,9 @@ export default function StatementGeneratorModal({
                   {/* Seller / Customer Details */}
                   <div className="grid grid-cols-2 gap-12 text-xs mb-8">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100 pb-1.5 mb-2">Issuer</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} border-b border-gray-100 pb-1.5 mb-2`}>Issuer</p>
                       <h3 className="font-black text-gray-950 uppercase">{workspace?.name || 'LeadsMind Merchant'}</h3>
-                      <p className="text-gray-500 font-medium leading-relaxed mt-1 whitespace-pre-line">
+                      <p className={`${DOCUMENT_MUTED_TEXT} font-medium leading-relaxed mt-1 whitespace-pre-line`}>
                         {workspace?.registered_address || 'Registered Address not configured'}
                       </p>
                       {workspace?.vat_number && (
@@ -225,29 +226,29 @@ export default function StatementGeneratorModal({
                       )}
                     </div>
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100 pb-1.5 mb-2">Recipient</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} border-b border-gray-100 pb-1.5 mb-2`}>Recipient</p>
                       <h3 className="font-black text-gray-950 uppercase">{contact?.first_name} {contact?.last_name || ''}</h3>
-                      <p className="text-gray-500 font-medium mt-1">{contact?.email}</p>
-                      {contact?.phone && <p className="text-gray-500 font-medium font-mono">{contact.phone}</p>}
+                      <p className={`${DOCUMENT_MUTED_TEXT} font-medium mt-1`}>{contact?.email}</p>
+                      {contact?.phone && <p className={`${DOCUMENT_MUTED_TEXT} font-medium font-mono`}>{contact.phone}</p>}
                     </div>
                   </div>
 
                   {/* Financial Summary Box */}
                   <div className="grid grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200/60 mb-8 text-center">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Opening Balance</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} mb-1`}>Opening Balance</p>
                       <p className="text-sm font-black font-mono">R {statementData.openingBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Total Invoiced</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} mb-1`}>Total Invoiced</p>
                       <p className="text-sm font-black font-mono text-gray-900">+ R {statementData.totalInvoiced.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Total Payments</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} mb-1`}>Total Payments</p>
                       <p className="text-sm font-black font-mono text-emerald-600">- R {statementData.totalPaid.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Closing Balance</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} mb-1`}>Closing Balance</p>
                       <p className="text-sm font-black font-mono text-blue-600">R {statementData.closingBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
                     </div>
                   </div>
@@ -255,7 +256,7 @@ export default function StatementGeneratorModal({
                   {/* Transaction Table */}
                   <table className="w-full text-xs mb-12">
                     <thead>
-                      <tr className="border-b-2 border-gray-900 text-[9px] font-black uppercase tracking-widest text-gray-400 text-left">
+                      <tr className={`border-b-2 border-gray-900 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-left`}>
                         <th className="py-2.5">Date</th>
                         <th className="py-2.5">Doc Type</th>
                         <th className="py-2.5">Doc Number</th>
@@ -278,10 +279,10 @@ export default function StatementGeneratorModal({
                       {/* Dynamic ledger lines */}
                       {statementData.lines.map((line, idx) => (
                         <tr key={idx}>
-                          <td className="py-3 text-gray-500 font-mono">{format(line.date, 'yyyy-MM-dd')}</td>
+                          <td className={`py-3 ${DOCUMENT_MUTED_TEXT} font-mono`}>{format(line.date, 'yyyy-MM-dd')}</td>
                           <td className="py-3 text-gray-700">{line.type}</td>
                           <td className="py-3 font-mono font-bold text-gray-900">{line.docNumber}</td>
-                          <td className="py-3 text-gray-500 max-w-[200px] truncate">{line.description}</td>
+                          <td className={`py-3 ${DOCUMENT_MUTED_TEXT} max-w-[200px] truncate`}>{line.description}</td>
                           <td className="py-3 text-right font-mono">
                             {line.debit > 0 ? `R ${line.debit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : ''}
                           </td>
@@ -308,7 +309,7 @@ export default function StatementGeneratorModal({
                   </table>
 
                   {/* Declaration Footer */}
-                  <div className="flex justify-between items-start border-t border-gray-200 pt-8 mt-12 text-[10px] text-gray-400">
+                  <div className={`flex justify-between items-start border-t border-gray-200 pt-8 mt-12 text-[10px] ${DOCUMENT_MUTED_TEXT}`}>
                     <div className="flex items-center gap-1.5">
                       <Scale size={14} />
                       <p>SARS Tax compliance certified ledger document.</p>

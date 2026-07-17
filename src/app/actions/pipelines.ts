@@ -170,9 +170,22 @@ export async function getPipelineOpportunities(pipelineId: string) {
   if (!stages || stages.length === 0) return { success: true, data: [] };
 
   const stageIds = stages.map(s => s.id);
+  // `opportunities` has THREE foreign keys into `contacts` (`contact_id`,
+  // plus `buyer_id`/`seller_id` added by the real-estate-pipeline migration,
+  // 20240101000210) — an unqualified `contacts(*)` embed is genuinely
+  // ambiguous to PostgREST and fails outright (PGRST201, "more than one
+  // relationship was found"), not silently or partially. This was the real
+  // root cause of the "deal added but invisible" bug: this query has been
+  // failing on every single call regardless of whether a deal was just
+  // added, so the board's `initialOpportunities` was always `[]` from the
+  // very first server render, for every workspace — confirmed live against
+  // the actual database, not inferred. Explicitly qualifying the FK
+  // constraint name (the one this app's `contact_id` field actually uses,
+  // per `Opportunity`'s type and `createOpportunity`'s own insert shape)
+  // resolves the ambiguity.
   const { data: opportunities, error: oppError } = await supabase
     .from('opportunities')
-    .select('*, contact:contacts(*)')
+    .select('*, contact:contacts!opportunities_contact_id_fkey(*)')
     .in('stage_id', stageIds)
     .order('position', { ascending: true });
 

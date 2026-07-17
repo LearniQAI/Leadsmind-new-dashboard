@@ -1,5 +1,5 @@
 'use server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
@@ -8,6 +8,15 @@ import { toClientError } from '@/shared/errors/AppError';
 /**
  * --- HELPER: STANDARD ACTION WRAPPER ---
  * Ensures consistent error handling and response format across all actions.
+ *
+ * Weak by design (cookie-read workspaceId, no real membership check) — this
+ * is the pattern security-remediation.md flagged for this whole file
+ * (line 507) and calendar.md re-confirmed still open. Left as-is for the
+ * non-waitlist functions below: fixing those is explicitly out of scope for
+ * this pass (see security-remediation.md's calendar-module Priority 4
+ * follow-up entry) — only the waitlist functions were named in scope here,
+ * to avoid silently expanding a targeted auth fix into an unrequested
+ * rewrite of this whole file.
  */
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
  try {
@@ -19,6 +28,25 @@ async function executeAction<T>(action: (supabase: any, workspaceId: string) => 
   return { success: true, data };
  } catch (err: any) {
   logger.error({ err }, 'calendar.action.failed');
+  const clientError = toClientError(err);
+  return { success: false, error: clientError.error };
+ }
+}
+
+// Hardened variant for the waitlist functions specifically — same shape as
+// every other module's post-remediation executeAction() (appointments.ts,
+// calendars.ts), using requireWorkspaceAccess() (real auth.getUser() +
+// real workspace_members membership check) instead of the weak cookie-only
+// read above. Not applied file-wide, per this task's explicit scope.
+async function executeSecureAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
+ try {
+  const { workspaceId } = await requireWorkspaceAccess();
+
+  const supabase = await createServerClient();
+  const data = await action(supabase, workspaceId);
+  return { success: true, data };
+ } catch (err: any) {
+  logger.error({ err }, 'calendar.secure_action.failed');
   const clientError = toClientError(err);
   return { success: false, error: clientError.error };
  }
@@ -38,7 +66,7 @@ export async function updateAppointmentStatus(id: string, status: string) {
 
     if (error) throw error;
 
-    revalidatePath('/apps/calendar');
+    revalidatePath('/calendar');
     return true;
   });
 }
@@ -73,7 +101,7 @@ export async function createOutcome(payload: {
    .single();
 
   if (error) throw error;
-  revalidatePath('/apps/calendar');
+  revalidatePath('/calendar');
   return data;
  });
 }
@@ -129,7 +157,7 @@ export async function getComprehensiveCalendarAnalytics() {
 // --- WAITLISTS ---
 
 export async function getWaitlistEntries(appointmentId: string) {
- return executeAction(async (supabase, workspaceId) => {
+ return executeSecureAction(async (supabase, workspaceId) => {
   const { data, error } = await supabase
    .from('booking_waitlists')
    .select(`
@@ -149,7 +177,7 @@ export async function getWaitlistEntries(appointmentId: string) {
 }
 
 export async function offerWaitlistSpot(waitlistId: string) {
- return executeAction(async (supabase, workspaceId) => {
+ return executeSecureAction(async (supabase, workspaceId) => {
   const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
   
   const { data: waitlistEntry, error: updateErr } = await supabase
@@ -164,13 +192,13 @@ export async function offerWaitlistSpot(waitlistId: string) {
 
   if (updateErr) throw updateErr;
 
-  revalidatePath('/apps/calendar/waitlist');
+  revalidatePath('/calendar/waitlist');
   return waitlistEntry;
  });
 }
 
 export async function addContactToWaitlist(appointmentId: string, email: string) {
- return executeAction(async (supabase, workspaceId) => {
+ return executeSecureAction(async (supabase, workspaceId) => {
   let { data: contact } = await supabase.from('contacts').select('id').eq('email', email).eq('workspace_id', workspaceId).single();
   
   if (!contact) {
@@ -196,7 +224,7 @@ export async function addContactToWaitlist(appointmentId: string, email: string)
 
   if (error) throw error;
   
-  revalidatePath('/apps/calendar/waitlist');
+  revalidatePath('/calendar/waitlist');
   return data;
  });
 }

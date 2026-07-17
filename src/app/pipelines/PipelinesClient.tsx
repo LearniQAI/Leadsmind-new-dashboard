@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useOptimistic, useTransition } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { Plus, Layers } from 'lucide-react';
 import { Pipeline, PipelineStage, Opportunity } from '@/types/crm';
@@ -41,17 +41,33 @@ export default function PipelinesClient({
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
   const [targetStageId, setTargetStageId] = useState<string | null>(null);
 
-  // 1. Optimistic UI for Opportunities
-  const [optimisticOpps, updateOptimisticOpps] = useOptimistic(
-    initialOpportunities,
-    (state, { dealId, newStageId, newPosition }) => {
-      return state.map(opp =>
-        opp.id === dealId
-          ? { ...opp, stage_id: newStageId, position: newPosition, updated_at: new Date().toISOString() }
-          : opp
-      );
-    }
-  );
+  // Board's own source of truth for opportunities, seeded from the server
+  // props. The PRIMARY root cause of "deal added but invisible" was actually
+  // upstream of this component entirely: `getPipelineOpportunities`'s embed
+  // query (`contact:contacts(*)`) was ambiguous — `opportunities` has three
+  // FKs into `contacts` — and PostgREST rejected it outright (PGRST201) on
+  // every single call, meaning `initialOpportunities` was `[]` from the very
+  // first server render for every workspace, always, not just after a
+  // create. Fixed at the query itself (see `pipelines.ts`). Independently of
+  // that, this component ALSO had no direct update path for create/edit/
+  // delete — only drag-and-drop ever updated local state; a freshly created
+  // deal's visibility depended entirely on `OpportunityModal`'s
+  // `router.refresh()` eventually cascading a new `initialOpportunities`
+  // prop back down through a re-render, an indirect mechanism with no direct
+  // code path connecting "deal created" to "board shows it". Both are fixed
+  // now: the query returns real data, and the create/update/delete flow
+  // (`OpportunityModal`'s `onSaved`) gives this state a direct, synchronous
+  // update the instant the server action resolves, rather than relying
+  // solely on the refresh cascade.
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOpportunities);
+
+  // Defense in depth: if the server-provided list changes for any other
+  // reason (e.g. a real page navigation, or router.refresh() from elsewhere),
+  // resync — but this is no longer the only way the board learns about a
+  // deal, just a consistency backstop.
+  useEffect(() => {
+    setOpportunities(initialOpportunities);
+  }, [initialOpportunities]);
 
   const handleEditDeal = (opp: Opportunity) => {
     setSelectedOpp(opp);
@@ -64,7 +80,22 @@ export default function PipelinesClient({
     setIsOppModalOpen(true);
   };
 
-  // 2. Drag End Handler
+  // Called directly by OpportunityModal the moment createOpportunity/
+  // updateOpportunity/deleteOpportunity resolves successfully — this is the
+  // one direct, deterministic link from "server write succeeded" to "board
+  // shows it", replacing the previous implicit refresh-cascade.
+  const handleDealSaved = (opp: Opportunity, action: 'create' | 'update' | 'delete') => {
+    setOpportunities(prev => {
+      if (action === 'delete') return prev.filter(o => o.id !== opp.id);
+      const exists = prev.some(o => o.id === opp.id);
+      return exists ? prev.map(o => (o.id === opp.id ? opp : o)) : [...prev, opp];
+    });
+    router.refresh();
+  };
+
+  // 2. Drag End Handler — same direct-state-update approach as above rather
+  // than useOptimistic, so both mutation paths on this board go through one
+  // consistent mechanism instead of two different ones.
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
@@ -74,14 +105,21 @@ export default function PipelinesClient({
     const dealId = draggableId;
     const newStageId = destination.droppableId;
     const newPosition = destination.index;
+    const previous = opportunities;
 
-    // Tactical Optimistic Update
+    setOpportunities(prev =>
+      prev.map(opp =>
+        opp.id === dealId
+          ? { ...opp, stage_id: newStageId, position: newPosition, updated_at: new Date().toISOString() }
+          : opp
+      )
+    );
+
     startTransition(async () => {
-      updateOptimisticOpps({ dealId, newStageId, newPosition });
-
       const res = await updateDealStage(dealId, newStageId, newPosition);
       if (!res.success) {
         toast.error('Tactical failure: Could not update deal stage');
+        setOpportunities(previous);
       } else {
         router.refresh();
       }
@@ -92,17 +130,17 @@ export default function PipelinesClient({
     <div className="flex flex-col h-full overflow-hidden bg-white">
       {/* 1. Header Area */}
       <div className="shrink-0 flex flex-col">
-        <div className="h-[72px] px-8 border-b border-dash-border flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
+        <div className="h-[72px] px-8 flex items-center justify-between bg-white/90 backdrop-blur-md sticky top-0 z-10 shadow-[0_1px_2px_rgba(15,23,42,0.04)] border-b border-dash-border/70">
           <div className="flex items-center gap-6">
             <div className="flex flex-col">
-              <h1 className="text-[11px] font-bold text-dash-accent tracking-[2px] leading-none mb-2.5">
+              <h1 className="text-[10px] font-bold !text-dash-accent uppercase tracking-wide leading-none mb-2">
                 Pipelines
               </h1>
               <div className="flex items-center gap-2">
                 <select
                   value={activePipeline.id}
                   onChange={(e) => router.push(`/pipelines?pipelineId=${e.target.value}`)}
-                  className="bg-transparent text-[16px] font-extrabold font-display !text-dash-text focus:outline-none cursor-pointer hover:text-dash-accent transition-colors appearance-none min-w-[140px]"
+                  className="bg-transparent text-[24px] font-extrabold font-display !text-dash-text tracking-tight leading-none focus:outline-none cursor-pointer hover:text-dash-accent transition-colors appearance-none min-w-[140px]"
                 >
                   {pipelines.map(p => (
                     <option key={p.id} value={p.id}>
@@ -129,7 +167,7 @@ export default function PipelinesClient({
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsStageModalOpen(true)}
-              className="h-11 px-6 rounded-[12px] bg-dash-surface border border-dash-border !text-dash-text hover:bg-dash-border/60 text-[12px] font-bold  transition-all flex items-center gap-2.5 active:scale-[0.98]"
+              className="h-11 px-6 rounded-[12px] bg-dash-surface border border-dash-border !text-dash-text hover:bg-dash-border/60 text-[12px] font-bold transition-all flex items-center gap-2.5 active:scale-[0.98]"
             >
               <Layers size={12} className="!text-dash-textMuted" />
               Architect stages
@@ -144,7 +182,7 @@ export default function PipelinesClient({
           </div>
         </div>
 
-        <PipelineStats opportunities={optimisticOpps} members={members} />
+        <PipelineStats opportunities={opportunities} members={members} />
       </div>
 
       {/* 2. Compact Board Area — narrow fixed-width columns so a typical
@@ -152,19 +190,19 @@ export default function PipelinesClient({
           horizontal scroll is a deliberate fallback for unusually long
           pipelines, not the default experience. */}
       <div className="relative flex-1 min-h-0">
-        <div className="h-full overflow-x-auto common-scrollbar bg-white p-6">
+        <div className="h-full overflow-x-auto light-scrollbar bg-dash-surface p-6">
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex items-start gap-4 min-h-full">
             {initialStages.map((stage, idx) => (
-              <div key={stage.id} className="w-[240px] shrink-0">
+              <div key={stage.id} className="w-[260px] shrink-0">
                 <KanbanColumn
                   stage={stage}
                   stageIndex={idx}
                   stageCount={initialStages.length}
-                  opportunities={optimisticOpps.filter(opp => opp.stage_id === stage.id)}
+                  opportunities={opportunities.filter(opp => opp.stage_id === stage.id)}
                   onEditDeal={handleEditDeal}
                   onAddDeal={() => handleCreateDeal(stage.id)}
-                  showEmptyStateAction={optimisticOpps.length === 0}
+                  showEmptyStateAction={opportunities.length === 0}
                 />
               </div>
             ))}
@@ -172,7 +210,7 @@ export default function PipelinesClient({
             {/* Add Stage Placeholder */}
             <div
               onClick={() => setIsStageModalOpen(true)}
-              className="w-[240px] shrink-0 h-[260px] flex flex-col items-center justify-center border-2 border-dashed border-dash-border rounded-2xl group hover:border-dash-accent/30 transition-all motion-reduce:transition-none cursor-pointer bg-dash-surface hover:bg-dash-accent/5"
+              className="w-[260px] shrink-0 h-[240px] flex flex-col items-center justify-center border-2 border-dashed border-dash-border rounded-2xl group hover:border-dash-accent/30 transition-all motion-reduce:transition-none cursor-pointer bg-white hover:bg-dash-accent/5"
             >
               <div className="w-11 h-11 rounded-2xl bg-white border border-dash-border flex items-center justify-center mb-3 group-hover:bg-dash-accent/10 group-hover:border-dash-accent/20 group-hover:scale-110 transition-all motion-reduce:group-hover:scale-100 shadow-inner">
                 <Plus size={18} className="!text-dash-textMuted group-hover:text-dash-accent" />
@@ -186,7 +224,7 @@ export default function PipelinesClient({
             abrupt hard cut when the board overflows horizontally. Only the
             columns themselves scroll (see overflow-x-auto above); this sits
             on top as a purely visual cue. */}
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-14 bg-gradient-to-l from-white to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-14 bg-gradient-to-l from-dash-surface to-transparent" />
       </div>
 
       {/* 3. Modals */}
@@ -197,6 +235,7 @@ export default function PipelinesClient({
         stageId={targetStageId || undefined}
         contacts={contacts}
         stages={initialStages}
+        onSaved={handleDealSaved}
       />
 
       <StageSettingsModal

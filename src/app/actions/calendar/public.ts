@@ -8,6 +8,7 @@ import { logPopiaConsent } from '@/lib/calendar/popia';
 import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/calendar/payfast';
 import { syncBookingToExternal } from '@/lib/calendar/calendarSync';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
+import { sendBookingConfirmation } from '@/lib/calendar/notifications';
 import { logger } from '@/shared/logger';
 
 /**
@@ -180,6 +181,16 @@ export async function bookAppointment(
     await createSupportTicket(appointment.id);
   } catch (supportErr) {
     logger.error({ err: supportErr, appointmentId: appointment.id }, 'calendar.public_booking.support_ticket.failed');
+  }
+
+  // Real confirmation email to the booker + the assigned/host team member —
+  // previously nothing was sent at all on this path (calendar.md Part B).
+  // Best-effort: a notification failure must not fail a booking that already
+  // succeeded and has a real appointments row.
+  try {
+    await sendBookingConfirmation(appointment.id, { reason: 'booked' });
+  } catch (notifyErr) {
+    logger.error({ err: notifyErr, appointmentId: appointment.id }, 'calendar.public_booking.confirmation_email.failed');
   }
 
   return { success: true, appointmentId: appointment.id };

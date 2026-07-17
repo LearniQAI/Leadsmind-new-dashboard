@@ -9,6 +9,7 @@ import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/c
 import { syncBookingToExternal } from '@/lib/calendar/calendarSync';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
+import { sendBookingConfirmation, sendCancellationNotice, sendRescheduleNotice } from '@/lib/calendar/notifications';
 import { logger } from '@/shared/logger';
 
 /**
@@ -159,6 +160,12 @@ export async function bookAppointmentFromPortal(payload: {
       description: `Client booked a consultation: "${calendar.name}"`
     });
 
+    try {
+      await sendBookingConfirmation(appointment.id, { reason: 'booked' });
+    } catch (notifyErr) {
+      logger.error({ err: notifyErr, appointmentId: appointment.id }, 'portal_bookings.confirmation_email.failed');
+    }
+
     revalidatePath('/portal/bookings');
     return { success: true };
   } catch (err: any) {
@@ -230,6 +237,12 @@ export async function cancelAppointmentFromPortal(appointmentId: string) {
       type: 'calendar',
       description: `Client cancelled meeting: "${appt.title}"`
     });
+
+    try {
+      await sendCancellationNotice(appointmentId, new Date(appt.start_time).toLocaleString());
+    } catch (notifyErr) {
+      logger.error({ err: notifyErr, appointmentId }, 'portal_bookings.cancellation_email.failed');
+    }
 
     revalidatePath('/portal/bookings');
     return { success: true };
@@ -324,6 +337,12 @@ export async function rescheduleAppointmentFromPortal(appointmentId: string, new
       type: 'calendar',
       description: `Client rescheduled meeting: "${appt.title}" to ${newStart.toLocaleDateString()}`
     });
+
+    try {
+      await sendRescheduleNotice(appointmentId, new Date(appt.start_time).toLocaleString());
+    } catch (notifyErr) {
+      logger.error({ err: notifyErr, appointmentId }, 'portal_bookings.reschedule_email.failed');
+    }
 
     revalidatePath('/portal/bookings');
     return { success: true };

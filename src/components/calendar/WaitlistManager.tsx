@@ -28,7 +28,7 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
   startTransition(async () => {
    const res = await offerWaitlistSpot(id);
    if (res.success) {
-    toast.success('Waitlist offer sent via Email');
+    toast.success('Spot offered — expires in 2 hours');
     // Re-fetch waitlist for state update
     const updated = await getWaitlistEntries(activeSession.id);
     if (updated.success) setWaitlist(updated.data);

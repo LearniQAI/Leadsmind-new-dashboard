@@ -1,0 +1,230 @@
+# Calendar & Booking Module — Independent Workflow Audit
+
+> **Update:** all three items this audit originally flagged-and-deferred (booking confirmations, self-service cancel/reschedule, `calendar.ts`'s waitlist auth) were resolved in a follow-up pass — see "Follow-Up Pass — Booking Confirmations, Self-Service Cancel/Reschedule, Waitlist Auth" below, and its cross-reference in `security-remediation.md`.
+
+## Top-line answer
+
+**Both confirmed bugs are fixed, root-caused, and neither is a security-remediation regression.** A1 ("Create first calendar" does nothing) was a plain missing `onClick` handler on `CalendarEmptyState.tsx`'s button, compounded by an architectural gap: `CalendarClient.tsx` only ever rendered `CalendarSettingsModal` (the actual creation form) inside `CalendarPagesView`, which itself never rendered while `initialCalendars.length === 0` — so there was genuinely no way to reach the creation UI from a zero-calendar workspace, regardless of which view tab was active. A2 ("Select a calendar" dropdown doesn't work) is confirmed **not a separate bug** — `BookingModal.tsx`'s dropdown renders `calendars.map(...)` directly off the same `initialCalendars` prop; with zero calendars it is correctly, honestly empty. Fixing A1 fixes A2 as a side effect, exactly as the prompt suspected — confirmed by reading the source, not assumed.
+
+**Neither bug traces to the security-remediation pass.** `calendars.ts`'s `createCalendar`/`executeAction()` wrapper (Priority 0/2/3 fixes) is correct and unrelated — the button never called it at all because it never called anything. `requireWorkspaceAccess()` itself was re-read and is sound (real `auth.getUser()` check + real `workspace_members` membership check, same pattern already proven live for `tasks.ts`).
+
+**The public booking flow's core mechanics are sound**, with one important clarification: `calendar/public.ts: bookAppointment` uses `createAdminClient()` (service-role, RLS-bypassing) for the entire flow, not the session-scoped client. This means the security pass's tightened `appointments` public-INSERT RLS policy (`security-remediation.md` §3) **never actually gates real public bookings** — the over-correction risk flagged in the prompt is moot for this path (it would only matter for a hypothetical raw anon-key insert, which the prior pass already tested and confirmed correctly rejected). Also confirmed: the richer weighted/priority/availability-first round-robin algorithm (`round-robin.ts: getNextHost`) is genuinely dead code with zero live callers — the actually-live path is `scheduling.ts: getRoundRobinAssignee`'s simpler lowest-booking-count selection, exactly as the security triage flagged.
+
+**Two real, previously-undocumented functional gaps found and fixed in this pass**, unrelated to A1/A2:
+1. `calendar.ts`'s `updateAppointmentStatus`/`createOutcome`/`offerWaitlistSpot`/`addContactToWaitlist` all called `revalidatePath('/apps/calendar')` / `('/apps/calendar/waitlist')` — routes that don't exist in this app (the real routes are `/calendar` and `/calendar/waitlist`). These mutations succeeded in the database but never actually refreshed the page a user was looking at.
+2. `WaitlistManager.tsx` showed `toast.success('Waitlist offer sent via Email')` after `offerWaitlistSpot` — but that action only updates a `booking_waitlists` row (`offered_at`/`offer_expires_at`); no email is sent anywhere in this codepath. Toast copy corrected to stop claiming an action that doesn't happen.
+
+**One real, previously-undocumented gap found and NOT fixed (flagged, product decision + real notification infra needed):** no booking-confirmation notification (email or in-app) is ever sent to the booker or the assigned team member on a successful public or internal booking. `appointments.ts: createAppointment` has a `logger.info(..., 'confirmation_notification.triggered')` line that looks like a dispatch but is only a log statement — nothing is actually sent. `calendar/public.ts: bookAppointment` has no notification step at all. The only place an email could plausibly reach the booker is if the workspace has external calendar sync connected (`calendarSync.ts` pushes attendee info to Google/Outlook, which then sends *their own* native invite) — that's conditional on integration setup, not a guaranteed confirmation.
+
+**Dashboard "Upcoming Meetings" was confirmed 100% hardcoded** (`const calendarEvents = [...]`, literally commented `// Upcoming simulated calendar events`) and is now wired to a real, workspace-scoped, time-sorted `appointments` query. **Dashboard "Task Agenda" was confirmed already correctly wired to live data** — the empty state ("All caught up! No high priority overdue tasks on file.") is the honest, correct result of a genuinely narrow, already-live filter (`priority = 'high' AND status != 'done' AND due_date < now()`), not a dead widget. This matches the widget's own subtitle ("High priority active tasks checklist") exactly — confirmed by reading both the component and its server-side query, not assumed from the empty-looking screenshot.
+
+## Scope and method note
+
+Per explicit instruction from the user during scoping: this pass does full code-level tracing, root-causing, and fixing from source (including cross-referencing `security-remediation.md`'s exact diffs), but **does not perform live browser-driven verification** (no network-tab/console recording of an actual click-through, no anonymous-browser public booking attempt, no live dashboard screenshot refresh) — this environment has no browser-automation tool available, only static file/code tools. Every claim below is either (a) a direct source-code trace with file:line citations, matching the rigor `crm.md`/`tasks.md` used for their static-trace findings, or (b) explicitly marked "not verified live — needs manual QA" with a concrete manual test the user can run. This is a narrower verification standard than `tasks.md`'s (which had live Supabase scripting available); flagged explicitly rather than silently claiming a standard this pass didn't meet.
+
+## Part A — The Two Confirmed Bugs, Root-Caused
+
+### A1. "Create first calendar" button — root cause and fix
+
+**Root cause, confirmed by direct read, not guessed:** `src/components/calendar/CalendarEmptyState.tsx:22-26` (before fix) rendered:
+```tsx
+<Button className="...">
+  <Plus className="w-4 h-4 mr-2" /> Create first calendar
+</Button>
+```
+No `onClick` prop at all. Clicking it was inert by construction — nothing to trace in a network tab because no request was ever made; this is a pure missing-wiring bug, not a failed request.
+
+**Compounding architectural issue, also confirmed by trace:** `src/components/calendar/CalendarClient.tsx:104-106` (before fix) rendered `<CalendarEmptyState />` whenever `initialCalendars.length === 0`, for **every** `activeView` value — including `'pages'`, the only view that owns `CalendarSettingsModal` (the actual creation form, imported only inside `CalendarPagesView.tsx`). This meant a workspace with zero calendars had no reachable path to the creation UI at all, regardless of which toolbar tab was clicked.
+
+**Confirmed NOT a security-remediation regression:** `calendars.ts: createCalendar`'s `executeAction()` wrapper (`requireWorkspaceAccess()` + `EDITABLE_CALENDAR_FIELDS` allow-list, both from Priority 0/2/3) was never reached — the button had no handler to call it with. Independently re-read `requireWorkspaceAccess()` (`src/lib/auth.ts:132-157`) to rule out a subtler "checks the wrong workspace ID" failure mode as the prompt suspected: it correctly calls `supabase.auth.getUser()`, then reads the `active_workspace_id` cookie, then verifies a real `workspace_members` row — same shape already proven live and correct for `tasks.ts`'s `createTask` (per `tasks.md`). No bug found in this function.
+
+**Fix (`src/components/calendar/CalendarEmptyState.tsx`, `src/components/calendar/CalendarClient.tsx`):**
+- `CalendarEmptyState` now takes a required `onCreateClick: () => void` prop and wires it to the button.
+- `CalendarClient` lifts its own `isCreateCalendarOpen` state and renders `CalendarSettingsModal` (imported directly, calling `createCalendar` from `calendars.ts`) at the top level — reachable regardless of `hasCalendars` or `activeView`. `CalendarEmptyState` now receives `onCreateClick={() => setIsCreateCalendarOpen(true)}`.
+- Confirmed `createCalendar`/`updateCalendar` already call `revalidatePath('/calendar')` on success (`calendars.ts:60,81`), so once wired, a successful creation server-refreshes `CalendarClient`'s `initialCalendars` prop automatically — no extra `router.refresh()` needed.
+
+**Not live-verified in this pass** (no browser tool) — manual test below.
+
+### A2. "Select a calendar" dropdown — confirmed correct behavior, not a separate bug
+
+**Traced the data source directly:** `src/components/calendar/modals/BookingModal.tsx:264-288` renders the dropdown's options via `calendars.map(cal => <SelectItem .../>)`, where `calendars` is a prop passed straight through from `CalendarClient.tsx:141` (`calendars={initialCalendars}`) — the same server-fetched array A1 operates on. With `initialCalendars.length === 0` (the exact state shown in Image 1's "No calendars configured yet"), `SelectContent` legitimately has zero `SelectItem`s to render. The dropdown control itself opens fine (it's a working shadcn `Select`); it just has nothing to show.
+
+**Conclusion, confirmed rather than assumed:** this is not an independent defect. No separate fix was made or needed — once A1's fix allows a first calendar to be created, `initialCalendars` becomes non-empty and this dropdown populates on the very next render (same `revalidatePath('/calendar')` mechanism). No further work item.
+
+## Part B — Full Booking Workflow Trace
+
+### Calendar creation (both fixed in Part A)
+`CalendarSettingsModal.tsx` supports `personal` / `round_robin` / `collective` / `class_booking` types via a zod-validated form (`calendar_type` enum, `src/components/calendar/modals/CalendarSettingsModal.tsx:38`). `createCalendar` (`calendars.ts:41-63`) picks exactly this form's fields (`EDITABLE_CALENDAR_FIELDS`), generates a slug from the name, and inserts scoped to `workspaceId` from `requireWorkspaceAccess()`. Not live-verified in this pass (no browser); manual test below covers creating at least two types (Personal, Round Robin) per the prompt's request.
+
+### Availability configuration
+No dedicated availability-editor UI was found wired into `CalendarSettingsModal` itself — availability is read from `calendar.availability` (a JSON column keyed by day-of-week, `scheduling.ts:148`) and from `host_availability_profiles` (buffer time, notice period, days-in-advance, `scheduling.ts:100-109`). `getAvailableSlots` (`scheduling.ts:74-253`) is the single source of truth consumed by both the public booking page (`fetchPublicSlots`) and internal slot validation (`validateSlot`) — one function, two callers, not two implementations that could drift. It correctly layers: SA public holidays (closed entirely), per-date overrides, day-of-week base hours (falling back to a hardcoded Mon–Fri 09:00–17:00 if nothing is configured — worth knowing, since a newly-created calendar with no availability set is *not* fully closed, it defaults to open weekday business hours), minimum notice period, existing bookings + buffer time, active PayFast leases, and Eskom load-shedding blackouts for the host's registered suburb. Genuinely one consolidated slot-computation path, not duplicated logic.
+
+### Public booking page (`/book/[slug]`)
+Confirmed live wiring by import trace: `src/app/book/[slug]/page.tsx:13` → `getPublicCalendarBySlug` (`core.ts`, deliberately public, admin-client, unchanged by any security pass — confirmed still correctly classified) → `BookingClientWrapper.tsx` → `fetchPublicSlots`/`bookAppointment` from `calendar/public.ts`.
+
+`bookAppointment` (`public.ts:16-186`):
+1. Rejects if `popiaConsent` isn't true — non-bypassable server-side, not just a disabled client button.
+2. Re-validates the requested slot against `getAvailableSlots` at submit time (not just trusting what the client fetched earlier) — prevents a stale-slot double-book.
+3. Upserts the contact (`onConflict: 'workspace_id,email'` — repeat bookers don't create duplicate contacts).
+4. Logs a cryptographic POPIA consent hash.
+5. **Paid calendars** (`price > 0`): creates a 5-minute optimistic-lock lease, redirects to PayFast checkout — no `appointments` row is created until payment confirms (webhook path, not traced further here — outside this module's core scope).
+6. **Free calendars**: resolves round-robin assignee if applicable (`scheduling.ts: getRoundRobinAssignee`), inserts the `appointments` row scoped to `calendar.workspace_id` (server-derived from the calendar row itself, not client-suppliable), generates a meeting link, updates round-robin stats, attempts external calendar sync and support-ticket creation (both best-effort, wrapped in try/catch so a sync failure doesn't fail the booking).
+
+**RLS/auth over-correction risk — confirmed moot for this path.** `security-remediation.md` §3 tightened `appointments`' public INSERT policy specifically to prevent a cross-workspace `calendar_id`/`workspace_id` mismatch via a raw anon-key insert. But `bookAppointment` uses `createAdminClient()` throughout (`public.ts:34`), which bypasses RLS entirely — the tightened policy was never in this function's path to begin with, so it cannot be blocking real bookings, and the prompt's specific worry ("over-correcting from wide-open to blocking real customers") does not apply here. The one thing that *could* still legitimately reject a real booking is `bookAppointment`'s own `isStillAvailable` re-check (step 2 above) — that's by-design slot-conflict protection, not an RLS artifact.
+
+**Not live-verified in this pass** (no anonymous-browser session available) — manual test below.
+
+### Round-robin assignment
+Confirmed **which algorithm is actually live**, per the prompt's explicit ask: `scheduling.ts: getRoundRobinAssignee` (lines 26-43) — orders `round_robin_assignment` by `booking_count ASC, last_assigned_at ASC NULLS FIRST` and picks the first row. This is a genuine, working equitable-distribution algorithm (lowest-load-first), not a stub. It is called from both `public.ts: bookAppointment:109` and `appointments.ts: createAppointment:82` — the two real booking-creation paths — and updates stats afterward via `updateRoundRobinStats`.
+
+`round-robin.ts: getNextHost` (priority-weighted / availability-first algorithms) — **confirmed zero live callers** by grep (`from ['"]@/app/actions/calendar/round-robin['"]` matches nothing outside the file's own definitions). Matches the security triage's finding exactly: this richer implementation is dead code. Not removed in this pass (out of the explicitly-scoped bugs), but reconfirmed, not just cited from memory.
+
+### Booking confirmation / notification — real gap, flagged not silently fixed
+See Top-line answer. No transactional email or in-app notification is sent to the booker or the assigned host on either the public or internal booking path. `createAppointment`'s "notification triggered" log line is misleadingly named — it's a log statement, not a dispatch. This is a genuine product gap: implementing real notification delivery (Resend template + in-app `notifications` row) is a nontrivial addition, not something to bolt on silently as a side effect of this bug-fix pass — flagged for a scoped follow-up rather than expanded into here.
+
+### Instant Meet
+`InstantMeetClient.tsx` → `createInstantMeeting` (`appointments.ts:353-395`) shares the same `executeAction()` wrapper (`requireWorkspaceAccess()`) as every other function in this file — confirmed still present, not reverted. Inserts a workspace-scoped `appointments` row with no `calendar_id` (nullable, confirmed by the insert shape omitting it), generates an internal Jitsi-style meeting link post-insert. Same insert path as the rest of the module, per the security triage's note — no separate risk found. Not live-verified (no browser); should work per source trace.
+
+### Waitlist
+`WaitlistManager.tsx` → `getWaitlistEntries`/`offerWaitlistSpot`/`addContactToWaitlist`, all from **`src/app/actions/calendar.ts`** (the top-level barrel file), which still uses the weak `getCurrentWorkspaceId()`-only pattern (cookie read, no real membership check) — **confirmed pre-existing and already flagged, not fixed, in `security-remediation.md` line 507** ("`calendar.ts` itself still uses the weak `getCurrentWorkspaceId()`-only pattern... for its own remaining live functions... left untouched"). Re-confirmed still open in this pass, not silently treated as fixed.
+
+**Auto-promotion on cancellation is a real, DB-level mechanism, independent of any app code:** `supabase/migrations/20240101000041_phase20_waitlist_manager.sql:82-116` defines `fn_handle_cancellation_promotion()` and a trigger `tr_cancel_promotion ON appointments` — this fires directly off the database whenever an appointment's status changes to cancelled, regardless of which app code path performed the cancellation. This means the security-remediation pass could not have broken this mechanism even in principle (it doesn't route through any of the touched `.ts` files). Not independently re-verified live in this pass (would require actually cancelling a waitlisted session) — manual test below.
+
+**Two real gaps found in this area, fixed:**
+1. `offerWaitlistSpot`/`addContactToWaitlist` revalidated a nonexistent route (`/apps/calendar/waitlist` instead of `/calendar/waitlist`) — fixed, see Part C-adjacent fixes below.
+2. `WaitlistManager.tsx`'s "sent via Email" toast was false — no email is sent. Copy corrected.
+
+### Cancellation / rescheduling
+**Internal team side — confirmed working by trace.** `CalendarClient.tsx`'s `handleCancelAppointment`/`confirmDelete` call `deleteAppointment` (`appointments.ts:183-195`, workspace-scoped, auth-gated); `handleEditAppointment` reopens `BookingModal` in edit mode, which calls `updateAppointment` (`appointments.ts:164-181`, same auth). Both go through the hardened `executeAction()` wrapper.
+
+**Booker-side self-service — confirmed not implemented.** No cancel/reschedule route or action was found anywhere under `src/app/book/`. A booker who wants to cancel or reschedule their own appointment has no self-service path today; this has to go through the internal team side. Flagged as a scope gap, not a bug — the prompt's phrasing ("if supported") anticipated this might not exist; confirmed it doesn't, rather than assumed.
+
+## Part C — Dashboard Widgets
+
+### C1. "Upcoming Meetings" — confirmed hardcoded, now wired to live data
+
+**Confirmed hardcoded, not stale-looking real data**, by reading the exact source: `src/components/pagesUI/apps/home/HomeDashboardClient.tsx` (pre-fix) defined `const calendarEvents = [...]` as a literal 4-entry array, commented `// Upcoming simulated calendar events`, containing exactly the sample names visible in Image 3 ("Product Demo & Sync", "Proposal Alignment Call", etc.). It never read from any prop or query.
+
+**Fix:**
+- `src/app/dashboard/page.tsx` adds a new query to the existing `Promise.all` batch: `appointments` filtered `workspace_id = <current>`, `status = 'scheduled'`, `start_time >= now()`, ordered ascending, limited to 5 — joined to `contacts(first_name, last_name)`. Passed down as a new `upcomingMeetings` prop.
+- `HomeDashboardClient.tsx` now derives `calendarEvents` from the real `upcomingMeetings` prop: real title, real contact name (or "No contact" if unassigned — public bookings always have one via `bookAppointment`'s contact upsert, internal ones may not), computed duration from `start_time`/`end_time`, and a Today/Tomorrow/date label. Added a genuine empty state ("No upcoming meetings") for when the list is actually empty, matching the existing pattern used by the Task Agenda widget right next to it.
+- "View Calendar" link (`href="/calendar"`) was already correct — confirmed by reading the JSX, no change needed. Per-appointment deep-linking to a specific date/appointment was not implemented — `/calendar`'s month view has no query-param-driven date-jump or appointment-open capability to link into (confirmed by reading `CalendarClient.tsx`'s props — it only accepts server-fetched `initialAppointments`/`initialCalendars`, no URL-driven selection state), so this would require new capability on the `/calendar` page itself, out of this fix's scope; flagged as a nice-to-have follow-up, not attempted.
+
+**Not live-verified in this pass** (no browser) — manual test below covers creating a real appointment and confirming it appears here.
+
+### C2. "Task Agenda" — confirmed correctly scoped and already live, not broken
+
+**Intended scope, confirmed from source, not inferred from the empty screenshot alone:** the widget's own subtitle is "High priority active tasks checklist" (`HomeDashboardClient.tsx:701`), and its data comes from `src/app/dashboard/page.tsx:94`:
+```ts
+supabase.from('tasks').select('id, title, due_date')
+  .eq('workspace_id', workspaceId).eq('priority', 'high')
+  .neq('status', 'done').lt('due_date', new Date().toISOString())
+```
+This is deliberately narrow: high-priority **and** overdue only, not "all your tasks." This is a real, live, workspace-scoped query against the same `tasks` table `tasks.md` already confirmed schema-correct and auth-correct (`getTasks`/`createTask` now use `requireWorkspaceAccess()`/have the `created_by`/`sort_order` columns) — no separate schema gap found for this specific query's columns (`id, title, due_date` are all present, unaffected by the `created_by`/`sort_order` fix). The "All caught up!" empty state shown in the screenshot is the honest, correct result of a genuinely empty result set for this narrow filter — not a dead widget. No code change made here; nothing was broken.
+
+**Scope/expectation check, per the explicit instruction not to silently expand it:** the user's framing ("whenever todos are created it also reflects on main dashboard") is broader than what this widget does today — it will only ever show a task that is *both* high-priority *and* currently overdue, not any newly-created task. **This is flagged as a scope decision for the user, not silently changed.** If the intent is a general "recently created / active tasks" feed, that's a different, wider query and arguably a different widget purpose than its own subtitle currently states — happy to implement either direction once confirmed, but did not guess.
+
+**Not live-verified in this pass** (no DB scripting access chosen for this pass) — manual test below covers creating a real high-priority overdue task and confirming it appears, which is the narrow-scope behavior as currently designed.
+
+## Fixes Made in This Pass
+
+1. **A1 fix.** `CalendarEmptyState.tsx` — added required `onCreateClick` prop, wired to the "Create first calendar" button. Files: `src/components/calendar/CalendarEmptyState.tsx`.
+2. **A1 fix.** `CalendarClient.tsx` — lifted calendar-creation modal (`CalendarSettingsModal` + `createCalendar`) to the top level so it's reachable with zero calendars, regardless of active view tab. Files: `src/components/calendar/CalendarClient.tsx`.
+3. **A2** — confirmed correct-by-design, no fix needed (resolves itself once A1 is fixed).
+4. **Found + fixed, not previously documented.** Stale `revalidatePath('/apps/calendar')`/`('/apps/calendar/waitlist')` calls (nonexistent routes — real routes are `/calendar`/`/calendar/waitlist`) in `updateAppointmentStatus`, `createOutcome`, `offerWaitlistSpot`, `addContactToWaitlist` (`calendar.ts`) and `registerForClass`/one more function (`class-booking.ts`). Files: `src/app/actions/calendar.ts`, `src/app/actions/calendar/class-booking.ts`.
+5. **Found + fixed, not previously documented.** `WaitlistManager.tsx`'s "Waitlist offer sent via Email" toast was false (no email is ever sent by `offerWaitlistSpot`) — corrected to describe what actually happens. Files: `src/components/calendar/WaitlistManager.tsx`.
+6. **Found + fixed, not previously documented.** `CalendarToolbar.tsx`'s category filter pills ("All calendars / Personal / Round robin / Collective / Class") had no `onClick` at all — always visually stuck on "All calendars," never filtered anything. Directly relevant to the prompt's Part B ask ("appears... in its correct category tab"). Wired to actually filter the Booking Pages grid by `calendar_type`. Files: `src/components/calendar/CalendarToolbar.tsx`, `src/components/calendar/CalendarClient.tsx`.
+7. **C1 fix.** "Upcoming Meetings" dashboard widget wired to a real, workspace-scoped, time-sorted `appointments` query, replacing the hardcoded sample array; added a genuine empty state. Files: `src/app/dashboard/page.tsx`, `src/components/pagesUI/apps/home/HomeDashboardClient.tsx`.
+8. **C2** — confirmed already correct, no fix made. Scope mismatch vs. the user's broader framing flagged for a product decision, not silently resolved either way.
+
+## Flagged, Not Fixed (Out of This Pass's Scope)
+
+- ~~No booking-confirmation notification...~~ **RESOLVED — see "Follow-Up Pass" below.**
+- ~~No booker-side self-service cancel/reschedule...~~ **RESOLVED — see "Follow-Up Pass" below.**
+- ~~`calendar.ts`'s waitlist functions... weak `getCurrentWorkspaceId()`-only auth pattern...~~ **RESOLVED for the three waitlist functions — see "Follow-Up Pass" below.** `updateAppointmentStatus`, `createOutcome`, `saveIntakeForm`, `getComprehensiveCalendarAnalytics` remain on the weak pattern — the follow-up pass's own scope was explicitly limited to the waitlist functions named in `security-remediation.md`'s Priority 4 entry, not this whole file.
+- **`round-robin.ts: getNextHost`** (weighted/priority/availability-first algorithms) remains confirmed dead code — reconfirmed, not removed (matches the security triage's original disposition).
+- **"View Calendar" deep-linking** to a specific date/appointment from the dashboard widget — not implemented; `/calendar` has no URL-driven selection capability to link into. Flagged as a nice-to-have, not attempted.
+- **Task Agenda's scope** (narrow high-priority-overdue vs. a broader "any new task" feed) — flagged for the user's decision, not resolved either direction.
+
+## Follow-Up Pass — Booking Confirmations, Self-Service Cancel/Reschedule, Waitlist Auth (resolves the three items above)
+
+A dedicated follow-up prompt asked for all three flagged gaps to be resolved. Summary; full detail in code comments at each file listed.
+
+### Part 1 — Booking confirmation notifications
+
+Added a real, shared notification helper (`src/lib/calendar/notifications.ts`) — one implementation, not a per-path copy — reusing the project's single established email mechanism (`src/lib/email.ts`'s `sendEmail`, the same Resend wrapper used elsewhere in the codebase; no second pipeline built). Wired into **every** real appointment-creation code path found in this and the original pass, not just the one named in the prompt:
+
+- `calendar/public.ts: bookAppointment` (the free public-booking path, admin-client, confirmed in the original pass as the live route for `/book/[slug]`).
+- `src/app/api/payfast/webhook/route.ts` (the **paid** public-booking path — a second real insert point not previously named; its own "Simulate Receipts via WhatsApp and Email" log-only line, the same fake-notification pattern already found and fixed once, was replaced with a real send).
+- `calendar/appointments.ts: createAppointment` (the internal/staff booking path — its misleadingly-named `confirmation_notification.triggered` log-only line, flagged in the original pass, is now a real send).
+- `portalBookings.ts: bookAppointmentFromPortal` (the authenticated client-portal booking path — discovered during this pass; not named in the original audit at all).
+
+Email includes meeting title, date/time with the **calendar's own explicit timezone** (`booking_calendars.timezone` — the only timezone actually tracked anywhere in this schema; the booker's browser timezone is not captured by any existing table, so nothing existed to convert into instead, and stating the calendar's timezone explicitly avoids the ambiguous-local-time failure mode the task warned about), the assigned host's name for round-robin bookings (`appointments.user_id`, resolved via `users`), the meeting link if present, and a manage-booking link (Part 2). Internal team notification: resolves to the assigned host's email if `user_id` is set, else falls back to the workspace owner (`workspaces.owner_id`) — personal/collective calendars don't store a per-appointment assignee at all (confirmed in the original pass), so without this fallback staff would simply never be notified for the majority of calendar types.
+
+**Waitlist promotion — investigated, found genuinely incomplete pre-existing infrastructure, not silently patched over.** Traced `fn_handle_cancellation_promotion()` (the DB trigger from `20240101000041_phase20_waitlist_manager.sql`) fully in this pass: it only ever sets `offered_at`/`offer_expires_at` on a `booking_waitlists` row — there is **no code path anywhere in this codebase that ever sets `booking_waitlists.confirmed = true`** or creates a finalized booking from an accepted waitlist offer. The migration's own comment concedes this ("Trigger for actual SMS/Email would happen here or via external service"). There is nothing to hook a "your waitlist spot is now booked" confirmation into, because that event never actually happens anywhere in the app today — only "you've been offered a spot" does, and per the original pass's fix, that offer itself was already corrected to stop claiming (via a toast) that an email gets sent, when none does. Building a full offer-acceptance flow was not requested and would be substantial undocumented scope creep — flagged here as a real, pre-existing product gap rather than invented a fix for.
+
+Also corrected: `fn_handle_cancellation_promotion`'s trigger condition was mis-described in the original pass's Part B ("fires whenever an appointment's status changes to cancelled") — **traced the actual SQL in this pass and found that's wrong.** It fires on a *decrease in `appointments.current_attendee_count`*, a column that only applies to the group/class-session data model (one `appointments` row per session, shared across attendees) — not on `status` at all, and not applicable to personal/round-robin/collective 1:1 appointments in any way. Part 2's cancel action (below) was written to account for this correctly.
+
+### Part 2 — Self-service cancel/reschedule (`/book/manage/[token]`)
+
+**Token mechanism** (`src/lib/calendar/manageToken.ts`): same HMAC-SHA256 pattern as `unsubscribeToken.ts`/`shipmentToken.ts`, reused not reinvented. Because the requested route is a single opaque `/book/manage/[token]` segment (unlike the shipment flow's `[shipmentId]` path param + separate token), the token is self-describing — `${appointmentId}.${hmac(appointmentId)}` — so tampering with the id segment invalidates the signature without a server secret. Deliberately a plain exported function, **not** a `'use server'` action, per the exact lesson `shipmentToken.ts`'s own comment documents (a token generator that's independently callable as a Server Action lets any caller mint a valid token for an id they don't own — confirmed live at the time via that route's build manifest).
+
+**Public actions** (`src/app/actions/calendar/manage.ts`) — `getAppointmentByToken`, `getManageAvailableSlots`, `cancelAppointmentByToken`, `rescheduleAppointmentByToken`. Every one of them calls a shared `resolveVerifiedAppointment(token)` first — **re-verifies the signature and re-loads the live appointment row server-side on every single call**, not just at page-render time. This directly satisfies the task's non-negotiable requirement: the page (`src/app/book/manage/[token]/page.tsx`) verifies once for its own render, but the cancel/reschedule actions never trust that render — they re-verify independently, so there is no client-side-only gate anywhere in this flow (the exact failure class this project has hit before).
+
+- **Scoped to one appointment:** proven live in this pass — see Verification.
+- **Expires once genuinely in the past:** a stateless HMAC has no expiry of its own, so this is enforced dynamically against live DB state on every call (`appointment.start_time <= now()` → rejected), not baked into the token bytes. Also rejects an already-`cancelled` appointment.
+- **Reschedule reuses the exact same availability logic** the original booking flow uses (`scheduling.ts: getAvailableSlots`/`validateSlot` — no second implementation) and updates the existing row (`start_time`/`end_time`/`status`) rather than inserting a duplicate.
+- **Cancel reuses the existing 'cancelled' status convention** (confirmed via `AppointmentsList.tsx`, `meet-analytics/page.tsx`, `portalBookings.ts` — not invented). For the group/class-session data model specifically (see Part 1's trigger correction above), cancel also decrements `current_attendee_count` when applicable, so the **existing** `tr_cancel_promotion` trigger — not a new one — actually fires and offers the next waitlisted contact. For an ordinary 1:1 appointment (the common case for personal/round-robin/collective calendars), there is no waitlist concept to trigger at all in this data model, correctly a no-op.
+- Applies the same `cancellation_window_hours` lockout convention already established in `portalBookings.ts`'s authenticated-portal cancel/reschedule (discovered during this pass — an existing, separate self-service surface gated behind a client-portal login, distinct from this new anonymous-token one) rather than inventing a different rule.
+- Confirmation of the change is sent via the same Part 1 mechanism, to both booker and team (`sendCancellationNotice`/`sendRescheduleNotice`).
+
+**Public UI:** `src/app/book/manage/[token]/page.tsx` (server component, verifies the token once for its own render, 404-style error state on an invalid/expired token) + `src/components/calendar/public/ManageBookingClient.tsx` (client component: appointment summary, Cancel confirmation step, Reschedule date/slot picker reusing `getManageAvailableSlots`). Styled to match the existing `/book/[slug]` public booking page's dark theme for visual consistency with its sibling route.
+
+### Part 3 — `calendar.ts` waitlist auth hardening
+
+`getWaitlistEntries`, `offerWaitlistSpot`, `addContactToWaitlist` switched from the file's existing weak `executeAction()` (cookie-read `getCurrentWorkspaceId()`, no membership check) to a new `executeSecureAction()` using `requireWorkspaceAccess()` — the same real `auth.getUser()` + `workspace_members` membership check already proven correct and in use by `appointments.ts`/`calendars.ts`. Added as a second wrapper in the same file rather than changing the shared one, so `updateAppointmentStatus`/`createOutcome`/`saveIntakeForm`/`getComprehensiveCalendarAnalytics` are **not** touched — matching this task's explicit "no scope creep beyond the auth fix itself" and `security-remediation.md`'s own stated boundary for this file. Also cross-referenced in `security-remediation.md` (see that document).
+
+### Verification — live, this pass
+
+No browser tool is available in this environment (same constraint as the original pass). Live verification here means: DB-level scripted tests against the real linked Supabase project using the service-role key (throwaway workspaces/users/data, cleaned up afterward — same standard `tasks.md`/`crm.md` established), plus direct execution of the actual token cryptography this pass shipped. All 12 checks passed:
+
+| Check | Result |
+|---|---|
+| Token round-trips to its own appointment id | ✅ |
+| Token minted for appointment A rejected when the id segment is swapped for a different appointment B (signature no longer matches) | ✅ **security boundary confirmed** |
+| Tampered signature rejected | ✅ |
+| Garbage / empty token rejected | ✅ |
+| `requireWorkspaceAccess`-shaped membership query: real membership in the caller's own workspace is found | ✅ |
+| Same query: caller has no membership row in a different, real workspace | ✅ — this is exactly what makes `executeSecureAction()` throw `ForbiddenError` for a forged `active_workspace_id` cookie |
+| The *old* pattern's exposure confirmed directly: a `workspace_id`-scoped waitlist query using a workspace the caller doesn't belong to still returns real data at the query layer — proving the fix's entire value is the membership check running *before* that query, not a query-shape change | ✅ |
+| Cancel update (status + `current_attendee_count` decrement) succeeds for a group-session appointment | ✅ |
+| Existing `tr_cancel_promotion` trigger fires (`offered_at` set on the waitlisted contact) after the decrement — confirms Part 2's cancel action correctly drives the **existing** trigger rather than needing a new one | ✅ |
+| Manage token for a real 1:1 appointment parses correctly | ✅ |
+| An appointment whose `start_time` has already passed is correctly identified as no-longer-manageable | ✅ |
+
+**Not live-verified: actual email delivery.** `RESEND_API_KEY` in this environment is `re_your-resend-api-key` — a placeholder that does **not** match `sendEmail()`'s own mock-detection (`=== 're_123'` or `.includes('PLACEHOLDER')`), so in production this would attempt a real Resend API call rather than silently mock. Did not fire a real test send (declined mid-session rather than send from an unconfigured key). Confirmed instead, by reading the code directly, that every call site (`public.ts`, the PayFast webhook, `appointments.ts`, `portalBookings.ts`, `manage.ts`) wraps its `sendBookingConfirmation`/`sendCancellationNotice`/`sendRescheduleNotice` call in try/catch — a delivery failure is logged, not thrown back through the booking/cancel/reschedule flow, so this gap in verification does not put a real booking failure at risk, only leaves email delivery itself unconfirmed. **Requires manual QA** once a real `RESEND_API_KEY` is configured: complete a real booking and confirm both the booker and the resolved host actually receive the email, with correct title/time/timezone/link/manage-URL.
+
+**Not live-verified: the actual public pages via browser** (`/book/manage/[token]`'s UI, the cancel/reschedule button flow, the reschedule slot picker) — no browser tool in this environment, same constraint as the original pass. Manual checklist below.
+
+## Cross-Reference: `security-remediation.md`'s Calendar Batch
+
+Nothing in that document needed correction as a result of this audit — every claim it makes about the Calendar & Booking module (`executeAction()` wrapper fixes, `booking_calendars` CRUD consolidation, `appointments` public-INSERT RLS tightening, the `calendar.ts` weak-auth functions left deliberately untouched, `round-robin.ts: getNextHost` flagged dead) was independently re-traced in this pass and confirmed accurate and still in effect, not reverted or broken by anything since. The one addition this pass makes to that record: the RLS tightening in §3, while correct on its own terms, **does not actually gate the real public-booking path** (`public.ts: bookAppointment` uses the admin client throughout) — worth noting in that document as a clarification, since its own live-verification section tested the *shape* of a legitimate booking against the policy directly rather than through the actual live server action, and didn't call out that the live action bypasses the policy entirely. Not a bug in either pass's work, just a gap in what was explicitly stated.
+
+## Manual Verification Checklist (for the user — no browser tool available in this pass)
+
+Run these against the deployed/dev app to close the loop this pass couldn't reach itself:
+
+1. **A1/A2:** Go to `/calendar` with a workspace that has zero calendars. Click "Create first calendar." Confirm the settings modal opens, fill in a Personal calendar, save. Confirm the empty state disappears and the calendar appears. Open the booking modal ("+ New Appointment") and confirm "Select a calendar" now lists it.
+2. **Second calendar type:** Create a Round Robin calendar; add at least one member to `round_robin_assignment` for it (no UI for this was found in this pass — may need a direct insert or a settings page not covered here; flag back if that UI doesn't exist either).
+3. **Category filter pills:** On the Booking Pages tab, click "Personal"/"Round robin"/etc. and confirm the grid actually filters (this was previously fully inert — fixed in this pass, worth double-checking).
+4. **Public booking, Personal calendar:** Open `/book/<slug>` in an incognito/anonymous window. Confirm available slots look right for the configured hours. Complete a real booking. Confirm a real `appointments` row lands with the correct `workspace_id` and `calendar_id`.
+5. **Public booking, Round Robin calendar:** Book 2-3 times against the same Round Robin calendar's slug. Confirm the `user_id` assigned rotates rather than always picking the same person (check the `appointments` rows directly, or `round_robin_assignment.booking_count`).
+6. **Notifications (updated — see Follow-Up Pass above):** After a public booking, confirm the booker AND the resolved host/workspace-owner receive a real confirmation email with correct title/date/time/timezone/link/manage-URL. Requires a real `RESEND_API_KEY` configured first — this pass's environment only has the repo's placeholder key, so email delivery itself is unverified (the code path was verified to execute and fail-safe, not to actually deliver).
+6a. **Self-service manage page:** Copy the manage link from a real confirmation email (or construct one via `generateManageToken` in a server context) and visit `/book/manage/<token>`. Confirm the appointment details render, Cancel and Reschedule both work end-to-end, and both send their own confirmation emails.
+6b. **Token security boundary:** Take a valid manage token for appointment X, and try swapping in a different real appointment Y's id into the token's id segment while keeping X's signature. Confirm the manage page rejects it (this exact case was proven at the crypto level in this pass's live verification — worth re-confirming through the actual page/action too).
+6c. **Cross-workspace waitlist auth:** Using two real throwaway workspaces, confirm a member of workspace A cannot read or write workspace B's waitlist via `getWaitlistEntries`/`offerWaitlistSpot`/`addContactToWaitlist` (the membership-check half of this was proven live in this pass; re-confirm through the actual authenticated UI/session if desired).
+7. **Instant Meet:** From `/calendar/instant-meet`, generate a meeting, confirm the link works and the appointment appears in the calendar.
+8. **Waitlist:** Enable waitlisting on a session-based (class/collective) calendar, fill it, add a contact to the waitlist, confirm it queues. Cancel/no-show the session and confirm the DB trigger (`tr_cancel_promotion`) actually promotes the next waitlisted contact.
+9. **Cancel/reschedule (internal):** From `/calendar`, click an appointment, cancel it, confirm it's gone; edit another one's time, confirm it updates.
+10. **Dashboard sync:** Complete a real booking (public or internal), then load `/dashboard` and confirm it appears under "Upcoming Meetings" with the right title/contact/time — no manual cache-bust should be needed given `revalidatePath`/normal navigation.
+11. **Task Agenda scope:** Create a task with `priority: high` and a `due_date` in the past. Confirm it appears on `/dashboard`'s Task Agenda. Separately confirm a normal-priority or future-dated task does **not** appear — that's the current, correct, narrow behavior, not a bug.
