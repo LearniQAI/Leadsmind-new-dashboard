@@ -47,6 +47,7 @@ interface HomeDashboardClientProps {
   recentActivities: any[];
   topOpportunities: any[];
   overdueTasks?: any[];
+  upcomingMeetings?: any[];
   attributionMetrics?: {
     totalRandRevenue: number;
     ctor: number;
@@ -96,6 +97,7 @@ const HomeDashboardClient = ({
   recentActivities,
   topOpportunities,
   overdueTasks = [],
+  upcomingMeetings = [],
   attributionMetrics,
   metrics,
 }: HomeDashboardClientProps) => {
@@ -281,13 +283,28 @@ const HomeDashboardClient = ({
     { label: "Won", value: 0 }
   ];
 
-  // Upcoming simulated calendar events
-  const calendarEvents = [
-    { title: "Product Demo & Sync", time: "10:00 AM", duration: "45m", date: "Today", contact: "Acme Group", active: true },
-    { title: "Proposal Alignment Call", time: "2:30 PM", duration: "30m", date: "Today", contact: "Mark Zuckerberg", active: false },
-    { title: "CRM Migration Review", time: "11:15 AM", duration: "1h", date: "Tomorrow", contact: "Internal Team", active: false },
-    { title: "Weekly Lead Intake Sync", time: "4:00 PM", duration: "30m", date: "Tomorrow", contact: "Sales Ops", active: false }
-  ];
+  // Real upcoming appointments, workspace-scoped (src/app/dashboard/page.tsx),
+  // sorted by start_time — replaces the previous hardcoded sample entries.
+  const calendarEvents = upcomingMeetings.map((apt, idx) => {
+    const start = new Date(apt.start_time);
+    const end = new Date(apt.end_time);
+    const durationMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+    const today = new Date();
+    const isToday = start.toDateString() === today.toDateString();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isTomorrow = start.toDateString() === tomorrow.toDateString();
+
+    return {
+      id: apt.id,
+      title: apt.title,
+      time: start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      duration: durationMinutes >= 60 ? `${Math.round(durationMinutes / 60)}h` : `${durationMinutes}m`,
+      date: isToday ? "Today" : isTomorrow ? "Tomorrow" : start.toLocaleDateString([], { month: "short", day: "numeric" }),
+      contact: apt.contact ? `${apt.contact.first_name} ${apt.contact.last_name}`.trim() : "No contact",
+      active: idx === 0,
+    };
+  });
 
   return (
     <div className="bg-[#F8FAFC] min-h-full pb-12 font-sans">
@@ -578,43 +595,48 @@ const HomeDashboardClient = ({
               <div className="grid grid-cols-1 sm:grid-cols-5 gap-3.5 mt-2">
                 {pipelineStages.map((stage, idx) => {
                   const dealCount = stage.value;
-                  const estimatedValue = dealCount * 12500;
+                  // Real sum of this stage's actual opportunity values —
+                  // previously `dealCount * 12500`, a flat made-up number
+                  // with no connection to real deal data. See analytics.ts.
+                  const stageValue = (stage as any).totalValue ?? 0;
+                  const pipelineName = (stage as any).pipelineName as string | null;
                   const conversionPercent = Math.max(10, 100 - idx * 20);
                   const isWon = idx === pipelineStages.length - 1;
-                  const stageStyles = [
-                    { border: "border-l-blue-500", tint: "bg-blue-500/[0.05]", value: "!text-blue-600", bar: "bg-blue-500" },
-                    { border: "border-l-indigo-500", tint: "bg-indigo-500/[0.05]", value: "!text-indigo-600", bar: "bg-indigo-500" },
-                    { border: "border-l-amber-500", tint: "bg-amber-500/[0.05]", value: "!text-amber-600", bar: "bg-amber-500" },
-                    { border: "border-l-purple-500", tint: "bg-purple-500/[0.05]", value: "!text-purple-600", bar: "bg-purple-500" },
-                    { border: "border-l-emerald-500", tint: "bg-emerald-500/[0.07]", value: "!text-emerald-600", bar: "bg-emerald-500" },
-                  ];
-                  const s = stageStyles[idx % stageStyles.length];
 
                   return (
-                    <div key={stage.label} className="relative">
+                    <div key={(stage as any).id ?? `${pipelineName}-${stage.label}-${idx}`} className="relative">
                       <div
-                        className={`${s.tint} border-l-[3.5px] ${s.border} border border-y-[#E5E7EB] border-r-[#E5E7EB] rounded-xl p-3.5 flex flex-col justify-between h-[128px] transition-all duration-200 motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-md ${
-                          isWon ? "ring-1 ring-emerald-500/25 shadow-[0_4px_16px_rgba(16,185,129,0.08)]" : ""
+                        className={`bg-white border-t-2 border border-y-[#E5E7EB] border-r-[#E5E7EB] rounded-xl p-3.5 flex flex-col justify-between h-[128px] transition-all duration-200 motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-md ${
+                          isWon ? "border-t-emerald-500" : "border-t-[#E2E8F0]"
                         }`}
                       >
-                        <div>
-                          <div className="flex items-center gap-1.5 text-[11px] font-bold !text-slate-500 uppercase tracking-wider truncate">
-                            {isWon && <Trophy size={11} className="!text-emerald-500 flex-shrink-0" />}
-                            {stage.label}
+                        <div className="min-w-0">
+                          <div className="flex items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-1.5 text-[11px] font-bold !text-slate-500 uppercase tracking-wider truncate">
+                              {isWon && <Trophy size={11} className="!text-emerald-500 flex-shrink-0" />}
+                              {stage.label}
+                            </div>
                           </div>
-                          <div className="text-[20px] font-bold !text-[#0F172A] mt-1">
+                          {/* Disambiguates stages that legitimately share a
+                              name across two different real pipelines —
+                              previously these rendered as unlabeled,
+                              seemingly-duplicate cards. */}
+                          {pipelineName && (
+                            <div className="text-[9px] font-medium !text-slate-400 truncate mt-0.5">{pipelineName}</div>
+                          )}
+                          <div className="text-[20px] font-bold !text-[#0F172A] mt-1 tabular-nums">
                             {dealCount} <span className="text-[11px] font-normal !text-slate-500">deals</span>
                           </div>
                         </div>
 
                         <div className="space-y-1.5">
                           <div className="flex justify-between items-end">
-                            <span className={`font-bold text-[11px] ${s.value}`}>${estimatedValue.toLocaleString()}</span>
-                            <span className={`font-extrabold text-[15px] leading-none ${isWon ? "!text-emerald-600" : "!text-[#0F172A]"}`}>
+                            <span className="font-bold text-[11px] !text-[#0F172A] tabular-nums">${stageValue.toLocaleString()}</span>
+                            <span className={`font-extrabold text-[15px] leading-none tabular-nums ${isWon ? "!text-emerald-600" : "!text-[#0F172A]"}`}>
                               {conversionPercent}%
                             </span>
                           </div>
-                          <ProgressBar value={conversionPercent} colorClass={s.bar} />
+                          <ProgressBar value={conversionPercent} colorClass={isWon ? "bg-emerald-500" : "bg-[#2563EB]"} />
                         </div>
                       </div>
 
@@ -759,10 +781,17 @@ const HomeDashboardClient = ({
             </div>
 
             <div className="flex-1 max-h-[300px] overflow-y-auto pr-1">
+              {calendarEvents.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center py-12 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-4">
+                  <Calendar size={28} className="!text-slate-300 mb-2" />
+                  <span className="text-[13px] font-bold !text-[#0F172A]">No upcoming meetings</span>
+                  <p className="text-[12px] !text-slate-500 mt-0.5">Booked appointments will appear here.</p>
+                </div>
+              ) : (
               <div className="space-y-2">
-                {calendarEvents.map((event, idx) => (
-                  <div 
-                    key={idx} 
+                {calendarEvents.map((event) => (
+                  <div
+                    key={event.id}
                     className={`flex items-center justify-between gap-4 p-3 bg-white border border-[#EEF2F7] rounded-xl hover:border-slate-300 transition-all ${
                       event.active ? "ring-1 ring-primary/20 bg-blue-50/5" : ""
                     }`}
@@ -795,6 +824,7 @@ const HomeDashboardClient = ({
                   </div>
                 ))}
               </div>
+              )}
             </div>
           </div>
         </div>

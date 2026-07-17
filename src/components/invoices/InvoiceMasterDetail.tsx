@@ -19,6 +19,7 @@ import WriteOffDialog from './WriteOffDialog';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DOCUMENT_MUTED_TEXT } from '@/lib/design/documentTemplateTokens';
 
 interface InvoiceMasterDetailProps {
   invoices: any[];
@@ -312,7 +313,7 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                       </div>
                       LEADSMIND <span className="text-primary">HQ</span>
                     </div>
-                    <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-600 space-y-2 leading-relaxed">
+                    <div className={`text-[11px] font-bold uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} space-y-2 leading-relaxed`}>
                       <p>123 Enterprise Avenue</p>
                       <p>Silicon Valley, CA 94043</p>
                       <p>billing@leadsmind.io</p>
@@ -321,7 +322,7 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                   <div className="text-right flex flex-col items-end">
                     <h1 className="text-5xl font-black uppercase tracking-tighter text-slate-100 select-none pointer-events-none mb-4">Invoice</h1>
                     <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 text-left w-64">
-                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] mb-1">Document No.</p>
+                      <p className={`text-[10px] font-black ${DOCUMENT_MUTED_TEXT} uppercase tracking-[0.3em] mb-1`}>Document No.</p>
                       <p className="text-xl font-black text-primary uppercase tracking-tight mb-4">{selectedInvoice.invoice_number}</p>
                       <div className="pt-3 border-t border-slate-100">
                         <StatusBadge status={selectedInvoice.status} />
@@ -332,16 +333,16 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16 relative z-10">
                   <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 mb-4 flex items-center gap-2">
+                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} mb-4 flex items-center gap-2`}>
                       <ShieldCheck size={12} className="text-primary" /> Billed To
                     </span>
                     <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 mb-2">
                       {selectedInvoice.contact?.first_name} {selectedInvoice.contact?.last_name}
                     </h2>
-                    <p className="text-sm font-semibold text-slate-600 mb-5">{selectedInvoice.contact?.email}</p>
+                    <p className={`text-sm font-semibold ${DOCUMENT_MUTED_TEXT} mb-5`}>{selectedInvoice.contact?.email}</p>
                     {selectedInvoice.contact?.vat_number && (
                       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">VAT:</span>
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>VAT:</span>
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">{selectedInvoice.contact.vat_number}</span>
                       </div>
                     )}
@@ -350,14 +351,14 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                   <div className="grid grid-cols-1 gap-4">
                     <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col justify-center gap-6">
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 flex items-center gap-2">
+                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} flex items-center gap-2`}>
                           <Calendar size={12} className="text-primary"/> Issue Date
                         </span>
                         <span className="text-sm font-black text-slate-900">{format(new Date(selectedInvoice.created_at), 'dd MMM yyyy')}</span>
                       </div>
                       <div className="w-full h-px bg-slate-100" />
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 flex items-center gap-2">
+                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} flex items-center gap-2`}>
                           <Clock size={12} className="text-red"/> Due Date
                         </span>
                         <span className="text-sm font-black text-red">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), 'dd MMM yyyy') : 'On Receipt'}</span>
@@ -370,10 +371,10 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                   <table className="w-full min-w-[500px]">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
-                        <th className="py-5 px-6 text-[9px] font-black uppercase tracking-widest text-slate-600 text-left">Description</th>
-                        <th className="py-5 px-6 text-[9px] font-black uppercase tracking-widest text-slate-600 text-right">Qty</th>
-                        <th className="py-5 px-6 text-[9px] font-black uppercase tracking-widest text-slate-600 text-right">Rate</th>
-                        <th className="py-5 px-6 text-[9px] font-black uppercase tracking-widest text-slate-600 text-right">Amount</th>
+                        <th className={`py-5 px-6 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-left`}>Description</th>
+                        <th className={`py-5 px-6 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Qty</th>
+                        <th className={`py-5 px-6 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Rate</th>
+                        <th className={`py-5 px-6 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Amount</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -384,8 +385,8 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                         return (
                           <tr key={idx} className="hover:bg-white transition-colors">
                             <td className="py-6 px-6 font-semibold text-sm text-slate-900">{item.description}</td>
-                            <td className="py-6 px-6 text-right text-sm text-slate-600 font-bold">{quantity}</td>
-                            <td className="py-6 px-6 text-right text-sm text-slate-600 font-bold">${rate.toLocaleString()}</td>
+                            <td className={`py-6 px-6 text-right text-sm ${DOCUMENT_MUTED_TEXT} font-bold`}>{quantity}</td>
+                            <td className={`py-6 px-6 text-right text-sm ${DOCUMENT_MUTED_TEXT} font-bold`}>${rate.toLocaleString()}</td>
                             <td className="py-6 px-6 text-right font-black text-base text-slate-900">${amount.toLocaleString()}</td>
                           </tr>
                         );
@@ -396,18 +397,18 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
 
                 <div className="flex justify-end pt-2 relative z-10">
                   <div className="w-[380px] space-y-4">
-                    <div className="flex justify-between items-center text-slate-600 text-xs font-bold px-6">
+                    <div className={`flex justify-between items-center ${DOCUMENT_MUTED_TEXT} text-xs font-bold px-6`}>
                       <span className="uppercase tracking-widest text-[10px]">Subtotal</span>
                       <span>${(Number(selectedInvoice.subtotal || selectedInvoice.total_amount) || 0).toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between items-center text-slate-600 text-xs font-bold pb-5 border-b border-slate-100 px-6">
+                    <div className={`flex justify-between items-center ${DOCUMENT_MUTED_TEXT} text-xs font-bold pb-5 border-b border-slate-100 px-6`}>
                       <span className="uppercase tracking-widest text-[10px]">Tax</span>
                       <span>${(Number(selectedInvoice.tax_total) || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center pt-2 mt-4 bg-primary/5 border border-primary/20 rounded-2xl p-8 relative overflow-hidden">
                       <div className="flex flex-col gap-1.5 relative z-10">
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Grand Total</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">USD</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${DOCUMENT_MUTED_TEXT}`}>USD</span>
                       </div>
                       <span className="text-4xl font-black text-slate-900 tracking-tighter relative z-10">${(Number(selectedInvoice.total_amount) || 0).toLocaleString()}</span>
                     </div>

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Check, X, Download, Lock, PenTool, Globe } from 'lucide-react';
 import { format } from 'date-fns';
+import { DOCUMENT_MUTED_TEXT } from '@/lib/design/documentTemplateTokens';
 
 interface PublicQuotePortalProps {
   quote: any;
@@ -59,7 +60,7 @@ const PublicQuotePortal: React.FC<PublicQuotePortalProps> = ({ quote }) => {
                 <div className="text-xl font-black tracking-tighter mb-4 text-gray-900">
                    {quote.workspace?.name || 'LEADSMIND'}
                 </div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 space-y-1">
+                <div className={`text-[10px] font-bold uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} space-y-1`}>
                    <p>{quote.workspace?.invoice_settings?.company_address || quote.workspace?.registered_address || '123 Enterprise Avenue'}</p>
                    <p>{quote.workspace?.invoice_settings?.company_email || 'billing@leadsmind.io'}</p>
                 </div>
@@ -68,19 +69,19 @@ const PublicQuotePortal: React.FC<PublicQuotePortalProps> = ({ quote }) => {
 
           <div className="grid grid-cols-2 gap-12 mb-20">
              <div className="bg-gray-50 p-8 rounded-3xl border border-gray-100">
-                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-3">Prepared For</span>
+                <span className={`text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} block mb-3`}>Prepared For</span>
                 <h2 className="text-2xl font-black uppercase tracking-tight text-gray-900 mb-1">
                    {quote.contact?.first_name} {quote.contact?.last_name}
                 </h2>
-                <p className="text-sm font-bold text-gray-500">{quote.contact?.email}</p>
+                <p className={`text-sm font-bold ${DOCUMENT_MUTED_TEXT}`}>{quote.contact?.email}</p>
              </div>
              <div className="flex flex-col justify-center">
                 <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                   <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Issue Date</span>
+                   <span className={`text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>Issue Date</span>
                    <span className="text-sm font-black">{format(new Date(quote.created_at), 'dd MMM yyyy')}</span>
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                   <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Expires</span>
+                   <span className={`text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>Expires</span>
                    <span className="text-sm font-black text-rose-600">30 Days from Issue</span>
                 </div>
              </div>
@@ -89,18 +90,18 @@ const PublicQuotePortal: React.FC<PublicQuotePortalProps> = ({ quote }) => {
           <table className="w-full mb-16">
              <thead>
                 <tr className="border-b-2 border-gray-900 text-left">
-                   <th className="py-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Description</th>
-                   <th className="py-6 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Qty</th>
-                   <th className="py-6 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Rate</th>
-                   <th className="py-6 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Total</th>
+                   <th className={`py-6 text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>Description</th>
+                   <th className={`py-6 text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Qty</th>
+                   <th className={`py-6 text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Rate</th>
+                   <th className={`py-6 text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Total</th>
                 </tr>
              </thead>
              <tbody className="divide-y divide-gray-100">
                 {(quote.items || []).map((item: any, idx: number) => (
                    <tr key={idx}>
                       <td className="py-8 font-bold text-base text-gray-900">{item.description}</td>
-                      <td className="py-8 text-right text-sm font-black text-gray-500">{item.quantity}</td>
-                      <td className="py-8 text-right text-sm font-black text-gray-500">${Number(item.rate).toLocaleString()}</td>
+                      <td className={`py-8 text-right text-sm font-black ${DOCUMENT_MUTED_TEXT}`}>{item.quantity}</td>
+                      <td className={`py-8 text-right text-sm font-black ${DOCUMENT_MUTED_TEXT}`}>${Number(item.rate).toLocaleString()}</td>
                       <td className="py-8 text-right font-black text-xl text-gray-900">${(item.quantity * item.rate).toLocaleString()}</td>
                    </tr>
                 ))}
@@ -122,13 +123,13 @@ const PublicQuotePortal: React.FC<PublicQuotePortalProps> = ({ quote }) => {
                <div className="max-w-xl mx-auto text-center space-y-8">
                   <div className="space-y-4">
                      <h3 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Legal Agreement</h3>
-                     <p className="text-xs font-bold text-gray-500 leading-relaxed">
+                     <p className={`text-xs font-bold ${DOCUMENT_MUTED_TEXT} leading-relaxed`}>
                         By clicking "Accept Proposal", you agree to the terms and conditions outlined above. This document constitutes a binding contract once signed electronically.
                      </p>
                   </div>
                   
                   <div className="p-6 bg-white rounded-3xl border border-gray-200 flex flex-col gap-4">
-                     <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                     <div className={`flex items-center gap-3 text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>
                         <Lock size={14} className="text-blue-500" /> Secure E-Signature Chain
                      </div>
                      <button 
@@ -148,11 +149,11 @@ const PublicQuotePortal: React.FC<PublicQuotePortalProps> = ({ quote }) => {
                      </div>
                      <div>
                         <h3 className="text-xl font-black uppercase tracking-tight text-emerald-600">Proposal Accepted</h3>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Electronic record sealed</p>
+                        <p className={`text-[10px] font-bold ${DOCUMENT_MUTED_TEXT} uppercase tracking-widest`}>Electronic record sealed</p>
                      </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-8 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  <div className={`grid grid-cols-2 gap-8 text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>
                      <div className="space-y-2">
                         <p className="flex items-center gap-2"><Globe size={12} /> IP Address: 192.168.1.1</p>
                         <p className="flex items-center gap-2"><ShieldCheck size={12} /> Hash: LM-QA-88219-SEC</p>

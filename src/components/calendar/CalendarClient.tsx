@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import CalendarHeader from './CalendarHeader';
-import CalendarToolbar, { CalendarView } from './CalendarToolbar';
+import CalendarToolbar, { CalendarView, CalendarTypeFilter } from './CalendarToolbar';
 import CalendarStats from './CalendarStats';
 import CalendarEmptyState from './CalendarEmptyState';
 import CalendarMonthView from './views/CalendarMonthView';
@@ -13,12 +13,14 @@ import CalendarPagesView from './views/CalendarPagesView';
 import BookingModal from './modals/BookingModal';
 import AppointmentDetailsModal from './modals/AppointmentDetailsModal';
 import ConfirmationModal from './modals/ConfirmationModal';
-import { 
-  getAppointments, 
-  createAppointment, 
-  updateAppointment, 
-  deleteAppointment 
+import CalendarSettingsModal from './modals/CalendarSettingsModal';
+import {
+  getAppointments,
+  createAppointment,
+  updateAppointment,
+  deleteAppointment
 } from '@/app/actions/calendar/appointments';
+import { createCalendar } from '@/app/actions/calendar/calendars';
 import { toast } from 'sonner';
 
 interface CalendarClientProps {
@@ -33,6 +35,7 @@ export default function CalendarClient({
   workspaceId 
 }: CalendarClientProps) {
   const [activeView, setActiveView] = useState<CalendarView>('month');
+  const [activeFilter, setActiveFilter] = useState<CalendarTypeFilter>('all');
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
@@ -41,6 +44,7 @@ export default function CalendarClient({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
+  const [isCreateCalendarOpen, setIsCreateCalendarOpen] = useState(false);
 
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
@@ -83,6 +87,15 @@ export default function CalendarClient({
     setIsBookingModalOpen(true);
   };
 
+  const handleCreateCalendar = async (data: any) => {
+    const res = await createCalendar(data);
+    if (res.success) {
+      toast.success('Calendar created successfully');
+    } else {
+      toast.error(res.error || 'Failed to create calendar');
+    }
+  };
+
   const hasCalendars = initialCalendars.length > 0;
 
   return (
@@ -94,15 +107,17 @@ export default function CalendarClient({
       {hasCalendars && <CalendarStats appointments={initialAppointments} />}
 
       {/* 3. Toolbar Section */}
-      <CalendarToolbar 
-        activeView={activeView} 
-        onViewChange={setActiveView} 
+      <CalendarToolbar
+        activeView={activeView}
+        onViewChange={setActiveView}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
       />
 
       {/* 4. Main Content Area */}
       <div className="min-h-[400px]">
         {!hasCalendars ? (
-          <CalendarEmptyState />
+          <CalendarEmptyState onCreateClick={() => setIsCreateCalendarOpen(true)} />
         ) : (
           <div className="space-y-6">
             {/* View Orchestration */}
@@ -123,7 +138,9 @@ export default function CalendarClient({
                <CalendarListView appointments={initialAppointments} />
             )}
             {activeView === 'pages' && (
-               <CalendarPagesView calendars={initialCalendars} />
+               <CalendarPagesView
+                 calendars={activeFilter === 'all' ? initialCalendars : initialCalendars.filter(c => c.calendar_type === activeFilter)}
+               />
             )}
           </div>
         )}
@@ -158,6 +175,13 @@ export default function CalendarClient({
         onCancel={handleCancelAppointment}
         onEdit={handleEditAppointment}
         onReschedule={handleEditAppointment}
+      />
+
+      <CalendarSettingsModal
+        isOpen={isCreateCalendarOpen}
+        onClose={() => setIsCreateCalendarOpen(false)}
+        calendar={null}
+        onSave={handleCreateCalendar}
       />
 
       <ConfirmationModal

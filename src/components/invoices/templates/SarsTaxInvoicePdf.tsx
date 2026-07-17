@@ -4,6 +4,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { ShieldCheck, FileText, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DOCUMENT_MUTED_TEXT } from '@/lib/design/documentTemplateTokens';
 
 interface SarsTaxInvoicePdfProps {
   invoice: any;
@@ -41,9 +42,9 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
           </div>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Invoice Number</p>
+          <p className={`text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} mb-1`}>Invoice Number</p>
           <p className="text-xl font-black text-gray-900">{invoice.invoice_number}</p>
-          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-4 mb-1">Date of Issue</p>
+          <p className={`text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} mt-4 mb-1`}>Date of Issue</p>
           <p className="text-sm font-bold">{format(new Date(invoice.created_at), 'dd MMMM yyyy')}</p>
         </div>
       </div>
@@ -52,14 +53,14 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
       <div className="grid grid-cols-2 gap-16 mb-16">
         {/* Seller Info */}
         <div className="space-y-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100 pb-2">Seller (VAT Registered)</p>
+          <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} border-b border-gray-100 pb-2`}>Seller (VAT Registered)</p>
           <div>
             <h3 className="text-lg font-black uppercase tracking-tight text-gray-900">{workspace.registered_name}</h3>
-            <p className="text-[11px] text-gray-500 font-medium leading-relaxed mt-1 whitespace-pre-line">
+            <p className={`text-[11px] ${DOCUMENT_MUTED_TEXT} font-medium leading-relaxed mt-1 whitespace-pre-line`}>
               {workspace.registered_address}
             </p>
             <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100 inline-block">
-               <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">VAT Registration No.</p>
+               <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>VAT Registration No.</p>
                <p className="text-sm font-black text-gray-900">{workspace.vat_number || 'N/A'}</p>
             </div>
           </div>
@@ -67,17 +68,17 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
 
         {/* Customer Info */}
         <div className="space-y-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100 pb-2">Recipient / Billed To</p>
+          <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} border-b border-gray-100 pb-2`}>Recipient / Billed To</p>
           <div>
             <h3 className="text-lg font-black uppercase tracking-tight text-gray-900">
                {customer.registered_name || `${invoice.contact?.first_name} ${invoice.contact?.last_name}`}
             </h3>
-            <p className="text-[11px] text-gray-500 font-medium leading-relaxed mt-1 whitespace-pre-line">
+            <p className={`text-[11px] ${DOCUMENT_MUTED_TEXT} font-medium leading-relaxed mt-1 whitespace-pre-line`}>
                {customer.address || 'Address not provided'}
             </p>
             {customer.vat_number && (
               <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100 inline-block">
-                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Customer VAT No.</p>
+                <p className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>Customer VAT No.</p>
                 <p className="text-sm font-black text-gray-900">{customer.vat_number}</p>
               </div>
             )}
@@ -89,11 +90,11 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
       <table className="w-full mb-16 border-collapse">
         <thead>
           <tr className="border-b-2 border-gray-900">
-            <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-400 text-left w-1/2">Detailed Description</th>
-            <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-400 text-right">Qty</th>
-            <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-400 text-right">Unit Price</th>
-            <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-400 text-right">Tax (15%)</th>
-            <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-400 text-right">Amount (ZAR)</th>
+            <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-left w-1/2`}>Detailed Description</th>
+            <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Qty</th>
+            <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Unit Price</th>
+            <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Tax (15%)</th>
+            <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Amount (ZAR)</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
@@ -104,11 +105,11 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
               <tr key={idx} className="group">
                 <td className="py-6 pr-4">
                    <p className="font-bold text-sm text-gray-900">{item.description}</p>
-                   {item.product_id && <p className="text-[10px] text-gray-400 mt-0.5">SKU: {item.product_id.substring(0,8).toUpperCase()}</p>}
+                   {item.product_id && <p className={`text-[10px] ${DOCUMENT_MUTED_TEXT} mt-0.5`}>SKU: {item.product_id.substring(0,8).toUpperCase()}</p>}
                 </td>
-                <td className="py-6 text-right text-sm font-bold text-gray-500">{item.quantity}</td>
-                <td className="py-6 text-right text-sm font-bold text-gray-500">${(Number(item.rate) || 0).toLocaleString()}</td>
-                <td className="py-6 text-right text-sm font-bold text-gray-400">${lineTax.toLocaleString()}</td>
+                <td className={`py-6 text-right text-sm font-bold ${DOCUMENT_MUTED_TEXT}`}>{item.quantity}</td>
+                <td className={`py-6 text-right text-sm font-bold ${DOCUMENT_MUTED_TEXT}`}>${(Number(item.rate) || 0).toLocaleString()}</td>
+                <td className={`py-6 text-right text-sm font-bold ${DOCUMENT_MUTED_TEXT}`}>${lineTax.toLocaleString()}</td>
                 <td className="py-6 text-right font-black text-base text-gray-900 font-space">${lineTotal.toLocaleString()}</td>
               </tr>
             );
@@ -119,18 +120,18 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
       {/* 4. Explicit Tax Split Block */}
       <div className="flex justify-between items-start pt-12 border-t-4 border-gray-900">
         <div className="max-w-md">
-           <div className="flex items-center gap-2 text-gray-400 mb-4">
+           <div className={`flex items-center gap-2 ${DOCUMENT_MUTED_TEXT} mb-4`}>
               <Scale size={18} />
               <p className="text-[10px] font-black uppercase tracking-widest">SARS Tax Declaration</p>
            </div>
-           <p className="text-[10px] text-gray-400 leading-relaxed italic">
+           <p className={`text-[10px] ${DOCUMENT_MUTED_TEXT} leading-relaxed italic`}>
               All amounts are in South African Rand (ZAR) unless otherwise specified. 
               VAT is calculated at the standard rate of 15% as per the Value-Added Tax Act, 1991.
            </p>
         </div>
 
         <div className="w-80 space-y-4">
-          <div className="flex justify-between text-gray-500 text-xs font-bold">
+          <div className={`flex justify-between ${DOCUMENT_MUTED_TEXT} text-xs font-bold`}>
             <span>Total Value (Excl. VAT)</span>
             <span>${subtotal.toLocaleString()}</span>
           </div>
@@ -157,7 +158,7 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
          <div className="inline-block px-6 py-2 border-2 border-gray-900 rounded-full text-[10px] font-black uppercase tracking-[0.3em] text-gray-900">
             Official Tax Document
          </div>
-         <p className="text-[9px] text-gray-400 mt-6 uppercase tracking-widest font-bold">
+         <p className={`text-[9px] ${DOCUMENT_MUTED_TEXT} mt-6 uppercase tracking-widest font-bold`}>
             Generated by Leadsmind Invoicing Engine — {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
          </p>
       </div>

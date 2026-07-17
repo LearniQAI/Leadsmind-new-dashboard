@@ -625,5 +625,27 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* Thin, light-themed scrollbar for white/light surfaces (e.g. the
+     Pipelines board) — `.common-scrollbar` (used on that board) has no
+     matching rule anywhere in this file, so it was rendering as the
+     browser/OS's unstyled default scrollbar, which reads as a heavy dark
+     bar against a light page. `.custom-scrollbar` above isn't a fix either
+     — its thumb color (`--bdrh`) is a dark-theme variable. This is the
+     light-surface equivalent. */
+  .light-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .light-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .light-scrollbar::-webkit-scrollbar-thumb {
+    background: #E2E8F0;
+    border-radius: 10px;
+  }
+  .light-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #CBD5E1;
+  }
 }
 

@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { MoreHorizontal, UserCircle2, Zap, User } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { Opportunity } from '@/types/crm';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
 import { CurrencyValue } from '@/components/dashboard-ui';
+import UserAvatar from '@/components/ui/UserAvatar';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -14,7 +14,14 @@ interface OpportunityCardProps {
   onClick: () => void;
 }
 
+// Matches the reference's card pattern: avatar on the left, contact name as
+// the primary line, a muted secondary line beneath (deal value — the most
+// consistently-available detail, since not every deal has recent activity
+// tracked; falls back to "updated ... ago" when there's no contact at all).
 export function OpportunityCard({ opportunity, index, onClick }: OpportunityCardProps) {
+  const contact = opportunity.contact;
+  const primaryLabel = contact ? `${contact.first_name} ${contact.last_name}` : opportunity.title;
+
   return (
     <Draggable draggableId={opportunity.id} index={index}>
       {(provided, snapshot) => (
@@ -24,48 +31,39 @@ export function OpportunityCard({ opportunity, index, onClick }: OpportunityCard
           {...provided.dragHandleProps}
           onClick={onClick}
           className={cn(
-            "bg-white border border-dash-border rounded-xl p-4 mb-3 transition-all select-none group hover:border-dash-accent/30",
-            snapshot.isDragging ? "shadow-2xl shadow-dash-text/10 border-dash-accent/50 ring-1 ring-dash-accent/20 scale-[1.02]" : "hover:shadow-lg"
+            "bg-white border border-dash-border rounded-xl p-3.5 mb-2.5 transition-all select-none cursor-pointer hover:border-dash-accent/40",
+            snapshot.isDragging ? "shadow-xl border-dash-accent/50 ring-1 ring-dash-accent/20 scale-[1.02]" : "hover:shadow-sm"
           )}
         >
-          <div className="flex flex-col gap-3">
-            <div className="flex items-start justify-between">
-              <h5 className="text-[13px] font-bold !text-dash-text leading-snug group-hover:text-dash-accent transition-colors">
-                {opportunity.title}
-              </h5>
-              <div className="!text-dash-textMuted hover:!text-dash-text transition-colors cursor-pointer">
-                <MoreHorizontal size={12} />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <CurrencyValue value={opportunity.value} className="text-[14px] font-bold !text-amber" />
-            </div>
-
-            <div className="flex flex-col gap-2 pt-2 border-t border-dash-border">
-              {opportunity.contact && (
-                <Link 
-                  href={`/contacts/${opportunity.contact.id}`}
-                  className="flex items-center gap-2 text-[11px] !text-dash-textMuted hover:text-dash-accent transition-colors "
-                >
-                  <UserCircle2 size={10} className="!text-dash-textMuted" />
-                  {opportunity.contact.first_name} {opportunity.contact.last_name}
-                </Link>
+          <div className="flex items-start gap-3">
+            <UserAvatar
+              firstName={contact?.first_name}
+              lastName={contact?.last_name}
+              size="sm"
+            />
+            <div className="min-w-0 flex-1">
+              {/* Primary: contact (or deal title, if no contact attached) —
+                  the single most prominent line on the card. */}
+              <p className="text-[14px] font-bold !text-dash-text leading-snug truncate">
+                {primaryLabel}
+              </p>
+              {/* Secondary: the deal's own title field (confirmed via
+                  OpportunityModal's "Opportunity Designation" input — not a
+                  separate note/relationship field) — one clear step down:
+                  regular weight, muted, still comfortably legible. */}
+              {contact && (
+                <p className="text-[12px] font-normal !text-dash-textMuted truncate mt-1 leading-snug">
+                  {opportunity.title}
+                </p>
               )}
-              
-              <div className="flex items-center justify-between mt-1">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-[9px] font-bold !text-dash-textMuted tracking-wider bg-dash-surface px-2 py-0.5 rounded-full">
-                    <Zap size={10} className="text-dash-accent" />
-                    Hot
-                  </div>
-                </div>
-
-                <div className="flex -space-x-1">
-                  <div className="w-5 h-5 rounded-full border border-white bg-dash-border flex items-center justify-center text-[7px] !text-dash-textMuted">
-                    <User size={9} />
-                  </div>
-                </div>
+              {/* Tertiary: value + relative time — smallest line, most
+                  muted, both halves matched in size/weight so they read as
+                  one cohesive metadata line rather than two competing ones. */}
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <CurrencyValue value={opportunity.value} className="text-[11px] font-medium !text-dash-textMuted" />
+                <span className="text-[11px] font-medium !text-dash-textMuted">
+                  · {formatDistanceToNow(new Date(opportunity.updated_at || opportunity.created_at), { addSuffix: true })}
+                </span>
               </div>
             </div>
           </div>

@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
+import { DOCUMENT_MUTED_TEXT } from '@/lib/design/documentTemplateTokens';
 
 interface ProposalMasterDetailProps {
   proposals: any[];
@@ -206,7 +207,7 @@ export function ProposalMasterDetail({ proposals: initialProposals }: ProposalMa
                 <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-16 relative">
                   <div>
                     <div className="h-10 w-40 bg-primary text-white rounded-xl flex items-center justify-center font-black mb-6 tracking-tighter text-sm uppercase">LEADSMIND</div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 space-y-1">
+                    <div className={`text-[10px] font-black uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} space-y-1`}>
                       <p>Boutique Service Proposal</p>
                       <p>Silicon Valley, CA 94043</p>
                       <p>contact@leadsmind.io</p>
@@ -223,15 +224,15 @@ export function ProposalMasterDetail({ proposals: initialProposals }: ProposalMa
                   <div className="p-6 rounded-2xl bg-gray-50 border border-gray-100">
                     <span className="text-[10px] font-black uppercase tracking-widest text-primary mb-3 block">Prepared For</span>
                     <h2 className="text-2xl font-black uppercase text-gray-800 mb-1 tracking-tighter">{selectedProposal.contact?.first_name} {selectedProposal.contact?.last_name}</h2>
-                    <p className="text-xs font-bold text-gray-500">{selectedProposal.contact?.email}</p>
+                    <p className={`text-xs font-bold ${DOCUMENT_MUTED_TEXT}`}>{selectedProposal.contact?.email}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4 pt-4">
                     <div>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 block mb-1">Quote Date</span>
+                      <span className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} block mb-1`}>Quote Date</span>
                       <span className="text-sm font-black text-gray-800">{format(new Date(selectedProposal.created_at), 'dd MMM yyyy')}</span>
                     </div>
                     <div>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 block mb-1">Valid Until</span>
+                      <span className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} block mb-1`}>Valid Until</span>
                       <span className="text-sm font-black text-primary">{selectedProposal.valid_until ? format(new Date(selectedProposal.valid_until), 'dd MMM yyyy') : 'N/A'}</span>
                     </div>
                   </div>
@@ -240,18 +241,18 @@ export function ProposalMasterDetail({ proposals: initialProposals }: ProposalMa
                 <table className="w-full mb-16 text-left">
                   <thead>
                     <tr className="border-b-2 border-gray-200">
-                      <th className="py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Service Item</th>
-                      <th className="py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Qty</th>
-                      <th className="py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Rate</th>
-                      <th className="py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Total</th>
+                      <th className={`py-4 text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>Service Item</th>
+                      <th className={`py-4 text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Qty</th>
+                      <th className={`py-4 text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Rate</th>
+                      <th className={`py-4 text-[10px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {(selectedProposal.items?.length > 0 ? selectedProposal.items : [{ description: 'Strategic Services Package', quantity: 1, unit_amount: selectedProposal.total_amount }]).map((item: any, idx: number) => (
                       <tr key={idx}>
                         <td className="py-6 font-bold text-gray-800">{item.description}</td>
-                        <td className="py-6 text-right text-gray-500 font-bold">{item.quantity || 1}</td>
-                        <td className="py-6 text-right text-gray-500 font-bold">${Number(item.unit_amount || 0).toLocaleString()}</td>
+                        <td className={`py-6 text-right ${DOCUMENT_MUTED_TEXT} font-bold`}>{item.quantity || 1}</td>
+                        <td className={`py-6 text-right ${DOCUMENT_MUTED_TEXT} font-bold`}>${Number(item.unit_amount || 0).toLocaleString()}</td>
                         <td className="py-6 text-right font-black text-gray-800 text-lg">${(Number(item.quantity || 1) * Number(item.unit_amount || 0)).toLocaleString()}</td>
                       </tr>
                     ))}
@@ -260,11 +261,11 @@ export function ProposalMasterDetail({ proposals: initialProposals }: ProposalMa
 
                 <div className="flex justify-end pt-8 border-t-2 border-gray-200">
                   <div className="w-72 space-y-4">
-                    <div className="flex justify-between text-gray-500">
+                    <div className={`flex justify-between ${DOCUMENT_MUTED_TEXT}`}>
                       <span className="text-[10px] font-black uppercase tracking-widest">Base Estimate</span>
                       <span className="font-black">${Number(selectedProposal.total_amount).toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-gray-500 pb-4 border-b border-gray-100">
+                    <div className={`flex justify-between ${DOCUMENT_MUTED_TEXT} pb-4 border-b border-gray-100`}>
                       <span className="text-[10px] font-black uppercase tracking-widest">Est. Taxes</span>
                       <span className="font-black">$0.00</span>
                     </div>

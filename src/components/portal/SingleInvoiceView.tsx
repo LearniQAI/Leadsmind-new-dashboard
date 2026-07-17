@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import SarsTaxInvoicePdf from '@/components/invoices/templates/SarsTaxInvoicePdf';
 import { captureInvoiceView } from '@/app/actions/portal';
+import { DOCUMENT_MUTED_TEXT } from '@/lib/design/documentTemplateTokens';
 
 interface SingleInvoiceViewProps {
   invoice: any;
@@ -159,7 +160,7 @@ export default function SingleInvoiceView({
                       <div className="text-2xl font-space font-black tracking-tighter mb-4 text-[var(--accent)]">
                         {invoice.workspace?.name || 'LEADSMIND'}
                       </div>
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 space-y-1">
+                      <div className={`text-[10px] font-bold uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} space-y-1`}>
                          <p>{invoice.workspace?.invoice_settings?.company_address || invoice.workspace?.registered_address || 'Address not configured'}</p>
                          <p>{invoice.workspace?.invoice_settings?.company_email || 'billing@leadsmind.io'}</p>
                       </div>
@@ -180,19 +181,19 @@ export default function SingleInvoiceView({
 
                 <div className="grid grid-cols-2 gap-12 mb-16">
                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 block mb-3">Billed To</span>
+                      <span className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} block mb-3`}>Billed To</span>
                       <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900 mb-1">
                          {invoice.contact?.first_name} {invoice.contact?.last_name || ''}
                       </h2>
-                      <p className="text-xs font-bold text-gray-500">{invoice.contact?.email}</p>
+                      <p className={`text-xs font-bold ${DOCUMENT_MUTED_TEXT}`}>{invoice.contact?.email}</p>
                    </div>
                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                         <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 block mb-1">Issue Date</span>
+                         <span className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} block mb-1`}>Issue Date</span>
                          <span className="text-sm font-black text-gray-900">{invoice.created_at ? format(new Date(invoice.created_at), 'dd MMM yyyy') : 'N/A'}</span>
                       </div>
                       <div>
-                         <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 block mb-1">Due Date</span>
+                         <span className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} block mb-1`}>Due Date</span>
                          <span className="text-sm font-black text-rose-600">{invoice.due_date ? format(new Date(invoice.due_date), 'dd MMM yyyy') : 'On Receipt'}</span>
                       </div>
                    </div>
@@ -202,10 +203,10 @@ export default function SingleInvoiceView({
                   <table className="w-full mb-16 border-collapse">
                      <thead>
                         <tr className="border-b-2 border-gray-100">
-                           <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-400 text-left">Description</th>
-                           <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-400 text-right">Qty</th>
-                           <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-400 text-right">Rate</th>
-                           <th className="py-4 text-[9px] font-black uppercase tracking-widest text-gray-400 text-right">Amount (ZAR)</th>
+                           <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-left`}>Description</th>
+                           <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Qty</th>
+                           <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Rate</th>
+                           <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Amount (ZAR)</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-gray-50 text-gray-800">
@@ -216,8 +217,8 @@ export default function SingleInvoiceView({
                           return (
                             <tr key={idx}>
                                <td className="py-6 font-bold text-sm text-gray-900">{item.description}</td>
-                               <td className="py-6 text-right text-sm text-gray-500 font-bold">{quantity}</td>
-                               <td className="py-6 text-right text-sm text-gray-500 font-bold">R {rate.toLocaleString('en-ZA')}</td>
+                               <td className={`py-6 text-right text-sm ${DOCUMENT_MUTED_TEXT} font-bold`}>{quantity}</td>
+                               <td className={`py-6 text-right text-sm ${DOCUMENT_MUTED_TEXT} font-bold`}>R {rate.toLocaleString('en-ZA')}</td>
                                <td className="py-6 text-right font-black text-base text-gray-900 font-space">R {amount.toLocaleString('en-ZA')}</td>
                             </tr>
                           );
@@ -225,18 +226,18 @@ export default function SingleInvoiceView({
                      </tbody>
                   </table>
                 ) : (
-                  <div className="mb-16 p-6 bg-gray-50 border border-gray-100 rounded-2xl text-xs text-gray-500 font-medium">
+                  <div className={`mb-16 p-6 bg-gray-50 border border-gray-100 rounded-2xl text-xs ${DOCUMENT_MUTED_TEXT} font-medium`}>
                     Detailed line items are hidden by the billing administrator. Only totals are displayed below.
                   </div>
                 )}
 
                 <div className="flex justify-end pt-8 border-t-2 border-gray-100">
                    <div className="w-64 space-y-3">
-                      <div className="flex justify-between text-gray-500 text-xs font-bold">
+                      <div className={`flex justify-between ${DOCUMENT_MUTED_TEXT} text-xs font-bold`}>
                          <span>Subtotal</span>
                          <span>R {(Number(invoice.subtotal || invoice.total_amount) || 0).toLocaleString('en-ZA')}</span>
                       </div>
-                      <div className="flex justify-between text-gray-500 text-xs font-bold pb-3 border-b border-gray-50">
+                      <div className={`flex justify-between ${DOCUMENT_MUTED_TEXT} text-xs font-bold pb-3 border-b border-gray-50`}>
                          <span>VAT (15%)</span>
                          <span>R {(Number(invoice.tax_total) || 0).toLocaleString('en-ZA')}</span>
                       </div>
@@ -248,7 +249,7 @@ export default function SingleInvoiceView({
                 </div>
                 
                 <div className="mt-16 pt-8 border-t border-gray-50 flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-gray-400">
+                  <div className={`flex items-center gap-3 ${DOCUMENT_MUTED_TEXT}`}>
                      <ShieldCheck size={32} className="text-emerald-500" />
                      <div>
                        <p className="text-[9px] font-black uppercase tracking-widest">Verified Merchant</p>

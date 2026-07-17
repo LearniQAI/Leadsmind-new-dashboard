@@ -90,8 +90,17 @@ const Home = async () => {
     supabase.from('social_posts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'scheduled'),
     supabase.from('invoices').select('total_amount').eq('workspace_id', workspaceId).eq('status', 'paid'),
     supabase.from('contact_activities').select('*, contacts(id, first_name, last_name)').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(8),
-    supabase.from('opportunities').select('*, contacts(id, first_name, last_name)').eq('workspace_id', workspaceId).eq('status', 'open').order('value', { ascending: false }).limit(5),
+    // `opportunities` has three FKs into `contacts` (`contact_id`, plus
+    // `buyer_id`/`seller_id` from the real-estate-pipeline migration) — an
+    // unqualified `contacts(...)` embed is ambiguous to PostgREST and fails
+    // outright (PGRST201), which silently zeroed out this widget via the
+    // `.data || []` fallback below. Same root cause found and fixed for
+    // `/pipelines` itself in this pass (see pipelines.ts and crm.md).
+    supabase.from('opportunities').select('*, contacts!opportunities_contact_id_fkey(id, first_name, last_name)').eq('workspace_id', workspaceId).eq('status', 'open').order('value', { ascending: false }).limit(5),
     supabase.from('tasks').select('id, title, due_date').eq('workspace_id', workspaceId).eq('priority', 'high').neq('status', 'done').lt('due_date', new Date().toISOString()),
+    // Powers the "Upcoming Meetings" widget — previously hardcoded sample
+    // entries regardless of real appointment data.
+    supabase.from('appointments').select('id, title, start_time, end_time, status, contact:contacts(first_name, last_name)').eq('workspace_id', workspaceId).eq('status', 'scheduled').gte('start_time', new Date().toISOString()).order('start_time', { ascending: true }).limit(5),
     AttributionEngine.getAttributionMetrics(workspaceId),
     // Additive: powers the Revenue/Leads trend charts and the real per-stage
     // Sales Pipeline row on the redesigned dashboard. Existing queries above
@@ -109,8 +118,9 @@ const Home = async () => {
   const recentActivities = results[7].data || [];
   const topOpportunities = results[8].data || [];
   const overdueTasks = results[9].data || [];
-  const attributionMetrics = results[10] as any;
-  const metrics = results[11] as Awaited<ReturnType<typeof fetchDashboardMetrics>>;
+  const upcomingMeetings = results[10].data || [];
+  const attributionMetrics = results[11] as any;
+  const metrics = results[12] as Awaited<ReturnType<typeof fetchDashboardMetrics>>;
 
   const totalRevenue = revenueData?.reduce((acc: any, curr: any) => acc + (Number(curr.total_amount) || 0), 0) || 0;
 
@@ -132,6 +142,7 @@ const Home = async () => {
             recentActivities={recentActivities || []}
             topOpportunities={topOpportunities || []}
             overdueTasks={overdueTasks || []}
+            upcomingMeetings={upcomingMeetings || []}
             attributionMetrics={attributionMetrics}
             metrics={metrics}
           />

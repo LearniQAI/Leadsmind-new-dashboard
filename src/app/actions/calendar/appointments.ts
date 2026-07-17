@@ -8,6 +8,7 @@ import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { logger } from '@/shared/logger';
 import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
+import { sendBookingConfirmation } from '@/lib/calendar/notifications';
 
 // Previously read the workspaceId straight off the active_workspace_id cookie
 // (getCurrentWorkspaceId()) with no auth check at all — this wrapper never
@@ -141,9 +142,16 @@ export async function createAppointment(payload: {
        data.meeting_link = internalLink;
     }
 
-    // 8. Notification Orchestration
-    logger.info({ title: payload.title, effectiveMode }, 'calendar.appointment.confirmation_notification.triggered');
-    
+    // 8. Notification Orchestration — real send, not just a log line (see
+    // calendar.md Part B: this used to be a misleadingly-named log statement
+    // with no actual dispatch). Best-effort: notification failure must not
+    // fail an appointment creation that already succeeded.
+    try {
+      await sendBookingConfirmation(data.id, { reason: 'booked' });
+    } catch (notifyErr) {
+      logger.error({ err: notifyErr, appointmentId: data.id }, 'calendar.appointment.confirmation_email.failed');
+    }
+
     // 9. Post-Insert Engine Updates
     if (calendar.calendar_type === 'round_robin' && assigneeId) {
       await updateRoundRobinStats(payload.calendarId, assigneeId);

@@ -156,19 +156,35 @@ export async function fetchDashboardMetrics(
  });
  const contactsBySource = Object.entries(sourceMap).map(([label, value]) => ({ label, value }));
 
- // --- Chart: Pipeline funnel (deal count per stage) ---
+ // --- Chart: Pipeline funnel (deal count + real value per stage) ---
+ // Embeds real opportunity rows (id, value) rather than a `(count)`
+ // aggregate — sidesteps that embed's single-row-array pitfall entirely
+ // (see the fix already documented for this exact table) and, as a real
+ // fix found while redesigning this card, also gets rid of a second,
+ // separate bug: the card previously showed `dealCount * 12500`, a flat
+ // made-up per-deal value with no connection to any real opportunity data,
+ // instead of an actual sum. Also embeds the owning pipeline's name — a
+ // workspace with more than one pipeline can have multiple stages that
+ // legitimately share the same name (e.g. two pipelines each with their
+ // own "Lead" stage), which previously rendered as visually-duplicate,
+ // unlabeled cards with a colliding React `key={stage.label}`.
  const { data: stagesRaw } = await supabase
   .from('pipeline_stages')
-  .select('id, name, position, opportunities(count)')
+  .select('id, name, position, pipeline:pipelines(name), opportunities(id, value)')
   .eq('workspace_id', workspaceId)
   .order('position', { ascending: true });
 
- const pipelineFunnel = (stagesRaw ?? []).map(s => ({
-  label: s.name,
-  // PostgREST's `table(count)` embed returns a single-row aggregate
-  // ([{ count: N }]), not N rows — .length would always be 0 or 1.
-  value: Array.isArray(s.opportunities) ? Number((s.opportunities[0] as any)?.count ?? 0) : 0,
- }));
+ const pipelineFunnel = (stagesRaw ?? []).map(s => {
+  const stageOpportunities = Array.isArray(s.opportunities) ? s.opportunities : [];
+  const pipelineRel = Array.isArray(s.pipeline) ? s.pipeline[0] : s.pipeline;
+  return {
+   id: s.id,
+   label: s.name,
+   value: stageOpportunities.length,
+   totalValue: stageOpportunities.reduce((sum, o: any) => sum + (Number(o.value) || 0), 0),
+   pipelineName: (pipelineRel as any)?.name ?? null,
+  };
+ });
 
  // --- Top active contacts ---
  const { data: topContacts } = await supabase
