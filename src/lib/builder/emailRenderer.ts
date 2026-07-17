@@ -61,6 +61,11 @@ export function parsePersonalTokens(html: string, contact?: any, additionalVars?
     company: contact?.company || 'your company',
     email: contact?.email || '',
     invoice_amount_zar: additionalVars?.invoice_amount_zar || additionalVars?.invoiceAmountZar || 'R 0.00',
+    // No sensible universal default — must be generated per-recipient (real
+    // email + real workspace_id) via generateUnsubscribeToken. Callers that
+    // don't supply one (e.g. the on-screen builder preview) get an empty
+    // link rather than a broken shared placeholder.
+    unsubscribe_link: additionalVars?.unsubscribe_link || '',
     ...(additionalVars || {})
   };
 
@@ -88,7 +93,14 @@ export function renderEmailLayout(
   brandKit: BrandKit,
   contact?: any,
   additionalVars?: Record<string, any>,
-  preheaderText?: string
+  preheaderText?: string,
+  // When true, returns the compiled layout with {{tokens}} left intact
+  // instead of resolving them. Used when saving/deploying a campaign: the
+  // stored body_html must stay generic so the dispatch worker can resolve
+  // {{first_name}}/{{unsubscribe_link}}/etc. per-recipient at actual send
+  // time, rather than baking one recipient's (or, worse, no recipient's)
+  // values into the HTML every recipient receives.
+  skipPersonalization?: boolean
 ): string {
   const primaryColor = brandKit.brandColorPrimary || '#2563eb';
   const defaultFont = brandKit.brandFontDefault || 'Inter, Arial, sans-serif';
@@ -396,5 +408,8 @@ export function renderEmailLayout(
   `.trim();
 
   // 3. Perform final token replacements on compiled HTML
+  if (skipPersonalization) {
+    return fullHtml;
+  }
   return parsePersonalTokens(fullHtml, contact, additionalVars);
 }

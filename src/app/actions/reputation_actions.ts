@@ -1,20 +1,18 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
 import { sendSMS } from '@/lib/sms';
 import { logger } from '@/shared/logger';
+import { headers } from 'next/headers';
+import { checkRateLimit } from '@/lib/security/rateLimit';
 
 export async function respondToReview(reviewId: string, response: string) {
   try {
    const supabase = await createServerClient();
-   const { data: { user }, error: authError } = await supabase.auth.getUser();
-   if (authError || !user) return { error: 'Unauthorized' };
-
-   const workspaceId = await getCurrentWorkspaceId();
-   if (!workspaceId) return { error: 'No workspace active' };
+   const { workspaceId } = await requireWorkspaceAccess();
 
    const { data, error } = await supabase
     .from('reputation_reviews')
@@ -40,11 +38,7 @@ export async function respondToReview(reviewId: string, response: string) {
 export async function deleteReview(reviewId: string) {
   try {
    const supabase = await createServerClient();
-   const { data: { user }, error: authError } = await supabase.auth.getUser();
-   if (authError || !user) return { error: 'Unauthorized' };
-
-   const workspaceId = await getCurrentWorkspaceId();
-   if (!workspaceId) return { error: 'No workspace active' };
+   const { workspaceId } = await requireWorkspaceAccess();
 
    const { error } = await supabase
     .from('reputation_reviews')
@@ -66,11 +60,7 @@ export async function getReputationSettings() {
   let workspaceId: string | null = null;
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    ({ workspaceId } = await requireWorkspaceAccess());
 
     const { data, error } = await supabase
       .from('reputation_settings')
@@ -91,11 +81,7 @@ export async function saveReputationSettings(updates: { google_review_url: strin
   let workspaceId: string | null = null;
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    ({ workspaceId } = await requireWorkspaceAccess());
 
     // Check if settings record already exists
     const { data: existing } = await supabase
@@ -184,11 +170,44 @@ export async function getPublicReputationSettings(workspaceId: string) {
   }
 }
 
-// Submit internal private feedback (for negative review gatekeeping)
-export async function submitPrivateFeedback(workspaceId: string, reviewerName: string, rating: number, body: string) {
+// Submit internal private feedback (for negative review gatekeeping).
+// Deliberately public/unauthenticated (anonymous customers submit this) — the
+// fix here is rate limiting + basic abuse resistance, not requiring login.
+export async function submitPrivateFeedback(
+  workspaceId: string,
+  reviewerName: string,
+  rating: number,
+  body: string,
+  honeypot?: string
+) {
   try {
+    // Honeypot: a hidden field real visitors never fill in (matches the
+    // existing pattern from src/app/api/public/forms/[id]/submit/route.ts's
+    // `lm_hp_field`). Silently "succeed" so the bot doesn't learn to adapt.
+    if (honeypot) {
+      logger.warn({ workspaceId }, 'reputation.private_feedback.honeypot_blocked');
+      return { success: true, data: null };
+    }
+
+    if (!workspaceId || typeof rating !== 'number' || rating < 1 || rating > 5) {
+      return { error: 'Invalid submission.' };
+    }
+
+    // Rate limit: bounds both a single IP hammering one workspace and the
+    // total volume of emails any one workspace's owner can be flooded with,
+    // regardless of how many different IPs an attacker rotates through.
+    const headerList = await headers();
+    const ip = headerList.get('x-forwarded-for')?.split(',')[0]?.trim() || headerList.get('x-real-ip') || 'unknown';
+
+    if (!checkRateLimit(`feedback:ip:${ip}`, 5, 60_000)) {
+      return { error: 'Too many submissions. Please try again later.' };
+    }
+    if (!checkRateLimit(`feedback:workspace:${workspaceId}`, 30, 60_000)) {
+      return { error: 'Too many submissions. Please try again later.' };
+    }
+
     const supabase = createAdminClient(); // Bypasses RLS since client visitors aren't logged in
-    
+
     const { data, error } = await supabase
       .from('reputation_reviews')
       .insert({
@@ -256,11 +275,7 @@ export async function sendReviewRequest(contactId: string, channel: 'email' | 's
   let workspaceId: string | null = null;
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    ({ workspaceId } = await requireWorkspaceAccess());
 
     // Fetch contact details
     const { data: contact, error: contactError } = await supabase
@@ -338,7 +353,17 @@ export async function sendReviewRequest(contactId: string, channel: 'email' | 's
       const messageText = `Hi ${contactName}, how was your experience with ${workspaceName}? We would love to hear your feedback. Please rate us here: ${feedbackUrl}`;
       const to = channel === 'whatsapp' ? `whatsapp:${contact.phone}` : contact.phone;
       
-      // Fetch workspace Twilio config if available
+      // Fetch workspace Twilio config if available.
+      // NOTE: the `automations` table referenced here does not exist in the
+      // live database (confirmed via the linked project's schema — this
+      // query would error every time, caught by this function's outer
+      // catch, silently falling through to "Failed to send review request"
+      // for every sms/whatsapp attempt). This means the RLS-policy part of
+      // this item's required fix is currently moot — there's no table to
+      // add a policy to. Flagging as a genuine pre-existing functional gap,
+      // not fixed here (creating a new table is a schema/feature change
+      // beyond the scope of this security pass, same call made for
+      // tasks.ts's task_attachments and analytics.ts's conversion_events).
       const { data: wsCreds } = await supabase
         .from('automations')
         .select('settings')
@@ -452,11 +477,7 @@ export async function syncReviewsAction() {
   let workspaceId: string | null = null;
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    ({ workspaceId } = await requireWorkspaceAccess());
 
     // 1. Fetch reputation settings for the active workspace
     const { data: settings, error: settingsError } = await supabase

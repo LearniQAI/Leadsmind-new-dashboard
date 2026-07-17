@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/email';
+import { parsePersonalTokens } from '@/lib/builder/emailRenderer';
+import { buildUnsubscribeLink } from '@/lib/email/unsubscribeLink';
 import { PredictiveIntelligence } from '@/lib/intelligence/PredictiveIntelligence';
 import { Observability } from '@/lib/observability';
 import { logger } from '@/shared/logger';
@@ -99,10 +101,19 @@ export async function GET(req: Request) {
       }
 
       try {
+        // Personalize per-recipient at the moment of actual send — body_html
+        // is stored with {{tokens}} intact (see EmailBuilderClient's
+        // skipPersonalization), never pre-resolved against a shared/empty
+        // contact. String templating on one HTML doc per recipient; cheap
+        // relative to the network round-trip to Resend that follows it.
+        const personalizedHtml = parsePersonalTokens(campaign.body_html || '<p></p>', contact, {
+          unsubscribe_link: buildUnsubscribeLink(contact.email, job.workspace_id)
+        });
+
         await sendEmail({
           to: contact.email,
           subject: campaign.subject,
-          html: campaign.body_html || '<p></p>',
+          html: personalizedHtml,
           config: {
             apiKey,
             fromEmail,
@@ -134,10 +145,26 @@ export async function GET(req: Request) {
     }
 
     // 3. Batch Update Queue
+    // Plain per-row UPDATE, not .upsert(): these `updates` entries are
+    // partial (id + a few changed fields, e.g. {id, status, locked_by}),
+    // never the full row. .upsert(..., {onConflict:'id'}) issues a real
+    // INSERT ... ON CONFLICT DO UPDATE under the hood, and Postgres
+    // validates the INSERT's column list against NOT NULL constraints
+    // (campaign_id/workspace_id/contact_id) before the ON CONFLICT branch
+    // ever runs — so a partial object here always failed with a
+    // not-null-constraint error, leaving the row stuck at 'processing'
+    // forever. Confirmed live: every job that hit any non-'sent' branch
+    // (deferred/failed/retry) never actually persisted its new status.
     if (updates.length > 0) {
-      const { error: upsertErr } = await supabaseAdmin.from('campaign_dispatch_queue').upsert(updates, { onConflict: 'id' });
-      if (upsertErr) {
-         logger.error({ err: upsertErr, workerId }, 'cron.campaign_dispatch.queue_status_update.failed');
+      const results = await Promise.all(
+        updates.map(u => {
+          const { id: jobId, ...fields } = u as any;
+          return supabaseAdmin.from('campaign_dispatch_queue').update(fields).eq('id', jobId);
+        })
+      );
+      const updateErr = results.find(r => r.error)?.error;
+      if (updateErr) {
+         logger.error({ err: updateErr, workerId }, 'cron.campaign_dispatch.queue_status_update.failed');
       }
     }
 
@@ -147,6 +174,34 @@ export async function GET(req: Request) {
        if (camp) {
           await supabaseAdmin.from('email_campaigns').update({ total_sent: (camp.total_sent || 0) + count }).eq('id', cid);
        }
+    }
+
+    // 5. Mark campaigns 'sent' once every one of their queue rows has reached
+    // a terminal state (sent/failed) — status must reflect what the queue
+    // actually did, not a manual, disconnected flag. A campaign whose queue
+    // still has any pending/processing/deferred row is left alone; this may
+    // take several worker runs to converge for large campaigns, which is
+    // correct — it should only flip once genuinely done.
+    for (const cid of campaignIds) {
+      const { count: remaining } = await supabaseAdmin
+        .from('campaign_dispatch_queue')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', cid)
+        .in('status', ['pending', 'processing', 'deferred']);
+
+      if ((remaining ?? 0) === 0) {
+        const { data: campToClose } = await supabaseAdmin
+          .from('email_campaigns')
+          .select('status')
+          .eq('id', cid)
+          .single();
+        if (campToClose && campToClose.status !== 'sent') {
+          await supabaseAdmin
+            .from('email_campaigns')
+            .update({ status: 'sent', sent_at: now.toISOString() })
+            .eq('id', cid);
+        }
+      }
     }
 
     return NextResponse.json({ success: true, processed: jobs.length, sent: sentCount });

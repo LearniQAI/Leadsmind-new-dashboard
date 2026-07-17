@@ -112,7 +112,12 @@ const DashboardHeader = () => {
 
         const toastId = toast.loading("Switching workspace...");
         try {
-            await setActiveWorkspace(workspaceId);
+            const result = await setActiveWorkspace(workspaceId);
+            if (!result.success) {
+                toast.error(result.error || "Unable to switch workspace. Please try again.", { id: toastId });
+                setIsWorkspaceDropdownOpen(false);
+                return;
+            }
             toast.success("Workspace switched successfully", { id: toastId });
             setIsWorkspaceDropdownOpen(false);
             router.refresh();

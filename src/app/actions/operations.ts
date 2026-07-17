@@ -48,26 +48,11 @@ export async function getOrders() {
  }
 }
 
-export async function getExpenses() {
- let workspaceId: string | null = null;
- try {
-  workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
-
-  const supabase = await createServerClient();
-  const { data, error } = await supabase
-   .from('accounting_transactions')
-   .select('*')
-   .eq('workspace_id', workspaceId)
-   .order('date', { ascending: false });
-
-  if (error) throw error;
-  return { data };
- } catch (error: any) {
-  logger.error({ err: error, workspaceId }, 'operations.expenses.fetch.failed');
-  return { error: 'Failed to fetch expenses.' };
- }
-}
+// getExpenses previously lived here as a dead, unauthenticated duplicate of
+// expenses.ts's getExpensesLive (the live, properly-hardened version, wired
+// to ExpenseLiveClient.tsx and finance/expenses/page.tsx) — removed as part
+// of the Priority 2 duplicate-implementation cleanup. Confirmed zero
+// remaining callers of this file's copy before deleting.
 
 // PROJECTS & SUPPORT
 export async function getProjects() {

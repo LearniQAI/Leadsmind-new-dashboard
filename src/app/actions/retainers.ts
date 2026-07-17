@@ -4,16 +4,41 @@ import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 
+// Verifies the caller is a member of the explicit workspaceId argument these
+// functions take (not the cookie-derived active workspace — the UI passes a
+// specific workspaceId tied to the invoice/contact being viewed, which isn't
+// guaranteed to match whatever the cookie currently holds). Same shape as
+// shipments.ts's requireWorkspaceMember() from Priority 0 item 6.
+async function requireWorkspaceMember(supabase: any, workspaceId: string): Promise<boolean> {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return false;
+  const { data: member } = await supabase
+    .from('workspace_members')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  return !!member;
+}
+
+// Confirmed still dead/unwired in this pass (zero callers anywhere in src/)
+// — fixed in place rather than deleted, since it's not a duplicate of
+// anything (matches the getInvoiceAnalytics precedent from Priority 2 item
+// 6: dead-but-plausible, independently-callable Server Actions still get
+// hardened, not left insecure just for being currently unwired from a UI).
 export async function applyRetainerToInvoice(invoiceId: string, contactId: string, workspaceId: string) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
+  if (!(await requireWorkspaceMember(supabase, workspaceId))) {
+    return { success: false, error: 'Unauthorized' };
+  }
 
-  // 1. Fetch invoice total
+  // 1. Fetch invoice total — scoped to the verified workspace (previously
+  // had no workspace scoping at all, flagged in the triage).
   const { data: invoice, error: invError } = await supabase
     .from('invoices')
     .select('total_amount')
     .eq('id', invoiceId)
+    .eq('workspace_id', workspaceId)
     .single();
 
   if (invError || !invoice) return { success: false, error: 'Invoice not found' };
@@ -71,6 +96,7 @@ export async function applyRetainerToInvoice(invoiceId: string, contactId: strin
       .from('invoices')
       .update({ status: 'paid' })
       .eq('id', invoiceId)
+      .eq('workspace_id', workspaceId)
       .select('*, contact:contacts(*)')
       .single();
 
@@ -105,8 +131,7 @@ export async function applyRetainerToInvoice(invoiceId: string, contactId: strin
 
 export async function getRetainerBalance(contactId: string, workspaceId: string) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return 0;
+  if (!(await requireWorkspaceMember(supabase, workspaceId))) return 0;
 
   const { data, error } = await supabase
     .from('retainers')

@@ -98,6 +98,23 @@ export async function setupWorkspace(payload: {
 }
 
 export async function setActiveWorkspace(workspaceId: string) {
+ const supabase = await createServerClient();
+ const { data: { user }, error: userError } = await supabase.auth.getUser();
+ if (userError || !user) {
+  return { success: false, error: 'Not authenticated' };
+ }
+
+ const { data: membership } = await supabase
+  .from('workspace_members')
+  .select('id')
+  .eq('workspace_id', workspaceId)
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+ if (!membership) {
+  return { success: false, error: 'You are not a member of this workspace' };
+ }
+
  const cookieStore = await cookies();
  cookieStore.set('active_workspace_id', workspaceId, {
   maxAge: 60 * 60 * 24 * 30, // 30 days
@@ -105,7 +122,7 @@ export async function setActiveWorkspace(workspaceId: string) {
   httpOnly: true,
   sameSite: 'lax',
  });
- 
+
  return { success: true };
 }
 

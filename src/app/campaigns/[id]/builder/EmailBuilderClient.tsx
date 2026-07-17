@@ -177,8 +177,11 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
   const handleSave = async () => {
     setSaving(true);
     try {
-      // 1. Compile final HTML output
-      const compiledHtml = renderEmailLayout(blocks, brandKit, {}, {}, preheaderText);
+      // 1. Compile final HTML output — skipPersonalization: true keeps
+      // {{first_name}}/{{unsubscribe_link}}/etc. tokens intact in the stored
+      // body_html. They're resolved per-recipient by the dispatch worker at
+      // actual send time, not baked in once here against no real contact.
+      const compiledHtml = renderEmailLayout(blocks, brandKit, {}, {}, preheaderText, true);
 
       // 2. Generate preview text from text blocks or defaults
       const textBlock = blocks.find(b => b.type === 'text');

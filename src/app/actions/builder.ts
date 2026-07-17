@@ -1,7 +1,7 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
-import { requireAuth, getCurrentWorkspaceId } from '@/lib/auth';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
+import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { BUILDER_TEMPLATES } from '@/lib/builder/templates';
 import { logger } from '@/shared/logger';
@@ -9,13 +9,27 @@ import { toClientError } from '@/shared/errors/AppError';
 
 /**
  * --- HELPER: STANDARD ACTION WRAPPER ---
+ * Previously imported requireAuth but never called it — copy-paste drift
+ * from its siblings builderAI.ts/builderDeploy.ts, which both correctly
+ * check auth in this exact wrapper shape. This was the single missing call
+ * responsible for all of this file's DB-touching functions landing in the
+ * triage's Critical tier instead of Weak like those siblings. Matches
+ * builderDeploy.ts's wrapper exactly: verifies a real session
+ * (authentication) before running the action. This does NOT verify the
+ * caller is a member of the workspaceId read from the cookie
+ * (authorization) — that's the same Weak-tier gap builderAI.ts/builderDeploy.ts
+ * already have today, tracked separately per function in security-remediation.md,
+ * not silently closed by this fix.
  */
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
+    const supabase = await createServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Unauthorized' };
+
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { success: false, error: 'No active workspace' };
-    
-    const supabase = await createServerClient();
+
     const data = await action(supabase, workspaceId);
     return { success: true, ...data as any };
   } catch (err: any) {
@@ -92,14 +106,18 @@ export async function createWebsite(name: string, subdomain: string, templateId?
 
 export async function duplicateWebsite(websiteId: string) {
   return executeAction(async (supabase, workspaceId) => {
-    // 1. Fetch original website with nested pages
-    // We fetch websites -> website_pages -> pages
+    // 1. Fetch original website with nested pages — scoped to the verified
+    // workspace so an authenticated caller can't duplicate another
+    // workspace's site by supplying its raw id (the auth fix alone doesn't
+    // cover this; it was flagged separately in the triage and needs its own
+    // ownership check on the read).
     const { data: original, error: fetchError } = await supabase
       .from('websites')
       .select('*, website_pages(*, pages(*))')
       .eq('id', websiteId)
+      .eq('workspace_id', workspaceId)
       .single();
-    
+
     if (fetchError) throw fetchError;
 
     // 2. Create new website
@@ -230,6 +248,21 @@ export async function updatePageContent(pageId: string, content: string) {
 
 export async function createPage(name: string, websiteId: string) {
   return executeAction(async (supabase, workspaceId) => {
+    // website_pages has no workspace_id column of its own (scoped only via
+    // website_id -> websites.workspace_id), so the auth fix alone doesn't
+    // stop a caller from attaching a new page to another workspace's site
+    // by supplying its raw id — verify ownership first, as flagged
+    // separately in the triage.
+    const { data: website, error: websiteError } = await supabase
+      .from('websites')
+      .select('id')
+      .eq('id', websiteId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
+    if (websiteError) throw websiteError;
+    if (!website) throw new Error('Website not found');
+
     // 1. Create the routing record
     const { data: wsPage, error: wsPageError } = await supabase
       .from('website_pages')
@@ -283,10 +316,46 @@ export async function updatePageSettings(pageId: string, settings: any) {
  * --- LEAD & FORM PROCESSING ---
  */
 
-export async function handlePageFormSubmission(pageId: string, workspaceId: string, payload: any) {
+// Public submission surfaces (widget embeds, the /api/builder/submit route) only
+// know a pageId — the workspaceId they send alongside it is unauthenticated
+// client input and must never be trusted. This resolves the real workspace_id
+// from the pages row itself, the same "derive from a trusted row" pattern used
+// by studentEnrollments.ts, so a caller can't inject data into a workspace it
+// doesn't actually own by guessing/forging a workspaceId.
+export async function resolvePageWorkspaceId(pageId: string): Promise<string | null> {
+  if (!pageId) return null;
+  // Admin client: this is called from a fully public, unauthenticated context
+  // (anonymous website visitors have no session/RLS visibility), and the only
+  // thing this reads is the trusted workspace_id owner of a page id — nothing
+  // caller-controlled influences the result.
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('pages')
+    .select('workspace_id')
+    .eq('id', pageId)
+    .maybeSingle();
+  return data?.workspace_id ?? null;
+}
+
+export async function handlePageFormSubmission(pageId: string, _workspaceId: string, payload: any) {
+  let workspaceId: string | null = null;
   try {
-    const supabase = await createServerClient();
-    
+    // The workspaceId param is caller-supplied and untrusted (this action is
+    // reachable from a fully public, unauthenticated route). Always derive the
+    // real workspace from the pageId's own row instead.
+    workspaceId = await resolvePageWorkspaceId(pageId);
+    if (!workspaceId) {
+      return { success: false, error: 'Invalid page' };
+    }
+
+    // Admin client for the same reason as resolvePageWorkspaceId above: an
+    // anonymous visitor has no RLS-visible session, and every write below is
+    // now scoped to the workspaceId we just verified server-side (never the
+    // raw client input), so bypassing RLS here doesn't reopen the IDOR — it's
+    // the same pattern the "Public form submissions" RLS policy backstops
+    // for anyone bypassing this action and hitting PostgREST directly.
+    const supabase = createAdminClient();
+
     // 1. Identify primary contact info
     const email = payload.email || payload.Email;
     const firstName = payload.first_name || payload.FirstName || payload.Name?.split(' ')[0] || '';
@@ -347,7 +416,7 @@ export async function handlePageFormSubmission(pageId: string, workspaceId: stri
       await publishEvent(workspaceId, 'funnel_subscribed', contactId, { pageId, payload });
     }
 
-    return { success: true };
+    return { success: true, workspaceId };
   } catch (error: any) {
     logger.error({ err: error, workspaceId, pageId }, 'builder.form_submission.failed');
     const clientError = toClientError(error);

@@ -2,7 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { getUser } from '@/lib/auth';
+import { getUser, requireWorkspaceAccess } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { logger } from '@/shared/logger';
 
@@ -71,26 +71,41 @@ export async function createWorkspace(name: string) {
 }
 
 export async function getWorkspaceMembers() {
- const user = await getUser();
- if (!user) return [];
+ // Previously read the workspaceId straight off the cookie with only a
+ // logged-in check (no membership verification) — swapped for the shared
+ // requireWorkspaceAccess() helper, same fix already applied to this exact
+ // function's dangerous settings.ts duplicate in Priority 0 item 4.
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return [];
+ }
 
  const supabase = await createServerClient();
- const cookieStore = await cookies();
- const workspaceId = cookieStore.get('active_workspace_id')?.value;
-
- if (!workspaceId) return [];
-
- const { data, error } = await supabase
+ const { data: members, error } = await supabase
   .from('workspace_members')
-  .select('user_id, role, users(id, first_name, last_name)')
+  .select('user_id, role')
   .eq('workspace_id', workspaceId);
 
- if (error || !data) return [];
+ if (error || !members) return [];
 
- return data.map((m: any) => ({
-  id: m.users.id,
-  name: `${m.users.first_name} ${m.users.last_name}`.trim(),
- }));
+ // workspace_members.user_id has no schema-registered FK to public.users
+ // (only to auth.users), so a PostgREST embed fails outright — same fix
+ // applied to settings.ts/tasks.ts's copies in Priority 0.
+ const userIds = members.map((m) => m.user_id);
+ const { data: users } = userIds.length
+  ? await supabase.from('users').select('id, first_name, last_name').in('id', userIds)
+  : { data: [] as any[] };
+ const usersById = new Map((users || []).map((u) => [u.id, u]));
+
+ return members
+  .map((m) => usersById.get(m.user_id))
+  .filter((u): u is { id: string; first_name: string; last_name: string } => !!u)
+  .map((u) => ({
+   id: u.id,
+   name: `${u.first_name} ${u.last_name}`.trim(),
+  }));
 }
 
 /**

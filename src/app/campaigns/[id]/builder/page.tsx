@@ -2,6 +2,7 @@ import React from 'react';
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import MetaData from '@/hooks/useMetaData';
 import { EmailBuilderClient } from './EmailBuilderClient';
 
 interface PageProps {
@@ -44,10 +45,12 @@ export default async function EmailBuilderPage({ params }: PageProps) {
   };
 
   return (
-    <EmailBuilderClient
-      campaignId={id}
-      initialCampaign={campaign}
-      brandKit={brandKit}
-    />
+    <MetaData pageTitle={`${campaign.name || 'Untitled Campaign'} | Campaign Builder`}>
+      <EmailBuilderClient
+        campaignId={id}
+        initialCampaign={campaign}
+        brandKit={brandKit}
+      />
+    </MetaData>
   );
 }

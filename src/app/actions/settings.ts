@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId as getWsId, getCurrentWorkspace } from '@/lib/auth';
+import { getCurrentWorkspaceId as getWsId, getCurrentWorkspace, requireWorkspaceAccess } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
 import { createHash, randomBytes } from 'crypto';
@@ -151,34 +151,36 @@ export async function verifyCustomDomainCname(customDomain: string) {
 // TEAM
 export async function getWorkspaceMembers() {
  try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  // Previously used createAdminClient() (bypasses RLS entirely) with only a
+  // cookie-read workspaceId and no auth/membership check at all — a full PII
+  // leak (member emails/names/avatars) for any caller. Now uses the shared
+  // requireWorkspaceAccess() helper (authenticates + verifies a real
+  // workspace_members row) and a session-scoped client so RLS applies too.
+  const { workspaceId } = await requireWorkspaceAccess();
 
-  const supabase = createAdminClient();
-  // We use a broader select to ensure we get members even if user profile join has issues
-  const { data, error } = await supabase
+  const supabase = await createServerClient();
+  const { data: members, error } = await supabase
    .from('workspace_members')
-   .select(`
-     id,
-     workspace_id,
-     user_id,
-     role,
-     permissions,
-     user:users (
-       id,
-       email,
-       first_name,
-       last_name,
-       avatar_url
-     )
-   `)
+   .select('id, workspace_id, user_id, role, permissions')
    .eq('workspace_id', workspaceId);
 
   if (error) {
     logger.error({ err: error, workspaceId }, 'settings.workspace_members.fetch.failed');
     throw error;
   }
-  
+
+  // workspace_members.user_id has no schema-registered FK to public.users
+  // (it references auth.users), so a PostgREST embed (`user:users(...)`)
+  // fails outright — confirmed live, this was broken before this fix too.
+  // Fetch profiles separately instead.
+  const userIds = (members || []).map((m) => m.user_id);
+  const { data: users } = userIds.length
+   ? await supabase.from('users').select('id, email, first_name, last_name, avatar_url').in('id', userIds)
+   : { data: [] as any[] };
+  const usersById = new Map((users || []).map((u) => [u.id, u]));
+
+  const data = (members || []).map((m) => ({ ...m, user: usersById.get(m.user_id) || null }));
+
   return { data };
  } catch (error: any) {
   logger.error({ err: error }, 'get.workspace.members.failed');

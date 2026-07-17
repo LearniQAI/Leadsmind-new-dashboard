@@ -2,7 +2,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { requireWorkspaceAccess } from '@/lib/auth';
 
 import { Pipeline, PipelineStage, Opportunity } from '@/types/crm';
 import { logger } from '@/shared/logger';
@@ -26,11 +26,12 @@ async function assertStageInWorkspace(stageId: string, workspaceId: string): Pro
 
 export async function createPipeline({ name, stages }: { name: string, stages: string[] }) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   // 1. Create Pipeline
   const { data: pipeline, error: pError } = await supabase
@@ -67,11 +68,12 @@ export async function createPipeline({ name, stages }: { name: string, stages: s
 
 export async function createOpportunity(values: any) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   const { data, error } = await supabase
     .from('opportunities')
@@ -107,11 +109,12 @@ export async function createOpportunity(values: any) {
 
 export async function getPipelines() {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   const { data, error } = await supabase
     .from('pipelines')
@@ -128,11 +131,12 @@ export async function getPipelines() {
 
 export async function getPipelineStages(pipelineId: string) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   const { data, error } = await supabase
     .from('pipeline_stages')
@@ -150,11 +154,12 @@ export async function getPipelineStages(pipelineId: string) {
 
 export async function getPipelineOpportunities(pipelineId: string) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   const { data: stages } = await supabase
     .from('pipeline_stages')
@@ -180,11 +185,12 @@ export async function getPipelineOpportunities(pipelineId: string) {
 
 export async function updateDealStage(dealId: string, stageId: string, position: number) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   if (!(await assertStageInWorkspace(stageId, workspaceId))) {
     logger.error({ workspaceId, dealId, stageId }, 'pipelines.deal_stage.cross_tenant_stage_rejected');
@@ -258,11 +264,12 @@ export async function updateDealStage(dealId: string, stageId: string, position:
 
 export async function updateOpportunity(id: string, values: any) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   if (values.stage_id && !(await assertStageInWorkspace(values.stage_id, workspaceId))) {
     logger.error({ workspaceId, opportunityId: id, stageId: values.stage_id }, 'pipelines.opportunity_update.cross_tenant_stage_rejected');
@@ -358,11 +365,12 @@ export async function updateOpportunity(id: string, values: any) {
 
 export async function deleteOpportunity(id: string) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   const { error } = await supabase.from('opportunities').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) {
@@ -375,11 +383,12 @@ export async function deleteOpportunity(id: string) {
 
 export async function updateStageOrder(pipelineId: string, stages: { id: string, position: number }[]) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   const { error } = await supabase.rpc('update_stage_positions', {
     p_workspace_id: workspaceId,
@@ -398,11 +407,12 @@ export async function updateStageOrder(pipelineId: string, stages: { id: string,
 
 export async function updateStage(id: string, name: string) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   const { error } = await supabase
     .from('pipeline_stages')
@@ -435,11 +445,12 @@ export async function deleteStage(
   options?: { fallbackStageId?: string; force?: boolean }
 ): Promise<DeleteStageResult> {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   const fallbackStageId = options?.fallbackStageId;
   const force = options?.force ?? false;
@@ -493,11 +504,12 @@ export async function deleteStage(
 
 export async function updatePipelineStages(pipelineId: string, stages: { id: string, name: string }[]) {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace' };
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   try {
     for (let i = 0; i < stages.length; i++) {

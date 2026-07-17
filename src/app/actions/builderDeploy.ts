@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { renderCraftToHtml } from '@/lib/builder/renderer';
 import { logger } from '@/shared/logger';
@@ -10,11 +10,7 @@ import { NotFoundError, toClientError } from '@/shared/errors/AppError';
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { success: false, error: 'No active workspace' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const data = await action(supabase, workspaceId);
     return { success: true, ...data as any };
@@ -186,6 +182,18 @@ export async function createSubdirectoryPage(websiteId: string, name: string, pa
   return executeAction(async (supabase, workspaceId) => {
     let cleanPath = '/' + path.trim().toLowerCase().replace(/^\/+/, '');
     if (cleanPath === '/') cleanPath = '/home'; // Prevent duplicate home index conflicts
+
+    // website_pages has no workspace_id column of its own (same gap as
+    // builder.ts's createPage, fixed in Priority 3) — verify ownership of
+    // the raw websiteId before attaching a new page to it.
+    const { data: website, error: websiteError } = await supabase
+      .from('websites')
+      .select('id')
+      .eq('id', websiteId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (websiteError) throw websiteError;
+    if (!website) throw new NotFoundError('Website');
 
     // 1. Create the routing entry
     const { data: wsPage, error: wsPageError } = await supabase

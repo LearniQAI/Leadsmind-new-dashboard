@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import {
-  Plus, Mail, Calendar, Pencil, Trash2, Send, Clock, MoreVertical
+  Plus, Mail, Calendar, Pencil, Trash2, Send, MoreVertical
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -139,18 +139,6 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
     setSaving(false);
   };
 
-  const handlePublish = async (campaign: any) => {
-    try {
-      const { updateCampaign } = await import('@/app/actions/marketing');
-      const isSent = campaign.status === 'sent';
-      const newStatus = isSent ? 'draft' : 'sent';
-      const res = await updateCampaign(campaign.id, { status: newStatus, sent_at: isSent ? null : new Date().toISOString() });
-      if (res.error) { toast.error(res.error); return; }
-      setCampaigns(prev => prev.map(c => c.id === campaign.id ? { ...c, status: newStatus } : c));
-      toast.success(isSent ? 'Campaign moved to draft' : 'Campaign marked as sent!');
-    } catch { toast.error('Status update failed'); }
-  };
-
   const openDelete = (campaign: any) => { setDeleteCampaign(campaign); setDeleteOpen(true); };
 
   const handleDelete = async () => {
@@ -173,6 +161,15 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
     if (status === 'sent') return 'success';
     if (status === 'scheduled') return 'info';
     return 'warning';
+  };
+
+  // "—" means genuinely nothing sent yet, not "we don't track this" — real
+  // opens/clicks/bounces are tracked live via the email deliverability
+  // webhook (increment_campaign_metric RPC), so a 0% here after a real send
+  // is a real zero, not a placeholder.
+  const formatRate = (count: number | null | undefined, totalSent: number | null | undefined): string => {
+    if (!totalSent || totalSent <= 0) return '—';
+    return `${Math.round(((count || 0) / totalSent) * 100)}%`;
   };
 
   return (
@@ -223,9 +220,6 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
                     <DropdownMenuItem onClick={() => openEdit(campaign)} className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2 text-xs">
                       <Pencil size={14} /> Edit settings
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handlePublish(campaign)} className="flex items-center gap-2 cursor-pointer text-green hover:bg-green/10 rounded-lg mx-1 px-3 py-2 text-xs">
-                      {campaign.status === 'sent' ? <><Clock size={14} /> Move to draft</> : <><Send size={14} /> Mark as sent</>}
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => openDelete(campaign)} className="flex items-center gap-2 cursor-pointer text-red hover:bg-red/10 rounded-lg mx-1 px-3 py-2 text-xs">
                       <Trash2 size={14} /> Delete
                     </DropdownMenuItem>
@@ -240,7 +234,11 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
             </div>
 
             <div className="grid grid-cols-3 gap-3 mb-6">
-              {[['Opens', campaign.open_rate ? `${campaign.open_rate}%` : '—'], ['Clicks', campaign.click_rate ? `${campaign.click_rate}%` : '—'], ['Bounced', '0%']].map(([label, val]) => (
+              {[
+                ['Opens', formatRate(campaign.opens, campaign.total_sent)],
+                ['Clicks', formatRate(campaign.clicks, campaign.total_sent)],
+                ['Bounced', formatRate(campaign.bounces, campaign.total_sent)],
+              ].map(([label, val]) => (
                 <div key={label} className="p-3 bg-dash-surface rounded-xl border border-dash-border text-center">
                   <span className="block text-[10px] font-bold !text-dash-textMuted mb-1">{label}</span>
                   <span className="text-base font-bold !text-dash-text">{val}</span>

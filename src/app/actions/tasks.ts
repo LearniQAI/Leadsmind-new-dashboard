@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId, getUser, getCurrentProfile, getUserRole } from '@/lib/auth';
+import { getCurrentWorkspaceId, getUser, getCurrentProfile, getUserRole, requireWorkspaceAccess } from '@/lib/auth';
 import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 export { getUserRole };
 import { revalidatePath } from 'next/cache';
@@ -11,8 +11,12 @@ import { logger } from '@/shared/logger';
 export async function getTasks() {
   let workspaceId: string | null = null;
   try {
-    workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    // Was getCurrentWorkspaceId()-only (no getUser()/membership check at
+    // all) — Critical-tier, confirmed still open in security-remediation.md
+    // (discovered during Priority 4, never fixed). Any authenticated OR
+    // unauthenticated caller could read every task, assignee, and contact in
+    // whatever workspace the cookie happened to name.
+    ({ workspaceId } = await requireWorkspaceAccess());
 
     const supabase = await createServerClient();
     const { data, error } = await supabase
@@ -47,8 +51,8 @@ export async function getTasks() {
 
 export async function getTaskDetails(taskId: string) {
   try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    // Same Critical-tier gap as getTasks — confirmed still open, fixed here.
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const supabase = await createServerClient();
     const { data, error } = await supabase
@@ -90,16 +94,12 @@ export async function createTask(taskData: {
   contact_id?: string;
 }, assignees: string[] = []) {
   try {
-    const user = await getUser();
-    if (!user) return { error: 'Unauthorized' };
-
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    const { userId, workspaceId } = await requireWorkspaceAccess();
 
     const supabase = await createServerClient();
     const { data: task, error: taskError } = await supabase
       .from('tasks')
-      .insert({ workspace_id: workspaceId, created_by: user.id, ...taskData })
+      .insert({ workspace_id: workspaceId, created_by: userId, ...taskData })
       .select()
       .single();
 
@@ -107,9 +107,9 @@ export async function createTask(taskData: {
 
     // 1. Handle Initial Assignments
     if (assignees.length > 0) {
-      const assignmentPayload = assignees.map(userId => ({
+      const assignmentPayload = assignees.map(assigneeId => ({
         task_id: task.id,
-        user_id: userId
+        user_id: assigneeId
       }));
 
       const { error: assignError } = await supabase.from('task_assignees').insert(assignmentPayload);
@@ -118,7 +118,7 @@ export async function createTask(taskData: {
       // 2. Log Assignment Activity
       await supabase.from('task_activities').insert({
         task_id: task.id,
-        user_id: user.id,
+        user_id: userId,
         type: 'assignment',
         description: `Allocated ${assignees.length} personnel to new objective`,
         metadata: { assignee_count: assignees.length }
@@ -135,19 +135,25 @@ export async function createTask(taskData: {
 
 export async function updateTask(taskId: string, updates: any) {
   try {
+    // requireWorkspaceAccess() first: previously getUserRole()'s guard was
+    // `role === 'viewer'`, and getUserRole() returns null (not 'viewer') for
+    // a caller with no membership at all — null !== 'viewer' meant a
+    // non-member silently passed the guard (same non-rejecting bug class
+    // already flagged for deleteTaskAttachment in the triage). Verifying
+    // membership first closes that regardless of the role check below.
+    const { workspaceId } = await requireWorkspaceAccess();
+
     const profile = await getCurrentProfile();
     if (!profile) return { error: 'Unauthorized' };
 
     const role = await getUserRole();
     if (role === 'viewer') return { error: 'Read-only access' };
 
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
     const supabase = await createServerClient();
-    
-    // Get old data for comparison
-    const { data: oldTask } = await supabase.from('tasks').select('*').eq('id', taskId).single();
+
+    // Get old data for comparison — scoped to the verified workspace
+    // (previously unscoped, flagged in the triage).
+    const { data: oldTask } = await supabase.from('tasks').select('*').eq('id', taskId).eq('workspace_id', workspaceId).single();
 
     const { data, error } = await supabase
       .from('tasks')
@@ -204,11 +210,18 @@ export async function updateTaskStatus(taskId: string, status: string, index?: n
 
 export async function addTaskComment(taskId: string, content: string, mentions: string[] = []) {
   try {
+    const { workspaceId } = await requireWorkspaceAccess();
+
     const profile = await getCurrentProfile();
     if (!profile) return { error: 'Unauthorized' };
 
     const supabase = await createServerClient();
-    
+
+    // Verify taskId actually belongs to the caller's workspace before doing
+    // anything — previously unscoped (flagged in the triage).
+    const { data: task } = await supabase.from('tasks').select('title').eq('id', taskId).eq('workspace_id', workspaceId).maybeSingle();
+    if (!task) return { error: 'Task not found' };
+
     // 1. Record Comment Activity
     const { data: comment, error: commentError } = await supabase
       .from('task_activities')
@@ -224,12 +237,27 @@ export async function addTaskComment(taskId: string, content: string, mentions: 
 
     if (commentError) throw commentError;
 
-    // 2. Fetch Task Title for Notification
-    const { data: task } = await supabase.from('tasks').select('title').eq('id', taskId).single();
-
-    // 3. Handle @Mentions (In-App & Email)
+    // 2. Handle @Mentions (In-App & Email) — verify every mentioned user is
+    // actually a member of this same workspace before notifying/emailing
+    // them (previously trusted arbitrary mentions user IDs with no
+    // same-workspace check, flagged in the triage as a cross-workspace
+    // notification risk: an attacker could otherwise leak a task's content
+    // to an arbitrary user id via the mention email, or notify a stranger
+    // outside the workspace entirely).
     if (mentions.length > 0) {
-      const mentionNotifications = mentions.map(userId => ({
+      const { data: validMembers } = await supabase
+        .from('workspace_members')
+        .select('user_id')
+        .eq('workspace_id', workspaceId)
+        .in('user_id', mentions);
+      const validMentionIds = new Set((validMembers || []).map((m) => m.user_id));
+      const safeMentions = mentions.filter((id) => validMentionIds.has(id));
+
+      if (safeMentions.length < mentions.length) {
+        logger.warn({ taskId, workspaceId, rejected: mentions.filter((id) => !validMentionIds.has(id)) }, 'tasks.comment.mentions.cross_workspace_rejected');
+      }
+
+      const mentionNotifications = safeMentions.map(userId => ({
         user_id: userId,
         title: 'Tactical Mention',
         description: `${profile.firstName} mentioned you in: ${task?.title}`,
@@ -237,10 +265,12 @@ export async function addTaskComment(taskId: string, content: string, mentions: 
         link: `/tasks?taskId=${taskId}`
       }));
 
-      await supabase.from('inbox_notifications').insert(mentionNotifications);
+      if (mentionNotifications.length > 0) {
+        await supabase.from('inbox_notifications').insert(mentionNotifications);
+      }
 
-      // Trigger Emails for Mentions
-      const { data: profiles } = await supabase.from('users').select('email').in('id', mentions);
+      // Trigger Emails for Mentions (only the workspace-verified subset)
+      const { data: profiles } = safeMentions.length ? await supabase.from('users').select('email').in('id', safeMentions) : { data: [] as any[] };
       if (profiles) {
         for (const targetProfile of profiles) {
           if (targetProfile.email) {
@@ -273,6 +303,10 @@ export async function addTaskComment(taskId: string, content: string, mentions: 
 
 export async function toggleTaskAssignee(taskId: string, userId: string) {
   try {
+    // requireWorkspaceAccess() first — closes the same non-rejecting-for-
+    // non-members bug the `role === 'viewer'` guard alone had (see updateTask).
+    const { workspaceId } = await requireWorkspaceAccess();
+
     const profile = await getCurrentProfile();
     if (!profile) return { error: 'Unauthorized' };
 
@@ -285,7 +319,17 @@ export async function toggleTaskAssignee(taskId: string, userId: string) {
     }
 
     const supabase = await createServerClient();
-    
+
+    // Verify taskId belongs to this workspace, and the target userId being
+    // assigned is actually a member of it too — previously neither was
+    // checked, so a caller could assign an arbitrary user (in or out of the
+    // workspace) to an arbitrary task (in or out of the workspace).
+    const { data: taskRow } = await supabase.from('tasks').select('id').eq('id', taskId).eq('workspace_id', workspaceId).maybeSingle();
+    if (!taskRow) return { error: 'Task not found' };
+
+    const { data: targetMember } = await supabase.from('workspace_members').select('id').eq('workspace_id', workspaceId).eq('user_id', userId).maybeSingle();
+    if (!targetMember) return { error: 'Target user is not a member of this workspace' };
+
     // Check if currently assigned
     const { data: existing } = await supabase
       .from('task_assignees')
@@ -364,57 +408,71 @@ export async function deleteTask(taskId: string) {
 
 export async function getAssignableMembers() {
   try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    // Previously used createAdminClient() (bypasses RLS) scoped only by a
+    // cookie-read workspaceId with no auth/membership check — a PII leak
+    // (member emails) for any caller. Now uses the shared
+    // requireWorkspaceAccess() helper + a session-scoped, RLS-enforced client.
+    const { workspaceId } = await requireWorkspaceAccess();
 
-    const adminClient = await createAdminClient();
-    const { data: memberships, error } = await adminClient
+    const supabase = await createServerClient();
+    const { data: memberships, error } = await supabase
       .from('workspace_members')
-      .select(`
-        user_id,
-        role,
-        user:users(id, email, first_name, last_name, avatar_url)
-      `)
+      .select('user_id, role')
       .eq('workspace_id', workspaceId)
       .order('role', { ascending: false });
 
     if (error) throw error;
-    return { data: memberships };
+
+    // workspace_members.user_id has no schema-registered FK to public.users
+    // (it references auth.users), so a PostgREST embed (`user:users(...)`)
+    // fails outright — fetch profiles separately instead (same fix applied
+    // to settings.ts's getWorkspaceMembers).
+    const userIds = (memberships || []).map((m) => m.user_id);
+    const { data: users } = userIds.length
+      ? await supabase.from('users').select('id, email, first_name, last_name, avatar_url').in('id', userIds)
+      : { data: [] as any[] };
+    const usersById = new Map((users || []).map((u) => [u.id, u]));
+
+    const data = (memberships || []).map((m) => ({ ...m, user: usersById.get(m.user_id) || null }));
+    return { data };
   } catch (error: any) {
     logger.error({ err: error }, 'get.assignable.members.failed');
     return { error: 'Operation failed. Please try again.' };
   }
 }
 
-export async function getWorkspaceTags() {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    const supabase = await createServerClient();
-    const { data, error } = await supabase.from('task_tags').select('*').eq('workspace_id', workspaceId);
-    if (error) throw error;
-    return { data };
-  } catch (error: any) {
-    logger.error({ err: error }, 'get.workspace.tags.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
+// getWorkspaceTags previously lived here as a dead, unauthenticated duplicate
+// of contacts.ts's getWorkspaceTags (the live version, delegating to
+// ContactService, wired to /contacts and /contacts/tags) — removed as part
+// of the Priority 2 duplicate-implementation cleanup. Confirmed zero
+// remaining callers of this file's copy before deleting.
 
 export async function uploadTaskAttachment(taskId: string, formData: FormData) {
   try {
+    // requireWorkspaceAccess() first — closes the same non-rejecting-for-
+    // non-members bug the `role === 'viewer'` guard alone had (see updateTask),
+    // and replaces the unverified getCurrentWorkspaceId() cookie read.
+    const { workspaceId } = await requireWorkspaceAccess();
+
     const role = await getUserRole();
     if (role === 'viewer') return { error: 'Read-only access' };
 
     const profile = await getCurrentProfile();
     if (!profile) return { error: 'Unauthorized' };
 
-    const workspaceId = await getCurrentWorkspaceId();
     const file = formData.get('file') as File;
     if (!file || file.size > 10 * 1024 * 1024) return { error: 'Invalid file or exceeds 10MB' };
 
     const supabase = await createServerClient();
+
+    // Verify taskId actually belongs to this workspace before attaching a
+    // file to it — previously unchecked.
+    const { data: taskRow } = await supabase.from('tasks').select('id').eq('id', taskId).eq('workspace_id', workspaceId).maybeSingle();
+    if (!taskRow) return { error: 'Task not found' };
+
     const fileExt = file.name.split('.').pop();
     const filePath = `${workspaceId}/${taskId}/${Math.random().toString(36).slice(2)}.${fileExt}`;
-    
+
     const { error: uploadError } = await supabase.storage.from('task-attachments').upload(filePath, file);
     if (uploadError) throw uploadError;
 
@@ -527,11 +585,20 @@ export async function sendDailyBriefing() {
 
 export async function deleteTaskAttachment(attachmentId: string) {
   try {
+    // Was `getUserRole()` called before any auth/workspace check at all,
+    // with the guard `if (role === 'viewer') return error`. getUserRole()
+    // returns null (not 'viewer') for a caller with no session/membership —
+    // null !== 'viewer' let unauthenticated/non-member callers straight
+    // through. Confirmed still open in security-remediation.md (same class
+    // already fixed for updateTask/toggleTaskAssignee/uploadTaskAttachment,
+    // but this function was never named in that pass). requireWorkspaceAccess()
+    // first closes the non-rejecting bug regardless of the role check below.
+    const { workspaceId } = await requireWorkspaceAccess();
+
     const role = await getUserRole();
     if (role === 'viewer') return { error: 'Read-only access' };
 
     const supabase = await createServerClient();
-    const workspaceId = await getCurrentWorkspaceId();
     const { data: attachment } = await supabase.from('task_attachments').select('*').eq("id", attachmentId).eq("workspace_id", workspaceId).single();
     if (!attachment) return { error: 'Not found' };
 
@@ -548,6 +615,22 @@ export async function deleteTaskAttachment(attachmentId: string) {
 
 export async function getAttachmentUrl(filePath: string) {
   try {
+    // No auth/workspace check at all previously — filePath was passed
+    // straight into createSignedUrl(). Path shape is
+    // `${workspaceId}/${taskId}/${random}.${ext}` (uploadTaskAttachment) —
+    // low-entropy and guessable, so anyone who could reach this action at
+    // all (no auth required) could mint a signed URL for another
+    // workspace's file. The bucket itself was also public until this same
+    // fix pass (flipped private, storage RLS added) — so a guessed path
+    // previously worked via the raw public object URL regardless of this
+    // function. Now requires real membership and verifies the path's own
+    // workspace segment matches the caller's verified workspace.
+    const { workspaceId } = await requireWorkspaceAccess();
+    const pathWorkspaceId = filePath.split('/')[0];
+    if (pathWorkspaceId !== workspaceId) {
+      return { error: 'Not found' };
+    }
+
     const supabase = await createServerClient();
     const { data, error } = await supabase.storage.from('task-attachments').createSignedUrl(filePath, 60);
     if (error) throw error;

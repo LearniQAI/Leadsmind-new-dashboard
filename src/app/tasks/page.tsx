@@ -1,5 +1,6 @@
 import React from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
+import MetaData from '@/hooks/useMetaData';
 import { getTaskDashboardData } from '@/app/actions/task-workspace';
 import { TasksBoard } from '@/components/kanban/TasksBoard';
 import { EscalationPanel } from '@/components/tasks/EscalationPanel';
@@ -11,15 +12,18 @@ export default async function TasksPage() {
 
   if (!success || !data) {
     return (
-      <Wrapper>
-        <div className="p-12 text-center !text-dash-textMuted">Error loading Revenue Execution system.</div>
-      </Wrapper>
+      <MetaData pageTitle="Tasks">
+        <Wrapper>
+          <div className="p-12 text-center !text-dash-textMuted">Error loading Revenue Execution system.</div>
+        </Wrapper>
+      </MetaData>
     );
   }
 
   const { escalations } = data;
 
   return (
+    <MetaData pageTitle="Tasks">
     <Wrapper>
       <div className="p-6 max-w-[1600px] mx-auto font-body min-h-[calc(100vh-80px)] space-y-6">
 
@@ -50,5 +54,6 @@ export default async function TasksPage() {
         
       </div>
     </Wrapper>
+    </MetaData>
   );
 }

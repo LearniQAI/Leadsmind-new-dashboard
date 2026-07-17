@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
@@ -9,11 +9,17 @@ import { toClientError } from '@/shared/errors/AppError';
 export async function getExpensesLive() {
  try {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { data: [] };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { data: [] };
+  // Previously auth-only (getUser() + unverified getCurrentWorkspaceId()
+  // cookie) — same Weak-tier gap as this file's siblings, not actually
+  // closed by Priority 2 (which only removed operations.ts's dangerous
+  // admin-client duplicate of this function, never touched this file's own
+  // auth check).
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { data: [] };
+  }
 
   const { data, error } = await supabase
    .from('accounting_transactions')
@@ -41,11 +47,7 @@ export async function createExpense(expense: {
  let workspaceId: string | null = null;
  try {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { error: 'Unauthorized' };
-
-  workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace' };
+  ({ workspaceId } = await requireWorkspaceAccess());
 
   const { data, error } = await supabase
    .from('accounting_transactions')
@@ -84,11 +86,7 @@ export async function updateExpense(id: string, updates: Partial<{
 }>) {
  try {
   const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
   const { data, error } = await supabase
    .from('accounting_transactions')
@@ -110,11 +108,7 @@ export async function updateExpense(id: string, updates: Partial<{
 export async function deleteExpense(id: string) {
  try {
   const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const { error } = await supabase.from('accounting_transactions').delete().eq("id", id).eq("workspace_id", workspaceId);
   if (error) throw error;

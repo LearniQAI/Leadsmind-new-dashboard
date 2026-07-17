@@ -1,18 +1,17 @@
 'use server';
 
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
 
+// Both functions below do no DB read/write today (pure templating) — this
+// fix is a lightweight consistency/future-proofing measure, not a response
+// to a currently-exploitable gap, confirmed still true before making this change.
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { success: false, error: 'No active workspace' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const data = await action(supabase, workspaceId);
     return { success: true, ...data as any };

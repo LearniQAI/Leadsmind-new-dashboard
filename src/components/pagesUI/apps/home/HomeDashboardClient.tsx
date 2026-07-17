@@ -40,6 +40,7 @@ interface HomeDashboardClientProps {
     newLeads: number;
     automations: number;
     wonDeals: number;
+    activeDeals: number;
     socialQueue: number;
     revenue: number;
   };
@@ -334,7 +335,7 @@ const HomeDashboardClient = ({
           <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
           <div className="flex flex-col">
             <span className="text-[11px] font-medium !text-slate-400">Active Deals</span>
-            <span className="text-[14px] font-bold !text-[#0F172A]">{stats.wonDeals.toLocaleString()}</span>
+            <span className="text-[14px] font-bold !text-[#0F172A]">{stats.activeDeals.toLocaleString()}</span>
           </div>
           <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
           <div className="flex flex-col">

@@ -1,15 +1,24 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { handlePageFormSubmission } from '@/app/actions/builder';
+import { handlePageFormSubmission, resolvePageWorkspaceId } from '@/app/actions/builder';
 import { validateExternalUrl, UrlValidationError } from '@/lib/security/validateUrl';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { formData, pageId, workspaceId, formId } = body;
+    const { formData, pageId, formId } = body;
 
+    if (!pageId) {
+      return NextResponse.json({ success: false, error: 'Missing pageId' }, { status: 400 });
+    }
+
+    // The client-supplied workspaceId (if any) is untrusted — this route is
+    // fully public and unauthenticated. Always derive the real workspace from
+    // the pageId's own row so a caller can't inject data into a workspace it
+    // doesn't own by guessing a workspaceId.
+    const workspaceId = await resolvePageWorkspaceId(pageId);
     if (!workspaceId) {
-      return NextResponse.json({ success: false, error: 'Missing workspaceId' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Invalid page' }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -30,7 +39,7 @@ export async function POST(request: Request) {
 
     // 2. Process contact update and activities inside the CRM
     const crmResult = await handlePageFormSubmission(pageId || '', workspaceId, formData || {});
-    
+
     // 3. Dispatch to external webhooks (Sprint 28)
     try {
       const { data: settingsRecord } = await supabase

@@ -1,110 +1,17 @@
 'use server';
 
-import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
-import { revalidatePath } from 'next/cache';
+import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
-import { toClientError } from '@/shared/errors/AppError';
 
-async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { success: false, error: 'No active workspace' };
-
-    const supabase = await createServerClient();
-    const data = await action(supabase, workspaceId);
-    return { success: true, data };
-  } catch (err: any) {
-    logger.error({ err }, 'calendar.core_action.failed');
-    const clientError = toClientError(err);
-    return { success: false, error: clientError.error };
-  }
-}
-
-export async function getCalendars() {
-  return executeAction(async (supabase, workspaceId) => {
-    const { data, error } = await supabase
-      .from('booking_calendars')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data;
-  });
-}
-
-export async function createCalendar(payload: {
-  name: string;
-  slug: string;
-  calendarType: 'personal' | 'round_robin' | 'collective' | 'class_booking' | 'service_menu' | 'event';
-  meetingMode: 'google_meet' | 'zoom' | 'phone' | 'in_person' | 'custom_link' | 'client_choice';
-  description?: string;
-  timezone?: string;
-  slotDuration?: number;
-  bufferTime?: number;
-  capacity?: number;
-  price?: number;
-  waitlistEnabled?: boolean;
-}) {
-  return executeAction(async (supabase, workspaceId) => {
-    const { data, error } = await supabase
-      .from('booking_calendars')
-      .insert({
-        workspace_id: workspaceId,
-        name: payload.name,
-        slug: payload.slug,
-        calendar_type: payload.calendarType,
-        meeting_mode: payload.meetingMode,
-        description: payload.description,
-        timezone: payload.timezone || 'UTC',
-        slot_duration: payload.slotDuration || 30,
-        buffer_time: payload.bufferTime || 0,
-        capacity: payload.capacity || 1,
-        price: payload.price || 0,
-        waitlist_enabled: payload.waitlistEnabled || false
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    revalidatePath('/calendar');
-    return data;
-  });
-}
-
-export async function updateCalendar(id: string, payload: Partial<any>) {
-  return executeAction(async (supabase, workspaceId) => {
-    const { data, error } = await supabase
-      .from('booking_calendars')
-      .update({
-        ...payload,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .eq('workspace_id', workspaceId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    revalidatePath('/calendar');
-    return data;
-  });
-}
-
-export async function deleteCalendar(id: string) {
-    return executeAction(async (supabase, workspaceId) => {
-        const { error } = await supabase
-            .from('booking_calendars')
-            .delete()
-            .eq('id', id)
-            .eq('workspace_id', workspaceId);
-
-        if (error) throw error;
-        revalidatePath('/calendar');
-        return true;
-    });
-}
+// getCalendars/createCalendar/updateCalendar/deleteCalendar previously lived
+// here as one of three drifted copies of booking_calendars CRUD (alongside
+// calendar/calendars.ts and calendar.ts) — confirmed to have zero live
+// callers (Priority 2 consolidation) and removed. The live path is
+// calendar/calendars.ts (wired to CalendarPagesView.tsx), which now also
+// carries the requireWorkspaceAccess() + field-allow-list fixes calendar.ts
+// alone previously had (partially) and this file never had at all.
+// getPublicCalendarBySlug below is unrelated (a different, genuinely public
+// lookup) and stays.
 
 /**
  * Public lookup for booking pages

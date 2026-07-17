@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
 import { encrypt, decrypt } from '@/lib/encryption';
@@ -550,8 +550,12 @@ export async function updateConversationTags(conversationId: string, tags: strin
 export async function getQuickReplies() {
  let workspaceId: string | null = null;
  try {
-  workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  // Previously trusted the active_workspace_id cookie with no membership
+  // check — the quick_replies table's RLS policies were also fully open
+  // (FOR SELECT/ALL USING (true)), so this was doubly unprotected. The RLS
+  // fix (migration 20260721000003) is the primary fix; this app-layer check
+  // is defense in depth, consistent with every other fix in this pass.
+  ({ workspaceId } = await requireWorkspaceAccess());
 
   const supabase = await createServerClient();
   const { data, error } = await supabase
@@ -570,8 +574,7 @@ export async function getQuickReplies() {
 
 export async function createQuickReply(shortcut: string, message: string) {
  try {
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  const { workspaceId } = await requireWorkspaceAccess();
 
   const supabase = await createServerClient();
   const { data, error } = await supabase
@@ -596,7 +599,7 @@ export async function deleteQuickReply(id: string) {
  let workspaceId: string | null = null;
  try {
   const supabase = await createServerClient();
-  workspaceId = await getCurrentWorkspaceId();
+  ({ workspaceId } = await requireWorkspaceAccess());
   const { error } = await supabase
    .from('quick_replies')
    .delete()

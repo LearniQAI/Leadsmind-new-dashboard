@@ -165,7 +165,9 @@ export async function fetchDashboardMetrics(
 
  const pipelineFunnel = (stagesRaw ?? []).map(s => ({
   label: s.name,
-  value: Array.isArray(s.opportunities) ? s.opportunities.length : 0,
+  // PostgREST's `table(count)` embed returns a single-row aggregate
+  // ([{ count: N }]), not N rows — .length would always be 0 or 1.
+  value: Array.isArray(s.opportunities) ? Number((s.opportunities[0] as any)?.count ?? 0) : 0,
  }));
 
  // --- Top active contacts ---

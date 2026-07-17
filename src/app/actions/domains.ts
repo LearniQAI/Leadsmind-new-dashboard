@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import dns from 'dns';
 import { randomBytes } from 'crypto';
@@ -24,22 +24,28 @@ async function getDnsTxtRecords(hostname: string): Promise<string[][]> {
   });
 }
 
-async function getActiveWorkspaceId() {
-  const id = await getCurrentWorkspaceId();
-  if (id) return id;
-  return null;
-}
-
 // --- Sender Domains Actions (Original) ---
+//
+// Consolidation investigated per the triage's Duplicate Implementation
+// note #10: "Sender Domains" (this section, table sender_domains) and
+// "Custom Domain Connection" (addDomain/getDomains below, table
+// domain_configurations) are NOT two implementations of the same feature —
+// they're genuinely different features (email-sending domain/DKIM
+// verification vs. white-label custom domain routing) on different tables.
+// True consolidation (repoint one onto the other, delete the loser) isn't
+// viable. Applied the same requireWorkspaceAccess() mechanical fix to both
+// generations instead, so they share a security posture even though they
+// stay separate implementations.
 
 export async function getSenderDomains() {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    const workspaceId = await getActiveWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    let workspaceId: string;
+    try {
+      ({ workspaceId } = await requireWorkspaceAccess());
+    } catch {
+      return { error: 'Unauthorized' };
+    }
 
     const { data, error } = await supabase
       .from('sender_domains')
@@ -58,11 +64,12 @@ export async function getSenderDomains() {
 export async function registerSenderDomain(domainName: string) {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    const workspaceId = await getActiveWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    let workspaceId: string;
+    try {
+      ({ workspaceId } = await requireWorkspaceAccess());
+    } catch {
+      return { error: 'Unauthorized' };
+    }
 
     const cleanDomain = domainName.trim().toLowerCase();
     if (!cleanDomain || !cleanDomain.includes('.')) {
@@ -100,11 +107,12 @@ export async function registerSenderDomain(domainName: string) {
 export async function deleteSenderDomain(domainId: string) {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    const workspaceId = await getActiveWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    let workspaceId: string;
+    try {
+      ({ workspaceId } = await requireWorkspaceAccess());
+    } catch {
+      return { error: 'Unauthorized' };
+    }
 
     const { error } = await supabase
       .from('sender_domains')
@@ -125,11 +133,12 @@ export async function deleteSenderDomain(domainId: string) {
 export async function verifySenderDomain(domainId: string) {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    const workspaceId = await getActiveWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    let workspaceId: string;
+    try {
+      ({ workspaceId } = await requireWorkspaceAccess());
+    } catch {
+      return { error: 'Unauthorized' };
+    }
 
     const { data: domain, error: fetchError } = await supabase
       .from('sender_domains')
@@ -344,11 +353,12 @@ export async function getDomains(workspaceId: string) {
 export async function updateDomainRouting(domainId: string, routingConfig: any) {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-    const workspaceId = await getActiveWorkspaceId();
-    if (!workspaceId) return { success: false, error: 'No workspace active' };
+    let workspaceId: string;
+    try {
+      ({ workspaceId } = await requireWorkspaceAccess());
+    } catch {
+      return { success: false, error: 'Unauthorized' };
+    }
 
     const { data, error } = await supabase
       .from('domain_configurations')
@@ -371,11 +381,12 @@ export async function updateDomainRouting(domainId: string, routingConfig: any) 
 export async function deleteDomain(domainId: string) {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { success: false, error: 'Unauthorized' };
-
-    const workspaceId = await getActiveWorkspaceId();
-    if (!workspaceId) return { success: false, error: 'No workspace active' };
+    let workspaceId: string;
+    try {
+      ({ workspaceId } = await requireWorkspaceAccess());
+    } catch {
+      return { success: false, error: 'Unauthorized' };
+    }
 
     const { error } = await supabase
       .from('domain_configurations')

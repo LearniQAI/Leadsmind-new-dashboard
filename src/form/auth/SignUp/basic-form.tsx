@@ -81,7 +81,10 @@ const SignUpBasicForm = () => {
         });
 
         if (result.success && result.workspaceId) {
-          await setActiveWorkspace(result.workspaceId);
+          const switchResult = await setActiveWorkspace(result.workspaceId);
+          if (!switchResult.success) {
+            console.warn('[SignupForm] setActiveWorkspace failed (non-blocking):', switchResult.error);
+          }
         } else {
           console.warn('[SignupForm] setupWorkspace non-success:', result.error);
           // Don't block — dashboard handles missing workspace gracefully

@@ -86,6 +86,7 @@ const Home = async () => {
     supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).gte('created_at', sevenDaysAgo.toISOString()),
     supabase.from('automation_workflows').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('is_active', true),
     supabase.from('opportunities').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'won'),
+    supabase.from('opportunities').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'open'),
     supabase.from('social_posts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'scheduled'),
     supabase.from('invoices').select('total_amount').eq('workspace_id', workspaceId).eq('status', 'paid'),
     supabase.from('contact_activities').select('*, contacts(id, first_name, last_name)').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(8),
@@ -102,13 +103,14 @@ const Home = async () => {
   const newLeadsCount = results[1].count || 0;
   const activeWorkflows = results[2].count || 0;
   const wonOpportunities = results[3].count || 0;
-  const socialQueueCount = results[4].count || 0;
-  const revenueData = results[5].data || [];
-  const recentActivities = results[6].data || [];
-  const topOpportunities = results[7].data || [];
-  const overdueTasks = results[8].data || [];
-  const attributionMetrics = results[9] as any;
-  const metrics = results[10] as Awaited<ReturnType<typeof fetchDashboardMetrics>>;
+  const activeDealsCount = results[4].count || 0;
+  const socialQueueCount = results[5].count || 0;
+  const revenueData = results[6].data || [];
+  const recentActivities = results[7].data || [];
+  const topOpportunities = results[8].data || [];
+  const overdueTasks = results[9].data || [];
+  const attributionMetrics = results[10] as any;
+  const metrics = results[11] as Awaited<ReturnType<typeof fetchDashboardMetrics>>;
 
   const totalRevenue = revenueData?.reduce((acc: any, curr: any) => acc + (Number(curr.total_amount) || 0), 0) || 0;
 
@@ -123,6 +125,7 @@ const Home = async () => {
               newLeads: newLeadsCount,
               automations: activeWorkflows,
               wonDeals: wonOpportunities,
+              activeDeals: activeDealsCount,
               socialQueue: socialQueueCount,
               revenue: totalRevenue,
             }}

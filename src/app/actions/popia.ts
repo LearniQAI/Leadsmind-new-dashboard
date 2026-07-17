@@ -1,9 +1,10 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
+import { verifyUnsubscribeToken } from '@/lib/security/unsubscribeToken';
 
 export interface ErasureReceipt {
   receiptId: string;
@@ -20,11 +21,25 @@ export interface ErasureReceipt {
 
 export async function invokeRightToErasure(contactId: string): Promise<{ success: boolean; data?: ErasureReceipt; error?: string }> {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { success: false, error: 'Unauthorized' };
 
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'No active workspace found.' };
+  // Explicit app-layer check before this irreversible, compliance-critical
+  // action does anything, regardless of what RLS already permits — defense
+  // in depth. Previously used getUser() + the unverified getCurrentWorkspaceId()
+  // cookie read; requireWorkspaceAccess() additionally verifies a real
+  // workspace_members row.
+  //
+  // Product decision flagged, not silently resolved: given the severity
+  // (irreversible PII anonymization + workflow cancellation + suppression-list
+  // write), should this also require a secondary confirmation step — e.g.
+  // re-entering a password, or restricting it to admin-role members rather
+  // than any workspace member? Not implemented here; see security-remediation.md
+  // item 3 for the recommendation and rationale.
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
 
   try {
     // 1. Fetch contact details before erasure to get the email and verify it belongs to workspace
@@ -176,12 +191,27 @@ export async function invokeRightToErasure(contactId: string): Promise<{ success
   }
 }
 
-export async function unsubscribeEmail(email: string, workspaceId: string): Promise<{ success: boolean; error?: string }> {
+export async function unsubscribeEmail(email: string, workspaceId: string, token: string): Promise<{ success: boolean; error?: string }> {
   if (!email || !workspaceId) {
     return { success: false, error: 'Email and Workspace ID are required.' };
   }
 
-  const supabase = await createServerClient();
+  // Previously accepted raw email/workspaceId URL params with no signature —
+  // anyone who could guess/construct the URL could unsubscribe an arbitrary
+  // email from an arbitrary workspace. Same signed-HMAC-token pattern as
+  // shipments.ts's delivery-confirmation flow: the token is only valid for
+  // this exact email+workspaceId pair.
+  if (!verifyUnsubscribeToken(email, workspaceId, token)) {
+    return { success: false, error: 'Invalid or expired unsubscribe link.' };
+  }
+
+  // Functional fix, same code path as the security fix: this previously used
+  // createServerClient() (session/RLS-scoped), which silently no-op'd every
+  // write below for a real anonymous unsubscriber (no session -> RLS blocks
+  // the suppression-list/contacts writes). Now that the request is verified
+  // by a signed token instead of a session, use the admin client so a
+  // legitimate anonymous unsubscribe actually takes effect.
+  const supabase = createAdminClient();
 
   try {
     // 1. Add to global suppression list
