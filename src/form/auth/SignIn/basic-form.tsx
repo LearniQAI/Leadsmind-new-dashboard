@@ -120,7 +120,12 @@ const SignInBasicForm = () => {
    }
 
    if (formattedWorkspaces.length === 1) {
-    await setActiveWorkspace(formattedWorkspaces[0].id);
+    const switchResult = await setActiveWorkspace(formattedWorkspaces[0].id);
+    if (!switchResult.success) {
+     toast.error(switchResult.error || "Unable to switch workspace. Please try again.");
+     setIsLoading(false);
+     return;
+    }
     toast.success("Welcome back!");
     setTimeout(() => {
      window.location.href = next || "/dashboard";
@@ -139,7 +144,11 @@ const SignInBasicForm = () => {
  };
 
  async function handleWorkspaceSelect(workspace: Workspace) {
-  await setActiveWorkspace(workspace.id);
+  const switchResult = await setActiveWorkspace(workspace.id);
+  if (!switchResult.success) {
+   toast.error(switchResult.error || "Unable to switch workspace. Please try again.");
+   return;
+  }
   toast.success(`Switched to ${workspace.name}`);
   setTimeout(() => {
    window.location.href = next || "/dashboard";

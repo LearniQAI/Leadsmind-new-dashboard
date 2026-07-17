@@ -1,44 +1,25 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
 
-export async function getConversionAnalytics() {
- let workspaceId: string | null = null;
- try {
-  const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { error: 'Unauthorized' };
-
-  workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
-
-  const { data, error } = await supabase
-   .from('conversion_events')
-   .select('*')
-   .eq('workspace_id', workspaceId)
-   .order('occurred_at', { ascending: false });
-
-  if (error) throw error;
-  return { data };
- } catch (error: any) {
-  logger.error({ err: error, workspaceId }, 'analytics.conversion.fetch.failed');
-  const clientError = toClientError(error);
-  return { error: clientError.error };
- }
-}
+// getConversionAnalytics previously lived here — removed as part of the
+// Priority 2 duplicate/dead-code cleanup. Not a duplicate of
+// getDashboardStats or analytics/invoices.ts's getInvoiceAnalytics (different
+// table, different concept), but confirmed both dead (zero callers) AND
+// non-functional even if called: `conversion_events` does not exist in the
+// live database (confirmed via the linked project's schema) and this
+// function had no fallback path, unlike getInvoiceAnalytics below. Deleted
+// rather than kept, since "intentionally narrower, differently-scoped" only
+// applies to something that actually works.
 
 export async function getDashboardStats() {
  let workspaceId: string | null = null;
  try {
+  ({ workspaceId } = await requireWorkspaceAccess());
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { error: 'Unauthorized' };
-
-  workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
 
   // Fetch counts from various tables for the "System Audit" / Dashboard
   const [leads, orders, tasks, conversations] = await Promise.all([
@@ -66,20 +47,24 @@ export async function getDashboardStats() {
 export async function getSupportAnalytics() {
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
-    // 1. Zero-Result Search Log
+    // 1. Zero-Result Search Log — scoped to this workspace (previously
+    // aggregated across every workspace platform-wide).
     const { data: zeroResults, error: zErr } = await supabase
       .from('help_search_log')
       .select('id, search_query, created_at')
+      .eq('workspace_id', workspaceId)
       .eq('results_count', 0)
       .order('created_at', { ascending: false })
       .limit(10);
 
     if (zErr) throw zErr;
 
-    // 2. Article Unhelpful Rate (> 20%)
+    // 2. Article Unhelpful Rate (> 20%) — help_articles has no workspace_id
+    // column (confirmed against the live schema): it's a genuinely global,
+    // platform-wide knowledge base, not per-tenant data, so it's correctly
+    // left unscoped rather than a gap.
     const { data: articles, error: artErr } = await supabase
       .from('help_articles')
       .select('id, title, slug, category, helpful_yes, helpful_no')
@@ -104,14 +89,17 @@ export async function getSupportAnalytics() {
       .filter(art => art.rate > 20.0)
       .sort((a, b) => b.rate - a.rate);
 
-    // 3. LENA Deflection Ratios
+    // 3. LENA Deflection Ratios — scoped to this workspace (previously
+    // counted every workspace's chats/tickets platform-wide).
     const { count: totalChats } = await supabase
       .from('lena_conversations')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId);
 
     const { count: totalTickets } = await supabase
       .from('support_tickets')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId);
 
     const chats = totalChats || 0;
     const tickets = totalTickets || 0;
@@ -144,7 +132,9 @@ export async function getSupportAnalytics() {
         days_inactive: Math.floor((Date.now() - new Date(art.created_at).getTime()) / (1000 * 60 * 60 * 24))
       }));
 
-    // 5. Escalation Hotspots
+    // 5. Escalation Hotspots — help_update_queue also has no workspace_id
+    // column (confirmed against the live schema), same global-table
+    // reasoning as help_articles above.
     const { data: queueLogs, error: queueErr } = await supabase
       .from('help_update_queue')
       .select('route_path');

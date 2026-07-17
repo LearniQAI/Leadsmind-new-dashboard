@@ -1,6 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { scryptSync, randomBytes, timingSafeEqual } from 'crypto';
 import { sendEmail } from '@/lib/email';
@@ -105,8 +106,18 @@ export async function createProgramme(workspaceId: string, data: any) {
     await checkPlanGateForProgrammeCreation(workspaceId);
 
     const supabase = await createServerClient();
+    // Verifies the caller is a member of the explicit workspaceId argument
+    // (not necessarily the cookie's active workspace) — replaces the
+    // auth-only requireAuthenticatedUser() check.
     const user = await requireAuthenticatedUser(supabase);
     if (!user) return { success: false, error: 'Unauthorized' };
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!membership) return { success: false, error: 'Unauthorized' };
 
     const { data: programme, error } = await supabase
       .from('affiliate_programmes')
@@ -140,53 +151,16 @@ export async function createProgramme(workspaceId: string, data: any) {
   }
 }
 
-export async function getProgrammes(workspaceId: string) {
-  try {
-    const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
-
-    const { data, error } = await supabase
-      .from('affiliate_programmes')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return { success: true, data };
-  } catch (err: any) {
-    logger.error({ err, workspaceId }, 'affiliates.programme.list.failed');
-    const clientError = toClientError(err);
-    return { success: false, error: clientError.error, code: clientError.code };
-  }
-}
-
-export async function getProgrammeById(id: string) {
-  try {
-    const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
-
-    const { data, error } = await supabase
-      .from('affiliate_programmes')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
-    return { success: true, data };
-  } catch (err: any) {
-    logger.error({ err, programmeId: id }, 'affiliates.programme.get.failed');
-    const clientError = toClientError(err);
-    return { success: false, error: clientError.error, code: clientError.code };
-  }
-}
+// getProgrammes and getProgrammeById previously lived here as dead duplicates
+// (zero live callers, confirmed fresh in the Priority 2 pass) — removed
+// rather than hardened, since there's no reason to secure code nothing
+// calls. AffiliatesClient.tsx (the live UI) reads programme data through
+// other, already-used functions in this file.
 
 export async function updateProgramme(id: string, data: any) {
   try {
     const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const { data: programme, error } = await supabase
       .from('affiliate_programmes')
@@ -206,6 +180,7 @@ export async function updateProgramme(id: string, data: any) {
         currency: data.currency
       })
       .eq('id', id)
+      .eq('workspace_id', workspaceId)
       .select()
       .single();
 
@@ -221,13 +196,13 @@ export async function updateProgramme(id: string, data: any) {
 export async function deleteProgramme(id: string) {
   try {
     const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const { error } = await supabase
       .from('affiliate_programmes')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('workspace_id', workspaceId);
 
     if (error) throw error;
     return { success: true };
@@ -449,8 +424,7 @@ export async function applyToProgramme(
 export async function approveAffiliate(affiliateId: string) {
   try {
     const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const { data: affiliate, error } = await supabase
       .from('affiliates')
@@ -459,6 +433,7 @@ export async function approveAffiliate(affiliateId: string) {
         approved_at: new Date().toISOString()
       })
       .eq('id', affiliateId)
+      .eq('workspace_id', workspaceId)
       .select()
       .single();
 
@@ -514,8 +489,7 @@ export async function approveAffiliate(affiliateId: string) {
 export async function rejectAffiliate(affiliateId: string) {
   try {
     const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const { data: affiliate, error } = await supabase
       .from('affiliates')
@@ -523,6 +497,7 @@ export async function rejectAffiliate(affiliateId: string) {
         status: 'rejected'
       })
       .eq('id', affiliateId)
+      .eq('workspace_id', workspaceId)
       .select()
       .single();
 
@@ -651,13 +626,13 @@ export async function getAuthenticatedAffiliate() {
 export async function suspendAffiliate(affiliateId: string) {
   try {
     const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const { data: affiliate, error } = await supabase
       .from('affiliates')
       .update({ status: 'suspended' })
       .eq('id', affiliateId)
+      .eq('workspace_id', workspaceId)
       .select()
       .single();
 
@@ -673,14 +648,14 @@ export async function suspendAffiliate(affiliateId: string) {
 export async function deleteAffiliate(affiliateId: string) {
   try {
     const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     // Hard delete. clicks/commissions/payouts cascade via FK; parent_affiliate_id -> null.
     const { error } = await supabase
       .from('affiliates')
       .delete()
-      .eq('id', affiliateId);
+      .eq('id', affiliateId)
+      .eq('workspace_id', workspaceId);
     if (error) throw error;
     return { success: true };
   } catch (err: any) {
@@ -809,14 +784,14 @@ export async function getDecryptedPayoutDetails() {
 export async function approvePayout(payoutId: string, reference: string) {
   try {
     const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
-    // 1. Get payout details
+    // 1. Get payout details — scoped to the verified workspace
     const { data: payout, error: getError } = await supabase
       .from('affiliate_payouts')
       .select('*')
       .eq('id', payoutId)
+      .eq('workspace_id', workspaceId)
       .single();
 
     if (getError || !payout) throw new NotFoundError('Payout');
@@ -829,16 +804,19 @@ export async function approvePayout(payoutId: string, reference: string) {
         reference: reference || `PAID-${Date.now()}`,
         processed_at: new Date().toISOString()
       })
-      .eq('id', payoutId);
+      .eq('id', payoutId)
+      .eq('workspace_id', workspaceId);
 
     if (updateError) throw updateError;
 
-    // 3. Update commissions to paid
+    // 3. Update commissions to paid (commission_ids come from the
+    // already workspace-verified payout row above)
     if (payout.commission_ids && payout.commission_ids.length > 0) {
       const { error: commError } = await supabase
         .from('affiliate_commissions')
         .update({ status: 'paid' })
-        .in('id', payout.commission_ids);
+        .in('id', payout.commission_ids)
+        .eq('workspace_id', workspaceId);
       if (commError) throw commError;
     }
 
@@ -854,14 +832,14 @@ export async function approvePayout(payoutId: string, reference: string) {
 export async function rejectPayout(payoutId: string) {
   try {
     const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
-    // 1. Get payout details
+    // 1. Get payout details — scoped to the verified workspace
     const { data: payout, error: getError } = await supabase
       .from('affiliate_payouts')
       .select('*')
       .eq('id', payoutId)
+      .eq('workspace_id', workspaceId)
       .single();
 
     if (getError || !payout) throw new NotFoundError('Payout');
@@ -874,7 +852,8 @@ export async function rejectPayout(payoutId: string) {
         reference: 'Rejected by owner',
         processed_at: new Date().toISOString()
       })
-      .eq('id', payoutId);
+      .eq('id', payoutId)
+      .eq('workspace_id', workspaceId);
 
     if (updateError) throw updateError;
 
@@ -890,13 +869,13 @@ export async function rejectPayout(payoutId: string) {
 export async function updateCommissionStatus(commissionId: string, status: 'pending' | 'approved' | 'reversed' | 'paid') {
   try {
     const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const { error } = await supabase
       .from('affiliate_commissions')
       .update({ status })
-      .eq('id', commissionId);
+      .eq('id', commissionId)
+      .eq('workspace_id', workspaceId);
 
     if (error) throw error;
     revalidatePath('/affiliates');
@@ -908,16 +887,22 @@ export async function updateCommissionStatus(commissionId: string, status: 'pend
   }
 }
 
+// Highest-severity function in this file: bulk-decrypts bank/payout details
+// for caller-supplied payoutIds. RLS on affiliate_payouts/affiliates already
+// restricts rows to the caller's own workspace_members (backstop today,
+// confirmed live below), but this app-layer scoping is added as explicit
+// defense in depth — this is exactly the class of function where relying on
+// RLS alone was judged insufficient elsewhere in this project.
 export async function getDecryptedPayoutBatch(payoutIds: string[]) {
   try {
     const supabase = await createServerClient();
-    const user = await requireAuthenticatedUser(supabase);
-    if (!user) return { success: false, error: 'Unauthorized' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const { data: payouts, error: payoutsError } = await supabase
       .from('affiliate_payouts')
       .select('*, affiliate:affiliates(full_name, email, payout_details)')
-      .in('id', payoutIds);
+      .in('id', payoutIds)
+      .eq('workspace_id', workspaceId);
 
     if (payoutsError) throw payoutsError;
 

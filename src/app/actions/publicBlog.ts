@@ -55,28 +55,53 @@ export async function getPublicBlogPosts(filters?: { categoryId?: string; search
 export async function getPublicBlogPost(slug: string, preview = false) {
   try {
     const supabase = await createServerClient();
-
-    let query = supabase
-      .from('blog_posts')
-      .select(`
+    const selectShape = `
         *,
         category:blog_categories(id, name, slug),
         author:users(id, first_name, last_name, avatar_url)
-      `)
-      .eq('slug', slug);
+      `;
 
-    // For previewing draft content, we scope to the admin's current workspace
     if (preview) {
-      const workspaceId = await getCurrentWorkspaceId();
-      if (workspaceId) {
-        query = query.eq('workspace_id', workspaceId);
+      // preview=true must only ever bypass the published-only filter for an
+      // authenticated user who is actually a member of THIS post's own
+      // workspace — never for an anonymous visitor just because the param is
+      // present. Previously this branch skipped the published filter based
+      // solely on a cookie-read workspaceId (or skipped filtering entirely
+      // if that cookie was absent), which is exactly what a fully anonymous
+      // caller experiences — a confirmed live IDOR letting any workspace's
+      // unpublished draft be read by slug.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: candidate } = await supabase
+          .from('blog_posts')
+          .select(selectShape)
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (candidate) {
+          const { data: membership } = await supabase
+            .from('workspace_members')
+            .select('id')
+            .eq('workspace_id', (candidate as any).workspace_id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (membership) {
+            return { data: candidate };
+          }
+        }
       }
-    } else {
-      // Public visitors read published articles globally across any workspace context
-      query = query.eq('status', 'published');
+      // Not an authenticated member of this specific post's workspace — fall
+      // through to the normal published-only lookup below rather than
+      // erroring in a way that reveals an unpublished post exists.
     }
 
-    const { data, error } = await query.maybeSingle();
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select(selectShape)
+      .eq('slug', slug)
+      .eq('status', 'published')
+      .maybeSingle();
 
     if (error) throw error;
     return { data };

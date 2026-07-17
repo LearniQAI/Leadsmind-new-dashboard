@@ -1,6 +1,6 @@
 import React from 'react'
 import { createAdminClient } from '@/lib/supabase/server'
-import { generateShipmentTokenAction } from '@/app/actions/shipments'
+import { generateShipmentToken } from '@/lib/courier/shipmentToken'
 import TrackClientPage from './TrackClientPage'
 
 interface PageProps {
@@ -57,7 +57,7 @@ export default async function Page({ params }: PageProps) {
   // 4. Generate token if confirm received is possible
   let token = ''
   if (!shipment.received_confirmed_at && (shipment.status === 'OUT_FOR_DELIVERY' || shipment.status === 'DELIVERED')) {
-    token = await generateShipmentTokenAction(shipment.id)
+    token = generateShipmentToken(shipment.id)
   }
 
   return (

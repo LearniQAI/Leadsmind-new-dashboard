@@ -1,5 +1,6 @@
 import React from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
+import MetaData from '@/hooks/useMetaData';
 import { getTaskDashboardData } from '@/app/actions/task-workspace';
 import { LayoutDashboard, CheckSquare, Clock, AlertTriangle, TrendingUp, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
@@ -9,9 +10,11 @@ export default async function TaskAnalyticsDashboardPage() {
 
   if (!success || !data) {
     return (
-      <Wrapper>
-        <div className="p-12 text-center !text-dash-textMuted">Error loading Execution Dashboard.</div>
-      </Wrapper>
+      <MetaData pageTitle="Task Analytics">
+        <Wrapper>
+          <div className="p-12 text-center !text-dash-textMuted">Error loading Execution Dashboard.</div>
+        </Wrapper>
+      </MetaData>
     );
   }
 
@@ -24,9 +27,10 @@ export default async function TaskAnalyticsDashboardPage() {
   const completionRate = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
   return (
+    <MetaData pageTitle="Task Analytics">
     <Wrapper>
       <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)] space-y-8">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -127,5 +131,6 @@ export default async function TaskAnalyticsDashboardPage() {
 
       </div>
     </Wrapper>
+    </MetaData>
   );
 }

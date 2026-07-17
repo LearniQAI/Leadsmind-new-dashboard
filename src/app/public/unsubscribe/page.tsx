@@ -8,28 +8,31 @@ function UnsubscribeForm() {
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email') || '';
   const workspaceIdParam = searchParams.get('workspace_id') || '';
+  const tokenParam = searchParams.get('token') || '';
 
   const [email, setEmail] = useState('');
   const [workspaceId, setWorkspaceId] = useState('');
+  const [token, setToken] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     if (emailParam) setEmail(emailParam);
     if (workspaceIdParam) setWorkspaceId(workspaceIdParam);
-  }, [emailParam, workspaceIdParam]);
+    if (tokenParam) setToken(tokenParam);
+  }, [emailParam, workspaceIdParam, tokenParam]);
 
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !workspaceId) {
+    if (!email || !workspaceId || !token) {
       setStatus('error');
-      setErrorMessage('Missing required parameters (email or workspace ID).');
+      setErrorMessage('This unsubscribe link is missing required parameters or is invalid.');
       return;
     }
 
     setStatus('loading');
     try {
-      const res = await unsubscribeEmail(email, workspaceId);
+      const res = await unsubscribeEmail(email, workspaceId, token);
       if (res.success) {
         setStatus('success');
       } else {
@@ -91,14 +94,18 @@ function UnsubscribeForm() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                readOnly
                 placeholder="Enter your email"
                 required
-                className="w-full bg-[#04091a] border border-white/5 rounded-xl p-3 text-[13px] text-white focus:outline-none focus:border-[#2563eb] transition-all font-mono"
+                className="w-full bg-[#04091a] border border-white/5 rounded-xl p-3 text-[13px] text-white/70 cursor-not-allowed font-mono"
               />
+              <p className="text-[10px] text-[#4a5a82] mt-1">
+                This is tied to the secure link you clicked and can't be edited.
+              </p>
             </div>
-            
+
             <input type="hidden" value={workspaceId} />
+            <input type="hidden" value={token} />
           </div>
 
           <button

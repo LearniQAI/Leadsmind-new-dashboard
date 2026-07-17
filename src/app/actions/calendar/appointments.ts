@@ -1,7 +1,7 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
+import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { validateSlot, getRoundRobinAssignee, updateRoundRobinStats } from './scheduling';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
@@ -9,10 +9,17 @@ import { logger } from '@/shared/logger';
 import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 
+// Previously read the workspaceId straight off the active_workspace_id cookie
+// (getCurrentWorkspaceId()) with no auth check at all — this wrapper never
+// called supabase.auth.getUser(), so every function below accepted any
+// caller with a non-empty cookie value, member or not. Fixed here as part of
+// this Priority 0 pass (not deferred to the Priority 3 executeAction() sweep
+// mentioned in the triage) by switching to the shared requireWorkspaceAccess()
+// helper, which both authenticates the caller and verifies real
+// workspace_members row before any of these actions run.
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { success: false, error: 'No active workspace' };
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const supabase = await createServerClient();
     const data = await action(supabase, workspaceId);
@@ -52,11 +59,14 @@ export async function createAppointment(payload: {
   skipValidation?: boolean;
 }) {
   return executeAction(async (supabase, workspaceId) => {
-    // 1. Fetch Calendar Metadata
+    // 1. Fetch Calendar Metadata — scoped to the verified workspace so a
+    // caller can't attach an appointment to another workspace's calendar by
+    // supplying a calendarId that belongs elsewhere.
     const { data: calendar, error: calError } = await supabase
       .from('booking_calendars')
       .select('calendar_type, meeting_mode, capacity, location')
       .eq('id', payload.calendarId)
+      .eq('workspace_id', workspaceId)
       .single();
 
     if (calError || !calendar) throw new NotFoundError('Calendar');
@@ -184,9 +194,21 @@ export async function deleteAppointment(id: string) {
   });
 }
 
+// getAppointmentById/logParticipantJoin/logParticipantLeave are the /meet/[id]
+// surface: a genuinely public, unauthenticated meeting-room page — any real
+// participant (including guests with no account) needs to load it and log
+// join/leave. There's no second caller-supplied value to bind these against;
+// the appointment/log id itself (an unguessable UUID) is the capability that
+// authorizes access, the same pattern already used elsewhere in this codebase
+// for shipments.ts's HMAC-token guest flow. The admin client is used
+// deliberately here (not a missing check) because the session-based client
+// has no RLS policy granting anonymous SELECT on `appointments` at all —
+// verified live that the previous session-based queries returned nothing for
+// a true anonymous caller, which would have broken this page for real guests
+// regardless of this security pass.
 export async function getAppointmentById(id: string) {
   try {
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from('appointments')
       .select(`
@@ -215,7 +237,7 @@ export async function logParticipantJoin(
   participantEmail: string
 ) {
   try {
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
     const { data: apt } = await supabase
       .from('appointments')
       .select('workspace_id')
@@ -227,7 +249,7 @@ export async function logParticipantJoin(
     const { data: log, error } = await supabase
       .from('meet_attendance_logs')
       .insert({
-                
+
         workspace_id: apt.workspace_id,
         appointment_id: appointmentId,
         participant_name: participantName,
@@ -251,12 +273,17 @@ export async function logParticipantJoin(
  */
 export async function logParticipantLeave(logId: string) {
   try {
-    const supabase = await createServerClient();
-    const workspaceId = await getCurrentWorkspaceId();
+    const supabase = createAdminClient();
+    // Previously scoped by the active_workspace_id cookie (getCurrentWorkspaceId()),
+    // which is meaningless for an anonymous meeting guest (no dashboard session,
+    // no reason to have that cookie set to the right workspace at all) — this
+    // silently no-op'd leave-logging for real anonymous participants. logId
+    // alone is the correct capability: it's the id this exact client received
+    // back from its own logParticipantJoin call moments earlier.
     const { data: log } = await supabase
       .from('meet_attendance_logs')
       .select('joined_at')
-      .eq("id", logId).eq("workspace_id", workspaceId)
+      .eq('id', logId)
       .single();
 
     if (!log) throw new NotFoundError('Attendance log');
@@ -271,7 +298,7 @@ export async function logParticipantLeave(logId: string) {
         left_at: leftAt.toISOString(),
         duration_seconds: duration
       })
-      .eq("id", logId).eq("workspace_id", workspaceId);
+      .eq('id', logId);
 
     return { success: true };
   } catch (err: any) {

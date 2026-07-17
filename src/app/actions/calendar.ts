@@ -1,5 +1,5 @@
 'use server';
-import { requireAuth, getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
@@ -25,124 +25,14 @@ async function executeAction<T>(action: (supabase: any, workspaceId: string) => 
 }
 
 /**
- * --- CALENDAR MANAGEMENT ---
- */
-
-export async function createCalendar(payload: {
- name: string;
- slug: string;
- description?: string;
- timezone?: string;
- slotDuration?: number;
- bufferTime?: number;
-}) {
- const user = await requireAuth(); 
- return executeAction(async (supabase, workspaceId) => {
-  const { data, error } = await supabase
-   .from('booking_calendars')
-   .insert({
-    workspace_id: workspaceId,
-    name: payload.name,
-    slug: payload.slug,
-    description: payload.description,
-    timezone: payload.timezone || 'UTC',
-    slot_duration: payload.slotDuration || 30,
-    buffer_time: payload.bufferTime || 0
-   })
-   .select()
-   .single();
-
-  if (error) throw error;
-  revalidatePath('/apps/calendar');
-  return data;
- });
-}
-
-/**
  * --- BOOKING & APPOINTMENTS ---
  */
-
-export async function getAppointments() {
- return executeAction(async (supabase, workspaceId) => {
-  const { data, error } = await supabase
-   .from('appointments')
-   .select(`
-    id,
-    title,
-    start_time,
-    end_time,
-    status,
-    waitlist_enabled,
-    current_attendee_count,
-    max_attendees,
-    calendar_id,
-    contact_id,
-    contacts (first_name, last_name, email)
-   `)
-   .eq('workspace_id', workspaceId)
-   .order('start_time', { ascending: true });
-
-  if (error) throw error;
-  return data;
- });
-}
-
-export async function createBooking(payload: {
- calendarId: string;
- contactId: string | null;
- title: string;
- startTime: string;
- endTime: string;
- outcomeId?: string;
-}) {
- return executeAction(async (supabase, workspaceId) => {
-  const { data, error } = await supabase
-   .from('appointments')
-   .insert({
-    workspace_id: workspaceId,
-    calendar_id: payload.calendarId,
-    contact_id: payload.contactId,
-    title: payload.title,
-    start_time: payload.startTime,
-    end_time: payload.endTime,
-    outcome_id: payload.outcomeId,
-    status: 'scheduled'
-   })
-   .select()
-   .single();
-
-  if (error) throw error;
-  if (data && payload.contactId) {
-   const { publishEvent } = await import('@/lib/events/EventBus');
-   await publishEvent(workspaceId, 'live_session_booked', payload.contactId, {
-    appointmentId: data.id,
-    calendarId: payload.calendarId
-   });
-  }
-  return data;
- });
-}
 
 export async function updateAppointmentStatus(id: string, status: string) {
   return executeAction(async (supabase, workspaceId) => {
     const { error } = await supabase
       .from('appointments')
       .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .eq('workspace_id', workspaceId);
-
-    if (error) throw error;
-
-    revalidatePath('/apps/calendar');
-    return true;
-  });
-}
-
-export async function deleteAppointment(id: string) {
-  return executeAction(async (supabase, workspaceId) => {
-    const { error } = await supabase
-      .from('appointments')
-      .delete()
       .eq('id', id)
       .eq('workspace_id', workspaceId);
 
@@ -188,19 +78,6 @@ export async function createOutcome(payload: {
  });
 }
 
-export async function getCalendarOutcomes(calendarId: string) {
- return executeAction(async (supabase) => {
-  const { data, error } = await supabase
-   .from('booking_outcomes')
-   .select('*')
-   .eq('calendar_id', calendarId)
-   .order('position', { ascending: true });
-
-  if (error) throw error;
-  return data;
- });
-}
-
 // --- INTAKE FORMS ---
 
 export async function saveIntakeForm(calendarId: string, fields: any[]) {
@@ -217,19 +94,6 @@ export async function saveIntakeForm(calendarId: string, fields: any[]) {
    .single();
 
   if (error) throw error;
-  return data;
- });
-}
-
-export async function getIntakeForm(calendarId: string) {
- return executeAction(async (supabase) => {
-  const { data, error } = await supabase
-   .from('booking_intake_forms')
-   .select('*')
-   .eq('calendar_id', calendarId)
-   .single();
-
-  if (error && error.code !== 'PGRST116') throw error; 
   return data;
  });
 }
@@ -259,22 +123,6 @@ export async function getComprehensiveCalendarAnalytics() {
    dowDistribution: dowDist,
    slotAnalytics: slotAnalytics.data || [],
   };
- });
-}
-
-/**
- * --- ANALYTICS ---
- */
-
-export async function getBookingAnalytics(workspaceId: string) {
- return executeAction(async (supabase) => {
-  const { data, error } = await supabase
-   .from('booking_slot_analytics')
-   .select('*')
-   .eq('workspace_id', workspaceId);
-
-  if (error) throw error;
-  return data;
  });
 }
 
@@ -349,31 +197,6 @@ export async function addContactToWaitlist(appointmentId: string, email: string)
   if (error) throw error;
   
   revalidatePath('/apps/calendar/waitlist');
-  return data;
- });
-}
-
-// --- PACKAGES ---
-
-export async function createPackage(payload: {
- name: string;
- totalCredits: number;
- price: number;
-}) {
- return executeAction(async (supabase, workspaceId) => {
-  const { data, error } = await supabase
-   .from('booking_packages')
-   .insert({
-    workspace_id: workspaceId,
-    name: payload.name,
-    total_credits: payload.totalCredits,
-    price: payload.price
-   })
-   .select()
-   .single();
-
-  if (error) throw error;
-  revalidatePath('/apps/calendar');
   return data;
  });
 }

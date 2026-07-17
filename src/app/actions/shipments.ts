@@ -35,6 +35,22 @@ export async function createShipment(
     courier_slug?: string
   }
 ) {
+  // Previously had zero auth/membership check — any caller (no login
+  // required) could burn another workspace's tracking quota by supplying an
+  // arbitrary workspaceId, since this uses the admin client (bypasses RLS).
+  // Reuses this file's existing requireWorkspaceMember() helper (already
+  // used by getShipmentById/syncShipmentTracking/etc. below) rather than the
+  // shared requireWorkspaceAccess() from src/lib/auth.ts, because that helper
+  // only validates the *cookie-derived* active workspace — createShipment
+  // takes workspaceId as an explicit argument (including from the internal
+  // finance.ts:481 call site, which passes an already-verified invoice's
+  // workspace_id, not necessarily the caller's active cookie workspace), so
+  // what needs verifying here is specifically "is the caller a member of
+  // *this* workspaceId argument", which is what requireWorkspaceMember does.
+  if (!(await requireWorkspaceMember(workspaceId))) {
+    return { success: false, error: 'Not authorized for this workspace' }
+  }
+
   const supabase = createAdminClient()
   const trackingNumber = payload.tracking_number.trim()
   if (!trackingNumber) return { success: false, error: 'Tracking number is required' }
@@ -261,13 +277,12 @@ export async function uploadBrandLogo(formData: FormData) {
   }
 }
 
-import { createHmac } from 'crypto'
 import { sendEmail } from '@/lib/email'
+import { generateShipmentToken } from '@/lib/courier/shipmentToken'
 
 export async function confirmReceiptAction(shipmentId: string, token: string) {
-  const secret = process.env.ENCRYPTION_KEY || 'courier-secret'
-  const expectedToken = createHmac('sha256', secret).update(shipmentId).digest('hex')
-  
+  const expectedToken = generateShipmentToken(shipmentId)
+
   if (token !== expectedToken) {
     return { success: false, error: 'Invalid verification token' }
   }
@@ -357,11 +372,6 @@ export async function confirmReceiptAction(shipmentId: string, token: string) {
   }
 
   return { success: true }
-}
-
-export async function generateShipmentTokenAction(shipmentId: string) {
-  const secret = process.env.ENCRYPTION_KEY || 'courier-secret'
-  return createHmac('sha256', secret).update(shipmentId).digest('hex')
 }
 
 export async function updateShipmentStatus(

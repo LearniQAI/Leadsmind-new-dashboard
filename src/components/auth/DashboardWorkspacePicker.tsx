@@ -15,7 +15,11 @@ export function DashboardWorkspacePicker({ workspaces }: DashboardWorkspacePicke
 
  const handleSelect = async (workspace: Workspace) => {
   try {
-   await setActiveWorkspace(workspace.id);
+   const result = await setActiveWorkspace(workspace.id);
+   if (!result.success) {
+    toast.error(result.error || 'Unable to set your workspace. Please try again.');
+    return;
+   }
    router.replace('/dashboard');
    router.refresh();
   } catch (error) {

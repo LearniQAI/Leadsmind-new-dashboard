@@ -26,6 +26,7 @@ export default function FeedbackClient({ workspaceId, contactId, settings }: Fee
   
   const [name, setName] = useState('');
   const [feedbackText, setFeedbackText] = useState('');
+  const [hpField, setHpField] = useState(''); // honeypot — hidden from real users, bots tend to fill every field
   
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState<'rating' | 'feedback' | 'success'>('rating');
@@ -46,7 +47,7 @@ export default function FeedbackClient({ workspaceId, contactId, settings }: Fee
     
     setSubmitting(true);
     try {
-      const res = await submitPrivateFeedback(workspaceId, name, rating, feedbackText);
+      const res = await submitPrivateFeedback(workspaceId, name, rating, feedbackText, hpField);
       if (res.error) {
         toast.error(res.error);
       } else {
@@ -128,6 +129,17 @@ export default function FeedbackClient({ workspaceId, contactId, settings }: Fee
         {/* Feedback Details Step (1-3 stars) */}
         {step === 'feedback' && (
           <form onSubmit={handleFeedbackSubmit} className="space-y-6 animate-fade-in">
+            {/* Honeypot: hidden from real users via CSS + tabIndex, bots filling every field trip this */}
+            <input
+              type="text"
+              name="lm_hp_field"
+              value={hpField}
+              onChange={(e) => setHpField(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
+            />
             <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex items-start gap-3">
               <MessageSquare className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div>

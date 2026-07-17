@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
+import { getCurrentWorkspaceId, getUser, requireWorkspaceAccess } from '@/lib/auth';
 import { stripe as defaultStripe } from '@/lib/stripe';
 import Stripe from 'stripe';
 import { getOrCreateStudentContact } from './studentEnrollments';
@@ -63,8 +63,16 @@ export async function updateCoursePricing(
  */
 export async function getWorkspacePaymentIntegration() {
   try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { connected: false };
+    // Previously used createAdminClient() scoped only by a cookie-read
+    // workspaceId, no auth/membership check — any caller could learn
+    // whether a given workspace has Stripe Connect active. Severity
+    // assessment (see security-remediation.md item 6): the publishable key
+    // itself is designed by Stripe to be public/client-embeddable, so its
+    // disclosure alone is low-risk; the more relevant exposure is that it
+    // confirms *which workspaces have payment processing enabled at all*,
+    // which is workspace configuration data and should be gated like any
+    // other, regardless of how sensitive the specific field is.
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const adminClient = createAdminClient();
     const { data: integration } = await adminClient

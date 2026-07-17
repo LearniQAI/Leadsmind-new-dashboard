@@ -80,7 +80,10 @@ export default async function PortalLayout({ children }: { children: React.React
   // Server action to switch workspace context
   const handleSwitchWorkspace = async (wsId: string) => {
     'use server';
-    await setActiveWorkspace(wsId);
+    const result = await setActiveWorkspace(wsId);
+    if (!result.success) {
+      redirect('/portal/dashboard?error=workspace_switch_failed');
+    }
     redirect('/portal/dashboard');
   };
 

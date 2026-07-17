@@ -1,17 +1,21 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
+
+// publishSocialPost/getMetaAuthUrl/getLinkedInAuthUrl/getTikTokAuthUrl below
+// (all still using getCurrentWorkspaceId) are confirmed dead — re-verified
+// fresh in this pass, not assumed from Priority 2: grepped every import of
+// '@/app/actions/social' across src/ and only getSocialAccounts/getSocialPosts/
+// createSocialPost have any live caller (messaging.ts's equivalents are what's
+// actually wired up for these). Left unfixed, matching the "don't harden
+// code nothing calls" precedent from Priority 2's affiliates.ts cleanup.
 
 export async function getSocialAccounts() {
   try {
     const supabase = await createServerClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) return { data: [] }
-
-    const workspaceId = await getCurrentWorkspaceId()
-    if (!workspaceId) return { data: [] }
+    const { workspaceId } = await requireWorkspaceAccess()
     const { data, error } = await supabase
       .from('platform_connections')
       .select('platform, status, credentials')
@@ -29,11 +33,7 @@ export async function getSocialAccounts() {
 export async function getSocialPosts() {
  try {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  const { workspaceId } = await requireWorkspaceAccess();
 
   const { data, error } = await supabase
    .from('social_posts')
@@ -58,11 +58,7 @@ export async function createSocialPost(postData: {
   let workspaceId: string | null = null;
   try {
     const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { error: 'Unauthorized' };
-
-    workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    ({ workspaceId } = await requireWorkspaceAccess());
 
     const results: any = {};
 

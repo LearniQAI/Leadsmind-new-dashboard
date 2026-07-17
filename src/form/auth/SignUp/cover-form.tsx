@@ -72,7 +72,10 @@ const SignUpCoverForm = () => {
         });
 
         if (result.success && result.workspaceId) {
-          await setActiveWorkspace(result.workspaceId);
+          const switchResult = await setActiveWorkspace(result.workspaceId);
+          if (!switchResult.success) {
+            console.warn('[SignupCoverForm] setActiveWorkspace failed (non-blocking):', switchResult.error);
+          }
         }
       } catch (setupErr) {
         console.warn('[SignupCoverForm] setupWorkspace threw (non-blocking):', setupErr);
