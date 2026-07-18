@@ -202,6 +202,7 @@ export default function PipelinesClient({
                   opportunities={opportunities.filter(opp => opp.stage_id === stage.id)}
                   onEditDeal={handleEditDeal}
                   onAddDeal={() => handleCreateDeal(stage.id)}
+                  onSaved={handleDealSaved}
                   showEmptyStateAction={opportunities.length === 0}
                 />
               </div>

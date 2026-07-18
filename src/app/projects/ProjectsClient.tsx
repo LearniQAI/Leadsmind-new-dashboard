@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Plus,
   Briefcase,
@@ -11,21 +11,33 @@ import {
   MoreHorizontal,
   Search,
   Filter,
-  Users as UsersIcon
+  Users as UsersIcon,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import { createProject } from '@/app/actions/operations';
+import { deleteProject as deleteProjectAction } from '@/app/actions/projects';
 import { useRouter } from 'next/navigation';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
 import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
+import { ManageProjectModal } from '@/components/projects/ManageProjectModal';
 
 export default function ProjectsClient({ initialProjects }: { initialProjects: any[] }) {
   const router = useRouter();
   const [isInitializing, setIsInitializing] = useState(false);
+  const [filterText, setFilterText] = useState('');
+  const [managingProjectId, setManagingProjectId] = useState<string | null>(null);
 
   const handleCreate = async () => {
     const name = window.prompt("Enter Project Name:");
@@ -47,6 +59,26 @@ export default function ProjectsClient({ initialProjects }: { initialProjects: a
     }
   };
 
+  const handleDelete = async (projectId: string) => {
+    if (!window.confirm('Delete this project? This also removes its tasks. This cannot be undone.')) return;
+    const res = await deleteProjectAction(projectId);
+    if (res.success) {
+      toast.success('Project deleted');
+      router.refresh();
+    } else {
+      toast.error(res.error || 'Failed to delete project');
+    }
+  };
+
+  const filteredProjects = useMemo(() => {
+    const query = filterText.trim().toLowerCase();
+    if (!query) return initialProjects;
+    return initialProjects.filter((project) => {
+      const haystack = `${project.name || ''} ${project.description || ''} ${project.status || ''}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [initialProjects, filterText]);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700 motion-reduce:animate-none">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -59,6 +91,8 @@ export default function ProjectsClient({ initialProjects }: { initialProjects: a
             <Search className="w-4 h-4 !text-dash-textMuted mr-2" />
             <input
               type="text"
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
               placeholder="Filter nodes..."
               className="bg-transparent border-none outline-none text-xs !text-dash-text placeholder:text-dash-textMuted w-40 font-bold"
             />
@@ -77,18 +111,40 @@ export default function ProjectsClient({ initialProjects }: { initialProjects: a
           actionLabel="New Project"
           onAction={handleCreate}
         />
+      ) : filteredProjects.length === 0 ? (
+        <DashEmptyState
+          icon={Search}
+          title="No matching nodes"
+          description={`No projects match "${filterText}".`}
+          actionLabel="Clear filter"
+          onAction={() => setFilterText('')}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {initialProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+          {filteredProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onManage={() => setManagingProjectId(project.id)}
+              onDelete={() => handleDelete(project.id)}
+            />
           ))}
         </div>
+      )}
+
+      {managingProjectId && (
+        <ManageProjectModal
+          projectId={managingProjectId}
+          isOpen={!!managingProjectId}
+          onClose={() => setManagingProjectId(null)}
+          onChanged={() => router.refresh()}
+        />
       )}
     </div>
   );
 }
 
-function ProjectCard({ project }: any) {
+function ProjectCard({ project, onManage, onDelete }: any) {
   const progress = project.progress || 0;
   const status = project.status || 'active';
 
@@ -145,12 +201,24 @@ function ProjectCard({ project }: any) {
       </div>
 
       <div className="mt-8 flex items-center gap-3">
-        <DashButton variant="secondary" className="flex-1 rounded-2xl h-12 hover:bg-dash-accent hover:text-white">
+        <DashButton variant="secondary" className="flex-1 rounded-2xl h-12 hover:bg-dash-accent hover:text-white" onClick={onManage}>
           Manage Node
         </DashButton>
-        <button className="w-12 h-12 rounded-2xl bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:!text-dash-text transition-colors hover:border-dash-text/20">
-          <MoreHorizontal size={20} />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="w-12 h-12 rounded-2xl bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:!text-dash-text transition-colors hover:border-dash-text/20">
+              <MoreHorizontal size={20} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onManage}>
+              <Pencil size={14} className="mr-2" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onDelete} className="text-danger focus:text-danger">
+              <Trash2 size={14} className="mr-2" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </DashCard>
   );

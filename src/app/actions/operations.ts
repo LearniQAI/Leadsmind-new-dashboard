@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 
 // AUTOMATIONS
@@ -58,8 +58,15 @@ export async function getOrders() {
 export async function getProjects() {
  let workspaceId: string | null = null;
  try {
-  workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  // Previously read workspaceId straight off the caller-trusted
+  // getCurrentWorkspaceId() cookie with no real membership check — flagged
+  // in action-security-triage.md but never actually fixed in any
+  // security-remediation.md priority pass (confirmed by its absence from
+  // every priority's file list, re-checked directly against this file's
+  // source before writing this fix). Now uses the shared
+  // requireWorkspaceAccess() helper, same as tasks.ts/pipelines.ts/etc.
+  const access = await requireWorkspaceAccess();
+  workspaceId = access.workspaceId;
 
   const supabase = await createServerClient();
   const { data, error } = await supabase
@@ -69,7 +76,38 @@ export async function getProjects() {
    .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return { data };
+
+  // "Progress" and "team members" have no dedicated columns on `projects` —
+  // the card UI used to read project.progress/project.team_size directly,
+  // which are always undefined (permanently stuck at the `|| 0`/`|| 1`
+  // fallback). Computed here instead from the real project_tasks table:
+  // progress = % of that project's tasks marked done; team members = count
+  // of distinct real assignees across those tasks.
+  const projectIds = (data || []).map((p) => p.id);
+  const { data: allTasks } = projectIds.length
+   ? await supabase
+      .from('project_tasks')
+      .select('project_id, status, assigned_to')
+      .in('project_id', projectIds)
+   : { data: [] as any[] };
+
+  const tasksByProject = new Map<string, { total: number; done: number; assignees: Set<string> }>();
+  for (const t of allTasks || []) {
+   const bucket = tasksByProject.get(t.project_id) || { total: 0, done: 0, assignees: new Set<string>() };
+   bucket.total += 1;
+   if (t.status === 'done') bucket.done += 1;
+   if (t.assigned_to) bucket.assignees.add(t.assigned_to);
+   tasksByProject.set(t.project_id, bucket);
+  }
+
+  const enriched = (data || []).map((p) => {
+   const bucket = tasksByProject.get(p.id);
+   const progress = bucket && bucket.total > 0 ? Math.round((bucket.done / bucket.total) * 100) : 0;
+   const teamSize = bucket ? Math.max(bucket.assignees.size, 1) : 1;
+   return { ...p, progress, team_size: teamSize };
+  });
+
+  return { data: enriched };
  } catch (error: any) {
   logger.error({ err: error, workspaceId }, 'operations.projects.fetch.failed');
   return { error: 'Failed to fetch projects.' };
@@ -79,8 +117,9 @@ export async function getProjects() {
 export async function createProject(name: string) {
   let workspaceId: string | null = null;
   try {
-    workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    // Same requireWorkspaceAccess() hardening as getProjects above.
+    const access = await requireWorkspaceAccess();
+    workspaceId = access.workspaceId;
 
     const supabase = await createServerClient();
     const { data, error } = await supabase
