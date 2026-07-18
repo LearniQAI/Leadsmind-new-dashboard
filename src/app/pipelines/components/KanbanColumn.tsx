@@ -16,6 +16,11 @@ interface KanbanColumnProps {
   opportunities: Opportunity[];
   onEditDeal: (opp: Opportunity) => void;
   onAddDeal: () => void;
+  /** Passed straight through to each OpportunityCard's own quick-delete —
+   *  same callback PipelinesClient already hands OpportunityModal, so a
+   *  card-level delete updates this column's count/subtotal (both computed
+   *  from the `opportunities` prop below) through the identical mechanism. */
+  onSaved: (opp: Opportunity, action: 'create' | 'update' | 'delete') => void;
   /** Show the full "Add deal" CTA button in this column's empty state only
    *  when the whole pipeline has zero deals — otherwise the inline "+" next
    *  to the count badge above is the deal-adding affordance, and repeating
@@ -23,7 +28,7 @@ interface KanbanColumnProps {
   showEmptyStateAction?: boolean;
 }
 
-export function KanbanColumn({ stage, stageIndex, stageCount, opportunities, onEditDeal, onAddDeal, showEmptyStateAction = true }: KanbanColumnProps) {
+export function KanbanColumn({ stage, stageIndex, stageCount, opportunities, onEditDeal, onAddDeal, onSaved, showEmptyStateAction = true }: KanbanColumnProps) {
   const columnValue = opportunities.reduce((acc, opp) => acc + (Number(opp.value) || 0), 0);
   // Stage-tier color is now used ONLY for a 2px top border — a subtle,
   // muted-tone signal rather than the previous tinted-background + colored
@@ -90,6 +95,7 @@ export function KanbanColumn({ stage, stageIndex, stageCount, opportunities, onE
                 opportunity={opp}
                 index={index}
                 onClick={() => onEditDeal(opp)}
+                onSaved={onSaved}
               />
             ))}
             {provided.placeholder}
