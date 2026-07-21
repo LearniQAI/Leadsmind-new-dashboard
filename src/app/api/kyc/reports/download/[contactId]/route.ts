@@ -1,39 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
+import { getUser } from '@/lib/auth';
+import { createAdminClient, createServerClient } from '@/lib/supabase/server';
+import { UnauthorizedError, ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { contactId: string } }
 ) {
   try {
+    const user = await getUser();
+    if (!user) {
+      throw new UnauthorizedError();
+    }
+
     const contactId = params.contactId;
     if (!contactId) {
       return NextResponse.json({ error: 'contactId parameter is required' }, { status: 400 });
     }
 
-    // 1. Fetch Contact Details
-    const { data: contact, error: contactErr } = await supabase
+    const adminClient = createAdminClient();
+
+    // 1. Fetch Contact Details (admin client used only to resolve the record's own
+    // workspace_id — access is still gated by the membership check below)
+    const { data: contact, error: contactErr } = await adminClient
       .from('contacts')
       .select('*')
       .eq('id', contactId)
       .single();
 
     if (contactErr || !contact) {
-      return NextResponse.json({ error: 'Contact profile record not found' }, { status: 404 });
+      throw new NotFoundError('Contact profile');
+    }
+
+    // Confirm the authenticated user is actually a member of the workspace that owns this contact
+    const supabaseUser = await createServerClient();
+    const { data: membership } = await supabaseUser
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', contact.workspace_id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!membership) {
+      throw new ForbiddenError('You do not have access to this contact');
     }
 
     // 2. Fetch latest POPIA Consent record
-    const { data: consent, error: consentErr } = await supabase
+    const { data: consent, error: consentErr } = await adminClient
       .from('kyc_consent')
       .select('*')
       .eq('contact_id', contactId)
@@ -42,14 +61,14 @@ export async function GET(
       .maybeSingle();
 
     // 3. Fetch all Verification Checks
-    const { data: checks } = await supabase
+    const { data: checks } = await adminClient
       .from('kyc_checks')
       .select('*')
       .eq('contact_id', contactId)
       .order('created_at', { ascending: false });
 
     // 4. Fetch Vaulted KYC Documents
-    const { data: documents } = await supabase
+    const { data: documents } = await adminClient
       .from('kyc_documents')
       .select('*')
       .eq('contact_id', contactId)
@@ -546,7 +565,8 @@ export async function GET(
     });
 
   } catch (err: any) {
-    console.error('[GET /api/kyc/reports/download/[contactId] Error]:', err);
-    return NextResponse.json({ error: err.message || 'Server error during report compiling' }, { status: 500 });
+    logger.error({ err }, 'kyc.report.download.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

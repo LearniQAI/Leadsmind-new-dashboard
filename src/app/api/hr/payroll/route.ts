@@ -1,21 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
-import { getUserAccessInfo } from '@/lib/auth'
+import { getUser, getCurrentWorkspaceId } from '@/lib/auth'
+import { createAdminClient, createServerClient } from '@/lib/supabase/server'
+import { UnauthorizedError, ForbiddenError, toClientError } from '@/shared/errors/AppError'
+import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 const ALLOWED_PAYROLL_ROLES = ['admin', 'owner', 'hr', 'payroll'];
+
+// Resolves the authenticated user's active workspace from their session cookie, confirms
+// real membership, and returns their role in THAT workspace — never a client-supplied one.
+async function resolveWorkspaceAndRole(userId: string): Promise<{ workspaceId: string; role: string | null }> {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) {
+    throw new ForbiddenError('No active workspace selected');
+  }
+
+  const supabaseUser = await createServerClient();
+  const { data: membership } = await supabaseUser
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!membership) {
+    throw new ForbiddenError('You are not a member of the active workspace');
+  }
+
+  return { workspaceId, role: membership.role };
+}
+
+// Payroll data (PAYE/UIF/SDL/net pay, employee PII) requires an HR/admin/owner/payroll role
+// within the workspace — plain membership is not sufficient.
+function assertPayrollRole(role: string | null) {
+  if (!role || !ALLOWED_PAYROLL_ROLES.includes(role)) {
+    throw new ForbiddenError('Insufficient privileges for payroll data');
+  }
+}
 
 function calculatePAYE(monthlyGross: number): number {
   const annual = monthlyGross * 12
   let annualTax = 0
-  
+
   // 2024/25 SA tax brackets
   if (annual <= 237100) annualTax = annual * 0.18
   else if (annual <= 370500) annualTax = 42678 + (annual - 237100) * 0.26
@@ -24,48 +52,61 @@ function calculatePAYE(monthlyGross: number): number {
   else if (annual <= 857900) annualTax = 179147 + (annual - 673000) * 0.39
   else if (annual <= 1817000) annualTax = 251258 + (annual - 857900) * 0.41
   else annualTax = 644489 + (annual - 1817000) * 0.45
-  
+
   // Primary rebate 2024/25
   annualTax = Math.max(0, annualTax - 17235)
-  
+
   return Math.round((annualTax / 12) * 100) / 100
 }
 
 export async function GET(req: NextRequest) {
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
+  try {
+    const user = await getUser();
+    if (!user) throw new UnauthorizedError();
 
-  const { data: runs, error } = await supabase
-    .from('payroll_runs')
-    .select('*, payslips(*, employees(first_name, last_name, email, avatar_url))')
-    .eq('workspace_id', workspaceId)
-    .order('period_start', { ascending: false })
+    const { workspaceId, role } = await resolveWorkspaceAndRole(user.id);
+    assertPayrollRole(role);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ payrollRuns: runs ?? [] })
+    const adminClient = createAdminClient();
+    const { data: runs, error } = await adminClient
+      .from('payroll_runs')
+      .select('*, payslips(*, employees(first_name, last_name, email, avatar_url))')
+      .eq('workspace_id', workspaceId)
+      .order('period_start', { ascending: false })
+
+    if (error) throw error;
+    return NextResponse.json({ payrollRuns: runs ?? [] })
+  } catch (err: any) {
+    logger.error({ err }, 'hr.payroll.get.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+  }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { role } = await getUserAccessInfo()
-    if (!role || !ALLOWED_PAYROLL_ROLES.includes(role)) {
-      return NextResponse.json({ error: 'Unauthorized: Insufficient privileges' }, { status: 403 })
-    }
+    const user = await getUser();
+    if (!user) throw new UnauthorizedError();
 
-    const { workspaceId, periodStart, periodEnd, periodLabel } = await req.json()
+    const { workspaceId, role } = await resolveWorkspaceAndRole(user.id);
+    assertPayrollRole(role);
 
-    if (!workspaceId || !periodStart || !periodEnd || !periodLabel) {
+    const { periodStart, periodEnd, periodLabel } = await req.json()
+
+    if (!periodStart || !periodEnd || !periodLabel) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    const adminClient = createAdminClient();
+
     // 1. Fetch active employees
-    const { data: employees, error: empErr } = await supabase
+    const { data: employees, error: empErr } = await adminClient
       .from('employees')
       .select('*')
       .eq('workspace_id', workspaceId)
       .eq('status', 'active')
 
-    if (empErr) return NextResponse.json({ error: empErr.message }, { status: 500 })
+    if (empErr) throw empErr;
     if (!employees || employees.length === 0) {
       return NextResponse.json({ error: 'No active employees found in this workspace' }, { status: 400 })
     }
@@ -103,7 +144,7 @@ export async function POST(req: NextRequest) {
     })
 
     // 3. Create the payroll run record
-    const { data: run, error: runErr } = await supabase
+    const { data: run, error: runErr } = await adminClient
       .from('payroll_runs')
       .insert({
         workspace_id: workspaceId,
@@ -120,7 +161,7 @@ export async function POST(req: NextRequest) {
       .select()
       .single()
 
-    if (runErr) return NextResponse.json({ error: runErr.message }, { status: 500 })
+    if (runErr) throw runErr;
 
     // 4. Create payslip records
     const payslipsToInsert = calculations.map(calc => ({
@@ -129,26 +170,26 @@ export async function POST(req: NextRequest) {
       payroll_run_id: run.id
     }))
 
-    const { error: slipErr } = await supabase
+    const { error: slipErr } = await adminClient
       .from('payslips')
       .insert(payslipsToInsert)
 
     if (slipErr) {
       // rollback run record if payslips fail
-      await supabase.from('payroll_runs').delete().eq("id", run.id).eq("workspace_id", workspaceId)
-      return NextResponse.json({ error: slipErr.message }, { status: 500 })
+      await adminClient.from('payroll_runs').delete().eq("id", run.id).eq("workspace_id", workspaceId)
+      throw slipErr;
     }
 
     // Notify workspace owner via email
     try {
-      const { data: workspace } = await supabase
+      const { data: workspace } = await adminClient
         .from('workspaces')
         .select('owner_id, name')
-        .eq("id", workspaceId).eq("workspace_id", workspaceId)
+        .eq('id', workspaceId)
         .single()
 
       if (workspace?.owner_id) {
-        const { data: ownerData } = await supabase.auth.admin.getUserById(workspace.owner_id)
+        const { data: ownerData } = await adminClient.auth.admin.getUserById(workspace.owner_id)
         if (ownerData?.user?.email) {
           await sendEmail({
             to: ownerData.user.email,
@@ -177,53 +218,74 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, payrollRun: run })
 
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'hr.payroll.post.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
-export async function PATCH(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get('id')
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
+// Fields a client is actually allowed to set via PATCH — financial totals (total_gross,
+// total_paye, etc.) are computed server-side at run time and are never client-writable.
+const PATCH_ALLOWED_FIELDS = ['status', 'paid_at'] as const;
+const ALLOWED_PAYROLL_RUN_STATUSES = ['draft', 'processing', 'paid', 'cancelled'];
 
+export async function PATCH(req: NextRequest) {
   try {
-    const { role } = await getUserAccessInfo()
-    if (!role || !ALLOWED_PAYROLL_ROLES.includes(role)) {
-      return NextResponse.json({ error: 'Unauthorized: Insufficient privileges' }, { status: 403 })
-    }
+    const user = await getUser();
+    if (!user) throw new UnauthorizedError();
+
+    const id = req.nextUrl.searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+
+    const { workspaceId, role } = await resolveWorkspaceAndRole(user.id);
+    assertPayrollRole(role);
 
     const body = await req.json()
-    const { data, error } = await supabase
+
+    if ('status' in body && !ALLOWED_PAYROLL_RUN_STATUSES.includes(body.status)) {
+      return NextResponse.json({ error: 'Invalid status value' }, { status: 400 })
+    }
+
+    const updates: Record<string, unknown> = {};
+    for (const field of PATCH_ALLOWED_FIELDS) {
+      if (field in body) updates[field] = body[field];
+    }
+
+    const adminClient = createAdminClient();
+    const { data, error } = await adminClient
       .from('payroll_runs')
-      .update(body)
+      .update(updates)
       .eq("id", id).eq("workspace_id", workspaceId)
       .select()
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) throw error;
     return NextResponse.json({ success: true, payrollRun: data })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'hr.payroll.patch.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get('id')
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
-
   try {
-    const { role } = await getUserAccessInfo()
-    if (!role || !ALLOWED_PAYROLL_ROLES.includes(role)) {
-      return NextResponse.json({ error: 'Unauthorized: Insufficient privileges' }, { status: 403 })
-    }
+    const user = await getUser();
+    if (!user) throw new UnauthorizedError();
 
-    const { error } = await supabase.from('payroll_runs').delete().eq("id", id).eq("workspace_id", workspaceId)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const id = req.nextUrl.searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+
+    const { workspaceId, role } = await resolveWorkspaceAndRole(user.id);
+    assertPayrollRole(role);
+
+    const adminClient = createAdminClient();
+    const { error } = await adminClient.from('payroll_runs').delete().eq("id", id).eq("workspace_id", workspaceId)
+    if (error) throw error;
     return NextResponse.json({ success: true })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'hr.payroll.delete.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
