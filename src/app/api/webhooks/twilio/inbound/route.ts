@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { validateRequest } from 'twilio';
 import { logger } from '@/shared/logger';
 
 export const runtime = 'nodejs';
@@ -12,9 +13,33 @@ const supabaseAdmin = createClient(
 export async function POST(req: NextRequest) {
     let payloadObj: any = {};
   try {
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    if (!authToken) {
+      throw new Error('[FATAL] TWILIO_AUTH_TOKEN env var is not configured');
+    }
+
     const formData = await req.formData();
     formData.forEach((value, key) => payloadObj[key] = value);
-    
+
+    // Verify this request genuinely came from Twilio BEFORE any contact lookup,
+    // OpenAI call, or enrollment logic runs. Twilio's algorithm validates the
+    // decoded form parameters against the exact webhook URL, not raw body bytes.
+    const twilioSignature = req.headers.get('X-Twilio-Signature');
+    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio/inbound`;
+    const isValidSignature = !!twilioSignature && validateRequest(authToken, twilioSignature, webhookUrl, payloadObj);
+
+    if (!isValidSignature) {
+      logger.warn({ hasSignatureHeader: !!twilioSignature }, 'webhook.twilio_inbound.signature.invalid');
+      try {
+        await supabaseAdmin.from('webhook_dead_letters').insert({
+          provider: 'twilio_inbound', payload: payloadObj, error: 'Invalid or missing X-Twilio-Signature', error_type: 'signature_invalid', retry_state: 'dropped'
+        });
+      } catch (dbErr: any) {
+        logger.error({ err: dbErr, provider: 'twilio_inbound' }, 'webhook.twilio_inbound.dead_letter_insert.failed');
+      }
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const fromPhone = formData.get('From') as string;
     const body = formData.get('Body') as string;
     let messageSid = String(formData.get('MessageSid') || '').trim();

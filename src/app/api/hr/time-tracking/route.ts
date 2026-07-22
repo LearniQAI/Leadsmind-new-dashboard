@@ -1,182 +1,189 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { getUser, getUserAccessInfo } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/server'
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
+import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError'
+import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const PRIVILEGED_ROLES = ['admin', 'owner', 'hr', 'payroll'];
 
 export async function GET(req: NextRequest) {
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
+  try {
+    const { workspaceId, role, userEmail } = await requireWorkspaceRole();
+    const adminClient = createAdminClient();
 
-  const user = await getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const employeeId = req.nextUrl.searchParams.get('employeeId')
+    const billableStr = req.nextUrl.searchParams.get('billable')
 
-  const { role } = await getUserAccessInfo()
-
-  const employeeId = req.nextUrl.searchParams.get('employeeId')
-  const billableStr = req.nextUrl.searchParams.get('billable')
-
-  let query = supabase
-    .from('time_entries')
-    .select('*, employees(first_name, last_name, email, avatar_url)')
-    .eq('workspace_id', workspaceId)
-
-  // Non-admin/non-HR/non-payroll can only see their own time entries
-  if (!role || !['admin', 'owner', 'hr', 'payroll'].includes(role)) {
-    const { data: emp } = await supabase
-      .from('employees')
-      .select('id')
+    let query = adminClient
+      .from('time_entries')
+      .select('*, employees(first_name, last_name, email, avatar_url)')
       .eq('workspace_id', workspaceId)
-      .eq('email', user.email)
-      .maybeSingle()
 
-    if (!emp) {
-      return NextResponse.json({ timeEntries: [] })
+    // Non-admin/non-HR/non-payroll can only see their own time entries
+    if (!PRIVILEGED_ROLES.includes(role)) {
+      const { data: emp } = await adminClient
+        .from('employees')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .eq('email', userEmail)
+        .maybeSingle()
+
+      if (!emp) {
+        return NextResponse.json({ timeEntries: [] })
+      }
+      query = query.eq('employee_id', emp.id)
+    } else {
+      if (employeeId && employeeId !== 'all') {
+        query = query.eq('employee_id', employeeId)
+      }
     }
-    query = query.eq('employee_id', emp.id)
-  } else {
-    if (employeeId && employeeId !== 'all') {
-      query = query.eq('employee_id', employeeId)
+
+    if (billableStr === 'true') {
+      query = query.eq('billable', true)
+    } else if (billableStr === 'false') {
+      query = query.eq('billable', false)
     }
+
+    const { data, error } = await query.order('date', { ascending: false })
+
+    if (error) throw error;
+    return NextResponse.json({ timeEntries: data ?? [] })
+  } catch (err: any) {
+    logger.error({ err }, 'hr.time_tracking.get.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
-
-  if (billableStr === 'true') {
-    query = query.eq('billable', true)
-  } else if (billableStr === 'false') {
-    query = query.eq('billable', false)
-  }
-
-  const { data, error } = await query.order('date', { ascending: false })
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ timeEntries: data ?? [] })
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { workspaceId, role, userEmail } = await requireWorkspaceRole();
+    const adminClient = createAdminClient();
 
-    const { role } = await getUserAccessInfo()
     const body = await req.json()
+    delete body.workspace_id;
 
     // Non-admin/non-HR/non-payroll can only log time for themselves
-    if (!role || !['admin', 'owner', 'hr', 'payroll'].includes(role)) {
-      const { data: emp } = await supabase
+    if (!PRIVILEGED_ROLES.includes(role)) {
+      const { data: emp } = await adminClient
         .from('employees')
         .select('id')
-        .eq('workspace_id', body.workspace_id)
-        .eq('email', user.email)
+        .eq('workspace_id', workspaceId)
+        .eq('email', userEmail)
         .maybeSingle()
 
       if (!emp || body.employee_id !== emp.id) {
-        return NextResponse.json({ error: 'Unauthorized to log time for another employee' }, { status: 403 })
+        throw new ForbiddenError('Unauthorized to log time for another employee');
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await adminClient
       .from('time_entries')
-      .insert(body)
+      .insert({ ...body, workspace_id: workspaceId })
       .select()
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) throw error;
     return NextResponse.json({ success: true, timeEntry: data })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'hr.time_tracking.post.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
 export async function PATCH(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-
   try {
-    const user = await getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const id = req.nextUrl.searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
-    const { role } = await getUserAccessInfo()
-    const body = await req.json()
+    const { workspaceId, role, userEmail } = await requireWorkspaceRole();
+    const adminClient = createAdminClient();
 
-    // Fetch existing
-    const { data: existing } = await supabase
+    // Fetch existing — scoped to the caller's real workspace, not just any id
+    const { data: existing } = await adminClient
       .from('time_entries')
       .select('employee_id, workspace_id')
       .eq('id', id)
+      .eq('workspace_id', workspaceId)
       .single()
 
-    if (!existing) return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
+    if (!existing) throw new NotFoundError('Time entry');
+
+    const body = await req.json()
+    delete body.workspace_id;
 
     // Non-admin/non-HR/non-payroll can only update their own time entries
-    if (!role || !['admin', 'owner', 'hr', 'payroll'].includes(role)) {
-      const { data: emp } = await supabase
+    if (!PRIVILEGED_ROLES.includes(role)) {
+      const { data: emp } = await adminClient
         .from('employees')
         .select('id')
-        .eq('workspace_id', existing.workspace_id)
-        .eq('email', user.email)
+        .eq('workspace_id', workspaceId)
+        .eq('email', userEmail)
         .maybeSingle()
 
       if (!emp || existing.employee_id !== emp.id || body.employee_id !== emp.id) {
-        return NextResponse.json({ error: 'Unauthorized to modify another employee\'s time entry' }, { status: 403 })
+        throw new ForbiddenError('Unauthorized to modify another employee\'s time entry');
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await adminClient
       .from('time_entries')
       .update(body)
       .eq('id', id)
+      .eq('workspace_id', workspaceId)
       .select()
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) throw error;
     return NextResponse.json({ success: true, timeEntry: data })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'hr.time_tracking.patch.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-
   try {
-    const user = await getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const id = req.nextUrl.searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
-    const { role } = await getUserAccessInfo()
+    const { workspaceId, role, userEmail } = await requireWorkspaceRole();
+    const adminClient = createAdminClient();
 
-    // Fetch existing
-    const { data: existing } = await supabase
+    // Fetch existing — scoped to the caller's real workspace, not just any id
+    const { data: existing } = await adminClient
       .from('time_entries')
       .select('employee_id, workspace_id')
       .eq('id', id)
+      .eq('workspace_id', workspaceId)
       .single()
 
-    if (!existing) return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
+    if (!existing) throw new NotFoundError('Time entry');
 
     // Non-admin/non-HR/non-payroll can only delete their own time entries
-    if (!role || !['admin', 'owner', 'hr', 'payroll'].includes(role)) {
-      const { data: emp } = await supabase
+    if (!PRIVILEGED_ROLES.includes(role)) {
+      const { data: emp } = await adminClient
         .from('employees')
         .select('id')
-        .eq('workspace_id', existing.workspace_id)
-        .eq('email', user.email)
+        .eq('workspace_id', workspaceId)
+        .eq('email', userEmail)
         .maybeSingle()
 
       if (!emp || existing.employee_id !== emp.id) {
-        return NextResponse.json({ error: 'Unauthorized to delete another employee\'s time entry' }, { status: 403 })
+        throw new ForbiddenError('Unauthorized to delete another employee\'s time entry');
       }
     }
 
-    const { error } = await supabase.from('time_entries').delete().eq('id', id).eq('workspace_id', existing.workspace_id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const { error } = await adminClient.from('time_entries').delete().eq('id', id).eq('workspace_id', workspaceId)
+    if (error) throw error;
     return NextResponse.json({ success: true })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'hr.time_tracking.delete.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

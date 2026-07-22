@@ -1,50 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@/lib/supabase/server'
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
+import { toClientError } from '@/shared/errors/AppError'
+import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function GET(req: NextRequest) {
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
-  const { data, error } = await supabase
-    .from('workspace_webhooks')
-    .select('id, url, label, active, created_at')
-    .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: false })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ webhooks: data ?? [] })
+  try {
+    const { workspaceId } = await requireWorkspaceRole();
+    const supabase = await createServerClient();
+
+    const { data, error } = await supabase
+      .from('workspace_webhooks')
+      .select('id, url, label, active, created_at')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error;
+    return NextResponse.json({ webhooks: data ?? [] })
+  } catch (err: any) {
+    logger.error({ err }, 'settings.webhooks.get.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const { workspaceId, url, label } = await req.json()
-  if (!workspaceId || !url) {
-    return NextResponse.json({ error: 'workspaceId and url required' }, { status: 400 })
+  try {
+    const { workspaceId } = await requireWorkspaceRole();
+    const supabase = await createServerClient();
+
+    const { url, label } = await req.json()
+    if (!url) {
+      return NextResponse.json({ error: 'url required' }, { status: 400 })
+    }
+    // Validate URL format
+    try { new URL(url) } catch {
+      return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 })
+    }
+
+    const { error } = await supabase
+      .from('workspace_webhooks')
+      .insert({ workspace_id: workspaceId, url, label: label ?? url })
+
+    if (error) throw error;
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    logger.error({ err }, 'settings.webhooks.post.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
-  // Validate URL format
-  try { new URL(url) } catch {
-    return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 })
-  }
-  const { error } = await supabase
-    .from('workspace_webhooks')
-    .insert({ workspace_id: workspaceId, url, label: label ?? url })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
 }
 
 export async function DELETE(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get('id')
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
-  const { error } = await supabase
-    .from('workspace_webhooks')
-    .delete()
-    .eq("id", id).eq("workspace_id", workspaceId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  try {
+    const id = req.nextUrl.searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+
+    const { workspaceId } = await requireWorkspaceRole();
+    const supabase = await createServerClient();
+
+    const { error } = await supabase
+      .from('workspace_webhooks')
+      .delete()
+      .eq("id", id).eq("workspace_id", workspaceId)
+
+    if (error) throw error;
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    logger.error({ err }, 'settings.webhooks.delete.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+  }
 }

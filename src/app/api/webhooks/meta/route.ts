@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { decrypt } from '@/lib/encryption';
 import { logger } from '@/shared/logger';
 
@@ -9,6 +10,21 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// Verifies X-Hub-Signature-256 (HMAC-SHA256 of the raw body, keyed with META_APP_SECRET) using a
+// constant-time comparison. Meta's own docs specify this header format: "sha256=<hex digest>".
+function isValidMetaSignature(rawBody: string, signatureHeader: string | null, appSecret: string): boolean {
+  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
+
+  const providedHex = signatureHeader.slice('sha256='.length);
+  const expectedHex = crypto.createHmac('sha256', appSecret).update(rawBody, 'utf8').digest('hex');
+
+  const providedBuf = Buffer.from(providedHex, 'hex');
+  const expectedBuf = Buffer.from(expectedHex, 'hex');
+
+  if (providedBuf.length !== expectedBuf.length) return false;
+  return crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
 
 // GET Handler for Webhook Verification Challenge
 export async function GET(req: Request) {
@@ -29,7 +45,22 @@ export async function GET(req: Request) {
 // POST Handler for Meta Webhook Events (Messenger, Instagram, WhatsApp)
 export async function POST(req: Request) {
   try {
-    const payload = await req.json();
+    const appSecret = process.env.META_APP_SECRET;
+    if (!appSecret) {
+      throw new Error('[FATAL] META_APP_SECRET env var is not configured');
+    }
+
+    // Read the raw, unparsed body — signature validation is byte-sensitive, so this must
+    // happen before any JSON.parse / re-serialization.
+    const rawBody = await req.text();
+    const signatureHeader = req.headers.get('x-hub-signature-256');
+
+    if (!isValidMetaSignature(rawBody, signatureHeader, appSecret)) {
+      logger.warn({ hasSignatureHeader: !!signatureHeader }, 'webhook.meta.signature.invalid');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const payload = JSON.parse(rawBody);
     logger.info({ payload }, 'webhook.meta.received');
 
     const objectType = payload.object;
