@@ -1,26 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
-import { getUser, getUserAccessInfo } from '@/lib/auth'
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
+import { ForbiddenError, toClientError } from '@/shared/errors/AppError'
+import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const ALLOWED_LEAVE_APPROVAL_ROLES = ['admin', 'owner', 'hr'] as const;
 
 // Helper: get all admin/owner user emails for a workspace
-async function getWorkspaceAdminEmails(workspaceId: string): Promise<{id: string, email: string}[]> {
+async function getWorkspaceAdminEmails(adminClient: ReturnType<typeof createAdminClient>, workspaceId: string): Promise<{id: string, email: string}[]> {
   // Get workspace owner
-  const { data: workspace } = await supabase
+  const { data: workspace } = await adminClient
     .from('workspaces')
     .select('owner_id')
     .eq('id', workspaceId)
     .single()
 
   // Get all admin members
-  const { data: adminMembers } = await supabase
+  const { data: adminMembers } = await adminClient
     .from('workspace_members')
     .select('user_id')
     .eq('workspace_id', workspaceId)
@@ -33,7 +32,7 @@ async function getWorkspaceAdminEmails(workspaceId: string): Promise<{id: string
   if (userIds.size === 0) return []
 
   // Get emails from auth.users via supabase admin
-  const { data: users } = await supabase.auth.admin.listUsers()
+  const { data: users } = await adminClient.auth.admin.listUsers()
   return (users?.users ?? [])
     .filter(u => userIds.has(u.id))
     .map(u => ({ id: u.id, email: u.email ?? '' }))
@@ -42,13 +41,14 @@ async function getWorkspaceAdminEmails(workspaceId: string): Promise<{id: string
 
 // Helper: create in-app notification
 async function createNotification(
+  adminClient: ReturnType<typeof createAdminClient>,
   workspaceId: string,
   userId: string,
   title: string,
   message: string,
   link: string
 ) {
-  await supabase.from('notifications').insert({
+  await adminClient.from('notifications').insert({
     workspace_id: workspaceId,
     user_id: userId,
     type: 'team',
@@ -60,72 +60,74 @@ async function createNotification(
 }
 
 export async function GET(req: NextRequest) {
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
+  try {
+    const { workspaceId, role, userEmail } = await requireWorkspaceRole();
+    const adminClient = createAdminClient();
 
-  const user = await getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { role } = await getUserAccessInfo()
-
-  const employeeId = req.nextUrl.searchParams.get('employeeId')
-  let query = supabase
-    .from('leave_requests')
-    .select('*, employees(first_name, last_name, email, avatar_url, annual_leave_balance, annual_leave_used, sick_leave_balance, sick_leave_used)')
-    .eq('workspace_id', workspaceId)
-
-  // Non-HR/non-admin users can only view their own leave requests
-  if (!role || !['admin', 'owner', 'hr'].includes(role)) {
-    const { data: emp } = await supabase
-      .from('employees')
-      .select('id')
+    const employeeId = req.nextUrl.searchParams.get('employeeId')
+    let query = adminClient
+      .from('leave_requests')
+      .select('*, employees(first_name, last_name, email, avatar_url, annual_leave_balance, annual_leave_used, sick_leave_balance, sick_leave_used)')
       .eq('workspace_id', workspaceId)
-      .eq('email', user.email)
-      .maybeSingle()
 
-    if (!emp) {
-      return NextResponse.json({ leaveRequests: [] })
+    // Non-HR/non-admin users can only view their own leave requests
+    if (!ALLOWED_LEAVE_APPROVAL_ROLES.includes(role as any)) {
+      const { data: emp } = await adminClient
+        .from('employees')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .eq('email', userEmail)
+        .maybeSingle()
+
+      if (!emp) {
+        return NextResponse.json({ leaveRequests: [] })
+      }
+      query = query.eq('employee_id', emp.id)
+    } else {
+      if (employeeId && employeeId !== 'all') {
+        query = query.eq('employee_id', employeeId)
+      }
     }
-    query = query.eq('employee_id', emp.id)
-  } else {
-    if (employeeId && employeeId !== 'all') {
-      query = query.eq('employee_id', employeeId)
-    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
+    if (error) throw error;
+    return NextResponse.json({ leaveRequests: data ?? [] })
+  } catch (err: any) {
+    logger.error({ err }, 'hr.leave.get.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
-
-  const { data, error } = await query.order('created_at', { ascending: false })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ leaveRequests: data ?? [] })
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { workspaceId, role, userEmail } = await requireWorkspaceRole();
+    const adminClient = createAdminClient();
 
-    const { role } = await getUserAccessInfo()
     const body = await req.json()
+    delete body.workspace_id;
 
     // Non-HR/non-admin users can only request leaves for themselves
-    if (!role || !['admin', 'owner', 'hr'].includes(role)) {
-      const { data: emp } = await supabase
+    if (!ALLOWED_LEAVE_APPROVAL_ROLES.includes(role as any)) {
+      const { data: emp } = await adminClient
         .from('employees')
         .select('id')
-        .eq('workspace_id', body.workspace_id)
-        .eq('email', user.email)
+        .eq('workspace_id', workspaceId)
+        .eq('email', userEmail)
         .maybeSingle()
 
       if (!emp || body.employee_id !== emp.id) {
-        return NextResponse.json({ error: 'Unauthorized to request leave for another employee' }, { status: 403 })
+        throw new ForbiddenError('Unauthorized to request leave for another employee');
       }
     }
 
-    // Validate employee exists and has enough leave balance
+    // Validate employee exists (in THIS workspace) and has enough leave balance
     if (body.leave_type === 'annual' || body.leave_type === 'sick') {
-      const { data: employee } = await supabase
+      const { data: employee } = await adminClient
         .from('employees')
         .select('first_name, last_name, email, annual_leave_balance, annual_leave_used, sick_leave_balance, sick_leave_used')
         .eq('id', body.employee_id)
+        .eq('workspace_id', workspaceId)
         .single()
 
       if (employee) {
@@ -148,13 +150,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await adminClient
       .from('leave_requests')
-      .insert(body)
+      .insert({ ...body, workspace_id: workspaceId })
       .select('*, employees(first_name, last_name, email)')
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) throw error;
 
     const emp = data.employees
     const empName = `${emp?.first_name} ${emp?.last_name}`
@@ -162,11 +164,12 @@ export async function POST(req: NextRequest) {
     const link = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://leadsmind.io'}/hr/leave`
 
     // Notify all workspace admins — in-app notification
-    const admins = await getWorkspaceAdminEmails(body.workspace_id)
+    const admins = await getWorkspaceAdminEmails(adminClient, workspaceId)
     for (const admin of admins) {
       // In-app bell notification
       await createNotification(
-        body.workspace_id,
+        adminClient,
+        workspaceId,
         admin.id,
         'New Leave Request',
         `${empName} has requested ${body.days_count} day(s) of ${leaveType} leave from ${body.start_date} to ${body.end_date}.`,
@@ -202,26 +205,25 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, leaveRequest: data })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'hr.leave.post.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
 export async function PATCH(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get('id')
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
-
   try {
-    const { role } = await getUserAccessInfo()
-    if (!role || !['admin', 'owner', 'hr'].includes(role)) {
-      return NextResponse.json({ error: 'Unauthorized: Only admins and HR can approve or reject leaves' }, { status: 403 })
-    }
+    const id = req.nextUrl.searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_LEAVE_APPROVAL_ROLES);
+    const adminClient = createAdminClient();
 
     const body = await req.json()
+    delete body.workspace_id;
 
     // Fetch the leave request to get employee info
-    const { data: existing } = await supabase
+    const { data: existing } = await adminClient
       .from('leave_requests')
       .select('*, employees(first_name, last_name, email, annual_leave_used, sick_leave_used)')
       .eq("id", id).eq("workspace_id", workspaceId)
@@ -232,14 +234,14 @@ export async function PATCH(req: NextRequest) {
       body.actioned_at = new Date().toISOString()
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await adminClient
       .from('leave_requests')
       .update(body)
       .eq("id", id).eq("workspace_id", workspaceId)
       .select('*, employees(first_name, last_name, email)')
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) throw error;
 
     const emp = data.employees
     const empName = `${emp?.first_name} ${emp?.last_name}`
@@ -248,14 +250,14 @@ export async function PATCH(req: NextRequest) {
     // If APPROVED — update employee leave balance
     if (body.status === 'approved' && existing) {
       if (existing.leave_type === 'annual') {
-        await supabase
+        await adminClient
           .from('employees')
           .update({
             annual_leave_used: (existing.employees?.annual_leave_used ?? 0) + existing.days_count
           })
           .eq("id", existing.employee_id).eq("workspace_id", workspaceId)
       } else if (existing.leave_type === 'sick') {
-        await supabase
+        await adminClient
           .from('employees')
           .update({
             sick_leave_used: (existing.employees?.sick_leave_used ?? 0) + existing.days_count
@@ -308,26 +310,26 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ success: true, leaveRequest: data })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'hr.leave.patch.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get('id')
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-  if (!workspaceId) return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
-
   try {
-    const { role } = await getUserAccessInfo()
-    if (!role || !['admin', 'owner', 'hr'].includes(role)) {
-      return NextResponse.json({ error: 'Unauthorized: Only admins and HR can delete leave records' }, { status: 403 })
-    }
+    const id = req.nextUrl.searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
-    const { error } = await supabase.from('leave_requests').delete().eq("id", id).eq("workspace_id", workspaceId)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_LEAVE_APPROVAL_ROLES);
+    const adminClient = createAdminClient();
+
+    const { error } = await adminClient.from('leave_requests').delete().eq("id", id).eq("workspace_id", workspaceId)
+    if (error) throw error;
     return NextResponse.json({ success: true })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'hr.leave.delete.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

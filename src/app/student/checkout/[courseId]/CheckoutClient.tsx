@@ -45,26 +45,13 @@ export default function CheckoutClient({ course, user, workspaceId, contactId, i
           return;
         }
 
-        // Simulate PayFast payment flow
-        const webhookPayload = {
-          payment_status: "COMPLETE",
-          email_address: user.email,
-          custom_str1: workspaceId,
-          custom_str2: contactId,
-          custom_str3: course.id,
-          item_name: course.title,
-          amount_gross: course.price
-        };
-
-        const webhookRes = await fetch('/api/webhooks/payfast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(webhookPayload)
-        });
-
-        if (!webhookRes.ok) {
-          console.warn("[Checkout] Webhook simulator warning:", await webhookRes.text());
-        }
+        // NOTE: this used to self-construct a fake PayFast ITN payload (payment_status:
+        // "COMPLETE", no signature) and POST it directly to the real production webhook route —
+        // a genuine payment-completion callback must only ever come from PayFast's own
+        // server-to-server call, never from the client claiming its own payment succeeded. That
+        // self-POST has been removed; it is not this checkout flow's place to fabricate a payment
+        // confirmation. (enrollStudent() below finalizes enrollment for this flow; note it does
+        // not itself verify payment — that's a separate, pre-existing gap outside this fix.)
 
         // Perform enrollment registration
         const enrollRes = await enrollStudent(course.id);

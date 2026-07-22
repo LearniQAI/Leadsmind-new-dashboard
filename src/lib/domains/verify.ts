@@ -1,6 +1,7 @@
 import dns from 'dns'
 import { createAdminClient } from '@/lib/supabase/server'
 import { addDomainToProject, getDomainStatus } from './vercel'
+import { logger } from '@/shared/logger'
 
 const dnsPromises = dns.promises
 
@@ -109,10 +110,11 @@ export async function verifyDns(domainId: string): Promise<{
 
     return { success: true, status: nextStatus }
   } catch (err: any) {
+    logger.error({ err, domainId }, 'domains.verify.dns_check.failed');
     return {
       success: false,
       status: domain.status || 'verifying',
-      error: err.message || 'DNS verification failed'
+      error: 'DNS verification failed'
     }
   }
 }

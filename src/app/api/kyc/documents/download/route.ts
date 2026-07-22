@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { getUser } from '@/lib/auth';
+import { createAdminClient, createServerClient } from '@/lib/supabase/server';
+import { UnauthorizedError, ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const ENCRYPTION_KEY = crypto.createHash('sha256')
   .update(process.env.KYC_ENCRYPTION_KEY || 'default_secret_compliance_key_32_bytes')
@@ -15,29 +13,64 @@ const ENCRYPTION_KEY = crypto.createHash('sha256')
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await getUser();
+    if (!user) {
+      throw new UnauthorizedError();
+    }
+
     const id = req.nextUrl.searchParams.get('id');
     if (!id) {
       return NextResponse.json({ error: 'Document id parameter is required' }, { status: 400 });
     }
 
-    // Fetch document details from compliance log
-    const { data: doc, error: fetchError } = await supabase
+    const adminClient = createAdminClient();
+
+    // Fetch document details from compliance log (admin client used only to resolve
+    // the record's own workspace_id — access is still gated by the membership check below)
+    const { data: doc, error: fetchError } = await adminClient
       .from('kyc_documents')
       .select('*')
       .eq('id', id)
       .single();
 
     if (fetchError || !doc) {
-      return NextResponse.json({ error: 'KYC Document metadata record not found' }, { status: 404 });
+      throw new NotFoundError('KYC document');
+    }
+
+    // Confirm the authenticated user is actually a member of the workspace that owns this document
+    const supabaseUser = await createServerClient();
+    const { data: membership } = await supabaseUser
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', doc.workspace_id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!membership) {
+      throw new ForbiddenError('You do not have access to this document');
+    }
+
+    // POPIA/FICA: only serve the document if the contact has an obtained consent record
+    const { data: consent } = await adminClient
+      .from('kyc_consent')
+      .select('status')
+      .eq('contact_id', doc.contact_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!consent || consent.status !== 'obtained') {
+      throw new ForbiddenError('Consent has not been obtained for this contact');
     }
 
     // Retrieve encrypted payload from bucket
-    const { data: fileData, error: downloadError } = await supabase.storage
+    const { data: fileData, error: downloadError } = await adminClient.storage
       .from('kyc-documents')
       .download(doc.file_url);
 
     if (downloadError || !fileData) {
-      return NextResponse.json({ error: 'Failed to retrieve storage payload: ' + downloadError?.message }, { status: 500 });
+      logger.error({ err: downloadError, docId: id }, 'kyc.document.download.storage_failure');
+      throw new Error('Failed to retrieve storage payload');
     }
 
     // Convert Blob/file payload back to Buffer
@@ -70,7 +103,8 @@ export async function GET(req: NextRequest) {
       }
     });
   } catch (err: any) {
-    console.error('[GET /api/kyc/documents/download error]:', err);
-    return NextResponse.json({ error: err.message || 'An unexpected error occurred during decryption' }, { status: 500 });
+    logger.error({ err }, 'kyc.document.download.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
