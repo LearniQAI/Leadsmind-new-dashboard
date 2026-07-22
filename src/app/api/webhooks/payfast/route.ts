@@ -1,27 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { publishEvent } from "@/lib/events/EventBus";
 import crypto from 'crypto'
 import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
+import { verifyPayFastSignature } from '@/lib/calendar/payfast';
 import { logger } from '@/shared/logger';
-
-function verifyPayFastSignature(
-  payload: Record<string, string>,
-  passphrase: string | null
-): boolean {
-  const params = Object.keys(payload)
-    .filter(key => key !== 'signature')
-    .sort()
-    .map(key => `${key}=${encodeURIComponent(String(payload[key])).replace(/%20/g, '+')}`)
-    .join('&')
-
-  const strToHash = passphrase
-    ? `${params}&passphrase=${encodeURIComponent(passphrase).replace(/%20/g, '+')}`
-    : params
-
-  const hash = crypto.createHash('md5').update(strToHash).digest('hex')
-  return hash === payload.signature
-}
 
 /**
  * PayFast Webhook Receiver Route
@@ -29,6 +12,11 @@ function verifyPayFastSignature(
  */
 export async function POST(req: NextRequest) {
   try {
+    const passphrase = process.env.PAYFAST_PASSPHRASE;
+    if (!passphrase) {
+      throw new Error('[FATAL] PAYFAST_PASSPHRASE env var is not configured');
+    }
+
     let payload: any = {};
     const contentType = req.headers.get("content-type") || "";
 
@@ -41,17 +29,19 @@ export async function POST(req: NextRequest) {
       payload = await req.json();
     }
 
-    // Signature verification (only if passphrase is configured)
-    const passphrase = process.env.PAYFAST_PASSPHRASE || null
-    if (payload.signature && passphrase) {
-      const isValid = verifyPayFastSignature(payload, passphrase)
-      if (!isValid) {
-        logger.warn({}, 'webhook.payfast.signature.invalid')
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-      }
+    // Signature verification — mandatory in every environment, before any contact/invoice/
+    // enrollment logic runs. A missing or incorrect signature is always rejected; this is never
+    // conditional on the payload happening to include a `signature` field.
+    const isValid = verifyPayFastSignature(payload, passphrase)
+    if (!isValid) {
+      logger.warn({}, 'webhook.payfast.signature.invalid')
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
     }
 
-    // IP whitelist (production only)
+    // IP whitelist (production only — signature verification above is mandatory and sufficient
+    // in every environment; this allowlist is additional defense-in-depth for production only,
+    // deliberately not enforced elsewhere so local/staging testing against PayFast's sandbox
+    // from non-allowlisted IPs remains possible)
     const payfastIPs = [
       '197.97.145.144',
       '196.33.227.224',
@@ -88,7 +78,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, status: "ignored" });
     }
 
-    const supabase = await createServerClient();
+    // Real PayFast server-to-server calls never carry a user session cookie, so this must be
+    // the service-role client — the RLS-respecting client used here previously meant every
+    // query/update below was silently filtered to nothing for genuine webhook calls, regardless
+    // of signature verification. Access is still gated by signature verification above, never by
+    // an ambient user session that doesn't exist for this caller.
+    const supabase = createAdminClient();
 
     // 1. Resolve Workspace ID
     const workspaceId = custom_str1 || process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID;

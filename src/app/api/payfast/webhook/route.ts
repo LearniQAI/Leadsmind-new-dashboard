@@ -9,6 +9,11 @@ import { logger } from '@/shared/logger';
 
 export async function POST(req: NextRequest) {
   try {
+    const passphrase = process.env.PAYFAST_PASSPHRASE;
+    if (!passphrase) {
+      throw new Error('[FATAL] PAYFAST_PASSPHRASE env var is not configured');
+    }
+
     // 1. Parse PayFast Form Data
     const formData = await req.formData();
     const payload: Record<string, string> = {};
@@ -18,11 +23,12 @@ export async function POST(req: NextRequest) {
 
     logger.info({ payload }, 'payfast_webhook.itn.received');
 
-    // 2. Signature Validation
-    const isValid = verifyPayFastSignature(payload);
-    if (!isValid && process.env.NODE_ENV === 'production') {
+    // 2. Signature Validation — mandatory in every environment, before any lease/appointment/
+    // invoice logic runs. A missing or incorrect signature is always rejected.
+    const isValid = verifyPayFastSignature(payload, passphrase);
+    if (!isValid) {
       logger.warn({}, 'payfast_webhook.signature.invalid');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
     }
 
     const paymentStatus = payload.payment_status;

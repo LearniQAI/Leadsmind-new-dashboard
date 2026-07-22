@@ -60,10 +60,10 @@ export async function enrollStudent(courseId: string) {
 
     const adminClient = createAdminClient();
 
-    // Fetch the course to find its workspace_id
+    // Fetch the course to find its workspace_id and price
     const { data: course, error: courseError } = await adminClient
       .from('courses')
-      .select('workspace_id')
+      .select('workspace_id, price')
       .eq('id', courseId)
       .single();
 
@@ -99,6 +99,27 @@ export async function enrollStudent(courseId: string) {
 
     if (existing) {
       return { success: true, message: 'Already enrolled' };
+    }
+
+    // Paid courses require a real, completed payment record before enrollment is created —
+    // this is the only thing standing between a direct call to this action and a free ride
+    // into a paid course. Free courses (price 0 or unset) skip this check entirely. The
+    // payment record convention (a paid invoice whose metadata references this courseId)
+    // mirrors the same metadata shape already used for Stripe course checkout sessions
+    // (see createCourseCheckoutSession/createDirectCourseCheckoutSession below).
+    if (course.price && course.price > 0) {
+      const { data: paidInvoice } = await adminClient
+        .from('invoices')
+        .select('id')
+        .eq('contact_id', contactId)
+        .eq('workspace_id', workspaceId)
+        .eq('status', 'paid')
+        .contains('metadata', { courseId })
+        .maybeSingle();
+
+      if (!paidInvoice) {
+        return { error: 'No completed payment found for this course.' };
+      }
     }
 
     const { error } = await adminClient

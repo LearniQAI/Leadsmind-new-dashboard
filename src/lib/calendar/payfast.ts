@@ -114,20 +114,29 @@ export function generatePayFastCheckoutUrl(params: PayFastParams): string {
 
 /**
  * Validates the MD5 signature from a PayFast ITN webhook payload.
+ *
+ * Signature verification is mandatory — a missing or incorrect `signature` field is always
+ * rejected, never silently skipped. PayFast's documented ITN algorithm requires the fields to
+ * stay in the order they were POSTed (never re-sorted alphabetically), and the passphrase
+ * (when configured on the merchant account, as it is here) must be appended before hashing —
+ * both of these were previously broken across the two PayFast webhook implementations in this
+ * codebase, which would have caused genuine PayFast ITN calls to fail verification once made
+ * mandatory without also fixing the hash construction.
  */
-export function verifyPayFastSignature(body: Record<string, string>): boolean {
+export function verifyPayFastSignature(body: Record<string, string>, passphrase: string): boolean {
   const pfSignature = body.signature;
   if (!pfSignature) return false;
 
-  // Re-calculate signature based on all keys except signature
-  let paramString = '';
-  const sortedKeys = Object.keys(body).filter(key => key !== 'signature');
-  
-  sortedKeys.forEach(key => {
-    paramString += `${key}=${encodeURIComponent(body[key].trim()).replace(/%20/g, '+')}&`;
-  });
-  paramString = paramString.slice(0, -1);
+  const keys = Object.keys(body).filter(key => key !== 'signature');
+  const paramString = keys
+    .map(key => `${key}=${encodeURIComponent(String(body[key]).trim()).replace(/%20/g, '+')}`)
+    .join('&');
 
-  const calculatedSignature = crypto.createHash('md5').update(paramString).digest('hex');
-  return calculatedSignature === pfSignature;
+  const strToHash = `${paramString}&passphrase=${encodeURIComponent(passphrase).replace(/%20/g, '+')}`;
+  const calculatedSignature = crypto.createHash('md5').update(strToHash).digest('hex');
+
+  const providedBuf = Buffer.from(pfSignature, 'hex');
+  const calculatedBuf = Buffer.from(calculatedSignature, 'hex');
+  if (providedBuf.length !== calculatedBuf.length) return false;
+  return crypto.timingSafeEqual(providedBuf, calculatedBuf);
 }
