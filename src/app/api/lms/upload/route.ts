@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getUser } from '@/lib/auth';
+import { createAdminClient } from '@/lib/supabase/server';
+import { UnauthorizedError, toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
+// Used both by instructors uploading course assets and students uploading assignment
+// files — any authenticated user may call this, it does not itself associate the upload
+// with a workspace/course (the caller does that separately, e.g. via lms/assignments).
 export async function POST(req: NextRequest) {
   try {
+    const user = await getUser();
+    if (!user) throw new UnauthorizedError();
+
+    const adminClient = createAdminClient();
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const pathPrefix = (formData.get('pathPrefix') as string) || 'lms-assets';
@@ -18,12 +26,12 @@ export async function POST(req: NextRequest) {
 
     const arrayBuffer = await file.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuffer);
-    
+
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const storagePath = `${pathPrefix}/${Date.now()}-${cleanFileName}`;
 
     // Upload to 'media' bucket
-    const { error: uploadError } = await supabaseAdmin.storage
+    const { error: uploadError } = await adminClient.storage
       .from('media')
       .upload(storagePath, fileBuffer, {
         contentType: file.type || 'application/octet-stream',
@@ -31,11 +39,12 @@ export async function POST(req: NextRequest) {
       });
 
     if (uploadError) {
-      return NextResponse.json({ error: 'Storage upload failed: ' + uploadError.message }, { status: 500 });
+      logger.error({ err: uploadError, userId: user.id }, 'lms.upload.storage.failed');
+      throw new Error('Storage upload failed');
     }
 
     // Generate public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
+    const { data: { publicUrl } } = adminClient.storage
       .from('media')
       .getPublicUrl(storagePath);
 
@@ -48,7 +57,8 @@ export async function POST(req: NextRequest) {
       mimeType: file.type
     });
   } catch (err: any) {
-    console.error('[POST /api/lms/upload error]:', err);
-    return NextResponse.json({ error: err.message || 'Failed to upload asset' }, { status: 500 });
+    logger.error({ err }, 'lms.upload.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

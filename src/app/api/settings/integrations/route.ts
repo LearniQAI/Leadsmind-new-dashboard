@@ -7,10 +7,14 @@ import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
+// Viewing/connecting/disconnecting integrations exposes webhook secrets and third-party
+// account state — restricted to workspace admins/owners, same as API keys.
+const ALLOWED_INTEGRATIONS_ROLES = ['admin', 'owner'];
+
 // GET — fetch all integrations for the caller's own workspace
 export async function GET(req: NextRequest) {
   try {
-    const { workspaceId } = await requireWorkspaceRole();
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_INTEGRATIONS_ROLES);
     const supabase = await createServerClient();
 
     const { data, error } = await supabase
@@ -30,7 +34,7 @@ export async function GET(req: NextRequest) {
 // POST — mark an integration as connected
 export async function POST(req: NextRequest) {
   try {
-    const { workspaceId } = await requireWorkspaceRole();
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_INTEGRATIONS_ROLES);
     const supabase = await createServerClient();
 
     const { provider, category, accountLabel, webhookUrl } = await req.json()
@@ -92,7 +96,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'provider required' }, { status: 400 })
     }
 
-    const { workspaceId } = await requireWorkspaceRole();
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_INTEGRATIONS_ROLES);
     const supabase = await createServerClient();
     const adminClient = createAdminClient();
 

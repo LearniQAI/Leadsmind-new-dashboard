@@ -93,14 +93,19 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
             <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-left w-1/2`}>Detailed Description</th>
             <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Qty</th>
             <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Unit Price</th>
-            <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Tax (15%)</th>
+            <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Tax</th>
             <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Amount (ZAR)</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {(invoice.items || []).map((item: any, idx: number) => {
             const lineTotal = (Number(item.quantity) || 0) * (Number(item.rate) || 0);
-            const lineTax = lineTotal * 0.15; // SARS standard 15% VAT
+            // No per-line-item tax rate/amount is captured anywhere in the invoice-creation
+            // flow today (see Task 14 audit — tax_total is always 0, nothing calculates VAT).
+            // This used to fabricate a flat 15% here regardless of the real stored tax_total,
+            // producing a document that contradicted itself. Line-item tax is always 0 until
+            // real per-line tax calculation is designed and added — not invented here.
+            const lineTax = 0;
             return (
               <tr key={idx} className="group">
                 <td className="py-6 pr-4">
@@ -125,8 +130,7 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
               <p className="text-[10px] font-black uppercase tracking-widest">SARS Tax Declaration</p>
            </div>
            <p className={`text-[10px] ${DOCUMENT_MUTED_TEXT} leading-relaxed italic`}>
-              All amounts are in South African Rand (ZAR) unless otherwise specified. 
-              VAT is calculated at the standard rate of 15% as per the Value-Added Tax Act, 1991.
+              All amounts are in South African Rand (ZAR) unless otherwise specified.
            </p>
         </div>
 
@@ -138,7 +142,7 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
           
           <div className="flex justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
             <div className="space-y-1">
-               <p className="text-[9px] font-black uppercase tracking-widest text-blue-600">Total VAT (15%)</p>
+               <p className="text-[9px] font-black uppercase tracking-widest text-blue-600">Total VAT</p>
                <p className="text-xl font-black text-gray-900 font-space">${taxTotal.toLocaleString()}</p>
             </div>
             <div className="text-right">

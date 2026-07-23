@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { requireWorkspaceAccess } from '@/lib/auth';
+import { requireLmsInstructor } from '@/lib/lms/access';
+import { NotFoundError, toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,10 +11,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const courseId = params.id;
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace active' }, { status: 401 });
-    }
+    // Real session + verified workspace_members row — the previous version only read the
+    // active_workspace_id cookie with no proof the caller was even authenticated.
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const supabase = await createServerClient();
 
@@ -23,9 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       .eq('workspace_id', workspaceId)
       .single();
 
-    if (courseErr || !course) {
-      return NextResponse.json({ error: 'Course not found or unauthorized' }, { status: 404 });
-    }
+    if (courseErr || !course) throw new NotFoundError('Course');
 
     // Retrieve modules with nested lessons
     const { data: modules, error: modulesErr } = await supabase
@@ -38,19 +38,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     return NextResponse.json({ success: true, data: modules });
   } catch (err: any) {
-    console.error('[MODULES GET API ERROR]:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'courses.modules.get.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
-// POST /api/courses/[id]/modules - create a new module under course
+// POST /api/courses/[id]/modules - create a new module under course (instructor-only)
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const courseId = params.id;
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace active' }, { status: 401 });
-    }
+    const { workspaceId } = await requireLmsInstructor();
 
     const body = await req.json();
     const { name, description = '', icon_emoji = null, publish_status = 'Draft', nqf_level = '', is_required_for_completion = false } = body;
@@ -70,9 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .eq('workspace_id', workspaceId)
       .single();
 
-    if (courseErr || !course) {
-      return NextResponse.json({ error: 'Course not found or unauthorized' }, { status: 404 });
-    }
+    if (courseErr || !course) throw new NotFoundError('Course');
 
     // Determine next order_index
     const { count } = await supabase
@@ -102,7 +98,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     return NextResponse.json({ success: true, data: newModule }, { status: 201 });
   } catch (err: any) {
-    console.error('[MODULES POST API ERROR]:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'courses.modules.post.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

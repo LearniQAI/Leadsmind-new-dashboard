@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getUser } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    // Stateless OpenAI proxy with no workspace association to check membership against — the
+    // real risk here is cost abuse (anyone hitting this burns the shared OpenAI key), so a bare
+    // authentication check is the proportionate gate, not a workspace membership check.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { prompt } = body;
 

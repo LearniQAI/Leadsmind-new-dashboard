@@ -21,17 +21,31 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    let workspaceId = searchParams.get('workspaceId');
+    const requestedWorkspaceId = searchParams.get('workspaceId');
 
-    // If no workspaceId provided, get user's primary/first workspace
-    if (!workspaceId) {
+    let workspaceId: string | null = null;
+    if (requestedWorkspaceId) {
+      // A workspaceId was explicitly supplied — verify real membership rather than trusting it.
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('workspace_id', requestedWorkspaceId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!membership) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      workspaceId = membership.workspace_id;
+    } else {
+      // No workspaceId provided, get user's primary/first workspace
       const { data: membership } = await supabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', userId)
         .limit(1)
-        .single();
-      
+        .maybeSingle();
+
       workspaceId = membership?.workspace_id || null;
     }
 
@@ -73,7 +87,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, settings });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[support.widget-settings.get] failed:', error);
+    return NextResponse.json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 });
   }
 }
 
@@ -134,6 +149,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, settings });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[support.widget-settings.post] failed:', error);
+    return NextResponse.json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 });
   }
 }

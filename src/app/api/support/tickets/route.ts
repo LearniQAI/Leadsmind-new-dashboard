@@ -192,18 +192,52 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, ticket });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[support.tickets.post] failed:', error);
+    return NextResponse.json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 });
   }
 }
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const workspaceId = searchParams.get('workspaceId');
-    if (!workspaceId) return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
-
     const supabase = await createServerClient();
-    const { data, error } = await supabase
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const requestedWorkspaceId = searchParams.get('workspaceId');
+
+    let workspaceId: string;
+    if (requestedWorkspaceId) {
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('workspace_id', requestedWorkspaceId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!membership) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      workspaceId = membership.workspace_id;
+    } else {
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (!membership) {
+        return NextResponse.json({ error: 'No workspace found' }, { status: 404 });
+      }
+      workspaceId = membership.workspace_id;
+    }
+
+    const { data, error } = await supabaseAdmin
       .from('support_tickets')
       .select('*, contact:contacts(*)')
       .eq('workspace_id', workspaceId)
@@ -212,6 +246,7 @@ export async function GET(req: Request) {
     if (error) throw error;
     return NextResponse.json({ tickets: data });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[support.tickets.get] failed:', error);
+    return NextResponse.json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 });
   }
 }

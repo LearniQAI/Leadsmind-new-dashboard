@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
+
+// Constant-time comparison — same standing rule as every other signature/token check in this
+// codebase (see webhooks/meta, lib/calendar/payfast). A plain `!==`/`===` leaks timing
+// information proportional to the number of matching leading bytes.
+function tokensMatch(provided: string | null, expected: string | null | undefined): boolean {
+  if (!provided || !expected) return false;
+  const providedBuf = Buffer.from(provided, 'utf8');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  if (providedBuf.length !== expectedBuf.length) return false;
+  return crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +31,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing channel id' }, { status: 400 });
     }
 
-    const supabase = await createServerClient();
+    // Real Google push notifications never carry a user session cookie, so this must be the
+    // service-role client — the RLS-respecting client used here previously meant every query
+    // below was silently filtered to nothing for genuine webhook calls.
+    const supabase = createAdminClient();
 
     // Find the calendar connection associated with this channel ID
     // We assume the channel ID is stored in the connection's credentials/metadata
@@ -32,6 +47,18 @@ export async function POST(req: NextRequest) {
     if (!connection) {
       logger.warn({ channelId }, 'google_webhook.connection.not_found');
       // return 200 anyway so Google doesn't retry indefinitely
+      return new NextResponse('OK', { status: 200 });
+    }
+
+    // Google's push notification API has no request signature — the only integrity check it
+    // offers is echoing back the `token` value supplied when the watch channel was registered
+    // (channels.watch). Verify it against the value stored for this specific connection at
+    // registration time; without this, anyone who learns/guesses a channelId could inject fake
+    // sync events for that connection.
+    const channelToken = req.headers.get('x-goog-channel-token');
+    const expectedToken = (connection.credentials as any)?.google_channel_token;
+    if (!tokensMatch(channelToken, expectedToken)) {
+      logger.warn({ channelId }, 'google_webhook.channel_token.invalid');
       return new NextResponse('OK', { status: 200 });
     }
 

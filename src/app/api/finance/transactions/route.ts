@@ -1,25 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createAdminClient } from '@/lib/supabase/server';
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
+const ALLOWED_FINANCE_ROLES = ['admin', 'owner'];
+
 export async function GET(req: NextRequest) {
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId');
-  if (!workspaceId) {
-    return NextResponse.json({ error: 'workspaceId required' }, { status: 400 });
-  }
-
-  const page = Number(req.nextUrl.searchParams.get('page') || '1');
-  const limit = Number(req.nextUrl.searchParams.get('limit') || '50');
-  const search = req.nextUrl.searchParams.get('search') || '';
-
   try {
-    let query = supabase
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_FINANCE_ROLES);
+    const adminClient = createAdminClient();
+
+    const page = Number(req.nextUrl.searchParams.get('page') || '1');
+    const limit = Number(req.nextUrl.searchParams.get('limit') || '50');
+    const search = req.nextUrl.searchParams.get('search') || '';
+
+    let query = adminClient
       .from('accounting_transactions')
       .select('*', { count: 'exact' })
       .eq('workspace_id', workspaceId)
@@ -42,22 +40,26 @@ export async function GET(req: NextRequest) {
       page,
       limit
     });
-  } catch (error: any) {
-    console.error('[transactions-get] error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: any) {
+    logger.error({ err }, 'finance.transactions.get.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { workspaceId, date, description, amount, type, reference } = await req.json();
-    if (!workspaceId || !description || amount === undefined) {
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_FINANCE_ROLES);
+    const adminClient = createAdminClient();
+
+    const { date, description, amount, type, reference } = await req.json();
+    if (!description || amount === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     const totalAmount = type === 'expense' ? -Math.abs(Number(amount)) : Math.abs(Number(amount));
 
-    const { data, error } = await supabase
+    const { data, error } = await adminClient
       .from('accounting_transactions')
       .insert({
         workspace_id: workspaceId,
@@ -72,23 +74,21 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error;
     return NextResponse.json({ success: true, transaction: data });
-  } catch (error: any) {
-    console.error('[transactions-post] error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: any) {
+    logger.error({ err }, 'finance.transactions.post.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
 export async function PATCH(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get('id');
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId');
-  if (!id) {
-    return NextResponse.json({ error: 'id required' }, { status: 400 });
-  }
-  if (!workspaceId) {
-    return NextResponse.json({ error: 'workspaceId required' }, { status: 400 });
-  }
-
   try {
+    const id = req.nextUrl.searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_FINANCE_ROLES);
+    const adminClient = createAdminClient();
+
     const { date, description, amount, type, reference } = await req.json();
     const updates: any = {};
 
@@ -103,41 +103,42 @@ export async function PATCH(req: NextRequest) {
 
     updates.updated_at = new Date().toISOString();
 
-    const { data, error } = await supabase
+    const { data, error } = await adminClient
       .from('accounting_transactions')
       .update(updates)
-      .eq("id", id).eq("workspace_id", workspaceId)
+      .eq('id', id)
+      .eq('workspace_id', workspaceId)
       .select()
       .single();
 
     if (error) throw error;
     return NextResponse.json({ success: true, transaction: data });
-  } catch (error: any) {
-    console.error('[transactions-patch] error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: any) {
+    logger.error({ err }, 'finance.transactions.patch.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get('id');
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId');
-  if (!id) {
-    return NextResponse.json({ error: 'id required' }, { status: 400 });
-  }
-  if (!workspaceId) {
-    return NextResponse.json({ error: 'workspaceId required' }, { status: 400 });
-  }
-
   try {
-    const { error } = await supabase
+    const id = req.nextUrl.searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_FINANCE_ROLES);
+    const adminClient = createAdminClient();
+
+    const { error } = await adminClient
       .from('accounting_transactions')
       .delete()
-      .eq("id", id).eq("workspace_id", workspaceId);
+      .eq('id', id)
+      .eq('workspace_id', workspaceId);
 
     if (error) throw error;
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('[transactions-delete] error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: any) {
+    logger.error({ err }, 'finance.transactions.delete.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

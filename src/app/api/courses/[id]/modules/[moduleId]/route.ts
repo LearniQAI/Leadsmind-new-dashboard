@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { requireWorkspaceAccess } from '@/lib/auth';
+import { requireLmsInstructor } from '@/lib/lms/access';
+import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +14,9 @@ export async function GET(
 ) {
   try {
     const { id: courseId, moduleId } = params;
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace active' }, { status: 401 });
-    }
+    // Real session + verified workspace_members row — the previous version only read the
+    // active_workspace_id cookie with no proof the caller was even authenticated.
+    const { workspaceId } = await requireWorkspaceAccess();
 
     const supabase = await createServerClient();
 
@@ -26,36 +28,30 @@ export async function GET(
       .eq('course_id', courseId)
       .single();
 
-    if (moduleErr || !moduleObj) {
-      return NextResponse.json({ error: 'Module not found' }, { status: 404 });
-    }
+    if (moduleErr || !moduleObj) throw new NotFoundError('Module');
 
     const courseWorkspaceId = (moduleObj.courses as any)?.workspace_id;
-    if (courseWorkspaceId !== workspaceId) {
-      return NextResponse.json({ error: 'Unauthorized workspace access' }, { status: 403 });
-    }
+    if (courseWorkspaceId !== workspaceId) throw new ForbiddenError('Unauthorized workspace access');
 
     // Clean reference so we don't return the course details if not needed
     const { courses, ...moduleData } = moduleObj;
 
     return NextResponse.json({ success: true, data: moduleData });
   } catch (err: any) {
-    console.error('[MODULE DETAIL GET ERROR]:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'courses.module_detail.get.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
-// PUT /api/courses/[id]/modules/[moduleId] - update module attributes
+// PUT /api/courses/[id]/modules/[moduleId] - update module attributes (instructor-only)
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string; moduleId: string } }
 ) {
   try {
     const { id: courseId, moduleId } = params;
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace active' }, { status: 401 });
-    }
+    const { workspaceId } = await requireLmsInstructor();
 
     const body = await req.json();
     const { name, description, icon_emoji, publish_status, nqf_level, is_required_for_completion } = body;
@@ -75,14 +71,10 @@ export async function PUT(
       .eq('course_id', courseId)
       .single();
 
-    if (moduleErr || !moduleObj) {
-      return NextResponse.json({ error: 'Module not found' }, { status: 404 });
-    }
+    if (moduleErr || !moduleObj) throw new NotFoundError('Module');
 
     const courseWorkspaceId = (moduleObj.courses as any)?.workspace_id;
-    if (courseWorkspaceId !== workspaceId) {
-      return NextResponse.json({ error: 'Unauthorized workspace access' }, { status: 403 });
-    }
+    if (courseWorkspaceId !== workspaceId) throw new ForbiddenError('Unauthorized workspace access');
 
     // Build update object
     const updateData: any = {};
@@ -93,10 +85,14 @@ export async function PUT(
     if (nqf_level !== undefined) updateData.nqf_level = nqf_level;
     if (is_required_for_completion !== undefined) updateData.is_required_for_completion = is_required_for_completion;
 
+    // NOTE: `modules` has no workspace_id column of its own — ownership was already
+    // verified above via the courses!inner(workspace_id) join, so the update is scoped by
+    // id (+ course_id implicitly, since it was verified against courseId above).
     const { data: updatedModule, error: updateErr } = await supabase
       .from('modules')
       .update(updateData)
-      .eq("id", moduleId).eq("workspace_id", workspaceId)
+      .eq('id', moduleId)
+      .eq('course_id', courseId)
       .select()
       .single();
 
@@ -104,22 +100,20 @@ export async function PUT(
 
     return NextResponse.json({ success: true, data: updatedModule });
   } catch (err: any) {
-    console.error('[MODULE DETAIL PUT ERROR]:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'courses.module_detail.put.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
-// DELETE /api/courses/[id]/modules/[moduleId] - remove a module
+// DELETE /api/courses/[id]/modules/[moduleId] - remove a module (instructor-only)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string; moduleId: string } }
 ) {
   try {
     const { id: courseId, moduleId } = params;
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace active' }, { status: 401 });
-    }
+    const { workspaceId } = await requireLmsInstructor();
 
     const supabase = await createServerClient();
 
@@ -131,25 +125,23 @@ export async function DELETE(
       .eq('course_id', courseId)
       .single();
 
-    if (moduleErr || !moduleObj) {
-      return NextResponse.json({ error: 'Module not found' }, { status: 404 });
-    }
+    if (moduleErr || !moduleObj) throw new NotFoundError('Module');
 
     const courseWorkspaceId = (moduleObj.courses as any)?.workspace_id;
-    if (courseWorkspaceId !== workspaceId) {
-      return NextResponse.json({ error: 'Unauthorized workspace access' }, { status: 403 });
-    }
+    if (courseWorkspaceId !== workspaceId) throw new ForbiddenError('Unauthorized workspace access');
 
     const { error: deleteErr } = await supabase
       .from('modules')
       .delete()
-      .eq("id", moduleId).eq("workspace_id", workspaceId);
+      .eq('id', moduleId)
+      .eq('course_id', courseId);
 
     if (deleteErr) throw deleteErr;
 
     return NextResponse.json({ success: true, message: 'Module deleted successfully' });
   } catch (err: any) {
-    console.error('[MODULE DETAIL DELETE ERROR]:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'courses.module_detail.delete.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth';
+import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
+import { ForbiddenError, NotFoundError, UnauthorizedError, toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,14 +14,42 @@ export async function PATCH(
   try {
     const enrolmentId = params.id;
     const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user) throw new UnauthorizedError();
+
+    const adminClient = createAdminClient();
+
+    // Resolve the enrollment's real contact_id/course_id first — the enrolmentId in the
+    // URL is not itself proof of ownership. `enrollments` has no workspace_id column of
+    // its own, so the real workspace is resolved via the course it belongs to.
+    const { data: enrollmentRow, error: fetchErr } = await adminClient
+      .from('enrollments')
+      .select('id, contact_id, course_id')
+      .eq('id', enrolmentId)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+    if (!enrollmentRow) throw new NotFoundError('Enrollment');
+
+    const { data: courseRow, error: courseErr } = await adminClient
+      .from('courses')
+      .select('workspace_id')
+      .eq('id', enrollmentRow.course_id)
+      .maybeSingle();
+
+    if (courseErr) throw courseErr;
+    if (!courseRow) throw new NotFoundError('Course');
+
+    const workspaceId = courseRow.workspace_id;
+
+    // This is a student self-tracking heartbeat — only the enrolled student themself may
+    // update their own last-active/progress state, never an arbitrary authenticated user.
+    const studentContactId = await getOrCreateStudentContact(workspaceId);
+    if (!studentContactId || studentContactId !== enrollmentRow.contact_id) {
+      throw new ForbiddenError('You do not have access to this enrollment');
     }
 
     const body = await req.json();
     const { lessonId, progressSeconds } = body;
-
-    const adminClient = createAdminClient();
 
     const updates: any = { last_active_at: new Date().toISOString() };
     if (lessonId) {
@@ -33,12 +64,10 @@ export async function PATCH(
       .from('enrollments')
       .update(updates)
       .eq('id', enrolmentId)
-      .select('contact_id, course_id, workspace_id')
+      .select('contact_id, course_id')
       .single();
 
-    if (enrollErr || !enrollment) {
-      return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
-    }
+    if (enrollErr || !enrollment) throw new NotFoundError('Enrollment');
 
     // 2. If lessonId and progressSeconds are provided, log watch tracking position
     if (lessonId && typeof progressSeconds === 'number') {
@@ -50,20 +79,20 @@ export async function PATCH(
         .maybeSingle();
 
       if (existing) {
-        const updates: any = { progress_seconds: progressSeconds };
+        const progressUpdates: any = { progress_seconds: progressSeconds };
         if (!existing.completed_at) {
-          updates.completed_at = null;
+          progressUpdates.completed_at = null;
         }
         const { error: updateErr } = await adminClient
           .from('course_progress')
-          .update(updates)
+          .update(progressUpdates)
           .eq('id', existing.id);
         if (updateErr) throw updateErr;
       } else {
         const { error: insertErr } = await adminClient
           .from('course_progress')
           .insert({
-            workspace_id: enrollment.workspace_id,
+            workspace_id: workspaceId,
             contact_id: enrollment.contact_id,
             course_id: enrollment.course_id,
             lesson_id: lessonId,
@@ -76,15 +105,16 @@ export async function PATCH(
       // Trigger struggle evaluation in the background
       try {
         const { evaluateStudentStruggle } = await import('../../../../../../libs/core/src/analytics/struggle-processor');
-        await evaluateStudentStruggle(enrollment.contact_id, enrollment.course_id, enrollment.workspace_id);
+        await evaluateStudentStruggle(enrollment.contact_id, enrollment.course_id, workspaceId);
       } catch (err) {
-        console.error('[Heartbeat Struggle Evaluation Error]:', err);
+        logger.error({ err, enrolmentId }, 'enrolments.activity.struggle_evaluation.failed');
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error('[Heartbeat Sync API Error]:', err);
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
+    logger.error({ err }, 'enrolments.activity.patch.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

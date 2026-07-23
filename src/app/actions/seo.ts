@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId as getWsId, getCurrentWorkspace } from '@/lib/auth';
+import { createOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 
@@ -24,8 +25,10 @@ async function getActiveWorkspaceId() {
 // GOOGLE OAUTH URL GENERATOR
 export async function getGoogleAuthUrl() {
   try {
-    const workspaceId = await getActiveWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+    // Mints a random opaque nonce bound server-side to the real authenticated user + their
+    // real (session-verified) workspace — the OAuth state param is never the workspace_id
+    // itself. Throws if unauthenticated or not a real workspace member.
+    const { nonce } = await createOAuthStateNonce('google');
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`;
@@ -41,7 +44,7 @@ export async function getGoogleAuthUrl() {
       scope: scopes,
       access_type: 'offline',
       prompt: 'consent',
-      state: workspaceId
+      state: nonce
     });
 
     return { data: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };

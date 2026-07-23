@@ -11,7 +11,6 @@ export async function POST(
     const body = await req.json();
     const {
       event,
-      workspaceId,
       values = {},
       completionPercentage = 0,
       attribution = {},
@@ -19,22 +18,28 @@ export async function POST(
       metadata = {}
     } = body;
 
-    if (!event || !workspaceId) {
+    if (!event) {
       return NextResponse.json({ error: 'Missing required trigger event parameters' }, { status: 400 });
     }
 
     const supabase = createAdminClient();
-    
-    // Fetch form name to provide template variables
+
+    // Resolve the real workspace_id from the form's own record — never trust a
+    // client-supplied workspaceId, which would let a caller fire automation trigger
+    // events into an arbitrary workspace using any form id.
     const { data: form } = await supabase
       .from('forms')
-      .select('name')
+      .select('name, workspace_id')
       .eq('id', formId)
       .single();
 
+    if (!form) {
+      return NextResponse.json({ error: 'Form not found' }, { status: 404 });
+    }
+
     TriggerDispatcher.dispatch(event as AutomationTriggerEvent, {
       formId,
-      workspaceId,
+      workspaceId: form.workspace_id,
       formName: form?.name || 'Form',
       values,
       completionPercentage,

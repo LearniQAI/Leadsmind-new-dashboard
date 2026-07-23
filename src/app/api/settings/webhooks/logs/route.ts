@@ -6,9 +6,13 @@ import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
+// Delivery logs can reveal webhook URLs and payload/error content — restricted to
+// admins/owners, same as the webhook endpoints they belong to.
+const ALLOWED_WEBHOOK_LOG_ROLES = ['admin', 'owner'];
+
 export async function GET(req: NextRequest) {
   try {
-    const { workspaceId } = await requireWorkspaceRole();
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_WEBHOOK_LOG_ROLES);
     const supabase = await createServerClient();
 
     const { data, error } = await supabase

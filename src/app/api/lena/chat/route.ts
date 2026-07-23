@@ -69,6 +69,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 1b. Basic cost-abuse rate limit: this endpoint is intentionally public (no auth — it's
+    // the visitor-facing widget) and makes a billed OpenAI call per request, so it needs
+    // some throttle even though this isn't an authorization fix. Chose a simple DB-backed
+    // check (no new infra/dependency: reuses the lena_messages table already being written
+    // here) over a per-IP limiter, since conversationId is the natural abuse unit for a
+    // widget where a single visitor's messages all share one conversation — 10 visitor
+    // messages per conversation per rolling 60 seconds is generous for a real human typing,
+    // but caps a scripted flood.
+    const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
+    const { count: recentVisitorMessageCount } = await supabase
+      .from('lena_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('conversation_id', conversationId)
+      .eq('sender_type', 'visitor')
+      .gte('created_at', oneMinuteAgo);
+
+    if ((recentVisitorMessageCount ?? 0) >= 10) {
+      return corsResponse({ error: 'Too many messages — please slow down and try again shortly.' }, { status: 429 });
+    }
+
     // 2. Save Visitor Message
     const { error: msgErr } = await supabase
       .from('lena_messages')

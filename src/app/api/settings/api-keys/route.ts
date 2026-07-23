@@ -7,8 +7,11 @@ import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
-// Resolves the authenticated user's active workspace from their session cookie and
-// confirms real membership — a client-supplied workspaceId in the body/query is never trusted.
+const ALLOWED_API_KEY_ROLES = ['admin', 'owner'];
+
+// Resolves the authenticated user's active workspace from their session cookie, confirms
+// real membership, and requires an admin/owner role — a client-supplied workspaceId in the
+// body/query is never trusted. Minting/revoking API keys is an admin-level action.
 async function resolveActiveWorkspace(userId: string): Promise<string> {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) {
@@ -18,13 +21,17 @@ async function resolveActiveWorkspace(userId: string): Promise<string> {
   const supabaseUser = await createServerClient();
   const { data: membership } = await supabaseUser
     .from('workspace_members')
-    .select('id')
+    .select('role')
     .eq('workspace_id', workspaceId)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (!membership) {
     throw new ForbiddenError('You are not a member of the active workspace');
+  }
+
+  if (!ALLOWED_API_KEY_ROLES.includes(membership.role)) {
+    throw new ForbiddenError('Only workspace admins or owners can manage API keys');
   }
 
   return workspaceId;

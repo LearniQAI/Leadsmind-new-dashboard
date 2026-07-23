@@ -6,9 +6,13 @@ import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
+// Workspace webhooks mint new secrets and control outbound delivery targets — restricted
+// to admins/owners, same as API keys and integrations.
+const ALLOWED_WEBHOOK_ROLES = ['admin', 'owner'];
+
 export async function GET(req: NextRequest) {
   try {
-    const { workspaceId } = await requireWorkspaceRole();
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_WEBHOOK_ROLES);
     const supabase = await createServerClient();
 
     const { data, error } = await supabase
@@ -28,7 +32,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { workspaceId } = await requireWorkspaceRole();
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_WEBHOOK_ROLES);
     const supabase = await createServerClient();
 
     const { url, label } = await req.json()
@@ -58,7 +62,7 @@ export async function DELETE(req: NextRequest) {
     const id = req.nextUrl.searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
-    const { workspaceId } = await requireWorkspaceRole();
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_WEBHOOK_ROLES);
     const supabase = await createServerClient();
 
     const { error } = await supabase

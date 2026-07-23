@@ -12,7 +12,6 @@ interface AiCreditsTabProps {
 export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState(false);
   const [credits, setCredits] = useState<any>(null);
 
   async function loadCredits() {
@@ -37,30 +36,6 @@ export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
   useEffect(() => {
     loadCredits();
   }, [workspaceId]);
-
-  const handlePurchaseAddon = async () => {
-    setPurchasing(true);
-    toast.info('Initiating secure purchase process for credit top-up...');
-    try {
-      // Simulate top-up in database
-      const currentAddon = credits?.credits_purchased_addon || 0;
-      const { error } = await supabase
-        .from('ai_usage_credits')
-        .update({
-          credits_purchased_addon: currentAddon + 100,
-          updated_at: new Date().toISOString()
-        })
-        .eq('workspace_id', workspaceId);
-
-      if (error) throw error;
-      toast.success('Successfully added 100 top-up credits to balance!');
-      await loadCredits();
-    } catch (err: any) {
-      toast.error(`Purchase failed: ${err.message}`);
-    } finally {
-      setPurchasing(false);
-    }
-  };
 
   const handleUpgradeTier = () => {
     toast.success('Redirecting to subscription plans portal...');
@@ -176,22 +151,14 @@ export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
             </div>
           </div>
 
+          {/* Self-serve top-up is not wired to a real payment flow yet — the button is
+              inert (no onClick, no network call) rather than left as an unpaid credit grant. */}
           <button
-            onClick={handlePurchaseAddon}
-            disabled={purchasing}
-            className="w-full h-10 rounded-xl bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none disabled:opacity-50"
+            disabled
+            title="Add-on top-ups are not available yet — contact your account manager"
+            className="w-full h-10 rounded-xl bg-dash-surface border border-dash-border !text-dash-textMuted font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60"
           >
-            {purchasing ? (
-              <>
-                <i className="fa-solid fa-spinner animate-spin motion-reduce:animate-none text-[11px]"></i>
-                Purchasing...
-              </>
-            ) : (
-              <>
-                Purchase 100 add-on credits
-                <ArrowUpRight size={14} />
-              </>
-            )}
+            Available soon
           </button>
         </div>
 

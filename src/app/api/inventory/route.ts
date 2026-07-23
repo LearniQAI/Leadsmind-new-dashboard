@@ -6,10 +6,13 @@ import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
-// Resolves the authenticated user's active workspace from their session cookie and
-// confirms real membership — a client-supplied workspaceId in query/body is never trusted.
-// Returns an RLS-respecting client scoped to the caller's own session, so cross-tenant
-// access is structurally blocked at the database layer as well, not just here.
+const ALLOWED_INVENTORY_ROLES = ['admin', 'owner'];
+
+// Resolves the authenticated user's active workspace from their session cookie, confirms
+// real membership, and requires an admin/owner role (same restriction as Payroll) — a
+// client-supplied workspaceId in query/body is never trusted. Returns an RLS-respecting
+// client scoped to the caller's own session, so cross-tenant access is structurally blocked
+// at the database layer as well, not just here.
 async function resolveWorkspace(userId: string) {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) {
@@ -19,13 +22,17 @@ async function resolveWorkspace(userId: string) {
   const supabaseUser = await createServerClient();
   const { data: membership } = await supabaseUser
     .from('workspace_members')
-    .select('id')
+    .select('role')
     .eq('workspace_id', workspaceId)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (!membership) {
     throw new ForbiddenError('You are not a member of the active workspace');
+  }
+
+  if (!ALLOWED_INVENTORY_ROLES.includes(membership.role)) {
+    throw new ForbiddenError('Only workspace admins or owners can access inventory data');
   }
 
   return { workspaceId, supabase: supabaseUser };

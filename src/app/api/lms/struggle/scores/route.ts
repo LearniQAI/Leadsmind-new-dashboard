@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getUser } from '@/lib/auth';
+import { requireLmsInstructor } from '@/lib/lms/access';
+import { toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const workspaceId = searchParams.get('workspaceId');
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Missing workspaceId' }, { status: 400 });
-    }
-
+    const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();
 
     const { data: scores, error } = await adminClient
@@ -46,10 +38,10 @@ export async function GET(req: NextRequest) {
       .order('score', { ascending: false });
 
     if (error) throw error;
-
     return NextResponse.json({ data: scores });
   } catch (err: any) {
-    console.error('[API Struggle Scores Error]:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'lms.struggle.scores.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

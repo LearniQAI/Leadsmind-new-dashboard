@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
+import { createOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { sendEmail } from '@/lib/email';
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
 import { encrypt, decrypt } from '@/lib/encryption';
@@ -14,18 +15,21 @@ import { toClientError } from '@/shared/errors/AppError';
 const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
 
 export async function getMetaAuthUrl(targetPlatform?: string) {
-	const workspaceId = await getCurrentWorkspaceId();
+	// Mints a random opaque nonce bound server-side to the real authenticated user + their
+	// real (session-verified) workspace — the OAuth state param is never the workspace_id
+	// itself. requireWorkspaceAccess() (inside createOAuthStateNonce) throws if unauthenticated
+	// or not a real member, which is the correct behavior for a connect-flow initiator.
+	const { nonce, workspaceId } = await createOAuthStateNonce('meta', targetPlatform ? { platform: targetPlatform } : {});
 	const appId = process.env.META_APP_ID;
 	const redirectBase = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 	const metaRedirectUri = `${redirectBase}/api/auth/meta/callback`;
-	const stateStr = targetPlatform ? `${workspaceId}:${targetPlatform}` : `${workspaceId}`;
 
 	if (!appId || appId === 'placeholder' || !process.env.META_APP_ID) {
-		return `${metaRedirectUri}?code=mock_code&state=${stateStr}`;
+		return `${metaRedirectUri}?code=mock_code&state=${nonce}`;
 	}
 
 	const scope = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_manage_posts,instagram_manage_messages,instagram_content_publishing,whatsapp_business_messaging,whatsapp_business_management,business_management';
-	const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${stateStr}`;
+	const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${nonce}`;
 	logger.info({ scope, workspaceId }, 'messaging.meta_oauth.url_generated');
 	return url;
 }

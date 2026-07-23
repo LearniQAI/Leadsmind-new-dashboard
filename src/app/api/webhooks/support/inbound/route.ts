@@ -28,8 +28,10 @@ function verifySignature(req: Request, rawBody: string): boolean {
   if (now - parseInt(timestamp, 10) > 300) return false;
 
   const secret = process.env.RESEND_WEBHOOK_SECRET;
-  if (!secret) return true; // Bypass if not configured yet
-  
+  if (!secret) {
+    throw new Error('[FATAL] RESEND_WEBHOOK_SECRET is not configured');
+  }
+
   const signedContent = `${msgId}.${timestamp}.${rawBody}`;
   const secretBytes = Buffer.from(secret.split('_')[1], 'base64');
   const expectedSig = crypto

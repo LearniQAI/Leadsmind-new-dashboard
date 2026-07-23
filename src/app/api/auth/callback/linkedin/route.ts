@@ -1,23 +1,26 @@
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
-  const workspaceId = searchParams.get('state');
+  const state = searchParams.get('state');
 
-  if (!code || !workspaceId) {
+  if (!code || !state) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/social?error=missing_parameters`);
   }
 
   try {
+    // state is a random opaque nonce minted at flow-initiation time, bound server-side to
+    // the real authenticated user + their real workspace — never trust its raw value.
+    const { workspaceId } = await consumeOAuthStateNonce(state, 'linkedin');
+
+    const supabase = createAdminClient();
+
     // 1. Exchange code for access token
     const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
       method: 'POST',
@@ -59,7 +62,7 @@ export async function GET(req: Request) {
 
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/social?success=linkedin_connected`);
   } catch (error: any) {
-    console.error('LinkedIn Auth Error:', error.message);
+    logger.error({ err: error }, 'auth.linkedin_callback.failed');
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/social?error=auth_failed`);
   }
 }

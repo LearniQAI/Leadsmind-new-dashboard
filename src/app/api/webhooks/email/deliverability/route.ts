@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { Webhook } from 'svix';
 import { logger } from '@/shared/logger';
 
 export const runtime = 'nodejs';
@@ -11,7 +12,26 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const secret = process.env.RESEND_WEBHOOK_SECRET;
+    if (!secret) {
+      throw new Error('[FATAL] RESEND_WEBHOOK_SECRET is not configured');
+    }
+
+    const rawBody = await req.text();
+    const svixHeaders = {
+      'svix-id': req.headers.get('svix-id') || '',
+      'svix-timestamp': req.headers.get('svix-timestamp') || '',
+      'svix-signature': req.headers.get('svix-signature') || '',
+    };
+
+    let body: any;
+    try {
+      body = new Webhook(secret).verify(rawBody, svixHeaders);
+    } catch (err: any) {
+      logger.warn({ err }, 'webhook.email_deliverability.signature.invalid');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+
     logger.info({ body }, 'webhook.email_deliverability.received');
 
     let eventType: 'open' | 'click' | 'reply' | 'bounce' | 'complaint' | null = null;

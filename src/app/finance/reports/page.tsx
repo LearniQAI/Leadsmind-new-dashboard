@@ -156,46 +156,18 @@ export default function ReportsPage() {
     }
   };
 
+  // LeadsMind does not currently calculate or track VAT anywhere in the invoice/expense
+  // creation flow (see Task 14 audit — invoices.tax_total is always 0, no per-invoice or
+  // per-expense VAT logic exists). This used to fabricate Output/Input VAT as a flat 15% of
+  // raw invoice/expense totals and present it as a "VAT201" filing figure — a real business
+  // could have acted on that fictional number. Rather than invent a calculation here (that's
+  // a business/billing decision, not a display fix), this report now states plainly that VAT
+  // isn't tracked instead of showing any computed number, since even "R0.00 payable" could be
+  // misread as a confirmed, verified position.
   const generateVatReport = async () => {
     if (!workspaceId) return;
-    setLoading(true);
-    try {
-      const { start, end } = getStartEndDates(vatPeriod);
-
-      // Output VAT: 15% of invoice totals
-      const { data: invData, error: invError } = await supabase
-        .from('invoices')
-        .select('total_amount, amount_due')
-        .eq('workspace_id', workspaceId)
-        .gte('created_at', start + 'T00:00:00Z')
-        .lte('created_at', end + 'T23:59:59Z');
-
-      if (invError) throw invError;
-      const totalInvoiced = (invData || []).reduce((sum, item) => sum + Number(item.total_amount || item.amount_due || 0), 0);
-      const outputVat = totalInvoiced * 0.15;
-
-      // Input VAT: from expense amounts (15% standard rate)
-      const { data: expData, error: expError } = await supabase
-        .from('expenses')
-        .select('amount')
-        .eq('workspace_id', workspaceId)
-        .gte('date', start)
-        .lte('date', end);
-
-      if (expError) throw expError;
-      const totalExpenses = (expData || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
-      const inputVat = totalExpenses * 0.15;
-
-      setVatData({
-        outputVat,
-        inputVat,
-        netVat: outputVat - inputVat
-      });
-    } catch (err: any) {
-      toast.error(err.message || 'Error generating VAT report');
-    } finally {
-      setLoading(false);
-    }
+    setVatData(null);
+    setLoading(false);
   };
 
   const generateCashFlowReport = async () => {
@@ -286,13 +258,11 @@ export default function ReportsPage() {
       });
       csvContent += `Total Expenses,${plData.expenses.reduce((s, r) => s + r.amount, 0)}\n\n`;
       csvContent += `Net Profit,${plData.netProfit}\n`;
-    } else if (activeReport === 'vat' && vatData) {
+    } else if (activeReport === 'vat') {
       fileName = `vat-report-${vatPeriod}.csv`;
       csvContent += 'VAT Report (VAT201)\n';
       csvContent += `Period: ${vatPeriod}\n\n`;
-      csvContent += `Output VAT (on sales),${vatData.outputVat}\n`;
-      csvContent += `Input VAT (on purchases),${vatData.inputVat}\n`;
-      csvContent += `Net VAT Payable/Refundable,${vatData.netVat}\n`;
+      csvContent += 'VAT is not currently calculated or tracked by LeadsMind. Consult your accounting records for accurate SARS VAT201 filing figures.\n';
     } else if (activeReport === 'cashflow') {
       fileName = 'cash-flow-12-months.csv';
       csvContent += 'Cash Flow Statement (Last 12 Months)\n\n';
@@ -570,7 +540,7 @@ export default function ReportsPage() {
               )}
 
               {/* Tab 2: VAT Report (VAT201) */}
-              {activeReport === 'vat' && vatData && (
+              {activeReport === 'vat' && (
                 <div>
                   <div className="border-b border-dash-border pb-4 mb-6">
                     <h3 className="text-[16px] font-bold !text-dash-text print:text-black">
@@ -581,25 +551,15 @@ export default function ReportsPage() {
                     </span>
                   </div>
 
-                  <div className="space-y-4 text-[12px] mb-8">
-                    <div className="flex justify-between py-3 border-b border-dash-border">
-                      <span className="!text-dash-textMuted print:text-black font-medium">Output VAT (15% on sales)</span>
-                      <span className="font-bold !text-dash-text print:text-black">{formatCurrency(vatData.outputVat)}</span>
-                    </div>
-                    <div className="flex justify-between py-3 border-b border-dash-border">
-                      <span className="!text-dash-textMuted print:text-black font-medium">Input VAT (15% on purchases)</span>
-                      <span className="font-bold !text-dash-text print:text-black">{formatCurrency(vatData.inputVat)}</span>
-                    </div>
-                  </div>
-
-                  <div className="p-5 rounded-xl bg-dash-surface border border-dash-border flex items-center justify-between print:border-slate-300 print:text-black">
+                  <div className="p-5 rounded-xl bg-dash-surface border border-dash-border flex items-start gap-3 print:border-slate-300 print:text-black">
+                    <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <span className="text-[13px] font-bold !text-dash-text print:text-black block">Net VAT Payable to SARS</span>
-                      <span className="text-[10px] !text-dash-textMuted block mt-0.5">Negative indicates SARS refund due</span>
+                      <span className="text-[13px] font-bold !text-dash-text print:text-black block">VAT is not currently tracked</span>
+                      <span className="text-[11px] !text-dash-textMuted block mt-1 leading-relaxed">
+                        LeadsMind does not currently calculate or record VAT on invoices or expenses.
+                        Consult your accounting records for accurate SARS VAT201 filing figures.
+                      </span>
                     </div>
-                    <span className={`text-[20px] font-bold ${vatData.netVat >= 0 ? 'text-red' : 'text-green'}`}>
-                      {formatCurrency(vatData.netVat)}
-                    </span>
                   </div>
                 </div>
               )}

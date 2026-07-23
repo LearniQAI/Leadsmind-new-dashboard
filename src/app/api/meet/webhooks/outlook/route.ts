@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
+
+// Constant-time comparison — same standing rule as every other signature/token check in this
+// codebase (see webhooks/meta, lib/calendar/payfast). A plain `!==`/`===` leaks timing
+// information proportional to the number of matching leading bytes.
+function tokensMatch(provided: string | null | undefined, expected: string | null | undefined): boolean {
+  if (!provided || !expected) return false;
+  const providedBuf = Buffer.from(provided, 'utf8');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  if (providedBuf.length !== expectedBuf.length) return false;
+  return crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +36,10 @@ export async function POST(req: NextRequest) {
       return new NextResponse('OK', { status: 200 });
     }
 
-    const supabase = await createServerClient();
+    // Real Microsoft Graph notifications never carry a user session cookie, so this must be
+    // the service-role client — the RLS-respecting client used here previously meant every
+    // query below was silently filtered to nothing for genuine webhook calls.
+    const supabase = createAdminClient();
 
     for (const notification of notifications) {
       const subscriptionId = notification.subscriptionId;
@@ -39,6 +54,16 @@ export async function POST(req: NextRequest) {
 
       if (!connection) {
         logger.warn({ subscriptionId }, 'outlook_webhook.connection.not_found');
+        continue;
+      }
+
+      // Microsoft Graph has no request signature — `clientState` is the integrity check it
+      // offers, an opaque value you supply when creating the subscription and that Graph
+      // echoes back on every notification. Verify it against the value stored for this
+      // specific connection at subscription-creation time.
+      const expectedClientState = (connection.credentials as any)?.outlook_client_state;
+      if (!tokensMatch(notification.clientState, expectedClientState)) {
+        logger.warn({ subscriptionId }, 'outlook_webhook.client_state.invalid');
         continue;
       }
 

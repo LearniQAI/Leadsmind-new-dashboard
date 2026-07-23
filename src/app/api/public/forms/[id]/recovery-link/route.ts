@@ -3,12 +3,32 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { RecoveryTokenHandler } from '@/lib/persistence/RecoveryTokenHandler';
 import { RecoveryManager } from '@/lib/persistence/RecoveryManager';
 
+// Basic IP rate limiting — this is a public, unauthenticated endpoint that dispatches a real
+// email to an arbitrary attacker-supplied address; without a limit, it's a spam vector.
+const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS = 5;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const formId = params.id;
-  
+
+  const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+  const now = Date.now();
+  const rateData = rateLimitMap.get(ip) || { count: 0, lastReset: now };
+  if (now - rateData.lastReset > RATE_LIMIT_WINDOW) {
+    rateData.count = 1;
+    rateData.lastReset = now;
+  } else {
+    rateData.count++;
+    if (rateData.count > MAX_REQUESTS) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+  }
+  rateLimitMap.set(ip, rateData);
+
   try {
     const { email, sessionId } = await req.json();
     if (!email || !sessionId) {
