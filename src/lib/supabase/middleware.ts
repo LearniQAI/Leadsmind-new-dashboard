@@ -139,6 +139,7 @@ export async function updateSession(request: NextRequest) {
    request.nextUrl.pathname === '/favicon.ico' ||
    request.nextUrl.pathname === '/privacy-policy' ||
    request.nextUrl.pathname === '/terms' ||
+   request.nextUrl.pathname === '/refund' ||
    request.nextUrl.pathname.startsWith('/unauthenticated') ||
    request.nextUrl.pathname.startsWith('/book') ||
    request.nextUrl.pathname.startsWith('/solutions') ||

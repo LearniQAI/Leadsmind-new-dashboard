@@ -8,11 +8,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-if (!process.env.JWT_SECRET) {
-  throw new Error('[FATAL] JWT_SECRET is not configured');
-}
-const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const token = searchParams.get('token');
@@ -24,6 +19,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    if (!process.env.JWT_SECRET) {
+      throw new Error('[FATAL] JWT_SECRET is not configured');
+    }
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+
     // 1. Verify custom cryptographic JWT token
     const { payload } = await jwtVerify(token, secret);
     const email = payload.email as string;
