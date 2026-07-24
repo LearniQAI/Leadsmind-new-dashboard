@@ -9,13 +9,13 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-if (!process.env.JWT_SECRET) {
-  throw new Error('[FATAL] JWT_SECRET is not configured');
-}
-const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.JWT_SECRET) {
+      throw new Error('[FATAL] JWT_SECRET is not configured');
+    }
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+
     const { email } = await req.json();
 
     if (!email || !email.includes('@')) {
