@@ -89,10 +89,17 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { lessonId, courseId, workspaceId, textSubmission, fileUrl, fileName, fileSize } = body;
+    const { lessonId, courseId, textSubmission, fileUrl, fileName, fileSize } = body;
+    // workspaceId is intentionally read from the session, never the client body — a
+    // client-supplied workspaceId would let a student submit into an arbitrary workspace.
 
-    if (!lessonId || !courseId || !workspaceId) {
-      return NextResponse.json({ error: 'Missing required parameters: lessonId, courseId, workspaceId' }, { status: 400 });
+    if (!lessonId || !courseId) {
+      return NextResponse.json({ error: 'Missing required parameters: lessonId, courseId' }, { status: 400 });
+    }
+
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No active workspace context' }, { status: 400 });
     }
 
     const contactId = await getOrCreateStudentContact(workspaceId);

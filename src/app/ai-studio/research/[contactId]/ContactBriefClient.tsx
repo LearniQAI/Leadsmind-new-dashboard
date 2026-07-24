@@ -47,8 +47,7 @@ export default function ContactBriefClient({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contactId: report.contact_id || 'test-contact-id',
-          workspaceId
+          contactId: report.contact_id
         })
       });
 

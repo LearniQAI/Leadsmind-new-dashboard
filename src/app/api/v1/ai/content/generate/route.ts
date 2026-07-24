@@ -1,35 +1,30 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { verifyAICreditBalance } from '@/server/middleware/CreditGuard';
 import { PromptEngine } from '@/server/services/ai/PromptEngine';
 import { db } from '@/server/database/datasource';
 import OpenAI from 'openai';
-import { createServerClient } from '@/lib/supabase/server';
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { toClientError } from '@/shared/errors/AppError';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    // Resolves the real, session-active workspace (the same active_workspace_id cookie +
+    // membership convention used everywhere else in this app) and real auth in one call —
+    // replaces the previous silent try/catch-and-ignore that let an unauthenticated caller
+    // proceed anyway (with a client-supplied workspaceId) whenever CreditGuard happened to
+    // pass for that id. A bare first-found workspace_members row (no cookie/ordering) was
+    // tried first and rejected: it picks an arbitrary one of the caller's own workspaces for
+    // multi-workspace users instead of the one they actually have active.
+    const { userId, workspaceId: realWorkspaceId } = await requireWorkspaceRole();
+    const teamMemberId = userId;
+
     const body = await req.json();
-    const { workspaceId, contextType, userBrief, toneOverride } = body;
+    const { contextType, userBrief, toneOverride } = body;
 
-    if (!workspaceId || !userBrief) {
-      return NextResponse.json({ error: 'Missing required parameters: workspaceId and userBrief' }, { status: 400 });
-    }
-
-    let realWorkspaceId = workspaceId;
-    let teamMemberId = '00000000-0000-0000-0000-000000000000';
-    
-    try {
-      const supabaseServer = await createServerClient();
-      const { data: { user } } = await supabaseServer.auth.getUser();
-      if (user) {
-        teamMemberId = user.id;
-        // Fetch user's real workspace
-        const { data: tm } = await supabaseServer.from('workspace_members').select('workspace_id').eq('user_id', user.id).single();
-        if (tm) realWorkspaceId = tm.workspace_id;
-      }
-    } catch (authErr) {
-      // Ignore
+    if (!userBrief) {
+      return NextResponse.json({ error: 'Missing required parameter: userBrief' }, { status: 400 });
     }
 
     // 1. Run CreditGuard middleware via wrapper
@@ -54,8 +49,7 @@ export async function POST(req: Request) {
 
     await verifyAICreditBalance(mockReq, mockRes, mockNext);
 
-    // Bypass check if we are in a dev environment with a mock workspace and it failed
-    if (!nextCalled && realWorkspaceId !== '00000000-0000-0000-0000-000000000000') {
+    if (!nextCalled) {
       return NextResponse.json(responseData || { error: 'Unauthorized credit state' }, { status: responseStatus });
     }
 
@@ -75,7 +69,7 @@ export async function POST(req: Request) {
     }
 
     // 4. Load Workspace Brand Voice
-    const voiceRecord = await db('workspace_brand_voice').where({ workspace_id: workspaceId }).first();
+    const voiceRecord = await db('workspace_brand_voice').where({ workspace_id: realWorkspaceId }).first();
     const voiceContext = voiceRecord ? {
       name: voiceRecord.business_name,
       industry: voiceRecord.industry,
@@ -136,6 +130,7 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('[Generate Content API] Exception:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const clientError = toClientError(error);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

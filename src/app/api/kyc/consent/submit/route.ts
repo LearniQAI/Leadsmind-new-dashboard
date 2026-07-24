@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 
+// The consentId is a bearer token (mailed/texted link, no login expected) — without an expiry
+// window it would remain valid forever if ever leaked (email compromise, forwarding, log
+// capture, browser history). 7 days matches the recovery-link precedent used elsewhere.
+const CONSENT_LINK_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
 /**
  * POST /api/kyc/consent/submit
  * Submits the signed POPIA consent record, updating its status to obtained and capturing signature / audit metadata
@@ -34,6 +39,16 @@ export async function POST(req: NextRequest) {
 
     if (consent.status === 'obtained') {
       return NextResponse.json({ success: true, message: 'Consent already obtained' });
+    }
+
+    // Reject and mark expired if the link is older than the expiry window — a single-use
+    // check alone doesn't stop a leaked, never-yet-used link from being redeemed indefinitely.
+    const ageMs = Date.now() - new Date(consent.created_at).getTime();
+    if (consent.status !== 'pending' || ageMs > CONSENT_LINK_EXPIRY_MS) {
+      if (consent.status === 'pending') {
+        await adminClient.from('kyc_consent').update({ status: 'expired', updated_at: new Date().toISOString() }).eq('id', consentId);
+      }
+      return NextResponse.json({ error: 'This consent link is no longer valid' }, { status: 410 });
     }
 
     // 2. Perform database updates

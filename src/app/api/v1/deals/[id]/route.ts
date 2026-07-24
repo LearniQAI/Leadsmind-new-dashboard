@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     .eq('id', params.id)
     .maybeSingle()
 
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
   if (!data) return apiError('Deal not found', 404)
   return apiData(data)
 }
@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .eq('id', params.id)
     .select('*')
     .single()
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
 
   // Fire transition events
   const events: Promise<unknown>[] = []

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/server';
+import { assertContactAccessOrPortalSelf } from '@/lib/kyc/access';
+import { toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 // Retrieve and hash the encryption key to guarantee it is exactly 32 bytes (256 bits) for AES-256
 const ENCRYPTION_KEY = crypto.createHash('sha256')
@@ -16,13 +16,24 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const contactId = formData.get('contactId') as string;
-    const workspaceId = formData.get('workspaceId') as string;
     const documentType = formData.get('documentType') as string;
     const file = formData.get('file') as File;
+    // workspaceId is intentionally read-and-ignored below — the contact's real workspace_id
+    // (resolved server-side inside assertContactAccessOrPortalSelf) is the only source of
+    // truth. A client-supplied workspaceId is never trusted for authorization.
 
-    if (!contactId || !workspaceId || !documentType || !file) {
+    if (!contactId || !documentType || !file) {
       return NextResponse.json({ error: 'Missing required payload parameters' }, { status: 400 });
     }
+
+    // Auth: caller must be an internal team member of the contact's real workspace, OR the
+    // portal-authenticated contact themself (scoped to exactly this contact, not their whole
+    // workspace). Runs BEFORE any storage or DB write. Throws Unauthorized/Forbidden/NotFound
+    // as appropriate.
+    const { contact } = await assertContactAccessOrPortalSelf(contactId);
+    const workspaceId = contact.workspace_id;
+
+    const adminClient = createAdminClient();
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
@@ -40,7 +51,7 @@ export async function POST(req: NextRequest) {
     const storagePath = `contacts/${contactId}/${Date.now()}-${cleanFileName}.enc`;
 
     // Upload encrypted payload to 'kyc-documents' bucket
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await adminClient.storage
       .from('kyc-documents')
       .upload(storagePath, encryptedBuffer, {
         contentType: 'application/octet-stream',
@@ -48,7 +59,8 @@ export async function POST(req: NextRequest) {
       });
 
     if (uploadError) {
-      return NextResponse.json({ error: 'File upload storage failure: ' + uploadError.message }, { status: 500 });
+      logger.error({ err: uploadError, contactId, workspaceId }, 'kyc.documents.upload.storage.failed');
+      throw new Error('File upload storage failure');
     }
 
     // Calculate FICA retention delete date (5 years from now)
@@ -63,8 +75,9 @@ export async function POST(req: NextRequest) {
       expiryDate = exp.toISOString();
     }
 
-    // Insert metadata record in kyc_documents
-    const { data: docRecord, error: insertError } = await supabase
+    // Insert metadata record in kyc_documents — workspace_id is always the resolved,
+    // server-verified value, never the client-supplied form field.
+    const { data: docRecord, error: insertError } = await adminClient
       .from('kyc_documents')
       .insert({
         workspace_id: workspaceId,
@@ -80,12 +93,13 @@ export async function POST(req: NextRequest) {
 
     if (insertError) {
       // Cleanup the uploaded storage asset on DB write failures
-      await supabase.storage.from('kyc-documents').remove([storagePath]);
-      return NextResponse.json({ error: 'Failed to record document in compliance log: ' + insertError.message }, { status: 500 });
+      await adminClient.storage.from('kyc-documents').remove([storagePath]);
+      logger.error({ err: insertError, contactId, workspaceId }, 'kyc.documents.upload.db_insert.failed');
+      throw new Error('Failed to record document in compliance log');
     }
 
     // Log user activity
-    await supabase.from('contact_activities').insert({
+    await adminClient.from('contact_activities').insert({
       workspace_id: workspaceId,
       contact_id: contactId,
       type: 'system',
@@ -94,7 +108,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, document: docRecord });
   } catch (err: any) {
-    console.error('[POST /api/kyc/documents/upload error]:', err);
-    return NextResponse.json({ error: err.message || 'An unexpected error occurred during encryption' }, { status: 500 });
+    logger.error({ err }, 'kyc.documents.upload.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

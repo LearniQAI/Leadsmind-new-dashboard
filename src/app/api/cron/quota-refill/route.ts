@@ -58,6 +58,12 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
+  if (req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const resetCount = await processQuotaRefill()
     return NextResponse.json({ success: true, resetCount })

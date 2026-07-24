@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
 
   return apiData(data ?? [], 200, { pagination: { limit, offset, total: count ?? 0 } })
 }
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase.from('contact_tags_registry').insert(payload).select('*').single()
   if (error) {
     if (error.code === '23505') return apiError('Tag already exists', 409)
-    return apiError(error.message, 500)
+    return apiError('Internal server error', 500)
   }
 
   return apiData(data, 201)

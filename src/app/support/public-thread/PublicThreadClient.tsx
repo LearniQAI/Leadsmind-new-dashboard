@@ -81,7 +81,7 @@ export function PublicThreadClient({ ticket, initialMessages }: PublicThreadClie
     setIsUploading(true);
     const uploaderData = new FormData();
     uploaderData.append('file', file);
-    uploaderData.append('workspaceId', ticket.workspace_id);
+    uploaderData.append('ticketId', ticket.id);
 
     try {
       const res = await fetch('/api/support/public-attachments', {

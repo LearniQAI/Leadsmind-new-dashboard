@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { encrypt } from '@/lib/encryption'
+import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce'
 import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
@@ -36,18 +37,14 @@ export async function GET(req: Request) {
   let platform: 'facebook' | 'instagram' | 'whatsapp' = 'facebook'
 
   try {
-    // Try JSON format first: {"platform":"facebook","workspaceId":"abc123"}
-    const stateObj = JSON.parse(decodeURIComponent(stateStr))
-    workspaceId = stateObj.workspaceId ?? ''
-    platform = (stateObj.platform ?? 'facebook') as 'facebook' | 'instagram' | 'whatsapp'
-  } catch {
-    // Fallback: colon format "workspaceId:platform"
-    const parts = stateStr.split(':')
-    workspaceId = parts[0] ?? ''
-    platform = (parts[1] ?? 'facebook') as 'facebook' | 'instagram' | 'whatsapp'
-  }
-
-  if (!workspaceId) {
+    // state is a random opaque nonce minted at flow-initiation time, bound server-side to
+    // the real authenticated user + their real workspace (+ which sub-platform was
+    // requested, in `extra`) — never trust the raw state value as workspace_id/platform.
+    const { workspaceId: resolvedWorkspaceId, extra } = await consumeOAuthStateNonce(stateStr, 'meta')
+    workspaceId = resolvedWorkspaceId
+    platform = (extra.platform ?? 'facebook') as 'facebook' | 'instagram' | 'whatsapp'
+  } catch (nonceErr: any) {
+    logger.error({ err: nonceErr }, 'meta_oauth.state_nonce.invalid')
     return NextResponse.redirect(
       `${REDIRECT_BASE}/settings/integrations?meta_oauth=1&error=invalid_state`
     )

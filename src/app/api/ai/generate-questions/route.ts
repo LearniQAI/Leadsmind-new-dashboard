@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireLmsInstructor } from '@/lib/lms/access';
+import { toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 
 const supabaseAdmin = createClient(
@@ -11,18 +13,23 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { lesson_id, workspace_id } = body;
+    const { workspaceId: workspace_id } = await requireLmsInstructor();
 
-    if (!lesson_id || !workspace_id) {
-      return NextResponse.json({ error: 'Missing required parameters: lesson_id, workspace_id' }, { status: 400 });
+    const body = await req.json();
+    const { lesson_id } = body;
+
+    if (!lesson_id) {
+      return NextResponse.json({ error: 'Missing required parameter: lesson_id' }, { status: 400 });
     }
 
-    // 1. Fetch lesson context
+    // 1. Fetch lesson context — scoped to the caller's real (session-resolved) workspace, never
+    // a client-supplied workspace_id, so a real OpenAI call can't be triggered against (and
+    // quiz questions can't be inserted into) another workspace's lesson.
     const { data: lesson, error: lessonError } = await supabaseAdmin
       .from('course_lessons')
       .select('title, content')
       .eq('id', lesson_id)
+      .eq('workspace_id', workspace_id)
       .single();
 
     if (lessonError || !lesson) {
@@ -164,6 +171,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: createdQuestions });
   } catch (err: any) {
     logger.error({ err }, 'ai.generate_questions.failed');
-    return NextResponse.json({ error: 'Failed to generate quiz questions.' }, { status: 500 });
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

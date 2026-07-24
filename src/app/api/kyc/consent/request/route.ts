@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getUser } from '@/lib/auth';
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { toClientError } from '@/shared/errors/AppError';
 
 /**
  * POST /api/kyc/consent/request
@@ -8,18 +9,28 @@ import { getUser } from '@/lib/auth';
  */
 export async function POST(req: NextRequest) {
   try {
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { workspaceId } = await requireWorkspaceRole();
 
-    const { contactId, workspaceId, checkTypes, channel } = await req.json();
+    const { contactId, checkTypes, channel } = await req.json();
 
-    if (!contactId || !workspaceId || !checkTypes || !Array.isArray(checkTypes) || !channel) {
+    if (!contactId || !checkTypes || !Array.isArray(checkTypes) || !channel) {
       return NextResponse.json({ error: 'Missing required payload parameters' }, { status: 400 });
     }
 
     const adminClient = createAdminClient();
+
+    // Verify the contact actually belongs to the caller's real (session-resolved) workspace —
+    // never trust a client-supplied contactId/workspaceId pairing for authorization.
+    const { data: contactCheck } = await adminClient
+      .from('contacts')
+      .select('id')
+      .eq('id', contactId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
+    if (!contactCheck) {
+      return NextResponse.json({ error: 'Contact not found in this workspace' }, { status: 404 });
+    }
 
     // 1. Create a pending consent record
     const { data: consent, error: insertError } = await adminClient
@@ -131,6 +142,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, consentId: consent.id });
   } catch (err: any) {
     console.error('[POST /api/kyc/consent/request Error]:', err);
-    return NextResponse.json({ error: err.message || 'Failed to dispatch consent request' }, { status: 500 });
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

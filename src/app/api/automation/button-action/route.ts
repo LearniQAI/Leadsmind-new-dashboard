@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createAdminClient } from "@/lib/supabase/server";
 import { lms_enroll, lms_enroll_bundle } from "@/lib/automation/lms_actions";
 
 /**
- * API route to execute inline page-builder button background automation actions
+ * API route to execute inline page-builder button background automation actions.
+ *
+ * This is invoked from a button rendered on a public, published site page (see
+ * components/builder/user/Button.tsx) — the workspaceId comes from the page's own build
+ * config, not a selection the visitor makes, and any authenticated platform user (not
+ * necessarily a workspace_members row) is a legitimate caller here, since the intended
+ * audience is site visitors/students self-enrolling, not internal team members. A
+ * `requireWorkspaceRole()`-style membership check would incorrectly reject every real visitor.
  */
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createServerClient();
-    
+
     // Get logged-in user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -20,6 +27,23 @@ export async function POST(req: NextRequest) {
 
     if (!workspaceId) {
       return NextResponse.json({ error: "Missing workspaceId" }, { status: 400 });
+    }
+
+    // Verify the course/bundle being acted on actually belongs to the claimed workspaceId —
+    // closes the mismatched-id path where a tampered request pairs one workspace's id with a
+    // different workspace's real course/bundle id.
+    const adminClient = createAdminClient();
+    if (courseId) {
+      const { data: course } = await adminClient.from("courses").select("id").eq("id", courseId).eq("workspace_id", workspaceId).maybeSingle();
+      if (!course) {
+        return NextResponse.json({ error: "Course not found in this workspace" }, { status: 404 });
+      }
+    }
+    if (bundleId) {
+      const { data: bundle } = await adminClient.from("lms_bundles").select("id").eq("id", bundleId).eq("workspace_id", workspaceId).maybeSingle();
+      if (!bundle) {
+        return NextResponse.json({ error: "Bundle not found in this workspace" }, { status: 404 });
+      }
     }
 
     // Resolve contact record for user
@@ -43,7 +67,7 @@ export async function POST(req: NextRequest) {
         })
         .select("id")
         .single();
-      
+
       if (contactErr || !newContact) {
         return NextResponse.json({ error: "Failed to create contact context" }, { status: 500 });
       }
@@ -137,6 +161,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, redirectUrl, message });
   } catch (err: any) {
     console.error("[Button Action API] Failure:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: "Action failed. Please try again." }, { status: 500 });
   }
 }

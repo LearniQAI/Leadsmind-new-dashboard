@@ -12,21 +12,15 @@ const supabaseAdmin = createClient(
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
-    const { message, sender_type, is_internal_note, attachments, audioUrl, duration } = body;
-    
+    const { message, is_internal_note, attachments, audioUrl, duration } = body;
+
     if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
 
     const supabase = await createServerClient();
 
-    // Auth Check
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
-
-    // Use admin client if there is no session or sender is explicitly 'customer' to bypass RLS
-    const clientDb = (session?.user && sender_type !== 'customer') ? supabase : supabaseAdmin;
-
-    // Fetch the ticket to get workspace_id and contact_id
-    const { data: ticket, error: ticketError } = await clientDb
+    // Fetch the ticket (admin client — the caller's own authorization is resolved below,
+    // not delegated to RLS) to get the real workspace_id and contact_id.
+    const { data: ticket, error: ticketError } = await supabaseAdmin
       .from('support_tickets')
       .select('*, contact:contacts(*)')
       .eq("id", params.id)
@@ -36,6 +30,31 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
+    // Resolve the caller's real role for THIS ticket's workspace — never trust a
+    // client-supplied sender_type/is_internal_note, which previously let anyone (even
+    // unauthenticated) flip the DB client used for the insert by simply passing
+    // sender_type: 'customer', bypassing RLS entirely regardless of who they were.
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id ?? null;
+
+    let isAgent = false;
+    if (userId) {
+      const { data: membership } = await supabaseAdmin
+        .from('workspace_members')
+        .select('id')
+        .eq('workspace_id', ticket.workspace_id)
+        .eq('user_id', userId)
+        .maybeSingle();
+      isAgent = !!membership;
+    }
+
+    // Anyone without a verified membership in this ticket's workspace is treated as the
+    // public customer reply path — the ticket UUID (known only from the emailed thread
+    // link, same model as the public thread page) is the sole access proof for that path.
+    const senderType = isAgent ? 'agent' : 'customer';
+    const senderId = isAgent ? userId : null;
+    const isInternalNote = isAgent ? !!is_internal_note : false;
+
     const customAttachments = [];
     if (audioUrl) {
       customAttachments.push({ type: 'audio', url: audioUrl, duration });
@@ -44,16 +63,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       customAttachments.push(...attachments);
     }
 
-    const { data: reply, error } = await clientDb
+    const { data: reply, error } = await supabaseAdmin
       .from('support_ticket_messages')
       .insert({
         ticket_id: params.id,
         workspace_id: ticket.workspace_id,
         contact_id: ticket.contact_id,
-        sender_type: sender_type || (userId ? 'agent' : 'customer'),
-        sender_id: userId || null,
+        sender_type: senderType,
+        sender_id: senderId,
         message,
-        is_internal_note: is_internal_note || false,
+        is_internal_note: isInternalNote,
         attachments: customAttachments
       })
       .select()
@@ -62,8 +81,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (error) throw error;
 
     // Notifications logic
-    if (!is_internal_note) {
-      if (sender_type === 'agent' && ticket.contact?.email) {
+    if (!isInternalNote) {
+      if (senderType === 'agent' && ticket.contact?.email) {
         // Send email to customer
         try {
           await resend.emails.send({
@@ -85,6 +104,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     return NextResponse.json({ success: true, reply });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[support.tickets.reply] failed:', error);
+    return NextResponse.json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 });
   }
 }

@@ -5,7 +5,7 @@ const ALGORITHM = 'aes-256-cbc';
 function getEncryptionKey(): Buffer {
   const encryptionKeyEnv = process.env.ENCRYPTION_KEY;
   if (!encryptionKeyEnv) {
-    throw new Error("ENCRYPTION_KEY env var is required");
+    throw new Error('[FATAL] ENCRYPTION_KEY env var is not configured');
   }
   return crypto.createHash('sha256').update(encryptionKeyEnv).digest();
 }

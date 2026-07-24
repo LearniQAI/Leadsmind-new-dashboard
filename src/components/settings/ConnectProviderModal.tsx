@@ -27,6 +27,7 @@ export default function ConnectProviderModal({
   const [field1, setField1] = useState('');
   const [field2, setField2] = useState('');
   const [field3, setField3] = useState('');
+  const [field4, setField4] = useState('');
 
   // Status state
   const [loading, setLoading] = useState(false);
@@ -100,18 +101,34 @@ export default function ConnectProviderModal({
         label = field2.trim() || provider;
       }
 
+      // For payment gateways, the entered API key/secret (and optional passphrase) are the
+      // actual credential — these previously never left the browser at all (only the account
+      // label was sent). They're sent here as a distinct `credentials` object rather than
+      // reusing the automation category's `webhookUrl` field so the backend can validate and
+      // encrypt them explicitly per category, instead of silently accepting an unlabeled blob.
+      const body: Record<string, any> = {
+        workspaceId,
+        provider,
+        category,
+        accountLabel: label,
+      };
+
+      if (category === 'payment_gateway') {
+        body.credentials = {
+          apiKey: field1.trim(),
+          apiSecret: field2.trim(),
+          passphrase: field4.trim() || undefined,
+        };
+      } else if (category === 'automation') {
+        body.webhookUrl = field1.trim();
+      }
+
       const res = await fetch('/api/settings/integrations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          workspaceId,
-          provider,
-          category,
-          accountLabel: label,
-          webhookUrl: field1.trim(),
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -279,6 +296,21 @@ export default function ConnectProviderModal({
                     className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
                 </div>
+
+                {category === 'payment_gateway' && (
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                      Passphrase (optional, if required by {provider})
+                    </label>
+                    <input
+                      type="password"
+                      value={field4}
+                      onChange={e => setField4(e.target.value)}
+                      placeholder="Only required if your gateway account has one set"
+                      className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
+                    />
+                  </div>
+                )}
 
                 <div className="flex flex-col">
                   <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">

@@ -1,14 +1,41 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/server';
 import { generateAvatarPng } from '@/lib/avatar/generateAvatarPng';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
+// Constant-time shared-secret comparison — same standing rule as every other signature/token
+// check in this codebase (see webhooks/meta, lib/calendar/payfast, lib/security/unsubscribeToken).
+// A plain `===` leaks timing information proportional to the number of matching leading bytes.
+function isValidWebhookSecret(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const providedBuf = Buffer.from(provided, 'utf8');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  if (providedBuf.length !== expectedBuf.length) return false;
+  return crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
+
 export async function POST(req: Request) {
   try {
+    const secret = process.env.AVATAR_GENERATOR_WEBHOOK_SECRET;
+    if (!secret) {
+      throw new Error('[FATAL] AVATAR_GENERATOR_WEBHOOK_SECRET is not configured');
+    }
+
+    // This is a Supabase Database Webhook (fires on user row insert/update) — Supabase lets
+    // you attach a custom HTTP header to the webhook config, which must carry this shared
+    // secret. Without it, anyone who discovers this URL could POST an arbitrary user id and
+    // force avatar generation/storage writes into that user's real workspaces.
+    const providedSecret = req.headers.get('x-webhook-secret');
+    if (!isValidWebhookSecret(providedSecret, secret)) {
+      logger.warn({}, 'webhook.avatar_generator.secret.invalid');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
-    
+
     // Parse user record from Supabase webhook structure or direct invocation
     const user = body.record || body;
     

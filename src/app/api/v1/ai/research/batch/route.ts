@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/server/database/datasource';
 import { ResearchAgent } from '@/server/services/ai/ResearchAgent';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { toClientError } from '@/shared/errors/AppError';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,20 +11,21 @@ function sleep(ms: number) {
 }
 
 export async function POST(req: NextRequest) {
-  const authResult = await requireAuth(req);
-  if (authResult instanceof NextResponse) return authResult;
-  const user = authResult;
-
   try {
+    // Resolves the real, session-active workspace (the same active_workspace_id cookie +
+    // membership convention used everywhere else in this app) — never a client-supplied
+    // workspaceId, which would let a caller run paid AI enrichment on another workspace's
+    // contacts and bill it to (or leak results into) their own. A bare first-found
+    // workspace_members row (with no cookie/ordering) was tried first and rejected: it picks
+    // an arbitrary one of the caller's own workspaces for multi-workspace users, which can
+    // incorrectly reject legitimate requests against whichever workspace they actually meant.
+    const { workspaceId } = await requireWorkspaceRole();
+
     const body = await req.json();
-    const { contactIds, workspaceId, domain } = body;
+    const { contactIds, domain } = body;
 
     if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
       return NextResponse.json({ error: 'Missing contactIds array parameter' }, { status: 400 });
-    }
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Missing workspaceId parameter' }, { status: 400 });
     }
 
     // Limit to up to 50 profiles per request to prevent API overload (Sprint 5.3 Batch Research Processing Route)
@@ -37,10 +39,12 @@ export async function POST(req: NextRequest) {
       
       const chunkPromises = chunk.map(async (contactId) => {
         try {
-          // Fetch contact details from database
-          const contact = await db('contacts').where({ id: contactId }).first();
+          // Fetch contact details from database, scoped to the caller's real workspace — a
+          // contactId from a different workspace is rejected rather than silently enriched
+          // and billed against this workspace's own credits.
+          const contact = await db('contacts').where({ id: contactId, workspace_id: workspaceId }).first();
           if (!contact) {
-            return { contactId, success: false, error: 'Contact not found' };
+            return { contactId, success: false, error: 'Contact not found in this workspace' };
           }
 
           const contactName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Valued Prospect';
@@ -85,6 +89,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, processedCount: results.length, details: results });
   } catch (error: any) {
     console.error('[Batch Research API] Exception:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const clientError = toClientError(error);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

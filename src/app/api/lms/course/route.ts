@@ -1,32 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/server';
+import { requireLmsInstructor } from '@/lib/lms/access';
+import { NotFoundError, toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'Missing id parameter' }, { status: 400 });
 
-    if (!id) {
-      return NextResponse.json({ error: 'Missing id parameter' }, { status: 400 });
-    }
+    const { workspaceId } = await requireLmsInstructor();
+    const adminClient = createAdminClient();
 
-    const { data: course, error } = await supabaseAdmin
+    const { data: course, error } = await adminClient
       .from('courses')
       .select('*')
       .eq('id', id)
+      .eq('workspace_id', workspaceId)
       .single();
 
-    if (error) throw error;
+    if (error || !course) throw new NotFoundError('Course');
     return NextResponse.json({ data: course });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'lms.course.get.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
@@ -34,19 +35,13 @@ export async function PATCH(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'Missing course id parameter' }, { status: 400 });
 
-    if (!id) {
-      return NextResponse.json({ error: 'Missing course id parameter' }, { status: 400 });
-    }
+    const { workspaceId } = await requireLmsInstructor();
+    const adminClient = createAdminClient();
 
     const body = await req.json();
-    const {
-      title,
-      description,
-      price,
-      status,
-      thumbnail_url
-    } = body;
+    const { title, description, price, status, thumbnail_url } = body;
 
     const updatePayload: any = {};
     if (title !== undefined) updatePayload.title = title;
@@ -58,17 +53,19 @@ export async function PATCH(req: NextRequest) {
       updatePayload.published = (status === 'published');
     }
 
-    const { data: course, error } = await supabaseAdmin
+    const { data: course, error } = await adminClient
       .from('courses')
       .update(updatePayload)
       .eq('id', id)
+      .eq('workspace_id', workspaceId)
       .select()
       .single();
 
     if (error) throw error;
-
     return NextResponse.json({ data: course });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    logger.error({ err }, 'lms.course.patch.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

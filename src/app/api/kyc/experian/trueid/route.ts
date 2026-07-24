@@ -1,21 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { experianService } from '@/server/services/experian';
 import { kycRiskEngine } from '@/server/services/kycRiskEngine';
+import { createAdminClient } from '@/lib/supabase/server';
+import { assertContactAccessOrPortalSelf, assertBureauCheckCooldown } from '@/lib/kyc/access';
+import { toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { mode, contactId, workspaceId, selfie, idNumber, documentType, documentId, fileBase64, address, checkedBy } = body;
+    const { mode, contactId, selfie, idNumber, documentType, documentId, fileBase64, address, checkedBy, forceRecheck } = body;
+    // workspaceId is intentionally destructured-and-ignored below — the contact's real
+    // workspace_id (resolved server-side inside assertContactAccessOrPortalSelf) is the only
+    // source of truth. A client-supplied workspaceId is never trusted for authorization.
 
-    if (!contactId || !workspaceId || !mode) {
-      return NextResponse.json({ error: 'Missing contactId, workspaceId, or mode parameter' }, { status: 400 });
+    if (!contactId || !mode) {
+      return NextResponse.json({ error: 'Missing contactId or mode parameter' }, { status: 400 });
     }
+
+    // Auth: caller must be an internal team member of the contact's real workspace, OR the
+    // portal-authenticated contact themself (scoped to exactly this contact, not their whole
+    // workspace). Throws Unauthorized/Forbidden/NotFound as appropriate.
+    const { contact, userId } = await assertContactAccessOrPortalSelf(contactId);
+    const workspaceId = contact.workspace_id;
+
+    const adminClient = createAdminClient();
 
     // Modes: liveness, ocr, address
     if (mode === 'liveness') {
@@ -24,7 +35,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 1. Hard POPIA consent check
-      const { data: obtainedConsent, error: consentCheckErr } = await supabase
+      const { data: obtainedConsent, error: consentCheckErr } = await adminClient
         .from('kyc_consent')
         .select('id, reference')
         .eq('contact_id', contactId)
@@ -40,7 +51,11 @@ export async function POST(req: NextRequest) {
         }, { status: 403 });
       }
 
-      // 2. Call Experian liveness service
+      // 2. Billed bureau call — don't auto-fire a repeat within the cooldown window unless
+      // the caller explicitly forces it (same 24h pattern as crm/contacts/kyc).
+      await assertBureauCheckCooldown(adminClient, contactId, 'biometric', !!forceRecheck);
+
+      // 3. Call Experian liveness service
       const verification = await experianService.verifyBiometricLiveness({
         idNumber,
         selfieBase64: selfie,
@@ -49,8 +64,8 @@ export async function POST(req: NextRequest) {
 
       const checkStatus = verification.livenessPassed ? 'passed' : 'failed';
 
-      // 3. Write check outcome to kyc_checks
-      const { data: check, error: checkErr } = await supabase
+      // 4. Write check outcome to kyc_checks
+      const { data: check, error: checkErr } = await adminClient
         .from('kyc_checks')
         .insert({
           workspace_id: workspaceId,
@@ -61,7 +76,7 @@ export async function POST(req: NextRequest) {
           raw_response: verification.rawResponse,
           result: verification.result,
           notes: `Experian TrueID Biometric Check: ${verification.result}`,
-          checked_by: checkedBy ?? null,
+          checked_by: checkedBy ?? userId,
           checked_at: new Date().toISOString(),
         })
         .select()
@@ -69,13 +84,13 @@ export async function POST(req: NextRequest) {
 
       if (checkErr) throw checkErr;
 
-      // 4. Update contact flags
+      // 5. Update contact flags
       let riskFlag = 'LOW';
       if (!verification.livenessPassed) {
         riskFlag = 'HIGH';
       }
 
-      await supabase
+      await adminClient
         .from('contacts')
         .update({
           kyc_risk_flag: riskFlag,
@@ -86,7 +101,7 @@ export async function POST(req: NextRequest) {
         .eq('id', contactId);
 
       // Log contact activity
-      await supabase.from('contact_activities').insert({
+      await adminClient.from('contact_activities').insert({
         workspace_id: workspaceId,
         contact_id: contactId,
         type: 'system',
@@ -97,7 +112,7 @@ export async function POST(req: NextRequest) {
       try {
         await kycRiskEngine.calculateRiskRating(contactId, workspaceId);
       } catch (riskErr) {
-        console.error('[Experian Biometric Hook] Risk calculation failed:', riskErr);
+        logger.error({ err: riskErr, contactId, workspaceId }, 'kyc.experian.liveness.risk_engine.failed');
       }
 
       return NextResponse.json({ success: true, check });
@@ -113,11 +128,13 @@ export async function POST(req: NextRequest) {
       if (fileBase64) {
         fileBuffer = Buffer.from(fileBase64, 'base64');
       } else if (documentId) {
-        // Fetch document from database
-        const { data: doc, error: docErr } = await supabase
+        // Fetch document from database — scoped to the already-authorized contact, not just
+        // any documentId.
+        const { data: doc, error: docErr } = await adminClient
           .from('kyc_documents')
           .select('*')
           .eq('id', documentId)
+          .eq('contact_id', contactId)
           .single();
 
         if (docErr || !doc) {
@@ -130,30 +147,55 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Either fileBase64 or documentId is required for OCR mode' }, { status: 400 });
       }
 
+      // Billed bureau call — same 24h cooldown as the other modes, tracked per contact via a
+      // dedicated 'document_ocr' check_type (previously OCR wrote no kyc_checks row at all,
+      // so there was nothing for a cooldown to check against).
+      await assertBureauCheckCooldown(adminClient, contactId, 'document_ocr', !!forceRecheck);
+
       // Call Experian OCR service
       const ocrResult = await experianService.processDocumentOCR(fileBuffer, documentType);
 
       // If documentId is provided, write to public.kyc_documents (ocr_extracted_data column)
       if (documentId) {
-        const { error: updateErr } = await supabase
+        const { error: updateErr } = await adminClient
           .from('kyc_documents')
           .update({
             ocr_extracted_data: ocrResult.extractedData,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', documentId);
+          .eq('id', documentId)
+          .eq('contact_id', contactId);
 
         if (updateErr) throw updateErr;
       }
+
+      // Record the OCR check in kyc_checks — same audit trail liveness/address already use.
+      const { data: ocrCheck, error: ocrCheckErr } = await adminClient
+        .from('kyc_checks')
+        .insert({
+          workspace_id: workspaceId,
+          contact_id: contactId,
+          check_type: 'document_ocr',
+          provider: 'experian',
+          status: 'passed',
+          raw_response: ocrResult.rawResponse,
+          notes: `Experian TrueID Document OCR: ${documentType}`,
+          checked_by: checkedBy ?? userId,
+          checked_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (ocrCheckErr) throw ocrCheckErr;
 
       // Calculate risk rating
       try {
         await kycRiskEngine.calculateRiskRating(contactId, workspaceId);
       } catch (riskErr) {
-        console.error('[Experian OCR Hook] Risk calculation failed:', riskErr);
+        logger.error({ err: riskErr, contactId, workspaceId }, 'kyc.experian.ocr.risk_engine.failed');
       }
 
-      return NextResponse.json({ success: true, extractedData: ocrResult.extractedData, rawResponse: ocrResult.rawResponse });
+      return NextResponse.json({ success: true, extractedData: ocrResult.extractedData, rawResponse: ocrResult.rawResponse, check: ocrCheck });
     }
 
     if (mode === 'address') {
@@ -162,7 +204,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 1. Hard POPIA consent check
-      const { data: obtainedConsent, error: consentCheckErr } = await supabase
+      const { data: obtainedConsent, error: consentCheckErr } = await adminClient
         .from('kyc_consent')
         .select('id, reference')
         .eq('contact_id', contactId)
@@ -178,13 +220,16 @@ export async function POST(req: NextRequest) {
         }, { status: 403 });
       }
 
-      // 2. Call Experian address geocoding service
+      // 2. Billed bureau call — same 24h cooldown pattern.
+      await assertBureauCheckCooldown(adminClient, contactId, 'address_verification', !!forceRecheck);
+
+      // 3. Call Experian address geocoding service
       const geocoding = await experianService.verifyAndGeocodeAddress(address);
 
       const checkStatus = geocoding.result === 'Verified & Geocoded' ? 'passed' : 'failed';
 
-      // 3. Write check outcome to kyc_checks
-      const { data: check, error: checkErr } = await supabase
+      // 4. Write check outcome to kyc_checks
+      const { data: check, error: checkErr } = await adminClient
         .from('kyc_checks')
         .insert({
           workspace_id: workspaceId,
@@ -195,7 +240,7 @@ export async function POST(req: NextRequest) {
           raw_response: geocoding.rawResponse,
           result: geocoding.result,
           notes: `Experian Address Geocoder: ${geocoding.result}. GPS: [${geocoding.latitude}, ${geocoding.longitude}]`,
-          checked_by: checkedBy ?? null,
+          checked_by: checkedBy ?? userId,
           checked_at: new Date().toISOString(),
         })
         .select()
@@ -204,7 +249,7 @@ export async function POST(req: NextRequest) {
       if (checkErr) throw checkErr;
 
       // Log contact activity
-      await supabase.from('contact_activities').insert({
+      await adminClient.from('contact_activities').insert({
         workspace_id: workspaceId,
         contact_id: contactId,
         type: 'system',
@@ -215,7 +260,7 @@ export async function POST(req: NextRequest) {
       try {
         await kycRiskEngine.calculateRiskRating(contactId, workspaceId);
       } catch (riskErr) {
-        console.error('[Experian Address Hook] Risk calculation failed:', riskErr);
+        logger.error({ err: riskErr, contactId, workspaceId }, 'kyc.experian.address.risk_engine.failed');
       }
 
       return NextResponse.json({
@@ -231,7 +276,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: `Invalid mode: ${mode}` }, { status: 400 });
   } catch (err: any) {
-    console.error('[Experian TrueID API error]:', err);
-    return NextResponse.json({ error: err.message || 'An unexpected error occurred during Experian processing' }, { status: 500 });
+    logger.error({ err }, 'kyc.experian.trueid.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

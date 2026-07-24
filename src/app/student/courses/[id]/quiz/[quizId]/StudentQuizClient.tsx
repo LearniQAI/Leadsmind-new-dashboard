@@ -37,7 +37,10 @@ export default function StudentQuizClient({
 
   const activeQuestion = questions[currentIndex] || null;
 
-  // Grade the quiz based on correct answers
+  // Submit the quiz. A quick client-side estimate is shown immediately for perceived
+  // responsiveness, but it is never sent to the server and never what gets persisted — the
+  // server independently recomputes score/pass from the real question/answer data, and that
+  // authoritative result (not this local guess) is what's displayed once it returns.
   const handleGradeQuiz = () => {
     let scoreTotal = 0;
     const totalPoints = questions.reduce((acc, q) => acc + (q.points || 1), 0);
@@ -52,40 +55,39 @@ export default function StudentQuizClient({
         }
       } else if (q.question_type === 'short_answer') {
         const accepted = q.correct_answer?.synonyms || [];
-        const isMatch = accepted.some((syn: string) => 
+        const isMatch = accepted.some((syn: string) =>
           syn.trim().toLowerCase() === (studentAns || '').trim().toLowerCase()
         );
         if (isMatch) {
           scoreTotal += (q.points || 1);
         }
-      } else {
-        // Fallback for custom types
-        if (studentAns && studentAns.trim() !== '') {
-          scoreTotal += (q.points || 1);
-        }
       }
+      // Question types with no live answer UI (matching/ordering/fill_blank/code/file_upload)
+      // are not locally estimated here either — the server treats them the same way.
     });
 
     const scorePercentage = totalPoints > 0 ? Math.round((scoreTotal / totalPoints) * 100) : 0;
     const passThreshold = settings?.pass_percentage ?? 70;
     const isPassed = scorePercentage >= passThreshold;
 
+    // Optimistic local estimate, shown only until the server's authoritative result lands.
     setFinalScore(scorePercentage);
     setPassed(isPassed);
 
-    // Save attempt to DB
+    // Save attempt to DB — only the answers are sent; score/passed are computed server-side.
     startTransition(async () => {
       try {
         const res = await submitQuizAttempt({
           courseId,
           lessonId: quiz.id,
-          score: scorePercentage,
-          passed: isPassed,
           answers
         });
         if (res.error) toast.error(res.error);
         else {
-          toast.success(isPassed ? "Congratulations! You passed the quiz." : "Attempt recorded. Please review the material and try again.");
+          // Overwrite the optimistic local estimate with the server's authoritative result.
+          setFinalScore(res.score);
+          setPassed(res.passed);
+          toast.success(res.passed ? "Congratulations! You passed the quiz." : "Attempt recorded. Please review the material and try again.");
           setIsSubmitted(true);
         }
       } catch {

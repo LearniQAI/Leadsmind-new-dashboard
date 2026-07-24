@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { getCurrentWorkspaceId, getUser } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/server'
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
 import { sendEmail } from '@/lib/email'
 import { sendSMS } from '@/lib/sms'
 import { MetaAdapter } from '@/lib/meta/MetaAdapter'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { toClientError } from '@/shared/errors/AppError'
+import { logger } from '@/shared/logger'
 
 const replaceTokens = (text: string, name: string, url: string) => {
   if (!text) return ''
@@ -19,20 +16,18 @@ const replaceTokens = (text: string, name: string, url: string) => {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { workspaceId } = await requireWorkspaceRole();
+    const adminClient = createAdminClient();
 
     const body = await req.json()
-    const { workspaceId, campaignId, contacts, channel } = body
+    const { campaignId, contacts, channel } = body
 
-    if (!workspaceId || !campaignId || !contacts || !channel) {
+    if (!campaignId || !contacts || !channel) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Fetch the campaign details
-    const { data: campaign, error: campaignError } = await supabase
+    // Fetch the campaign details, scoped to the caller's own workspace
+    const { data: campaign, error: campaignError } = await adminClient
       .from('reputation_campaigns')
       .select('*')
       .eq('id', campaignId)
@@ -47,7 +42,7 @@ export async function POST(req: NextRequest) {
     let failed = 0
 
     // Fetch Twilio config for SMS/WhatsApp
-    const { data: wsCreds } = await supabase
+    const { data: wsCreds } = await adminClient
       .from('automations')
       .select('settings')
       .eq('workspace_id', workspaceId)
@@ -86,9 +81,9 @@ export async function POST(req: NextRequest) {
           }
 
           const replacedBody = replaceTokens(campaign.whatsapp_body || campaign.email_body, contactName, campaign.review_url)
-          
+
           // Fetch Meta credentials
-          const { data: conn } = await supabase
+          const { data: conn } = await adminClient
             .from('platform_connections')
             .select('credentials')
             .eq('workspace_id', workspaceId)
@@ -132,7 +127,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Insert into reputation_requests
-        const { error: insertError } = await supabase
+        const { error: insertError } = await adminClient
           .from('reputation_requests')
           .insert({
             workspace_id: workspaceId,
@@ -148,14 +143,15 @@ export async function POST(req: NextRequest) {
         if (insertError) throw insertError
         sent++
       } catch (err: any) {
-        console.error(`[Reputation Send Request] Failed for contact ${contactName}:`, err.message)
+        logger.error({ err, contactName }, 'reputation.send-request.contact.failed');
         failed++
       }
     }
 
     return NextResponse.json({ sent, failed })
-  } catch (error: any) {
-    console.error('[API send-request] Server error:', error.message)
-    return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 })
+  } catch (err: any) {
+    logger.error({ err }, 'reputation.send-request.post.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

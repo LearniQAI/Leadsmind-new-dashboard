@@ -28,7 +28,7 @@ export async function DELETE(req: NextRequest) {
     .select('id')
 
   if (error) {
-    return apiError(error.message, 500)
+    return apiError('Internal server error', 500)
   }
 
   return apiData({ success: true, message: 'Unsubscribed successfully' })

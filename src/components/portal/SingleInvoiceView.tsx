@@ -238,7 +238,7 @@ export default function SingleInvoiceView({
                          <span>R {(Number(invoice.subtotal || invoice.total_amount) || 0).toLocaleString('en-ZA')}</span>
                       </div>
                       <div className={`flex justify-between ${DOCUMENT_MUTED_TEXT} text-xs font-bold pb-3 border-b border-gray-50`}>
-                         <span>VAT (15%)</span>
+                         <span>VAT</span>
                          <span>R {(Number(invoice.tax_total) || 0).toLocaleString('en-ZA')}</span>
                       </div>
                       <div className="flex justify-between items-end pt-2">

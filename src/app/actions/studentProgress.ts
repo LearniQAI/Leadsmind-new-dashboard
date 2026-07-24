@@ -3,6 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth';
 import { getOrCreateStudentContact } from './studentEnrollments';
+import { gradeQuizAttempt } from '@/lib/lms/gradeQuiz';
 import { logger } from '@/shared/logger';
 
 /**
@@ -216,12 +217,15 @@ export async function getCompletedLessons(courseId: string) {
 
 /**
  * Logs a quiz attempt and conditionally completes the lesson if the student passed.
+ *
+ * The score and pass/fail status are always recomputed here from the real question/answer
+ * data — a client-supplied score or pass field is never accepted. The client may still
+ * compute its own score for immediate UI feedback, but only this server-side result is ever
+ * persisted or used to gate lesson completion, certificates, or automation.
  */
 export async function submitQuizAttempt(payload: {
   courseId: string;
   lessonId: string;
-  score: number;
-  passed: boolean;
   answers: any;
 }) {
   try {
@@ -236,22 +240,28 @@ export async function submitQuizAttempt(payload: {
 
     const adminClient = createAdminClient();
 
-    // 1. Insert quiz attempt using admin client to bypass RLS
+    // 1. Independently recompute score/pass from the real quiz_questions data — never trust
+    // a client-supplied score or pass field.
+    const { score, passed, rawScore, maxScore } = await gradeQuizAttempt(payload.lessonId, payload.answers);
+
+    // 2. Insert quiz attempt using admin client to bypass RLS
     const { error: attemptErr } = await adminClient
       .from('quiz_attempts')
       .insert({
         workspace_id: workspaceId,
         lesson_id: payload.lessonId,
         student_id: contactId,
-        score: payload.score,
-        passed: payload.passed,
+        score,
+        max_score: maxScore,
+        percentage: score,
+        passed,
         answers: payload.answers
       });
 
     if (attemptErr) throw attemptErr;
 
-    // 2. If passed, mark lesson complete in course_progress
-    if (payload.passed) {
+    // 3. If passed (server-computed), mark lesson complete in course_progress
+    if (passed) {
       await markLessonComplete(payload.courseId, payload.lessonId);
     }
 
@@ -263,7 +273,7 @@ export async function submitQuizAttempt(payload: {
       logger.error({ err: struggleErr, workspaceId, contactId, courseId: payload.courseId }, 'student_progress.struggle_processor.failed');
     }
 
-    return { success: true };
+    return { success: true, score, passed, maxScore, rawScore };
   } catch (err: any) {
     logger.error({ err, courseId: payload.courseId, lessonId: payload.lessonId }, 'student_progress.quiz_attempt.submit.failed');
     return { error: 'Failed to submit quiz attempt.' };

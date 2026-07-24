@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/server';
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { toClientError } from '@/shared/errors/AppError';
 
 export const dynamic = 'force-dynamic';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+async function verifyContactInWorkspace(contactId: string, workspaceId: string) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('contacts')
+    .select('id')
+    .eq('id', contactId)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+  return !!data;
+}
 
 export async function GET(
   req: NextRequest,
@@ -18,6 +26,12 @@ export async function GET(
   }
 
   try {
+    const { workspaceId } = await requireWorkspaceRole();
+    if (!(await verifyContactInWorkspace(contactId, workspaceId))) {
+      return NextResponse.json({ error: 'Contact not found in this workspace' }, { status: 404 });
+    }
+
+    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from('contact_verifications')
       .select('*')
@@ -28,7 +42,8 @@ export async function GET(
     return NextResponse.json({ verifications: data || [] });
   } catch (error: any) {
     console.error('[verifications-get] error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const clientError = toClientError(error);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
@@ -38,16 +53,23 @@ export async function POST(
 ) {
   const contactId = params.id;
   try {
-    const body = await req.json();
-    const { workspaceId, verificationType, provider, consentGiven } = body;
+    const { workspaceId } = await requireWorkspaceRole();
+    if (!(await verifyContactInWorkspace(contactId, workspaceId))) {
+      return NextResponse.json({ error: 'Contact not found in this workspace' }, { status: 404 });
+    }
 
-    if (!workspaceId || !verificationType || !provider) {
+    const body = await req.json();
+    const { verificationType, provider, consentGiven } = body;
+
+    if (!verificationType || !provider) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     if (consentGiven !== true) {
       return NextResponse.json({ error: 'Contact consent is required to run verifications.' }, { status: 400 });
     }
+
+    const supabase = createAdminClient();
 
     // 1. Insert record with status = 'running'
     const { data: insertData, error: insertError } = await supabase
@@ -84,7 +106,8 @@ export async function POST(
     return NextResponse.json(updateData);
   } catch (error: any) {
     console.error('[verifications-post] error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const clientError = toClientError(error);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
@@ -92,12 +115,34 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const contactId = params.id;
   const id = req.nextUrl.searchParams.get('id');
   if (!id) {
     return NextResponse.json({ error: 'Verification ID required' }, { status: 400 });
   }
 
   try {
+    const { workspaceId } = await requireWorkspaceRole();
+    if (!(await verifyContactInWorkspace(contactId, workspaceId))) {
+      return NextResponse.json({ error: 'Contact not found in this workspace' }, { status: 404 });
+    }
+
+    const supabase = createAdminClient();
+
+    // Verify the verification record itself belongs to this contact/workspace before allowing
+    // the update — the `id` query param alone is not a valid authorization boundary.
+    const { data: existing } = await supabase
+      .from('contact_verifications')
+      .select('id')
+      .eq('id', id)
+      .eq('contact_id', contactId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Verification record not found' }, { status: 404 });
+    }
+
     const body = await req.json();
     const { status, result, notes } = body;
 
@@ -119,7 +164,8 @@ export async function PATCH(
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('[verifications-patch] error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const clientError = toClientError(error);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
@@ -127,12 +173,32 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const contactId = params.id;
   const id = req.nextUrl.searchParams.get('id');
   if (!id) {
     return NextResponse.json({ error: 'Verification ID required' }, { status: 400 });
   }
 
   try {
+    const { workspaceId } = await requireWorkspaceRole();
+    if (!(await verifyContactInWorkspace(contactId, workspaceId))) {
+      return NextResponse.json({ error: 'Contact not found in this workspace' }, { status: 404 });
+    }
+
+    const supabase = createAdminClient();
+
+    const { data: existing } = await supabase
+      .from('contact_verifications')
+      .select('id')
+      .eq('id', id)
+      .eq('contact_id', contactId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Verification record not found' }, { status: 404 });
+    }
+
     const { error } = await supabase
       .from('contact_verifications')
       .delete()
@@ -142,6 +208,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('[verifications-delete] error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const clientError = toClientError(error);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

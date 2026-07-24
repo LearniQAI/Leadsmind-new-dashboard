@@ -8,9 +8,10 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback_secret_key_leadsmind_jwt_passwordless_token'
-);
+if (!process.env.JWT_SECRET) {
+  throw new Error('[FATAL] JWT_SECRET is not configured');
+}
+const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -59,6 +60,12 @@ export async function GET(req: NextRequest) {
       .select('id')
       .eq('email', email);
     const contactIds = (contacts || []).map(c => c.id);
+
+    // Defense in depth: even if a stale/forged magic-link row somehow exists for a
+    // non-student email, never mint a real Supabase account + session for it here.
+    if (contactIds.length === 0) {
+      return NextResponse.redirect(`${appUrl}/auth/student/login?error=No student record found for this email`);
+    }
 
     const [{ error: updateErr }] = await Promise.all([
       supabaseAdmin

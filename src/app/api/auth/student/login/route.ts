@@ -9,9 +9,10 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback_secret_key_leadsmind_jwt_passwordless_token'
-);
+if (!process.env.JWT_SECRET) {
+  throw new Error('[FATAL] JWT_SECRET is not configured');
+}
+const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,6 +23,21 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+
+    // Only ever dispatch a login link to an email that actually matches a real student/contact
+    // record — previously this endpoint would happily mint a valid session-granting token and
+    // email it to ANY address regardless of whether that person was a known student anywhere,
+    // and the verify step would then auto-create a brand-new Supabase account for a stranger.
+    // The response is intentionally identical either way to avoid leaking which emails exist.
+    const { data: matchingContacts } = await supabaseAdmin
+      .from('contacts')
+      .select('id')
+      .eq('email', cleanEmail)
+      .limit(1);
+
+    if (!matchingContacts || matchingContacts.length === 0) {
+      return NextResponse.json({ success: true });
+    }
 
     // 1. Generate JWT Token with 15-minute expiration
     const token = await new SignJWT({ email: cleanEmail })

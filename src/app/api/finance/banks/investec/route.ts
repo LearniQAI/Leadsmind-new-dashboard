@@ -1,38 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { encrypt, decrypt } from '@/lib/encryption'
+import { createAdminClient } from '@/lib/supabase/server'
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
+import { encrypt } from '@/lib/encryption'
+import { toClientError } from '@/shared/errors/AppError'
+import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Attaching/viewing/removing real bank API credentials is at least as sensitive as minting
+// an API key or editing billing settings — same admin/owner restriction used there.
+const ALLOWED_FINANCE_ROLES = ['admin', 'owner'];
 
 const INVESTEC_BASE = 'https://openapi.investec.com'
 const INVESTEC_TOKEN_URL = `${INVESTEC_BASE}/identity/v2/oauth2/token`
 
-// GET — fetch connected Investec accounts for workspace
+// GET — fetch connected Investec accounts for the caller's own workspace
 export async function GET(req: NextRequest) {
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!workspaceId) {
-    return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
+  try {
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_FINANCE_ROLES);
+    const adminClient = createAdminClient();
+
+    const { data, error } = await adminClient
+      .from('bank_connections')
+      .select('id, bank_name, account_name, account_type, account_number_last4, balance, currency, status, last_synced_at')
+      .eq('workspace_id', workspaceId)
+      .eq('bank_name', 'Investec')
+
+    if (error) throw error;
+    return NextResponse.json({ connections: data ?? [] })
+  } catch (err: any) {
+    logger.error({ err }, 'finance.investec.get.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
-  const { data, error } = await supabase
-    .from('bank_connections')
-    .select('id, bank_name, account_name, account_type, account_number_last4, balance, currency, status, last_synced_at')
-    .eq('workspace_id', workspaceId)
-    .eq('bank_name', 'Investec')
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ connections: data ?? [] })
 }
 
-// POST — connect Investec with client credentials
+// POST — connect Investec with client credentials, into the caller's own workspace
 export async function POST(req: NextRequest) {
   try {
-    const { workspaceId, clientId, clientSecret, apiKey } = await req.json()
-    if (!workspaceId || !clientId || !clientSecret || !apiKey) {
-      return NextResponse.json({ error: 'workspaceId, clientId, clientSecret and apiKey are required' }, { status: 400 })
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_FINANCE_ROLES);
+    const adminClient = createAdminClient();
+
+    const { clientId, clientSecret, apiKey } = await req.json()
+    if (!clientId || !clientSecret || !apiKey) {
+      return NextResponse.json({ error: 'clientId, clientSecret and apiKey are required' }, { status: 400 })
     }
 
     // Step 1: Get access token from Investec
@@ -61,7 +72,7 @@ export async function POST(req: NextRequest) {
     // Step 2: Fetch accounts from Investec
     // Try private banking first, then business banking
     let accounts: any[] = []
-    
+
     for (const accountType of ['pb', 'bb']) {
       const accountsRes = await fetch(
         `${INVESTEC_BASE}/za/${accountType}/v1/accounts`,
@@ -114,7 +125,7 @@ export async function POST(req: NextRequest) {
     // Step 4: Save to database
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString()
 
-    const { error: upsertError } = await supabase
+    const { error: upsertError } = await adminClient
       .from('bank_connections')
       .upsert({
         workspace_id: workspaceId,
@@ -146,22 +157,29 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (err: any) {
-    console.error('[investec-connect]', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'finance.investec.post.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }
 
-// DELETE — disconnect Investec
+// DELETE — disconnect Investec from the caller's own workspace
 export async function DELETE(req: NextRequest) {
-  const workspaceId = req.nextUrl.searchParams.get('workspaceId')
-  if (!workspaceId) {
-    return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
+  try {
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_FINANCE_ROLES);
+    const adminClient = createAdminClient();
+
+    const { error } = await adminClient
+      .from('bank_connections')
+      .update({ status: 'disconnected', updated_at: new Date().toISOString() })
+      .eq('workspace_id', workspaceId)
+      .eq('bank_name', 'Investec')
+
+    if (error) throw error;
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    logger.error({ err }, 'finance.investec.delete.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
-  const { error } = await supabase
-    .from('bank_connections')
-    .update({ status: 'disconnected', updated_at: new Date().toISOString() })
-    .eq('workspace_id', workspaceId)
-    .eq('bank_name', 'Investec')
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
 }

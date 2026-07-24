@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     .eq('id', params.id)
     .maybeSingle()
 
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
   if (!data) return apiError('Order not found', 404)
   return apiData(data)
 }
@@ -46,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .select('*')
     .maybeSingle()
 
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
   if (!data) return apiError('Order not found', 404)
   return apiData(data)
 }
@@ -66,6 +66,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     .eq('workspace_id', auth.workspaceId)
     .eq('id', params.id)
 
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
   return apiData({ id: params.id, deleted: true })
 }

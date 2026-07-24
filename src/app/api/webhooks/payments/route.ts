@@ -9,17 +9,22 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    throw new Error('[FATAL] STRIPE_WEBHOOK_SECRET is not configured');
+  }
+
   const payload = await req.text();
   const signature = req.headers.get('stripe-signature');
   let event: any;
 
+  // Signature verification is mandatory in every environment — a missing signature header
+  // or misconfigured secret is always rejected, never silently treated as trusted raw JSON.
   try {
-    if (signature && process.env.STRIPE_WEBHOOK_SECRET) {
-      event = stripe.webhooks.constructEvent(payload, signature, process.env.STRIPE_WEBHOOK_SECRET);
-    } else {
-      // Direct body parse fallback for sandbox testing or mock calls
-      event = JSON.parse(payload);
+    if (!signature) {
+      throw new Error('Missing stripe-signature header');
     }
+    event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
   } catch (err: any) {
     logger.error({ err }, 'webhook.payments.signature_verification.failed');
     return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 });

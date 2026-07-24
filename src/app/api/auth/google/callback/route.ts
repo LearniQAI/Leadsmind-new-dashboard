@@ -1,28 +1,30 @@
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { encrypt } from '@/lib/encryption';
+import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
-  const workspaceId = searchParams.get('state');
+  const state = searchParams.get('state');
 
   // Let's determine redirect base (e.g. settings page landing directly on SEO tab)
   const redirectBase = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings`;
 
-  if (!code || !workspaceId) {
-    console.error('Google Callback Error: Missing parameters.', { code, workspaceId });
+  if (!code || !state) {
+    logger.error({}, 'auth.google_callback.missing_parameters');
     return NextResponse.redirect(`${redirectBase}?tab=seo&error=missing_parameters`);
   }
 
   try {
+    // state is a random opaque nonce minted at flow-initiation time, bound server-side to
+    // the real authenticated user + their real workspace — never trust its raw value.
+    const { workspaceId } = await consumeOAuthStateNonce(state, 'google');
+
+    const supabase = createAdminClient();
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`;
 
     // 1. Exchange OAuth authorization code for Google Access/Refresh tokens
@@ -47,7 +49,7 @@ export async function GET(req: Request) {
 
     // Google only sends the refresh_token on the first connection or when prompt=consent is used
     if (!refresh_token) {
-      console.warn('Warning: No refresh_token returned from Google. Ensure prompt=consent and access_type=offline were requested.');
+      logger.warn({}, 'auth.google_callback.no_refresh_token');
     }
 
     // 2. Encrypt the refresh token for secure database storage
@@ -91,7 +93,7 @@ export async function GET(req: Request) {
     // Successfully connected Google Search Console!
     return NextResponse.redirect(`${redirectBase}?tab=seo&success=gsc_connected`);
   } catch (error: any) {
-    console.error('Google Search Console OAuth Callback Error:', error.message);
+    logger.error({ err: error }, 'auth.google_callback.failed');
     return NextResponse.redirect(`${redirectBase}?tab=seo&error=gsc_auth_failed`);
   }
 }

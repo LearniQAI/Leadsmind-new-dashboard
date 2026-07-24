@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   if (priority) query = query.eq('priority', priority)
 
   const { data, error, count } = await query
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
 
   return apiData(data ?? [], 200, { pagination: { limit, offset, total: count ?? 0 } })
 }
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { data, error } = await supabase.from('tasks').insert(payload).select('*').single()
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
 
   return apiData(data, 201)
 }

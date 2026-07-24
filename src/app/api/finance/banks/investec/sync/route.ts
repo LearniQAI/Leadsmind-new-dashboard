@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/server'
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
 import { decrypt } from '@/lib/encryption'
+import { NotFoundError, toClientError } from '@/shared/errors/AppError'
+import { logger } from '@/shared/logger'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export const dynamic = 'force-dynamic';
+
+const ALLOWED_FINANCE_ROLES = ['admin', 'owner'];
 
 export async function POST(req: NextRequest) {
   try {
-    const { workspaceId } = await req.json()
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'workspaceId required' }, { status: 400 })
-    }
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_FINANCE_ROLES);
+    const adminClient = createAdminClient();
 
-    // Fetch the stored connection
-    const { data: connection, error: connError } = await supabase
+    // Fetch the stored connection, scoped to the caller's own workspace
+    const { data: connection, error: connError } = await adminClient
       .from('bank_connections')
       .select('*')
       .eq('workspace_id', workspaceId)
@@ -23,9 +23,7 @@ export async function POST(req: NextRequest) {
       .eq('status', 'active')
       .single()
 
-    if (connError || !connection) {
-      return NextResponse.json({ error: 'No active Investec connection found' }, { status: 404 })
-    }
+    if (connError || !connection) throw new NotFoundError('Active Investec connection');
 
     const accessToken = decrypt(connection.access_token_encrypted)
     const apiKey = decrypt(connection.api_key_encrypted)
@@ -61,7 +59,7 @@ export async function POST(req: NextRequest) {
       const externalId = tx.transactionId ?? tx.id
 
       // Check if already imported
-      const { data: existing } = await supabase
+      const { data: existing } = await adminClient
         .from('accounting_transactions')
         .select('id')
         .eq('workspace_id', workspaceId)
@@ -69,7 +67,7 @@ export async function POST(req: NextRequest) {
         .single()
 
       if (!existing) {
-        await supabase.from('accounting_transactions').insert({
+        await adminClient.from('accounting_transactions').insert({
           workspace_id: workspaceId,
           date: tx.valueDate?.split('T')[0] ?? new Date().toISOString().split('T')[0],
           description: tx.description ?? 'Investec Transaction',
@@ -95,7 +93,7 @@ export async function POST(req: NextRequest) {
     if (balanceRes.ok) {
       const balanceData = await balanceRes.json()
       const newBalance = balanceData.data?.currentBalance ?? connection.balance
-      await supabase
+      await adminClient
         .from('bank_connections')
         .update({ balance: newBalance, last_synced_at: new Date().toISOString() })
         .eq('id', connection.id)
@@ -104,7 +102,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, imported, total: transactions.length })
 
   } catch (err: any) {
-    console.error('[investec-sync]', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'finance.investec.sync.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
 }

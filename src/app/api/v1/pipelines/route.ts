@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
 
   return apiData(data ?? [], 200, { pagination: { limit, offset, total: count ?? 0 } })
 }
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { data, error } = await supabase.from('pipelines').insert(payload).select('*').single()
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
 
   return apiData(data, 201)
 }
