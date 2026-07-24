@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   if (status) query = query.eq('status', status)
 
   const { data, error, count } = await query
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
   return apiData(data ?? [], 200, { pagination: { limit, offset, total: count ?? 0 } })
 }
 
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { data, error } = await supabase.from('invoices').insert(payload).select('*').single()
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
   await dispatchWebhook(auth.workspaceId, 'invoice.created', { invoice: data })
   return apiData(data, 201)
 }

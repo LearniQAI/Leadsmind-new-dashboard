@@ -25,7 +25,6 @@ export default function CoursePricingForm({ course, onSaved }: CoursePricingForm
   // Gateway Connection Status
   const [gatewayStatus, setGatewayStatus] = useState<{
     connected: boolean;
-    publishableKey?: string;
   }>({ connected: false });
   const [checkingGateway, setCheckingGateway] = useState(true);
 

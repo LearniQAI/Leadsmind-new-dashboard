@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createAdminClient, createServerClient } from '@/lib/supabase/server'
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
+import { encrypt } from '@/lib/encryption'
+import { stripe } from '@/lib/stripe'
 import { toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
 
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
     const { workspaceId } = await requireWorkspaceRole(ALLOWED_INTEGRATIONS_ROLES);
     const supabase = await createServerClient();
 
-    const { provider, category, accountLabel, webhookUrl } = await req.json()
+    const { provider, category, accountLabel, webhookUrl, credentials } = await req.json()
     if (!provider || !category) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
@@ -67,17 +69,46 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Payment-gateway credentials (e.g. PayFast's merchant key/passphrase) were previously
+    // dropped entirely — only the account label ever reached this route, so a merchant who
+    // filled in the form and clicked Connect got a UI that looked connected but had stored
+    // nothing usable. Every secret value is encrypted at rest with the same AES-256-CBC
+    // helper already used for bank connection credentials (src/lib/encryption.ts).
+    let storedCredentials: Record<string, string> | undefined;
+    if (category === 'payment_gateway') {
+      const apiKey = credentials?.apiKey?.trim();
+      const apiSecret = credentials?.apiSecret?.trim();
+      const passphrase = credentials?.passphrase?.trim();
+
+      if (!apiKey || !apiSecret) {
+        return NextResponse.json({ error: 'API Key and API Secret are required' }, { status: 400 })
+      }
+
+      storedCredentials = {
+        api_key_encrypted: encrypt(apiKey),
+        api_secret_encrypted: encrypt(apiSecret),
+      };
+      if (passphrase) {
+        storedCredentials.passphrase_encrypted = encrypt(passphrase);
+      }
+    }
+
+    const upsertPayload: Record<string, any> = {
+      workspace_id: workspaceId,
+      provider,
+      category,
+      connected: true,
+      account_label: accountLabel ?? null,
+      connected_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    if (storedCredentials) {
+      upsertPayload.credentials = storedCredentials;
+    }
+
     const { error } = await supabase
       .from('workspace_integrations')
-      .upsert({
-        workspace_id: workspaceId,
-        provider,
-        category,
-        connected: true,
-        account_label: accountLabel ?? null,
-        connected_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'workspace_id,provider' })
+      .upsert(upsertPayload, { onConflict: 'workspace_id,provider' })
 
     if (error) throw error;
     return NextResponse.json({ success: true })
@@ -127,12 +158,38 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
+    // Best-effort revoke on Stripe's side before wiping local state — if this fails (e.g.
+    // already revoked from Stripe's dashboard), disconnecting locally should still proceed.
+    if (provider.toLowerCase() === 'stripe') {
+      const { data: existing } = await adminClient
+        .from('workspace_integrations')
+        .select('credentials')
+        .eq('workspace_id', workspaceId)
+        .eq('provider', provider)
+        .maybeSingle();
+
+      const stripeUserId = (existing?.credentials as any)?.stripe_user_id;
+      if (stripeUserId && process.env.STRIPE_CONNECT_CLIENT_ID) {
+        try {
+          await stripe.oauth.deauthorize({
+            client_id: process.env.STRIPE_CONNECT_CLIENT_ID,
+            stripe_user_id: stripeUserId,
+          });
+        } catch (deauthErr) {
+          logger.warn({ err: deauthErr, workspaceId }, 'settings.integrations.stripe_deauthorize.failed');
+        }
+      }
+    }
+
+    // Previously left any stored credentials in place, only flipping the connected flag —
+    // meaning a "disconnected" integration still had its real secret sitting in the row.
     const { error } = await supabase
       .from('workspace_integrations')
       .update({
         connected: false,
         account_label: null,
         connected_at: null,
+        credentials: {},
         updated_at: new Date().toISOString(),
       })
       .eq('workspace_id', workspaceId)

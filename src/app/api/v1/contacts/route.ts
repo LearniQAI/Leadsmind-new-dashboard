@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`)
 
   const { data, error, count } = await query
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
 
   return apiData(data ?? [], 200, { pagination: { limit, offset, total: count ?? 0 } })
 }

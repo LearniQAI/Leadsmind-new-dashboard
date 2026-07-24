@@ -130,6 +130,9 @@ export async function POST(req: NextRequest) {
               status: 'paid',
               due_date: new Date().toISOString(),
               notes: `Paid consultation checkout for slot ${lease.slot_time}`,
+              // Links this invoice back to the lease that generated it — needed so a later
+              // booking refund action can find and update it (Task 18).
+              metadata: { lease_id: lease.id },
             })
             .select()
             .single();

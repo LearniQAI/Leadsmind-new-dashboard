@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   if (status) query = query.eq('status', status)
 
   const { data, error, count } = await query
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
 
   return apiData(data ?? [], 200, { pagination: { limit, offset, total: count ?? 0 } })
 }
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     // catches an overlapping booking here; surface it as a normal 409
     // instead of a raw 500 database error.
     if (isSlotConflictError(error)) return apiError(SLOT_CONFLICT_MESSAGE, 409)
-    return apiError(error.message, 500)
+    return apiError('Internal server error', 500)
   }
 
   return apiData(data, 201)

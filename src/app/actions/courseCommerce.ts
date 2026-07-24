@@ -6,6 +6,7 @@ import { stripe as defaultStripe } from '@/lib/stripe';
 import Stripe from 'stripe';
 import { getOrCreateStudentContact } from './studentEnrollments';
 import { getPortalSession } from '@/lib/portal/session';
+import { decrypt } from '@/lib/encryption';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
 
@@ -59,19 +60,16 @@ export async function updateCoursePricing(
 }
 
 /**
- * Checks Stripe Connect integration for workspace and returns status/keys.
+ * Checks Stripe Connect (real OAuth) integration for workspace and returns connection status.
  */
 export async function getWorkspacePaymentIntegration() {
   try {
     // Previously used createAdminClient() scoped only by a cookie-read
     // workspaceId, no auth/membership check — any caller could learn
     // whether a given workspace has Stripe Connect active. Severity
-    // assessment (see security-remediation.md item 6): the publishable key
-    // itself is designed by Stripe to be public/client-embeddable, so its
-    // disclosure alone is low-risk; the more relevant exposure is that it
-    // confirms *which workspaces have payment processing enabled at all*,
-    // which is workspace configuration data and should be gated like any
-    // other, regardless of how sensitive the specific field is.
+    // assessment (see security-remediation.md item 6): confirming *which
+    // workspaces have payment processing enabled at all* is workspace
+    // configuration data and should be gated like any other.
     const { workspaceId } = await requireWorkspaceAccess();
 
     const adminClient = createAdminClient();
@@ -82,15 +80,8 @@ export async function getWorkspacePaymentIntegration() {
       .eq('provider', 'stripe')
       .maybeSingle();
 
-    if (integration?.connected && integration.credentials) {
-      return {
-        connected: true,
-        publishableKey: (integration.credentials as any).publishable_key || '',
-        hasSecretKey: !!(integration.credentials as any).secret_key
-      };
-    }
-
-    return { connected: false };
+    const connected = !!(integration?.connected && (integration.credentials as any)?.stripe_user_id);
+    return { connected };
   } catch (error) {
     logger.error({ err: error }, 'course_commerce.payment_integration.fetch.failed');
     return { connected: false };
@@ -98,8 +89,9 @@ export async function getWorkspacePaymentIntegration() {
 }
 
 /**
- * Instantiates custom Stripe client using the admin's secret key from workspace integrations.
- * If not connected, returns the system default Stripe client.
+ * Instantiates a Stripe client authenticated as the workspace's connected account (real
+ * Stripe Connect OAuth access_token — usable exactly like a secret API key for that
+ * account). If not connected, returns the system default Stripe client.
  */
 async function getStripeClientForWorkspace(workspaceId: string): Promise<Stripe> {
   const adminClient = createAdminClient();
@@ -110,8 +102,9 @@ async function getStripeClientForWorkspace(workspaceId: string): Promise<Stripe>
     .eq('provider', 'stripe')
     .maybeSingle();
 
-  if (integration?.connected && (integration.credentials as any)?.secret_key) {
-    return new Stripe((integration.credentials as any).secret_key, {
+  const accessTokenEncrypted = (integration?.credentials as any)?.access_token_encrypted;
+  if (integration?.connected && accessTokenEncrypted) {
+    return new Stripe(decrypt(accessTokenEncrypted), {
       apiVersion: '2026-04-22.dahlia' as any, // Matches system version/compatibility
     });
   }

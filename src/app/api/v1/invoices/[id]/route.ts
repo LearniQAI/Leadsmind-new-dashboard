@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     .eq('id', params.id)
     .maybeSingle()
 
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
   if (!data) return apiError('Invoice not found', 404)
   return apiData(data)
 }
@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .eq('id', params.id)
     .select('*')
     .single()
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
 
   if ('status' in updates && updates.status !== current.status) {
     if (updates.status === 'paid') await dispatchWebhook(auth.workspaceId, 'invoice.paid', { invoice: updated })

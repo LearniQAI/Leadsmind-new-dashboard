@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) {
-    return apiError(error.message, 500)
+    return apiError('Internal server error', 500)
   }
 
   return apiData({ id: data.id }, 201)

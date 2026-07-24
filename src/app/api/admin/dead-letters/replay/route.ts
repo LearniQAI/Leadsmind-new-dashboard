@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getUser } from '@/lib/auth';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,9 +9,16 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
   try {
-    // Basic auth check
-    const authHeader = req.headers.get('Authorization');
-    // In a real app, verify admin session token here
+    // The browser client (components/admin/DeadLetterPanel.tsx) never sends an Authorization
+    // header at all — it relies on the session cookie, same as the page that renders it. The
+    // previous code read the header and did nothing with it, so this endpoint had no real
+    // auth. There is no platform-staff/superadmin role in this codebase distinct from
+    // per-workspace roles, so this matches the same bar the page itself already enforces
+    // (real session required) rather than inventing a bearer-token scheme nothing calls with.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { id, provider, payload } = await req.json();
 
@@ -69,6 +77,6 @@ export async function POST(req: Request) {
     }
   } catch (error: any) {
     console.error('[Dead Letter Replay] Failed:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Dead letter replay failed.' }, { status: 500 });
   }
 }

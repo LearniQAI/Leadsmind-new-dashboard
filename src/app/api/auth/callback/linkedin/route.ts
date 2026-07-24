@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { logger } from '@/shared/logger';
+import { encrypt } from '@/lib/encryption';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,7 @@ export async function GET(req: Request) {
       platform: 'linkedin',
       account_name: accountName,
       account_id: accountId,
-      access_token_encrypted: access_token, // Plain text for now as per schema
+      access_token_encrypted: encrypt(access_token),
       token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
     }, { onConflict: 'workspace_id,platform,account_id' });
 

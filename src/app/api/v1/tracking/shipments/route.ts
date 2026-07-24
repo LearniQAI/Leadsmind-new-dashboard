@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     .from('courier_shipments').select('*', { count: 'exact' })
     .eq('workspace_id', auth.workspaceId).order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
   return apiData(data ?? [], 200, { pagination: { limit, offset, total: count ?? 0 } })
 }
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     status: normal, raw_status: rawStatus,
     estimated_delivery: aftership?.expected_delivery ?? null,
   }).select('*').single()
-  if (error) return apiError(error.message, 500)
+  if (error) return apiError('Internal server error', 500)
 
   await supabase.from('shipment_events').insert({
     shipment_id: shipment.id, workspace_id: auth.workspaceId,

@@ -1,22 +1,48 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 import ConnectionCard from '@/components/settings/ConnectionCard';
 import ConnectProviderModal from '@/components/settings/ConnectProviderModal';
 import { useWorkspaceIntegrations } from '@/hooks/useWorkspaceIntegrations';
+import { getStripeConnectAuthUrl } from '@/app/actions/stripeConnect';
 import { toast } from 'sonner';
 
 export default function PaymentGatewaysPage() {
+  return (
+    <Suspense fallback={null}>
+      <PaymentGatewaysContent />
+    </Suspense>
+  );
+}
+
+function PaymentGatewaysContent() {
   const { workspace } = useDashboardContext() as any;
   const workspaceId = workspace?.id || null;
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const { isConnected, getLabel, disconnect, connect, refetch } = useWorkspaceIntegrations(workspaceId);
 
-  // Modal control
+  // Modal control (generic secret-key based gateways only — Stripe uses real OAuth below)
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [connectingStripe, setConnectingStripe] = useState(false);
+
+  // Reflect the Stripe Connect OAuth callback's redirect result
+  useEffect(() => {
+    if (searchParams.get('stripe_success')) {
+      toast.success('Stripe connected successfully via Stripe Connect');
+      refetch();
+      router.replace('/finance/payment-gateways');
+    } else if (searchParams.get('stripe_error')) {
+      toast.error('Stripe connection failed. Please try again.');
+      router.replace('/finance/payment-gateways');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const openConnectModal = (provider: string) => {
     setSelectedProvider(provider);
@@ -39,6 +65,17 @@ export default function PaymentGatewaysPage() {
     refetch();
   };
 
+  const handleConnectStripe = async () => {
+    setConnectingStripe(true);
+    try {
+      const url = await getStripeConnectAuthUrl();
+      window.location.href = url;
+    } catch (err: any) {
+      toast.error(err.message || 'Unable to start Stripe Connect.');
+      setConnectingStripe(false);
+    }
+  };
+
   const gateways = [
     { name: 'PayFast', shortName: 'PF', color: '#00b8f0', description: 'Automatically mark invoices paid when PayFast payment lands' },
     { name: 'Ozow', shortName: 'OZ', color: '#00c49a', description: 'Instant EFT payment notifications' },
@@ -46,6 +83,9 @@ export default function PaymentGatewaysPage() {
     { name: 'Yoco', shortName: 'YC', color: '#fd7c35', description: 'In-person card payments create invoices automatically' },
     { name: 'SnapScan', shortName: 'SS', color: '#e91e63', description: 'QR code payment notifications' }
   ];
+
+  const stripeConnected = isConnected('stripe');
+  const stripeLabel = getLabel('stripe');
 
   return (
     <Wrapper>
@@ -62,6 +102,19 @@ export default function PaymentGatewaysPage() {
 
         {/* Gateways Grid */}
         <div className="flex flex-col gap-4">
+          {/* Stripe — real Stripe Connect (OAuth), not the generic API-key modal */}
+          <ConnectionCard
+            name="Stripe"
+            shortName="ST"
+            color="#635bff"
+            description="Real Stripe Connect — checkouts route directly to your own Stripe account"
+            connected={stripeConnected}
+            accountLabel={stripeLabel}
+            loading={connectingStripe}
+            onConnect={handleConnectStripe}
+            onDisconnect={() => handleDisconnect('stripe')}
+          />
+
           {gateways.map(gw => {
             const connected = isConnected(gw.name);
             const label = getLabel(gw.name);
@@ -82,7 +135,7 @@ export default function PaymentGatewaysPage() {
           })}
         </div>
 
-        {/* Connection Modal */}
+        {/* Connection Modal (secret-key based gateways) */}
         {selectedProvider && (
           <ConnectProviderModal
             provider={selectedProvider}
