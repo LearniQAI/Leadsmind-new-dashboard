@@ -187,6 +187,7 @@ export async function POST(req: Request) {
           ...creds,
           fromNumber
         } : undefined;
+        const { sendSMS } = await import('@/lib/sms');
         for (const phone of phones) {
           try {
             const cleanPhone = phone.startsWith('+') ? phone : `+${phone}`;

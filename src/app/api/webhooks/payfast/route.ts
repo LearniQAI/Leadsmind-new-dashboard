@@ -4,6 +4,7 @@ import { publishEvent } from "@/lib/events/EventBus";
 import crypto from 'crypto'
 import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
 import { verifyPayFastSignature } from '@/lib/calendar/payfast';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
 
 /**
