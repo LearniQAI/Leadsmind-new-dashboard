@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData } from '@/lib/api/auth'
+import { verifyOwnedId } from '@/lib/api/foreignKeyOwnership'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +39,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (Object.keys(updates).length === 0) return apiError('No updatable fields provided')
 
   const supabase = createAdminClient()
+
+  if ('contact_id' in updates) {
+    const contactErr = await verifyOwnedId(supabase, 'contacts', updates.contact_id, auth.workspaceId, 'contact_id')
+    if (contactErr) return apiError(contactErr, 422)
+  }
+
   const { data, error } = await supabase
     .from('orders')
     .update(updates)

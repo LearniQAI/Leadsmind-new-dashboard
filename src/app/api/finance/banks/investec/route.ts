@@ -169,9 +169,19 @@ export async function DELETE(req: NextRequest) {
     const { workspaceId } = await requireWorkspaceRole(ALLOWED_FINANCE_ROLES);
     const adminClient = createAdminClient();
 
+    // Clear the stored credentials on disconnect, not just flip a status flag — matches
+    // the fix already applied to the general workspace_integrations disconnect flow.
     const { error } = await adminClient
       .from('bank_connections')
-      .update({ status: 'disconnected', updated_at: new Date().toISOString() })
+      .update({
+        status: 'disconnected',
+        client_id: null,
+        client_secret_encrypted: null,
+        api_key_encrypted: null,
+        access_token_encrypted: null,
+        token_expires_at: null,
+        updated_at: new Date().toISOString(),
+      })
       .eq('workspace_id', workspaceId)
       .eq('bank_name', 'Investec')
 

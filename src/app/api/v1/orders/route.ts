@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData, parsePagination } from '@/lib/api/auth'
+import { verifyOwnedId } from '@/lib/api/foreignKeyOwnership'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +39,10 @@ export async function POST(req: NextRequest) {
   try { body = await req.json() } catch { return apiError('Invalid JSON body') }
 
   const supabase = createAdminClient()
+
+  const contactErr = await verifyOwnedId(supabase, 'contacts', body.contact_id ?? null, auth.workspaceId, 'contact_id')
+  if (contactErr) return apiError(contactErr, 422)
+
   const payload = {
     workspace_id: auth.workspaceId,
     contact_id: body.contact_id ?? null,

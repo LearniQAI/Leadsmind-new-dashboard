@@ -226,12 +226,10 @@ export default function QuizPlayer({ lesson, onComplete, isCompleting }: QuizPla
       const startIso = new Date().toISOString();
       setStartedAt(startIso);
 
-      // Log attempt start
+      // Log attempt start (score/status are computed server-side, never sent from here)
       await saveQuizSubmissionAction(
         quizData.id,
         {},
-        0,
-        "started",
         startIso,
         startIso,
         {
@@ -321,35 +319,21 @@ export default function QuizPlayer({ lesson, onComplete, isCompleting }: QuizPla
 
   const handleCompleteQuiz = async (forceSubmit = false) => {
     setIsTimerActive(false);
-    
-    // Calculate score
+
     const finalAnswers = { ...studentAnswers };
     if (!forceSubmit && activeQuestion) {
       finalAnswers[activeQuestion.id] = getCurrentAnswerValue();
     }
 
-    let correctCount = 0;
-    questions.forEach((q) => {
-      const ans = finalAnswers[q.id];
-      if (evaluateQuestion(q, ans)) {
-        correctCount++;
-      }
-    });
-
-    const scorePercentage = questions.length > 0 
-      ? Math.round((correctCount / questions.length) * 100)
-      : 0;
-
-    const passingThreshold = quiz.passing_score ?? 80;
-    const passed = scorePercentage >= passingThreshold;
-    const status = passed ? "passed" : "failed";
-
+    // Client-side evaluation below is for the immediate per-question review UI only
+    // (correct/incorrect highlighting) — it is never sent to the server and never decides
+    // what score/status gets persisted or which automation events fire. That is computed
+    // independently, server-side, from finalAnswers.
     const submittedIso = new Date().toISOString();
     const startMs = new Date(startedAt || submittedIso).getTime();
     const endMs = new Date(submittedIso).getTime();
     const durationSecs = Math.round((endMs - startMs) / 1000);
 
-    // Build snapshots of inputted metrics
     const snapshots: Record<string, any> = {};
     questions.forEach((q) => {
       snapshots[q.id] = {
@@ -367,13 +351,17 @@ export default function QuizPlayer({ lesson, onComplete, isCompleting }: QuizPla
       browser_user_agent: typeof window !== "undefined" ? window.navigator.userAgent : "unknown"
     };
 
+    // Fall back to a losing/failed result if the server call errors, rather than assuming
+    // success — the results screen must never show a passing state that wasn't confirmed
+    // by the server.
+    let serverScore = 0;
+    let serverStatus = "failed";
+
     try {
       const { saveQuizSubmissionAction } = await import("@/app/actions/quizzes");
       const res = await saveQuizSubmissionAction(
         quiz.id,
         finalAnswers,
-        scorePercentage,
-        status,
         startedAt,
         submittedIso,
         metadata
@@ -382,14 +370,17 @@ export default function QuizPlayer({ lesson, onComplete, isCompleting }: QuizPla
       if (res.error) {
         toast.error(res.error);
       } else {
-        toast.success(`Quiz attempt submitted! Score: ${scorePercentage}%`);
+        serverScore = res.score ?? 0;
+        serverStatus = res.status ?? "failed";
+        toast.success(`Quiz attempt submitted! Score: ${serverScore}%`);
       }
     } catch (e) {
       console.error(e);
+      toast.error("Failed to submit quiz attempt.");
     }
 
-    setFinalScore(scorePercentage);
-    setFinalStatus(status);
+    setFinalScore(serverScore);
+    setFinalStatus(serverStatus);
     setQuizCompleted(true);
   };
 

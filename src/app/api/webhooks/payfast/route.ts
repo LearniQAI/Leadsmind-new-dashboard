@@ -282,6 +282,94 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── COURSE PURCHASE: INVOICE + ENROLLMENT CREATION ───────
+    // A real PayFast course purchase (custom_str4 = 'course', set by
+    // createCoursePayFastCheckout) previously only logged an activity row and fired an
+    // automation event — it never created the invoices row (with metadata.courseId) or the
+    // enrollments row that enrollStudent()'s paid-course gate checks for. That meant a
+    // genuine, successfully-paid, signature-verified course purchase never actually enrolled
+    // the student. Idempotent: re-checks for an existing paid invoice / enrollment first, so
+    // a PayFast ITN retry for the same purchase never creates duplicates.
+    if (paymentType === 'course' && courseId && contactId) {
+      const { data: existingPaidInvoice } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .eq('contact_id', contactId)
+        .eq('status', 'paid')
+        .contains('metadata', { courseId })
+        .maybeSingle();
+
+      let courseInvoiceId = existingPaidInvoice?.id ?? null;
+
+      if (!existingPaidInvoice) {
+        const paidAmount = parseFloat(amount_gross || '0');
+        const payfastRef = payload.pf_payment_id || m_payment_id;
+
+        const { data: newInvoice, error: courseInvoiceErr } = await supabase
+          .from('invoices')
+          .insert({
+            workspace_id: workspaceId,
+            contact_id: contactId,
+            invoice_number: `PF-${payfastRef}`,
+            items: [{ description: item_name || 'Course purchase', quantity: 1, unit_amount: paidAmount }],
+            subtotal: paidAmount,
+            tax_total: 0,
+            total_amount: paidAmount,
+            status: 'paid',
+            paid_at: new Date().toISOString(),
+            payment_method: 'payfast',
+            metadata: { courseId, payfast_ref: payfastRef, type: 'course_purchase' },
+          })
+          .select('id')
+          .single();
+
+        if (courseInvoiceErr) {
+          logger.error({ err: courseInvoiceErr, courseId, contactId }, 'webhook.payfast.course_invoice.create.failed');
+        } else {
+          courseInvoiceId = newInvoice?.id ?? null;
+          logger.info({ invoiceId: courseInvoiceId, courseId, contactId }, 'webhook.payfast.course_invoice.created');
+        }
+      }
+
+      const { data: existingEnrollment } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('course_id', courseId)
+        .eq('contact_id', contactId)
+        .maybeSingle();
+
+      if (!existingEnrollment) {
+        // Mirrors enrollStudent()'s own insert shape (studentEnrollments.ts) exactly —
+        // enrollStudent() itself can't be called here since it requires an authenticated
+        // session via getUser(), which doesn't exist for a server-to-server PayFast callback.
+        const { error: enrollErr } = await supabase
+          .from('enrollments')
+          .insert({
+            course_id: courseId,
+            contact_id: contactId,
+            status: 'active',
+          });
+
+        if (enrollErr) {
+          logger.error({ err: enrollErr, courseId, contactId }, 'webhook.payfast.course_enrollment.create.failed');
+        } else {
+          logger.info({ courseId, contactId }, 'webhook.payfast.course_enrollment.created');
+          try {
+            const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+            await dispatchWebhook(workspaceId, 'course.enrolment', {
+              enrolment: { contact_id: contactId, course_id: courseId, enrolled_at: new Date().toISOString() },
+            });
+          } catch (dispatchErr) {
+            logger.error({ err: dispatchErr, courseId, contactId }, 'webhook.payfast.course_enrollment.webhook_dispatch.failed');
+          }
+        }
+      } else {
+        logger.info({ courseId, contactId }, 'webhook.payfast.course_enrollment.already_exists');
+      }
+    }
+    // ── END COURSE PURCHASE: INVOICE + ENROLLMENT CREATION ───
+
     // 4. Log the transaction/activity
     await supabase.from("contact_activities").insert({
       workspace_id: workspaceId,

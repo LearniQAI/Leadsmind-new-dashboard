@@ -2,6 +2,8 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId as getWsId, getCurrentWorkspace, requireWorkspaceAccess } from '@/lib/auth';
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { mintWorkspaceApiKey } from '@/lib/api/apiKeys';
 import { sendEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
 import { createHash, randomBytes } from 'crypto';
@@ -574,20 +576,25 @@ export async function getWorkspaceApiKey() {
 
 export async function generateWorkspaceApiKey() {
  try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  // Only admin/owner may mint a new workspace API key — same role tier and same
+  // requireWorkspaceRole() helper the hardened /api/settings/api-keys route uses, not a
+  // separately invented check.
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
 
-  const newKey = `lm_sk_${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`;
-  const supabase = await createServerClient();
-  const { data, error } = await supabase
+  // Mint via the same shared routine /api/settings/api-keys uses: crypto.randomBytes key
+  // material, SHA-256 hash persisted to workspace_api_keys — the raw key is never stored.
+  const { key: rawKey } = await mintWorkspaceApiKey(workspaceId);
+
+  // Retire the legacy plaintext workspaces.api_key value (if any) as part of rotation —
+  // regenerating must actually invalidate the old key, not leave a weaker credential valid
+  // alongside the new one indefinitely.
+  const adminClient = createAdminClient();
+  await adminClient
    .from('workspaces')
-   .update({ api_key: newKey })
-  .eq("id", workspaceId).eq("workspace_id", workspaceId)
-   .select()
-   .single();
+   .update({ api_key: null })
+   .eq('id', workspaceId);
 
-  if (error) throw error;
-  return { data: data.api_key };
+  return { data: rawKey };
  } catch (error: any) {
   logger.error({ err: error }, 'generate.workspace.api.key.failed');
   return { error: 'Operation failed. Please try again.' };

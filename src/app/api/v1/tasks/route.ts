@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData, parsePagination } from '@/lib/api/auth'
+import { verifyTaskForeignKeys, verifyTaskRelatedId } from '@/lib/api/foreignKeyOwnership'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,12 @@ export async function POST(req: NextRequest) {
   if (!body.title) return apiError('title is required')
 
   const supabase = createAdminClient()
+
+  const fkErr = await verifyTaskForeignKeys(supabase, auth.workspaceId, body)
+  if (fkErr.error) return apiError(fkErr.error, 422)
+  const relatedErr = await verifyTaskRelatedId(supabase, auth.workspaceId, body)
+  if (relatedErr) return apiError(relatedErr, 422)
+
   const payload = {
     workspace_id: auth.workspaceId,
     title: body.title,

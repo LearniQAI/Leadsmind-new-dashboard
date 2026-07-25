@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData, parsePagination } from '@/lib/api/auth'
 import { dispatchWebhook } from '@/lib/webhooks/dispatcher'
+import { verifyOwnedId } from '@/lib/api/foreignKeyOwnership'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,6 +69,12 @@ export async function POST(req: NextRequest) {
   if (!stageId) {
     return apiError('No stage_id provided and no pipeline stages exist for this workspace', 422)
   }
+
+  // Same cross-workspace check already applied to stage_id above — a client-supplied
+  // contact_id must belong to this workspace too, or a deal could be silently linked to
+  // another workspace's contact.
+  const contactErr = await verifyOwnedId(supabase, 'contacts', body.contact_id ?? null, auth.workspaceId, 'contact_id')
+  if (contactErr) return apiError(contactErr, 422)
 
   const payload = {
     workspace_id: auth.workspaceId,

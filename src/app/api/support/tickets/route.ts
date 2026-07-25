@@ -34,12 +34,30 @@ export async function POST(req: Request) {
     rateLimitMap.set(ip, rateData);
 
     const body = await req.json();
-    const { workspaceId, name, email, subject, description, priority } = body;
+    const { widgetKey, name, email, subject, description, priority } = body;
 
     // ... Validation ...
-    if (!workspaceId || !email || !subject || !description) {
+    if (!widgetKey || !email || !subject || !description) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    // Resolve the workspace from the widget's secret key, never from a client-supplied
+    // workspaceId — a raw workspace UUID is not a secret (it's visible in dashboard URLs,
+    // API responses, etc.) and would let anyone create tickets in any workspace just by
+    // guessing/enumerating its id. widget_key is a real per-workspace secret token
+    // (support_widget_settings.widget_key), same trust model already used by
+    // /api/widget/ticket for the equivalent public widget-loader endpoint.
+    const { data: widgetSettings } = await supabaseAdmin
+      .from('support_widget_settings')
+      .select('workspace_id')
+      .eq('widget_key', widgetKey)
+      .maybeSingle();
+
+    if (!widgetSettings) {
+      return NextResponse.json({ error: 'Invalid widget key' }, { status: 401 });
+    }
+
+    const workspaceId = widgetSettings.workspace_id;
 
     const supabase = await createServerClient();
     const { data: { session } } = await supabase.auth.getSession();

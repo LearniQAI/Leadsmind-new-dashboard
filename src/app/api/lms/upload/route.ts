@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/auth';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/server';
-import { UnauthorizedError, toClientError } from '@/shared/errors/AppError';
+import { toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
 // Used both by instructors uploading course assets and students uploading assignment
-// files — any authenticated user may call this, it does not itself associate the upload
-// with a workspace/course (the caller does that separately, e.g. via lms/assignments).
+// files — any authenticated user may call this. It previously accepted a fully
+// client-controlled `pathPrefix` used verbatim in the storage path, so any authenticated
+// user (from any workspace) could write into any other workspace's asset paths in the
+// shared 'media' bucket. Every upload is now confined under the caller's own verified
+// workspace id — pathPrefix (sanitized) only selects a sub-folder within that.
 export async function POST(req: NextRequest) {
   try {
-    const user = await getUser();
-    if (!user) throw new UnauthorizedError();
+    const { userId, workspaceId } = await requireWorkspaceAccess();
 
     const adminClient = createAdminClient();
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const pathPrefix = (formData.get('pathPrefix') as string) || 'lms-assets';
+    const rawPathPrefix = (formData.get('pathPrefix') as string) || 'lms-assets';
+    const cleanPathPrefix = rawPathPrefix.replace(/[^a-zA-Z0-9/_-]/g, '_').replace(/^\/+|\.\.+/g, '');
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided in form data' }, { status: 400 });
@@ -28,7 +31,7 @@ export async function POST(req: NextRequest) {
     const fileBuffer = Buffer.from(arrayBuffer);
 
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const storagePath = `${pathPrefix}/${Date.now()}-${cleanFileName}`;
+    const storagePath = `${workspaceId}/${cleanPathPrefix}/${Date.now()}-${cleanFileName}`;
 
     // Upload to 'media' bucket
     const { error: uploadError } = await adminClient.storage
@@ -39,7 +42,7 @@ export async function POST(req: NextRequest) {
       });
 
     if (uploadError) {
-      logger.error({ err: uploadError, userId: user.id }, 'lms.upload.storage.failed');
+      logger.error({ err: uploadError, userId }, 'lms.upload.storage.failed');
       throw new Error('Storage upload failed');
     }
 

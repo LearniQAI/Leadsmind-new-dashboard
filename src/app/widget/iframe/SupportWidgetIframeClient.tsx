@@ -100,7 +100,10 @@ export function SupportWidgetIframeClient({ settings, isInline }: SupportWidgetI
     }
 
     const payload: any = {
-      workspaceId: settings.workspace_id,
+      // The widget_key (a per-workspace secret token) is what actually identifies the
+      // workspace server-side now — an unauthenticated caller must not be able to pick
+      // an arbitrary workspace by guessing its UUID.
+      widgetKey: settings.widget_key,
       name: formData.name,
       email: formData.email,
       subject: formData.subject,

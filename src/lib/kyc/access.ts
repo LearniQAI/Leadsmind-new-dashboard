@@ -64,13 +64,39 @@ export async function assertContactAccessOrPortalSelf(contactId: string): Promis
 // threshold for this sibling endpoint. Applied per (contact_id, check_type) pair.
 export const RECHECK_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
+// forceRecheck bypasses the 24h cooldown on billed bureau calls — same role tier and same
+// ALLOWED_FORCE_RECHECK_ROLES list as crm/contacts/kyc/route.ts, not a separately invented
+// threshold. A portal-authenticated contact (branch (b) of assertContactAccessOrPortalSelf)
+// has no workspace_members row at all, so the membership lookup below naturally comes back
+// empty for them and they're denied the override outright — they're never checked against a
+// role they structurally can't hold, they just never get forceRecheck at all.
+const ALLOWED_FORCE_RECHECK_ROLES = ['admin', 'owner'];
+
 export async function assertBureauCheckCooldown(
   adminClient: ReturnType<typeof createAdminClient>,
+  workspaceId: string,
+  userId: string,
   contactId: string,
   checkType: string,
   forceRecheck: boolean
 ): Promise<void> {
-  if (forceRecheck) return;
+  if (forceRecheck) {
+    // This must run and reject BEFORE forceRecheck is honored — same ordering guarantee as
+    // crm/contacts/kyc/route.ts.
+    const supabaseUser = await createServerClient();
+    const { data: membership } = await supabaseUser
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!membership || !ALLOWED_FORCE_RECHECK_ROLES.includes(membership.role)) {
+      throw new ForbiddenError('Only workspace admins or owners can force a repeat bureau check within the cooldown window.');
+    }
+
+    return;
+  }
 
   const { data: recentCheck } = await adminClient
     .from('kyc_checks')

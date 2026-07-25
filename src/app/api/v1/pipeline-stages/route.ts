@@ -39,6 +39,18 @@ export async function POST(req: NextRequest) {
   if (!body.name) return apiError('name is required')
 
   const supabase = createAdminClient()
+
+  // Verify the client-supplied pipeline_id actually belongs to the caller's workspace before
+  // referencing it — same pattern as deals/route.ts's stage_id check, so a stage can't be
+  // created against another workspace's pipeline.
+  const { data: pipeline } = await supabase
+    .from('pipelines')
+    .select('id')
+    .eq('id', body.pipeline_id)
+    .eq('workspace_id', auth.workspaceId)
+    .maybeSingle()
+  if (!pipeline) return apiError('pipeline_id does not belong to this workspace', 422)
+
   const payload = {
     workspace_id: auth.workspaceId,
     pipeline_id: body.pipeline_id,

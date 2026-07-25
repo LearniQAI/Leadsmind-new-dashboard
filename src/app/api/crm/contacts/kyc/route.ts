@@ -15,6 +15,9 @@ const BILLED_CHECK_TYPES = new Set([
   'hanis_identity', 'sanctions_screen', 'pep_check', 'credit_score', 'credit_report', 'xds_credit', 'xds_trace'
 ]);
 const RECHECK_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+// forceRecheck bypasses the 24h cooldown on billed bureau calls — restricted to the same
+// role tier used for other sensitive/billed actions elsewhere (API keys, payroll, inventory).
+const ALLOWED_FORCE_RECHECK_ROLES = ['admin', 'owner'];
 
 // Confirms the authenticated user belongs to the workspace that owns the given contact.
 // Returns the contact's real workspace_id — this is the only source of truth for
@@ -141,6 +144,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         error: 'Verification blocked: No obtained POPIA consent record exists for this contact. Please dispatch a consent request first.'
       }, { status: 403 });
+    }
+
+    // forceRecheck bypasses the 24h cooldown on billed bureau calls — restrict it to
+    // admin/owner so any workspace member can't repeatedly trigger billed checks just by
+    // setting this flag. This must run and reject BEFORE the cooldown-bypass logic below
+    // ever honors forceRecheck.
+    if (forceRecheck) {
+      const supabaseUser = await createServerClient();
+      const { data: membership } = await supabaseUser
+        .from('workspace_members')
+        .select('role')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!membership || !ALLOWED_FORCE_RECHECK_ROLES.includes(membership.role)) {
+        return NextResponse.json({
+          error: 'Only workspace admins or owners can force a repeat bureau check within the cooldown window.'
+        }, { status: 403 });
+      }
     }
 
     // Billed bureau checks: don't auto-fire a repeat (billed) call within the cooldown

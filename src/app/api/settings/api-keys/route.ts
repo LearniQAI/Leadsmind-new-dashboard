@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomBytes, createHash } from 'crypto'
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth'
 import { createAdminClient, createServerClient } from '@/lib/supabase/server'
 import { UnauthorizedError, ForbiddenError, toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
+import { mintWorkspaceApiKey } from '@/lib/api/apiKeys'
 
 export const dynamic = 'force-dynamic';
 
@@ -71,24 +71,10 @@ export async function POST(req: NextRequest) {
     const workspaceId = await resolveActiveWorkspace(user.id);
     const { label } = await req.json()
 
-    // Generate key: lm_live_[32 random hex chars] — CSPRNG (crypto.randomBytes)
-    const rawKey = `lm_live_${randomBytes(16).toString('hex')}`
-    const keyHash = createHash('sha256').update(rawKey).digest('hex')
-    const keyPrefix = rawKey.substring(0, 16)
+    // Generate key: lm_live_[32 random hex chars] — CSPRNG (crypto.randomBytes). Only the
+    // hash is ever persisted; the raw key is returned once, below.
+    const { key: rawKey, prefix: keyPrefix } = await mintWorkspaceApiKey(workspaceId, label);
 
-    const adminClient = createAdminClient();
-    const { error } = await adminClient
-      .from('workspace_api_keys')
-      .insert({
-        workspace_id: workspaceId,
-        key_hash: keyHash,
-        key_prefix: keyPrefix,
-        label: label ?? 'Default',
-      })
-
-    if (error) throw error;
-
-    // Return the full key ONCE — only the hash is ever persisted
     return NextResponse.json({ key: rawKey, prefix: keyPrefix })
   } catch (err: any) {
     logger.error({ err }, 'settings.api_keys.post.failed');

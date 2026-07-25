@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SignJWT } from 'jose';
 import crypto from 'crypto';
 import { sendEmail } from '@/lib/email';
+import { checkRateLimit } from '@/lib/security/rateLimit';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,6 +24,18 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+
+    // Same dual (IP + identifier) rate limiting already used on every sibling unauthenticated
+    // auth endpoint (portal/magic-link, portal/otp, portal/otp-verify, portal/password-login)
+    // — this route was the one exception, allowing unlimited scripted requests against any
+    // known student email (email-bombing / send-quota exhaustion, no throttle at all).
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    if (!checkRateLimit(`student-login:ip:${ip}`, 5, 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again shortly.' }, { status: 429 });
+    }
+    if (!checkRateLimit(`student-login:email:${cleanEmail}`, 5, 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again shortly.' }, { status: 429 });
+    }
 
     // Only ever dispatch a login link to an email that actually matches a real student/contact
     // record — previously this endpoint would happily mint a valid session-granting token and

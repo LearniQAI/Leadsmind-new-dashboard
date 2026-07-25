@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { logger } from '@/shared/logger';
+import { gradeLmsQuizAttempt } from '@/lib/lms/gradeLmsQuiz';
 
 // Quiz CRUD actions
 export async function getLessonQuiz(lessonId: string) {
@@ -355,8 +356,6 @@ Response formatting guidelines:
 export async function saveQuizSubmissionAction(
   quizId: string,
   answers: any,
-  score: number,
-  status: string,
   startedAt: string,
   submittedAt: string,
   metadata: any
@@ -372,7 +371,7 @@ export async function saveQuizSubmissionAction(
       .select('workspace_id, passing_score, max_retakes, settings')
       .eq('id', quizId)
       .single();
-    
+
     const workspaceId = quizObj?.workspace_id;
     if (!workspaceId) return { error: 'Quiz workspace not found' };
 
@@ -395,9 +394,28 @@ export async function saveQuizSubmissionAction(
         })
         .select('id')
         .single();
-      
+
       if (contactErr) throw contactErr;
       contact = newContact;
+    }
+
+    // A call with no answers yet is just the "attempt started" bootstrap log QuizPlayer
+    // fires on load — not a real submission to grade. Whether to grade is decided purely by
+    // the shape of `answers` (real content or not), never by a client-supplied status/score,
+    // which are no longer accepted as parameters at all.
+    const hasAnswers = !!answers && Object.keys(answers).length > 0;
+
+    let score: number | null = null;
+    let status = 'started';
+    let passed = false;
+
+    if (hasAnswers) {
+      // Independently recompute score/pass from the real lms_questions data — never trust
+      // a client-supplied score or status field.
+      const grading = await gradeLmsQuizAttempt(quizId, answers);
+      score = grading.score;
+      passed = grading.passed;
+      status = passed ? 'passed' : 'failed';
     }
 
     // Save submission
@@ -419,56 +437,58 @@ export async function saveQuizSubmissionAction(
 
     if (error) throw error;
 
-    // Trigger automation events asynchronously
-    const { publishEvent } = await import('@/lib/events/EventBus');
-    const passingScore = quizObj.passing_score ?? 80;
-    const isPassed = score >= passingScore;
+    if (hasAnswers) {
+      // Trigger automation events asynchronously — only for a genuine graded submission,
+      // using only the server-computed score/passed above.
+      const { publishEvent } = await import('@/lib/events/EventBus');
+      const passingScore = quizObj.passing_score ?? 80;
 
-    if (isPassed) {
-      await publishEvent(workspaceId, 'quiz_passed', contact.id, { quizId, score });
-    } else {
-      await publishEvent(workspaceId, 'quiz_failed', contact.id, { quizId, score });
-    }
+      if (passed) {
+        await publishEvent(workspaceId, 'quiz_passed', contact.id, { quizId, score });
+      } else {
+        await publishEvent(workspaceId, 'quiz_failed', contact.id, { quizId, score });
+      }
 
-    // Count attempts
-    const { count: attemptCount } = await supabase
-      .from('lms_quiz_submissions')
-      .select('id', { count: 'exact', head: true })
-      .eq('quiz_id', quizId)
-      .eq('contact_id', contact.id);
+      // Count attempts
+      const { count: attemptCount } = await supabase
+        .from('lms_quiz_submissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('quiz_id', quizId)
+        .eq('contact_id', contact.id);
 
-    const maxRetakes = quizObj.max_retakes ?? -1;
-    if (maxRetakes !== -1 && attemptCount !== null && attemptCount >= maxRetakes) {
-      await publishEvent(workspaceId, 'quiz_limit_reached', contact.id, { quizId, attempts: attemptCount });
-    }
+      const maxRetakes = quizObj.max_retakes ?? -1;
+      if (maxRetakes !== -1 && attemptCount !== null && attemptCount >= maxRetakes) {
+        await publishEvent(workspaceId, 'quiz_limit_reached', contact.id, { quizId, attempts: attemptCount });
+      }
 
-    // Struggle score threshold calculation (consecutive failures)
-    const { data: recentAttempts } = await supabase
-      .from('lms_quiz_submissions')
-      .select('score, status')
-      .eq('quiz_id', quizId)
-      .eq('contact_id', contact.id)
-      .order('submitted_at', { ascending: false })
-      .limit(5);
+      // Struggle score threshold calculation (consecutive failures)
+      const { data: recentAttempts } = await supabase
+        .from('lms_quiz_submissions')
+        .select('score, status')
+        .eq('quiz_id', quizId)
+        .eq('contact_id', contact.id)
+        .order('submitted_at', { ascending: false })
+        .limit(5);
 
-    let consecutiveFailures = 0;
-    if (recentAttempts) {
-      for (const attempt of recentAttempts) {
-        const attemptPassed = attempt.score !== null ? attempt.score >= passingScore : attempt.status === 'passed';
-        if (!attemptPassed) {
-          consecutiveFailures++;
-        } else {
-          break; // Stop counting at the first passed attempt
+      let consecutiveFailures = 0;
+      if (recentAttempts) {
+        for (const attempt of recentAttempts) {
+          const attemptPassed = attempt.score !== null ? attempt.score >= passingScore : attempt.status === 'passed';
+          if (!attemptPassed) {
+            consecutiveFailures++;
+          } else {
+            break; // Stop counting at the first passed attempt
+          }
         }
+      }
+
+      const struggleThreshold = quizObj.settings?.struggle_threshold ?? 3;
+      if (consecutiveFailures >= struggleThreshold) {
+        await publishEvent(workspaceId, 'struggle_threshold_crossed', contact.id, { quizId, consecutiveFailures });
       }
     }
 
-    const struggleThreshold = quizObj.settings?.struggle_threshold ?? 3;
-    if (consecutiveFailures >= struggleThreshold) {
-      await publishEvent(workspaceId, 'struggle_threshold_crossed', contact.id, { quizId, consecutiveFailures });
-    }
-
-    return { data: submission };
+    return { data: submission, score, passed, status };
   } catch (error: any) {
     logger.error({ err: error }, 'save.quiz.submission.action.failed');
     return { error: 'Operation failed. Please try again.' };

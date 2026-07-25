@@ -1,30 +1,47 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getUser } from '@/lib/auth';
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { ForbiddenError, UnauthorizedError, toClientError } from '@/shared/errors/AppError';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Replaying a dead-lettered webhook re-fires real internal processing (contact lookups, AI
+// calls, DB writes) — same sensitivity bar as minting an API key or editing billing settings,
+// so it's restricted to admin/owner, matching that tier elsewhere in this codebase.
+const ALLOWED_DEAD_LETTER_ROLES = ['admin', 'owner'];
+
 export async function POST(req: Request) {
   try {
-    // The browser client (components/admin/DeadLetterPanel.tsx) never sends an Authorization
-    // header at all — it relies on the session cookie, same as the page that renders it. The
-    // previous code read the header and did nothing with it, so this endpoint had no real
-    // auth. There is no platform-staff/superadmin role in this codebase distinct from
-    // per-workspace roles, so this matches the same bar the page itself already enforces
-    // (real session required) rather than inventing a bearer-token scheme nothing calls with.
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // There is no platform-staff/superadmin role in this codebase distinct from per-workspace
+    // roles, and `webhook_dead_letters` has no workspace_id column (these are global inbound-
+    // webhook failures, not scoped to any one workspace) — so the closest available check is:
+    // the caller must be an admin/owner of *some* workspace they belong to.
+    await requireWorkspaceRole(ALLOWED_DEAD_LETTER_ROLES);
+
+    const { id } = await req.json();
+    if (!id) {
+      return NextResponse.json({ error: 'Missing required field: id' }, { status: 400 });
     }
 
-    const { id, provider, payload } = await req.json();
+    // Re-fetch the real, stored dead-letter row by id — never trust a client-supplied
+    // `provider`/`payload`. The previous version took both directly from the request body,
+    // meaning any caller could forge an arbitrary payload and have it forwarded verbatim to
+    // internal inbound-webhook handlers under any dead-letter id, including ones that don't
+    // exist or belong to a different incident than the one actually being replayed.
+    const { data: deadLetter, error: fetchErr } = await supabaseAdmin
+      .from('webhook_dead_letters')
+      .select('id, provider, payload')
+      .eq('id', id)
+      .maybeSingle();
 
-    if (!id || !provider || !payload) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (fetchErr || !deadLetter) {
+      return NextResponse.json({ error: 'Dead letter not found' }, { status: 404 });
     }
+
+    const { provider, payload } = deadLetter;
 
     let targetUrl = '';
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -76,6 +93,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Target endpoint rejected replay' }, { status: response.status });
     }
   } catch (error: any) {
+    if (error instanceof UnauthorizedError || error instanceof ForbiddenError) {
+      const clientError = toClientError(error);
+      return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+    }
     console.error('[Dead Letter Replay] Failed:', error);
     return NextResponse.json({ error: 'Dead letter replay failed.' }, { status: 500 });
   }

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData, parsePagination } from '@/lib/api/auth'
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors'
+import { verifyAppointmentForeignKeys } from '@/lib/api/foreignKeyOwnership'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,6 +44,14 @@ export async function POST(req: NextRequest) {
   if (!body.end_time) return apiError('end_time is required')
 
   const supabase = createAdminClient()
+
+  // Every client-supplied foreign-key id must belong to the caller's own workspace before
+  // it's referenced — same pattern already proven for pipeline_stages/stage_id and
+  // deals/stage_id. host_id is intentionally NOT checked here: it isn't a real column on
+  // `appointments` (no migration ever defines it), so it can't reference cross-tenant data.
+  const fkCheck = await verifyAppointmentForeignKeys(supabase, auth.workspaceId, body)
+  if (fkCheck.error) return apiError(fkCheck.error, 422)
+
   const payload = {
     workspace_id: auth.workspaceId,
     contact_id: body.contact_id ?? null,
