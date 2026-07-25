@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { SignJWT } from 'jose';
 import crypto from 'crypto';
+import { headers } from 'next/headers';
 import { sendEmail } from '@/lib/email';
 import { sendSMS } from '@/lib/sms';
+import { checkRateLimit } from '@/lib/security/rateLimit';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +18,14 @@ const secret = new TextEncoder().encode(
 
 export async function POST(req: NextRequest) {
   try {
+    // Unauthenticated, sends a real email/WhatsApp message and mints a real 15-minute login
+    // token per request — bound both per-IP (blunts a single flooder) and per-email (blunts
+    // targeted harassment of one inbox from many IPs).
+    const ip = headers().get('x-forwarded-for')?.split(',')[0]?.trim() || headers().get('x-real-ip') || 'unknown';
+    if (!checkRateLimit(`portal-magic-link:ip:${ip}`, 5, 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again in a minute.' }, { status: 429 });
+    }
+
     const { email, channel } = await req.json();
 
     if (!email || !email.includes('@')) {
@@ -23,6 +33,10 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+
+    if (!checkRateLimit(`portal-magic-link:email:${cleanEmail}`, 5, 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again in a minute.' }, { status: 429 });
+    }
 
     // 1. Verify that the contact exists and has portal access enabled
     const { data: contacts, error: fetchErr } = await supabaseAdmin

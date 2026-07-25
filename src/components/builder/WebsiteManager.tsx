@@ -665,7 +665,7 @@ export default function WebsiteManager() {
                           <label className="text-[11px] font-bold !text-dash-textMuted">Templates</label>
                         </div>
                         <div className="text-[10px] font-bold !text-dash-textMuted bg-dash-surface px-2.5 py-1 rounded-full border border-dash-border">
-                          {filteredTemplates.length + 1} options matching
+                          {filteredTemplates.length} options matching
                         </div>
                       </div>
 
@@ -684,86 +684,77 @@ export default function WebsiteManager() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                          {/* Blank Canvas Option */}
-                          {(templateCategory === 'All' || templateSearch === '') && (
-                            <div
-                              onClick={() => setSelectedTemplate(null)}
-                              className={cn(
-                                "group relative cursor-pointer rounded-2xl border-2 transition-colors motion-reduce:transition-none overflow-hidden flex flex-col h-full min-h-[220px]",
-                                selectedTemplate === null
-                                  ? "border-dash-accent bg-dash-accent/5"
-                                  : "border-dash-border bg-dash-surface hover:border-dash-text/20"
-                              )}
-                            >
-                              <div className="flex-1 flex items-center justify-center bg-white border-b border-dash-border relative">
-                                <div className="w-12 h-12 rounded-full border-2 border-dashed border-dash-border flex items-center justify-center !text-dash-textMuted group-hover:text-dash-accent group-hover:border-dash-accent/40 transition-colors motion-reduce:transition-none">
-                                  <Plus size={24} />
-                                </div>
-                                {selectedTemplate === null && (
-                                  <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-dash-accent border-[4px] border-white flex items-center justify-center">
-                                    <Check className="w-3 h-3 text-white" strokeWidth={4} />
-                                  </div>
+                          {filteredTemplates.map((t) => {
+                            const isBlank = t.id === 'blank-slate';
+                            return (
+                              <div
+                                key={t.id}
+                                onClick={() => setSelectedTemplate(t.id)}
+                                className={cn(
+                                  "group relative cursor-pointer rounded-2xl border-2 transition-colors motion-reduce:transition-none overflow-hidden flex flex-col h-full min-h-[220px]",
+                                  selectedTemplate === t.id
+                                    ? "border-dash-accent bg-dash-accent/5"
+                                    : "border-dash-border bg-dash-surface hover:border-dash-text/20"
                                 )}
-                              </div>
-                              <div className="p-4 bg-dash-surface">
-                                <span className="font-bold text-[12px] block !text-dash-text">Blank slate</span>
-                                <span className="text-[10px] font-medium !text-dash-textMuted line-clamp-1 mt-1">Start with a clean canvas</span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Professional Blueprints */}
-                          {filteredTemplates.map((t) => (
-                            <div
-                              key={t.id}
-                              onClick={() => setSelectedTemplate(t.id)}
-                              className={cn(
-                                "group relative cursor-pointer rounded-2xl border-2 transition-colors motion-reduce:transition-none overflow-hidden flex flex-col h-full min-h-[220px]",
-                                selectedTemplate === t.id
-                                  ? "border-dash-accent bg-dash-accent/5"
-                                  : "border-dash-border bg-dash-surface hover:border-dash-text/20"
-                              )}
-                            >
-                              <div className="flex-1 bg-dash-surface relative overflow-hidden">
-                                {(t.thumbnail || t.preview_image) && (
-                                  <img
-                                    src={t.thumbnail || t.preview_image}
-                                    alt={t.name}
-                                    className={cn(
-                                      "absolute inset-0 w-full h-full object-cover transition-all duration-500 motion-reduce:transition-none",
-                                      selectedTemplate === t.id ? "scale-105 opacity-90" : "opacity-80 group-hover:opacity-100"
-                                    )}
-                                  />
-                                )}
-
-                                {selectedTemplate === t.id && (
-                                  <div className="absolute inset-0 flex items-center justify-center z-20 bg-dash-text/10">
-                                    <div className="w-10 h-10 rounded-full bg-dash-accent flex items-center justify-center">
-                                      <Check className="w-5 h-5 text-white" strokeWidth={4} />
+                              >
+                                <div className={cn(
+                                  "flex-1 relative overflow-hidden",
+                                  isBlank ? "flex items-center justify-center bg-white border-b border-dash-border" : "bg-dash-surface"
+                                )}>
+                                  {isBlank ? (
+                                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-dash-border flex items-center justify-center !text-dash-textMuted group-hover:text-dash-accent group-hover:border-dash-accent/40 transition-colors motion-reduce:transition-none">
+                                      <Plus size={24} />
                                     </div>
-                                  </div>
-                                )}
+                                  ) : (
+                                    (t.thumbnail || t.preview_image) && (
+                                      <img
+                                        src={t.thumbnail || t.preview_image}
+                                        alt={t.name}
+                                        className={cn(
+                                          "absolute inset-0 w-full h-full object-cover transition-all duration-500 motion-reduce:transition-none",
+                                          selectedTemplate === t.id ? "scale-105 opacity-90" : "opacity-80 group-hover:opacity-100"
+                                        )}
+                                      />
+                                    )
+                                  )}
 
-                                <div className="absolute top-3 left-3 flex gap-2">
-                                  <div className="px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-sm border border-dash-border text-[9px] font-bold text-dash-accent">
-                                    {t.category}
-                                  </div>
-                                  {t.is_premium && (
-                                    <div className="px-2.5 py-0.5 rounded-full bg-amber-50/90 backdrop-blur-sm border border-amber-200 text-[9px] font-bold text-amber-600">
-                                      Premium
+                                  {selectedTemplate === t.id && (
+                                    isBlank ? (
+                                      <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-dash-accent border-[4px] border-white flex items-center justify-center">
+                                        <Check className="w-3 h-3 text-white" strokeWidth={4} />
+                                      </div>
+                                    ) : (
+                                      <div className="absolute inset-0 flex items-center justify-center z-20 bg-dash-text/10">
+                                        <div className="w-10 h-10 rounded-full bg-dash-accent flex items-center justify-center">
+                                          <Check className="w-5 h-5 text-white" strokeWidth={4} />
+                                        </div>
+                                      </div>
+                                    )
+                                  )}
+
+                                  {!isBlank && (
+                                    <div className="absolute top-3 left-3 flex gap-2">
+                                      <div className="px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-sm border border-dash-border text-[9px] font-bold text-dash-accent">
+                                        {t.category}
+                                      </div>
+                                      {t.is_premium && (
+                                        <div className="px-2.5 py-0.5 rounded-full bg-amber-50/90 backdrop-blur-sm border border-amber-200 text-[9px] font-bold text-amber-600">
+                                          Premium
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
+                                <div className={cn("p-4", isBlank ? "bg-dash-surface" : "bg-white")}>
+                                  <span className={cn(
+                                    "font-bold text-[12px] block transition-colors motion-reduce:transition-none leading-tight",
+                                    selectedTemplate === t.id ? "text-dash-accent" : "!text-dash-text group-hover:text-dash-accent"
+                                  )}>{t.name}</span>
+                                  <span className="text-[10px] font-medium !text-dash-textMuted line-clamp-1 mt-1">{t.description}</span>
+                                </div>
                               </div>
-                              <div className="p-4 bg-white">
-                                <span className={cn(
-                                  "font-bold text-[12px] block transition-colors motion-reduce:transition-none leading-tight",
-                                  selectedTemplate === t.id ? "text-dash-accent" : "!text-dash-text group-hover:text-dash-accent"
-                                )}>{t.name}</span>
-                                <span className="text-[10px] font-medium !text-dash-textMuted line-clamp-1 mt-1">{t.description}</span>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>

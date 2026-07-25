@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { createHash, randomBytes } from 'crypto'
+import { createHash, randomBytes, timingSafeEqual } from 'crypto'
+
+// Constant-time shared-secret comparison — same standing rule as every other signature/token
+// check in this codebase (webhooks/meta, lib/calendar/payfast, lib/security/unsubscribeToken,
+// webhooks/avatar-generator). A plain `===`/`!==` leaks timing information proportional to the
+// number of matching leading bytes.
+function timingSafeHashEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a, 'utf8')
+  const bBuf = Buffer.from(b, 'utf8')
+  if (aBuf.length !== bBuf.length) return false
+  return timingSafeEqual(aBuf, bBuf)
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -44,7 +55,7 @@ export async function POST(req: NextRequest) {
   }
 
   const hashedSecret = createHash('sha256').update(clientSecret).digest('hex')
-  if (client.client_secret_hash !== hashedSecret) {
+  if (!timingSafeHashEqual(client.client_secret_hash, hashedSecret)) {
     return NextResponse.json({ error: 'invalid_client', error_description: 'Client authentication failed' }, { status: 401 })
   }
 

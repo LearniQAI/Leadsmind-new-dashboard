@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { headers } from 'next/headers';
 import { sendSMS } from '@/lib/sms';
+import { checkRateLimit } from '@/lib/security/rateLimit';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,6 +12,13 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: NextRequest) {
   try {
+    // Unauthenticated, sends a real WhatsApp OTP per request — bound per-IP and per-phone,
+    // same rationale as portal/magic-link.
+    const ip = headers().get('x-forwarded-for')?.split(',')[0]?.trim() || headers().get('x-real-ip') || 'unknown';
+    if (!checkRateLimit(`portal-otp:ip:${ip}`, 5, 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again in a minute.' }, { status: 429 });
+    }
+
     const { phone } = await req.json();
 
     if (!phone) {
@@ -17,6 +26,10 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanPhone = phone.trim();
+
+    if (!checkRateLimit(`portal-otp:phone:${cleanPhone}`, 5, 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again in a minute.' }, { status: 429 });
+    }
 
     // 1. Fetch contact matching phone
     const { data: contacts, error: fetchErr } = await supabaseAdmin

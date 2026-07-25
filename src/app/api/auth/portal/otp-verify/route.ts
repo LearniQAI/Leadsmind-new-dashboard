@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { headers } from 'next/headers';
+import { checkRateLimit } from '@/lib/security/rateLimit';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +11,14 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: NextRequest) {
   try {
+    // This is the actual credential-guessing surface (a 6-digit code) — rate limit tighter
+    // than the request-an-OTP endpoint, bound per-IP and per-phone so an attacker can't brute
+    // force a code within its 5-minute validity window from either angle.
+    const ip = headers().get('x-forwarded-for')?.split(',')[0]?.trim() || headers().get('x-real-ip') || 'unknown';
+    if (!checkRateLimit(`portal-otp-verify:ip:${ip}`, 10, 5 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 });
+    }
+
     const { phone, code } = await req.json();
 
     if (!phone || !code) {
@@ -16,6 +26,10 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanPhone = phone.trim();
+
+    if (!checkRateLimit(`portal-otp-verify:phone:${cleanPhone}`, 10, 5 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 });
+    }
     const cleanCode = code.trim();
     const codeHash = crypto.createHash('sha256').update(cleanCode).digest('hex');
 

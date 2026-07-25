@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
+import { headers } from 'next/headers';
+import { checkRateLimit } from '@/lib/security/rateLimit';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +11,13 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: NextRequest) {
   try {
+    // Credential-guessing surface (password) — rate limit per-IP and per-email so an attacker
+    // can't brute force a password from either angle.
+    const ip = headers().get('x-forwarded-for')?.split(',')[0]?.trim() || headers().get('x-real-ip') || 'unknown';
+    if (!checkRateLimit(`portal-password-login:ip:${ip}`, 10, 5 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 });
+    }
+
     const { email, password } = await req.json();
 
     if (!email || !password) {
@@ -16,6 +25,10 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+
+    if (!checkRateLimit(`portal-password-login:email:${cleanEmail}`, 10, 5 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 });
+    }
 
     // 1. Fetch contact
     const { data: contacts, error: fetchErr } = await supabaseAdmin

@@ -1,8 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentWorkspaceId } from '@/lib/auth'
+import { requireWorkspaceAccess } from '@/lib/auth'
+import { UnauthorizedError, ForbiddenError } from '@/lib/errors'
 import { decrypt } from '@/lib/encryption'
+import { logger } from '@/shared/logger'
 
+// Reading/decrypting real connected social credentials (Facebook/Instagram page tokens) and
+// posting with them requires RLS-bypass access to platform_connections — kept on the
+// service-role client, same as every other credential-decrypt route in this codebase
+// (social_accounts, workspace_integrations), but ONLY after the caller's identity and
+// workspace membership have been verified below via requireWorkspaceAccess() — never from
+// the unverified active_workspace_id cookie alone.
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -10,8 +18,21 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const workspaceId = await getCurrentWorkspaceId()
-    if (!workspaceId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Real session + real workspace_members row required — never trust the raw
+    // active_workspace_id cookie for authorization (see src/lib/auth.ts's own doc comment
+    // on getCurrentWorkspaceId(), which explicitly warns against using it this way).
+    let workspaceId: string;
+    try {
+      ({ workspaceId } = await requireWorkspaceAccess());
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      if (err instanceof ForbiddenError) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      throw err;
+    }
 
     const { message, platforms, imageUrl } = await req.json()
     if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 })
@@ -99,6 +120,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, results })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    logger.error({ err }, 'social.publish.failed')
+    return NextResponse.json({ error: 'Failed to publish post.' }, { status: 500 })
   }
 }

@@ -217,11 +217,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_request', error_description: 'Missing required authorization parameters' }, { status: 400 })
   }
 
+  const adminSupabase = createAdminClient()
+
+  // The GET page pre-fills workspace_id from the OAuth client's own workspace, but that form
+  // is not a security boundary — this endpoint must independently verify the AUTHENTICATED
+  // caller is a real member of the workspace_id actually being submitted before an
+  // authorization code (which becomes a real bearer token, scoped to that workspace, usable
+  // against the full /api/v1/* surface) is ever minted. A client-supplied workspace_id is
+  // never trusted as authorization on its own.
+  const { data: membership } = await adminSupabase
+    .from('workspace_members')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!membership) {
+    return NextResponse.json({ error: 'access_denied', error_description: 'You are not a member of the requested workspace' }, { status: 403 })
+  }
+
   // Generate auth code
   const code = 'ac_' + randomBytes(24).toString('hex')
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
 
-  const adminSupabase = createAdminClient()
   const { error } = await adminSupabase
     .from('oauth_authorization_codes')
     .insert({
