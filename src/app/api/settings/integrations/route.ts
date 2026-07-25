@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
           workspace_id: workspaceId,
           url: webhookUrl,
           events: ['contact.created', 'deal.won', 'invoice.paid', 'form.submitted'],
-          secret,
+          secret: encrypt(secret),
           is_active: true
         })
       }

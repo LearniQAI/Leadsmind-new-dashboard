@@ -742,3 +742,85 @@ export async function deleteOAuthClient(clientId: string) {
  }
 }
 
+// TWILIO CREDENTIALS
+// Read the presence/masked state of per-workspace Twilio credentials.
+// Never returns the raw or encrypted values — only enough for the UI to know
+// whether credentials have been configured and to show the masked phone number.
+export async function getTwilioStatus(): Promise<{
+ data?: { configured: boolean; twilioNumber: string | null };
+ error?: string;
+}> {
+ try {
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
+  const adminClient = createAdminClient();
+
+  const { data, error } = await adminClient
+   .from('workspaces')
+   .select('twilio_sid_encrypted, twilio_number')
+   .eq('id', workspaceId)
+   .single();
+
+  if (error) throw error;
+
+  return {
+   data: {
+    configured: !!data.twilio_sid_encrypted,
+    twilioNumber: data.twilio_number ?? null,
+   },
+  };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.twilio.status.failed');
+  return { error: 'Operation failed. Please try again.' };
+ }
+}
+
+// Write per-workspace Twilio credentials into the encrypted columns.
+// The plaintext values are never persisted — only the encrypt() output reaches
+// the DB, matching the pattern in src/app/api/finance/banks/investec/route.ts
+// and the payment_gateway branch of src/app/api/settings/integrations/route.ts.
+export async function saveTwilioCredentials(
+ accountSid: string,
+ authToken: string,
+ phoneNumber: string,
+): Promise<{ success?: boolean; error?: string }> {
+ try {
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
+
+  // Validate the Twilio SID format before encrypting — reject obvious garbage
+  // early so we don't store an unrecoverable encrypted blob.
+  if (!/^AC[a-f0-9]{32}$/.test(accountSid.trim())) {
+   return { error: 'Invalid Twilio Account SID format (must start with AC followed by 32 hex characters).' };
+  }
+  if (!authToken.trim()) {
+   return { error: 'Auth Token is required.' };
+  }
+  if (!/^\+[1-9]\d{1,14}$/.test(phoneNumber.trim())) {
+   return { error: 'Phone number must be in E.164 format (e.g. +15551234567).' };
+  }
+
+  const adminClient = createAdminClient();
+
+  const { error } = await adminClient
+   .from('workspaces')
+   .update({
+    twilio_sid_encrypted: encrypt(accountSid.trim()),
+    twilio_token_encrypted: encrypt(authToken.trim()),
+    twilio_number: phoneNumber.trim(),
+    // Null out the legacy plaintext columns on first write — once a workspace
+    // has rotated into the encrypted columns, the plaintext fallback in
+    // resolveWorkspaceTwilioCredentials() naturally stops being used.
+    twilio_sid: null,
+    twilio_token: null,
+   })
+   .eq('id', workspaceId);
+
+  if (error) throw error;
+
+  logger.info({ workspaceId }, 'settings.twilio.credentials.saved');
+  revalidatePath('/settings');
+  return { success: true };
+ } catch (error: any) {
+  logger.error({ err: error }, 'save.twilio.credentials.failed');
+  return { error: 'Operation failed. Please try again.' };
+ }
+}
