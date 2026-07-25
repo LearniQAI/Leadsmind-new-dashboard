@@ -328,7 +328,7 @@ export async function send_whatsapp_template(workspaceId: string, contactId: str
 
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("twilio_sid, twilio_token, twilio_number")
+    .select("twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number")
     .eq("id", workspaceId)
     .single();
 
@@ -337,13 +337,13 @@ export async function send_whatsapp_template(workspaceId: string, contactId: str
   // Custom Twilio WhatsApp template message payloads require sending the template binding string
   // Format is usually custom but here we pack it and pass to twilio API or mock handler
   const templateBody = `Template: ${templateName} [Lang: ${languageCode}] Components: ${JSON.stringify(components)}`;
+  const creds = resolveWorkspaceTwilioCredentials(workspace);
 
   await sendSMS({
     to: `whatsapp:${cleanPhone}`,
     message: templateBody,
     config: {
-      accountSid: workspace?.twilio_sid,
-      authToken: workspace?.twilio_token,
+      ...creds,
       fromNumber: `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`,
     }
   });

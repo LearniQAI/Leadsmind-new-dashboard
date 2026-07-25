@@ -346,6 +346,7 @@ export const AutomationActions = {
     const cleanPhone = contact.phone.startsWith('+') ? contact.phone : `+${contact.phone}`;
     const to = `whatsapp:${cleanPhone}`;
     const from = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
+    const creds = resolveWorkspaceTwilioCredentials(workspace);
 
     // Message 1 (Identity)
     const workspaceName = workspace?.name || 'LeadsMind';
@@ -355,8 +356,7 @@ export const AutomationActions = {
       to,
       message: msg1Text,
       config: {
-        accountSid: workspace?.twilio_sid,
-        authToken: workspace?.twilio_token,
+        ...creds,
         fromNumber: from,
       }
     });
@@ -371,8 +371,7 @@ export const AutomationActions = {
       message: "",
       mediaUrl: audioUrl,
       config: {
-        accountSid: workspace?.twilio_sid,
-        authToken: workspace?.twilio_token,
+        ...creds,
         fromNumber: from,
       }
     });
@@ -390,8 +389,7 @@ export const AutomationActions = {
         to,
         message: msg3Text,
         config: {
-          accountSid: workspace?.twilio_sid,
-          authToken: workspace?.twilio_token,
+          ...creds,
           fromNumber: from,
         }
       });
