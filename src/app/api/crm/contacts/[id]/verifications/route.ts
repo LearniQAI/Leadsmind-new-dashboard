@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { assertBureauCheckCooldown } from '@/lib/kyc/access';
 import { toClientError } from '@/shared/errors/AppError';
 
 export const dynamic = 'force-dynamic';
@@ -53,13 +54,13 @@ export async function POST(
 ) {
   const contactId = params.id;
   try {
-    const { workspaceId } = await requireWorkspaceRole();
+    const { workspaceId, userId } = await requireWorkspaceRole();
     if (!(await verifyContactInWorkspace(contactId, workspaceId))) {
       return NextResponse.json({ error: 'Contact not found in this workspace' }, { status: 404 });
     }
 
     const body = await req.json();
-    const { verificationType, provider, consentGiven } = body;
+    const { verificationType, provider, consentGiven, forceRecheck } = body;
 
     if (!verificationType || !provider) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -70,6 +71,14 @@ export async function POST(
     }
 
     const supabase = createAdminClient();
+
+    // Billed bureau call — don't auto-fire a repeat within the cooldown window unless the
+    // caller explicitly forces it (same 24h pattern as crm/contacts/kyc and
+    // kyc/experian/trueid). forceRecheck itself is role-gated to admin/owner inside
+    // assertBureauCheckCooldown. This must run before any provider-call logic below — today
+    // that's just the placeholder insert, but the check goes here regardless so this route
+    // doesn't ship unprotected the moment it's wired to a real provider.
+    await assertBureauCheckCooldown(supabase, workspaceId, userId, contactId, verificationType, !!forceRecheck);
 
     // 1. Insert record with status = 'running'
     const { data: insertData, error: insertError } = await supabase

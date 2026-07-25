@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
 import { toClientError } from '@/shared/errors/AppError';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 
 /**
  * POST /api/kyc/consent/request
@@ -118,12 +119,12 @@ export async function POST(req: NextRequest) {
 
       const message = `Hello ${contact.first_name}, ${workspace.registered_name || workspace.name} requests your POPIA consent to perform verifications. Please view statutory disclosures and sign here: ${consentLink}`;
 
+      const creds = resolveWorkspaceTwilioCredentials(workspace);
       await sendSMS({
         to,
         message,
         config: {
-          accountSid: workspace.twilio_sid,
-          authToken: workspace.twilio_token,
+          ...creds,
           fromNumber: from
         }
       });

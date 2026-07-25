@@ -1,16 +1,15 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 
-// publishSocialPost/getMetaAuthUrl/getLinkedInAuthUrl/getTikTokAuthUrl below
-// (all still using getCurrentWorkspaceId) are confirmed dead — re-verified
-// fresh in this pass, not assumed from Priority 2: grepped every import of
-// '@/app/actions/social' across src/ and only getSocialAccounts/getSocialPosts/
-// createSocialPost have any live caller (messaging.ts's equivalents are what's
-// actually wired up for these). Left unfixed, matching the "don't harden
-// code nothing calls" precedent from Priority 2's affiliates.ts cleanup.
+// publishSocialPost/getMetaAuthUrl/getLinkedInAuthUrl/getTikTokAuthUrl below are confirmed
+// dead — grepped every import of '@/app/actions/social' across src/ and only
+// getSocialAccounts/getSocialPosts/createSocialPost have any live caller (messaging.ts's
+// equivalents are what's actually wired up for these). Hardened anyway to
+// requireWorkspaceAccess() so they don't reintroduce Finding A's cookie-trust shape if ever
+// wired up.
 
 export async function getSocialAccounts() {
   try {
@@ -173,11 +172,7 @@ export async function createSocialPost(postData: {
 export async function publishSocialPost(postId: string) {
  try {
   const supabase = await createServerClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return { error: 'Unauthorized' };
-
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  const { workspaceId } = await requireWorkspaceAccess();
 
   const { error } = await supabase
    .from('social_posts')
@@ -194,21 +189,21 @@ export async function publishSocialPost(postId: string) {
 
 // OAUTH URL GENERATORS
 export async function getMetaAuthUrl() {
- const workspaceId = await getCurrentWorkspaceId();
+ const { workspaceId } = await requireWorkspaceAccess();
  const appId = process.env.META_APP_ID;
  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/facebook`;
  return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=pages_manage_posts,instagram_content_publish&state=${workspaceId}`;
 }
 
 export async function getLinkedInAuthUrl() {
- const workspaceId = await getCurrentWorkspaceId();
+ const { workspaceId } = await requireWorkspaceAccess();
  const clientId = process.env.LINKEDIN_CLIENT_ID;
  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/linkedin`;
  return `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=w_member_social&state=${workspaceId}`;
 }
 
 export async function getTikTokAuthUrl() {
- const workspaceId = await getCurrentWorkspaceId();
+ const { workspaceId } = await requireWorkspaceAccess();
  const clientKey = process.env.TIKTOK_CLIENT_KEY;
  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/tiktok`;
  return `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&redirect_uri=${redirectUri}&scope=user.info.basic,video.upload,video.publish&response_type=code&state=${workspaceId}`;

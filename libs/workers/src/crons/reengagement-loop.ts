@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { sendSMS } from '@/lib/sms';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { SignJWT } from 'jose';
 import crypto from 'crypto';
 
@@ -71,7 +72,7 @@ export async function runReengagementLoop() {
       // Get workspace details to brand the message
       const { data: workspace } = await supabaseAdmin
         .from('workspaces')
-        .select('twilio_sid, twilio_token, twilio_number, name')
+        .select('twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number, name')
         .eq('id', contact.workspace_id)
         .single();
 
@@ -86,12 +87,12 @@ export async function runReengagementLoop() {
       const message = `Hi ${contact.first_name || 'there'}! We noticed it's been a while since you last logged into the ${workspaceName} portal. Here's a secure, direct link to access your dashboard, courses, and bills: ${magicLinkUrl}`;
 
       try {
+        const creds = resolveWorkspaceTwilioCredentials(workspace);
         await sendSMS({
           to: whatsappTo,
           message,
           config: {
-            accountSid: workspace?.twilio_sid,
-            authToken: workspace?.twilio_token,
+            ...creds,
             fromNumber: `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER || '+14155238886'}`,
           }
         });

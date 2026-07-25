@@ -43,6 +43,8 @@ export default function DeveloperPage() {
   const [explainerExpanded, setExplainerExpanded] = useState(true);
   const [copiedWebhookId, setCopiedWebhookId] = useState<string | null>(null);
   const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
+  const [newWebhookSecret, setNewWebhookSecret] = useState<string | null>(null);
+  const [secretCopySuccess, setSecretCopySuccess] = useState(false);
 
   // Webhook logs state
   interface WebhookLog {
@@ -199,6 +201,7 @@ export default function DeveloperPage() {
     }
 
     setAddingWebhook(true);
+    setNewWebhookSecret(null);
 
     let finalLabel = webhookLabel;
     if (!finalLabel.trim()) {
@@ -217,6 +220,9 @@ export default function DeveloperPage() {
       });
       const data = await res.json();
       if (res.ok) {
+        // The signing secret is only ever returned here, once — it is never included in the
+        // webhooks list again, so this is the only chance to copy it.
+        if (data.secret) setNewWebhookSecret(data.secret);
         setWebhookUrl('');
         setWebhookLabel('');
         fetchWebhooks();
@@ -229,6 +235,13 @@ export default function DeveloperPage() {
     } finally {
       setAddingWebhook(false);
     }
+  };
+
+  const handleCopyWebhookSecret = () => {
+    if (!newWebhookSecret) return;
+    navigator.clipboard.writeText(newWebhookSecret);
+    setSecretCopySuccess(true);
+    setTimeout(() => setSecretCopySuccess(false), 3000);
   };
 
   // Delete webhook
@@ -476,6 +489,26 @@ export default function DeveloperPage() {
             </div>
           </form>
         </div>
+
+        {newWebhookSecret && (
+          <div className="mb-6 p-4 rounded-lg bg-green-50 border border-green-200">
+            <span className="text-green-700 text-[11px] font-bold block mb-1">
+              Webhook created — copy the signing secret now
+            </span>
+            <p className="!text-dash-textMuted text-[11px] mb-3">
+              For security reasons, this signing secret will only be displayed once. Ensure you save it securely before closing.
+            </p>
+            <div className="flex items-center gap-3 bg-dash-surface p-2.5 rounded border border-dash-border font-mono text-[12px] !text-dash-text">
+              <span className="flex-1 break-all select-all">{newWebhookSecret}</span>
+              <button
+                onClick={handleCopyWebhookSecret}
+                className="bg-dash-border/60 hover:bg-dash-border text-[11px] font-semibold rounded px-2.5 py-1 !text-dash-text flex-shrink-0 transition-colors motion-reduce:transition-none"
+              >
+                {secretCopySuccess ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Webhook List */}
         <div className="space-y-3 mb-6">

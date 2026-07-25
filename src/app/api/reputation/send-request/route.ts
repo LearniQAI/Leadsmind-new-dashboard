@@ -14,9 +14,15 @@ const replaceTokens = (text: string, name: string, url: string) => {
     .replace(/\{\{\s*review_url\s*\}\}/gi, url)
 }
 
+// Dispatching a campaign spends the workspace's own Twilio/Resend/Meta credentials and can
+// message arbitrary external contacts — same admin/owner tier as every other
+// credential-spending action in this codebase (finance, webhooks, API keys, integrations).
+// There is no 'marketing' role in the workspace_members schema to gate this more narrowly.
+const ALLOWED_SEND_REQUEST_ROLES = ['admin', 'owner'];
+
 export async function POST(req: NextRequest) {
   try {
-    const { workspaceId } = await requireWorkspaceRole();
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_SEND_REQUEST_ROLES);
     const adminClient = createAdminClient();
 
     const body = await req.json()
@@ -36,6 +42,35 @@ export async function POST(req: NextRequest) {
 
     if (campaignError || !campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+    }
+
+    // The client-supplied contacts array is just {name, email, phone} — not proof that any of
+    // these are real contacts of this workspace. Resolve which ones actually exist (matched by
+    // email or phone, scoped to workspace_id) BEFORE dispatching to any of them, so this route
+    // can't be used to blast the workspace's paid messaging credentials at arbitrary
+    // third-party addresses that were never real contacts here.
+    const candidateEmails = contacts.map((c: any) => c.email).filter(Boolean)
+    const candidatePhones = contacts.map((c: any) => c.phone).filter(Boolean)
+
+    const validEmails = new Set<string>()
+    const validPhones = new Set<string>()
+
+    if (candidateEmails.length > 0) {
+      const { data: emailMatches } = await adminClient
+        .from('contacts')
+        .select('email')
+        .eq('workspace_id', workspaceId)
+        .in('email', candidateEmails)
+      for (const row of emailMatches || []) if (row.email) validEmails.add(row.email)
+    }
+
+    if (candidatePhones.length > 0) {
+      const { data: phoneMatches } = await adminClient
+        .from('contacts')
+        .select('phone')
+        .eq('workspace_id', workspaceId)
+        .in('phone', candidatePhones)
+      for (const row of phoneMatches || []) if (row.phone) validPhones.add(row.phone)
     }
 
     let sent = 0
@@ -58,6 +93,19 @@ export async function POST(req: NextRequest) {
       const contactName = contact.name || 'Customer'
       const contactEmail = contact.email || ''
       const contactPhone = contact.phone || ''
+
+      // Reject any entry that doesn't resolve to a real contact of this workspace on the
+      // field the selected channel actually sends to — this must run before any dispatch
+      // call fires for this contact.
+      const isRealContact = channel === 'email'
+        ? (!!contactEmail && validEmails.has(contactEmail))
+        : (!!contactPhone && validPhones.has(contactPhone))
+
+      if (!isRealContact) {
+        logger.warn({ contactName, contactEmail, contactPhone, channel }, 'reputation.send-request.contact.not_found_in_workspace');
+        failed++
+        continue
+      }
 
       try {
         if (channel === 'email') {

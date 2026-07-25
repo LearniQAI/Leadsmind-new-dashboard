@@ -52,8 +52,9 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. Billed bureau call — don't auto-fire a repeat within the cooldown window unless
-      // the caller explicitly forces it (same 24h pattern as crm/contacts/kyc).
-      await assertBureauCheckCooldown(adminClient, contactId, 'biometric', !!forceRecheck);
+      // the caller explicitly forces it (same 24h pattern as crm/contacts/kyc). forceRecheck
+      // itself is role-gated to admin/owner inside assertBureauCheckCooldown.
+      await assertBureauCheckCooldown(adminClient, workspaceId, userId, contactId, 'biometric', !!forceRecheck);
 
       // 3. Call Experian liveness service
       const verification = await experianService.verifyBiometricLiveness({
@@ -123,6 +124,24 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'documentType required for OCR mode' }, { status: 400 });
       }
 
+      // 1. Hard POPIA consent check — same gate liveness/address already enforce; OCR
+      // previously ran the billed Experian call with no consent check at all.
+      const { data: obtainedConsent, error: consentCheckErr } = await adminClient
+        .from('kyc_consent')
+        .select('id, reference')
+        .eq('contact_id', contactId)
+        .eq('workspace_id', workspaceId)
+        .eq('status', 'obtained')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (consentCheckErr || !obtainedConsent) {
+        return NextResponse.json({
+          error: 'Verification blocked: No obtained POPIA consent record exists for this contact. Please dispatch a consent request first.'
+        }, { status: 403 });
+      }
+
       let fileBuffer: Buffer;
 
       if (fileBase64) {
@@ -147,10 +166,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Either fileBase64 or documentId is required for OCR mode' }, { status: 400 });
       }
 
-      // Billed bureau call — same 24h cooldown as the other modes, tracked per contact via a
-      // dedicated 'document_ocr' check_type (previously OCR wrote no kyc_checks row at all,
-      // so there was nothing for a cooldown to check against).
-      await assertBureauCheckCooldown(adminClient, contactId, 'document_ocr', !!forceRecheck);
+      // 2. Billed bureau call — same 24h cooldown as the other modes, tracked per contact via
+      // a dedicated 'document_ocr' check_type (previously OCR wrote no kyc_checks row at all,
+      // so there was nothing for a cooldown to check against). forceRecheck itself is
+      // role-gated to admin/owner inside assertBureauCheckCooldown.
+      await assertBureauCheckCooldown(adminClient, workspaceId, userId, contactId, 'document_ocr', !!forceRecheck);
 
       // Call Experian OCR service
       const ocrResult = await experianService.processDocumentOCR(fileBuffer, documentType);
@@ -220,8 +240,9 @@ export async function POST(req: NextRequest) {
         }, { status: 403 });
       }
 
-      // 2. Billed bureau call — same 24h cooldown pattern.
-      await assertBureauCheckCooldown(adminClient, contactId, 'address_verification', !!forceRecheck);
+      // 2. Billed bureau call — same 24h cooldown pattern. forceRecheck itself is role-gated
+      // to admin/owner inside assertBureauCheckCooldown.
+      await assertBureauCheckCooldown(adminClient, workspaceId, userId, contactId, 'address_verification', !!forceRecheck);
 
       // 3. Call Experian address geocoding service
       const geocoding = await experianService.verifyAndGeocodeAddress(address);

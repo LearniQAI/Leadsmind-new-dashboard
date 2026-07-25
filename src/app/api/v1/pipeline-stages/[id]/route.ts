@@ -35,6 +35,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (Object.keys(updates).length === 0) return apiError('No updatable fields provided')
 
   const supabase = createAdminClient()
+
+  // Same check as the POST handler: a client-supplied pipeline_id must belong to the caller's
+  // workspace before a stage can be re-pointed at it.
+  if (updates.pipeline_id) {
+    const { data: pipeline } = await supabase
+      .from('pipelines')
+      .select('id')
+      .eq('id', updates.pipeline_id)
+      .eq('workspace_id', auth.workspaceId)
+      .maybeSingle()
+    if (!pipeline) return apiError('pipeline_id does not belong to this workspace', 422)
+  }
+
   const { data, error } = await supabase
     .from('pipeline_stages')
     .update(updates)

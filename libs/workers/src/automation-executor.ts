@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -143,18 +144,18 @@ export async function executeLMSAction(
 
         const { data: workspace } = await supabaseAdmin
           .from('workspaces')
-          .select('twilio_sid, twilio_token, twilio_number')
+          .select('twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number')
           .eq('id', workspaceId)
           .single();
 
         if (contact?.phone && workspace?.twilio_number) {
+          const creds = resolveWorkspaceTwilioCredentials(workspace);
           const cleanPhone = contact.phone.startsWith('+') ? contact.phone : `+${contact.phone}`;
           await sendSMS({
             to: `whatsapp:${cleanPhone}`,
             message: config.whatsapp_message || '',
             config: {
-              accountSid: workspace.twilio_sid,
-              authToken: workspace.twilio_token,
+              ...creds,
               fromNumber: `whatsapp:${workspace.twilio_number}`
             }
           });

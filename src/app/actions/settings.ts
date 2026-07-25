@@ -2,6 +2,9 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId as getWsId, getCurrentWorkspace, requireWorkspaceAccess } from '@/lib/auth';
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { mintWorkspaceApiKey } from '@/lib/api/apiKeys';
+import { encrypt } from '@/lib/encryption';
 import { sendEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
 import { createHash, randomBytes } from 'crypto';
@@ -466,15 +469,23 @@ export async function removeInvitation(invitationId: string) {
 }
 
 // WEBHOOKS
+//
+// webhook_endpoints is the table actually wired to outbound delivery
+// (src/lib/inngest/functions/webhookDispatch.ts reads from it directly) — despite its name,
+// it is NOT superseded by the newer workspace_webhooks table used by /settings/developer and
+// /api/settings/webhooks. That table has no dispatch consumer at all today. So this table is
+// hardened in place (role gate + RLS + encrypted secret) rather than deprecated.
 export async function getWebhooks() {
  try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
 
   const supabase = await createServerClient();
+  // Never select the secret column back to the client — same "reveal once, never list"
+  // pattern as mintWorkspaceApiKey/createOAuthClient. The secret is only ever returned in
+  // createWebhook()'s response, at creation time.
   const { data, error } = await supabase
    .from('webhook_endpoints')
-   .select('*')
+   .select('id, url, events, is_active, created_at')
    .eq('workspace_id', workspaceId);
 
   if (error) throw error;
@@ -487,20 +498,23 @@ export async function getWebhooks() {
 
 export async function createWebhook(url: string, events: string[]) {
  try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  // Minting a webhook signing secret is an admin-level action — same role tier as API keys
+  // and OAuth clients above.
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
 
   const supabase = await createServerClient();
-  const secret = `whsec_${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`;
+  const rawSecret = `whsec_${randomBytes(32).toString('hex')}`;
   const { data, error } = await supabase
    .from('webhook_endpoints')
-   .insert({ workspace_id: workspaceId, url, events, secret, is_active: true })
-   .select()
+   .insert({ workspace_id: workspaceId, url, events, secret: encrypt(rawSecret), is_active: true })
+   .select('id, url, events, is_active, created_at')
    .single();
 
   if (error) throw error;
   revalidatePath('/settings');
-  return { data };
+  // Raw secret is returned once for the user to copy — never persisted in plaintext and
+  // never returned again by getWebhooks().
+  return { data, secret: rawSecret };
  } catch (error: any) {
   logger.error({ err: error }, 'create.webhook.failed');
   return { error: 'Operation failed. Please try again.' };
@@ -509,8 +523,7 @@ export async function createWebhook(url: string, events: string[]) {
 
 export async function deleteWebhook(id: string) {
  try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
 
   const supabase = await createServerClient();
   const { error } = await supabase
@@ -530,8 +543,7 @@ export async function deleteWebhook(id: string) {
 
 export async function getWebhookLogs(webhookId: string) {
  try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
 
   const supabase = await createServerClient();
   const { data, error } = await supabase
@@ -574,20 +586,25 @@ export async function getWorkspaceApiKey() {
 
 export async function generateWorkspaceApiKey() {
  try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  // Only admin/owner may mint a new workspace API key — same role tier and same
+  // requireWorkspaceRole() helper the hardened /api/settings/api-keys route uses, not a
+  // separately invented check.
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
 
-  const newKey = `lm_sk_${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`;
-  const supabase = await createServerClient();
-  const { data, error } = await supabase
+  // Mint via the same shared routine /api/settings/api-keys uses: crypto.randomBytes key
+  // material, SHA-256 hash persisted to workspace_api_keys — the raw key is never stored.
+  const { key: rawKey } = await mintWorkspaceApiKey(workspaceId);
+
+  // Retire the legacy plaintext workspaces.api_key value (if any) as part of rotation —
+  // regenerating must actually invalidate the old key, not leave a weaker credential valid
+  // alongside the new one indefinitely.
+  const adminClient = createAdminClient();
+  await adminClient
    .from('workspaces')
-   .update({ api_key: newKey })
-  .eq("id", workspaceId).eq("workspace_id", workspaceId)
-   .select()
-   .single();
+   .update({ api_key: null })
+   .eq('id', workspaceId);
 
-  if (error) throw error;
-  return { data: data.api_key };
+  return { data: rawKey };
  } catch (error: any) {
   logger.error({ err: error }, 'generate.workspace.api.key.failed');
   return { error: 'Operation failed. Please try again.' };
@@ -652,8 +669,9 @@ export async function testEmailConnection() {
 
 export async function getOAuthClients() {
  try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  // Listing client IDs/redirect URIs/scopes is workspace-integration configuration, the same
+  // tier as the API-keys list — gated to admin/owner for consistency with create/delete below.
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
 
   const supabase = await createServerClient();
   const { data, error } = await supabase
@@ -672,8 +690,10 @@ export async function getOAuthClients() {
 
 export async function createOAuthClient(name: string, redirectUris: string[], scopes: string[]) {
  try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  // Minting an OAuth client capable of obtaining bearer tokens scoped to this workspace is an
+  // admin-level action — same role tier and same requireWorkspaceRole() helper used by
+  // generateWorkspaceApiKey() above, not a separately invented check.
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
 
   const clientId = 'client_' + randomBytes(16).toString('hex');
   const clientSecret = 'secret_' + randomBytes(24).toString('hex');
@@ -704,8 +724,7 @@ export async function createOAuthClient(name: string, redirectUris: string[], sc
 
 export async function deleteOAuthClient(clientId: string) {
  try {
-  const workspaceId = await getActiveWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
 
   const supabase = await createServerClient();
   const { error } = await supabase

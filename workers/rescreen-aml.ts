@@ -79,6 +79,28 @@ export async function runRescreening() {
       continue;
     }
 
+    // Compliance requirement: a contact who revoked (or never had obtained) POPIA consent
+    // must not have an automated bureau call fired against them, even if their last
+    // screening happened while consent was still valid. Check the CURRENT/latest consent
+    // record, not just whatever was true 30 days ago.
+    const { data: latestConsent, error: consentErr } = await supabase
+      .from('kyc_consent')
+      .select('status')
+      .eq('contact_id', contactId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (consentErr) {
+      console.warn(`[AML Rescreen Cron] Error checking consent for contact ${contactId}:`, consentErr.message);
+      continue;
+    }
+
+    if (!latestConsent || latestConsent.status !== 'obtained') {
+      console.log(`[AML Rescreen Cron] Skipping contact ${contactId}: consent is '${latestConsent?.status ?? 'none'}', not 'obtained'.`);
+      continue;
+    }
+
     console.log(`[AML Rescreen Cron] Rescreening contact: ${contact.first_name} ${contact.last_name} (${contactId})`);
 
     try {

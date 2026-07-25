@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData, parsePagination } from '@/lib/api/auth'
 import { dispatchWebhook } from '@/lib/webhooks/dispatcher'
+import { verifyOwnedId } from '@/lib/api/foreignKeyOwnership'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,6 +42,10 @@ export async function POST(req: NextRequest) {
   if (!amount || Number.isNaN(amount)) return apiError('amount is required')
 
   const supabase = createAdminClient()
+
+  const contactErr = await verifyOwnedId(supabase, 'contacts', body.contact_id ?? null, auth.workspaceId, 'contact_id')
+  if (contactErr) return apiError(contactErr, 422)
+
   const invoiceNumber =
     body.invoice_number || `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`
 

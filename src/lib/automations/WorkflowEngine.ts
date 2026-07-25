@@ -8,6 +8,7 @@ import { EmailAutomationService } from './EmailAutomationService';
 import { AutomationLogger } from './AutomationLogger';
 import { createAdminClient } from '@/lib/supabase/server';
 import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
 
 export interface WorkflowStep {
@@ -398,7 +399,7 @@ export const WorkflowEngine = {
               const { sendSMS } = await import('@/lib/sms');
               const { data: workspace } = await supabase
                 .from('workspaces')
-                .select('twilio_sid, twilio_token, twilio_number')
+                .select('twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number')
                 .eq('id', context.workspaceId)
                 .single();
 
@@ -410,8 +411,7 @@ export const WorkflowEngine = {
                 to,
                 message: interpolatedBackupBody,
                 config: {
-                  accountSid: workspace?.twilio_sid,
-                  authToken: workspace?.twilio_token,
+                  ...resolveWorkspaceTwilioCredentials(workspace),
                   fromNumber: from
                 }
               });
@@ -462,7 +462,7 @@ export const WorkflowEngine = {
 
         const { data: workspace } = await supabase
           .from('workspaces')
-          .select('twilio_sid, twilio_token, twilio_number')
+          .select('twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number')
           .eq('id', context.workspaceId)
           .single();
 
@@ -476,8 +476,7 @@ export const WorkflowEngine = {
           to,
           message: bodyText,
           config: {
-            accountSid: workspace?.twilio_sid,
-            authToken: workspace?.twilio_token,
+            ...resolveWorkspaceTwilioCredentials(workspace),
             fromNumber: from,
           }
         });

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getCurrentWorkspaceId, getUser } from '@/lib/auth'
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
 import { isMetaConfigured } from '@/lib/meta/config'
+import { UnauthorizedError, ForbiddenError } from '@/shared/errors/AppError'
 
 export const dynamic = 'force-dynamic';
 
@@ -10,14 +11,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Viewing/disconnecting these connections exposes account state and controls a live
+// integration's credentials, same as workspace_integrations — restricted to admin/owner,
+// matching src/app/api/settings/integrations/route.ts.
+const ALLOWED_CONNECTIONS_ROLES = ['admin', 'owner'];
+
 export async function GET(req: NextRequest) {
   try {
-    const workspaceId = await getCurrentWorkspaceId()
-    const user = await getUser()
-
-    if (!user || !workspaceId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { userId, workspaceId } = await requireWorkspaceRole(ALLOWED_CONNECTIONS_ROLES)
 
     const { data, error } = await supabase
       .from('platform_connections')
@@ -45,10 +46,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       connections,
       workspaceId,
-      userId: user.id,
+      userId,
       isMetaConfigured: isMetaConfigured()
     })
   } catch (error: any) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
     console.error('[API meta/connections GET] Error:', error.message)
     return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 })
   }
@@ -56,12 +63,7 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const workspaceId = await getCurrentWorkspaceId()
-    const user = await getUser()
-
-    if (!user || !workspaceId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { workspaceId } = await requireWorkspaceRole(ALLOWED_CONNECTIONS_ROLES)
 
     const { searchParams } = new URL(req.url)
     const platform = searchParams.get('platform')
@@ -80,6 +82,12 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
     console.error('[API meta/connections DELETE] Error:', error.message)
     return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 })
   }

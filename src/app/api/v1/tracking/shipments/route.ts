@@ -4,11 +4,12 @@ import { validateApiKey, apiError, apiData, parsePagination } from '@/lib/api/au
 import { detectCourier } from '@/lib/courier/detect'
 import { createTracking } from '@/lib/courier/aftership'
 import { normaliseStatus } from '@/lib/courier/normalise'
+import { verifyOwnedId } from '@/lib/api/foreignKeyOwnership'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const auth = await validateApiKey(req)
+  const auth = await validateApiKey(req, 'tracking')
   if (!auth.ok) return apiError(auth.error, auth.status)
   const { limit, offset } = parsePagination(req)
   const supabase = createAdminClient()
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await validateApiKey(req)
+  const auth = await validateApiKey(req, 'tracking')
   if (!auth.ok) return apiError(auth.error, auth.status)
   let body: any
   try { body = await req.json() } catch { return apiError('Invalid JSON body') }
@@ -29,6 +30,10 @@ export async function POST(req: NextRequest) {
   if (!trackingNumber) return apiError('tracking_number is required')
 
   const supabase = createAdminClient()
+
+  const contactErr = await verifyOwnedId(supabase, 'contacts', body.contact_id ?? null, auth.workspaceId, 'contact_id')
+  if (contactErr) return apiError(contactErr, 422)
+
   const slug = body.courier_slug || detectCourier(trackingNumber) || undefined
 
   let aftership: any = null

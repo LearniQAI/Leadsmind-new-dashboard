@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData } from '@/lib/api/auth'
+import { verifyAppointmentForeignKeys } from '@/lib/api/foreignKeyOwnership'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,6 +42,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (Object.keys(updates).length === 0) return apiError('No updatable fields provided')
 
   const supabase = createAdminClient()
+
+  const fkCheck = await verifyAppointmentForeignKeys(supabase, auth.workspaceId, updates)
+  if (fkCheck.error) return apiError(fkCheck.error, 422)
+
   const { data, error } = await supabase
     .from('appointments')
     .update(updates)

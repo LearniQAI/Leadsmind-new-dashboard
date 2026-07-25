@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData } from '@/lib/api/auth'
+import { verifyTaskForeignKeys, verifyTaskRelatedId } from '@/lib/api/foreignKeyOwnership'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   updates.updated_at = new Date().toISOString()
 
   const supabase = createAdminClient()
+
+  const fkErr = await verifyTaskForeignKeys(supabase, auth.workspaceId, updates)
+  if (fkErr.error) return apiError(fkErr.error, 422)
+  // related_id can only be verified together with related_type (its target table is
+  // determined by related_type) — both must be supplied in the same PATCH to change either.
+  if ('related_id' in updates || 'related_type' in updates) {
+    const relatedErr = await verifyTaskRelatedId(supabase, auth.workspaceId, updates)
+    if (relatedErr) return apiError(relatedErr, 422)
+  }
+
   const { data, error } = await supabase
     .from('tasks')
     .update(updates)

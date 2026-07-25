@@ -250,8 +250,11 @@ export async function sendMessage(conversationId: string, content: string, audio
   const targetConvId = ids[0] || conversationId;
 
  try {
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  // Previously trusted the active_workspace_id cookie with no membership check before
+  // reading platform_connections credentials and dispatching to MetaAdapter (Facebook/
+  // Instagram/WhatsApp send). RLS backstops this via check_workspace_access(), but this
+  // brings the app-layer check in line with social/publish/route.ts and createSocialPost().
+  const { workspaceId } = await requireWorkspaceAccess();
 
   const supabase = await createServerClient();
   const { data: msgData, error } = await supabase

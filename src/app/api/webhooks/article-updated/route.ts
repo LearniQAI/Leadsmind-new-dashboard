@@ -1,11 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import crypto from 'crypto';
 import { logger } from '@/shared/logger';
 
+// Constant-time shared-secret comparison — same standing pattern as every other webhook
+// signature/token check in this codebase (webhooks/avatar-generator, webhooks/meta,
+// lib/calendar/payfast). A plain `===` leaks timing information proportional to the number
+// of matching leading bytes.
+function isValidWebhookSecret(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const providedBuf = Buffer.from(provided, 'utf8');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  if (providedBuf.length !== expectedBuf.length) return false;
+  return crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
+
 export async function POST(req: NextRequest) {
-  const authResult = await requireAuth(req);
-  if (authResult instanceof NextResponse) return authResult;
-  const user = authResult;
+  // This route previously used generic session auth (requireAuth) — meaning any logged-in
+  // Leadsmind user of any workspace, with no role restriction, could trigger it — despite
+  // living under webhooks/* where every sibling route requires a real shared secret or
+  // signature instead. Aligned to that same pattern: an internal CMS/publish trigger, not a
+  // user-session-gated action, so a shared secret (not a per-workspace role) is the correct
+  // trust model here.
+  const secret = process.env.ARTICLE_UPDATED_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error('[FATAL] ARTICLE_UPDATED_WEBHOOK_SECRET is not configured');
+  }
+  const providedSecret = req.headers.get('x-webhook-secret');
+  if (!isValidWebhookSecret(providedSecret, secret)) {
+    logger.warn({}, 'webhook.article_updated.secret.invalid');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     const body = await req.json();

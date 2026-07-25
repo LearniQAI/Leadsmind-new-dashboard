@@ -25,6 +25,7 @@ interface ApiTabProps {
   webhooks: any[];
   onNewWebhook: () => void;
   onDeleteWebhook: (id: string) => void;
+  newWebhookSecret: string | null;
 }
 
 export default function ApiTab({
@@ -35,7 +36,8 @@ export default function ApiTab({
   workspaceId,
   webhooks,
   onNewWebhook,
-  onDeleteWebhook
+  onDeleteWebhook,
+  newWebhookSecret
 }: ApiTabProps) {
   const { role } = useDashboardContext() as any;
   const isAdmin = role === 'admin' || role === 'owner';
@@ -505,6 +507,33 @@ export default function ApiTab({
             )}
           </div>
 
+          {newWebhookSecret && (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-2 text-green-700">
+                <CheckCircle2 size={16} />
+                <span className="text-xs font-bold">Webhook created. Copy the signing secret now</span>
+              </div>
+              <p className="text-[11px] !text-dash-textMuted leading-relaxed">
+                For security reasons, this signing secret will only be displayed <strong>once</strong>. Ensure you save it securely before closing.
+              </p>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold !text-dash-textMuted">Signing secret</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text" readOnly value={newWebhookSecret}
+                    className="flex-1 bg-dash-surface border border-dash-border rounded-lg px-3 py-2 !text-dash-text font-mono text-xs outline-none"
+                  />
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(newWebhookSecret); toast.success('Signing secret copied'); }}
+                    className="px-3 bg-dash-surface border border-dash-border !text-dash-textMuted hover:!text-dash-text rounded-lg"
+                  >
+                    <Copy size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="border border-dash-border rounded-2xl overflow-hidden divide-y divide-dash-border bg-white shadow-sm">
             {webhooks.length === 0 ? (
               <div className="p-16 flex flex-col items-center justify-center text-center">
@@ -552,12 +581,14 @@ export default function ApiTab({
                     </div>
                   </div>
 
-                  {/* Webhook Signature Secret display */}
+                  {/* Webhook Signature Secret display — the secret is only ever shown once,
+                      immediately after creation (see the "Webhook created" banner above); it
+                      is never returned by the webhooks list, so it can't be re-displayed here. */}
                   <div className="flex items-center justify-between p-3 bg-dash-surface border border-dash-border rounded-xl text-[11px]">
                     <div className="flex items-center gap-2 !text-dash-textMuted">
                       <Key size={12} className="text-dash-accent" />
                       <span>Signing secret:</span>
-                      <span className="font-mono !text-dash-text select-all">{hook.secret || 'No secret configured'}</span>
+                      <span className="font-mono !text-dash-text select-all">Configured (shown once at creation)</span>
                     </div>
                     <span className="text-[10px] !text-dash-textMuted font-semibold">HMAC-SHA256</span>
                   </div>
