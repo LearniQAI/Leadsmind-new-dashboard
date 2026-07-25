@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
 import { toClientError } from '@/shared/errors/AppError';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 
 /**
  * POST /api/kyc/consent/request
