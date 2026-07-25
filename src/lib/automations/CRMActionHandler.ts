@@ -3,6 +3,7 @@
  */
 import { createAdminClient } from '@/lib/supabase/server';
 import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 
 export interface CRMActionPayload {
   workspaceId: string;
@@ -294,7 +295,7 @@ export const CRMActionHandler = {
     // Fetch workspace settings
     const { data: workspace } = await supabase
      .from("workspaces")
-     .select("twilio_sid, twilio_token, twilio_number, name, whatsapp_transcript_enabled")
+     .select("twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number, name, whatsapp_transcript_enabled")
      .eq("id", workspaceId)
      .single();
 
@@ -327,8 +328,7 @@ export const CRMActionHandler = {
       to,
       message: msg1Text,
       config: {
-        accountSid: workspace?.twilio_sid,
-        authToken: workspace?.twilio_token,
+        ...resolveWorkspaceTwilioCredentials(workspace),
         fromNumber: from,
       }
     });
@@ -343,8 +343,7 @@ export const CRMActionHandler = {
       message: "",
       mediaUrl: audioUrl,
       config: {
-        accountSid: workspace?.twilio_sid,
-        authToken: workspace?.twilio_token,
+        ...resolveWorkspaceTwilioCredentials(workspace),
         fromNumber: from,
       }
     });
@@ -352,18 +351,17 @@ export const CRMActionHandler = {
     // Message 3: Transcript Context
     const transcript = config.transcript || config.original_text || '';
     const sendTranscript = config.sendTranscript !== false && workspace?.whatsapp_transcript_enabled !== false;
-    
+
     if (sendTranscript && transcript) {
       await new Promise(r => setTimeout(r, 600));
       const excerpt = transcript.slice(0, 200);
       const msg3Text = `📝 Transcript: ${excerpt}${transcript.length > 200 ? '...' : ''}`;
-      
+
       await sendSMS({
         to,
         message: msg3Text,
         config: {
-          accountSid: workspace?.twilio_sid,
-          authToken: workspace?.twilio_token,
+          ...resolveWorkspaceTwilioCredentials(workspace),
           fromNumber: from,
         }
       });

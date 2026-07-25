@@ -4,6 +4,7 @@ import { sendSMS } from "@/lib/sms";
 import { calculateLeadScore } from "../../app/actions/automation";
 import { enrollStudent, updateProgress } from "../../app/actions/lms";
 import { UnifiedActivityEngine } from "@/lib/crm/UnifiedActivityEngine";
+import { resolveWorkspaceTwilioCredentials } from "@/lib/twilio/resolveWorkspaceTwilioCredentials";
 
 export const AutomationActions = {
  send_email: async (workspaceId: string, contactId: string, config: any) => {
@@ -55,7 +56,7 @@ export const AutomationActions = {
   // Fetch workspace settings
   const { data: workspace } = await supabase
    .from("workspaces")
-   .select("twilio_sid, twilio_token, twilio_number")
+   .select("twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number")
    .eq("id", workspaceId)
    .single();
 
@@ -63,8 +64,7 @@ export const AutomationActions = {
    to: contact.phone,
    message: config.message || "Hi, this is an automated message.",
    config: {
-    accountSid: workspace?.twilio_sid,
-    authToken: workspace?.twilio_token,
+    ...resolveWorkspaceTwilioCredentials(workspace),
     fromNumber: workspace?.twilio_number,
    }
   });
@@ -324,7 +324,7 @@ export const AutomationActions = {
     // 2. Fetch workspace settings
     const { data: workspace } = await supabase
      .from("workspaces")
-     .select("twilio_sid, twilio_token, twilio_number, name, whatsapp_transcript_enabled")
+     .select("twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number, name, whatsapp_transcript_enabled")
      .eq("id", workspaceId)
      .single();
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 
 export const dynamic = 'force-dynamic';
 
@@ -176,18 +177,16 @@ export async function POST(req: Request) {
       if (phones && phones.length > 0) {
         const { data: workspace } = await supabaseAdmin
           .from('workspaces')
-          .select('name, twilio_number, twilio_sid, twilio_token')
-          .eq('id', workspaceId)
-          .single();
+        .select('name, twilio_number, twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted')
+        .eq('id', workspaceId)
+        .single();
 
         const fromNumber = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
-        const configTwilio = {
-          accountSid: workspace?.twilio_sid,
-          authToken: workspace?.twilio_token,
+        const creds = resolveWorkspaceTwilioCredentials(workspace);
+        const configTwilio = creds.accountSid && creds.authToken ? {
+          ...creds,
           fromNumber
-        };
-
-        const { sendSMS } = await import('@/lib/sms');
+        } : undefined;
         for (const phone of phones) {
           try {
             const cleanPhone = phone.startsWith('+') ? phone : `+${phone}`;

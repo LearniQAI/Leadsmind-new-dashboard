@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email';
 import { createAdminClient } from '@/lib/supabase/server';
 import { SpamValidator } from '@/lib/intelligence/SpamValidator';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
 
 export interface EmailActionConfig {
@@ -114,22 +115,21 @@ export const EmailAutomationService = {
           
           const { data: workspace } = await supabase
             .from('workspaces')
-            .select('twilio_sid, twilio_token, twilio_number')
+            .select('twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number')
             .eq('id', workspaceId)
             .single();
 
           const cleanPhone = dbContact.phone.startsWith('+') ? dbContact.phone : `+${dbContact.phone}`;
           const to = `whatsapp:${cleanPhone}`;
           const from = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
-          
+
           const formattedMessage = `📢 *${subject}*\n\n${bodyText}`;
 
           const smsRes = await sendSMS({
             to,
             message: formattedMessage,
             config: {
-              accountSid: workspace?.twilio_sid,
-              authToken: workspace?.twilio_token,
+              ...resolveWorkspaceTwilioCredentials(workspace),
               fromNumber: from
             }
           });

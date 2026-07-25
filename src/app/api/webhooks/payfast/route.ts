@@ -217,19 +217,19 @@ export async function POST(req: NextRequest) {
               const { sendSMS } = await import('@/lib/sms');
               const { data: ws } = await supabase
                 .from('workspaces')
-                .select('twilio_sid, twilio_token, twilio_number')
+                .select('twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number')
                 .eq('id', invoiceWorkspaceId)
                 .single();
 
               const from = ws?.twilio_number ? `whatsapp:${ws.twilio_number}` : undefined;
               const to = contact.phone.startsWith('whatsapp:') ? contact.phone : `whatsapp:${contact.phone}`;
+              const creds = resolveWorkspaceTwilioCredentials(ws);
 
               await sendSMS({
                 to,
                 message: `Payment Confirmed: We have received your payment of R${payload.amount_gross} for invoice #${matchedInvoice.invoice_number || m_payment_id}. Reference: ${payload.pf_payment_id || m_payment_id}. Thank you!`,
-                config: ws?.twilio_sid ? {
-                  accountSid: ws.twilio_sid,
-                  authToken: ws.twilio_token,
+                config: creds.accountSid && creds.authToken ? {
+                  ...creds,
                   fromNumber: from,
                 } : undefined,
               }).catch((err) => {

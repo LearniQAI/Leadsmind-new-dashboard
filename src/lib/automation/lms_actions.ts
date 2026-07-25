@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/sms";
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 
 /**
  * Handles course enrollment with parametric configuration.
@@ -70,7 +71,7 @@ export async function lms_enroll(workspaceId: string, contactId: string, config:
   if (welcome_whatsapp_enabled && contact.phone) {
     const { data: workspace } = await supabase
       .from("workspaces")
-      .select("twilio_sid, twilio_token, twilio_number")
+      .select("twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number")
       .eq("id", workspaceId)
       .single();
 
@@ -78,13 +79,13 @@ export async function lms_enroll(workspaceId: string, contactId: string, config:
     const to = `whatsapp:${cleanPhone}`;
     const from = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
     const msgText = config.whatsapp_body || `Hi ${contact.first_name || "there"}, welcome to the course! You now have ${access_type} access.`;
+    const creds = resolveWorkspaceTwilioCredentials(workspace);
 
     await sendSMS({
       to,
       message: msgText,
       config: {
-        accountSid: workspace?.twilio_sid,
-        authToken: workspace?.twilio_token,
+        ...creds,
         fromNumber: from,
       }
     }).catch(err => console.error("Failed to send welcome WhatsApp:", err));
