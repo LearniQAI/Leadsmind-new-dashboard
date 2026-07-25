@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('webhook_delivery_logs')
-      .select('id, webhook_id, event, response_status, success, error_message, delivered_at, webhook:workspace_webhooks(label, url)')
+      .select('id, webhook_id, event, response_status, success, error_message, delivered_at, webhook:webhook_endpoints(label, url)')
       .eq('workspace_id', workspaceId)
       .order('delivered_at', { ascending: false })
       .limit(50)

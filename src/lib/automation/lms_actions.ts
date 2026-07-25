@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server";
+import { createAdminClient, createServerClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/sms";
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
@@ -10,7 +10,10 @@ export async function lms_enroll(workspaceId: string, contactId: string, config:
   const { courseId, access_type = "full", duration_days, welcome_email_enabled, welcome_whatsapp_enabled } = config;
   if (!courseId) throw new Error("Missing courseId in configuration");
 
-  const supabase = await createServerClient();
+  // Runs only from the trusted automation executor (executor.ts), which resolves
+  // workspaceId/contactId from its own workflow_executions row — never from raw client
+  // input — so bypassing RLS here is the same trust decision executor.ts already makes.
+  const supabase = createAdminClient();
 
   // Fetch contact details
   const { data: contact } = await supabase
@@ -99,7 +102,8 @@ export async function lms_enroll_bundle(workspaceId: string, contactId: string, 
   const { bundleId, child_privileges = {}, duration_days, welcome_email_enabled, welcome_whatsapp_enabled } = config;
   if (!bundleId) throw new Error("Missing bundleId in configuration");
 
-  const supabase = await createServerClient();
+  // Same trusted automation-executor context as lms_enroll() above.
+  const supabase = createAdminClient();
 
   // Fetch bundle courses
   const { data: bundle } = await supabase
@@ -183,7 +187,8 @@ export async function lms_enroll_bundle(workspaceId: string, contactId: string, 
  */
 export async function lms_revoke_access(workspaceId: string, contactId: string, config: any) {
   const { courseId, bundleId, grace_period_hours, send_alarm } = config;
-  const supabase = await createServerClient();
+  // Same trusted automation-executor context as lms_enroll() above.
+  const supabase = createAdminClient();
 
   const { data: contact } = await supabase
     .from("contacts")

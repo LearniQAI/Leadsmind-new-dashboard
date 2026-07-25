@@ -2,6 +2,19 @@ import crypto from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { inngest } from '@/lib/inngest'
 import { logger } from '@/shared/logger'
+import { decrypt } from '@/lib/encryption'
+
+// webhook_endpoints.secret is now stored encrypted (see 20260725000003 migration). Rows created
+// before that migration shipped may still hold a plaintext secret — decrypt() throws on
+// anything that isn't its own "iv:hex" format, so this falls back to the raw value rather than
+// failing delivery outright for those pre-existing rows.
+function resolveWebhookSecret(storedSecret: string): string {
+  try {
+    return decrypt(storedSecret)
+  } catch {
+    return storedSecret
+  }
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -58,7 +71,7 @@ export const webhookDispatchFn = inngest.createFunction(
         activeWebhooks.map(async (webhook) => {
           const startTime = Date.now()
           try {
-            const secret = webhook.secret || signingSecret
+            const secret = webhook.secret ? resolveWebhookSecret(webhook.secret) : signingSecret
             const signature = crypto.createHmac('sha256', secret).update(payloadString).digest('hex')
 
             const res = await fetch(webhook.url, {

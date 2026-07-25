@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+// Release-note content itself is low-sensitivity (admin-authored changelog copy, no
+// workspace/user data) — but both real callers (DashboardHeader, HelpDrawer) only ever render
+// inside the authenticated dashboard shell, and nothing depends on this being reachable without
+// a session. A basic auth check costs those callers nothing and keeps this consistent with the
+// rest of the dashboard's API surface rather than being open with no concrete reason to be.
 export async function GET(req: NextRequest) {
   try {
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const route = searchParams.get('route');
 

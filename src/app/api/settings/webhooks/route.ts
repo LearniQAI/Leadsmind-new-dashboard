@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
+import { encrypt } from '@/lib/encryption'
 import { toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
+import { randomBytes } from 'crypto'
 
 export const dynamic = 'force-dynamic';
 
 // Workspace webhooks mint new secrets and control outbound delivery targets — restricted
 // to admins/owners, same as API keys and integrations.
+//
+// This reads/writes webhook_endpoints, not workspace_webhooks — webhook_endpoints is the table
+// the real dispatcher (src/lib/inngest/functions/webhookDispatch.ts) actually reads from.
+// workspace_webhooks was a parallel, never-dispatched table (see 20260725000004 migration).
 const ALLOWED_WEBHOOK_ROLES = ['admin', 'owner'];
 
 export async function GET(req: NextRequest) {
@@ -15,9 +21,11 @@ export async function GET(req: NextRequest) {
     const { workspaceId } = await requireWorkspaceRole(ALLOWED_WEBHOOK_ROLES);
     const supabase = await createServerClient();
 
+    // Never select the secret column back to the client — same "reveal once, never list"
+    // pattern as mintWorkspaceApiKey/createOAuthClient/createWebhook (legacy actions).
     const { data, error } = await supabase
-      .from('workspace_webhooks')
-      .select('id, url, label, active, created_at')
+      .from('webhook_endpoints')
+      .select('id, url, label, events, active:is_active, created_at')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false })
 
@@ -44,12 +52,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 })
     }
 
-    const { error } = await supabase
-      .from('workspace_webhooks')
-      .insert({ workspace_id: workspaceId, url, label: label ?? url })
+    // webhook_endpoints.secret is NOT NULL and is what the dispatcher signs deliveries with —
+    // workspace_webhooks never had a secret at all, which was part of why it was a dead end.
+    const rawSecret = `whsec_${randomBytes(32).toString('hex')}`;
+    const { data, error } = await supabase
+      .from('webhook_endpoints')
+      .insert({
+        workspace_id: workspaceId,
+        url,
+        label: label ?? url,
+        events: ['*'],
+        secret: encrypt(rawSecret),
+        is_active: true,
+      })
+      .select('id, url, label, events, active:is_active, created_at')
+      .single()
 
     if (error) throw error;
-    return NextResponse.json({ success: true })
+    // Raw secret is returned once for the user to copy — never persisted in plaintext and
+    // never returned again by GET.
+    return NextResponse.json({ success: true, webhook: data, secret: rawSecret })
   } catch (err: any) {
     logger.error({ err }, 'settings.webhooks.post.failed');
     const clientError = toClientError(err);
@@ -66,7 +88,7 @@ export async function DELETE(req: NextRequest) {
     const supabase = await createServerClient();
 
     const { error } = await supabase
-      .from('workspace_webhooks')
+      .from('webhook_endpoints')
       .delete()
       .eq("id", id).eq("workspace_id", workspaceId)
 

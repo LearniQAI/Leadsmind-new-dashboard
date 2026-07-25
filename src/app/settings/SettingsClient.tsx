@@ -73,6 +73,7 @@ export default function SettingsClient({
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [newWebhookSecret, setNewWebhookSecret] = useState<string | null>(null);
   const [primaryColor, setPrimaryColor] = useState(branding?.primary_color || '#04091a');
   const [buttonColor, setButtonColor] = useState(branding?.button_color || '#2563eb');
   const [textColor, setTextColor] = useState(branding?.text_color || '#eef2ff');
@@ -320,6 +321,9 @@ export default function SettingsClient({
     const res = await createWebhook(url, ['lead.created', 'order.completed', 'chat.started']);
     if (res.error) toast.error(res.error);
     else {
+      // The signing secret is only ever returned here, once — it is never included in the
+      // webhooks list again, so this is the caller's only chance to copy it.
+      if (res.secret) setNewWebhookSecret(res.secret);
       toast.success('Neural Webhook endpoint generated successfully');
       router.refresh();
     }
@@ -506,6 +510,7 @@ export default function SettingsClient({
               webhooks={webhooks}
               onNewWebhook={handleNewWebhook}
               onDeleteWebhook={handleDeleteWebhook}
+              newWebhookSecret={newWebhookSecret}
             />
           )}
 

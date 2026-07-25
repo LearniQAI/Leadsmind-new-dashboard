@@ -34,6 +34,50 @@ export async function markLessonComplete(courseId: string, lessonId: string) {
       return { success: true };
     }
 
+    // Must actually be enrolled in this course — course_progress rows for a course the
+    // student was never enrolled in would otherwise count toward certificate completion.
+    const { data: enrollment } = await adminClient
+      .from('enrollments')
+      .select('id')
+      .eq('contact_id', contactId)
+      .eq('course_id', courseId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (!enrollment) return { error: 'Not enrolled in this course' };
+
+    // Verify the lesson actually belongs to the course being claimed.
+    const { data: lesson } = await adminClient
+      .from('course_lessons')
+      .select('id')
+      .eq('id', lessonId)
+      .eq('course_id', courseId)
+      .maybeSingle();
+
+    if (!lesson) return { error: 'Lesson not found in this course' };
+
+    // If this lesson has an attached quiz, completion can only come from actually passing it
+    // (via submitQuizAttempt's server-side grading, which calls this function itself only
+    // after inserting a real passing quiz_attempts row) — this function may not be used to
+    // mark a quiz lesson complete without one already existing.
+    const { data: quizQuestions } = await adminClient
+      .from('quiz_questions')
+      .select('id')
+      .eq('lesson_id', lessonId)
+      .limit(1);
+
+    if (quizQuestions && quizQuestions.length > 0) {
+      const { data: passedAttempt } = await adminClient
+        .from('quiz_attempts')
+        .select('id')
+        .eq('student_id', contactId)
+        .eq('lesson_id', lessonId)
+        .eq('passed', true)
+        .maybeSingle();
+
+      if (!passedAttempt) return { error: 'This lesson requires passing its quiz first' };
+    }
+
     const { error } = await adminClient
       .from('course_progress')
       .insert({

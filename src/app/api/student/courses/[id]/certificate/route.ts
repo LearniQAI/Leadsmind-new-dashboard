@@ -60,6 +60,35 @@ export async function GET(
       }, { status: 403 });
     }
 
+    // 3b. course_progress row-count alone only proves a lesson was marked complete, not that
+    // any quiz attached to it was actually passed — a completion certificate must also verify
+    // a real passing quiz_attempts row exists for every lesson that has quiz questions.
+    const lessonIds = (lessonsRes.data || []).map((l: any) => l.id);
+    const { data: quizLessons } = await adminClient
+      .from('quiz_questions')
+      .select('lesson_id')
+      .in('lesson_id', lessonIds);
+
+    const quizLessonIds = Array.from(new Set((quizLessons || []).map((q: any) => q.lesson_id)));
+
+    if (quizLessonIds.length > 0) {
+      const { data: passedAttempts } = await adminClient
+        .from('quiz_attempts')
+        .select('lesson_id')
+        .eq('student_id', contactId)
+        .eq('passed', true)
+        .in('lesson_id', quizLessonIds);
+
+      const passedLessonIds = new Set((passedAttempts || []).map((a: any) => a.lesson_id));
+      const missingQuiz = quizLessonIds.some((id) => !passedLessonIds.has(id));
+
+      if (missingQuiz) {
+        return NextResponse.json({
+          error: 'Course not fully completed yet — one or more quizzes have not been passed'
+        }, { status: 403 });
+      }
+    }
+
     // 4. Gather parameters for certificate mapping
     const studentName = contact 
       ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email

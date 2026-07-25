@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 
 export async function getCourses() {
@@ -92,15 +92,36 @@ export async function getForumPosts() {
 
 export async function enrollStudent(courseId: string, contactId: string) {
  try {
-  const supabase = await createServerClient();
-  const { error } = await supabase
+  const user = await getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  // Enrolls an arbitrary contactId chosen by the caller, so this can never run on the
+  // session-scoped client (the ownership-only enrollments RLS policy would reject it, and
+  // did before this fix — see 20260725000001_lock_down_student_self_report_writes.sql).
+  // Requiring admin/owner here mirrors enrollStudent() in studentEnrollments.ts, which is
+  // the self-enrollment (paid-invoice-gated) counterpart to this staff-enrolls-student path.
+  const adminClient = createAdminClient();
+  const { data: membership } = await adminClient
+   .from('workspace_members')
+   .select('role')
+   .eq('workspace_id', workspaceId)
+   .eq('user_id', user.id)
+   .maybeSingle();
+  if (!membership || !['admin', 'owner'].includes(membership.role)) {
+   return { error: 'Unauthorized' };
+  }
+
+  const { error } = await adminClient
    .from('enrollments')
    .upsert({ course_id: courseId, contact_id: contactId, status: 'active' });
 
   if (error) throw error;
 
   // Fetch workspace_id of the course to trigger automation event
-  const { data: course } = await supabase
+  const { data: course } = await adminClient
    .from('courses')
    .select('workspace_id')
    .eq('id', courseId)
