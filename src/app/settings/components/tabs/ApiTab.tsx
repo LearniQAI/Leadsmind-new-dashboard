@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Copy, Check, ShieldAlert, Plus, Webhook, Activity, 
   Trash2, Code2, PlayCircle, CheckCircle2, ChevronDown, ChevronUp,
-  Key, Layers, Database, Eye, EyeOff, AlertTriangle, Clock, RefreshCw
+  Key, Layers, Database, Eye, EyeOff, AlertTriangle, Clock, RefreshCw, Phone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { sendDemoLead } from '@/app/actions/demo_actions';
@@ -13,7 +13,9 @@ import {
   getOAuthClients, 
   createOAuthClient, 
   deleteOAuthClient, 
-  getWebhookLogs 
+  getWebhookLogs,
+  getTwilioStatus,
+  saveTwilioCredentials
 } from '@/app/actions/settings';
 
 interface ApiTabProps {
@@ -66,6 +68,15 @@ export default function ApiTab({
   // Docs State
   const [expandedDocSection, setExpandedDocSection] = useState<string | null>(null);
 
+  // Twilio State
+  const [twilioConfigured, setTwilioConfigured] = useState(false);
+  const [twilioNumber, setTwilioNumber] = useState<string | null>(null);
+  const [showTwilioForm, setShowTwilioForm] = useState(false);
+  const [twilioSid, setTwilioSid] = useState('');
+  const [twilioToken, setTwilioToken] = useState('');
+  const [twilioPhone, setTwilioPhone] = useState('');
+  const [savingTwilio, setSavingTwilio] = useState(false);
+
   const embedCode = `<script>
   (function(w,d,s,o,f,js,fjs){
     w['LeadsmindObj']=o;w[o]=w[o]||function(){(w[o].q=w[o].q||[]).push(arguments)};
@@ -90,7 +101,33 @@ export default function ApiTab({
     if (activeSubTab === 'oauth') {
       fetchOauthClients();
     }
+    if (activeSubTab === 'keys') {
+      getTwilioStatus().then(res => {
+        if (res.data) {
+          setTwilioConfigured(res.data.configured);
+          setTwilioNumber(res.data.twilioNumber);
+        }
+      });
+    }
   }, [activeSubTab]);
+
+  const handleSaveTwilio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingTwilio(true);
+    const res = await saveTwilioCredentials(twilioSid, twilioToken, twilioPhone);
+    setSavingTwilio(false);
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      toast.success('Twilio credentials saved securely.');
+      setTwilioConfigured(true);
+      setTwilioNumber(twilioPhone);
+      setShowTwilioForm(false);
+      setTwilioSid('');
+      setTwilioToken('');
+      setTwilioPhone('');
+    }
+  };
 
   const handleCreateApp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,6 +232,20 @@ export default function ApiTab({
       {/* KEYS SUBTAB */}
       {activeSubTab === 'keys' && (
         <div className="space-y-8">
+          {apiKey && (
+            <div className="flex items-start gap-3 p-4 bg-amber-50/50 border border-amber-200 rounded-2xl shadow-sm">
+              <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="space-y-1.5">
+                <p className="text-[13px] font-bold text-amber-900">Legacy API Key Deprecation Notice</p>
+                <p className="text-[12px] text-amber-800/80 leading-relaxed max-w-2xl">
+                  Your workspace is using a legacy plain-text API key. For improved security, legacy keys are being deprecated. 
+                  Please click <strong>Regenerate key</strong> to migrate to the new secure hashed credential system. 
+                  <br className="mt-1"/>
+                  <span className="font-semibold text-amber-900">Action Required:</span> Update your integrations with the newly generated key. Legacy keys will be permanently disabled on <strong>October 1st, 2026</strong>.
+                </p>
+              </div>
+            </div>
+          )}
           <div className="bg-white border border-dash-border rounded-2xl p-8 space-y-6 relative overflow-hidden group shadow-sm">
             <div className="absolute top-0 left-0 w-1 h-full bg-dash-accent"></div>
             <div className="flex items-center justify-between">
@@ -319,6 +370,117 @@ export default function ApiTab({
               {sendingDemo ? 'Sending...' : 'Send test lead'}
             </button>
           </div>
+
+          {/* Twilio Credentials Card */}
+          {isAdmin && (
+            <div className="bg-white border border-dash-border rounded-2xl p-8 space-y-6 relative overflow-hidden shadow-sm">
+              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Phone className="text-blue-500 w-5 h-5" />
+                  <div>
+                    <h4 className="text-[15px] font-bold !text-dash-text">Twilio credentials</h4>
+                    <p className="text-[11px] !text-dash-textMuted mt-0.5">
+                      Per-workspace SMS & WhatsApp account — overrides the platform default.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {twilioConfigured && (
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-600/10 text-green-700 text-[10px] font-bold border border-green-600/20">
+                      <CheckCircle2 size={10} /> Configured
+                    </span>
+                  )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => setShowTwilioForm(v => !v)}
+                      className="text-[11px] font-bold text-dash-accent hover:text-dash-accent/80 transition-colors motion-reduce:transition-none"
+                    >
+                      {showTwilioForm ? 'Cancel' : twilioConfigured ? 'Rotate credentials' : 'Configure'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Status row when configured but form is closed */}
+              {twilioConfigured && !showTwilioForm && (
+                <div className="flex items-center gap-3 p-3 bg-dash-surface border border-dash-border rounded-xl">
+                  <Phone size={14} className="text-blue-500 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-[11px] font-semibold !text-dash-text">Phone number</p>
+                    <p className="text-[11px] font-mono !text-dash-textMuted">
+                      {twilioNumber ? twilioNumber.replace(/\d(?=\d{4})/g, '•') : 'Configured (number hidden)'}
+                    </p>
+                  </div>
+                  <p className="text-[10px] !text-dash-textMuted">Account SID & Auth Token are encrypted at rest</p>
+                </div>
+              )}
+
+              {/* Credential entry form */}
+              {showTwilioForm && (
+                <form onSubmit={handleSaveTwilio} className="space-y-4">
+                  <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <AlertTriangle size={13} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-[11px] text-blue-700 leading-relaxed">
+                      Credentials are encrypted with AES-256-CBC before being stored. The plaintext values are never persisted.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[11px] font-bold !text-dash-text mb-1.5">Account SID</label>
+                      <input
+                        type="text"
+                        value={twilioSid}
+                        onChange={e => setTwilioSid(e.target.value)}
+                        placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-[12px] font-mono !text-dash-text outline-none focus:border-dash-accent transition-colors"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold !text-dash-text mb-1.5">Auth Token</label>
+                      <input
+                        type="password"
+                        value={twilioToken}
+                        onChange={e => setTwilioToken(e.target.value)}
+                        placeholder="Your Twilio auth token"
+                        className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-[12px] font-mono !text-dash-text outline-none focus:border-dash-accent transition-colors"
+                        required
+                        autoComplete="new-password"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold !text-dash-text mb-1.5">Phone number <span className="font-normal !text-dash-textMuted">(E.164 format)</span></label>
+                      <input
+                        type="text"
+                        value={twilioPhone}
+                        onChange={e => setTwilioPhone(e.target.value)}
+                        placeholder="+15551234567"
+                        className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-[12px] font-mono !text-dash-text outline-none focus:border-dash-accent transition-colors"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowTwilioForm(false); setTwilioSid(''); setTwilioToken(''); setTwilioPhone(''); }}
+                      className="px-5 py-2.5 border border-dash-border !text-dash-textMuted hover:!text-dash-text rounded-xl text-[11px] font-bold transition-all motion-reduce:transition-none"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingTwilio}
+                      className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-[11px] rounded-xl shadow-lg shadow-blue-600/20 transition-all motion-reduce:transition-none"
+                    >
+                      {savingTwilio ? 'Saving...' : 'Save credentials'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
         </div>
       )}
 
