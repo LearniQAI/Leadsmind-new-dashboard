@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { ColorPicker } from '../ColorPicker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const FooterSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -72,10 +73,7 @@ export const FooterSettings = () => {
             <Label className="text-[11px] font-medium">Full width layout</Label>
             <Switch checked={!!fullWidth} onCheckedChange={(val) => setProp((p: any) => p.fullWidth = val)} />
           </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold !text-dash-textMuted">Grid columns ({columnsCount})</Label>
-            <input type="range" min="1" max="4" step="1" value={columnsCount} onChange={(e) => setProp((p: any) => p.columnsCount = Number(e.target.value))} className="w-full accent-primary" />
-          </div>
+          <SliderWithInput label="Grid columns" value={columnsCount} onChange={(val) => setProp((p: any) => p.columnsCount = val)} min={1} max={4} unit="" numeric />
           <div className="flex items-center justify-between">
             <Label className="text-[11px] font-medium">Show newsletter</Label>
             <Switch checked={!!showNewsletter} onCheckedChange={(val) => setProp((p: any) => p.showNewsletter = val)} />
@@ -197,14 +195,8 @@ export const FooterSettings = () => {
 
       <TabsContent value="style" className="space-y-6">
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold !text-dash-textMuted">Footer padding ({padding}px)</Label>
-            <input type="range" min="40" max="160" step="8" value={padding} onChange={(e) => setProp((p: any) => p.padding = Number(e.target.value))} className="w-full accent-primary" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold !text-dash-textMuted">Border top ({borderTopWidth}px)</Label>
-            <input type="range" min="0" max="10" step="1" value={borderTopWidth} onChange={(e) => setProp((p: any) => p.borderTopWidth = Number(e.target.value))} className="w-full accent-primary" />
-          </div>
+          <SliderWithInput label="Footer padding" value={padding} onChange={(val) => setProp((p: any) => p.padding = val)} min={40} max={160} step={8} numeric />
+          <SliderWithInput label="Border top" value={borderTopWidth} onChange={(val) => setProp((p: any) => p.borderTopWidth = val)} min={0} max={10} numeric />
           <ColorPicker label="Background" value={backgroundColor} onChange={(val) => setProp((p: any) => p.backgroundColor = val)} />
           <ColorPicker label="Text color" value={textColor} onChange={(val) => setProp((p: any) => p.textColor = val)} />
           <ColorPicker label="Accent color" value={accentColor} onChange={(val) => setProp((p: any) => p.accentColor = val)} />
@@ -213,14 +205,8 @@ export const FooterSettings = () => {
 
         <div className="space-y-4 pt-4 border-t border-dash-border">
           <h4 className="text-[10px] font-bold !text-dash-textMuted pb-2">Footer typography</h4>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold !text-dash-textMuted">Title size ({titleFontSize}px)</Label>
-            <input type="range" min="8" max="24" step="1" value={titleFontSize} onChange={(e) => setProp((p: any) => p.titleFontSize = Number(e.target.value))} className="w-full accent-primary" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold !text-dash-textMuted">Link size ({linkFontSize}px)</Label>
-            <input type="range" min="8" max="24" step="1" value={linkFontSize} onChange={(e) => setProp((p: any) => p.linkFontSize = Number(e.target.value))} className="w-full accent-primary" />
-          </div>
+          <SliderWithInput label="Title size" value={titleFontSize} onChange={(val) => setProp((p: any) => p.titleFontSize = val)} min={8} max={24} numeric />
+          <SliderWithInput label="Link size" value={linkFontSize} onChange={(val) => setProp((p: any) => p.linkFontSize = val)} min={8} max={24} numeric />
           <div className="space-y-1">
             <Label className="text-[10px] font-bold !text-dash-textMuted">Title weight</Label>
             <select

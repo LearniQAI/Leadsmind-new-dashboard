@@ -14,7 +14,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export const Viewport = ({ children }: { children?: React.ReactNode }) => {
- const { viewMode, setViewMode, websiteData, pages, setSidebarOpen, setIsTemplateDirectoryOpen, setIsImportModalOpen } = useBuilder();
+ const { viewMode, setViewMode, websiteData, pages, setLeftPanelOpen, setLeftPanelTab, setIsTemplateDirectoryOpen, setIsImportModalOpen } = useBuilder();
  const { pageId } = useParams();
  const { connectors, actions } = useEditor();
 
@@ -109,7 +109,7 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
             </p>
             <div className="flex flex-col w-full gap-3">
               <button
-                onClick={() => setSidebarOpen(true)}
+                onClick={() => { setLeftPanelTab('elements'); setLeftPanelOpen(true); }}
                 className="w-full flex items-center justify-center gap-2 h-11 bg-dash-accent text-white rounded-xl font-semibold text-sm hover:bg-dash-accent/90 transition-colors motion-reduce:transition-none shadow-sm"
               >
                 <Plus className="w-4 h-4" />

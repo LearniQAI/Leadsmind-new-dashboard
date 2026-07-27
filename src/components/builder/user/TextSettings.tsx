@@ -4,6 +4,7 @@ import React from 'react';
 import { useNode } from '@craftjs/core';
 import { Label } from '@/components/ui/label';
 import { ColorPicker } from '../ColorPicker';
+import { PropertyGroup, SliderWithInput } from '../inspector/primitives';
 
 export const TextSettings = () => {
   const { actions: { setProp }, fontSize, textAlign, color } = useNode((node) => ({
@@ -13,18 +14,15 @@ export const TextSettings = () => {
   }));
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Font size ({fontSize}px)</Label>
-        <input
-          type="range"
-          min="10"
-          max="100"
-          value={fontSize || 16}
-          onChange={(e) => setProp((props: any) => props.fontSize = Number(e.target.value))}
-          className="w-full accent-primary"
-        />
-      </div>
+    <PropertyGroup title="Typography">
+      <SliderWithInput
+        label="Font size"
+        value={fontSize || 16}
+        onChange={(val) => setProp((props: any) => props.fontSize = val)}
+        min={10}
+        max={100}
+        numeric
+      />
 
       <div className="space-y-2">
         <Label className="text-xs font-bold !text-dash-textMuted block">Text align</Label>
@@ -46,6 +44,6 @@ export const TextSettings = () => {
         value={color || '#000000'}
         onChange={(val) => setProp((props: any) => props.color = val)}
       />
-    </div>
+    </PropertyGroup>
   );
 };

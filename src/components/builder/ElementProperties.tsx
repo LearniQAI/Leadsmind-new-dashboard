@@ -7,7 +7,7 @@ import {
   Box, Type, Image, Video, RectangleHorizontal as ButtonIconPlaceholder,
   AlignLeft, Columns, Minus, ArrowUpDown, Code, Star,
   Navigation, FormInput, Timer, CreditCard, MessageCircle, LayoutGrid,
-  ChevronDown, ChevronRight, Layers
+  ChevronDown, ChevronRight, Layers, ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -67,72 +67,61 @@ const AccordionSection = ({ title, children, defaultOpen = true }: {
   );
 };
 
-export const PropertiesPanel = () => {
+// Renders the settings UI for whichever node is currently selected on the canvas.
+// Mounted by BuilderLeftPanel in place of Sidebar whenever Craft.js selection is
+// non-empty; the "< Back" action clears selection so BuilderLeftPanel swaps back
+// to Sidebar on the next render.
+export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
   const [activeTab, setActiveTab] = useState<'layout' | 'style' | 'advanced'>('layout');
 
-  const { selected, actions } = useEditor((state) => {
-    const selectedId = Array.from(state.events.selected)[0];
-    let selected;
+  const { selected, actions, parentName } = useEditor((state) => {
+    const node = state.nodes[nodeId];
+    if (!node) return { selected: undefined, parentName: undefined };
 
-    if (selectedId) {
-      selected = {
-        id: selectedId,
-        name: state.nodes[selectedId].data.displayName,
-        settings: state.nodes[selectedId].related && state.nodes[selectedId].related.settings,
-        isDeletable: (state.nodes[selectedId].data as any).rules?.canDelete
-          ? (state.nodes[selectedId].data as any).rules.canDelete()
+    const parentId = node.data.parent;
+    const parentNode = parentId ? state.nodes[parentId] : undefined;
+
+    return {
+      selected: {
+        id: nodeId,
+        name: node.data.custom?.displayName || node.data.displayName,
+        settings: node.related && node.related.settings,
+        isDeletable: (node.data as any).rules?.canDelete
+          ? (node.data as any).rules.canDelete()
           : true,
-      };
-    }
-
-    return { selected };
+      },
+      parentName: parentId && parentId !== 'ROOT'
+        ? (parentNode?.data.custom?.displayName || parentNode?.data.displayName)
+        : undefined,
+    };
   });
 
-  if (!selected || selected.id === 'ROOT') {
-    return (
-      <div className="w-full h-full bg-white flex flex-col select-none">
-        {/* Empty state panel header */}
-        <div className="px-5 h-14 border-b border-dash-border flex items-center shrink-0">
-          <span className="text-[11px] font-semibold !text-dash-textMuted tracking-wider uppercase">Properties</span>
-        </div>
-
-        {/* Premium empty state */}
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-          <div className="relative mb-6">
-            {/* Decorative rings */}
-            <div className="w-20 h-20 rounded-2xl bg-dash-surface border border-dash-border flex items-center justify-center mx-auto">
-              <div className="w-12 h-12 rounded-xl bg-dash-border/40 flex items-center justify-center">
-                <Settings className="w-5 h-5 !text-dash-textMuted" />
-              </div>
-            </div>
-            {/* Accent dots */}
-            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-dash-accent/20 border-2 border-white" />
-            <span className="absolute -bottom-1 -left-1 w-2 h-2 rounded-full bg-green/20 border-2 border-white" />
-          </div>
-
-          <h4 className="text-[13px] font-semibold !text-dash-text mb-1.5">No element selected</h4>
-          <p className="text-[11px] !text-dash-textMuted leading-relaxed max-w-[180px]">
-            Click any element on the canvas to edit its properties
-          </p>
-
-          <div className="mt-8 w-full space-y-2">
-            {['Typography', 'Spacing', 'Colors', 'Effects'].map((label) => (
-              <div key={label} className="h-8 bg-dash-surface rounded-lg border border-dash-border/80 flex items-center px-3 gap-2 opacity-40">
-                <div className="w-2 h-2 rounded-full bg-dash-border" />
-                <span className="text-[10px] font-medium !text-dash-textMuted">{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (!selected) return null;
 
   const ComponentIcon = COMPONENT_ICONS[selected.name] || Settings;
 
   return (
     <div className="w-full h-full bg-white flex flex-col z-40 select-none">
-      {/* Premium Panel Header */}
+      {/* Breadcrumb + back */}
+      <div className="px-4 h-11 border-b border-dash-border flex items-center gap-2 shrink-0 bg-white text-[11px] font-semibold !text-dash-textMuted">
+        <button
+          onClick={() => actions.selectNode()}
+          className="h-7 px-2 -ml-1.5 flex items-center gap-1 rounded-lg hover:bg-dash-surface hover:!text-dash-text transition-colors motion-reduce:transition-none"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back
+        </button>
+        <span className="text-dash-border">/</span>
+        {parentName && (
+          <>
+            <span className="truncate">{parentName}</span>
+            <span className="text-dash-border">/</span>
+          </>
+        )}
+        <span className="!text-dash-text truncate">{selected.name}</span>
+      </div>
+
+      {/* Panel Header */}
       <div className="px-5 py-4 border-b border-dash-border flex items-center justify-between shrink-0 bg-white">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-[10px] bg-gradient-to-br from-dash-accent/10 to-dash-accent/5 flex items-center justify-center border border-dash-accent/15 shrink-0">

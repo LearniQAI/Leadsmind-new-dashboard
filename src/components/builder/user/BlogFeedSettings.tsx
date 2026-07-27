@@ -8,6 +8,7 @@ import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Switch } from '../../ui/switch';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const BlogFeedSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -39,12 +40,7 @@ export const BlogFeedSettings = () => {
       </TabsList>
 
       <TabsContent value="grid" className="space-y-6">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold !text-dash-textMuted">Grid columns ({columns})</Label>
-            <input type="range" min="1" max="4" step="1" value={columns} onChange={(e) => setProp((p: any) => p.columns = Number(e.target.value))} className="w-full accent-primary" />
-          </div>
-        </div>
+        <SliderWithInput label="Grid columns" value={columns} onChange={(val) => setProp((p: any) => p.columns = val)} min={1} max={4} unit="" numeric />
 
         <div className="space-y-4">
           <Label className="text-[10px] font-bold !text-dash-textMuted">Query logic</Label>
@@ -65,10 +61,7 @@ export const BlogFeedSettings = () => {
           </div>
         )}
 
-        <div className="space-y-2">
-          <Label className="text-[10px] font-bold !text-dash-textMuted">Post count ({postCount})</Label>
-          <input type="range" min="3" max="12" step="3" value={postCount} onChange={(e) => setProp((p: any) => p.postCount = Number(e.target.value))} className="w-full accent-primary" />
-        </div>
+        <SliderWithInput label="Post count" value={postCount} onChange={(val) => setProp((p: any) => p.postCount = val)} min={3} max={12} step={3} unit="" numeric />
 
         <div className="space-y-4 pt-2 border-t border-dash-border">
           <h4 className="text-[10px] font-bold !text-dash-textMuted">Display components</h4>

@@ -2,10 +2,8 @@
 
 import React from 'react';
 import { Editor, Frame, Element, useEditor } from '@craftjs/core';
-import { Sidebar } from './Sidebar';
+import { BuilderLeftPanel } from './BuilderLeftPanel';
 import { Viewport } from './Viewport';
-import { PropertiesPanel } from './PropertiesPanel';
-import { FloatingPropertiesPanel } from './FloatingPropertiesPanel';
 import { BuilderCommandPalette } from './BuilderCommandPalette';
 import { RenderNode } from './RenderNode';
 import { Container } from './user/Container';
@@ -45,7 +43,7 @@ import { DashButton, DashStatusPill } from '@/components/dashboard-ui';
 import { Loader2, Save, AlertCircle, Sparkles, Upload, Monitor, Tablet, Smartphone, Check, MoreHorizontal, ChevronDown, Undo2, Redo2, DatabaseZap, Eye } from 'lucide-react';
 import { RESOLVER, wrapForReact19 } from '@/lib/builder/resolver';
 import { cn } from '@/lib/utils';
-import { LayoutTemplate, Settings2 } from 'lucide-react';
+import { LayoutTemplate } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -507,13 +505,9 @@ const BuilderEditorLayout = ({
     isPublishing,
     pages
 }: any) => {
-    const USE_DOCKED_INSPECTOR = true; // Feature flag for migration
-
     const {
-        sidebarOpen,
-        setSidebarOpen,
-        propertiesOpen,
-        setPropertiesOpen,
+        leftPanelOpen,
+        setLeftPanelOpen,
         previewMode,
         setPreviewMode,
         blueprintNodeId,
@@ -737,26 +731,16 @@ const BuilderEditorLayout = ({
 
                     <div className="h-6 w-px bg-dash-border mx-1" />
 
-                    {/* Sidebar / Properties panel toggles */}
+                    {/* Left panel toggle */}
                     <button
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                        title="Toggle Sidebar"
+                        onClick={() => setLeftPanelOpen(!leftPanelOpen)}
+                        title="Toggle panel"
                         className={cn(
                             "h-9 w-9 flex items-center justify-center rounded-lg transition-colors motion-reduce:transition-none",
-                            sidebarOpen ? "bg-dash-surface !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
+                            leftPanelOpen ? "bg-dash-surface !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
                         )}
                     >
                         <LayoutTemplate className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => setPropertiesOpen(!propertiesOpen)}
-                        title="Toggle Properties Panel"
-                        className={cn(
-                            "h-9 w-9 flex items-center justify-center rounded-lg transition-colors motion-reduce:transition-none",
-                            propertiesOpen ? "bg-dash-surface !text-dash-text" : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
-                        )}
-                    >
-                        <Settings2 className="w-4 h-4" />
                     </button>
 
                     {/* More Actions Dropdown */}
@@ -798,15 +782,15 @@ const BuilderEditorLayout = ({
             </header>
 
             <div className="flex flex-1 overflow-hidden relative">
-                {/* Left Sidebar Transition Wrapper */}
+                {/* Left Panel Transition Wrapper */}
                 <div
                     className={cn(
                         "transition-all duration-300 ease-in-out motion-reduce:transition-none border-r border-dash-border bg-white overflow-hidden shrink-0",
-                        sidebarOpen && !previewMode ? "w-[320px] opacity-100" : "w-0 opacity-0 border-none"
+                        leftPanelOpen && !previewMode ? "w-[320px] opacity-100" : "w-0 opacity-0 border-none"
                     )}
                 >
                     <div className="w-[320px] h-full"> {/* Fixed width and height inner to prevent squishing and enable scrolling */}
-                        <Sidebar
+                        <BuilderLeftPanel
                             type={type}
                             website={websiteData}
                             onUpdateWebsite={handleUpdateWebsite}
@@ -899,23 +883,6 @@ const BuilderEditorLayout = ({
                         )}
                     </div>
                 </Viewport>
-
-                {/* Right Docked Properties Panel */}
-                {USE_DOCKED_INSPECTOR && (
-                    <div
-                        className={cn(
-                            "transition-all duration-300 ease-in-out motion-reduce:transition-none border-l border-dash-border bg-white overflow-hidden shrink-0 z-40",
-                            propertiesOpen && !previewMode ? "w-[360px] opacity-100" : "w-0 opacity-0 border-none"
-                        )}
-                    >
-                        <div className="w-[360px] h-full">
-                            <PropertiesPanel />
-                        </div>
-                    </div>
-                )}
-
-                {/* Legacy Floating Properties Panel */}
-                {!USE_DOCKED_INSPECTOR && <FloatingPropertiesPanel />}
             </div>
 
             {/* Status Bar */}

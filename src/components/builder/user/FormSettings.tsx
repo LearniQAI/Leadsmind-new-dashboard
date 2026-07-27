@@ -10,6 +10,7 @@ import { ColorPicker } from '../ColorPicker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { FormField } from './Form';
 import { LinkSelector } from '../LinkSelector';
+import { SliderWithInput } from '../inspector/primitives';
 
 
 export const FormSettings = () => {
@@ -214,14 +215,8 @@ export const FormSettings = () => {
           <h4 className="text-[10px] font-bold !text-dash-textMuted border-b border-dash-border pb-2">Container styling</h4>
           <ColorPicker label="Form background" value={backgroundColor} onChange={(val) => setProp((props: any) => props.backgroundColor = val)} />
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-               <Label className="text-[10px] font-bold !text-dash-textMuted">Radius ({borderRadius}px)</Label>
-               <input type="range" min="0" max="64" step="4" value={borderRadius} onChange={(e) => setProp((p: any) => p.borderRadius = Number(e.target.value))} className="w-full accent-primary" />
-            </div>
-            <div className="space-y-2">
-               <Label className="text-[10px] font-bold !text-dash-textMuted">Outer gap ({gap}px)</Label>
-               <input type="range" min="0" max="32" step="4" value={gap} onChange={(e) => setProp((p: any) => p.gap = Number(e.target.value))} className="w-full accent-primary" />
-            </div>
+            <SliderWithInput label="Radius" value={borderRadius} onChange={(val) => setProp((p: any) => p.borderRadius = val)} min={0} max={64} step={4} numeric />
+            <SliderWithInput label="Outer gap" value={gap} onChange={(val) => setProp((p: any) => p.gap = val)} min={0} max={32} step={4} numeric />
           </div>
         </div>
 

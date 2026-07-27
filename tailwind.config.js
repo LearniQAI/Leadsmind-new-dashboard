@@ -142,6 +142,10 @@ module.exports = {
           // as clearly secondary/muted next to dash-text.
           textMuted: "#475569",
           accent: "#1359FF",
+          // Builder-canvas hover affordance (element name pill on hover). Reuses the
+          // existing amber tone rather than importing a new brand color, so the
+          // builder chrome stays inside LeadsMind's existing palette.
+          hover: "#f59e0b",
         },
         n900: "#04091a",
         n800: "#080f28",

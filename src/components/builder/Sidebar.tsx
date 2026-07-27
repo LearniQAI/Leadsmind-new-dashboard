@@ -92,8 +92,9 @@ export const Sidebar = ({
 }) => {
   const router = useRouter();
   const { pageId } = useParams();
-  const { pages, websiteData, setIsTemplateDirectoryOpen } = useBuilder();
-  const [activeTab, setActiveTab] = React.useState<'elements' | 'layers' | 'settings' | 'page' | 'steps'>('elements');
+  const { pages, websiteData, setIsTemplateDirectoryOpen, leftPanelTab, setLeftPanelTab } = useBuilder();
+  const activeTab = leftPanelTab as 'elements' | 'layers' | 'settings' | 'page' | 'steps';
+  const setActiveTab = setLeftPanelTab as (tab: 'elements' | 'layers' | 'settings' | 'page' | 'steps') => void;
 
   const { connectors } = useEditor();
   const { user } = useDashboardContext();

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useNode } from '@craftjs/core';
-import { Label } from '@/components/ui/label';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const SpacerSettings = () => {
   const { actions: { setProp }, height } = useNode((node) => ({
@@ -11,15 +11,15 @@ export const SpacerSettings = () => {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Spacer height ({height}px)</Label>
-        <input
-          type="range" min="0" max="500" step="8"
-          value={height || 32}
-          onChange={(e) => setProp((props: any) => props.height = Number(e.target.value))}
-          className="w-full accent-primary"
-        />
-      </div>
+      <SliderWithInput
+        label="Spacer height"
+        value={height || 32}
+        onChange={(val) => setProp((props: any) => props.height = val)}
+        min={0}
+        max={500}
+        step={8}
+        numeric
+      />
     </div>
   );
 };

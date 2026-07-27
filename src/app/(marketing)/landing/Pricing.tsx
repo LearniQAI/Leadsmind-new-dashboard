@@ -23,8 +23,8 @@ function CheckIcon({ bg, stroke }: { bg: string; stroke: string }) {
 const valueStatement = [
   '14-day free trial',
   'No credit card required',
-  'PayFast & Stripe accepted',
-  'SA support team',
+  'Local & international payment methods',
+  'Support that speaks your language',
 ];
 
 const cardContainer = {
@@ -64,7 +64,9 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
           <h2 className="text-[clamp(32px,4vw,52px)] font-extrabold !text-[#0F172A] leading-tight tracking-[-0.02em] mb-4">
             One plan. Every module. No surprises.
           </h2>
-          <p className="text-[16px] !text-[#64748B] mb-8">Priced in ZAR for African businesses</p>
+          <p className="text-[16px] !text-[#64748B] mb-8">
+            Simple, fixed USD pricing — pay with the local payment methods you already use
+          </p>
 
           <div className="inline-flex items-center gap-0.5 p-1 rounded-full bg-[#F1F5F9] my-8">
             <button
@@ -164,13 +166,13 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
                             : { color: '#0F172A' }
                         }
                       >
-                        R{price.toLocaleString('en-ZA')}
+                        ${price.toLocaleString('en-US')}
                       </span>
                       <span className={`text-sm ml-1 ${isPro ? '!text-[#64748B]' : '!text-[#94A3B8]'}`}>/{showAnnual ? 'mo' : 'month'}</span>
                     </div>
                     {showAnnual && (
                       <div className={`text-xs mt-1.5 ${isPro ? '!text-[#64748B]' : '!text-[#94A3B8]'}`}>
-                        billed R{tier.price_zar_annual!.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year
+                        billed ${tier.price_zar_annual!.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year
                       </div>
                     )}
                   </div>
@@ -216,7 +218,7 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
         </motion.div>
 
         <div className="text-center mt-12 pt-12 border-t border-[#F1F5F9]">
-          <p className="!text-[#94A3B8] text-sm mb-4">All prices in ZAR · VAT exclusive · Cancel anytime</p>
+          <p className="!text-[#94A3B8] text-sm mb-4">All prices in USD · Cancel anytime</p>
           <div className="flex justify-center gap-8 flex-wrap">
             {valueStatement.map((item) => (
               <span key={item} className="flex items-center gap-2 text-[13px] font-medium !text-[#64748B]">

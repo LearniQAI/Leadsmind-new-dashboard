@@ -5,7 +5,7 @@ import { useNode, useEditor } from '@craftjs/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useBuilder } from './BuilderContext';
-import { Save, Copy, Trash2, RefreshCw, Settings, Move, Plus, MoreHorizontal } from 'lucide-react';
+import { Save, Copy, Trash2, RefreshCw, Settings, Move, Plus, MoreHorizontal, ChevronDown } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -13,7 +13,7 @@ function cn(...inputs: ClassValue[]) {
 
 export const RenderNode = ({ render }: { render: React.ReactNode }) => {
   const { id } = useNode();
-  const { setBlueprintNodeId, setPropertiesOpen, setSidebarOpen } = useBuilder();
+  const { setBlueprintNodeId, setLeftPanelOpen, setLeftPanelTab } = useBuilder();
   const { actions: editorActions, query } = useEditor();
 
   const { isActive, isHovered, dom, name, parentId } = useNode((node) => ({
@@ -108,18 +108,32 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
         setContextMenu({ x: e.clientX, y: e.clientY });
       }}
     >
-      {/* Selection badge, top-left */}
-      {isActive && id !== 'ROOT' && (
-        <div className="absolute -top-[22px] left-0 bg-dash-accent text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 z-40 pointer-events-none">
+      {/* Hover label, top-left: element name + chevron, shown only while hovering an
+          unselected element (once selected, the left panel's breadcrumb takes over
+          naming the element, so we don't need to keep the pill up).
+          Inset (top-1.5 left-1.5) rather than floated above the box on a negative
+          offset: elements at the very top of the canvas have no clearance above them
+          before Viewport's overflow-hidden frame clips into the badge, which then
+          rendered its clipped remainder smashed onto the element's own top edge —
+          garbled text right under the badge. Sitting inside the box's own bounds
+          can never be clipped by an ancestor, regardless of scroll/padding. */}
+      {isHovered && !isActive && id !== 'ROOT' && (
+        <div className="absolute top-1.5 left-1.5 bg-dash-hover text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 z-40 pointer-events-none shadow-md">
           {name}
+          <ChevronDown size={11} strokeWidth={3} />
         </div>
       )}
 
-      {/* Glass Floating Action Bar on hover/selection */}
+      {/* Icon cluster, top-right, shown on hover or selection — same inset fix as the hover label above. */}
       {(isHovered || isActive) && id !== 'ROOT' && (
-        <div className="absolute -top-[42px] right-0 bg-white/95 border border-dash-border text-dash-textMuted h-[36px] px-1 rounded-xl flex items-center justify-center gap-0.5 z-40 shadow-2xl backdrop-blur-xl transition-opacity motion-reduce:transition-none">
+        <div className="absolute top-1.5 right-1.5 bg-white/95 border border-dash-border text-dash-textMuted h-[36px] px-1 rounded-xl flex items-center justify-center gap-0.5 z-40 shadow-2xl backdrop-blur-xl transition-opacity motion-reduce:transition-none">
           <button
-            onClick={(e) => { e.stopPropagation(); setSidebarOpen(true); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              editorActions.selectNode(); // deselect so the panel shows the elements picker, not this node's properties
+              setLeftPanelTab('elements');
+              setLeftPanelOpen(true);
+            }}
             className="w-7 h-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-accent hover:bg-dash-accent/10 rounded-lg transition-colors motion-reduce:transition-none"
             title="Add element"
           >
@@ -139,7 +153,7 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
             onClick={(e) => {
               e.stopPropagation();
               editorActions.selectNode(id);
-              setPropertiesOpen(true);
+              setLeftPanelOpen(true);
             }}
             className="w-7 h-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-accent hover:bg-dash-accent/10 rounded-lg transition-colors motion-reduce:transition-none"
             title="Settings"
@@ -170,11 +184,11 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
 
       {/* Hover Outline */}
       {isHovered && !isActive && (
-        <div className="absolute inset-0 border-[1.5px] border-dash-accent/50 rounded-[inherit] pointer-events-none z-10 transition-colors duration-200 motion-reduce:transition-none" />
+        <div className="absolute inset-0 border-[1.5px] border-dash-hover/60 rounded-[inherit] pointer-events-none z-10 transition-colors duration-200 motion-reduce:transition-none" />
       )}
-      {/* Active Outline */}
+      {/* Selection Outline */}
       {isActive && (
-        <div className="absolute inset-0 border-[2px] border-dashed border-dash-accent rounded-[inherit] pointer-events-none z-20" />
+        <div className="absolute inset-0 border-2 border-dash-accent rounded-[inherit] pointer-events-none z-20" />
       )}
       {render}
 
@@ -184,7 +198,9 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
            <button
              onClick={(e) => {
                e.stopPropagation();
-               setSidebarOpen(true);
+               editorActions.selectNode();
+               setLeftPanelTab('elements');
+               setLeftPanelOpen(true);
              }}
              className="bg-dash-accent text-white h-7 px-3 rounded-full text-[11px] font-bold shadow-[0_4px_12px_rgba(19,89,255,0.3)] flex items-center gap-1.5 hover:bg-dash-accent/90 hover:scale-105 transition-all motion-reduce:transition-none motion-reduce:hover:scale-100"
            >
@@ -202,10 +218,7 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
         >
           <button
             onClick={() => {
-              setPropertiesOpen(true);
-              window.dispatchEvent(new CustomEvent('open-floating-properties', {
-                detail: { x: contextMenu.x, y: contextMenu.y }
-              }));
+              setLeftPanelOpen(true);
               setContextMenu(null);
             }}
             className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-accent/10 rounded-xl transition-all motion-reduce:transition-none text-left w-full"

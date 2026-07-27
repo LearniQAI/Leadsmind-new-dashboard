@@ -7,6 +7,7 @@ import { ColorPicker } from '../ColorPicker';
 
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
+import { PropertyGroup, SliderWithInput } from '../inspector/primitives';
 
 export const ParagraphSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -25,21 +26,15 @@ export const ParagraphSettings = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block flex justify-between">
-          <span>Font size</span>
-          <span className="text-primary">{getDisplayValue('fontSize', fontSize)}px</span>
-        </Label>
-        <input
-          type="range"
-          min="10"
-          max="72"
-          value={getDisplayValue('fontSize', fontSize) || 16}
-          onChange={(e) => setResponsiveValue('fontSize', Number(e.target.value))}
-          className="w-full accent-primary"
-        />
-      </div>
+    <PropertyGroup title="Typography">
+      <SliderWithInput
+        label="Font size"
+        value={getDisplayValue('fontSize', fontSize) || 16}
+        onChange={(val) => setResponsiveValue('fontSize', val)}
+        min={10}
+        max={72}
+        numeric
+      />
 
       <div className="space-y-2">
         <Label className="text-xs font-bold !text-dash-textMuted block">Line height</Label>
@@ -78,6 +73,6 @@ export const ParagraphSettings = () => {
           ))}
         </div>
       </div>
-    </div>
+    </PropertyGroup>
   );
 };
