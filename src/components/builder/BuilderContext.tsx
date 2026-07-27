@@ -7,10 +7,14 @@ interface BuilderContextType {
   onUpdateWebsite: (data: any) => void;
   viewMode: 'desktop' | 'tablet' | 'mobile';
   setViewMode: (mode: 'desktop' | 'tablet' | 'mobile') => void;
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
-  propertiesOpen: boolean;
-  setPropertiesOpen: (open: boolean) => void;
+  leftPanelOpen: boolean;
+  setLeftPanelOpen: (open: boolean) => void;
+  // Which of Sidebar's rail tabs is active (elements/layers/settings/page/steps).
+  // Lifted out of Sidebar so other parts of the chrome (e.g. RenderNode's "Add
+  // element" action) can jump straight to a specific tab, and so the tab survives
+  // BuilderLeftPanel swapping Sidebar out for ElementProperties and back.
+  leftPanelTab: string;
+  setLeftPanelTab: (tab: string) => void;
   pages: any[];
   websiteId?: string;
   funnelId?: string;
@@ -46,8 +50,8 @@ export function BuilderProvider({
   onUpdateWebsite: externalUpdate 
 }: BuilderProviderProps) {
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [propertiesOpen, setPropertiesOpen] = useState(true);
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [leftPanelTab, setLeftPanelTab] = useState('elements');
   const [previewMode, setPreviewMode] = useState(false);
   const [builderSettings, setBuilderSettings] = useState<any>({});
   const [blueprintNodeId, setBlueprintNodeId] = useState<string | null>(null);
@@ -77,10 +81,10 @@ export function BuilderProvider({
         onUpdateWebsite: externalUpdate, 
         viewMode, 
         setViewMode,
-        sidebarOpen,
-        setSidebarOpen,
-        propertiesOpen,
-        setPropertiesOpen,
+        leftPanelOpen,
+        setLeftPanelOpen,
+        leftPanelTab,
+        setLeftPanelTab,
         pages,
         websiteId,
         funnelId,
@@ -109,10 +113,10 @@ export function useBuilder() {
       onUpdateWebsite: () => {},
       viewMode: 'desktop' as const,
       setViewMode: () => {},
-      sidebarOpen: true,
-      setSidebarOpen: () => {},
-      propertiesOpen: true,
-      setPropertiesOpen: () => {},
+      leftPanelOpen: true,
+      setLeftPanelOpen: () => {},
+      leftPanelTab: 'elements',
+      setLeftPanelTab: () => {},
       pages: [],
       websiteId: undefined,
       funnelId: undefined,

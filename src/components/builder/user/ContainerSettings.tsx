@@ -15,6 +15,7 @@ import { BoxModelControl } from '../inspector/BoxModelControl';
 import { TypographyControl } from '../inspector/TypographyControl';
 import { BackgroundBorderControl } from '../inspector/BackgroundBorderControl';
 import { CustomClassControl } from '../inspector/CustomClassControl';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const ContainerSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -73,21 +74,15 @@ export const ContainerSettings = () => {
         onChange={(val) => setProp((props: any) => props.backgroundColor = val)}
       />
 
-      {/* Internal Padding with badge */}
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <Label className="text-xs font-bold !text-dash-textMuted block">Internal padding</Label>
-          <span className="text-[10px] font-bold text-dash-accent bg-dash-accent/10 px-2 py-0.5 rounded-full">
-            {getDisplayValue('padding', padding)}px
-          </span>
-        </div>
-        <input
-          type="range" min="0" max="128" step="4"
-          value={getDisplayValue('padding', padding) || 0}
-          onChange={(e) => setResponsiveValue('padding', Number(e.target.value))}
-          className="w-full accent-dash-accent mt-1"
-        />
-      </div>
+      <SliderWithInput
+        label="Internal padding"
+        value={getDisplayValue('padding', padding) || 0}
+        onChange={(val) => setResponsiveValue('padding', val)}
+        min={0}
+        max={128}
+        step={4}
+        numeric
+      />
 
       <Separator className="bg-dash-border my-2" />
       <FlexboxControl />

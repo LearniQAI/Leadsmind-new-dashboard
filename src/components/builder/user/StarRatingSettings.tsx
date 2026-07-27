@@ -8,6 +8,7 @@ import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
 import { Button } from '../../ui/button';
 import { Switch } from '../../ui/switch';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const StarRatingSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -19,16 +20,16 @@ export const StarRatingSettings = () => {
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <Label className="text-xs font-bold !text-dash-textMuted">Rating ({rating})</Label>
         <div className="flex flex-col gap-3">
-           <input
-            type="range"
-            min="0"
-            max={count}
-            step="0.5"
+          <SliderWithInput
+            label="Rating"
             value={rating}
-            onChange={(e) => setProp((p: any) => p.rating = Number(e.target.value))}
-            className="w-full accent-primary"
+            onChange={(val) => setProp((p: any) => p.rating = val)}
+            min={0}
+            max={count}
+            step={0.5}
+            unit=""
+            numeric
           />
           <div className="flex justify-between items-center px-1">
              <Button
@@ -55,10 +56,7 @@ export const StarRatingSettings = () => {
       <div className="space-y-4">
         <Label className="text-xs font-bold !text-dash-textMuted">Appearance</Label>
         <ColorPicker label="Star color" value={color} onChange={(val) => setProp((p: any) => p.color = val)} />
-        <div className="space-y-2">
-           <Label className="text-[10px] font-bold !text-dash-textMuted">Star size ({size}px)</Label>
-           <input type="range" min="12" max="64" step="2" value={size} onChange={(e) => setProp((p: any) => p.size = Number(e.target.value))} className="w-full accent-primary" />
-        </div>
+        <SliderWithInput label="Star size" value={size} onChange={(val) => setProp((p: any) => p.size = val)} min={12} max={64} step={2} numeric />
       </div>
 
       <div className="space-y-4">

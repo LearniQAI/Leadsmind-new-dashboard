@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ColorPicker } from '../ColorPicker';
 import { IconPicker } from '../IconPicker';
 import { LinkSelector } from '../LinkSelector';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const ButtonSettings = () => {
   const { actions: { setProp }, text, size, variant, color, textColor, borderRadius, width, link, icon, iconPosition } = useNode((node) => ({
@@ -68,15 +69,15 @@ export const ButtonSettings = () => {
         <ColorPicker label="Text color" value={textColor} onChange={(val) => setProp((props: any) => props.textColor = val)} />
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Border radius ({borderRadius}px)</Label>
-        <input
-          type="range" min="0" max="50" step="2"
-          value={borderRadius || 0}
-          onChange={(e) => setProp((props: any) => props.borderRadius = Number(e.target.value))}
-          className="w-full accent-dash-accent"
-        />
-      </div>
+      <SliderWithInput
+        label="Border radius"
+        value={borderRadius || 0}
+        onChange={(val) => setProp((props: any) => props.borderRadius = val)}
+        min={0}
+        max={50}
+        step={2}
+        numeric
+      />
 
       <div className="space-y-3 pt-2 border-t border-dash-border">
         <Label className="text-xs font-bold !text-dash-textMuted block">Icon</Label>

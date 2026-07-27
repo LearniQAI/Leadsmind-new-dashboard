@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
+import { PropertyGroup, SliderWithInput } from '../inspector/primitives';
 
 export const HeadingSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -41,22 +42,45 @@ export const HeadingSettings = () => {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Font weight</Label>
-        <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
-          {['normal', 'medium', 'semibold', 'bold', 'black'].map((w) => (
-            <button
-              key={w}
-              onClick={() => setResponsiveValue('fontWeight', w)}
-              className={`flex-1 text-[9px] py-1.5 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('fontWeight', fontWeight) === w ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
-            >
-              {w}
-            </button>
-          ))}
+      <PropertyGroup title="Typography">
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <SliderWithInput
+              label="Font size override"
+              value={getDisplayValue('fontSize', fontSize) || 32}
+              onChange={(val) => setResponsiveValue('fontSize', val)}
+              min={8}
+              max={160}
+              numeric
+            />
+          </div>
+          {/* The slider always writes an explicit size; this is the only way back to the
+              heading level's built-in auto size once you've touched the slider. */}
+          <button
+            type="button"
+            onClick={() => setResponsiveValue('fontSize', undefined)}
+            className="h-8 px-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg border border-dash-border transition-colors motion-reduce:transition-none shrink-0"
+            title="Reset to the heading level's default size"
+          >
+            Auto
+          </button>
         </div>
-      </div>
 
-      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-xs font-bold !text-dash-textMuted block">Font weight</Label>
+          <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
+            {['normal', 'medium', 'semibold', 'bold', 'black'].map((w) => (
+              <button
+                key={w}
+                onClick={() => setResponsiveValue('fontWeight', w)}
+                className={`flex-1 text-[9px] py-1.5 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('fontWeight', fontWeight) === w ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
+              >
+                {w}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <ColorPicker
           label="Text color"
           value={color || '#111827'}
@@ -64,34 +88,20 @@ export const HeadingSettings = () => {
         />
 
         <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted flex justify-between">
-            <span>Size custom override (px)</span>
-            <span className="text-primary">{getDisplayValue('fontSize', fontSize) || 'Auto'}</span>
-          </Label>
-          <input
-            type="number"
-            placeholder="Auto"
-            value={getDisplayValue('fontSize', fontSize) || ''}
-            onChange={(e) => setResponsiveValue('fontSize', e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full h-8 bg-white border border-dash-border rounded px-2 text-xs !text-dash-text"
-          />
+          <Label className="text-xs font-bold !text-dash-textMuted block">Text align</Label>
+          <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
+            {['left', 'center', 'right', 'justify'].map((align) => (
+              <button
+                key={align}
+                onClick={() => setResponsiveValue('textAlign', align)}
+                className={`flex-1 text-[10px] py-1 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('textAlign', textAlign) === align ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
+              >
+                {align}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-
-      <div className="space-y-2 pt-2 border-t border-dash-border">
-        <Label className="text-xs font-bold !text-dash-textMuted block mt-2">Text align</Label>
-        <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
-          {['left', 'center', 'right', 'justify'].map((align) => (
-            <button
-              key={align}
-              onClick={() => setResponsiveValue('textAlign', align)}
-              className={`flex-1 text-[10px] py-1 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('textAlign', textAlign) === align ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
-            >
-              {align}
-            </button>
-          ))}
-        </div>
-      </div>
+      </PropertyGroup>
     </div>
   );
 };

@@ -3,6 +3,7 @@
 import React from 'react';
 import { useNode } from '@craftjs/core';
 import { Label } from '@/components/ui/label';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const ColumnsSettings = () => {
   const { actions: { setProp }, layout, gap, padding } = useNode((node) => ({
@@ -36,29 +37,24 @@ export const ColumnsSettings = () => {
       </div>
 
       <div className="space-y-4 pt-2 border-t border-dash-border">
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <Label className="text-xs font-bold !text-dash-textMuted">Gap spacing ({gap}px)</Label>
-          </div>
-          <input
-            type="range" min="0" max="64" step="4"
-            value={gap || 0}
-            onChange={(e) => setProp((props: any) => props.gap = Number(e.target.value))}
-            className="w-full accent-primary"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <Label className="text-xs font-bold !text-dash-textMuted">Internal padding ({padding}px)</Label>
-          </div>
-          <input
-            type="range" min="0" max="64" step="4"
-            value={padding || 0}
-            onChange={(e) => setProp((props: any) => props.padding = Number(e.target.value))}
-            className="w-full accent-primary"
-          />
-        </div>
+        <SliderWithInput
+          label="Gap spacing"
+          value={gap || 0}
+          onChange={(val) => setProp((props: any) => props.gap = val)}
+          min={0}
+          max={64}
+          step={4}
+          numeric
+        />
+        <SliderWithInput
+          label="Internal padding"
+          value={padding || 0}
+          onChange={(val) => setProp((props: any) => props.padding = val)}
+          min={0}
+          max={64}
+          step={4}
+          numeric
+        />
       </div>
     </div>
   );

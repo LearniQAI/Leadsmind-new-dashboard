@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ColorPicker } from '../ColorPicker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { SliderWithInput } from '../inspector/primitives';
 
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
@@ -146,42 +147,33 @@ export const HeroSettings = () => {
         </div>
 
         <div className="space-y-4 pt-2">
-          <div className="space-y-2">
-             <Label className="text-[10px] font-bold !text-dash-textMuted flex justify-between">
-              <span>Content max width</span>
-              <span className="text-primary">{getDisplayValue('contentMaxWidth', contentMaxWidth)}px</span>
-             </Label>
-             <input
-              type="range" min="400" max="1400" step="50"
-              value={getDisplayValue('contentMaxWidth', contentMaxWidth)}
-              onChange={(e) => setResponsiveValue('contentMaxWidth', Number(e.target.value))}
-              className="w-full accent-primary"
-             />
-          </div>
-          <div className="space-y-2">
-             <Label className="text-[10px] font-bold !text-dash-textMuted flex justify-between">
-              <span>Section padding</span>
-              <span className="text-primary">{getDisplayValue('padding', padding)}px</span>
-             </Label>
-             <input
-              type="range" min="20" max="200" step="10"
-              value={getDisplayValue('padding', padding)}
-              onChange={(e) => setResponsiveValue('padding', Number(e.target.value))}
-              className="w-full accent-primary"
-             />
-          </div>
-          <div className="space-y-2">
-             <Label className="text-[10px] font-bold !text-dash-textMuted flex justify-between">
-              <span>Inner gap</span>
-              <span className="text-primary">{getDisplayValue('gap', gap)}px</span>
-             </Label>
-             <input
-              type="range" min="0" max="100" step="8"
-              value={getDisplayValue('gap', gap)}
-              onChange={(e) => setResponsiveValue('gap', Number(e.target.value))}
-              className="w-full accent-primary"
-             />
-          </div>
+          <SliderWithInput
+            label="Content max width"
+            value={getDisplayValue('contentMaxWidth', contentMaxWidth)}
+            onChange={(val) => setResponsiveValue('contentMaxWidth', val)}
+            min={400}
+            max={1400}
+            step={50}
+            numeric
+          />
+          <SliderWithInput
+            label="Section padding"
+            value={getDisplayValue('padding', padding)}
+            onChange={(val) => setResponsiveValue('padding', val)}
+            min={20}
+            max={200}
+            step={10}
+            numeric
+          />
+          <SliderWithInput
+            label="Inner gap"
+            value={getDisplayValue('gap', gap)}
+            onChange={(val) => setResponsiveValue('gap', val)}
+            min={0}
+            max={100}
+            step={8}
+            numeric
+          />
         </div>
       </TabsContent>
 
@@ -222,9 +214,8 @@ export const HeroSettings = () => {
             </div>
           ) : (
             layout === 'background' && (
-              <div className="space-y-2 pt-2">
-                <Label className="text-[10px] font-bold !text-dash-textMuted">Overlay opacity ({overlayOpacity}%)</Label>
-                <input type="range" min="0" max="90" step="5" value={overlayOpacity} onChange={(e) => setProp((p: any) => p.overlayOpacity = Number(e.target.value))} className="w-full accent-primary" />
+              <div className="pt-2">
+                <SliderWithInput label="Overlay opacity" value={overlayOpacity} onChange={(val) => setProp((p: any) => p.overlayOpacity = val)} min={0} max={90} step={5} unit="%" numeric />
               </div>
             )
           )}

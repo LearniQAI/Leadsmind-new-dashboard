@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Upload, Loader2, Video as VideoIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const VideoSettings = () => {
   const { actions: { setProp }, url, provider, autoPlay, controls, loop, muted, borderRadius } = useNode((node) => ({
@@ -163,16 +164,8 @@ export const VideoSettings = () => {
         </div>
       </div>
 
-      <div className="space-y-2 pt-2 border-t border-dash-border">
-        <Label className="text-xs font-bold !text-dash-textMuted">Border radius ({borderRadius}px)</Label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={borderRadius || 0}
-          onChange={(e) => setProp((props: any) => props.borderRadius = Number(e.target.value))}
-          className="w-full accent-primary"
-        />
+      <div className="pt-2 border-t border-dash-border">
+        <SliderWithInput label="Border radius" value={borderRadius || 0} onChange={(val) => setProp((props: any) => props.borderRadius = val)} min={0} max={100} numeric />
       </div>
     </div>
   );

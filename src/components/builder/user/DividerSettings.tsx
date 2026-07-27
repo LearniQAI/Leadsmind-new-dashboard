@@ -5,6 +5,7 @@ import { useNode } from '@craftjs/core';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { ColorPicker } from '../ColorPicker';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const DividerSettings = () => {
   const { actions: { setProp }, weight, color, width, alignment, paddingTop, paddingBottom } = useNode((node) => ({
@@ -18,17 +19,14 @@ export const DividerSettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Thickness ({weight}px)</Label>
-        <input
-          type="range"
-          min="1"
-          max="10"
-          value={weight || 1}
-          onChange={(e) => setProp((props: any) => props.weight = Number(e.target.value))}
-          className="w-full accent-dash-accent"
-        />
-      </div>
+      <SliderWithInput
+        label="Thickness"
+        value={weight || 1}
+        onChange={(val) => setProp((props: any) => props.weight = val)}
+        min={1}
+        max={10}
+        numeric
+      />
 
       <ColorPicker
         label="Line color"

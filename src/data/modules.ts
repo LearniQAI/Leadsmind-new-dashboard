@@ -94,9 +94,9 @@ export const modules: ModuleContent[] = [
     color: '#1359FF',
     primary: true,
     published: true,
-    metaTitle: 'CRM & Sales Software for South African SMEs',
+    metaTitle: 'CRM Software for African Businesses',
     metaDescription:
-      'Track every lead from first message to closed deal with a contact database, drag-and-drop pipeline, AI lead scoring, and a built-in Lead Finder — part of the LeadsMind platform.',
+      'Track every lead, deal, and follow-up in one pipeline — with AI lead scoring and a built-in Lead Finder. Built for African business, fixed USD pricing.',
     hero: {
       eyebrow: 'CRM & SALES PIPELINE',
       headline: 'Stop chasing leads in a spreadsheet.',
@@ -121,7 +121,7 @@ export const modules: ModuleContent[] = [
         },
         {
           kicker: 'No system to find new leads',
-          body: "Growth depends on referrals and luck, because outbound prospecting means hiring an agency you can't afford yet.",
+          body: "Growth depends on referrals and luck across most African markets, because outbound prospecting means hiring an agency you can't afford yet.",
         },
       ],
     },
@@ -160,7 +160,7 @@ export const modules: ModuleContent[] = [
     },
     finalCta: {
       headline: 'Your next customer is one Lead Finder search away.',
-      subtext: 'Start free and see your whole pipeline in one place — today.',
+      subtext: 'Start finding and closing more deals free — fixed USD pricing, no credit card needed.',
       gradientFrom: '#1359FF',
       gradientTo: '#7B3FF2',
     },
@@ -175,26 +175,26 @@ export const modules: ModuleContent[] = [
     color: '#7B3FF2',
     primary: true,
     published: true,
-    metaTitle: 'LMS & Online Course Platform for South African Businesses',
+    metaTitle: 'Course & LMS Software for African Creators',
     metaDescription:
-      'Build and sell courses with a full course builder, structured cohorts, SCORM support, an AI quiz generator, and automatic certificates — part of the LeadsMind platform.',
+      'Build courses, issue certificates, and track student progress — with AI-generated quizzes and drip content. Built for creators across Africa.',
     hero: {
       eyebrow: 'ONLINE COURSES',
       headline: 'Run your course business without three extra tools.',
       paragraph:
-        'A full LMS — certificates, SCORM, drip content, and student analytics — alongside the CRM, email marketing, and invoicing you need to actually run the business around the course. One login, priced in Rands, instead of USD tools that move with the exchange rate.',
+        'A full LMS — certificates, SCORM, drip content, and student analytics — alongside the CRM, email marketing, and invoicing you need to actually run the business around the course. One login, fixed USD pricing, and local African payment methods at checkout.',
       capabilityTags: ['Course Builder', 'Certificates', 'Cohorts', 'AI Quizzes'],
       ctaLabel: 'Start Free Trial',
       finePrint: 'No credit card required',
       visualKey: 'lms-hero',
     },
     pain: {
-      eyebrow: 'THE PROBLEM WITH KAJABI-STYLE TOOLS',
+      eyebrow: 'THE PROBLEM WITH STITCHING TOOLS TOGETHER',
       headline: 'Delivering the course was never the hard part. Running the business around it was.',
       points: [
         {
-          kicker: 'USD pricing that moves',
-          body: 'R3,000–R5,000/month for Kajabi, in dollars — a cost that quietly rises every time the Rand weakens.',
+          kicker: 'Five different logins, five different bills',
+          body: 'Course creators typically stitch together a course host, a CRM, an email tool, and a payment processor — each billed separately, none of them talking to each other.',
         },
         {
           kicker: 'Three extra tools required',
@@ -240,8 +240,8 @@ export const modules: ModuleContent[] = [
         'Your course platform, CRM, email marketing, and invoicing already share the same student record — so nothing needs re-entering twice.',
     },
     finalCta: {
-      headline: 'Built for South African course creators, trainers, and L&D teams.',
-      subtext: 'Start free and launch your first cohort without adding a single extra tool.',
+      headline: 'Built for course creators, trainers, and L&D teams across Africa.',
+      subtext: 'Build your first course free — no separate CRM or invoicing tool required.',
       gradientFrom: '#7B3FF2',
       gradientTo: '#FF3CAC',
     },
@@ -249,37 +249,37 @@ export const modules: ModuleContent[] = [
   {
     slug: 'accounting-finance',
     label: 'Accounting & Finance',
-    shortDescription: 'VAT201, IRP6, EMP201, and payroll — built in.',
+    shortDescription: 'Tax filing support, payroll, and bank reconciliation — built in.',
     cardDescription:
-      'Invoices get made in one tool, expenses tracked in another, and the two rarely match. LeadsMind handles VAT201, IRP6, and EMP201 submissions, PAYE/UIF/SDL payroll, and bank reconciliation with the banks you already use — all posting to a real ledger.',
+      'Invoices get made in one tool, expenses tracked in another, and the two rarely match. LeadsMind handles compliance-minded tax filing support, statutory payroll, and bank reconciliation with the banks you already use — all posting to a real ledger.',
     icon: Wallet,
     color: '#FF8A00',
     primary: true,
     published: true,
-    metaTitle: 'Accounting & Payroll Software for South African SMEs',
+    metaTitle: 'Compliant Accounting Software for African SMEs',
     metaDescription:
-      'VAT201, IRP6, and EMP201 submissions, PAYE/UIF/SDL payroll, direct bank reconciliation, and a guided AI accountant wizard — part of the LeadsMind platform.',
+      'Tax filings, payroll, and bank reconciliation — built to understand African business, not adapted from a foreign system.',
     hero: {
       eyebrow: 'ACCOUNTING & PAYROLL',
-      headline: "SARS compliance that doesn't need an accountant on speed dial.",
+      headline: 'Accounting that actually understands your business.',
       paragraph:
-        'VAT201, IRP6, EMP201, and PAYE/UIF/SDL payroll — built in, not bolted on. Bank reconciliation with FNB, Absa, Nedbank, and Capitec, and a guided AI accountant wizard that walks you through setup step by step.',
-      capabilityTags: ['VAT201', 'IRP6', 'EMP201', 'Payroll'],
+        'Tax filings, payroll, and bank reconciliation — handled inside the same platform as your CRM, not bolted on from a foreign tax system. Deepest compliance coverage today is for South Africa (VAT201, IRP6, EMP201), expanding market by market.',
+      capabilityTags: ['Tax Filing Support', 'Payroll', 'Bank Reconciliation', 'AI Wizard'],
       ctaLabel: 'Start Free Trial',
       finePrint: 'No credit card required',
       visualKey: 'accounting-hero',
     },
     pain: {
       eyebrow: 'THE PROBLEM WITH INFORMAL BOOKKEEPING',
-      headline: "SARS doesn't send a friendly reminder. It sends a penalty.",
+      headline: 'Most accounting software was adapted for African business, not built for it.',
       points: [
         {
           kicker: 'Missed deadlines, real penalties',
           body: 'Informal spreadsheets and shoebox receipts turn tax season into audit anxiety, with real financial consequences for a missed filing.',
         },
         {
-          kicker: 'A separate R850/month tool',
-          body: 'Xero handles accounting well, but knows nothing about your CRM, invoicing, or client communication — another login, another cost.',
+          kicker: 'A separate tool, another login',
+          body: 'Foreign accounting tools handle the books well, but know nothing about your CRM, invoicing, or client communication — another login, another cost.',
         },
         {
           kicker: 'No real-time financial picture',
@@ -289,15 +289,19 @@ export const modules: ModuleContent[] = [
     },
     featureGroups: {
       eyebrow: "WHAT'S INSIDE",
-      headline: 'Everything SARS asks for, without the dread',
+      headline: 'Built around real local tax requirements, not guessed at',
       groups: [
         {
           title: 'Compliance',
-          items: ['VAT201 submissions', 'IRP6 provisional tax', 'EMP201 filings', 'PAYE, UIF, and SDL payroll deductions'],
+          items: [
+            'Tax filing support, prepared and export-ready',
+            'Currently deepest for South Africa: VAT201, IRP6, EMP201',
+            'Statutory payroll deductions handled correctly',
+          ],
         },
         {
           title: 'Banking',
-          items: ['Direct feeds: FNB, Absa, Nedbank, Capitec, Investec', 'Automated transaction reconciliation'],
+          items: ['Bank reconciliation connected to major local banks', 'Automated transaction reconciliation'],
         },
         {
           title: 'Visibility',
@@ -318,7 +322,7 @@ export const modules: ModuleContent[] = [
     },
     finalCta: {
       headline: 'File with confidence. Get paid faster.',
-      subtext: 'Start free and get your books SARS-ready from your very first transaction.',
+      subtext: 'Try compliance-ready accounting free — see your first reconciliation in minutes.',
       gradientFrom: '#FF8A00',
       gradientTo: '#FF3CAC',
     },
@@ -328,20 +332,20 @@ export const modules: ModuleContent[] = [
     label: 'Invoicing',
     shortDescription: 'Recurring billing, payment links, automated reminders.',
     cardDescription:
-      "Invoices go out, then nothing happens until you make an awkward call. LeadsMind sends professional invoices with PayFast, Stripe, and EFT payment links built in, plus a 6-step reminder sequence that chases overdue payments for you.",
+      "Invoices go out, then nothing happens until you make an awkward call. LeadsMind sends professional invoices with local payment gateways, Stripe, and EFT payment links built in, plus a 6-step reminder sequence that chases overdue payments for you.",
     icon: Receipt,
     color: '#34B53A',
     primary: true,
     published: true,
-    metaTitle: 'Invoicing Software for South African SMEs',
+    metaTitle: 'Invoicing Software with Automated Reminders',
     metaDescription:
-      'Send professional, branded invoices with recurring billing, PayFast/Stripe/EFT payment links, and a 6-step automated reminder sequence — part of the LeadsMind platform.',
+      'Professional invoices, recurring billing, and a 6-step automated reminder sequence — so overdue payments get collected without the awkward call.',
     hero: {
       eyebrow: 'INVOICING',
       headline: 'Get paid without the awkward follow-up call.',
       paragraph:
         'Professional, branded invoices with recurring billing, payment plans, and an automated reminder sequence that chases overdue payments for you.',
-      capabilityTags: ['Recurring Billing', 'PayFast', 'EFT', 'Auto Reminders'],
+      capabilityTags: ['Recurring Billing', 'Local Payment Methods', 'EFT', 'Auto Reminders'],
       ctaLabel: 'Start Free Trial',
       finePrint: 'No credit card required',
       visualKey: 'invoicing-hero',
@@ -375,7 +379,7 @@ export const modules: ModuleContent[] = [
         {
           title: 'Get Paid',
           items: [
-            'PayFast, Stripe, and EFT payment links on every invoice',
+            'Local payment gateways, Stripe, and EFT payment links on every invoice',
             'Bank reconciliation ties payments straight to your ledger',
           ],
         },
@@ -397,7 +401,7 @@ export const modules: ModuleContent[] = [
     },
     finalCta: {
       headline: 'Send the invoice. Let the reminders do the rest.',
-      subtext: 'Start free and get paid on your very first invoice.',
+      subtext: 'Send your first invoice free — and never chase a payment manually again.',
       gradientFrom: '#34B53A',
       gradientTo: '#00B2FF',
     },
@@ -412,9 +416,9 @@ export const modules: ModuleContent[] = [
     color: '#06B6D4',
     primary: true,
     published: true,
-    metaTitle: 'Business Phone & IVR System for South African SMEs',
+    metaTitle: 'Business Phone System & IVR for African SMEs',
     metaDescription:
-      'A business phone number, a visual IVR menu builder, click-to-call from any CRM contact, and AI voice prompts — billed directly through your own Twilio account, part of the LeadsMind platform.',
+      'A real business number, call menus, and click-to-call — without a separate phone system or a hardware contract. Billed directly through your own Twilio account.',
     hero: {
       eyebrow: 'PHONE & IVR',
       headline: 'A business phone system that answers exactly the way you want it to.',
@@ -495,9 +499,9 @@ export const modules: ModuleContent[] = [
     color: '#00B2FF',
     primary: true,
     published: true,
-    metaTitle: 'Sales Funnels & Website Builder for South African SMEs',
+    metaTitle: 'Website & Funnel Builder for African Businesses',
     metaDescription:
-      'A drag-and-drop builder for landing pages, full websites, and complete sales funnels, published from a professional template library — part of the LeadsMind platform.',
+      'Drag-and-drop landing pages, funnels, and a full website builder — mobile-responsive, SEO-ready, with checkout built in.',
     hero: {
       eyebrow: 'SALES FUNNELS & WEBSITE BUILDER',
       headline: 'Build pages that convert, without touching code.',
@@ -510,7 +514,7 @@ export const modules: ModuleContent[] = [
     },
     pain: {
       eyebrow: 'THE PROBLEM WITH WAITING ON A DEVELOPER',
-      headline: 'A campaign that needs a developer first is a campaign that ships two weeks late.',
+      headline: 'For most business owners across Africa, "update the homepage" turns into a multi-week project.',
       points: [
         {
           kicker: 'A landing page takes a developer and a week',
@@ -578,9 +582,9 @@ export const modules: ModuleContent[] = [
     color: '#FF3CAC',
     primary: true,
     published: true,
-    metaTitle: 'Email & WhatsApp Marketing Software for South African SMEs',
+    metaTitle: 'Email & WhatsApp Marketing Software for African Businesses',
     metaDescription:
-      'Email campaigns, automated sequences, and segmentation, alongside WhatsApp Business, SMS, and social — every channel in one inbox, part of the LeadsMind platform.',
+      '37+ email templates, automated sequences, and WhatsApp — all from one inbox. Built for how African customers actually communicate.',
     hero: {
       eyebrow: 'EMAIL & WHATSAPP MARKETING',
       headline: 'Every channel your customers use, one place to manage it.',
@@ -592,8 +596,8 @@ export const modules: ModuleContent[] = [
       visualKey: 'email-whatsapp-hero',
     },
     pain: {
-      eyebrow: 'THE PROBLEM WITH FIVE MARKETING APPS',
-      headline: "A client's history lives in five apps — and no single one has the whole story.",
+      eyebrow: 'THE PROBLEM WITH TREATING WHATSAPP AS AN AFTERTHOUGHT',
+      headline: "For most customers across Africa, WhatsApp isn't a nice-to-have channel — it's the main one.",
       points: [
         {
           kicker: 'One client, five separate threads',
@@ -655,9 +659,9 @@ export const modules: ModuleContent[] = [
     color: '#8B5CF6',
     primary: true,
     published: true,
-    metaTitle: 'Workflow Automation for South African Businesses',
+    metaTitle: 'Business Automation Software for African SMEs',
     metaDescription:
-      'A visual, no-code workflow builder with 90+ trigger events, 40+ actions across every module, and an AI builder that writes flows from plain English — part of the LeadsMind platform.',
+      'Visual workflows, 90+ triggers, and an AI builder — automate follow-ups, reminders, and tasks without writing a line of code.',
     hero: {
       eyebrow: 'WORKFLOW AUTOMATION',
       headline: 'The engine that runs your business while you sleep.',
@@ -707,8 +711,8 @@ export const modules: ModuleContent[] = [
           ],
         },
         {
-          title: 'Built for South Africa',
-          items: ['LENA AI builds flows from a plain-English description', '50+ pre-built South African automation templates'],
+          title: 'Built for African Business',
+          items: ['LENA AI builds flows from a plain-English description', '50+ pre-built automation templates for African business'],
         },
       ],
     },
@@ -728,21 +732,21 @@ export const modules: ModuleContent[] = [
   {
     slug: 'ai-tools',
     label: 'AI Tools',
-    shortDescription: 'Content, scoring, and a CRM assistant, tuned for SA.',
+    shortDescription: 'Content, scoring, and a CRM assistant, tuned for African business.',
     cardDescription:
-      "Generic AI tools guess at a South African market they weren't built for. LeadsMind's AI is woven through the platform — writing content, scoring leads, drafting support replies, and generating IVR voice prompts — tuned for South African English.",
+      "Generic AI tools guess at an African market they weren't built for. LeadsMind's AI is woven through the platform — writing content, scoring leads, drafting support replies, and generating IVR voice prompts — tuned for African business and languages.",
     icon: Sparkles,
     color: '#EC4899',
     primary: true,
     published: true,
-    metaTitle: 'AI Tools for South African Businesses',
+    metaTitle: 'AI Tools for African Business',
     metaDescription:
-      'AI content writing, lead scoring, a CRM assistant, and AI voice tools tuned for South African English — woven through the LeadsMind platform, not bolted on.',
+      'AI content writing, lead scoring, meeting intelligence, and a CRM assistant — tuned for African business and languages.',
     hero: {
       eyebrow: 'AI TOOLS',
-      headline: 'AI that actually understands South African business.',
+      headline: 'Your own AI team, built into the platform.',
       paragraph:
-        'Content generation, lead scoring, and voice tools tuned for South African English — not a US model guessing at your market.',
+        'Content writing, lead scoring, meeting notes, and a CRM assistant — AI that’s tuned for African business, not translated for it.',
       capabilityTags: ['Content Writer', 'Lead Scoring', 'CRM Assistant', 'AI Voice'],
       ctaLabel: 'Start Free Trial',
       finePrint: 'No credit card required',
@@ -750,11 +754,11 @@ export const modules: ModuleContent[] = [
     },
     pain: {
       eyebrow: 'THE PROBLEM WITH GENERIC AI TOOLS',
-      headline: "Most AI tools were trained on a market that isn't yours.",
+      headline: "Most AI tools are built for a global, English-first market. They don't understand yours.",
       points: [
         {
-          kicker: "Doesn't sound South African",
-          body: 'US-trained writing tools default to American spelling, idiom, and tone — and it shows in every email and post they draft.',
+          kicker: "Doesn't understand African business context",
+          body: "US-trained writing tools default to American spelling, idiom, and tone, and don't speak the languages a lot of your customers actually use — and it shows in every email and post they draft.",
         },
         {
           kicker: 'One chatbot, bolted on',
@@ -784,7 +788,7 @@ export const modules: ModuleContent[] = [
         },
         {
           title: 'Built for Africa',
-          items: ['Tuned for South African English', 'Expanding into Afrikaans, Zulu, Sotho, and Xhosa'],
+          items: ['Multilingual support built with African languages in mind, not just English', 'Deepest today in South African English, expanding into Afrikaans, Zulu, Sotho, and Xhosa'],
         },
       ],
     },
@@ -809,11 +813,11 @@ export const modules: ModuleContent[] = [
       "Employee records in a folder, leave tracked in email, payroll calculated by hand — that's how one missed request becomes an awkward conversation. LeadsMind keeps records, attendance, leave, and payroll together in one place.",
     icon: Users,
     color: '#FF3CAC',
-    primary: false,
+    primary: true,
     published: true,
-    metaTitle: 'HR & Payroll Software for South African Teams',
+    metaTitle: 'HR & Payroll Software for African Businesses',
     metaDescription:
-      'Manage employee records, clock-in/out time tracking, leave requests, scheduling, and payroll runs with automatic payslips — part of the LeadsMind platform.',
+      'Employee records, leave management, time tracking, and payroll — statutory deductions handled correctly, every pay cycle.',
     hero: {
       eyebrow: 'PEOPLE OPERATIONS',
       headline: 'Payroll day, without the spreadsheet fire drill.',

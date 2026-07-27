@@ -9,6 +9,7 @@ import { Ghost } from 'lucide-react';
 
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const SectionSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -50,31 +51,24 @@ export const SectionSettings = () => {
       <div className="space-y-4">
         <Label className="text-xs font-bold !text-dash-textMuted block">Vertical spacing</Label>
 
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <Label className="text-[10px] !text-dash-textMuted">Top padding (px)</Label>
-            <span className="text-[10px] font-mono font-bold text-dash-accent">{getDisplayValue('paddingTop', paddingTop)}</span>
-          </div>
-          <input
-            type="range" min="0" max="256" step="8"
-            value={getDisplayValue('paddingTop', paddingTop) || 0}
-            onChange={(e) => setResponsiveValue('paddingTop', Number(e.target.value))}
-            className="w-full accent-dash-accent"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <Label className="text-[10px] !text-dash-textMuted">Bottom padding (px)</Label>
-            <span className="text-[10px] font-mono font-bold text-dash-accent">{getDisplayValue('paddingBottom', paddingBottom)}</span>
-          </div>
-          <input
-            type="range" min="0" max="256" step="8"
-            value={getDisplayValue('paddingBottom', paddingBottom) || 0}
-            onChange={(e) => setResponsiveValue('paddingBottom', Number(e.target.value))}
-            className="w-full accent-dash-accent"
-          />
-        </div>
+        <SliderWithInput
+          label="Top padding"
+          value={getDisplayValue('paddingTop', paddingTop) || 0}
+          onChange={(val) => setResponsiveValue('paddingTop', val)}
+          min={0}
+          max={256}
+          step={8}
+          numeric
+        />
+        <SliderWithInput
+          label="Bottom padding"
+          value={getDisplayValue('paddingBottom', paddingBottom) || 0}
+          onChange={(val) => setResponsiveValue('paddingBottom', val)}
+          min={0}
+          max={256}
+          step={8}
+          numeric
+        />
       </div>
 
       <div className="space-y-4 pt-4 border-t border-dash-border">

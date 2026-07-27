@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Switch } from '../../ui/switch';
 
 import { LinkSelector } from '../LinkSelector';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const NavbarSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -175,14 +176,8 @@ export const NavbarSettings = () => {
             <Label className="text-[11px] font-medium">Full width layout</Label>
             <Switch checked={!!fullWidth} onCheckedChange={(val) => setProp((p: any) => p.fullWidth = val)} />
           </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold !text-dash-textMuted">Bar padding ({padding}px)</Label>
-            <input type="range" min="8" max="48" step="4" value={padding} onChange={(e) => setProp((p: any) => p.padding = Number(e.target.value))} className="w-full accent-primary" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold !text-dash-textMuted">Border bottom ({borderBottomWidth}px)</Label>
-            <input type="range" min="0" max="10" step="1" value={borderBottomWidth} onChange={(e) => setProp((p: any) => p.borderBottomWidth = Number(e.target.value))} className="w-full accent-primary" />
-          </div>
+          <SliderWithInput label="Bar padding" value={padding} onChange={(val) => setProp((p: any) => p.padding = val)} min={8} max={48} step={4} numeric />
+          <SliderWithInput label="Border bottom" value={borderBottomWidth} onChange={(val) => setProp((p: any) => p.borderBottomWidth = val)} min={0} max={10} numeric />
           <ColorPicker label="Background" value={backgroundColor} onChange={(val) => setProp((p: any) => p.backgroundColor = val)} />
           <ColorPicker label="Text color" value={textColor} onChange={(val) => setProp((p: any) => p.textColor = val)} />
           <ColorPicker label="Border color" value={borderBottomColor} onChange={(val) => setProp((p: any) => p.borderBottomColor = val)} />
@@ -190,10 +185,7 @@ export const NavbarSettings = () => {
 
         <div className="space-y-4 pt-4">
           <h4 className="text-[10px] font-bold !text-dash-textMuted border-b border-dash-border pb-2">Menu typography</h4>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold !text-dash-textMuted">Font size ({fontSize}px)</Label>
-            <input type="range" min="8" max="24" step="1" value={fontSize} onChange={(e) => setProp((p: any) => p.fontSize = Number(e.target.value))} className="w-full accent-primary" />
-          </div>
+          <SliderWithInput label="Font size" value={fontSize} onChange={(val) => setProp((p: any) => p.fontSize = val)} min={8} max={24} numeric />
           <div className="space-y-1">
             <Label className="text-[10px] font-bold !text-dash-textMuted">Font weight</Label>
             <select

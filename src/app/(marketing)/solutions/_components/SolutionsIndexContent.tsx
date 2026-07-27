@@ -39,8 +39,8 @@ export default function SolutionsIndexContent({ user }: { user?: any }) {
             Every part of LeadsMind. Click into what matters to you.
           </h1>
           <p className="text-lg !text-[#64748B] leading-relaxed">
-            Nine connected modules, one login, priced in Rands. Explore what each one does, or start a free trial
-            and turn them all on at once.
+            Ten connected modules, one login, fixed USD pricing — pay with the local payment methods you already
+            use. Explore what each one does, or start a free trial and turn them all on at once.
           </p>
         </motion.div>
       </section>

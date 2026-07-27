@@ -6,6 +6,7 @@ import { Label } from '../../ui/label';
 import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
 import { Switch } from '../../ui/switch';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const ProgressBarSettings = () => {
   const { actions: { setProp }, value, color, height, showLabel, label, borderRadius } = useNode((node) => ({
@@ -19,17 +20,15 @@ export const ProgressBarSettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <Label className="text-xs font-bold !text-dash-textMuted">Progress ({value}%)</Label>
-        </div>
-        <input
-          type="range" min="0" max="100"
-          value={value || 0}
-          onChange={(e) => setProp((props: any) => props.value = Number(e.target.value))}
-          className="w-full accent-primary"
-        />
-      </div>
+      <SliderWithInput
+        label="Progress"
+        value={value || 0}
+        onChange={(val) => setProp((props: any) => props.value = val)}
+        min={0}
+        max={100}
+        unit="%"
+        numeric
+      />
 
       <ColorPicker
         label="Bar color"

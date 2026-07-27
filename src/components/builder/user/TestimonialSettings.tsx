@@ -7,6 +7,7 @@ import { Label } from '../../ui/label';
 import { Input } from '../../ui/input';
 import { ColorPicker } from '../ColorPicker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const TestimonialSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -87,14 +88,8 @@ export const TestimonialSettings = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-               <Label className="text-[10px] font-bold !text-dash-textMuted">Radius ({borderRadius}px)</Label>
-               <input type="range" min="0" max="100" step="4" value={borderRadius} onChange={(e) => setProp((p: any) => p.borderRadius = Number(e.target.value))} className="w-full accent-dash-accent" />
-            </div>
-            <div className="space-y-2">
-               <Label className="text-[10px] font-bold !text-dash-textMuted">Padding ({padding}px)</Label>
-               <input type="range" min="16" max="128" step="8" value={padding} onChange={(e) => setProp((p: any) => p.padding = Number(e.target.value))} className="w-full accent-dash-accent" />
-            </div>
+            <SliderWithInput label="Radius" value={borderRadius} onChange={(val) => setProp((p: any) => p.borderRadius = val)} min={0} max={100} step={4} numeric />
+            <SliderWithInput label="Padding" value={padding} onChange={(val) => setProp((p: any) => p.padding = val)} min={16} max={128} step={8} numeric />
           </div>
         </div>
 

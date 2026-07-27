@@ -9,6 +9,7 @@ import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { MediaVaultModal } from '../MediaVaultModal';
+import { SliderWithInput } from '../inspector/primitives';
 
 export const ImageSettings = () => {
   const { actions: { setProp }, src, alt, borderRadius, objectFit, width, height, shape } = useNode((node) => ({
@@ -142,15 +143,14 @@ export const ImageSettings = () => {
       </div>
 
       {shape !== 'circle' && (
-        <div className="space-y-2 pt-2">
-          <Label className="text-xs font-bold !text-dash-textMuted">Border radius ({borderRadius}px)</Label>
-          <input
-            type="range"
-            min="0"
-            max="100"
+        <div className="pt-2">
+          <SliderWithInput
+            label="Border radius"
             value={borderRadius || 0}
-            onChange={(e) => setProp((props: any) => props.borderRadius = Number(e.target.value))}
-            className="w-full accent-primary"
+            onChange={(val) => setProp((props: any) => props.borderRadius = val)}
+            min={0}
+            max={100}
+            numeric
           />
         </div>
       )}
