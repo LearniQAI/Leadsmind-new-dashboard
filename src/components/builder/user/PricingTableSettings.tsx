@@ -6,10 +6,16 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Trash2, Plus, Star } from 'lucide-react';
+import { ColorPicker } from '../ColorPicker';
+import { PropertyGroup } from '../inspector/primitives';
 
 export const PricingTableSettings = () => {
-  const { actions: { setProp }, plans } = useNode((node) => ({
+  const { actions: { setProp }, plans, primaryColor, accentColor, backgroundColor, textColor } = useNode((node) => ({
     plans: node.data.props.plans,
+    primaryColor: node.data.props.primaryColor,
+    accentColor: node.data.props.accentColor,
+    backgroundColor: node.data.props.backgroundColor,
+    textColor: node.data.props.textColor,
   }));
 
   const updatePlan = (index: number, key: string, value: any) => {
@@ -110,6 +116,29 @@ export const PricingTableSettings = () => {
           </div>
         ))}
       </div>
+
+      <PropertyGroup title="Colors" defaultOpen={false}>
+        <ColorPicker
+          label="Highlighted tier background"
+          value={primaryColor || '#2563eb'}
+          onChange={(val) => setProp((props: any) => props.primaryColor = val)}
+        />
+        <ColorPicker
+          label='"Most popular" badge'
+          value={accentColor || '#f59e0b'}
+          onChange={(val) => setProp((props: any) => props.accentColor = val)}
+        />
+        <ColorPicker
+          label="Section background"
+          value={backgroundColor === 'transparent' ? '' : (backgroundColor || '')}
+          onChange={(val) => setProp((props: any) => props.backgroundColor = val)}
+        />
+        <ColorPicker
+          label="Regular tier text (leave unset to auto-match section background)"
+          value={textColor || ''}
+          onChange={(val) => setProp((props: any) => props.textColor = val)}
+        />
+      </PropertyGroup>
     </div>
   );
 };

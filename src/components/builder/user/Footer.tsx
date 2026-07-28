@@ -34,13 +34,18 @@ export interface FooterProps {
 export const Footer = ({
  brandName,
  description,
- columns,
+ // Templates/deserialized JSON can omit these arrays entirely (Craft.js's
+ // JSON deserialize path does not merge Footer.craft.props defaults the way
+ // creating a fresh block from the sidebar does), and columns.map/socialLinks.map
+ // below are unguarded — default here so a template or a user clearing the
+ // field in the properties panel can't crash the whole canvas.
+ columns = [],
  backgroundColor,
  textColor,
  accentColor,
  padding,
  fullWidth,
- socialLinks,
+ socialLinks = [],
  columnsCount,
  showSocial,
  borderTopWidth,

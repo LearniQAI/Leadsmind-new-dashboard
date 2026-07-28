@@ -48,9 +48,26 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
    .node-canvas-area h1, .node-canvas-area h2, .node-canvas-area h3, .node-canvas-area h4, .node-canvas-area h5, .node-canvas-area h6 {
      font-family: var(--font-heading) !important;
    }
-   
+
    .node-canvas-area p, .node-canvas-area span, .node-canvas-area a, .node-canvas-area button, .node-canvas-area input, .node-canvas-area textarea {
      font-family: var(--font-body) !important;
+   }
+
+   /* The admin dashboard theme's global CSS (public/assets/scss/components/_theme.scss)
+      applies its own color directly to bare h1-h6/p tag selectors — including
+      a dark: variant (near-white/pale, meant for the dashboard's own dark mode)
+      that leaks into rendered site content whenever the dashboard is in dark
+      mode, since the canvas shares the same document/'.dark' scope. Each block
+      component sets an inline color:inherit as a defense against this, which
+      should already win per CSS cascade rules, but this makes it unconditional
+      and independent of every individual block component getting that right —
+      same rationale as the font-family !important rules above.
+      Falls back to normal inheritance (each block's own color prop when set,
+      or .node-canvas-area's own color default otherwise), it does not force
+      a fixed color itself. */
+   .node-canvas-area h1, .node-canvas-area h2, .node-canvas-area h3, .node-canvas-area h4, .node-canvas-area h5, .node-canvas-area h6,
+   .node-canvas-area p, .node-canvas-area span, .node-canvas-area a {
+     color: inherit !important;
    }
  `;
 
@@ -63,7 +80,7 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
   };
 
   return (
-  <div className="flex-1 flex flex-col bg-[#F8FAFC] overflow-hidden relative shadow-[inset_0_0_20px_rgba(0,0,0,0.02)]">
+  <div className="flex-1 min-h-0 flex flex-col bg-[#F8FAFC] overflow-hidden relative shadow-[inset_0_0_20px_rgba(0,0,0,0.02)]">
    <link href={googleFontsLink} rel="stylesheet" />
    <style dangerouslySetInnerHTML={{ __html: themeVariablesCss }} />
 
@@ -84,13 +101,38 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
 
    {/* Canvas Area */}
    <div className={cn(
-    "flex-1 overflow-auto w-full flex justify-center p-6 md:p-12 transition-all duration-300 ease-in-out motion-reduce:transition-none"
+    // items-start (not the flex default of stretch): without this, the
+    // .node-canvas-area child below is forced to exactly this container's
+    // height regardless of its own content — combined with its own
+    // overflow-hidden (needed for the rounded-corner frame effect), that
+    // silently clipped any page content taller than the visible canvas
+    // before it ever reached this div's own overflow-auto. items-start lets
+    // .node-canvas-area grow to its real content height (its minHeight:100%
+    // inline style still makes it fill the visible area when content is
+    // short), so tall pages actually overflow here — where overflow-auto
+    // can do its job — instead of being clipped one level too early.
+    "flex-1 min-h-0 overflow-auto w-full flex items-start justify-center p-3 md:p-6 transition-all duration-300 ease-in-out motion-reduce:transition-none light-scrollbar"
    )}>
     <div
      className="node-canvas-area bg-[var(--theme-bg)] transition-all duration-300 ease-in-out motion-reduce:transition-none rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(15,23,42,0.08)] ring-1 ring-black/5"
      style={{
+      // Blocks (Heading/Paragraph/Text) with no explicit `color` prop render
+      // with no inline color at all, so they inherit up the DOM — and since the
+      // canvas renders inside the same document as the dashboard shell, that
+      // inheritance reaches globals.css's `body { color: var(--t1) }` (a pale
+      // near-white meant for the dashboard's own dark theme), rendering as
+      // near-invisible faint text on the website canvas's light background.
+      // This establishes a sane default for rendered site content, matching
+      // --theme-bg's existing role as the content-side background default.
+      color: '#111827',
       width: getWidth(),
-      maxWidth: viewMode === 'desktop' ? '1440px' : 'none',
+      // Desktop mode is fluid (fills available editor width), matching how the
+      // published site actually renders responsively — there's no fixed "real"
+      // desktop viewport to simulate, unlike tablet/mobile which get a fixed
+      // simulated width above via getWidth(). Previously this re-capped desktop
+      // at a hard 1440px regardless of available space, which is what made the
+      // canvas look like a narrow strip on wide monitors.
+      maxWidth: 'none',
       minHeight: '100%'
      }}
     >

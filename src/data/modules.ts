@@ -61,7 +61,30 @@ export interface ModuleFinalCta {
   gradientTo: string;
 }
 
-export interface ModuleContent {
+export interface ModuleInsideItem {
+  title: string;
+  description: string;
+}
+
+/**
+ * Simplified Hero -> Problem -> What's Inside -> Why LeadsMind -> CTA copy
+ * shape, used by the Solutions module pages that have been migrated to the
+ * verbatim-copy pattern. Optional so unmigrated modules keep rendering the
+ * older `pain` / `featureGroups` / `connective` shape.
+ */
+export interface ModuleContentV2 {
+  problem: string;
+  insideEyebrow: string;
+  insideItems: ModuleInsideItem[];
+  whyEyebrow: string;
+  whyText: string;
+  ctaText: string;
+  ctaPrimaryLabel: string;
+  ctaSecondaryLabel: string;
+  ctaSecondaryHref: string;
+}
+
+interface ModuleContentBase {
   slug: string;
   label: string;
   /** 1-line description used in the navbar dropdown tile */
@@ -77,11 +100,22 @@ export interface ModuleContent {
   metaTitle: string;
   metaDescription: string;
   hero: ModuleHero;
+}
+
+/** Legacy content shape: pain-point cards, grouped feature checklists, a connective callout. */
+export interface ModuleContentLegacy extends ModuleContentBase {
   pain: ModulePain;
   featureGroups: ModuleFeatures;
   connective: ModuleConnective;
   finalCta: ModuleFinalCta;
 }
+
+/** Verbatim-copy shape: Hero -> Problem -> What's Inside -> Why LeadsMind -> CTA. */
+export interface ModuleContentModern extends ModuleContentBase {
+  content: ModuleContentV2;
+}
+
+export type ModuleContent = ModuleContentLegacy | ModuleContentModern;
 
 export const modules: ModuleContent[] = [
   {
@@ -94,75 +128,53 @@ export const modules: ModuleContent[] = [
     color: '#1359FF',
     primary: true,
     published: true,
-    metaTitle: 'CRM Software for African Businesses',
+    metaTitle: 'CRM Software for African Businesses | LeadsMind',
     metaDescription:
-      'Track every lead, deal, and follow-up in one pipeline — with AI lead scoring and a built-in Lead Finder. Built for African business, fixed USD pricing.',
+      'Track every lead, deal, and follow-up in one pipeline — with AI lead scoring and a built-in Lead Finder. Built for African business, priced fairly.',
     hero: {
       eyebrow: 'CRM & SALES PIPELINE',
-      headline: 'Stop chasing leads in a spreadsheet.',
+      headline: 'Your pipeline, out of your head and onto one screen',
       paragraph:
-        'A contact database, visual sales pipeline, and AI lead scoring — plus a built-in Lead Finder that adds new prospects with one click. So your team spends its day closing, not copy-pasting between four different apps.',
+        'Track every contact, every deal, and every follow-up in one place — with AI that tells you which leads to chase first.',
       capabilityTags: ['Pipeline', 'Lead Finder', 'AI Scoring', 'Forecasting'],
-      ctaLabel: 'Start Free Trial',
+      ctaLabel: 'Start Free',
       finePrint: 'No credit card required',
       visualKey: 'crm-hero',
     },
-    pain: {
-      eyebrow: 'THE PROBLEM WITH HOW YOU SELL TODAY',
-      headline: "Leads don't die from lack of interest. They die from lack of follow-up.",
-      points: [
+    content: {
+      problem:
+        "Most African business owners run their pipeline from memory, a notebook, or a spreadsheet nobody updates. Deals get forgotten. Follow-ups slip. And by the time you remember a lead, they've already gone with someone who called back sooner.",
+      insideEyebrow: "WHAT'S INSIDE",
+      insideItems: [
         {
-          kicker: '47% of leads go cold',
-          body: 'Without a system to track every conversation, follow-ups slip — and business that was already yours walks to a competitor.',
+          title: 'Visual pipeline',
+          description: 'Drag deals through stages, see your whole sales process at a glance',
         },
         {
-          kicker: 'Conversations everywhere',
-          body: 'WhatsApp, email, Instagram, a notebook by the till — client messages scattered across apps with no central record.',
+          title: 'AI lead scoring',
+          description: 'Know which leads are actually worth your time, automatically ranked',
         },
         {
-          kicker: 'No system to find new leads',
-          body: "Growth depends on referrals and luck across most African markets, because outbound prospecting means hiring an agency you can't afford yet.",
-        },
-      ],
-    },
-    featureGroups: {
-      eyebrow: "WHAT'S INSIDE",
-      headline: 'Everything a sales team needs, nothing it doesn\'t',
-      groups: [
-        {
-          title: 'Pipeline & Deals',
-          items: [
-            'Contact database',
-            'Visual, drag-and-drop sales pipeline',
-            'Deal stages & sales forecasting',
-            'Task & follow-up reminders',
-          ],
+          title: 'Lead Finder',
+          description:
+            'Search by location and industry, add new prospects to your CRM in one click, no outbound agency needed',
         },
         {
-          title: 'Lead Generation',
-          items: [
-            'Lead Finder — search Google Maps, LinkedIn, Facebook',
-            'AI lead scoring, ranked by likelihood to convert',
-            'One-click add prospects straight to your pipeline',
-          ],
+          title: 'Task management',
+          description: 'Every follow-up assigned, tracked, and never lost in your inbox',
         },
         {
-          title: 'Reporting',
-          items: ['Real-time pipeline value', 'Projected monthly revenue', 'Activity & follow-up tracking per contact'],
+          title: 'Sales forecasting',
+          description: "See projected revenue before the month ends, not after",
         },
       ],
-    },
-    connective: {
-      eyebrow: 'ONE DATA LAYER',
-      headline: 'Your CRM already knows what your invoices and inbox know.',
-      paragraph:
-        "A single contact record is updated by CRM, invoicing, email, and support at the same time — so nobody's re-entering the same client's details into a fourth tool.",
-    },
-    finalCta: {
-      headline: 'Your next customer is one Lead Finder search away.',
-      subtext: 'Start finding and closing more deals free — fixed USD pricing, no credit card needed.',
-      gradientFrom: '#1359FF',
-      gradientTo: '#7B3FF2',
+      whyEyebrow: 'WHY LEADSMIND',
+      whyText:
+        "Because your CRM shares one data layer with your invoicing and accounting — update a contact once, and it updates everywhere. No exporting a spreadsheet to \"sync\" with your accounting software. It just is your accounting software too.",
+      ctaText: 'Start finding and closing more deals — free, no credit card needed.',
+      ctaPrimaryLabel: 'Start Free',
+      ctaSecondaryLabel: 'See CRM in Action',
+      ctaSecondaryHref: '/#demo',
     },
   },
   {
@@ -175,75 +187,56 @@ export const modules: ModuleContent[] = [
     color: '#7B3FF2',
     primary: true,
     published: true,
-    metaTitle: 'Course & LMS Software for African Creators',
+    metaTitle: 'Course & LMS Software for African Creators | LeadsMind',
     metaDescription:
       'Build courses, issue certificates, and track student progress — with AI-generated quizzes and drip content. Built for creators across Africa.',
     hero: {
       eyebrow: 'ONLINE COURSES',
-      headline: 'Run your course business without three extra tools.',
+      headline: 'Run your course business without duct-taping five tools together',
       paragraph:
-        'A full LMS — certificates, SCORM, drip content, and student analytics — alongside the CRM, email marketing, and invoicing you need to actually run the business around the course. One login, fixed USD pricing, and local African payment methods at checkout.',
+        'Build the course, issue the certificate, track the student, chase the payment — all from one platform.',
       capabilityTags: ['Course Builder', 'Certificates', 'Cohorts', 'AI Quizzes'],
-      ctaLabel: 'Start Free Trial',
+      ctaLabel: 'Start Free',
       finePrint: 'No credit card required',
       visualKey: 'lms-hero',
     },
-    pain: {
-      eyebrow: 'THE PROBLEM WITH STITCHING TOOLS TOGETHER',
-      headline: 'Delivering the course was never the hard part. Running the business around it was.',
-      points: [
+    content: {
+      problem:
+        'Course creators typically stitch together a course host, a CRM, an email tool, and a payment processor — each billed separately, often in US dollars, and none of them talking to each other.',
+      insideEyebrow: "WHAT'S INSIDE",
+      insideItems: [
         {
-          kicker: 'Five different logins, five different bills',
-          body: 'Course creators typically stitch together a course host, a CRM, an email tool, and a payment processor — each billed separately, none of them talking to each other.',
+          title: 'Course builder',
+          description: 'Drag-and-drop lessons, modules, and drip-fed content',
         },
         {
-          kicker: 'Three extra tools required',
-          body: "Course platforms rarely handle CRM, email marketing, or invoicing — so you're paying for, and switching between, several more apps just to get paid.",
+          title: 'Certificates',
+          description: 'Auto-issued on course completion, branded to you',
         },
         {
-          kicker: 'No single student record',
-          body: "Enrolment, payment, and communication live in different systems — so nobody has one clear view of a student's journey.",
-        },
-      ],
-    },
-    featureGroups: {
-      eyebrow: "WHAT'S INSIDE",
-      headline: 'From enrolment to certificate, without switching apps',
-      groups: [
-        {
-          title: 'Course Delivery',
-          items: [
-            'Drag-and-drop course builder',
-            'Drip content on your own schedule',
-            'Structured cohorts with shared intake dates',
-            'SCORM support for compliance training',
-          ],
+          title: 'SCORM support',
+          description: 'For creators building compliance or corporate training content',
         },
         {
-          title: 'Certification',
-          items: ['Automated certificates on completion', 'CPD-ready exports'],
+          title: 'Cohorts',
+          description: 'Run structured, date-based groups instead of one-size-fits-all self-paced courses',
         },
         {
-          title: 'Engagement & Insight',
-          items: [
-            'AI quiz generator — build a graded quiz from any lesson in seconds',
-            'Student analytics: completion rates & drop-off points',
-            'Payment plans and instalment billing on enrolment',
-          ],
+          title: 'Student analytics',
+          description: "See who's engaged, who's stuck, and who's about to drop off",
+        },
+        {
+          title: 'AI quiz generator',
+          description: 'Turn your course content into graded quizzes in minutes, not hours',
         },
       ],
-    },
-    connective: {
-      eyebrow: 'ONE PLATFORM, START TO FINISH',
-      headline: 'Find the student, enrol them, get paid, issue the certificate — without switching apps.',
-      paragraph:
-        'Your course platform, CRM, email marketing, and invoicing already share the same student record — so nothing needs re-entering twice.',
-    },
-    finalCta: {
-      headline: 'Built for course creators, trainers, and L&D teams across Africa.',
-      subtext: 'Build your first course free — no separate CRM or invoicing tool required.',
-      gradientFrom: '#7B3FF2',
-      gradientTo: '#FF3CAC',
+      whyEyebrow: 'WHY LEADSMIND',
+      whyText:
+        'Because the same platform that hosts your course also invoices your students, emails them reminders, and tracks them as CRM contacts. One dashboard for the whole course business — not four different logins with four different bills.',
+      ctaText: 'Build your first course free — no separate CRM or invoicing tool required.',
+      ctaPrimaryLabel: 'Start Free',
+      ctaSecondaryLabel: 'See the Course Builder',
+      ctaSecondaryHref: '/#demo',
     },
   },
   {
@@ -256,75 +249,53 @@ export const modules: ModuleContent[] = [
     color: '#FF8A00',
     primary: true,
     published: true,
-    metaTitle: 'Compliant Accounting Software for African SMEs',
+    metaTitle: 'Compliant Accounting Software for African SMEs | LeadsMind',
     metaDescription:
       'Tax filings, payroll, and bank reconciliation — built to understand African business, not adapted from a foreign system.',
     hero: {
       eyebrow: 'ACCOUNTING & PAYROLL',
-      headline: 'Accounting that actually understands your business.',
+      headline: 'Accounting that actually understands your business',
       paragraph:
-        'Tax filings, payroll, and bank reconciliation — handled inside the same platform as your CRM, not bolted on from a foreign tax system. Deepest compliance coverage today is for South Africa (VAT201, IRP6, EMP201), expanding market by market.',
+        'Tax filings, payroll, and bank reconciliation — handled inside the same platform as your CRM, not bolted on from a foreign tax system.',
       capabilityTags: ['Tax Filing Support', 'Payroll', 'Bank Reconciliation', 'AI Wizard'],
-      ctaLabel: 'Start Free Trial',
+      ctaLabel: 'Start Free',
       finePrint: 'No credit card required',
       visualKey: 'accounting-hero',
     },
-    pain: {
-      eyebrow: 'THE PROBLEM WITH INFORMAL BOOKKEEPING',
-      headline: 'Most accounting software was adapted for African business, not built for it.',
-      points: [
+    content: {
+      problem:
+        "Most accounting software wasn't built with African business in mind — it was adapted for it, if that. That gap shows up as missed deadlines, awkward workarounds, and a bookkeeper doing manually what software should handle automatically.",
+      insideEyebrow: "WHAT'S INSIDE",
+      insideItems: [
         {
-          kicker: 'Missed deadlines, real penalties',
-          body: 'Informal spreadsheets and shoebox receipts turn tax season into audit anxiety, with real financial consequences for a missed filing.',
+          title: 'General ledger',
+          description: 'A real, complete view of your finances, not just invoices',
         },
         {
-          kicker: 'A separate tool, another login',
-          body: 'Foreign accounting tools handle the books well, but know nothing about your CRM, invoicing, or client communication — another login, another cost.',
+          title: 'Bank reconciliation',
+          description: 'Connected directly to major local banks',
         },
         {
-          kicker: 'No real-time financial picture',
-          body: 'Without a live view of cash flow and outstanding invoices, decisions get made on gut feel instead of actual numbers.',
-        },
-      ],
-    },
-    featureGroups: {
-      eyebrow: "WHAT'S INSIDE",
-      headline: 'Built around real local tax requirements, not guessed at',
-      groups: [
-        {
-          title: 'Compliance',
-          items: [
-            'Tax filing support, prepared and export-ready',
-            'Currently deepest for South Africa: VAT201, IRP6, EMP201',
-            'Statutory payroll deductions handled correctly',
-          ],
+          title: 'Tax filing support',
+          description:
+            "Prepared and export-ready, built around real local tax requirements (currently deepest for South Africa's VAT201, IRP6, and EMP201, expanding market by market)",
         },
         {
-          title: 'Banking',
-          items: ['Bank reconciliation connected to major local banks', 'Automated transaction reconciliation'],
+          title: 'Payroll',
+          description: 'Statutory deductions handled correctly, every pay cycle',
         },
         {
-          title: 'Visibility',
-          items: [
-            '90-day cash flow forecast',
-            'AR/AP dashboard',
-            'AI accountant wizard — 17-step guided setup',
-            'Scheduled financial reports',
-          ],
+          title: 'AI accountant wizard',
+          description: "A guided, step-by-step setup so you're not staring at a blank chart of accounts",
         },
       ],
-    },
-    connective: {
-      eyebrow: 'ONE DATA LAYER',
-      headline: 'Every invoice you send already knows where it belongs in your books.',
-      paragraph:
-        'Accounting shares the same data as invoicing and CRM — an invoice marked paid updates your ledger automatically, with nothing to re-enter by hand.',
-    },
-    finalCta: {
-      headline: 'File with confidence. Get paid faster.',
-      subtext: 'Try compliance-ready accounting free — see your first reconciliation in minutes.',
-      gradientFrom: '#FF8A00',
-      gradientTo: '#FF3CAC',
+      whyEyebrow: 'WHY LEADSMIND',
+      whyText:
+        "Because your accounting and your CRM share the same contact and invoice records — no re-entering a client's details in two different systems, and no guessing whether your books match your pipeline.",
+      ctaText: 'Try compliance-ready accounting free — see your first reconciliation in minutes.',
+      ctaPrimaryLabel: 'Start Free',
+      ctaSecondaryLabel: 'Talk to Sales',
+      ctaSecondaryHref: '/#demo',
     },
   },
   {
@@ -337,73 +308,52 @@ export const modules: ModuleContent[] = [
     color: '#34B53A',
     primary: true,
     published: true,
-    metaTitle: 'Invoicing Software with Automated Reminders',
+    metaTitle: 'Invoicing Software with Automated Reminders | LeadsMind',
     metaDescription:
       'Professional invoices, recurring billing, and a 6-step automated reminder sequence — so overdue payments get collected without the awkward call.',
     hero: {
       eyebrow: 'INVOICING',
-      headline: 'Get paid without the awkward follow-up call.',
+      headline: 'Invoices that chase themselves',
       paragraph:
-        'Professional, branded invoices with recurring billing, payment plans, and an automated reminder sequence that chases overdue payments for you.',
+        'Send a professional invoice, accept the payment methods your customers actually use, and let automated reminders handle the follow-up — no awkward "just checking in" messages required.',
       capabilityTags: ['Recurring Billing', 'Local Payment Methods', 'EFT', 'Auto Reminders'],
-      ctaLabel: 'Start Free Trial',
+      ctaLabel: 'Start Free',
       finePrint: 'No credit card required',
       visualKey: 'invoicing-hero',
     },
-    pain: {
-      eyebrow: 'THE PROBLEM WITH GETTING PAID',
-      headline: "An unpaid invoice doesn't remind itself. And neither do most business owners.",
-      points: [
+    content: {
+      problem:
+        "Nobody enjoys messaging a client to ask for money they already owe. So most business owners just… don't — and that unpaid invoice quietly sits there, sometimes for months.",
+      insideEyebrow: "WHAT'S INSIDE",
+      insideItems: [
         {
-          kicker: 'The awkward follow-up call',
-          body: "Chasing a client for money you're owed is uncomfortable enough that most people just don't, and the invoice quietly goes unpaid.",
+          title: 'Branded, professional invoices',
+          description: 'Look like the business you actually are',
         },
         {
-          kicker: 'Payment status, nowhere to see',
-          body: 'Whether an invoice was opened, paid, or ignored lives in your email and your bank app — two places you have to check separately.',
+          title: 'Recurring billing',
+          description: 'For retainers, subscriptions, and repeat clients',
         },
         {
-          kicker: 'Every invoice made from scratch',
-          body: "Retyping the same client details and line items each month is time that should've gone into actual work.",
-        },
-      ],
-    },
-    featureGroups: {
-      eyebrow: "WHAT'S INSIDE",
-      headline: 'Everything it takes to get paid, without the chasing',
-      groups: [
-        {
-          title: 'Create & Send',
-          items: ['Professional, branded invoices', 'Recurring billing', 'Payment plans & instalments'],
+          title: 'Payment plans',
+          description: 'Split larger invoices without manual tracking',
         },
         {
-          title: 'Get Paid',
-          items: [
-            'Local payment gateways, Stripe, and EFT payment links on every invoice',
-            'Bank reconciliation ties payments straight to your ledger',
-          ],
+          title: 'Local payment gateways and EFT',
+          description: 'Payment links built into every invoice',
         },
         {
-          title: 'Never Chase Again',
-          items: [
-            '6-step automated reminder sequence',
-            'Sent via SMS, WhatsApp, and email',
-            'Overdue invoices followed up without an awkward phone call',
-          ],
+          title: '6-step automated reminders',
+          description: 'SMS, WhatsApp, and email, sent on schedule, not on your memory',
         },
       ],
-    },
-    connective: {
-      eyebrow: 'ONE DATA LAYER',
-      headline: 'Every invoice already knows who the client is and what they owe.',
-      paragraph:
-        'Invoicing is tied to the same contact record as your CRM — so payment status, client history, and communication are always in one place, not spread across three tools.',
-    },
-    finalCta: {
-      headline: 'Send the invoice. Let the reminders do the rest.',
-      subtext: 'Send your first invoice free — and never chase a payment manually again.',
-      gradientFrom: '#34B53A',
-      gradientTo: '#00B2FF',
+      whyEyebrow: 'WHY LEADSMIND',
+      whyText:
+        'Because an invoice created here updates your CRM, your accounting, and your cash flow forecast at the same time — one entry, everywhere it needs to appear.',
+      ctaText: 'Send your first invoice free — and never chase a payment manually again.',
+      ctaPrimaryLabel: 'Start Free',
+      ctaSecondaryLabel: 'See Invoicing in Action',
+      ctaSecondaryHref: '/#demo',
     },
   },
   {
@@ -416,77 +366,48 @@ export const modules: ModuleContent[] = [
     color: '#06B6D4',
     primary: true,
     published: true,
-    metaTitle: 'Business Phone System & IVR for African SMEs',
+    metaTitle: 'Business Phone System & IVR for African SMEs | LeadsMind',
     metaDescription:
-      'A real business number, call menus, and click-to-call — without a separate phone system or a hardware contract. Billed directly through your own Twilio account.',
+      'A real business number, call menus, and click-to-call — without a separate phone system or a hardware contract.',
     hero: {
       eyebrow: 'PHONE & IVR',
-      headline: 'A business phone system that answers exactly the way you want it to.',
+      headline: 'Sound like a real business, from your first call',
       paragraph:
-        'Buy a number, build your call menu, and route every call — "Press 1 for the bank manager, press 2 for our branch" — without touching a Twilio console.',
+        'A business number, a call menu, and click-to-call — built into the same platform as your CRM, so every call logs against the right contact.',
       capabilityTags: ['Number Search', 'IVR Builder', 'AI Voice', 'Click-to-Call'],
-      ctaLabel: 'Start Free Trial',
+      ctaLabel: 'Start Free',
       finePrint: 'No credit card required',
       visualKey: 'phone-ivr-hero',
     },
-    pain: {
-      eyebrow: 'THE PROBLEM WITH RUNNING CALLS OFF A CELLPHONE',
-      headline: "A personal number doesn't scale, and a missed call doesn't call itself back.",
-      points: [
+    content: {
+      problem:
+        'A personal cellphone number doesn\'t say "established business" — and juggling a separate phone system means yet another login, yet another bill, and call records that never make it into your CRM.',
+      insideEyebrow: "WHAT'S INSIDE",
+      insideItems: [
         {
-          kicker: "Calls answered by whoever's free",
-          body: "Without a call menu, every call lands on one person's cellphone — and if they're on another line, the customer just doesn't get through.",
+          title: 'Dedicated business numbers',
+          description: 'Local, professional, not your personal cell',
         },
         {
-          kicker: 'No record of who called',
-          body: 'A missed call from a cellphone leaves no note, no recording, and no link back to the CRM contact who made it.',
+          title: 'Call menus (IVR)',
+          description: 'Route callers to the right person or department automatically',
         },
         {
-          kicker: 'Setting one up looks like a dev project',
-          body: 'Twilio can do all of this — but configuring it directly means a console full of settings most business owners have no reason to learn.',
-        },
-      ],
-    },
-    featureGroups: {
-      eyebrow: "WHAT'S INSIDE",
-      headline: 'A real business phone system, without the Twilio console',
-      groups: [
-        {
-          title: 'Numbers',
-          items: [
-            'Search & buy a number in-app, on your own connected Twilio account',
-            "Import a number you've already purchased directly in Twilio",
-          ],
+          title: 'Click-to-call',
+          description: 'Call a contact directly from their CRM record, no dialling required',
         },
         {
-          title: 'IVR Menus',
-          items: [
-            'Visual, step-based menu builder',
-            'Nested menus & business-hours routing',
-            'Upload audio, record in-browser, or generate a voice prompt with AI text-to-speech',
-          ],
-        },
-        {
-          title: 'Calling & SMS',
-          items: [
-            'Click-to-call from any CRM contact record',
-            'SMS from your business number',
-            'Call recording with a built-in consent announcement',
-          ],
+          title: 'Call logging',
+          description: 'Every call attached to the contact automatically, so nothing gets lost',
         },
       ],
-    },
-    connective: {
-      eyebrow: 'TRANSPARENT BILLING',
-      headline: "Your Twilio account is billed directly, at Twilio's own rates.",
-      paragraph:
-        'LeadsMind charges only for platform access — never a per-minute markup on your calls, SMS, or number rental.',
-    },
-    finalCta: {
-      headline: 'Give your business a number that answers itself, correctly.',
-      subtext: 'Start free and have your first call menu live in minutes.',
-      gradientFrom: '#06B6D4',
-      gradientTo: '#1359FF',
+      whyEyebrow: 'WHY LEADSMIND',
+      whyText:
+        'Because every call is logged against the same contact record your CRM, invoicing, and support tickets already use — your team sees the full history, not just the last conversation.',
+      ctaText: 'Set up your business number free — no hardware, no contract.',
+      ctaPrimaryLabel: 'Start Free',
+      ctaSecondaryLabel: 'See Phone & IVR',
+      ctaSecondaryHref: '/#demo',
     },
   },
   {
@@ -499,77 +420,52 @@ export const modules: ModuleContent[] = [
     color: '#00B2FF',
     primary: true,
     published: true,
-    metaTitle: 'Website & Funnel Builder for African Businesses',
+    metaTitle: 'Website & Funnel Builder for African Businesses | LeadsMind',
     metaDescription:
       'Drag-and-drop landing pages, funnels, and a full website builder — mobile-responsive, SEO-ready, with checkout built in.',
     hero: {
       eyebrow: 'SALES FUNNELS & WEBSITE BUILDER',
-      headline: 'Build pages that convert, without touching code.',
+      headline: 'A website and checkout page, no developer required',
       paragraph:
-        'A drag-and-drop builder for landing pages, full websites, and complete sales funnels — from a professional template library, published in minutes.',
+        'Build landing pages, funnels, and a full website — mobile-responsive and SEO-ready — without waiting on a developer or a design agency.',
       capabilityTags: ['Landing Pages', 'Funnels', 'Blog', 'Custom Domains'],
-      ctaLabel: 'Start Free Trial',
+      ctaLabel: 'Start Free',
       finePrint: 'No credit card required',
       visualKey: 'funnels-hero',
     },
-    pain: {
-      eyebrow: 'THE PROBLEM WITH WAITING ON A DEVELOPER',
-      headline: 'For most business owners across Africa, "update the homepage" turns into a multi-week project.',
-      points: [
+    content: {
+      problem:
+        'Every small change to a website usually means a message to a developer, a wait, and an invoice. For most business owners across Africa, that turns "update the homepage" into a multi-week project.',
+      insideEyebrow: "WHAT'S INSIDE",
+      insideItems: [
         {
-          kicker: 'A landing page takes a developer and a week',
-          body: 'By the time a simple campaign page is built, the offer it was built for has already gone cold.',
+          title: 'Drag-and-drop builder',
+          description: 'Build and edit pages yourself, no code',
         },
         {
-          kicker: 'One page, no follow-through',
-          body: 'A page with no thank-you step, no upsell, and no sequence behind it converts once and then goes quiet.',
+          title: 'Mobile-responsive by default',
+          description: 'Every page works on the phone your customers are actually using',
         },
         {
-          kicker: 'Website and funnels, two different tools',
-          body: "The main site lives in one platform and campaign pages in another — so nothing shares a template, a domain, or a brand kit.",
-        },
-      ],
-    },
-    featureGroups: {
-      eyebrow: "WHAT'S INSIDE",
-      headline: 'Every page a campaign needs, from one editor',
-      groups: [
-        {
-          title: 'Pages That Convert',
-          items: ['Landing pages', 'Squeeze pages', 'Thank-you pages', 'Webinar registration pages'],
+          title: 'SEO tools built in',
+          description: 'So your pages are found, not just built',
         },
         {
-          title: 'Full Website',
-          items: ['Full website builder', 'Blog creation', 'Custom domains'],
+          title: 'A/B testing',
+          description: 'Know which version of a page actually converts',
         },
         {
-          title: 'Build Faster',
-          items: ['Drag-and-drop editor', 'Professional template library'],
-        },
-        {
-          title: 'Funnel Types Ready to Use',
-          items: [
-            'Lead Capture Funnel',
-            'Video Sales Letter (VSL) Funnel',
-            'Course Sales Funnel',
-            'Webinar Funnel',
-            'App Launch Funnel',
-            'Agency Lead Funnel',
-          ],
+          title: 'Checkout pages',
+          description: 'Sell directly from the funnel, connected to your invoicing and accounting',
         },
       ],
-    },
-    connective: {
-      eyebrow: 'ONE DATA LAYER',
-      headline: 'Every page you publish already knows how to capture a lead.',
-      paragraph:
-        'Funnels and landing pages share the same contact record and automation engine as the rest of the platform — a form submission on a page you built this morning can already trigger a CRM entry and a welcome email.',
-    },
-    finalCta: {
-      headline: 'Your next campaign page, live before lunch.',
-      subtext: 'Start free and publish your first funnel today.',
-      gradientFrom: '#00B2FF',
-      gradientTo: '#7B3FF2',
+      whyEyebrow: 'WHY LEADSMIND',
+      whyText:
+        'Because a lead who fills in a form on your funnel becomes a CRM contact instantly — no separate integration, no lead falling through a gap between your website tool and your CRM.',
+      ctaText: 'Build your first page free — live in minutes, not weeks.',
+      ctaPrimaryLabel: 'Start Free',
+      ctaSecondaryLabel: 'See the Builder',
+      ctaSecondaryHref: '/#demo',
     },
   },
   {
@@ -582,71 +478,52 @@ export const modules: ModuleContent[] = [
     color: '#FF3CAC',
     primary: true,
     published: true,
-    metaTitle: 'Email & WhatsApp Marketing Software for African Businesses',
+    metaTitle: 'Email & WhatsApp Marketing Software for African Businesses | LeadsMind',
     metaDescription:
       '37+ email templates, automated sequences, and WhatsApp — all from one inbox. Built for how African customers actually communicate.',
     hero: {
       eyebrow: 'EMAIL & WHATSAPP MARKETING',
-      headline: 'Every channel your customers use, one place to manage it.',
+      headline: 'Email and WhatsApp, finally in one inbox',
       paragraph:
-        "Email campaigns and automated sequences, sitting alongside WhatsApp, SMS, and social — so a client's whole conversation history lives in one thread.",
+        'Run campaigns and sequences across email and WhatsApp — the way your customers actually message you — from a single, compliance-minded platform.',
       capabilityTags: ['Campaigns', 'Sequences', 'Segmentation', 'WhatsApp'],
-      ctaLabel: 'Start Free Trial',
+      ctaLabel: 'Start Free',
       finePrint: 'No credit card required',
       visualKey: 'email-whatsapp-hero',
     },
-    pain: {
-      eyebrow: 'THE PROBLEM WITH TREATING WHATSAPP AS AN AFTERTHOUGHT',
-      headline: "For most customers across Africa, WhatsApp isn't a nice-to-have channel — it's the main one.",
-      points: [
+    content: {
+      problem:
+        "For most customers across Africa, WhatsApp isn't a nice-to-have channel — it's the main one. Most marketing platforms treat it as an afterthought, if they support it at all.",
+      insideEyebrow: "WHAT'S INSIDE",
+      insideItems: [
         {
-          kicker: 'One client, five separate threads',
-          body: 'Email, WhatsApp, SMS, and Instagram each hold half a conversation — so nobody replying to any of them has the full picture.',
+          title: '37+ email templates',
+          description: 'Professional campaigns without starting from a blank page',
         },
         {
-          kicker: 'The same campaign, built from scratch per channel',
-          body: "A promotion gets written once for email, then rebuilt by hand for WhatsApp, because the tools don't talk to each other.",
+          title: 'A/B testing',
+          description: 'Know what actually gets opened and clicked',
         },
         {
-          kicker: 'No idea what actually landed',
-          body: "Without open and click data in one place, it's a guess which message actually brought the customer back.",
-        },
-      ],
-    },
-    featureGroups: {
-      eyebrow: "WHAT'S INSIDE",
-      headline: 'Build the campaign once, reach every channel',
-      groups: [
-        {
-          title: 'Campaigns',
-          items: ['Email campaigns', 'Email newsletters', 'Broadcast emails', 'Email analytics'],
+          title: 'Auto-resend to non-openers',
+          description: 'Get a second chance at the same send, automatically',
         },
         {
-          title: 'Automation & Targeting',
-          items: ['Automated email sequences', 'Email segmentation', 'Tags', 'Personalisation'],
+          title: 'WhatsApp broadcasts and sequences',
+          description: 'Treated as a first-class channel, not an add-on',
         },
         {
-          title: 'Every Channel, One Inbox',
-          items: [
-            'WhatsApp Business messaging',
-            'SMS',
-            'Instagram DMs & Facebook Messenger',
-            'One thread per client, across every channel',
-          ],
+          title: 'Compliant unsubscribe handling',
+          description: 'Built in, not bolted on',
         },
       ],
-    },
-    connective: {
-      eyebrow: 'ONE DATA LAYER',
-      headline: 'The segment you email is the same list WhatsApp already knows.',
-      paragraph:
-        'Campaigns, sequences, and every channel share the same contact record and tags as your CRM — so a segment built for email works for WhatsApp too, with nothing rebuilt twice.',
-    },
-    finalCta: {
-      headline: 'One campaign, every channel your customers actually check.',
-      subtext: 'Start free and send your first campaign across email and WhatsApp today.',
-      gradientFrom: '#FF3CAC',
-      gradientTo: '#FF8A00',
+      whyEyebrow: 'WHY LEADSMIND',
+      whyText:
+        'Because email and WhatsApp both flow into the same Unified Inbox as your other client conversations — one thread per client, regardless of which channel they used.',
+      ctaText: 'Send your first campaign free — email and WhatsApp, one platform.',
+      ctaPrimaryLabel: 'Start Free',
+      ctaSecondaryLabel: 'See Campaigns in Action',
+      ctaSecondaryHref: '/#demo',
     },
   },
   {
@@ -659,74 +536,52 @@ export const modules: ModuleContent[] = [
     color: '#8B5CF6',
     primary: true,
     published: true,
-    metaTitle: 'Business Automation Software for African SMEs',
+    metaTitle: 'Business Automation Software for African SMEs | LeadsMind',
     metaDescription:
       'Visual workflows, 90+ triggers, and an AI builder — automate follow-ups, reminders, and tasks without writing a line of code.',
     hero: {
       eyebrow: 'WORKFLOW AUTOMATION',
-      headline: 'The engine that runs your business while you sleep.',
+      headline: 'Set it up once. Never do it again.',
       paragraph:
-        'A visual drag-and-drop canvas that connects every module — a deal closes, and the invoice, welcome email, course enrolment, and WhatsApp message all fire automatically.',
+        'Build visual workflows that handle follow-ups, reminders, and task creation automatically — no code, no developer, no repeating yourself.',
       capabilityTags: ['Triggers', 'Conditional Logic', 'AI Builder', '90+ Events'],
-      ctaLabel: 'Start Free Trial',
+      ctaLabel: 'Start Free',
       finePrint: 'No credit card required',
       visualKey: 'automation-hero',
     },
-    pain: {
-      eyebrow: 'THE PROBLEM WITH MANUAL FOLLOW-UP',
-      headline: 'Nothing is actually watching for the moment that matters — a person has to remember to.',
-      points: [
+    content: {
+      problem:
+        'Every manual follow-up, every repeated reminder, every "don\'t forget to…" task is time you\'re spending on something a system could be doing for you.',
+      insideEyebrow: "WHAT'S INSIDE",
+      insideItems: [
         {
-          kicker: 'Every hand-off depends on memory',
-          body: 'A deal closes, a form gets submitted, a course finishes — and the next step only happens if someone remembers to do it.',
+          title: 'Visual workflow builder',
+          description: 'Drag-and-drop logic, no code required',
         },
         {
-          kicker: 'Automation tools that stop at your CRM',
-          body: 'Generic automation platforms connect to the CRM, then need a developer to reach invoicing, payroll, or the LMS.',
+          title: '90+ triggers',
+          description: 'New lead, invoice overdue, course completed, and more',
         },
         {
-          kicker: 'Building a flow means learning a new tool',
-          body: 'A visual canvas with dozens of unlabeled node types is its own project to learn, before a single workflow gets built.',
-        },
-      ],
-    },
-    featureGroups: {
-      eyebrow: "WHAT'S INSIDE",
-      headline: 'A flow for every hand-off in the business',
-      groups: [
-        {
-          title: 'Build Flows',
-          items: ['Rules and triggers', 'Conditional logic & branching', 'Visual drag-and-drop canvas'],
+          title: 'Multi-branch routing',
+          description: 'Different paths for different conditions, handled automatically',
         },
         {
-          title: 'Nurture & Route',
-          items: ['Lead nurturing', 'Customer journeys', 'Automated tagging', 'CRM automation'],
+          title: 'Webhooks',
+          description: 'Connect to tools outside LeadsMind when you need to',
         },
         {
-          title: 'Platform-Wide Reach',
-          items: [
-            '90+ trigger events across every module',
-            '40+ action types — CRM, communication, financial, LMS',
-            'Executes in under 5 seconds, start to finish',
-          ],
-        },
-        {
-          title: 'Built for African Business',
-          items: ['LENA AI builds flows from a plain-English description', '50+ pre-built automation templates for African business'],
+          title: 'AI builder',
+          description: 'Describe what you want automated, and get a working workflow to refine',
         },
       ],
-    },
-    connective: {
-      eyebrow: 'ONE DATA LAYER',
-      headline: 'A workflow can touch anything the platform already knows.',
-      paragraph:
-        'Because automation sits on the same data as CRM, invoicing, and the LMS, a single trigger can update a deal, send an invoice, and enrol a student — without a single integration to configure.',
-    },
-    finalCta: {
-      headline: 'Describe the flow. Let LENA build it.',
-      subtext: 'Start free and automate your first hand-off today.',
-      gradientFrom: '#8B5CF6',
-      gradientTo: '#00B2FF',
+      whyEyebrow: 'WHY LEADSMIND',
+      whyText:
+        'Because your workflows can trigger across CRM, invoicing, email, WhatsApp, and support tickets — one automation engine for the whole business, not a separate tool for every module.',
+      ctaText: 'Build your first automation free — and stop doing it manually.',
+      ctaPrimaryLabel: 'Start Free',
+      ctaSecondaryLabel: 'See Automation Examples',
+      ctaSecondaryHref: '/#demo',
     },
   },
   {
@@ -739,70 +594,56 @@ export const modules: ModuleContent[] = [
     color: '#EC4899',
     primary: true,
     published: true,
-    metaTitle: 'AI Tools for African Business',
+    metaTitle: 'AI Tools for African Business | LeadsMind',
     metaDescription:
       'AI content writing, lead scoring, meeting intelligence, and a CRM assistant — tuned for African business and languages.',
     hero: {
       eyebrow: 'AI TOOLS',
-      headline: 'Your own AI team, built into the platform.',
+      headline: 'Your own AI team, built into the platform',
       paragraph:
-        'Content writing, lead scoring, meeting notes, and a CRM assistant — AI that’s tuned for African business, not translated for it.',
+        "Content writing, lead scoring, meeting notes, and a CRM assistant — AI that's tuned for African business, not translated for it.",
       capabilityTags: ['Content Writer', 'Lead Scoring', 'CRM Assistant', 'AI Voice'],
-      ctaLabel: 'Start Free Trial',
+      ctaLabel: 'Start Free',
       finePrint: 'No credit card required',
       visualKey: 'ai-tools-hero',
     },
-    pain: {
-      eyebrow: 'THE PROBLEM WITH GENERIC AI TOOLS',
-      headline: "Most AI tools are built for a global, English-first market. They don't understand yours.",
-      points: [
+    content: {
+      problem:
+        "Most AI tools are built for a global, English-first market. They don't understand African business context — or the languages a lot of your customers actually speak.",
+      insideEyebrow: "WHAT'S INSIDE",
+      insideItems: [
         {
-          kicker: "Doesn't understand African business context",
-          body: "US-trained writing tools default to American spelling, idiom, and tone, and don't speak the languages a lot of your customers actually use — and it shows in every email and post they draft.",
+          title: 'AI Content Writer',
+          description: 'Blog posts, emails, and social captions, drafted for you',
         },
         {
-          kicker: 'One chatbot, bolted on',
-          body: 'Most platforms ship a single generic assistant instead of AI that actually understands your leads, your invoices, or your calls.',
+          title: 'AI lead scoring',
+          description: 'Know which leads are worth chasing, ranked automatically',
         },
         {
-          kicker: 'Another subscription, another login',
-          body: "A separate AI writing tool is one more monthly cost that still doesn't know anything about your CRM or your customers.",
-        },
-      ],
-    },
-    featureGroups: {
-      eyebrow: "WHAT'S INSIDE",
-      headline: 'AI, wherever it actually saves you time',
-      groups: [
-        {
-          title: 'Content',
-          items: ['AI content writer — blog, email, and social posts', 'Grammar & plagiarism checker', 'SEO scorer'],
+          title: 'Meeting intelligence',
+          description: 'Notes and summaries from your calls, without anyone typing during them',
         },
         {
-          title: 'Sales & Support',
-          items: ['AI lead scoring', 'CRM assistant', 'AI reply suggestions for support tickets'],
+          title: 'AI phone agent',
+          description: "Handles routine calls so your team doesn't have to",
         },
         {
-          title: 'Voice',
-          items: ['AI text-to-speech for IVR voice prompts', 'Meeting intelligence'],
+          title: 'CRM assistant',
+          description: 'Ask it questions about your own pipeline and get straight answers',
         },
         {
-          title: 'Built for Africa',
-          items: ['Multilingual support built with African languages in mind, not just English', 'Deepest today in South African English, expanding into Afrikaans, Zulu, Sotho, and Xhosa'],
+          title: 'Multilingual support',
+          description: 'Built with African languages in mind, not just English',
         },
       ],
-    },
-    connective: {
-      eyebrow: 'ONE DATA LAYER',
-      headline: 'The AI already knows your leads, your invoices, and your calls.',
-      paragraph:
-        "Because it's built into the platform rather than bolted on, LeadsMind's AI can score a real lead, draft a reply to a real ticket, and read out a real IVR prompt — with no data to export first.",
-    },
-    finalCta: {
-      headline: 'AI that works the way your business actually talks.',
-      subtext: 'Start free and put AI to work across your whole platform.',
-      gradientFrom: '#EC4899',
-      gradientTo: '#7B3FF2',
+      whyEyebrow: 'WHY LEADSMIND',
+      whyText:
+        'Because these AI tools work across your CRM, content, and communication — not as a bolt-on chatbot, but as part of how the whole platform runs.',
+      ctaText: 'Put AI to work in your business — try it free.',
+      ctaPrimaryLabel: 'Start Free',
+      ctaSecondaryLabel: 'See AI Tools in Action',
+      ctaSecondaryHref: '/#demo',
     },
   },
   {
@@ -815,74 +656,56 @@ export const modules: ModuleContent[] = [
     color: '#FF3CAC',
     primary: true,
     published: true,
-    metaTitle: 'HR & Payroll Software for African Businesses',
+    metaTitle: 'HR & Payroll Software for African Businesses | LeadsMind',
     metaDescription:
       'Employee records, leave management, time tracking, and payroll — statutory deductions handled correctly, every pay cycle.',
     hero: {
       eyebrow: 'PEOPLE OPERATIONS',
-      headline: 'Payroll day, without the spreadsheet fire drill.',
+      headline: 'Run HR and payroll without a spreadsheet held together by hope',
       paragraph:
-        'Employee records, attendance, leave, and payroll all live in one place — so running payroll is a few clicks, not a week of chasing timesheets.',
+        'Employee records, leave requests, time tracking, and payroll — all in one place, connected to the same CRM and accounting your business already runs on.',
       capabilityTags: ['Employee Records', 'Time Tracking', 'Leave', 'Payroll'],
-      ctaLabel: 'Start Free Trial',
+      ctaLabel: 'Start Free',
       finePrint: 'No credit card required',
       visualKey: 'hr-hero',
     },
-    pain: {
-      eyebrow: 'THE PROBLEM WITH SPREADSHEET HR',
-      headline: 'Payroll month-end turns into a fire drill, and one missed leave request turns into an awkward conversation.',
-      points: [
+    content: {
+      problem:
+        "Most small businesses manage HR through a mix of spreadsheets, WhatsApp messages, and memory — until a leave request gets missed, a payslip goes out wrong, or nobody can find last month's records when it matters.",
+      insideEyebrow: "WHAT'S INSIDE",
+      insideItems: [
         {
-          kicker: 'Payroll by spreadsheet',
-          body: 'Month-end payroll turns into a fire drill of formulas and manual calculations nobody fully trusts.',
+          title: 'Employee records',
+          description: 'One real system of record, not a spreadsheet nobody updates',
         },
         {
-          kicker: 'Leave tracked in email',
-          body: 'A missed leave request buried in an inbox turns into an awkward conversation with an employee who did everything right.',
+          title: 'Leave management',
+          description: 'Requests, approvals, and balances tracked automatically',
         },
         {
-          kicker: "A folder of contracts, not a record",
-          body: "Employee documents scattered across someone's laptop and email threads isn't a record system — it's a risk.",
-        },
-      ],
-    },
-    featureGroups: {
-      eyebrow: "WHAT'S INSIDE",
-      headline: 'Records, attendance, leave, and payroll — all in one place',
-      groups: [
-        {
-          title: 'Employee Records',
-          items: ['Full employee directory with documents', 'Formal warning issuance tracking'],
+          title: 'Time tracking',
+          description: 'Clock-ins, hours, and overtime, without a separate tool',
         },
         {
-          title: 'Time & Leave',
-          items: [
-            'Clock-in/out time tracking with overtime',
-            'Daily attendance tracking',
-            'Leave request, approval, and balance tracking',
-          ],
+          title: 'Payroll runs',
+          description: 'Statutory deductions handled correctly, every pay cycle',
         },
         {
-          title: 'Scheduling & Payroll',
-          items: [
-            'Employee scheduling and shift management',
-            'Payroll runs with automatic payslip generation',
-            'Employee-facing payslip view',
-          ],
+          title: 'Self-service payslips',
+          description: 'Employees see their own pay history, without asking HR',
+        },
+        {
+          title: 'HR notifications',
+          description: 'New hires, terminations, and payroll runs, never missed',
         },
       ],
-    },
-    connective: {
-      eyebrow: 'ONE DATA LAYER',
-      headline: 'Every employee record already knows their hours, leave, and pay.',
-      paragraph:
-        "Every employee has one record with documents, leave balances, and attendance in it, so nothing depends on a spreadsheet only one person understands.",
-    },
-    finalCta: {
-      headline: 'Run payroll in minutes, not a week of chasing timesheets.',
-      subtext: 'Start free and bring your team records into one place.',
-      gradientFrom: '#FF3CAC',
-      gradientTo: '#FF8A00',
+      whyEyebrow: 'WHY LEADSMIND',
+      whyText:
+        'Because payroll runs through the same platform as your accounting and invoicing — no exporting a payroll report to reconcile it against your books by hand.',
+      ctaText: 'Set up your first employee record free — payroll and HR, one platform.',
+      ctaPrimaryLabel: 'Start Free',
+      ctaSecondaryLabel: 'See HR & Payroll in Action',
+      ctaSecondaryHref: '/#demo',
     },
   },
   {

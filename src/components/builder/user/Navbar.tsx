@@ -42,7 +42,10 @@ import { useGlobalSync } from '@/lib/builder/hooks';
 export const Navbar = ({
  logo,
  brandName,
- links,
+ // Templates/deserialized JSON can omit this entirely — displayLinks.map below
+ // is unguarded, so default it rather than let a bare Navbar node (used all
+ // over the built-in templates with no links prop) crash the canvas.
+ links = [],
  backgroundColor,
  textColor,
  sticky,

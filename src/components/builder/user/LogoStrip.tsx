@@ -15,7 +15,9 @@ export interface LogoStripProps {
 }
 
 export const LogoStrip = ({
- logos,
+ // Templates/deserialized JSON can omit this entirely — logos.map below is
+ // unguarded, so default it rather than let a bare LogoStrip node crash the canvas.
+ logos = [],
  backgroundColor,
  grayscale,
  opacity,

@@ -45,7 +45,17 @@ export const aiSaasPremium: BuilderTemplate = {
     },
     'logos-1': {
       type: { resolvedName: 'LogoStrip' },
-      props: { title: 'Trusted by the future', grayscale: true },
+      props: {
+        title: 'Trusted by the future',
+        grayscale: true,
+        logos: [
+          { src: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=200&auto=format&fit=crop', alt: 'Orbital' },
+          { src: 'https://images.unsplash.com/photo-1622675363311-3e1904dc1885?q=80&w=200&auto=format&fit=crop', alt: 'Vertex Labs' },
+          { src: 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?q=80&w=200&auto=format&fit=crop', alt: 'Halcyon' },
+          { src: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=200&auto=format&fit=crop', alt: 'Northwind' },
+          { src: 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?q=80&w=200&auto=format&fit=crop', alt: 'Fathom' }
+        ]
+      },
       parent: 'ROOT'
     },
     'features-1': {
@@ -61,17 +71,44 @@ export const aiSaasPremium: BuilderTemplate = {
     },
     'feat-grid-1': {
       type: { resolvedName: 'Columns' },
-      props: { columns: 3, gap: 40 },
+      isCanvas: true,
+      props: { layout: '3', gap: 40 },
+      nodes: ['feat-col-1', 'feat-col-2', 'feat-col-3'],
       parent: 'features-1'
     },
+    'feat-col-1': { type: { resolvedName: 'Container' }, isCanvas: true, nodes: ['feat-1-h', 'feat-1-p'], parent: 'feat-grid-1' },
+    'feat-1-h': { type: { resolvedName: 'Heading' }, props: { text: 'Neural Inference', level: 'h3', color: '#ffffff', className: 'text-xl font-bold mb-3' }, parent: 'feat-col-1' },
+    'feat-1-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Sub-10ms inference latency across a globally distributed edge network.', color: '#a1a1aa' }, parent: 'feat-col-1' },
+    'feat-col-2': { type: { resolvedName: 'Container' }, isCanvas: true, nodes: ['feat-2-h', 'feat-2-p'], parent: 'feat-grid-1' },
+    'feat-2-h': { type: { resolvedName: 'Heading' }, props: { text: 'Elastic Compute', level: 'h3', color: '#ffffff', className: 'text-xl font-bold mb-3' }, parent: 'feat-col-2' },
+    'feat-2-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Autoscale from zero to thousands of GPU nodes with a single API call.', color: '#a1a1aa' }, parent: 'feat-col-2' },
+    'feat-col-3': { type: { resolvedName: 'Container' }, isCanvas: true, nodes: ['feat-3-h', 'feat-3-p'], parent: 'feat-grid-1' },
+    'feat-3-h': { type: { resolvedName: 'Heading' }, props: { text: 'Observability', level: 'h3', color: '#ffffff', className: 'text-xl font-bold mb-3' }, parent: 'feat-col-3' },
+    'feat-3-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Real-time tracing and cost attribution for every model call your team makes.', color: '#a1a1aa' }, parent: 'feat-col-3' },
     'pricing-1': {
       type: { resolvedName: 'PricingTable' },
-      props: { title: 'Scalable Investment', subtitle: 'Choose your compute tier' },
+      props: {
+        title: 'Scalable Investment',
+        subtitle: 'Choose your compute tier',
+        plans: [
+          { name: 'Starter', price: '$0', period: '/mo', description: 'For solo builders testing the platform', features: ['1 GPU node', 'Community support', '10K inference calls/mo'], buttonText: 'Start free', highlight: false },
+          { name: 'Scale', price: '$249', period: '/mo', description: 'For growing engineering teams', features: ['20 GPU nodes', 'Priority support', 'Unlimited inference calls', 'Custom model hosting'], buttonText: 'Start trial', highlight: true },
+          { name: 'Enterprise', price: 'Custom', period: '', description: 'For organizations at scale', features: ['Dedicated infrastructure', '24/7 support', 'SLA guarantees', 'Onboarding engineer'], buttonText: 'Contact sales', highlight: false }
+        ]
+      },
       parent: 'ROOT'
     },
     'faq-1': {
       type: { resolvedName: 'FAQ' },
-      props: { title: 'System Queries' },
+      props: {
+        title: 'System Queries',
+        items: [
+          { question: 'How fast can I deploy a model?', answer: 'Most teams go from signup to a live inference endpoint in under five minutes using our CLI or dashboard.' },
+          { question: 'Do you support custom model weights?', answer: 'Yes — upload your own fine-tuned weights or bring a model from Hugging Face, and we handle the serving infrastructure.' },
+          { question: 'What happens if I exceed my plan limits?', answer: 'We automatically scale compute to meet demand; you\'ll only be billed for what you actually use beyond your plan\'s included quota.' },
+          { question: 'Is there a self-hosted option?', answer: 'Enterprise customers can deploy Neural AI SaaS inside their own VPC for full data residency and compliance control.' }
+        ]
+      },
       parent: 'ROOT'
     },
     'footer-1': {
