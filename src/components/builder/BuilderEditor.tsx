@@ -781,7 +781,7 @@ const BuilderEditorLayout = ({
                 </div>
             </header>
 
-            <div className="flex flex-1 overflow-hidden relative">
+            <div className="flex flex-1 min-h-0 overflow-hidden relative">
                 {/* Left Panel Transition Wrapper */}
                 <div
                     className={cn(

@@ -7,7 +7,7 @@ export const hutsArchitectural: BuilderTemplate = {
   category: 'Real Estate',
   type: 'website',
   is_premium: true,
-  thumbnail: 'https://images.unsplash.com/photo-1500382017468-9049fee74a62',
+  thumbnail: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c',
   content: JSON.stringify({
     ROOT: {
       type: { resolvedName: 'Container' },

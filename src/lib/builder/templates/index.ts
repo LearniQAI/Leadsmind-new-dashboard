@@ -13,16 +13,6 @@ import { humanInterest } from './human-interest';
 import { hutsArchitectural } from './huts-architectural';
 import { agenticCopilot } from './agentic-copilot';
 import {
-  saasCenteredGlowHeader,
-  agencyMinimalSplitHeader,
-  ecommerceCleanHeader,
-  glassmorphicStickyHeader,
-  leftAlignedCorporateHeader,
-  underlinedGlowLinkHeader,
-  lightCleanGridHeader,
-  creativeFullWidthStackedHeader,
-  realEstateOverlayHeader,
-  ecommerceProductHubHeader,
   saasHighConvertingLanding,
   leadCaptureAccelerator
 } from './predefined';
@@ -43,16 +33,6 @@ export const ALL_TEMPLATES: BuilderTemplate[] = [
   humanInterest,
   hutsArchitectural,
   agenticCopilot,
-  saasCenteredGlowHeader,
-  agencyMinimalSplitHeader,
-  ecommerceCleanHeader,
-  glassmorphicStickyHeader,
-  leftAlignedCorporateHeader,
-  underlinedGlowLinkHeader,
-  lightCleanGridHeader,
-  creativeFullWidthStackedHeader,
-  realEstateOverlayHeader,
-  ecommerceProductHubHeader,
   saasHighConvertingLanding,
   leadCaptureAccelerator
 ];

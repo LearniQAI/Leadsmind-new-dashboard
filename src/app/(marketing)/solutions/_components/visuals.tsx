@@ -49,27 +49,13 @@ const cardEntrance = {
   },
 };
 
-/** Abstract blob composition behind a floating hero card. */
+/** Soft, neutral backdrop behind a floating hero card — a single barely-visible glow, not a colorful blob composition. */
 export function HeroVisual({ color, children }: { color: string; children: React.ReactNode }) {
   return (
     <div className="relative w-full max-w-[420px] mx-auto lg:mx-0 aspect-square flex items-center justify-center">
-      <motion.div
-        animate={{ y: [0, -16, 0] }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute -top-6 -left-8 w-48 h-48 rounded-full blur-3xl opacity-40 pointer-events-none"
-        style={{ backgroundColor: color }}
-      />
-      <motion.div
-        animate={{ y: [0, 14, 0] }}
-        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute bottom-0 right-0 w-56 h-56 rounded-full blur-3xl opacity-30 pointer-events-none"
-        style={{ backgroundColor: '#7B3FF2' }}
-      />
-      <motion.div
-        animate={{ y: [0, 10, 0], rotate: [12, 18, 12] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-        className="absolute top-8 right-4 w-24 h-24 rounded-3xl opacity-20 pointer-events-none"
-        style={{ backgroundColor: '#00B2FF' }}
+      <div
+        className="absolute inset-0 rounded-full blur-3xl pointer-events-none"
+        style={{ background: `radial-gradient(circle, ${color}0A 0%, transparent 68%)` }}
       />
       <div className="relative z-10 w-full px-4">{children}</div>
     </div>
@@ -88,8 +74,7 @@ function FloatingCard({ accent, children }: { accent: string; children: React.Re
     >
       {/* peeking second card — suggests a stack of real data, not one isolated card */}
       <div
-        className="absolute inset-x-4 -bottom-3 h-full rounded-[20px] rotate-[-5deg] opacity-40 pointer-events-none"
-        style={{ backgroundColor: `${accent}12`, border: `1px solid ${accent}25` }}
+        className="absolute inset-x-4 -bottom-3 h-full rounded-[20px] rotate-[-5deg] bg-[#F8FAFC] border border-[#E2E8F0] pointer-events-none"
       />
 
       <motion.div
@@ -100,8 +85,7 @@ function FloatingCard({ accent, children }: { accent: string; children: React.Re
         whileHover={{ y: -6, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
         className="relative rounded-[20px] bg-white border border-[#F1F5F9] p-5 overflow-hidden"
         style={{
-          boxShadow: `0 4px 12px rgba(10,15,61,0.08), 0 32px 64px -12px ${accent}33, 0 32px 64px -16px rgba(15,23,42,0.28)`,
-          backgroundImage: `linear-gradient(180deg, ${accent}0F, rgba(255,255,255,0) 65%)`,
+          boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 48px -16px rgba(15,23,42,0.14)',
         }}
       >
         <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ backgroundColor: accent }} />

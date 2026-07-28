@@ -17,9 +17,11 @@ export interface FAQProps {
 }
 
 export const FAQ = (allProps: FAQProps & any) => {
-  const { 
-    items, 
-    itemBg, 
+  const {
+    // Templates/deserialized JSON can omit this entirely — items.map below is
+    // unguarded, so default it rather than let a bare FAQ node crash the canvas.
+    items = [],
+    itemBg,
     borderColor, 
     questionColor, 
     answerColor, 

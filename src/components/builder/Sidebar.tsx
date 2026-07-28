@@ -67,10 +67,10 @@ const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: an
           connectors.create(ref, component);
         }
       }}
-      className="flex flex-col items-center justify-center h-[68px] rounded-2xl border border-dash-border bg-white hover:-translate-y-[2px] hover:border-dash-accent/40 hover:shadow-md transition-all duration-150 motion-reduce:transition-none motion-reduce:hover:translate-y-0 cursor-grab active:cursor-grabbing active:border-dash-accent active:bg-dash-accent/5 active:scale-[0.98] group"
+      className="flex flex-col items-center justify-center h-[78px] rounded-2xl border border-dash-border bg-white hover:-translate-y-[2px] hover:border-dash-accent/40 hover:shadow-md transition-all duration-150 motion-reduce:transition-none motion-reduce:hover:translate-y-0 cursor-grab active:cursor-grabbing active:border-dash-accent active:bg-dash-accent/5 active:scale-[0.98] group"
     >
-      <div className="h-6 w-6 rounded-lg bg-dash-surface flex items-center justify-center mb-1 group-hover:bg-dash-accent group-hover:text-white transition-colors duration-200 motion-reduce:transition-none">
-        <Icon className="w-3.5 h-3.5 !text-dash-textMuted group-hover:!text-white transition-colors motion-reduce:transition-none pointer-events-none" />
+      <div className="h-9 w-9 rounded-xl bg-dash-surface flex items-center justify-center mb-1.5 group-hover:bg-dash-accent group-hover:text-white transition-colors duration-200 motion-reduce:transition-none">
+        <Icon className="w-[18px] h-[18px] !text-dash-textMuted group-hover:!text-white transition-colors motion-reduce:transition-none pointer-events-none" strokeWidth={1.75} />
       </div>
       <span className="text-[9.5px] font-semibold !text-dash-textMuted group-hover:!text-dash-text text-center leading-tight px-1 truncate w-full">{name}</span>
     </div>
@@ -323,7 +323,7 @@ export const Sidebar = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-green" />
                 Saved blueprints
               </h3>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2.5">
                 {customBlueprints.map((blueprint) => (
                   <div
                     key={blueprint.id}
@@ -370,8 +370,8 @@ export const Sidebar = ({
           )}
 
           <section>
-            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Structure nodes</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Structure nodes</h3>
+            <div className="grid grid-cols-3 gap-2.5">
               <DraggableItem name="Section" icon={SectionIcon} component={<RESOLVER.Section canvas paddingBottom={64} paddingTop={64} paddingLeft={24} paddingRight={24} backgroundColor="transparent" />} />
               <DraggableItem name="Container" icon={Square} component={<RESOLVER.Container canvas layoutType="fixed" maxWidth="1200px" padding={16} backgroundColor="transparent" />} />
               <DraggableItem name="Columns" icon={ColumnsIcon} component={<RESOLVER.Columns canvas layout="2" gap={16} padding={16} />} />
@@ -381,8 +381,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Typography</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Typography</h3>
+            <div className="grid grid-cols-3 gap-2.5">
               <DraggableItem name="Heading" icon={HeadingIcon} component={<RESOLVER.Heading level="h2" text="Heading" fontWeight="bold" textAlign="left" color="#111827" />} />
               <DraggableItem name="Paragraph" icon={AlignLeft} component={<RESOLVER.Paragraph text="Type your paragraph here." fontSize={16} textAlign="left" color="#4b5563" lineHeight="relaxed" />} />
               <DraggableItem name="Text / Edit" icon={Type} component={<RESOLVER.Text text="Custom Text" fontSize={16} />} />
@@ -390,8 +390,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Media & assets</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Media & assets</h3>
+            <div className="grid grid-cols-3 gap-2.5">
               <DraggableItem name="Image" icon={ImageIcon} component={<RESOLVER.Image src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="Placeholder" borderRadius={16} objectFit="cover" />} />
               <DraggableItem name="Video" icon={VideoIcon} component={<RESOLVER.Video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" provider="youtube" autoPlay={false} controls={true} loop={false} muted={false} borderRadius={16} />} />
               <DraggableItem name="Icon" icon={Star} component={<RESOLVER.Icon name="Star" size={24} color="#000000" strokeWidth={2} alignment="center" />} />
@@ -399,8 +399,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Layout & authority</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Layout & authority</h3>
+            <div className="grid grid-cols-3 gap-2.5">
               <DraggableItem name="Ultra Hero" icon={SectionIcon} component={<RESOLVER.Hero />} />
               <DraggableItem name="Global Navbar" icon={Navigation} component={<RESOLVER.Navbar />} />
               <DraggableItem name="Global Footer" icon={Layout} component={<RESOLVER.Footer />} />
@@ -409,8 +409,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Trust & social proof</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Trust & social proof</h3>
+            <div className="grid grid-cols-3 gap-2.5">
               <DraggableItem name="Testimonial" icon={MessageCircleQuestion} component={<RESOLVER.Testimonial />} />
               <DraggableItem name="Star Rating" icon={Star} component={<RESOLVER.StarRating />} />
               <DraggableItem name="Logo Cloud" icon={ImageIcon} component={<RESOLVER.LogoStrip />} />
@@ -419,8 +419,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Conversion & logic</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Conversion & logic</h3>
+            <div className="grid grid-cols-3 gap-2.5">
               <DraggableItem name="Button" icon={ButtonIcon} component={<RESOLVER.Button text="Click Here" size="md" variant="primary" color="#6c47ff" textColor="#ffffff" borderRadius={8} width="fit" link="#" iconPosition="right" />} />
               <DraggableItem name="Lead Form" icon={FormInput} component={<RESOLVER.Form />} />
               <DraggableItem name="Countdown" icon={Timer} component={<RESOLVER.Countdown />} />
@@ -430,8 +430,8 @@ export const Sidebar = ({
           </section>
 
           <section>
-            <h3 className="text-[11px] font-semibold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Advanced</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Advanced</h3>
+            <div className="grid grid-cols-3 gap-2.5">
               <DraggableItem
                 name="Embed Code"
                 icon={CodeIcon}

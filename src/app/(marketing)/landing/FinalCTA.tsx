@@ -109,9 +109,11 @@ style={{ background: 'linear-gradient(160deg, #0F172A 0%, #1a1060 40%, #0F172A 1
           )}
         </motion.h2>
 
-        <motion.p variants={popUp} className="!text-white/80 text-lg mx-auto max-w-xl mt-4 mb-10">
-          {subtext}
-        </motion.p>
+        {subtext && (
+          <motion.p variants={popUp} className="!text-white/80 text-lg mx-auto max-w-xl mt-4 mb-10">
+            {subtext}
+          </motion.p>
+        )}
 
         <motion.div variants={popUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-5">
           <Link href={primaryHref}>

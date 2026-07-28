@@ -42,7 +42,9 @@ export interface FormProps {
 
 export const Form = (allProps: FormProps & any) => {
  const {
-  fields,
+  // Templates/deserialized JSON can omit this entirely — fields.map below is
+  // unguarded, so default it rather than let a bare Form node crash the canvas.
+  fields = [],
   buttonText,
   backgroundColor,
   borderRadius,

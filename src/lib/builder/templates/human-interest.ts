@@ -154,7 +154,7 @@ export const humanInterest: BuilderTemplate = {
       nodes: ['serv-img'],
       parent: 'services-grid'
     },
-    'serv-img': { type: { resolvedName: 'UserImage' }, props: { src: 'https://images.unsplash.com/photo-1444464666168-49d633b867ad', borderRadius: 0, height: 600, objectFit: 'cover' }, parent: 'serv-col-1' },
+    'serv-img': { type: { resolvedName: 'UserImage' }, props: { src: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c', borderRadius: 0, height: 600, objectFit: 'cover' }, parent: 'serv-col-1' },
     'serv-col-2': {
       type: { resolvedName: 'Container' },
       isCanvas: true,

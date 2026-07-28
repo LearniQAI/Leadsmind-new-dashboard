@@ -6,16 +6,39 @@ import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useResponsiveValue } from '@/lib/builder/hooks';
 
-export const PricingTable = ({ 
-  plans, 
-  primaryColor = '#2563eb', 
+// The non-highlighted tier's card background is a near-transparent overlay
+// (rgba(255,255,255,0.03)) — effectively just whatever sits behind it — so a
+// flat hardcoded default text color can't safely contrast against it on every
+// page theme. Deriving from the section's own backgroundColor (which authors
+// already set deliberately per page) instead of defaulting blind to white
+// means a template that forgets to set textColor explicitly (this was
+// happening — see ai-saas.ts) degrades gracefully instead of going invisible
+// the moment it's used on a light-themed page.
+function isLightColor(hex: string): boolean {
+  const clean = hex.replace('#', '');
+  if (clean.length !== 6) return false;
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return false;
+  // Perceived luminance (ITU-R BT.601)
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150;
+}
+
+export const PricingTable = ({
+  // Templates/deserialized JSON can omit this entirely — plans.map below is
+  // unguarded, so default it rather than let a bare PricingTable node crash the canvas.
+  plans = [],
+  primaryColor = '#2563eb',
   accentColor = '#f59e0b',
   backgroundColor = 'transparent',
-  textColor = '#ffffff',
-  dragRef, 
-  ...props 
+  textColor,
+  dragRef,
+  ...props
 }: any) => {
   const { connectors: { connect, drag } } = useNode();
+  const resolvedTextColor = textColor
+    ?? (isLightColor(backgroundColor) ? '#111827' : '#ffffff');
 
   return (
     <div
@@ -40,7 +63,7 @@ export const PricingTable = ({
           style={{
             backgroundColor: plan.highlight ? primaryColor : 'rgba(255,255,255,0.03)',
             borderColor: plan.highlight ? primaryColor : 'rgba(255,255,255,0.1)',
-            color: plan.highlight ? '#ffffff' : textColor
+            color: plan.highlight ? '#ffffff' : resolvedTextColor
           }}
         >
           {plan.highlight && (
@@ -107,7 +130,8 @@ PricingTable.craft = {
     primaryColor: '#2563eb',
     accentColor: '#f59e0b',
     backgroundColor: 'transparent',
-    textColor: '#ffffff',
+    // No fixed textColor default — PricingTable derives a safe one from
+    // backgroundColor when the author hasn't set an explicit value.
   },
   related: {
     settings: PricingTableSettings,

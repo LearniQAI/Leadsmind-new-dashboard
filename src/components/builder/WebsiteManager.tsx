@@ -691,19 +691,24 @@ export default function WebsiteManager() {
                                 key={t.id}
                                 onClick={() => setSelectedTemplate(t.id)}
                                 className={cn(
-                                  "group relative cursor-pointer rounded-2xl border-2 transition-colors motion-reduce:transition-none overflow-hidden flex flex-col h-full min-h-[220px]",
+                                  "group relative cursor-pointer rounded-2xl border-2 transition-all duration-200 motion-reduce:transition-none overflow-hidden flex flex-col h-full hover:shadow-lg hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
                                   selectedTemplate === t.id
-                                    ? "border-dash-accent bg-dash-accent/5"
-                                    : "border-dash-border bg-dash-surface hover:border-dash-text/20"
+                                    ? "border-dash-accent bg-dash-accent/5 shadow-md"
+                                    : isBlank
+                                      ? "border-dash-accent/30 border-dashed bg-dash-accent/[0.03] hover:border-dash-accent/50"
+                                      : "border-dash-border bg-dash-surface hover:border-dash-text/20"
                                 )}
                               >
                                 <div className={cn(
-                                  "flex-1 relative overflow-hidden",
-                                  isBlank ? "flex items-center justify-center bg-white border-b border-dash-border" : "bg-dash-surface"
+                                  // Fixed aspect ratio (not flex-1) so every card's image area is the
+                                  // same height regardless of how much the name/description wraps below —
+                                  // previously flex-1 let row-mates end up with mismatched image heights.
+                                  "aspect-[4/3] relative overflow-hidden shrink-0",
+                                  isBlank ? "flex items-center justify-center bg-transparent" : "bg-dash-surface"
                                 )}>
                                   {isBlank ? (
-                                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-dash-border flex items-center justify-center !text-dash-textMuted group-hover:text-dash-accent group-hover:border-dash-accent/40 transition-colors motion-reduce:transition-none">
-                                      <Plus size={24} />
+                                    <div className="w-14 h-14 rounded-2xl bg-dash-accent/10 flex items-center justify-center text-dash-accent group-hover:bg-dash-accent group-hover:text-white transition-colors motion-reduce:transition-none">
+                                      <Plus size={26} strokeWidth={2.25} />
                                     </div>
                                   ) : (
                                     (t.thumbnail || t.preview_image) && (
@@ -750,7 +755,7 @@ export default function WebsiteManager() {
                                     "font-bold text-[12px] block transition-colors motion-reduce:transition-none leading-tight",
                                     selectedTemplate === t.id ? "text-dash-accent" : "!text-dash-text group-hover:text-dash-accent"
                                   )}>{t.name}</span>
-                                  <span className="text-[10px] font-medium !text-dash-textMuted line-clamp-1 mt-1">{t.description}</span>
+                                  <span className="text-[10px] font-medium !text-dash-textMuted line-clamp-2 mt-1 leading-relaxed">{t.description}</span>
                                 </div>
                               </div>
                             );

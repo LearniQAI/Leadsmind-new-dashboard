@@ -15,6 +15,23 @@ function getClassString(props: any): string {
   return classes ? `class="${classes}"` : '';
 }
 
+// Mirrors the same fallback used by the live PricingTable component: the
+// non-highlighted tier's card has no defined background of its own in the
+// live editor, and here it's a flat hardcoded white — neither case can
+// safely assume a fixed text color works on every page theme, so derive one
+// from whatever background is actually in play instead of leaving text with
+// no color at all (which was silently inheriting the published page's
+// ambient color and going invisible whenever that happened to be light).
+function isLightColor(hex: string): boolean {
+  const clean = (hex || '').replace('#', '');
+  if (clean.length !== 6) return false;
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return false;
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150;
+}
+
 function minifyHtml(html: string): string {
   if (!html) return '';
   return html
@@ -345,8 +362,10 @@ function renderNode(node: CraftNode, allNodes: CraftContent, nodeId: string): st
       `;
 
     case 'PricingTable':
+      const regularTierBg = '#ffffff';
+      const regularTierText = props.textColor || (isLightColor(regularTierBg) ? '#111827' : '#ffffff');
       const plansHtml = (props.plans || []).map((p: any) => `
-        <div style="padding: 32px; border-radius: 24px; border: 1px solid #eee; ${p.highlight ? 'background: #6c47ff; color: white;' : 'background: white;'}">
+        <div style="padding: 32px; border-radius: 24px; border: 1px solid #eee; ${p.highlight ? 'background: #6c47ff; color: white;' : `background: ${regularTierBg}; color: ${regularTierText};`}">
           <h4 style="font-size: 18px; font-weight: bold; margin: 0;">${p.name}</h4>
           <div style="font-size: 36px; font-weight: 900; margin: 16px 0;">${p.price}</div>
           <ul style="list-style: none; padding: 0; margin-bottom: 24px;">

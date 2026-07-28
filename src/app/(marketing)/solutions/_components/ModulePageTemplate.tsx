@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getModule } from '@/data/modules';
+import { getModule, type ModuleContentLegacy } from '@/data/modules';
 import '../../landing/landing.css';
 import Navbar from '../../landing/Navbar';
 import Footer from '../../landing/Footer';
 import { HeroVisual, heroVisuals } from './visuals';
 import FinalCTA from '../../landing/FinalCTA';
+import TrustStrip from './TrustStrip';
+import StickyFooterCtaBand from './StickyFooterCtaBand';
 
 const heroContainer = {
   hidden: {},
@@ -57,9 +59,12 @@ export default function ModulePageTemplate({ slug, user }: { slug: string; user?
   const mod = getModule(slug);
   if (!mod) return null;
   const Icon = mod.icon;
+  const v2 = 'content' in mod ? mod.content : undefined;
+  /** Only accessed in the `!v2` branch below, where `mod` is always the legacy shape. */
+  const legacy = mod as ModuleContentLegacy;
 
   return (
-    <div className="min-h-screen bg-white font-sans antialiased">
+    <div className="min-h-screen bg-white font-sans antialiased pb-16">
       <Navbar user={user} />
 
       {/* HERO */}
@@ -134,124 +139,219 @@ export default function ModulePageTemplate({ slug, user }: { slug: string; user?
         </motion.div>
       </section>
 
-      {/* PAIN BAND */}
-      <section className="py-20 md:py-24 bg-white">
-        <div className="container mx-auto px-6">
-          <motion.div
-            variants={sectionHeaderContainer}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.4 }}
-            className="max-w-2xl mx-auto text-center mb-14"
-          >
-            <motion.div
-              variants={sectionHeaderItem}
-              className="text-xs font-bold uppercase tracking-[0.2em] mb-4"
-              style={{ color: ROYAL }}
-            >
-              {mod.pain.eyebrow}
-            </motion.div>
-            <motion.h2 variants={sectionHeaderItem} className="text-[clamp(26px,3.6vw,38px)] font-extrabold !text-[#0F172A] leading-tight">
-              {mod.pain.headline}
-            </motion.h2>
-          </motion.div>
+      <TrustStrip />
 
-          <motion.div
-            variants={cardGridContainer}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.2 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto"
-          >
-            {mod.pain.points.map((p) => (
+      {v2 ? (
+        <>
+          {/* PROBLEM */}
+          <section className="py-20 md:py-24 bg-white">
+            <div className="container mx-auto px-6">
               <motion.div
-                key={p.kicker}
-                variants={cardItem}
-                className="rounded-2xl border border-[#E2E8F0] bg-white p-6"
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.4 }}
+                variants={connectiveFade}
+                className="max-w-2xl mx-auto text-center"
               >
-                <div className="font-bold text-[15px] !text-[#0F172A] mb-2">{p.kicker}</div>
-                <p className="text-sm !text-[#64748B] leading-relaxed">{p.body}</p>
+                <div className="text-xs font-bold uppercase tracking-[0.2em] mb-4" style={{ color: ROYAL }}>
+                  THE PROBLEM
+                </div>
+                <p className="text-lg !text-[#64748B] leading-relaxed">{v2.problem}</p>
               </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* WHAT'S INSIDE */}
-      <section className="py-20 md:py-24 bg-[#FAFBFF]">
-        <div className="container mx-auto px-6">
-          <motion.div
-            variants={sectionHeaderContainer}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.4 }}
-            className="max-w-2xl mx-auto text-center mb-14"
-          >
-            <motion.div
-              variants={sectionHeaderItem}
-              className="text-xs font-bold uppercase tracking-[0.2em] mb-4"
-              style={{ color: ROYAL }}
-            >
-              {mod.featureGroups.eyebrow}
-            </motion.div>
-            <motion.h2 variants={sectionHeaderItem} className="text-[clamp(26px,3.6vw,38px)] font-extrabold !text-[#0F172A] leading-tight">
-              {mod.featureGroups.headline}
-            </motion.h2>
-          </motion.div>
-
-          <motion.div
-            variants={cardGridContainer}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.15 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto"
-          >
-            {mod.featureGroups.groups.map((g) => (
-              <motion.div key={g.title} variants={cardItem} className="rounded-2xl border border-[#E2E8F0] bg-white p-6">
-                <h3 className="text-[15px] font-bold !text-[#0F172A] mb-3.5">{g.title}</h3>
-                <ul className="space-y-2.5">
-                  {g.items.map((item) => (
-                    <li key={item} className="flex items-start gap-2.5 text-sm !text-[#64748B] leading-relaxed">
-                      <Check className="w-3.5 h-3.5 mt-[3px] shrink-0" style={{ color: ROYAL }} />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ONE DATA LAYER */}
-      <section className="py-20 bg-[#F8FAFC] border-t border-[#E2E8F0] text-center">
-        <div className="container mx-auto px-6 max-w-2xl">
-          <motion.div
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.4 }}
-            variants={connectiveFade}
-          >
-            <div className="text-xs font-bold uppercase tracking-[0.2em] mb-4" style={{ color: ROYAL }}>
-              {mod.connective.eyebrow}
             </div>
-            <h2 className="text-[clamp(24px,3.4vw,32px)] font-extrabold !text-[#0F172A] leading-tight mb-4">
-              {mod.connective.headline}
-            </h2>
-            <p className="!text-[#64748B] text-[15px] leading-relaxed">{mod.connective.paragraph}</p>
-          </motion.div>
-        </div>
-      </section>
+          </section>
 
-      <FinalCTA
-        headline={mod.finalCta.headline}
-        subtext={mod.finalCta.subtext}
-        primaryLabel={mod.hero.ctaLabel}
-        secondaryHref="/#demo"
-        finePrint={mod.hero.finePrint}
-      />
+          {/* WHAT'S INSIDE */}
+          <section className="py-20 md:py-24 bg-[#FAFBFF]">
+            <div className="container mx-auto px-6">
+              <motion.div
+                variants={sectionHeaderContainer}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.4 }}
+                className="max-w-2xl mx-auto text-center mb-14"
+              >
+                <motion.div
+                  variants={sectionHeaderItem}
+                  className="text-xs font-bold uppercase tracking-[0.2em] mb-4"
+                  style={{ color: ROYAL }}
+                >
+                  {v2.insideEyebrow}
+                </motion.div>
+              </motion.div>
+
+              <motion.div
+                variants={cardGridContainer}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.15 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto"
+              >
+                {v2.insideItems.map((item) => (
+                  <motion.div key={item.title} variants={cardItem} className="rounded-2xl border border-[#E2E8F0] bg-white p-6">
+                    <span
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 mb-3.5"
+                      style={{ backgroundColor: ROYAL }}
+                    >
+                      <Check className="w-4.5 h-4.5" />
+                    </span>
+                    <h3 className="text-[15px] font-bold !text-[#0F172A] mb-1.5">{item.title}</h3>
+                    <p className="text-sm !text-[#64748B] leading-relaxed">{item.description}</p>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </section>
+
+          {/* WHY LEADSMIND */}
+          <section className="py-20 bg-[#F8FAFC] border-t border-[#E2E8F0] text-center">
+            <div className="container mx-auto px-6 max-w-2xl">
+              <motion.div
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.4 }}
+                variants={connectiveFade}
+              >
+                <div className="text-xs font-bold uppercase tracking-[0.2em] mb-4" style={{ color: ROYAL }}>
+                  {v2.whyEyebrow}
+                </div>
+                <p className="!text-[#64748B] text-[15px] leading-relaxed">{v2.whyText}</p>
+              </motion.div>
+            </div>
+          </section>
+
+          <FinalCTA
+            headline={v2.ctaText}
+            subtext=""
+            primaryLabel={v2.ctaPrimaryLabel}
+            secondaryLabel={v2.ctaSecondaryLabel}
+            secondaryHref={v2.ctaSecondaryHref}
+            finePrint=""
+          />
+        </>
+      ) : (
+        <>
+          {/* PAIN BAND */}
+          <section className="py-20 md:py-24 bg-white">
+            <div className="container mx-auto px-6">
+              <motion.div
+                variants={sectionHeaderContainer}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.4 }}
+                className="max-w-2xl mx-auto text-center mb-14"
+              >
+                <motion.div
+                  variants={sectionHeaderItem}
+                  className="text-xs font-bold uppercase tracking-[0.2em] mb-4"
+                  style={{ color: ROYAL }}
+                >
+                  {legacy.pain.eyebrow}
+                </motion.div>
+                <motion.h2 variants={sectionHeaderItem} className="text-[clamp(26px,3.6vw,38px)] font-extrabold !text-[#0F172A] leading-tight">
+                  {legacy.pain.headline}
+                </motion.h2>
+              </motion.div>
+
+              <motion.div
+                variants={cardGridContainer}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.2 }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto"
+              >
+                {legacy.pain.points.map((p) => (
+                  <motion.div
+                    key={p.kicker}
+                    variants={cardItem}
+                    className="rounded-2xl border border-[#E2E8F0] bg-white p-6"
+                  >
+                    <div className="font-bold text-[15px] !text-[#0F172A] mb-2">{p.kicker}</div>
+                    <p className="text-sm !text-[#64748B] leading-relaxed">{p.body}</p>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </section>
+
+          {/* WHAT'S INSIDE */}
+          <section className="py-20 md:py-24 bg-[#FAFBFF]">
+            <div className="container mx-auto px-6">
+              <motion.div
+                variants={sectionHeaderContainer}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.4 }}
+                className="max-w-2xl mx-auto text-center mb-14"
+              >
+                <motion.div
+                  variants={sectionHeaderItem}
+                  className="text-xs font-bold uppercase tracking-[0.2em] mb-4"
+                  style={{ color: ROYAL }}
+                >
+                  {legacy.featureGroups.eyebrow}
+                </motion.div>
+                <motion.h2 variants={sectionHeaderItem} className="text-[clamp(26px,3.6vw,38px)] font-extrabold !text-[#0F172A] leading-tight">
+                  {legacy.featureGroups.headline}
+                </motion.h2>
+              </motion.div>
+
+              <motion.div
+                variants={cardGridContainer}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.15 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto"
+              >
+                {legacy.featureGroups.groups.map((g) => (
+                  <motion.div key={g.title} variants={cardItem} className="rounded-2xl border border-[#E2E8F0] bg-white p-6">
+                    <h3 className="text-[15px] font-bold !text-[#0F172A] mb-3.5">{g.title}</h3>
+                    <ul className="space-y-2.5">
+                      {g.items.map((item) => (
+                        <li key={item} className="flex items-start gap-2.5 text-sm !text-[#64748B] leading-relaxed">
+                          <Check className="w-3.5 h-3.5 mt-[3px] shrink-0" style={{ color: ROYAL }} />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </section>
+
+          {/* ONE DATA LAYER */}
+          <section className="py-20 bg-[#F8FAFC] border-t border-[#E2E8F0] text-center">
+            <div className="container mx-auto px-6 max-w-2xl">
+              <motion.div
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.4 }}
+                variants={connectiveFade}
+              >
+                <div className="text-xs font-bold uppercase tracking-[0.2em] mb-4" style={{ color: ROYAL }}>
+                  {legacy.connective.eyebrow}
+                </div>
+                <h2 className="text-[clamp(24px,3.4vw,32px)] font-extrabold !text-[#0F172A] leading-tight mb-4">
+                  {legacy.connective.headline}
+                </h2>
+                <p className="!text-[#64748B] text-[15px] leading-relaxed">{legacy.connective.paragraph}</p>
+              </motion.div>
+            </div>
+          </section>
+
+          <FinalCTA
+            headline={legacy.finalCta.headline}
+            subtext={legacy.finalCta.subtext}
+            primaryLabel={mod.hero.ctaLabel}
+            secondaryHref="/#demo"
+            finePrint={mod.hero.finePrint}
+          />
+        </>
+      )}
 
       <Footer />
+      <StickyFooterCtaBand />
     </div>
   );
 }
