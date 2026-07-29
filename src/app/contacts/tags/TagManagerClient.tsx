@@ -35,11 +35,14 @@ import {
   reorderTagCategories,
   toggleFavoriteTag,
   removeTag,
+  getContactsForTag,
 } from '@/app/actions/tags';
 import { acceptAiRecommendation, rejectAiRecommendation } from '@/app/actions/aiRecommendations';
 import { mergeTags } from '@/app/actions/tagInsights';
 import { searchTagsNaturalLanguage } from '@/app/actions/tagSearch';
 import { Sparkles, Check, GitMerge, AlertTriangle, Wand2 } from 'lucide-react';
+import { ContactTable } from '@/components/crm/ContactTable';
+import type { Contact } from '@/types/crm';
 
 interface TagRow {
   id: string;
@@ -129,6 +132,10 @@ export default function TagManagerClient({
   const [nlSearched, setNlSearched] = useState(false);
   const [nlResults, setNlResults] = useState<NlSearchResultContact[]>([]);
   const [nlNote, setNlNote] = useState<string | undefined>(undefined);
+  const [contactsModalTag, setContactsModalTag] = useState<TagRow | null>(null);
+  const [contactsModalLoading, setContactsModalLoading] = useState(false);
+  const [contactsModalData, setContactsModalData] = useState<Contact[]>([]);
+  const [contactsModalTotalAssignments, setContactsModalTotalAssignments] = useState(0);
 
   const refresh = () => startTransition(() => router.refresh());
 
@@ -268,20 +275,27 @@ export default function TagManagerClient({
             checked={selectedIds.has(tag.id)}
             onCheckedChange={(checked) => toggleSelected(tag.id, checked === true)}
           />
-          <span
-            className="h-3 w-3 rounded-full shrink-0"
-            style={{ backgroundColor: tag.color ?? '#9ca3af' }}
-          />
-          {tag.icon && <span className="text-sm">{tag.icon}</span>}
-          <span className="text-sm font-bold !text-dash-text truncate">{tag.name}</span>
-          {tag.visibility === 'private' && (
-            <span className="text-[10px] font-bold text-dash-textMuted bg-dash-border/50 px-2 py-0.5 rounded-full shrink-0">
-              private
+          <button
+            type="button"
+            onClick={() => handleOpenContactsForTag(tag)}
+            className="flex items-center gap-3 min-w-0 text-left"
+            title="View contacts with this tag"
+          >
+            <span
+              className="h-3 w-3 rounded-full shrink-0"
+              style={{ backgroundColor: tag.color ?? '#9ca3af' }}
+            />
+            {tag.icon && <span className="text-sm">{tag.icon}</span>}
+            <span className="text-sm font-bold !text-dash-text truncate hover:text-dash-accent transition-colors">{tag.name}</span>
+            {tag.visibility === 'private' && (
+              <span className="text-[10px] font-bold text-dash-textMuted bg-dash-border/50 px-2 py-0.5 rounded-full shrink-0">
+                private
+              </span>
+            )}
+            <span className="text-[11px] font-semibold !text-dash-textMuted shrink-0 hover:text-dash-accent transition-colors">
+              {tag.usage_count} {tag.usage_count === 1 ? 'use' : 'uses'}
             </span>
-          )}
-          <span className="text-[11px] font-semibold !text-dash-textMuted shrink-0">
-            {tag.usage_count} {tag.usage_count === 1 ? 'use' : 'uses'}
-          </span>
+          </button>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -382,6 +396,20 @@ export default function TagManagerClient({
       setNlNote(undefined);
     }
     setNlLoading(false);
+  };
+
+  const handleOpenContactsForTag = async (tag: TagRow) => {
+    setContactsModalTag(tag);
+    setContactsModalLoading(true);
+    setContactsModalData([]);
+    const res = await getContactsForTag(tag.id);
+    if (res.success) {
+      setContactsModalData((res.data ?? []) as Contact[]);
+      setContactsModalTotalAssignments(res.totalAssignmentCount ?? 0);
+    } else {
+      toast.error(res.error || 'Failed to load contacts for this tag');
+    }
+    setContactsModalLoading(false);
   };
 
   return (
@@ -768,6 +796,54 @@ export default function TagManagerClient({
         confirmLabel="Delete"
         variant="danger"
       />
+
+      <Dialog open={!!contactsModalTag} onOpenChange={(open) => !open && setContactsModalTag(null)}>
+        <DialogContent className="bg-white border-dash-border !text-dash-text max-w-4xl w-full rounded-2xl shadow-xl p-6 z-[1001] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold !text-dash-text flex items-center gap-2">
+              {contactsModalTag?.icon && <span>{contactsModalTag.icon}</span>}
+              <span
+                className="h-3 w-3 rounded-full shrink-0"
+                style={{ backgroundColor: contactsModalTag?.color ?? '#9ca3af' }}
+              />
+              {contactsModalTag?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {contactsModalLoading ? (
+            <div className="py-12 text-center text-sm !text-dash-textMuted">Loading contacts…</div>
+          ) : contactsModalData.length === 0 ? (
+            <div className="py-12 text-center">
+              <TagIcon size={32} className="mx-auto text-dash-accent/30 mb-3" />
+              <p className="text-sm font-bold !text-dash-text">No contacts have this tag</p>
+              {contactsModalTotalAssignments > 0 && (
+                <p className="text-[12px] !text-dash-textMuted mt-1">
+                  It's assigned to {contactsModalTotalAssignments} other record{contactsModalTotalAssignments === 1 ? '' : 's'} (deals, invoices, etc.), just not to any contact.
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              {contactsModalTotalAssignments > contactsModalData.length && (
+                <p className="text-[11px] font-semibold !text-dash-textMuted bg-dash-surface rounded-lg px-3 py-2 mb-2">
+                  Showing {contactsModalData.length} contact{contactsModalData.length === 1 ? '' : 's'} — this tag is also
+                  assigned to {contactsModalTotalAssignments - contactsModalData.length} non-contact record
+                  {contactsModalTotalAssignments - contactsModalData.length === 1 ? '' : 's'} (deals, invoices, etc.), not shown here.
+                </p>
+              )}
+              <div className="max-h-[55vh] overflow-y-auto">
+                <ContactTable
+                  contacts={contactsModalData}
+                  selectedIds={new Set()}
+                  onSelectContact={() => {}}
+                  onToggleOne={() => {}}
+                  onToggleAll={() => {}}
+                />
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
     </div>
   );
