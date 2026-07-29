@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData } from '@/lib/api/auth'
 import { dispatchWebhook } from '@/lib/webhooks/dispatcher'
+import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,6 +49,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (error) return apiError('Internal server error', 500)
   if (!data) return apiError('Contact not found', 404)
   await dispatchWebhook(auth.workspaceId, 'contact.updated', { contact: data })
+  if ('tags' in updates) {
+    syncContactTagsToRelational(auth.workspaceId, data.id, Array.isArray(data.tags) ? data.tags : []).catch(() => {})
+  }
   return apiData(data)
 }
 

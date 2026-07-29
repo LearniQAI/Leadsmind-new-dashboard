@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { ContactDiscoveryService } from '@/lib/lead-finder/ContactDiscoveryService';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
+import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
 
 export async function discoverAndSaveContacts(leadId: string, businessName: string, website?: string) {
   const supabase = await createServerClient();
@@ -170,6 +171,7 @@ export async function assignContactToPipeline(contactId: string) {
   const finalStageId = stages[0].id;
 
   // 3. Create CRM Contact
+  const newContactTags = [...(lead?.smart_tags || []), 'Lead Finder', 'Enriched Contact'];
   const { data: crmContact } = await supabase
     .from('contacts')
     .insert({
@@ -179,10 +181,14 @@ export async function assignContactToPipeline(contactId: string) {
       email: contact.email || null,
       phone: lead?.phone || null,
       source: 'Lead Finder',
-      tags: [...(lead?.smart_tags || []), 'Lead Finder', 'Enriched Contact']
+      tags: newContactTags
     })
     .select('id')
     .single();
+
+  if (crmContact) {
+    syncContactTagsToRelational(workspaceId, crmContact.id, newContactTags).catch(() => {});
+  }
 
   // 4. Create CRM Opportunity
   if (crmContact) {

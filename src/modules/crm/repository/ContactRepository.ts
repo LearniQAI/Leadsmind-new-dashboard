@@ -1,4 +1,4 @@
-import { AppError, DatabaseError, NotFoundError } from '@/shared/errors/AppError';
+import { DatabaseError, NotFoundError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 
 export class ContactRepository {
@@ -101,39 +101,6 @@ export class ContactRepository {
     if (error) throw new Error(error.message);
   }
 
-  async listRegistryTags(workspaceId: string): Promise<{ name: string }[]> {
-    const { data, error } = await this.db
-      .from('contact_tags_registry')
-      .select('name')
-      .eq('workspace_id', workspaceId);
-    if (error) throw new Error(error.message);
-    return data ?? [];
-  }
-
-  async listTagsAndCounts(workspaceId: string): Promise<{ name: string; count: number }[]> {
-    const { data, error } = await this.db
-      .from('contacts')
-      .select('tags')
-      .eq('workspace_id', workspaceId);
-    if (error) throw new Error(error.message);
-
-    const counts = new Map<string, number>();
-    (data ?? []).forEach((c: { tags?: string[] }) => {
-      (c.tags ?? []).forEach((t) => counts.set(t, (counts.get(t) ?? 0) + 1));
-    });
-    return Array.from(counts.entries()).map(([name, count]) => ({ name, count }));
-  }
-
-  async createRegistryTag(workspaceId: string, name: string): Promise<void> {
-    const { error } = await this.db
-      .from('contact_tags_registry')
-      .insert({ workspace_id: workspaceId, name: name.trim() });
-    if (error) {
-      if (error.code === '23505') throw new AppError('TAG_EXISTS', 'Tag already exists', 409);
-      throw new Error(error.message);
-    }
-  }
-
   async getTags(contactId: string, workspaceId: string): Promise<string[]> {
     const { data, error } = await this.db
       .from('contacts')
@@ -178,18 +145,6 @@ export class ContactRepository {
     }
   }
 
-  async globalRenameTagRpc(workspaceId: string, oldTag: string, newTag: string): Promise<void> {
-    const { error } = await this.db.rpc('global_rename_tag', {
-      p_old: oldTag,
-      p_new: newTag,
-      p_workspace_id: workspaceId,
-    });
-    if (error) {
-      logger.error({ err: error, workspaceId }, 'contact.renameTag.failed');
-      throw new DatabaseError('Failed to rename tag');
-    }
-  }
-
   async logActivity(
     workspaceId: string,
     contactId: string,
@@ -206,34 +161,6 @@ export class ContactRepository {
   async logActivitiesBulk(activities: Record<string, unknown>[]): Promise<void> {
     if (activities.length === 0) return;
     const { error } = await this.db.from('contact_activities').insert(activities);
-    if (error) throw new Error(error.message);
-  }
-
-  async deleteRegistryTag(workspaceId: string, tag: string): Promise<void> {
-    const { error } = await this.db
-      .from('contact_tags_registry')
-      .delete()
-      .eq('workspace_id', workspaceId)
-      .eq('name', tag);
-    if (error) throw new Error(error.message);
-  }
-
-  async findByTag(workspaceId: string, tag: string): Promise<{ id: string; tags: string[] }[]> {
-    const { data, error } = await this.db
-      .from('contacts')
-      .select('id, tags')
-      .eq('workspace_id', workspaceId)
-      .contains('tags', [tag]);
-    if (error) throw new Error(error.message);
-    return data ?? [];
-  }
-
-  async renameRegistryTag(workspaceId: string, oldTag: string, newTag: string): Promise<void> {
-    const { error } = await this.db
-      .from('contact_tags_registry')
-      .update({ name: newTag })
-      .eq('workspace_id', workspaceId)
-      .eq('name', oldTag);
     if (error) throw new Error(error.message);
   }
 

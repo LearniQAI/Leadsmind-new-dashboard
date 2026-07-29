@@ -442,10 +442,10 @@ export async function getAssignableMembers() {
 }
 
 // getWorkspaceTags previously lived here as a dead, unauthenticated duplicate
-// of contacts.ts's getWorkspaceTags (the live version, delegating to
-// ContactService, wired to /contacts and /contacts/tags) — removed as part
-// of the Priority 2 duplicate-implementation cleanup. Confirmed zero
-// remaining callers of this file's copy before deleting.
+// of contacts.ts's getWorkspaceTags — removed as part of the Priority 2
+// duplicate-implementation cleanup. contacts.ts's own getWorkspaceTags has
+// since been replaced by tags.ts's listTags(), backed by the relational
+// `tags` table instead of contact_tags_registry.
 
 export async function uploadTaskAttachment(taskId: string, formData: FormData) {
   try {

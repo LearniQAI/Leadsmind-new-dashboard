@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { globalRenameTag, globalDeleteTag, createRegistryTag } from '@/app/actions/contacts';
+import { updateTag, deleteTag, createTag } from '@/app/actions/tags';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Tags, Tag as TagIcon, Plus, SquarePen, Trash2 } from 'lucide-react';
@@ -31,7 +31,7 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
     if (!createName.trim()) return;
 
     setIsProcessing(true);
-    const res = await createRegistryTag(createName.trim());
+    const res = await createTag({ name: createName.trim() });
     if (res.success) {
       toast.success(`Strategic tag "${createName}" created`);
       setCreateName('');
@@ -41,14 +41,14 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
     setIsProcessing(false);
   };
 
-  const handleRename = async (oldTag: string) => {
-    if (!newName.trim() || newName === oldTag) {
+  const handleRename = async (tagId: string, oldName: string) => {
+    if (!newName.trim() || newName === oldName) {
       setEditingTag(null);
       return;
     }
 
     setIsProcessing(true);
-    const res = await globalRenameTag(oldTag, newName.trim());
+    const res = await updateTag(tagId, { name: newName.trim() });
     if (res.success) {
       toast.success(`Tag renamed to "${newName}"`);
       setEditingTag(null);
@@ -63,9 +63,9 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
     if (!tagToDelete) return;
 
     setIsProcessing(true);
-    const res = await globalDeleteTag(tagToDelete);
+    const res = await deleteTag(tagToDelete);
     if (res.success) {
-      toast.success(`Tag "${tagToDelete}" deleted globally`);
+      toast.success(`Tag deleted globally`);
       setTagToDelete(null);
     } else {
       toast.error(res.error || 'Failed to delete tag');
@@ -119,17 +119,17 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
                   className="group flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border hover:border-dash-text/10 transition-all"
                 >
                   <div className="flex-1 mr-4">
-                    {editingTag === tag.name ? (
+                    {editingTag === tag.id ? (
                       <div className="flex gap-2">
                         <input
                           autoFocus
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleRename(tag.name)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleRename(tag.id, tag.name)}
                           className="flex-1 bg-white border border-dash-accent/30 rounded-lg px-3 py-1.5 text-[13px] !text-dash-text focus:outline-none focus:border-dash-accent transition-all"
                         />
                         <button
-                          onClick={() => handleRename(tag.name)}
+                          onClick={() => handleRename(tag.id, tag.name)}
                           disabled={isProcessing}
                           className="px-3 rounded-lg bg-dash-accent text-white text-[11px] font-bold disabled:opacity-50"
                         >
@@ -156,7 +156,7 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => {
-                          setEditingTag(tag.name);
+                          setEditingTag(tag.id);
                           setNewName(tag.name);
                         }}
                         className="p-2 rounded-lg text-dash-textMuted hover:text-dash-accent hover:bg-dash-accent/10 transition-all"
@@ -165,7 +165,7 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
                         <SquarePen size={13} />
                       </button>
                       <button
-                        onClick={() => setTagToDelete(tag.name)}
+                        onClick={() => setTagToDelete(tag.id)}
                         className="p-2 rounded-lg text-dash-textMuted hover:text-red hover:bg-red/10 transition-all"
                         title="Delete Globally"
                       >
@@ -191,7 +191,7 @@ export function ManageTagsDialog({ isOpen, onClose, tags }: ManageTagsDialogProp
         onClose={() => setTagToDelete(null)}
         onConfirm={handleDelete}
         title="Global Tag Deletion"
-        description={`You are about to permanently remove the "${tagToDelete}" tag from all contacts in your database. This tactical operation cannot be reversed.`}
+        description={`You are about to permanently remove the "${tags.find((t) => t.id === tagToDelete)?.name ?? ''}" tag from all contacts in your database. This tactical operation cannot be reversed.`}
         confirmLabel="Confirm Deletion"
         variant="danger"
       />

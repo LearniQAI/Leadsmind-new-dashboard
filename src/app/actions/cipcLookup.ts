@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
+import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
 
 function safeRevalidatePath(path: string) {
   try {
@@ -112,6 +113,7 @@ export async function linkCIPCDirectors(
 
         if (insError) throw insError;
         ownerId = newContact.id;
+        syncContactTagsToRelational(workspaceId, ownerId, ['cipc-director']).catch(() => {});
       }
 
       // 2. Check if already linked as beneficial owner

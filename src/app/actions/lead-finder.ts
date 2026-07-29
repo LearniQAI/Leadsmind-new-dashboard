@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 import { EnrichmentEngine } from '@/lib/lead-finder/EnrichmentEngine';
 import { logger } from '@/shared/logger';
+import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
 
 export async function searchGooglePlaces(params: {
   searchType: string;
@@ -217,6 +218,7 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
 
     if (!contactError) {
       addedCount++;
+      syncContactTagsToRelational(workspaceId, contact.id, contactPayload.tags).catch(() => {});
 
       // Contact-only import: no opportunity is auto-created. Log how/when this
       // contact entered the CRM so it doesn't show up with no history.

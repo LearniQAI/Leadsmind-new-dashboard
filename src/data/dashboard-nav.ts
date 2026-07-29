@@ -14,6 +14,7 @@ const dashboardNav: NavModule[] = [
     icon: "fa-light fa-users",
     items: [
       { id: 5, label: "Contacts", icon: "fa-light fa-users", link: "/contacts", permission: "contacts" },
+      { id: 52, label: "Tags", icon: "fa-light fa-tags", link: "/contacts/tags", permission: "contacts" },
       { id: 51, label: "Lead Finder", icon: "fa-light fa-magnifying-glass-location", link: "/lead-finder", permission: "contacts" },
       { id: 6, label: "Pipelines", icon: "icon-projects", link: "/pipelines", permission: "pipelines" },
       { id: 7, label: "Proposals", icon: "fa-light fa-file-signature", link: "/proposals", permission: "proposals" },

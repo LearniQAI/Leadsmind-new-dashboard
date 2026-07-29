@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { UnauthorizedError, ForbiddenError, toClientError } from '@/shared/errors/AppError';
+import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
 
 /**
  * Calculates and updates the lead score for a contact.
@@ -108,7 +109,9 @@ export async function triggerAutomation(contactId: string, event: 'course_comple
       const { data: contact } = await supabase.from('contacts').select('tags').eq('id', contactId).eq('workspace_id', workspaceId).single();
       const currentTags = contact?.tags || [];
       if (!currentTags.includes(tag)) {
-        await supabase.from('contacts').update({ tags: [...currentTags, tag] }).eq('id', contactId).eq('workspace_id', workspaceId);
+        const nextTags = [...currentTags, tag];
+        await supabase.from('contacts').update({ tags: nextTags }).eq('id', contactId).eq('workspace_id', workspaceId);
+        syncContactTagsToRelational(workspaceId, contactId, nextTags).catch(() => {});
       }
 
       // 2. Log Activity
