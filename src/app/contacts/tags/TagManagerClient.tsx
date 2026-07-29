@@ -34,7 +34,12 @@ import {
   deleteTagCategory,
   reorderTagCategories,
   toggleFavoriteTag,
+  removeTag,
 } from '@/app/actions/tags';
+import { acceptAiRecommendation, rejectAiRecommendation } from '@/app/actions/aiRecommendations';
+import { mergeTags } from '@/app/actions/tagInsights';
+import { searchTagsNaturalLanguage } from '@/app/actions/tagSearch';
+import { Sparkles, Check, GitMerge, AlertTriangle, Wand2 } from 'lucide-react';
 
 interface TagRow {
   id: string;
@@ -49,12 +54,42 @@ interface TagRow {
   is_favorite: boolean;
 }
 
+interface AiRecommendationRow {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  suggested_tag_name: string | null;
+  confidence_score: number | null;
+}
+
 interface CategoryRow {
   id: string;
   name: string;
   color: string | null;
   icon: string | null;
   sort_order: number;
+}
+
+interface DuplicatePair {
+  a: { id: string; name: string };
+  b: { id: string; name: string };
+  similarity: number;
+}
+
+interface TagConflictRow {
+  entityType: string;
+  entityId: string;
+  entityName: string;
+  tagA: { id: string; name: string };
+  tagB: { id: string; name: string };
+}
+
+interface NlSearchResultContact {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  lead_score: number | null;
 }
 
 const EMOJI_CHOICES = ['🏷️', '⭐', '🔥', '💼', '📈', '🎯', '💰', '🎓', '🛟', '📣', '🤝', '⚡'];
@@ -64,10 +99,16 @@ export default function TagManagerClient({
   initialTags,
   initialCategories,
   isAdmin,
+  initialRecommendations = [],
+  initialDuplicates = [],
+  initialConflicts = [],
 }: {
   initialTags: TagRow[];
   initialCategories: CategoryRow[];
   isAdmin: boolean;
+  initialRecommendations?: AiRecommendationRow[];
+  initialDuplicates?: DuplicatePair[];
+  initialConflicts?: TagConflictRow[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -78,8 +119,16 @@ export default function TagManagerClient({
   const [categoryModal, setCategoryModal] = useState<{ mode: 'create' | 'edit'; category?: CategoryRow } | null>(null);
   const [deleteTagTarget, setDeleteTagTarget] = useState<TagRow | null>(null);
   const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<CategoryRow | null>(null);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [mergingKey, setMergingKey] = useState<string | null>(null);
+  const [resolvingKey, setResolvingKey] = useState<string | null>(null);
+  const [nlQuery, setNlQuery] = useState('');
+  const [nlLoading, setNlLoading] = useState(false);
+  const [nlSearched, setNlSearched] = useState(false);
+  const [nlResults, setNlResults] = useState<NlSearchResultContact[]>([]);
+  const [nlNote, setNlNote] = useState<string | undefined>(undefined);
 
   const refresh = () => startTransition(() => router.refresh());
 
@@ -263,7 +312,244 @@ export default function TagManagerClient({
     </div>
   );
 
+  const handleAccept = async (rec: AiRecommendationRow) => {
+    setReviewingId(rec.id);
+    const res = await acceptAiRecommendation(rec.id);
+    if (res.success) {
+      toast.success(`Applied "${rec.suggested_tag_name}"`);
+      refresh();
+    } else {
+      toast.error(res.error || 'Failed to accept suggestion');
+    }
+    setReviewingId(null);
+  };
+
+  const handleReject = async (rec: AiRecommendationRow) => {
+    setReviewingId(rec.id);
+    const res = await rejectAiRecommendation(rec.id);
+    if (res.success) {
+      refresh();
+    } else {
+      toast.error(res.error || 'Failed to reject suggestion');
+    }
+    setReviewingId(null);
+  };
+
+  const handleMerge = async (pair: DuplicatePair) => {
+    const key = `${pair.a.id}:${pair.b.id}`;
+    setMergingKey(key);
+    // Merge the less-used tag into the more-used one — keeps the tag with more
+    // history/usage as the surviving definition.
+    const sourceTag = tagsById.get(pair.a.id);
+    const targetTag = tagsById.get(pair.b.id);
+    const [source, target] =
+      (sourceTag?.usage_count ?? 0) <= (targetTag?.usage_count ?? 0) ? [pair.a, pair.b] : [pair.b, pair.a];
+
+    const res = await mergeTags(source.id, target.id);
+    if (res.success) {
+      toast.success(`Merged "${source.name}" into "${target.name}"`);
+      refresh();
+    } else {
+      toast.error(res.error || 'Failed to merge tags');
+    }
+    setMergingKey(null);
+  };
+
+  const handleResolveConflict = async (conflict: TagConflictRow, tagToRemove: { id: string; name: string }) => {
+    const key = `${conflict.entityId}:${conflict.tagA.id}:${conflict.tagB.id}`;
+    setResolvingKey(key);
+    const res = await removeTag(tagToRemove.id, conflict.entityType as any, conflict.entityId);
+    if (res.success) {
+      toast.success(`Removed "${tagToRemove.name}" from ${conflict.entityName}`);
+      refresh();
+    } else {
+      toast.error(res.error || 'Failed to resolve conflict');
+    }
+    setResolvingKey(null);
+  };
+
+  const handleNlSearch = async () => {
+    if (!nlQuery.trim()) return;
+    setNlLoading(true);
+    setNlSearched(true);
+    const res = await searchTagsNaturalLanguage(nlQuery.trim());
+    if (res.success) {
+      setNlResults(res.data as NlSearchResultContact[]);
+      setNlNote(res.unsupportedNote);
+    } else {
+      toast.error(res.error || 'Search failed');
+      setNlResults([]);
+      setNlNote(undefined);
+    }
+    setNlLoading(false);
+  };
+
   return (
+    <div className="space-y-4">
+      {initialRecommendations.length > 0 && (
+        <div className="bg-white border border-dash-border rounded-2xl shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles size={16} className="text-dash-accent" />
+            <h3 className="text-sm font-bold !text-dash-text">AI Tag Suggestions</h3>
+            <span className="text-[11px] font-semibold !text-dash-textMuted">{initialRecommendations.length} pending</span>
+          </div>
+          <div className="space-y-2">
+            {initialRecommendations.map((rec) => (
+              <div key={rec.id} className="flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border">
+                <div className="text-[13px]">
+                  <span className="font-bold !text-dash-text">{rec.suggested_tag_name}</span>
+                  <span className="ml-2 text-[11px] font-semibold !text-dash-textMuted">
+                    {rec.entity_type} · {Math.round((rec.confidence_score ?? 0) * 100)}% confidence
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <DashButton size="sm" variant="secondary" disabled={reviewingId === rec.id} onClick={() => handleReject(rec)}>
+                    <X size={13} />
+                    Reject
+                  </DashButton>
+                  <DashButton size="sm" disabled={reviewingId === rec.id} onClick={() => handleAccept(rec)}>
+                    <Check size={13} />
+                    Accept
+                  </DashButton>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Natural-language search — a distinct, explicit action (not the plain
+          instant-filter box below) because every search here is a metered LLM
+          call, not a free local filter, so it must never fire on every keystroke. */}
+      <div className="bg-white border border-dash-border rounded-2xl shadow-sm p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Wand2 size={16} className="text-dash-accent" />
+          <h3 className="text-sm font-bold !text-dash-text">Ask AI</h3>
+          <span className="text-[11px] font-semibold !text-dash-textMuted">e.g. "contacts with unpaid invoices"</span>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={nlQuery}
+            onChange={(e) => setNlQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleNlSearch()}
+            placeholder="Describe who you're looking for..."
+            className="flex-1 bg-white border border-dash-border rounded-xl px-3.5 py-2 text-[13px] !text-dash-text placeholder:text-dash-textMuted focus:outline-none focus:border-dash-accent transition-all"
+          />
+          <DashButton size="sm" onClick={handleNlSearch} disabled={nlLoading || !nlQuery.trim()}>
+            <Sparkles size={13} />
+            {nlLoading ? 'Searching…' : 'Search'}
+          </DashButton>
+          {nlSearched && (
+            <DashButton
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setNlSearched(false);
+                setNlResults([]);
+                setNlQuery('');
+                setNlNote(undefined);
+              }}
+            >
+              Clear
+            </DashButton>
+          )}
+        </div>
+
+        {nlSearched && !nlLoading && (
+          <div className="mt-3 space-y-2">
+            {nlNote && (
+              <p className="text-[11px] font-semibold text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2">
+                Couldn't filter by: {nlNote}
+              </p>
+            )}
+            {nlResults.length === 0 ? (
+              <p className="text-[12px] !text-dash-textMuted px-1">No matching contacts found.</p>
+            ) : (
+              <>
+                <p className="text-[11px] font-semibold !text-dash-textMuted px-1">{nlResults.length} matching contacts</p>
+                {nlResults.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-dash-surface border border-dash-border">
+                    <span className="text-[13px] font-bold !text-dash-text">
+                      {c.first_name} {c.last_name}
+                    </span>
+                    <span className="text-[11px] font-semibold !text-dash-textMuted">
+                      {c.email} · lead score {c.lead_score ?? 0}
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {(initialDuplicates.length > 0 || initialConflicts.length > 0) && (
+        <div className="bg-white border border-dash-border rounded-2xl shadow-sm p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-dash-accent" />
+            <h3 className="text-sm font-bold !text-dash-text">Tag Health</h3>
+          </div>
+
+          {initialDuplicates.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold !text-dash-textMuted uppercase tracking-wide mb-2">Possible duplicates</p>
+              <div className="space-y-2">
+                {initialDuplicates.map((pair) => {
+                  const key = `${pair.a.id}:${pair.b.id}`;
+                  return (
+                    <div key={key} className="flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border">
+                      <div className="text-[13px]">
+                        <span className="font-bold !text-dash-text">{pair.a.name}</span>
+                        <span className="!text-dash-textMuted mx-1.5">≈</span>
+                        <span className="font-bold !text-dash-text">{pair.b.name}</span>
+                        <span className="ml-2 text-[11px] font-semibold !text-dash-textMuted">
+                          {Math.round(pair.similarity * 100)}% similar
+                        </span>
+                      </div>
+                      <DashButton size="sm" disabled={mergingKey === key} onClick={() => handleMerge(pair)}>
+                        <GitMerge size={13} />
+                        Merge
+                      </DashButton>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {initialConflicts.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold !text-dash-textMuted uppercase tracking-wide mb-2">Conflicting tags</p>
+              <div className="space-y-2">
+                {initialConflicts.map((conflict) => {
+                  const key = `${conflict.entityId}:${conflict.tagA.id}:${conflict.tagB.id}`;
+                  const isResolving = resolvingKey === key;
+                  return (
+                    <div key={key} className="flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border">
+                      <div className="text-[13px]">
+                        <span className="font-bold !text-dash-text">{conflict.entityName}</span>
+                        <span className="ml-2 !text-dash-textMuted">
+                          has both "{conflict.tagA.name}" and "{conflict.tagB.name}"
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DashButton size="sm" variant="secondary" disabled={isResolving} onClick={() => handleResolveConflict(conflict, conflict.tagA)}>
+                          Remove "{conflict.tagA.name}"
+                        </DashButton>
+                        <DashButton size="sm" variant="secondary" disabled={isResolving} onClick={() => handleResolveConflict(conflict, conflict.tagB)}>
+                          Remove "{conflict.tagB.name}"
+                        </DashButton>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
     <div className="bg-white border border-dash-border rounded-2xl shadow-sm overflow-hidden">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 p-4 border-b border-dash-border bg-dash-surface/60">
@@ -482,6 +768,7 @@ export default function TagManagerClient({
         confirmLabel="Delete"
         variant="danger"
       />
+    </div>
     </div>
   );
 }

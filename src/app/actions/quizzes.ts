@@ -441,12 +441,16 @@ export async function saveQuizSubmissionAction(
       // Trigger automation events asynchronously — only for a genuine graded submission,
       // using only the server-computed score/passed above.
       const { publishEvent } = await import('@/lib/events/EventBus');
+      const { applyAutoTag } = await import('@/modules/tags/autoTagging/applySystemTag');
       const passingScore = quizObj.passing_score ?? 80;
 
       if (passed) {
         await publishEvent(workspaceId, 'quiz_passed', contact.id, { quizId, score });
+        applyAutoTag(workspaceId, 'contact', contact.id, 'Passed Quiz', true).catch(() => {});
+        applyAutoTag(workspaceId, 'contact', contact.id, 'Failed Quiz', false).catch(() => {});
       } else {
         await publishEvent(workspaceId, 'quiz_failed', contact.id, { quizId, score });
+        applyAutoTag(workspaceId, 'contact', contact.id, 'Failed Quiz', true).catch(() => {});
       }
 
       // Count attempts

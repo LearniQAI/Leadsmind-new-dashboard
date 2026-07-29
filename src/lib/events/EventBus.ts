@@ -22,6 +22,11 @@ export const EVENT_TRIGGERS = {
   FUNNEL_SUBSCRIBED: 'funnel_subscribed',
   PAYFAST_PAYMENT_COURSE: 'payfast_payment_course',
   OPPORTUNITY_STAGE_CHANGED: 'opportunity_stage_changed',
+  TAG_ADDED: 'tag_added',
+  TAG_REMOVED: 'tag_removed',
+  TAG_UPDATED: 'tag_updated',
+  TAG_EXPIRED: 'tag_expired',
+  TAG_CONFIDENCE_CHANGED: 'tag_confidence_changed',
 } as const;
 
 export type EventTriggerType = typeof EVENT_TRIGGERS[keyof typeof EVENT_TRIGGERS];

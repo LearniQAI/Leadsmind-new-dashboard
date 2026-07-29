@@ -366,6 +366,10 @@ export async function updateOpportunity(id: string, values: any) {
         dispatchWebhook(data.workspace_id, 'deal.lost', {
           deal: { id: data.id, title: data.title, value: data.value, status: 'lost' },
         }).catch(() => {});
+        if (data.contact_id) {
+          const { applyAutoTag } = await import('@/modules/tags/autoTagging/applySystemTag');
+          applyAutoTag(data.workspace_id, 'contact', data.contact_id, 'Lost Deal', true).catch(() => {});
+        }
       }
     } catch (e) {
       logger.error({ err: e, workspaceId: data.workspace_id, opportunityId: id }, 'pipelines.opportunity_update.webhook_dispatch.failed');

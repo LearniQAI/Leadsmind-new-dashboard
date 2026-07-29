@@ -290,7 +290,7 @@ export async function logParticipantLeave(logId: string) {
     // back from its own logParticipantJoin call moments earlier.
     const { data: log } = await supabase
       .from('meet_attendance_logs')
-      .select('joined_at')
+      .select('joined_at, workspace_id, participant_email')
       .eq('id', logId)
       .single();
 
@@ -307,6 +307,21 @@ export async function logParticipantLeave(logId: string) {
         duration_seconds: duration
       })
       .eq('id', logId);
+
+    // Real attendance (joined + left with a measurable duration) tags the matching
+    // CRM contact, resolved by email — meet_attendance_logs has no contact_id column.
+    if (log.participant_email && duration > 0) {
+      const { data: matchedContact } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('workspace_id', log.workspace_id)
+        .eq('email', log.participant_email.toLowerCase())
+        .maybeSingle();
+      if (matchedContact) {
+        const { applyAutoTag } = await import('@/modules/tags/autoTagging/applySystemTag');
+        applyAutoTag(log.workspace_id, 'contact', matchedContact.id, 'Webinar Attendee', true).catch(() => {});
+      }
+    }
 
     return { success: true };
   } catch (err: any) {
