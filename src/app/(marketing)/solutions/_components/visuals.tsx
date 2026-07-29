@@ -1,26 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { motion, animate } from 'framer-motion';
 import {
-  Award,
-  Zap,
-  Target,
-  FileText,
   Clock,
   CalendarCheck,
   MessageSquare,
   Newspaper,
-  Sparkles,
-  Users,
-  Percent,
   CheckCircle2,
-  CreditCard,
   Link2,
   TrendingUp,
-  Phone,
-  Globe,
-  Mail,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -52,7 +42,7 @@ const cardEntrance = {
 /** Soft, neutral backdrop behind a floating hero card — a single barely-visible glow, not a colorful blob composition. */
 export function HeroVisual({ color, children }: { color: string; children: React.ReactNode }) {
   return (
-    <div className="relative w-full max-w-[420px] mx-auto lg:mx-0 aspect-square flex items-center justify-center">
+    <div className="relative w-full max-w-[560px] mx-auto lg:mx-0 aspect-square flex items-center justify-center">
       <div
         className="absolute inset-0 rounded-full blur-3xl pointer-events-none"
         style={{ background: `radial-gradient(circle, ${color}0A 0%, transparent 68%)` }}
@@ -60,6 +50,74 @@ export function HeroVisual({ color, children }: { color: string; children: React
       <div className="relative z-10 w-full px-4">{children}</div>
     </div>
   );
+}
+
+/** Real product screenshot presented in a premium "browser window" frame — thin top
+ *  chrome bar with traffic-light dots, floating shadow, ambient hover lift. Mirrors
+ *  FloatingCard's presentation language (rounded corners, neutral shadow, hover rise)
+ *  so screenshot-backed pages and remaining fake-data hero cards still read as one family. */
+function ScreenshotVisual({ src, alt, width, height }: { src: string; alt: string; width: number; height: number }) {
+  return (
+    <motion.div
+      animate={{ y: [0, -7, 0] }}
+      transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      className="relative w-full max-w-[640px] mx-auto"
+    >
+      <motion.div
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, amount: 0.5 }}
+        variants={cardEntrance}
+        whileHover={{ y: -6, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
+        className="relative rounded-[20px] bg-white border border-[#F1F5F9] overflow-hidden"
+        style={{
+          boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 48px -16px rgba(15,23,42,0.14)',
+        }}
+      >
+        {/* browser-chrome top bar */}
+        <div className="flex items-center gap-1.5 px-4 py-3 bg-[#F8FAFC] border-b border-[#F1F5F9]">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#F87171]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FBBF24]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#34D399]" />
+        </div>
+        <div className="relative w-full bg-[#F8FAFC]">
+          <Image
+            src={src}
+            alt={alt}
+            width={width}
+            height={height}
+            sizes="(min-width: 1024px) 640px, 90vw"
+            className="w-full h-auto"
+            priority
+          />
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/** Module `visualKey` → real product screenshot in /public/images/solutions.
+ *  Modules absent here (calendar-hero, communication-hero, content-hero) have no
+ *  screenshot yet and keep rendering their fake-data FloatingCard below. */
+const heroScreenshots: Record<string, { src: string; alt: string; width: number; height: number }> = {
+  'crm-hero': { src: '/images/solutions/crm.png', alt: 'LeadsMind CRM & Sales pipeline screenshot', width: 1536, height: 1024 },
+  'lms-hero': { src: '/images/solutions/lms.png', alt: 'LeadsMind LMS & Courses screenshot', width: 4096, height: 4096 },
+  'accounting-hero': { src: '/images/solutions/accounting-finance.png', alt: 'LeadsMind Accounting & Finance screenshot', width: 4096, height: 4096 },
+  'invoicing-hero': { src: '/images/solutions/invoice.png', alt: 'LeadsMind Invoicing screenshot', width: 4096, height: 4096 },
+  'phone-ivr-hero': { src: '/images/solutions/phone-and-ivr.png', alt: 'LeadsMind Phone & IVR screenshot', width: 4096, height: 4096 },
+  'funnels-hero': { src: '/images/solutions/sales.png', alt: 'LeadsMind Sales Funnels & Website Builder screenshot', width: 4096, height: 4096 },
+  'email-whatsapp-hero': { src: '/images/solutions/email-whatsapp-marketing.png', alt: 'LeadsMind Email & WhatsApp Marketing screenshot', width: 4096, height: 4096 },
+  'automation-hero': { src: '/images/solutions/automation.png', alt: 'LeadsMind Workflow Automation screenshot', width: 1535, height: 1024 },
+  'ai-tools-hero': { src: '/images/solutions/ai-tools.png', alt: 'LeadsMind AI Tools screenshot', width: 1459, height: 1078 },
+  'hr-hero': { src: '/images/solutions/payroll.png', alt: 'LeadsMind HR & Payroll screenshot', width: 1536, height: 1024 },
+};
+
+/** Renders the real screenshot for `visualKey` when one exists, otherwise falls back
+ *  to the fake-data FloatingCard from `heroVisuals`. */
+export function ModuleHeroVisual({ visualKey }: { visualKey: string }) {
+  const shot = heroScreenshots[visualKey];
+  if (shot) return <ScreenshotVisual src={shot.src} alt={shot.alt} width={shot.width} height={shot.height} />;
+  return <>{heroVisuals[visualKey]}</>;
 }
 
 /** Shared floating hero-card shell — deeper layered shadow, accent glow, top accent bar,
@@ -232,248 +290,6 @@ function StatusPill({ color, icon: Icon, children }: { color: string; icon?: Luc
   );
 }
 
-/* ---------------------------- CRM & Sales ---------------------------- */
-
-function CrmHeroCard() {
-  return (
-    <FloatingCard accent={ROYAL}>
-      <HeroCardHeader accent={ROYAL} icon={Target} label="Deal Snapshot" />
-      <motion.div variants={rowVariants}>
-        <div className="text-sm font-bold text-[#0F172A]">Mokoena Foods</div>
-        <div className="text-[11px] text-[#94A3B8] mb-3">Contact · Sipho Dlamini</div>
-      </motion.div>
-      <div className="flex items-center gap-2 mb-4">
-        <Badge color="#FF8A00" icon={Clock}>Proposal stage</Badge>
-        <Badge color={ROYAL} icon={Percent}>70% probability</Badge>
-      </div>
-      <HeroMetric label="Deal value" color={ROYAL} value={18500} prefix="R " decimals={0} trend="+18% this month" />
-    </FloatingCard>
-  );
-}
-
-/* ---------------------------- LMS & Courses ---------------------------- */
-
-function LmsHeroCard() {
-  return (
-    <FloatingCard accent={ROYAL}>
-      <HeroCardHeader accent={ROYAL} icon={Award} label="Certificate Issued" />
-      <motion.div variants={rowVariants}>
-        <div className="text-sm font-bold text-[#0F172A] mb-1">Digital Marketing 101</div>
-        <div className="text-[11px] text-[#94A3B8] mb-3">Thandiwe M. · Passed final quiz at 92%</div>
-      </motion.div>
-      <div className="flex items-center gap-2">
-        <StatusPill color="#34B53A" icon={CheckCircle2}>Auto-generated</StatusPill>
-        <Badge color={ROYAL} icon={CreditCard}>Enrolled via checkout</Badge>
-      </div>
-    </FloatingCard>
-  );
-}
-
-/* ------------------------- Accounting & Finance ------------------------- */
-
-function AccountingHeroCard() {
-  return (
-    <FloatingCard accent={ROYAL}>
-      <HeroCardHeader accent={ROYAL} icon={FileText} label="Invoice #INV-1042" />
-      <motion.div variants={rowVariants}>
-        <div className="text-sm font-bold text-[#0F172A]">Karoo Freight (Pty) Ltd</div>
-        <div className="text-[11px] text-[#94A3B8] mb-3">Issued 3 Jul · Due 17 Jul</div>
-      </motion.div>
-      <div className="space-y-1.5 mb-4">
-        {[
-          ['Logistics consulting — July', 'R 8,200.00'],
-          ['Route optimisation add-on', 'R 2,750.00'],
-        ].map(([label, amount]) => (
-          <motion.div key={label} variants={rowVariants} className="flex items-center justify-between text-[11px] text-[#334155]">
-            <span>{label}</span>
-            <span className="font-semibold tabular-nums">{amount}</span>
-          </motion.div>
-        ))}
-      </div>
-      <motion.div variants={rowVariants} className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
-        <StatusPill color="#34B53A" icon={CheckCircle2}>Paid</StatusPill>
-        <span className="text-xl">
-          <CountUpValue value={10950} prefix="R " decimals={2} color={ROYAL} />
-        </span>
-      </motion.div>
-    </FloatingCard>
-  );
-}
-
-/* ---------------------------- Invoicing ---------------------------- */
-
-function InvoicingHeroCard() {
-  return (
-    <FloatingCard accent={ROYAL}>
-      <HeroCardHeader accent={ROYAL} icon={FileText} label="Invoice #INV-2041" />
-      <motion.div variants={rowVariants}>
-        <div className="text-sm font-bold text-[#0F172A]">Ubuntu Fitness Studio</div>
-        <div className="text-[11px] text-[#94A3B8] mb-3">Issued 2 Jul · Due 16 Jul</div>
-      </motion.div>
-      <div className="space-y-1.5 mb-4">
-        <motion.div variants={rowVariants} className="flex items-center justify-between text-[11px] text-[#334155]">
-          <span>Monthly retainer — July</span>
-          <span className="font-semibold tabular-nums">R 4,200.00</span>
-        </motion.div>
-        <motion.div variants={rowVariants} className="flex items-center justify-between text-[11px] text-[#334155]">
-          <span>Reminder 2 of 6 sent</span>
-          <span className="text-[#94A3B8]">via WhatsApp</span>
-        </motion.div>
-      </div>
-      <motion.div variants={rowVariants} className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
-        <StatusPill color="#34B53A" icon={CheckCircle2}>Paid</StatusPill>
-        <span className="text-xl">
-          <CountUpValue value={4200} prefix="R " decimals={2} color={ROYAL} />
-        </span>
-      </motion.div>
-    </FloatingCard>
-  );
-}
-
-/* ---------------------------- Phone & IVR ---------------------------- */
-
-function PhoneIvrHeroCard() {
-  const calls: { name: string; reason: string; answered: boolean }[] = [
-    { name: 'Thabo Baloyi', reason: 'Sales enquiry', answered: true },
-    { name: 'Nomsa Dlamini', reason: 'Support — billing', answered: false },
-  ];
-  return (
-    <FloatingCard accent={ROYAL}>
-      <HeroCardHeader accent={ROYAL} icon={Phone} label="Business Line · 021 555 0142" />
-      <div className="space-y-2.5 mb-4">
-        {calls.map((c) => (
-          <motion.div
-            key={c.name}
-            variants={rowVariants}
-            className="flex items-center justify-between text-[12px] border-b border-[#F1F5F9] pb-2.5 last:border-0 last:pb-0"
-          >
-            <div>
-              <div className="font-semibold text-[#0F172A]">{c.name}</div>
-              <div className="text-[11px] text-[#94A3B8]">{c.reason}</div>
-            </div>
-            <StatusPill color={c.answered ? '#34B53A' : '#FF8A00'}>{c.answered ? 'Answered' : 'Missed'}</StatusPill>
-          </motion.div>
-        ))}
-      </div>
-      <motion.div
-        variants={rowVariants}
-        className="flex items-center gap-1.5 text-[11px] font-semibold rounded-lg bg-[#F1F5F9] text-[#64748B] px-2.5 py-1.5 w-fit"
-      >
-        <CheckCircle2 className="w-3 h-3" /> "Press 2" routed to Support
-      </motion.div>
-    </FloatingCard>
-  );
-}
-
-/* ----------------------- Sales Funnels & Website Builder ----------------------- */
-
-function FunnelsHeroCard() {
-  return (
-    <FloatingCard accent={ROYAL}>
-      <HeroCardHeader accent={ROYAL} icon={Globe} label="Funnel · Lead Capture" />
-      <motion.div variants={rowVariants}>
-        <div className="text-sm font-bold text-[#0F172A]">Winter Special — Landing Page</div>
-        <div className="text-[11px] text-[#94A3B8] mb-3">Published on your-domain.co.za</div>
-      </motion.div>
-      <div className="flex items-center gap-2 mb-4">
-        <Badge color={ROYAL}>3-step funnel</Badge>
-        <StatusPill color="#34B53A" icon={CheckCircle2}>Live</StatusPill>
-      </div>
-      <HeroMetric label="Conversion rate" color={ROYAL} value={24} suffix="%" decimals={0} trend="+6% this week" />
-    </FloatingCard>
-  );
-}
-
-/* ------------------------- Email & WhatsApp Marketing ------------------------- */
-
-function EmailWhatsappHeroCard() {
-  return (
-    <FloatingCard accent={ROYAL}>
-      <HeroCardHeader accent={ROYAL} icon={Mail} label="Campaign · July Promo" />
-      <div className="space-y-2.5 mb-4">
-        <motion.div variants={rowVariants} className="flex items-center justify-between text-[12px] border-b border-[#F1F5F9] pb-2.5">
-          <span className="flex items-center gap-2 text-[#334155] font-medium">
-            <Mail className="w-3.5 h-3.5 text-[#1359FF]" /> Email — 1,204 sent
-          </span>
-          <StatusPill color="#34B53A">Delivered</StatusPill>
-        </motion.div>
-        <motion.div variants={rowVariants} className="flex items-center justify-between text-[12px]">
-          <span className="flex items-center gap-2 text-[#334155] font-medium">
-            <MessageSquare className="w-3.5 h-3.5 text-[#1359FF]" /> WhatsApp — 620 sent
-          </span>
-          <StatusPill color="#34B53A">Delivered</StatusPill>
-        </motion.div>
-      </div>
-      <HeroMetric label="Open rate" color={ROYAL} value={42} suffix="%" decimals={0} trend="+9% vs last send" />
-    </FloatingCard>
-  );
-}
-
-/* --------------------------- Workflow Automation --------------------------- */
-
-function AutomationHeroCard() {
-  return (
-    <FloatingCard accent={ROYAL}>
-      <HeroCardHeader accent={ROYAL} icon={Zap} label="Workflow" />
-      <motion.div variants={rowVariants} className="rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 mb-2">
-        <div className="text-[10px] font-bold uppercase tracking-wide text-[#94A3B8]">When</div>
-        <div className="text-[12px] font-semibold text-[#334155]">Deal marked "Won"</div>
-      </motion.div>
-      <motion.div variants={rowVariants} className="rounded-lg bg-[#1359FF]/10 border border-[#1359FF]/20 px-3 py-2 mb-3">
-        <div className="text-[10px] font-bold uppercase tracking-wide text-[#1359FF]">Then</div>
-        <div className="text-[12px] font-semibold text-[#0F172A]">Send invoice + WhatsApp welcome</div>
-      </motion.div>
-      <motion.div variants={rowVariants} className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
-        <span className="text-[11px] text-[#94A3B8]">Status</span>
-        <StatusPill color="#34B53A" icon={CheckCircle2}>Runs automatically</StatusPill>
-      </motion.div>
-    </FloatingCard>
-  );
-}
-
-/* --------------------------------- AI Tools --------------------------------- */
-
-function AiToolsHeroCard() {
-  return (
-    <FloatingCard accent={ROYAL}>
-      <HeroCardHeader accent={ROYAL} icon={Sparkles} label="AI Content Draft" />
-      <motion.div
-        variants={rowVariants}
-        className="text-[12px] text-[#334155] bg-[#F8FAFC] border border-dashed border-[#1359FF]/30 rounded-lg px-3 py-2.5 mb-4"
-      >
-        "Here's a WhatsApp-ready follow-up for leads that went quiet after a quote — want me to send it now?"
-      </motion.div>
-      <div className="flex items-center gap-2 mb-1">
-        <Badge color={ROYAL}>Tuned for SA English</Badge>
-      </div>
-      <HeroMetric label="Lead score" color={ROYAL} value={87} suffix="/100" decimals={0} />
-    </FloatingCard>
-  );
-}
-
-/* ---------------------------- HR & Payroll ---------------------------- */
-
-function HrHeroCard() {
-  return (
-    <FloatingCard accent={ROYAL}>
-      <HeroCardHeader accent={ROYAL} icon={Users} label="Employee Record" />
-      <motion.div variants={rowVariants} className="flex items-center gap-3 mb-3">
-        <span className="w-9 h-9 rounded-full bg-[#1359FF]/10 text-[#1359FF] flex items-center justify-center text-xs font-bold">
-          LN
-        </span>
-        <div>
-          <div className="text-sm font-bold text-[#0F172A]">Lindiwe Nkosi</div>
-          <div className="text-[11px] text-[#94A3B8]">Sales Associate · Joined 2023</div>
-        </div>
-      </motion.div>
-      <div className="flex items-center gap-2 mb-4">
-        <StatusPill color="#34B53A" icon={CheckCircle2}>Payroll run: Paid</StatusPill>
-      </div>
-      <HeroMetric label="Annual leave remaining" color={ROYAL} value={14} suffix=" days" decimals={0} />
-    </FloatingCard>
-  );
-}
-
 /* -------------------------- Calendar & Booking -------------------------- */
 
 function CalendarHeroCard() {
@@ -534,18 +350,9 @@ function ContentHeroCard() {
   );
 }
 
-/** Hero floating-card content, keyed by ModuleHero.visualKey */
-export const heroVisuals: Record<string, React.ReactNode> = {
-  'crm-hero': <CrmHeroCard />,
-  'lms-hero': <LmsHeroCard />,
-  'accounting-hero': <AccountingHeroCard />,
-  'invoicing-hero': <InvoicingHeroCard />,
-  'phone-ivr-hero': <PhoneIvrHeroCard />,
-  'funnels-hero': <FunnelsHeroCard />,
-  'email-whatsapp-hero': <EmailWhatsappHeroCard />,
-  'automation-hero': <AutomationHeroCard />,
-  'ai-tools-hero': <AiToolsHeroCard />,
-  'hr-hero': <HrHeroCard />,
+/** Fake-data FloatingCard content for modules with no real screenshot yet,
+ *  keyed by ModuleHero.visualKey. Consumed only via `ModuleHeroVisual`'s fallback. */
+const heroVisuals: Record<string, React.ReactNode> = {
   'calendar-hero': <CalendarHeroCard />,
   'communication-hero': <CommunicationHeroCard />,
   'content-hero': <ContentHeroCard />,

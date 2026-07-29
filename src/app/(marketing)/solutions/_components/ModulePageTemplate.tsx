@@ -9,7 +9,7 @@ import { getModule, type ModuleContentLegacy } from '@/data/modules';
 import '../../landing/landing.css';
 import Navbar from '../../landing/Navbar';
 import Footer from '../../landing/Footer';
-import { HeroVisual, heroVisuals } from './visuals';
+import { HeroVisual, ModuleHeroVisual } from './visuals';
 import FinalCTA from '../../landing/FinalCTA';
 import TrustStrip from './TrustStrip';
 import StickyFooterCtaBand from './StickyFooterCtaBand';
@@ -134,7 +134,9 @@ export default function ModulePageTemplate({ slug, user }: { slug: string; user?
           </div>
 
           <motion.div variants={heroVisualItem}>
-            <HeroVisual color={ROYAL}>{heroVisuals[mod.hero.visualKey]}</HeroVisual>
+            <HeroVisual color={ROYAL}>
+              <ModuleHeroVisual visualKey={mod.hero.visualKey} />
+            </HeroVisual>
           </motion.div>
         </motion.div>
       </section>
