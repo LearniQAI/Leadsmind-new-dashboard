@@ -5,7 +5,7 @@ import MetaData from "@/hooks/useMetaData";
 import ContactsClient from './ContactsClient';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getWorkspaceTags } from '../actions/contacts';
+import { listTags } from '../actions/tags';
 import { ImportContactsModal } from '@/components/crm/ImportContactsModal';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { Plus } from 'lucide-react';
@@ -24,7 +24,7 @@ export default async function ContactsPage() {
       .select('*')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false }),
-    getWorkspaceTags(),
+    listTags(),
     supabase
       .from('workspace_members')
       .select('user_id, user:users(first_name, last_name)')
@@ -32,7 +32,7 @@ export default async function ContactsPage() {
   ]);
 
   const contacts = contactsRes.data || [];
-  const tags = tagsRes || [];
+  const tags = (tagsRes.success ? tagsRes.data : []).map((t) => ({ id: t.id, name: t.name, count: t.usage_count }));
   const owners = (membersRes.data || []).map((m: any) => ({
     id: m.user_id,
     name: m.user ? `${m.user.first_name} ${m.user.last_name}`.trim() : 'Unknown Personnel'

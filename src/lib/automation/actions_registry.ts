@@ -5,6 +5,7 @@ import { calculateLeadScore } from "../../app/actions/automation";
 import { enrollStudent, updateProgress } from "../../app/actions/lms";
 import { UnifiedActivityEngine } from "@/lib/crm/UnifiedActivityEngine";
 import { resolveWorkspaceTwilioCredentials } from "@/lib/twilio/resolveWorkspaceTwilioCredentials";
+import { syncContactTagsToRelational } from "@/modules/tags/sync/syncContactTags";
 
 export const AutomationActions = {
  send_email: async (workspaceId: string, contactId: string, config: any) => {
@@ -105,6 +106,8 @@ export const AutomationActions = {
    .eq("workspace_id", workspaceId);
 
   if (error) throw error;
+
+  syncContactTagsToRelational(workspaceId, contactId, newTags).catch(() => {});
  },
 
  add_tag: async (workspaceId: string, contactId: string, config: any) => {

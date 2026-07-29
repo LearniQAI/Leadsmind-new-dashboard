@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData, parsePagination } from '@/lib/api/auth'
 import { dispatchWebhook } from '@/lib/webhooks/dispatcher'
+import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
 
   if (!insertRes.error && insertRes.data) {
     await dispatchWebhook(auth.workspaceId, 'contact.created', { contact: insertRes.data })
+    syncContactTagsToRelational(auth.workspaceId, insertRes.data.id, payload.tags).catch(() => {})
     return apiData(insertRes.data, 201)
   }
 
@@ -83,6 +85,7 @@ export async function POST(req: NextRequest) {
       .single()
     if (upErr) return apiError(upErr.message, 500)
     await dispatchWebhook(auth.workspaceId, 'contact.updated', { contact: updated })
+    syncContactTagsToRelational(auth.workspaceId, updated.id, payload.tags).catch(() => {})
     return apiData(updated, 200)
   }
 

@@ -10,7 +10,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const supabase = createAdminClient()
   const { data, error } = await supabase
-    .from('contact_tags_registry')
+    .from('tags')
     .select('*')
     .eq('workspace_id', auth.workspaceId)
     .eq('id', params.id)
@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const supabase = createAdminClient()
   const { data, error } = await supabase
-    .from('contact_tags_registry')
+    .from('tags')
     .update(updates)
     .eq('workspace_id', auth.workspaceId)
     .eq('id', params.id)
@@ -59,7 +59,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   const supabase = createAdminClient()
   const { error } = await supabase
-    .from('contact_tags_registry')
+    .from('tags')
     .delete()
     .eq('workspace_id', auth.workspaceId)
     .eq('id', params.id)

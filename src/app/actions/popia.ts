@@ -5,6 +5,7 @@ import { requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 import { verifyUnsubscribeToken } from '@/lib/security/unsubscribeToken';
+import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
 
 export interface ErasureReceipt {
   receiptId: string;
@@ -121,6 +122,8 @@ export async function invokeRightToErasure(contactId: string): Promise<{ success
       logger.error({ err: contactAnonError, workspaceId, contactId }, 'popia.erasure.anonymize_contact.failed');
       return { success: false, error: 'Failed to anonymize contact.' };
     }
+
+    syncContactTagsToRelational(workspaceId, contactId, []).catch(() => {});
 
     // 6. Anonymize matching CRM contacts (crm_contacts table) if they exist
     let crmAnonymized = false;

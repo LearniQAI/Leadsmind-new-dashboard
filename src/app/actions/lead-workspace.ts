@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
+import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
 
 export async function getLeadDetails(leadId: string) {
   const supabase = await createServerClient();
@@ -190,6 +191,7 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
   const finalStageId = stage.id;
 
   // 3. Create Contact in Legacy CRM
+  const newContactTags = [...(lead.smart_tags || []), 'Lead Finder'];
   const { data: contact, error: contactError } = await supabase
     .from('contacts')
     .insert({
@@ -199,7 +201,7 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
       email: null,
       phone: lead.phone || null,
       source: 'Lead Finder',
-      tags: [...(lead.smart_tags || []), 'Lead Finder']
+      tags: newContactTags
     })
     .select('id')
     .single();
@@ -208,6 +210,8 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
     logger.error({ err: contactError, workspaceId }, 'lead_workspace.crm_contact.create.failed');
     return { success: false, error: 'Failed to create contact in CRM' };
   }
+
+  syncContactTagsToRelational(workspaceId, contact.id, newContactTags).catch(() => {});
 
   // 4. Create Opportunity
   const { error: oppError } = await supabase

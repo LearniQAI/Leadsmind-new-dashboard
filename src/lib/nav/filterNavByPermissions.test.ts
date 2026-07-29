@@ -15,6 +15,7 @@ const OLD_SIDEBAR_DATA = [
   ]},
   { items: [
     { link: "/contacts", permission: "contacts" },
+    { link: "/contacts/tags", permission: "contacts" },
     { link: "/lead-finder", permission: "contacts" },
     { link: "/pipelines", permission: "pipelines" },
     { link: "/proposals", permission: "proposals" },

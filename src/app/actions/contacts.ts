@@ -52,55 +52,9 @@ export async function getContactTasks(contactId: string) {
  return { success: true, data: result.data };
 }
 
-export async function getWorkspaceTags() {
- try {
-  const { workspaceId } = await requireWorkspaceAccess();
-  const service = await getContactService();
-  const result = await service.getWorkspaceTags(workspaceId);
-  if (result.success === false) return [];
-  return result.data;
- } catch {
-  return [];
- }
-}
-
-export async function globalDeleteTag(tag: string) {
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) return { success: false, error: 'Unauthorized' };
-
- const service = await getContactService();
- const result = await service.globalDeleteTag(workspaceId, tag);
- if (result.success === false) return { success: false, error: result.error };
-
- revalidatePath('/contacts');
- revalidatePath('/contacts/tags');
- return { success: true };
-}
-
-export async function globalRenameTag(oldTag: string, newTag: string) {
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) return { success: false, error: 'Unauthorized' };
-
- const service = await getContactService();
- const result = await service.globalRenameTag(workspaceId, oldTag, newTag);
- if (result.success === false) return { success: false, error: result.error };
-
- revalidatePath('/contacts');
- revalidatePath('/contacts/tags');
- return { success: true };
-}
-
-export async function createRegistryTag(name: string) {
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) return { success: false, error: 'No active workspace' };
-
- const service = await getContactService();
- const result = await service.createRegistryTag(workspaceId, name);
- if (result.success === false) return { success: false, error: result.error };
-
- revalidatePath('/contacts/tags');
- return { success: true };
-}
+// Tag registry management (create/rename/delete/list) has moved to
+// src/app/actions/tags.ts (listTags/createTag/updateTag/deleteTag), backed by
+// the relational `tags` table instead of the never-created `contact_tags_registry`.
 
 export async function checkDuplicateContact(email: string) {
  const workspaceId = await getCurrentWorkspaceId();

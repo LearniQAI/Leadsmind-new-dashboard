@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient()
   const { data, error, count } = await supabase
-    .from('contact_tags_registry')
+    .from('tags')
     .select('*', { count: 'exact' })
     .eq('workspace_id', auth.workspaceId)
     .order('created_at', { ascending: false })
@@ -37,9 +37,11 @@ export async function POST(req: NextRequest) {
     workspace_id: auth.workspaceId,
     name: body.name.trim(),
     color: body.color ?? '#3b82f6',
+    tag_type: 'manual',
+    visibility: 'team',
   }
 
-  const { data, error } = await supabase.from('contact_tags_registry').insert(payload).select('*').single()
+  const { data, error } = await supabase.from('tags').insert(payload).select('*').single()
   if (error) {
     if (error.code === '23505') return apiError('Tag already exists', 409)
     return apiError('Internal server error', 500)

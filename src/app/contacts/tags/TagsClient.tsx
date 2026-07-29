@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit2, Tag as TagIcon, MoreHorizontal } from 'lucide-react';
-import { globalDeleteTag, globalRenameTag } from '@/app/actions/contacts';
+import { deleteTag, updateTag } from '@/app/actions/tags';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -29,22 +29,23 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
 
  const [renameConfig, setRenameConfig] = useState<{
   isOpen: boolean;
-  oldTag: string;
+  tagId: string;
+  oldName: string;
   newName: string;
  } | null>(null);
 
- const handleDelete = async (tag: string) => {
+ const handleDelete = async (tag: TagData) => {
   setConfirmConfig({
    isOpen: true,
    title: 'Delete Tag?',
-   description: `Are you sure you want to delete the tag "${tag}"? This will remove it from all contacts.`,
+   description: `Are you sure you want to delete the tag "${tag.name}"? This will remove it from all contacts.`,
    confirmLabel: 'Delete',
    onConfirm: async () => {
     setIsProcessing(true);
     try {
-     const res = await globalDeleteTag(tag);
+     const res = await deleteTag(tag.id);
      if (res.error) throw new Error(res.error);
-     toast.success(`Tag "${tag}" deleted successfully.`);
+     toast.success(`Tag "${tag.name}" deleted successfully.`);
     } catch (error: any) {
      toast.error(error.message || 'Failed to delete tag');
     } finally {
@@ -54,11 +55,12 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
   });
  };
 
- const handleRename = (oldTag: string) => {
+ const handleRename = (tag: TagData) => {
   setRenameConfig({
    isOpen: true,
-   oldTag,
-   newName: oldTag
+   tagId: tag.id,
+   oldName: tag.name,
+   newName: tag.name
   });
  };
 
@@ -74,7 +76,7 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
  return (
   <div className="grid gap-4">
    {initialTags.map((tag) => (
-    <div key={tag.name} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-dash-border shadow-sm hover:border-dash-accent/30 transition-colors motion-reduce:transition-none">
+    <div key={tag.id} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-dash-border shadow-sm hover:border-dash-accent/30 transition-colors motion-reduce:transition-none">
      <div className="flex items-center gap-4">
       <div className="h-10 w-10 rounded-xl bg-dash-accent/10 flex items-center justify-center">
        <TagIcon size={18} className="text-dash-accent" />
@@ -95,14 +97,14 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
        <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-lg rounded-xl p-2 min-w-[140px]">
         <DropdownMenuItem
          className="cursor-pointer flex items-center gap-2 hover:bg-dash-surface rounded-lg p-2 font-bold text-dash-accent"
-         onClick={() => handleRename(tag.name)}
+         onClick={() => handleRename(tag)}
         >
          <Edit2 size={14} className="text-dash-accent/70" />
          <span>Rename tag</span>
         </DropdownMenuItem>
         <DropdownMenuItem
          className="cursor-pointer flex items-center gap-2 hover:bg-red/10 rounded-lg p-2 font-bold text-red"
-         onClick={() => handleDelete(tag.name)}
+         onClick={() => handleDelete(tag)}
         >
          <Trash2 size={14} />
          <span>Delete tag</span>
@@ -130,7 +132,7 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
       <DialogHeader>
        <DialogTitle className="text-lg font-bold !text-dash-text">Rename tag</DialogTitle>
        <DialogDescription className="text-xs !text-dash-textMuted">
-        Rename tag "{renameConfig.oldTag}" across all contacts.
+        Rename tag "{renameConfig.oldName}" across all contacts.
        </DialogDescription>
       </DialogHeader>
       <div className="space-y-4 py-4">
@@ -150,13 +152,14 @@ export default function TagsClient({ initialTags }: { initialTags: TagData[] }) 
         type="button"
         variant="primary"
         className="flex-1"
-        disabled={!renameConfig.newName.trim() || renameConfig.newName.trim() === renameConfig.oldTag}
+        disabled={!renameConfig.newName.trim() || renameConfig.newName.trim() === renameConfig.oldName}
         onClick={async () => {
          const targetName = renameConfig.newName.trim();
+         const tagId = renameConfig.tagId;
          setRenameConfig(null);
          setIsProcessing(true);
          try {
-          const res = await globalRenameTag(renameConfig.oldTag, targetName);
+          const res = await updateTag(tagId, { name: targetName });
           if (res.error) throw new Error(res.error);
           toast.success(`Tag renamed to "${targetName}".`);
          } catch (error: any) {

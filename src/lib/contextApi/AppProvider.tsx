@@ -8,16 +8,29 @@ export const AppContext = createContext<AppContextType | undefined>(undefined);
 const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  const [sideMenuOpen, setSideMenuOpen] = useState<boolean>(false);
  const [isCollapse, setIsCollapse] = useState<boolean>(false);
- const [theme, setTheme] = useState<string>("dark");
+ // Defaults to "light": this app's actual design system (dash-* tokens, white
+ // document/print templates) is light-mode. "dark" was the original admin-template
+ // boilerplate default, carried over unpersisted — every session silently ran in
+ // dark mode, activating the vendor template's own dark-mode CSS reset
+ // (bare `p`/`h1`-`h6` color overrides) against pages that were never designed for
+ // it. See InvoiceMasterDetail.tsx's printable-area comment for the confirmed
+ // mechanism. Dark mode itself remains a real, working, user-selectable option
+ // (Settings > Appearance) — only the unpersisted default changes here.
+ const [theme, setTheme] = useState<string>("light");
  const [scrollDirection, setScrollDirection] = useState<string>("up");
  const [searchOpen, setSearchOpen] = useState<boolean>(false);
  const isMounted = useRef(false);
+ const themeHydrated = useRef(false);
 
  // Read persisted collapse state from localStorage on mount
  useEffect(() => {
   const persisted = localStorage.getItem("sidebar_collapsed");
   if (persisted !== null) {
    setIsCollapse(persisted === "true");
+  }
+  const persistedTheme = localStorage.getItem("theme");
+  if (persistedTheme === "dark" || persistedTheme === "light") {
+   setTheme(persistedTheme);
   }
   isMounted.current = true;
  }, []);
@@ -28,6 +41,20 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
    localStorage.setItem("sidebar_collapsed", String(isCollapse));
   }
  }, [isCollapse]);
+
+ // Persist an explicit user theme choice so it survives reloads instead of
+ // silently reverting to the default every navigation. Skips its first run:
+ // that first run fires in the same mount pass as the read-effect above, with
+ // `theme` still holding the pre-hydration closure value — writing then would
+ // race the read and clobber a just-restored persisted value back to the
+ // default before it ever applies.
+ useEffect(() => {
+  if (!themeHydrated.current) {
+   themeHydrated.current = true;
+   return;
+  }
+  localStorage.setItem("theme", theme);
+ }, [theme]);
 
  const sidebarHandle = () => {
   setSideMenuOpen(!sideMenuOpen);

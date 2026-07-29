@@ -292,89 +292,87 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
             {/*
               Document Preview — this is the printable client-facing invoice
               document (see `printable-area` below / window.print() above),
-              not dashboard chrome. Like the Proposals document, it
-              intentionally keeps bold/uppercase letterhead typography and
-              the workspace's white-label `primary` color/logo rather than
-              `dash-accent` — a document sent to a client should carry that
-              workspace's brand. The surrounding chrome above (list, header,
-              dropdown, dialogs) is dashboard UI and got the full dash-token
-              treatment. Unlike the old version, the document itself is now
-              light/print-safe rather than carrying over the app's old dark
-              theme, matching standard invoice/print conventions.
+              not dashboard chrome. It intentionally keeps the workspace's
+              white-label `primary` color/logo rather than `dash-accent` — a
+              document sent to a client should carry that workspace's brand,
+              used sparingly (logo mark, one label, the total) rather than
+              throughout. The surrounding chrome above (list, header, dropdown,
+              dialogs) is dashboard UI and got the full dash-token treatment.
+
+              Every color on a bare <p>/<h1>-<h6> tag below is `!`-prefixed
+              (Tailwind's important modifier) on purpose, not defensively —
+              a legacy vendor admin-template stylesheet (Manaz) ships a
+              dark-mode reset compiled to `p:is(.dark *) { color: #E2E8F0 }`
+              / `h1:is(.dark *)...h6:is(.dark *)`. Since <html> currently
+              defaults to the "dark" theme (src/lib/contextApi/AppProvider.tsx),
+              that reset is live, and its specificity (element + :is(.dark *))
+              beats a plain Tailwind color class even applied directly to the
+              tag — only `!important` wins. <div>/<span>/<th>/<td> aren't
+              targeted by that reset, so they don't need the prefix; verified
+              live via computed-style inspection, not assumed.
             */}
             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-dash-surface relative">
-              <div className="max-w-[850px] mx-auto bg-white border border-dash-border text-slate-900 p-12 md:p-16 rounded-2xl shadow-lg printable-area min-h-[1000px] relative overflow-hidden">
+              <div className="max-w-[850px] mx-auto bg-white border border-dash-border !text-slate-900 p-12 md:p-16 rounded-2xl shadow-lg printable-area min-h-[1000px] relative">
 
-                <div className="flex justify-between items-start mb-16 relative z-10">
-                  <div>
-                    <div className="text-3xl font-black uppercase tracking-tight mb-4 flex items-center gap-3 text-slate-900">
-                      <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                        <ShieldCheck className="h-5 w-5 text-white" />
-                      </div>
-                      LEADSMIND <span className="text-primary">HQ</span>
+                {/* Header: brand lockup + invoice meta, separated by a single rule */}
+                <div className="flex justify-between items-start pb-9 mb-9 border-b border-slate-100">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <ShieldCheck className="h-5 w-5 text-white" />
                     </div>
-                    <div className={`text-[11px] font-bold uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} space-y-2 leading-relaxed`}>
-                      <p>123 Enterprise Avenue</p>
-                      <p>Silicon Valley, CA 94043</p>
-                      <p>billing@leadsmind.io</p>
+                    <div>
+                      <div className="text-lg font-bold uppercase tracking-tight !text-slate-900">
+                        Leadsmind <span className="!text-primary">HQ</span>
+                      </div>
+                      <div className={`text-xs !${DOCUMENT_MUTED_TEXT} leading-relaxed mt-1`}>
+                        <p className={`!${DOCUMENT_MUTED_TEXT}`}>123 Enterprise Avenue, Silicon Valley, CA 94043</p>
+                        <p className={`!${DOCUMENT_MUTED_TEXT}`}>billing@leadsmind.io</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right flex flex-col items-end">
-                    <h1 className="text-5xl font-black uppercase tracking-tighter text-slate-100 select-none pointer-events-none mb-4">Invoice</h1>
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 text-left w-64">
-                      <p className={`text-[10px] font-black ${DOCUMENT_MUTED_TEXT} uppercase tracking-[0.3em] mb-1`}>Document No.</p>
-                      <p className="text-xl font-black text-primary uppercase tracking-tight mb-4">{selectedInvoice.invoice_number}</p>
-                      <div className="pt-3 border-t border-slate-100">
-                        <StatusBadge status={selectedInvoice.status} />
-                      </div>
-                    </div>
+                  <div className="text-right shrink-0 pl-8">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] !text-primary mb-2">Invoice</p>
+                    <p className="text-lg font-bold !text-slate-900 tracking-tight mb-3">{selectedInvoice.invoice_number}</p>
+                    <StatusBadge status={selectedInvoice.status} />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16 relative z-10">
-                  <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
-                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} mb-4 flex items-center gap-2`}>
-                      <ShieldCheck size={12} className="text-primary" /> Billed To
-                    </span>
-                    <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 mb-2">
+                {/* Billed To / dates — plain two-column meta, no boxed cards */}
+                <div className="flex justify-between items-start gap-10 mb-12">
+                  <div>
+                    <p className={`text-[10px] font-bold uppercase tracking-[0.2em] !${DOCUMENT_MUTED_TEXT} mb-3`}>Billed To</p>
+                    <p className="text-base font-semibold !text-slate-900 mb-1">
                       {selectedInvoice.contact?.first_name} {selectedInvoice.contact?.last_name}
-                    </h2>
-                    <p className={`text-sm font-semibold ${DOCUMENT_MUTED_TEXT} mb-5`}>{selectedInvoice.contact?.email}</p>
+                    </p>
+                    <p className={`text-sm !${DOCUMENT_MUTED_TEXT}`}>{selectedInvoice.contact?.email}</p>
                     {selectedInvoice.contact?.vat_number && (
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200">
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT}`}>VAT:</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">{selectedInvoice.contact.vat_number}</span>
-                      </div>
+                      <p className={`text-xs !${DOCUMENT_MUTED_TEXT} mt-2`}>
+                        VAT <span className="font-semibold !text-slate-900">{selectedInvoice.contact.vat_number}</span>
+                      </p>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col justify-center gap-6">
-                      <div className="flex justify-between items-center">
-                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} flex items-center gap-2`}>
-                          <Calendar size={12} className="text-primary"/> Issue Date
-                        </span>
-                        <span className="text-sm font-black text-slate-900">{format(new Date(selectedInvoice.created_at), 'dd MMM yyyy')}</span>
-                      </div>
-                      <div className="w-full h-px bg-slate-100" />
-                      <div className="flex justify-between items-center">
-                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} flex items-center gap-2`}>
-                          <Clock size={12} className="text-red"/> Due Date
-                        </span>
-                        <span className="text-sm font-black text-red">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), 'dd MMM yyyy') : 'On Receipt'}</span>
-                      </div>
+                  <div className="flex gap-10 text-right shrink-0">
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-[0.2em] !${DOCUMENT_MUTED_TEXT} mb-2`}>Issue Date</p>
+                      <p className="text-sm font-semibold !text-slate-900">{format(new Date(selectedInvoice.created_at), 'dd MMM yyyy')}</p>
+                    </div>
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-[0.2em] !${DOCUMENT_MUTED_TEXT} mb-2`}>Due Date</p>
+                      <p className="text-sm font-semibold !text-red">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), 'dd MMM yyyy') : 'On Receipt'}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 rounded-2xl border border-slate-100 overflow-x-auto mb-16 relative z-10 custom-scrollbar">
-                  <table className="w-full min-w-[500px]">
+                {/* Line items — bottom-rule rows instead of a filled card, numeric columns right-aligned */}
+                <div className="overflow-x-auto mb-10">
+                  <table className="w-full min-w-[500px] border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50">
-                        <th className={`py-5 px-6 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-left`}>Description</th>
-                        <th className={`py-5 px-6 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Qty</th>
-                        <th className={`py-5 px-6 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Rate</th>
-                        <th className={`py-5 px-6 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Amount</th>
+                      <tr className="border-b-2 border-slate-900/90">
+                        <th className={`py-3 text-[10px] font-bold uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} text-left`}>Description</th>
+                        <th className={`py-3 text-[10px] font-bold uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} text-right`}>Qty</th>
+                        <th className={`py-3 text-[10px] font-bold uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} text-right`}>Rate</th>
+                        <th className={`py-3 text-[10px] font-bold uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} text-right`}>Amount</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -383,11 +381,11 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                         const quantity = Number(item.quantity ?? 0);
                         const amount = quantity * rate;
                         return (
-                          <tr key={idx} className="hover:bg-white transition-colors">
-                            <td className="py-6 px-6 font-semibold text-sm text-slate-900">{item.description}</td>
-                            <td className={`py-6 px-6 text-right text-sm ${DOCUMENT_MUTED_TEXT} font-bold`}>{quantity}</td>
-                            <td className={`py-6 px-6 text-right text-sm ${DOCUMENT_MUTED_TEXT} font-bold`}>${rate.toLocaleString()}</td>
-                            <td className="py-6 px-6 text-right font-black text-base text-slate-900">${amount.toLocaleString()}</td>
+                          <tr key={idx}>
+                            <td className="py-4 text-sm font-medium text-slate-900">{item.description}</td>
+                            <td className={`py-4 text-right text-sm ${DOCUMENT_MUTED_TEXT} tabular-nums`}>{quantity}</td>
+                            <td className={`py-4 text-right text-sm ${DOCUMENT_MUTED_TEXT} tabular-nums`}>${rate.toLocaleString()}</td>
+                            <td className="py-4 text-right text-sm font-semibold text-slate-900 tabular-nums">${amount.toLocaleString()}</td>
                           </tr>
                         );
                       })}
@@ -395,22 +393,20 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                   </table>
                 </div>
 
-                <div className="flex justify-end pt-2 relative z-10">
-                  <div className="w-[380px] space-y-4">
-                    <div className={`flex justify-between items-center ${DOCUMENT_MUTED_TEXT} text-xs font-bold px-6`}>
-                      <span className="uppercase tracking-widest text-[10px]">Subtotal</span>
-                      <span>${(Number(selectedInvoice.subtotal || selectedInvoice.total_amount) || 0).toLocaleString()}</span>
+                {/* Totals — accent reserved for the "Total Due" label + figure only */}
+                <div className="flex justify-end">
+                  <div className="w-72 space-y-3">
+                    <div className={`flex justify-between items-center ${DOCUMENT_MUTED_TEXT} text-sm`}>
+                      <span>Subtotal</span>
+                      <span className="font-medium text-slate-900 tabular-nums">${(Number(selectedInvoice.subtotal || selectedInvoice.total_amount) || 0).toLocaleString()}</span>
                     </div>
-                    <div className={`flex justify-between items-center ${DOCUMENT_MUTED_TEXT} text-xs font-bold pb-5 border-b border-slate-100 px-6`}>
-                      <span className="uppercase tracking-widest text-[10px]">Tax</span>
-                      <span>${(Number(selectedInvoice.tax_total) || 0).toLocaleString()}</span>
+                    <div className={`flex justify-between items-center ${DOCUMENT_MUTED_TEXT} text-sm pb-3 border-b border-slate-100`}>
+                      <span>Tax</span>
+                      <span className="font-medium text-slate-900 tabular-nums">${(Number(selectedInvoice.tax_total) || 0).toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between items-center pt-2 mt-4 bg-primary/5 border border-primary/20 rounded-2xl p-8 relative overflow-hidden">
-                      <div className="flex flex-col gap-1.5 relative z-10">
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Grand Total</span>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${DOCUMENT_MUTED_TEXT}`}>USD</span>
-                      </div>
-                      <span className="text-4xl font-black text-slate-900 tracking-tighter relative z-10">${(Number(selectedInvoice.total_amount) || 0).toLocaleString()}</span>
+                    <div className="flex justify-between items-end pt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.25em] !text-primary mb-1">Total Due</span>
+                      <span className="text-3xl font-bold !text-slate-900 tracking-tight tabular-nums">${(Number(selectedInvoice.total_amount) || 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

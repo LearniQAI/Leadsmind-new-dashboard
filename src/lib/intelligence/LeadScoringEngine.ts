@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
+import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
 
 export const LeadScoringEngine = {
   /**
@@ -170,6 +171,8 @@ export const LeadScoringEngine = {
           tags: newTags
         })
         .eq("id", contactId).eq("workspace_id", workspaceId);
+
+      syncContactTagsToRelational(workspaceId, contactId, newTags).catch(() => {});
 
       // Check and update crm_contacts if it exists
       await supabase

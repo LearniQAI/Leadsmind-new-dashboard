@@ -4,6 +4,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
+import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
 
 export interface CRMActionPayload {
   workspaceId: string;
@@ -41,7 +42,7 @@ export const CRMActionHandler = {
           return await this.updatePipelineStage(supabase, payload.workspaceId, contactId, config.stage || config.stageId);
 
         case 'apply_tags':
-          return await this.applyContactTags(supabase, contactId, config.tags || []);
+          return await this.applyContactTags(supabase, payload.workspaceId, contactId, config.tags || []);
 
         case 'create_note':
           return await this.createContactNote(supabase, payload.workspaceId, contactId, config.content || '', payload.formName);
@@ -199,7 +200,7 @@ export const CRMActionHandler = {
   /**
    * Action: Apply Contact Tags
    */
-  async applyContactTags(supabase: any, contactId: string, newTags: string[]) {
+  async applyContactTags(supabase: any, workspaceId: string, contactId: string, newTags: string[]) {
     if (!newTags || newTags.length === 0) return { success: true };
 
     const { data: contact } = await supabase
@@ -215,6 +216,8 @@ export const CRMActionHandler = {
       .from('contacts')
       .update({ tags: mergedTags })
       .eq('id', contactId);
+
+    if (!error) syncContactTagsToRelational(workspaceId, contactId, mergedTags).catch(() => {});
 
     return error ? { success: false, error: error.message } : { success: true };
   },

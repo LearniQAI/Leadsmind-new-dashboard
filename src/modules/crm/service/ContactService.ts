@@ -1,6 +1,11 @@
 import { ContactRepository } from "@/modules/crm/repository/ContactRepository";
 import { AppError } from "@/shared/errors/AppError";
 import { logger } from "@/shared/logger";
+import {
+  syncContactTagsToRelational,
+  syncBulkContactTagAdd,
+  syncBulkContactTagRemove,
+} from "@/modules/tags/sync/syncContactTags";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -134,6 +139,8 @@ export class ContactService {
         metadata: { source: values.source ?? "form" },
       });
 
+      syncContactTagsToRelational(workspaceId, contact.id, values.tags ?? []).catch(() => {});
+
       return contact;
     }, "contacts.createContact");
   }
@@ -166,6 +173,8 @@ export class ContactService {
         logger.error({ err: e }, "[contacts.updateContact] webhook dispatch failed");
       }
 
+      syncContactTagsToRelational(workspaceId, contact.id, values.tags ?? []).catch(() => {});
+
       return contact;
     }, "contacts.updateContact");
   }
@@ -175,33 +184,16 @@ export class ContactService {
   }
 
   // ---------- tags ----------
-
-  async getWorkspaceTags(workspaceId: string) {
-    return toResult(async () => {
-      const [registryTags, counts] = await Promise.all([
-        this.repo.listRegistryTags(workspaceId),
-        this.repo.listTagsAndCounts(workspaceId),
-      ]);
-
-      const countMap = new Map(counts.map((c) => [c.name, c.count]));
-      // Registry tags always appear, even at count 0.
-      for (const t of registryTags) {
-        if (!countMap.has(t.name)) countMap.set(t.name, 0);
-      }
-
-      return Array.from(countMap.entries()).map(([name, count]) => ({ id: name, name, count }));
-    }, "contacts.getWorkspaceTags");
-  }
-
-  async createRegistryTag(workspaceId: string, name: string) {
-    return toResult(() => this.repo.createRegistryTag(workspaceId, name), "contacts.createRegistryTag");
-  }
+  // Tag registry (create/rename/delete/list by id) now lives in
+  // src/modules/tags/service/TagService.ts, backed by the relational `tags` table.
 
   async addTag(contactId: string, workspaceId: string, tag: string) {
     return toResult(async () => {
       const tags = await this.repo.getTags(contactId, workspaceId);
       if (tags.includes(tag)) return;
-      await this.repo.setTags(contactId, workspaceId, [...tags, tag]);
+      const nextTags = [...tags, tag];
+      await this.repo.setTags(contactId, workspaceId, nextTags);
+      syncContactTagsToRelational(workspaceId, contactId, nextTags).catch(() => {});
     }, "contacts.addTag");
   }
 
@@ -218,6 +210,7 @@ export class ContactService {
           metadata: { tag, operation: "bulk_tag", event: "tagging" },
         })),
       );
+      syncBulkContactTagAdd(workspaceId, tag, ids).catch(() => {});
     }, "contacts.bulkAddTag");
   }
 
@@ -225,28 +218,8 @@ export class ContactService {
     return toResult(async () => {
       logger.info({ count: ids.length, tag, workspaceId }, "contact.bulkRemoveTag");
       await this.repo.bulkRemoveTagRpc(ids, tag, workspaceId);
+      syncBulkContactTagRemove(workspaceId, tag, ids).catch(() => {});
     }, "contacts.bulkRemoveTag");
-  }
-
-  async globalDeleteTag(workspaceId: string, tag: string) {
-    return toResult(async () => {
-      await this.repo.deleteRegistryTag(workspaceId, tag);
-      const contacts = await this.repo.findByTag(workspaceId, tag);
-      for (const c of contacts) {
-        await this.repo.setTags(
-          c.id,
-          workspaceId,
-          (c.tags ?? []).filter((t) => t !== tag),
-        );
-      }
-    }, "contacts.globalDeleteTag");
-  }
-
-  async globalRenameTag(workspaceId: string, oldTag: string, newTag: string) {
-    return toResult(async () => {
-      await this.repo.renameRegistryTag(workspaceId, oldTag, newTag);
-      await this.repo.globalRenameTagRpc(workspaceId, oldTag, newTag);
-    }, "contacts.globalRenameTag");
   }
 
   // ---------- notes ----------
