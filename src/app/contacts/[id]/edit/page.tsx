@@ -2,6 +2,7 @@ import { requireAuth } from '@/lib/auth';
 import { ContactForm } from '@/components/crm/ContactForm';
 import { getContact } from '@/app/actions/contacts';
 import { getWorkspaceMembers } from '@/app/actions/workspace';
+import { listTags } from '@/app/actions/tags';
 import { notFound, redirect } from 'next/navigation';
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
@@ -15,10 +16,12 @@ export default async function EditContactPage({
 }) {
  await requireAuth();
  const { id } = params;
- const [contactResult, members] = await Promise.all([
+ const [contactResult, members, tagsRes] = await Promise.all([
   getContact(id),
   getWorkspaceMembers(),
+  listTags(),
  ]);
+ const availableTags = tagsRes.success ? tagsRes.data : [];
 
  if (!contactResult.success) {
   if (contactResult.error === 'Contact not found') {
@@ -41,7 +44,7 @@ export default async function EditContactPage({
      </div>
 
      <div className="bg-white border border-dash-border rounded-2xl p-8 md:p-12 shadow-sm">
-      <ContactForm initialData={contactResult.data} members={members} />
+      <ContactForm initialData={contactResult.data} members={members} availableTags={availableTags} />
      </div>
     </div>
    </Wrapper>

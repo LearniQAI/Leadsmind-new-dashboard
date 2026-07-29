@@ -1,10 +1,16 @@
 import React from 'react';
 import { UserPlus } from 'lucide-react';
 import { ContactForm } from '@/components/crm/ContactForm';
+import { listTags } from '@/app/actions/tags';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import MetaData from '@/hooks/useMetaData';
 
-export default function NewContactPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function NewContactPage() {
+  const tagsRes = await listTags();
+  const availableTags = tagsRes.success ? tagsRes.data : [];
+
   return (
     <MetaData pageTitle="Add New Lead">
       <Wrapper>
@@ -38,7 +44,7 @@ export default function NewContactPage() {
                   </div>
                 </div>
 
-                <ContactForm />
+                <ContactForm availableTags={availableTags} />
               </div>
             </div>
           </div>

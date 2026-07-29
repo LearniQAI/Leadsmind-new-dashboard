@@ -627,6 +627,8 @@ export async function completeLessonAction(lessonId: string) {
 
           if (completedInCourse && completedInCourse.length === courseLessonIds.length) {
             await publishEvent(workspaceId, 'course_completed', contact.id, { courseId });
+            const { applyAutoTag } = await import('@/modules/tags/autoTagging/applySystemTag');
+            applyAutoTag(workspaceId, 'contact', contact.id, 'Completed Course', true).catch(() => {});
           }
         }
       }

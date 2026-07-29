@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
 import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
+import { applyAutoTag } from '@/modules/tags/autoTagging/applySystemTag';
 
 export const LeadScoringEngine = {
   /**
@@ -88,6 +89,7 @@ export const LeadScoringEngine = {
             newTags.push('High Intent');
           }
         }
+        applyAutoTag(workspaceId, 'contact', contactId, 'Clicked Campaign', true).catch(() => {});
       }
 
       // 2.c Open Event & Consecutive Unopened Campaign Count
@@ -109,6 +111,15 @@ export const LeadScoringEngine = {
           scoreAdjustment += 10;
           explanations.push('+10 points: Consecutive unopened campaign streak broken');
         }
+
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const { count: recentOpens } = await supabase
+          .from('email_events')
+          .select('id', { count: 'exact', head: true })
+          .eq('contact_id', contactId)
+          .eq('event_type', 'opened')
+          .gte('occurred_at', thirtyDaysAgo);
+        applyAutoTag(workspaceId, 'contact', contactId, 'Frequently Opens Emails', (recentOpens ?? 0) >= 3).catch(() => {});
       }
 
       // 3. Compile final score and explanation

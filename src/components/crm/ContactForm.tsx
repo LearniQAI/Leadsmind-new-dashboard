@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createContact, updateContact, checkDuplicateContact } from '@/app/actions/contacts';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 import { DashButton } from '@/components/dashboard-ui/Button';
+import { TagMultiSelect, TagOption } from '@/components/crm/TagMultiSelect';
 
 const contactSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -16,7 +17,7 @@ const contactSchema = z.object({
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().optional(),
   source: z.string().optional(),
-  tags: z.string().optional(), // Will be split into array
+  tags: z.array(z.string()).optional(),
 });
 
 type ContactFormValues = z.infer<typeof contactSchema>;
@@ -24,26 +25,28 @@ type ContactFormValues = z.infer<typeof contactSchema>;
 interface ContactFormProps {
   initialData?: any;
   members?: { id: string; name: string }[];
+  availableTags?: TagOption[];
 }
 
-export function ContactForm({ initialData, members }: ContactFormProps) {
+export function ContactForm({ initialData, members, availableTags = [] }: ContactFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  
+
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
     watch,
   } = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { 
+    defaultValues: {
       firstName: initialData?.first_name || '',
       lastName: initialData?.last_name || '',
       email: initialData?.email || '',
       phone: initialData?.phone || '',
       source: initialData?.source || 'Direct Entry',
-      tags: initialData?.tags?.join(', ') || ''
+      tags: initialData?.tags || []
     }
   });
 
@@ -71,7 +74,7 @@ export function ContactForm({ initialData, members }: ContactFormProps) {
 
     const payload = {
       ...values,
-      tags: values.tags ? values.tags.split(',').map(t => t.trim()).filter(Boolean) : []
+      tags: values.tags ?? []
     };
 
     const res = initialData 
@@ -107,14 +110,19 @@ export function ContactForm({ initialData, members }: ContactFormProps) {
         <DashInput {...register('phone')} placeholder="+1 (555) 000-0000" />
       </DashFormField>
 
-      <div className="grid grid-cols-2 gap-4">
-        <DashFormField label="Lead source">
-          <DashInput {...register('source')} />
-        </DashFormField>
-        <DashFormField label="Tags (comma separated)">
-          <DashInput {...register('tags')} placeholder="Lead, Cold, VIP..." />
-        </DashFormField>
-      </div>
+      <DashFormField label="Lead source">
+        <DashInput {...register('source')} />
+      </DashFormField>
+
+      <DashFormField label="Tags">
+        <Controller
+          name="tags"
+          control={control}
+          render={({ field }) => (
+            <TagMultiSelect availableTags={availableTags} value={field.value ?? []} onChange={field.onChange} />
+          )}
+        />
+      </DashFormField>
 
       <div className="pt-4 flex gap-3">
         <DashButton type="button" variant="secondary" className="flex-1" onClick={() => router.back()}>

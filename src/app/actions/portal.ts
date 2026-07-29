@@ -306,6 +306,11 @@ export async function createPortalSupportTicket(values: { title: string; descrip
     return { success: false, error: error?.message || 'Failed to create support ticket' };
   }
 
+  if (status === 'open') {
+    const { applyAutoTag } = await import('@/modules/tags/autoTagging/applySystemTag');
+    applyAutoTag(session.workspace.id, 'contact', session.contact.id, 'Open Ticket', true).catch(() => {});
+  }
+
   if (status === 'resolved' && topMatch) {
     isAutoResolved = true;
     autoReply = `LENA AI Auto-Response:\n\nBased on your query, we found an article that might resolve your issue:\n\n**${topMatch.title}**\n${topMatch.body_plain.substring(0, 300)}...\n\nSince this matches our knowledge base guidelines, this ticket has been marked as resolved. If this did not resolve your issue, please reply to this message to re-open the ticket.`;
@@ -430,6 +435,9 @@ export async function submitCSATRating(ticketId: string, rating: number, comment
     logger.error({ err: error, ticketId }, 'portal.csat_rating.submit.failed');
     return { success: false, error: 'Failed to submit rating.' };
   }
+
+  const { applyAutoTag } = await import('@/modules/tags/autoTagging/applySystemTag');
+  applyAutoTag(session.workspace.id, 'contact', session.contact.id, 'Happy Customer', rating >= 4).catch(() => {});
 
   // Log activity
   await adminClient.from('contact_activities').insert({

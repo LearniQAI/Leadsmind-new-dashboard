@@ -128,6 +128,17 @@ export async function updateTag(
   const result = await service.updateTag(id, workspaceId, payload);
   if (result.success === false) return { success: false, error: result.error };
 
+  const supabase = await createServerClient();
+  const { data: assignedContacts } = await supabase
+    .from('tag_assignments')
+    .select('entity_id')
+    .eq('tag_id', id)
+    .eq('entity_type', 'contact')
+    .eq('workspace_id', workspaceId);
+  for (const row of assignedContacts ?? []) {
+    publishTagEvent('tag_updated', workspaceId, 'contact', row.entity_id, id);
+  }
+
   revalidatePath('/contacts/tags');
   return { success: true, data: result.data };
 }
@@ -174,12 +185,23 @@ export async function listTagsForEntity(entityType: TagEntityType, entityId: str
   return { success: true, data: result.data };
 }
 
+// Tag-event automation triggers are contact-scoped only — the live automation engine
+// (executor.ts's triggerWorkflows) executes workflow steps against a single contactId,
+// so company/deal/invoice/course/support_ticket tag events can't be dispatched into it
+// without extending that engine's execution model, which is out of scope here.
+async function publishTagEvent(eventType: 'tag_added' | 'tag_removed' | 'tag_updated', workspaceId: string, entityType: TagEntityType, entityId: string, tagId: string) {
+  if (entityType !== 'contact') return;
+  const { publishEvent } = await import('@/lib/events/EventBus');
+  publishEvent(workspaceId, eventType, entityId, { tagId }).catch(() => {});
+}
+
 export async function assignTag(tagId: string, entityType: TagEntityType, entityId: string) {
   const { workspaceId, userId } = await requireWorkspaceAccess();
   const service = await getTagService();
   const result = await service.assignTag(tagId, entityType, entityId, workspaceId, userId);
   if (result.success === false) return { success: false, error: result.error };
 
+  publishTagEvent('tag_added', workspaceId, entityType, entityId, tagId);
   revalidateEntityPaths(entityType, entityId);
   return { success: true };
 }
@@ -190,6 +212,7 @@ export async function removeTag(tagId: string, entityType: TagEntityType, entity
   const result = await service.removeTag(tagId, entityType, entityId, workspaceId);
   if (result.success === false) return { success: false, error: result.error };
 
+  publishTagEvent('tag_removed', workspaceId, entityType, entityId, tagId);
   revalidateEntityPaths(entityType, entityId);
   return { success: true };
 }
@@ -200,6 +223,13 @@ export async function bulkAssignTags(tagIds: string[], entityType: TagEntityType
   const result = await service.bulkAssign(tagIds, entityType, entityIds, workspaceId, userId);
   if (result.success === false) return { success: false, error: result.error };
 
+  if (entityType === 'contact') {
+    for (const entityId of entityIds) {
+      for (const tagId of tagIds) {
+        publishTagEvent('tag_added', workspaceId, entityType, entityId, tagId);
+      }
+    }
+  }
   revalidateEntityPaths(entityType);
   return { success: true };
 }
@@ -210,6 +240,13 @@ export async function bulkRemoveTags(tagIds: string[], entityType: TagEntityType
   const result = await service.bulkRemove(tagIds, entityType, entityIds, workspaceId);
   if (result.success === false) return { success: false, error: result.error };
 
+  if (entityType === 'contact') {
+    for (const entityId of entityIds) {
+      for (const tagId of tagIds) {
+        publishTagEvent('tag_removed', workspaceId, entityType, entityId, tagId);
+      }
+    }
+  }
   revalidateEntityPaths(entityType);
   return { success: true };
 }

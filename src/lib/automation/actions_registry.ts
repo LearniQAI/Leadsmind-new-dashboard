@@ -417,5 +417,178 @@ export const AutomationActions = {
     } catch (actErr) {
       console.error('[actions_registry] Failed to log WhatsApp voice activity:', actErr);
     }
-  }
+  },
+
+  create_opportunity: async (workspaceId: string, contactId: string, config: any) => {
+    const supabase = await createServerClient();
+
+    let stageId = config.stageId;
+    if (!stageId) {
+      const { data: stages } = await supabase
+        .from('pipeline_stages')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .order('position', { ascending: true })
+        .limit(1);
+      stageId = stages?.[0]?.id;
+    }
+    if (!stageId) {
+      console.warn(`Automation: create_opportunity found no pipeline stage in workspace ${workspaceId}`);
+      return;
+    }
+
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('first_name, last_name')
+      .eq('id', contactId)
+      .eq('workspace_id', workspaceId)
+      .single();
+
+    await supabase.from('opportunities').insert({
+      workspace_id: workspaceId,
+      contact_id: contactId,
+      stage_id: stageId,
+      title: config.title || `${contact?.first_name || 'Contact'} ${contact?.last_name || ''} Opportunity`.trim(),
+      value: config.value ?? 0,
+      status: 'open',
+      position: 0,
+    });
+  },
+
+  create_invoice: async (workspaceId: string, contactId: string, config: any) => {
+    const supabase = await createServerClient();
+    const amount = Number(config.amount ?? 0);
+    const dueInDays = Number(config.dueInDays ?? 14);
+    const dueDate = new Date(Date.now() + dueInDays * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: invoice, error } = await supabase
+      .from('invoices')
+      .insert({
+        workspace_id: workspaceId,
+        contact_id: contactId,
+        amount_due: amount,
+        total_amount: amount,
+        status: 'draft',
+        due_date: dueDate,
+        currency: config.currency || 'ZAR',
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    try {
+      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+      dispatchWebhook(workspaceId, 'invoice.created', {
+        invoice: { id: invoice.id, amount, currency: config.currency || 'ZAR', status: 'draft', contact_id: contactId },
+      }).catch(() => {});
+    } catch (e) {
+      console.error('[actions_registry] Failed to dispatch invoice.created webhook:', e);
+    }
+  },
+
+  assign_salesperson: async (workspaceId: string, contactId: string, config: any) => {
+    if (!config?.ownerId || typeof config.ownerId !== 'string') {
+      console.warn('Automation: assign_salesperson called without a valid ownerId');
+      return;
+    }
+
+    const supabase = await createServerClient();
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', config.ownerId)
+      .maybeSingle();
+    if (!membership) {
+      console.warn(`Automation: assign_salesperson target ${config.ownerId} is not a member of workspace ${workspaceId}`);
+      return;
+    }
+
+    await supabase
+      .from('contacts')
+      .update({ owner_id: config.ownerId })
+      .eq('id', contactId)
+      .eq('workspace_id', workspaceId);
+  },
+
+  // Reuses the same "paste a webhook URL" mechanism as send_webhook — Slack Incoming
+  // Webhooks are a plain POST URL, so no dedicated Slack OAuth integration is needed.
+  notify_slack: async (workspaceId: string, contactId: string, config: any) => {
+    if (!config?.webhookUrl) {
+      console.warn('Automation: notify_slack called without a webhookUrl');
+      return;
+    }
+
+    const supabase = await createServerClient();
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('first_name, last_name')
+      .eq('id', contactId)
+      .eq('workspace_id', workspaceId)
+      .single();
+
+    const contactName = contact ? `${contact.first_name} ${contact.last_name}` : 'A contact';
+    const text = (config.message || `Automation triggered for {contact_name}`).replace('{contact_name}', contactName);
+
+    try {
+      const response = await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!response.ok) {
+        console.error(`[actions_registry] notify_slack webhook failed with status ${response.status}`);
+      }
+    } catch (err) {
+      console.error('[actions_registry] notify_slack webhook failed:', err);
+    }
+  },
+
+  // Generates a follow-up task suggestion via LLM, metered through the same atomic
+  // deduct_ai_credit RPC used by seoChecker.ts/plagiarismChecker.ts — the only
+  // confirmed race-safe, RLS-safe credit spend mechanism in this codebase.
+  generate_ai_task: async (workspaceId: string, contactId: string, config: any) => {
+    const supabase = await createServerClient();
+
+    const { data: canSpend } = await supabase.rpc('deduct_ai_credit', { p_workspace_id: workspaceId, p_amount: 1 });
+    if (!canSpend) {
+      console.warn(`Automation: generate_ai_task skipped for workspace ${workspaceId} — AI credit limit reached`);
+      return;
+    }
+
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('first_name, last_name, lead_score, tags')
+      .eq('id', contactId)
+      .eq('workspace_id', workspaceId)
+      .single();
+    if (!contact) return;
+
+    let title = `Follow up with ${contact.first_name} ${contact.last_name}`;
+    try {
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.5,
+        messages: [
+          {
+            role: 'user',
+            content: `Suggest a single short (under 12 words) CRM follow-up task title for a contact named ${contact.first_name} ${contact.last_name}, lead score ${contact.lead_score ?? 0}, tags: ${(contact.tags || []).join(', ') || 'none'}. Context: ${config.context || 'no additional context'}. Reply with only the task title, no quotes.`,
+          },
+        ],
+      });
+      title = completion.choices[0]?.message?.content?.trim() || title;
+    } catch (err) {
+      console.error('[actions_registry] generate_ai_task LLM call failed, using fallback title:', err);
+    }
+
+    await supabase.from('contact_tasks').insert({
+      workspace_id: workspaceId,
+      contact_id: contactId,
+      title,
+      status: 'todo',
+    });
+  },
 };
