@@ -185,6 +185,45 @@ export async function listTagsForEntity(entityType: TagEntityType, entityId: str
   return { success: true, data: result.data };
 }
 
+// Powers the Tag Manager's "view contacts with this tag" drill-down. Reads the real
+// tag_assignments table (Part 1 source of truth), not the legacy contacts.tags array
+// mirror. workspaceId is always resolved from the session (requireWorkspaceAccess),
+// never trusted from the client, and both the assignment lookup and the contacts
+// fetch are scoped to it — a tag_id from another workspace can never leak contacts.
+export async function getContactsForTag(tagId: string) {
+  const { workspaceId } = await requireWorkspaceAccess();
+  const supabase = await createServerClient();
+
+  const { data: assignments, error: assignErr } = await supabase
+    .from('tag_assignments')
+    .select('entity_id')
+    .eq('tag_id', tagId)
+    .eq('entity_type', 'contact')
+    .eq('workspace_id', workspaceId);
+  if (assignErr) return { success: false, error: 'Failed to load tag assignments' };
+
+  const { count: totalAssignmentCount } = await supabase
+    .from('tag_assignments')
+    .select('id', { count: 'exact', head: true })
+    .eq('tag_id', tagId)
+    .eq('workspace_id', workspaceId);
+
+  const contactIds = (assignments ?? []).map((a) => a.entity_id);
+  if (contactIds.length === 0) {
+    return { success: true, data: [], totalAssignmentCount: totalAssignmentCount ?? 0 };
+  }
+
+  const { data: contacts, error: contactErr } = await supabase
+    .from('contacts')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .in('id', contactIds)
+    .order('created_at', { ascending: false });
+  if (contactErr) return { success: false, error: 'Failed to load contacts' };
+
+  return { success: true, data: contacts ?? [], totalAssignmentCount: totalAssignmentCount ?? 0 };
+}
+
 // Tag-event automation triggers are contact-scoped only — the live automation engine
 // (executor.ts's triggerWorkflows) executes workflow steps against a single contactId,
 // so company/deal/invoice/course/support_ticket tag events can't be dispatched into it
