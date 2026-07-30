@@ -6,6 +6,7 @@ import { requireWorkspaceAccess } from '@/lib/auth';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
 import { TagRepository, TagEntityType } from '@/modules/tags/repository/TagRepository';
 import { TagService } from '@/modules/tags/service/TagService';
+import { logger } from '@/shared/logger';
 
 async function getTagService() {
   const supabase = await createServerClient();
@@ -78,11 +79,16 @@ export async function reorderTagCategories(orderedIds: string[]) {
 // ---------- tags ----------
 
 export async function listTags() {
-  const { workspaceId, userId } = await requireWorkspaceAccess();
-  const service = await getTagService();
-  const result = await service.listTags(workspaceId, userId);
-  if (result.success === false) return { success: false, error: result.error };
-  return { success: true, data: result.data };
+  try {
+    const { workspaceId, userId } = await requireWorkspaceAccess();
+    const service = await getTagService();
+    const result = await service.listTags(workspaceId, userId);
+    if (result.success === false) return { success: false, error: result.error };
+    return { success: true, data: result.data };
+  } catch (error: any) {
+    logger.error({ err: error }, 'list.tags.failed');
+    return { success: false, error: 'Operation failed. Please try again.' };
+  }
 }
 
 export async function searchTags(query: string) {
