@@ -94,7 +94,7 @@ export function StepManager() {
                     {steps.length > 1 && (
                       <button
                         onClick={() => dispatch({ type: 'REMOVE_STEP', id: step.id })}
-                        className="p-1 hover:bg-red/10 rounded text-red hover:text-red"
+                        className="p-1 hover:bg-danger/10 rounded text-danger hover:text-danger"
                         title="Delete Step"
                       >
                         <Trash2 size={12} />

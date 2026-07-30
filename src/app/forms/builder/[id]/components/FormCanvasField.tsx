@@ -43,7 +43,7 @@ export function FormCanvasField({ field, index }: FormCanvasFieldProps) {
           {/* Drag Handle */}
           <div
             {...provided.dragHandleProps}
-            className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none p-1 hover:bg-dash-surface rounded cursor-grab active:cursor-grabbing !text-dash-textMuted"
+            className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity motion-reduce:transition-none p-1 hover:bg-dash-surface rounded cursor-grab active:cursor-grabbing !text-dash-textMuted"
           >
             <GripVertical size={16} />
           </div>
@@ -56,7 +56,7 @@ export function FormCanvasField({ field, index }: FormCanvasFieldProps) {
           {/* Delete Button */}
           <button
             onClick={handleDelete}
-            className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none p-2 hover:bg-red/10 rounded-lg !text-dash-textMuted hover:text-red"
+            className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity motion-reduce:transition-none p-2 hover:bg-danger/10 rounded-lg !text-dash-textMuted hover:text-danger"
             title="Delete Field"
           >
             <Trash2 size={15} />

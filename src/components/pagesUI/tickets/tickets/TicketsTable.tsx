@@ -16,12 +16,22 @@ import { visuallyHidden } from "@mui/utils";
 import useMaterialTableHook from "@/hooks/useMaterialTableHook";
 import { ITicket } from "@/interface/table.interface";
 import { ticketsHeadCells } from "@/data/table-head-cell/table-head";
-import {
- useTablePrirotyHook,
- useTableStatusHook,
-} from "@/hooks/use-condition-class";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
+import { DashStatusPill } from "@/components/dashboard-ui";
+
+const PRIORITY_VARIANT: Record<string, "danger" | "warning" | "success" | "neutral"> = {
+  High: "danger",
+  Medium: "warning",
+  Low: "neutral",
+};
+
+const STATUS_VARIANT: Record<string, "danger" | "warning" | "success" | "accent" | "neutral"> = {
+  Open: "accent",
+  Hold: "warning",
+  Closed: "danger",
+  Cancelled: "danger",
+};
 
 const TicketsTable = ({ initialTickets }: { initialTickets: any[] }) => {
   // Map Supabase data to table format
@@ -60,8 +70,8 @@ const TicketsTable = ({ initialTickets }: { initialTickets: any[] }) => {
  return (
   <>
    <div className="col-span-12">
-    <div className="card__wrapper">
-     <div className="manaz-common-mat-list w-full table__wrapper table-responsive mat-list-without-checkbox">
+    <div className="bg-white border border-dash-border rounded-2xl shadow-sm p-6">
+     <div className="manaz-common-mat-list w-full table-responsive mat-list-without-checkbox">
       <TableControls
        rowsPerPage={rowsPerPage}
        searchQuery={searchQuery}
@@ -69,12 +79,12 @@ const TicketsTable = ({ initialTickets }: { initialTickets: any[] }) => {
        handleSearchChange={handleSearchChange}
       />
        <Box sx={{ width: "100%" }} className="table-responsive">
-        <Paper 
-          sx={{ 
-            width: "100%", 
-            mb: 2, 
-            bgcolor: "transparent", 
-            boxShadow: "none", 
+        <Paper
+          sx={{
+            width: "100%",
+            mb: 2,
+            bgcolor: "transparent",
+            boxShadow: "none",
             backgroundImage: "none",
             color: "inherit",
             "& .MuiTableContainer-root": {
@@ -85,48 +95,47 @@ const TicketsTable = ({ initialTickets }: { initialTickets: any[] }) => {
               border: "none",
             },
             "& .MuiTableCell-root": {
-              borderColor: "rgba(255, 255, 255, 0.05)",
-              color: "var(--t2)",
+              borderColor: "#E2E8F0",
+              color: "#475569",
               fontFamily: "'DM Sans', sans-serif",
               fontSize: "13px",
               py: "14px",
             },
             "& .MuiTableCell-head": {
-              color: "var(--t3)",
-              fontFamily: "'Space Grotesk', sans-serif",
+              color: "#475569",
+              fontFamily: "'DM Sans', sans-serif",
               fontWeight: 700,
               fontSize: "11px",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-              bgcolor: "rgba(255, 255, 255, 0.01)",
+              letterSpacing: "0.03em",
+              borderBottom: "1px solid #E2E8F0",
+              bgcolor: "#F8F9FC",
               py: "12px",
             },
             "& .MuiTableSortLabel-root": {
-              color: "var(--t3) !important",
+              color: "#475569 !important",
               "&:hover": {
-                color: "var(--t2) !important",
+                color: "#0F172A !important",
               },
               "&.Mui-active": {
-                color: "var(--accent2) !important",
+                color: "#1359FF !important",
                 "& .MuiTableSortLabel-icon": {
-                  color: "var(--accent2) !important",
+                  color: "#1359FF !important",
                 }
               }
             },
             "& .MuiTableSortLabel-icon": {
-              color: "var(--t3) !important",
+              color: "#475569 !important",
             },
             "& .MuiTableRow-root": {
               transition: "all 0.15s ease",
               "&.Mui-selected": {
-                bgcolor: "rgba(37, 99, 235, 0.08) !important",
+                bgcolor: "rgba(19, 89, 255, 0.06) !important",
                 "&:hover": {
-                  bgcolor: "rgba(37, 99, 235, 0.12) !important",
+                  bgcolor: "rgba(19, 89, 255, 0.1) !important",
                 }
               },
               "&:hover": {
-                bgcolor: "rgba(255, 255, 255, 0.02) !important",
+                bgcolor: "#F8F9FC !important",
               }
             }
           }}
@@ -170,10 +179,6 @@ const TicketsTable = ({ initialTickets }: { initialTickets: any[] }) => {
 
            <TableBody className="table__body">
             {paginatedRows.map((row, index) => {
-             const stausClass = useTableStatusHook(row?.status);
-             const priorityClass = useTablePrirotyHook(
-              row?.priority
-             );
              return (
               <TableRow
                key={index}
@@ -188,9 +193,9 @@ const TicketsTable = ({ initialTickets }: { initialTickets: any[] }) => {
                </TableCell>
 
                <TableCell className="table__delivery">
-                <span className={`bd-badge ${priorityClass}`}>
+                <DashStatusPill variant={PRIORITY_VARIANT[row?.priority] || "neutral"}>
                  {row?.priority}
-                </span>
+                </DashStatusPill>
                </TableCell>
 
                <TableCell className="table__loan-date">
@@ -204,9 +209,9 @@ const TicketsTable = ({ initialTickets }: { initialTickets: any[] }) => {
                </TableCell>
 
                <TableCell className="table__delivery">
-                <span className={`bd-badge ${stausClass}`}>
+                <DashStatusPill variant={STATUS_VARIANT[row?.status] || "neutral"}>
                  {row?.status}
-                </span>
+                </DashStatusPill>
                </TableCell>
                <TableCell className="table__icon-box">
                 <div className="flex items-center justify-start gap-[10px]">
@@ -255,21 +260,22 @@ const TicketsTable = ({ initialTickets }: { initialTickets: any[] }) => {
          className="manaz-pagination-button"
          sx={{
           '& .MuiPaginationItem-root': {
-            color: 'var(--t2)',
-            borderColor: 'rgba(255,255,255,0.1)',
-            fontFamily: "'Space Grotesk', sans-serif",
+            color: '#475569',
+            borderColor: '#E2E8F0',
+            fontFamily: "'DM Sans', sans-serif",
             fontWeight: 700,
             fontSize: "12px",
             '&:hover': {
-              bgcolor: 'rgba(255,255,255,0.05)',
-              color: 'var(--t1)',
+              bgcolor: '#F8F9FC',
+              color: '#0F172A',
             },
             '&.Mui-selected': {
-              bgcolor: 'var(--accent) !important',
-              borderColor: 'var(--accent)',
+              bgcolor: '#1359FF !important',
+              borderColor: '#1359FF',
               color: '#fff',
               '&:hover': {
-                bgcolor: 'var(--accent2) !important',
+                bgcolor: '#1359FF !important',
+                opacity: 0.9,
               }
             }
           }

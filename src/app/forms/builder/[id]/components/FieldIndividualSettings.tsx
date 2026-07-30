@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FieldIndividualSettingsProps {
@@ -51,18 +51,21 @@ export function FieldIndividualSettings({ selectedField, steps, dispatch }: Fiel
       {/* Assign to Step */}
       <div>
         <label className="settings-label" htmlFor="field-step-assign">Assign to step</label>
-        <select
-          id="field-step-assign"
-          value={selectedField.stepId}
-          onChange={(e) => handleUpdate({ stepId: e.target.value })}
-          className="settings-input h-10 px-3 text-xs cursor-pointer"
-        >
-          {steps.map(s => (
-            <option key={s.id} value={s.id}>
-              {s.title}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            id="field-step-assign"
+            value={selectedField.stepId}
+            onChange={(e) => handleUpdate({ stepId: e.target.value })}
+            className="settings-input h-10 pl-3 pr-9 text-xs cursor-pointer appearance-none"
+          >
+            {steps.map(s => (
+              <option key={s.id} value={s.id}>
+                {s.title}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 !text-dash-textMuted pointer-events-none" />
+        </div>
       </div>
 
       {/* Placeholder - Hide for Checkbox */}
@@ -108,7 +111,7 @@ export function FieldIndividualSettings({ selectedField, steps, dispatch }: Fiel
                 />
                 <button
                   onClick={() => handleRemoveOption(i)}
-                  className="p-2 hover:bg-red/10 text-red rounded-lg hover:text-red transition-colors motion-reduce:transition-none"
+                  className="p-2 hover:bg-danger/10 text-danger rounded-lg hover:text-danger transition-colors motion-reduce:transition-none"
                   title="Remove Option"
                 >
                   <Trash2 size={13} />

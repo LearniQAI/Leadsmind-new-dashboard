@@ -157,14 +157,14 @@ export function LogicBuilder() {
                   <div className="flex gap-1 shrink-0">
                     <button
                       onClick={() => handleOpenEdit(rule)}
-                      className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-dash-surface rounded !text-dash-textMuted hover:!text-dash-text transition-opacity motion-reduce:transition-none"
+                      className="p-1.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 hover:bg-dash-surface rounded !text-dash-textMuted hover:!text-dash-text transition-opacity motion-reduce:transition-none"
                       title="Edit Rule"
                     >
                       <Pencil size={12} />
                     </button>
                     <button
                       onClick={() => handleRemoveRule(rule.id)}
-                      className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red/10 rounded text-red hover:text-red transition-opacity motion-reduce:transition-none"
+                      className="p-1.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 hover:bg-danger/10 rounded text-danger hover:text-danger transition-opacity motion-reduce:transition-none"
                       title="Remove Rule"
                     >
                       <Trash2 size={12} />

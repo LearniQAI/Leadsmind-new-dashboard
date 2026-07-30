@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFormBuilder, FieldType, FormField } from './FormBuilderContext';
 import { FormCanvasField } from './FormCanvasField';
-import { LayoutTemplate } from 'lucide-react';
+import { LayoutTemplate, Type, Mail, Phone, AlignLeft, ChevronDown, CheckSquare } from 'lucide-react';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils';
 
@@ -25,8 +25,8 @@ export function BuilderCanvas() {
     }
   }, [steps, activeStepId]);
 
-  const handleAddField = (type: FieldType, index?: number) => {
-    const defaultLabel = {
+  const handleAddField = (type: FieldType, index?: number, labelOverride?: string) => {
+    const defaultLabel = labelOverride || {
       text: 'Short Text',
       email: 'Email Address',
       phone: 'Phone Number',
@@ -35,7 +35,7 @@ export function BuilderCanvas() {
       checkbox: 'Checkbox Label',
     }[type];
 
-    const defaultPlaceholder = {
+    const defaultPlaceholder = labelOverride ? `Enter ${labelOverride.toLowerCase()}...` : {
       text: 'Enter response...',
       email: 'Enter email...',
       phone: 'Enter phone number...',
@@ -89,6 +89,7 @@ export function BuilderCanvas() {
 
     const type = e.dataTransfer.getData('field-type') as FieldType;
     if (!type) return;
+    const labelOverride = e.dataTransfer.getData('field-label') || undefined;
 
     const stepFields = fields.filter(f => f.stepId === activeStepId);
     const dropY = e.clientY;
@@ -104,10 +105,19 @@ export function BuilderCanvas() {
       }
     }
 
-    handleAddField(type, targetIndex);
+    handleAddField(type, targetIndex, labelOverride);
   };
 
   const activeStepFields = fields.filter(f => f.stepId === activeStepId);
+
+  const QUICK_ADD: { type: FieldType; label: string; icon: React.ReactNode }[] = [
+    { type: 'text', label: 'Short Text', icon: <Type size={12} /> },
+    { type: 'email', label: 'Email', icon: <Mail size={12} /> },
+    { type: 'phone', label: 'Phone', icon: <Phone size={12} /> },
+    { type: 'textarea', label: 'Long Text', icon: <AlignLeft size={12} /> },
+    { type: 'dropdown', label: 'Dropdown', icon: <ChevronDown size={12} /> },
+    { type: 'checkbox', label: 'Checkbox', icon: <CheckSquare size={12} /> },
+  ];
 
   return (
     <div
@@ -148,27 +158,33 @@ export function BuilderCanvas() {
               onDragLeave={() => setIsOver(false)}
               onDrop={handleHTML5Drop}
               className={cn(
-                "empty-state flex-1 justify-center px-10 py-20 transition-colors motion-reduce:transition-none",
+                "flex-1 flex flex-col items-center justify-center gap-5 px-10 py-16 bg-white border border-dashed border-dash-border rounded-2xl shadow-sm transition-colors motion-reduce:transition-none",
                 isOver && "border-dash-accent bg-dash-accent/5"
               )}
             >
-              <div className="empty-state__icon">
-                <LayoutTemplate size={48} />
+              <div className="w-16 h-16 rounded-2xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
+                <LayoutTemplate size={28} />
               </div>
-              <div className="empty-state__title">This step is empty</div>
-              <div className="empty-state__desc max-w-[280px] mb-3">
-                Drag & drop fields here, or click standard fields in the left library to add them to this step.
+              <div className="flex flex-col items-center gap-1.5 text-center">
+                <div className="text-[13px] font-bold !text-dash-text">This step is empty</div>
+                <div className="text-xs !text-dash-textMuted max-w-[280px] leading-relaxed">
+                  Drag &amp; drop fields from the left library here, or add a common field below.
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2 justify-center max-w-[400px]">
-                {(['text', 'email', 'phone', 'textarea', 'dropdown', 'checkbox'] as const).map(type => (
-                  <button
-                    key={type}
-                    onClick={(e) => { e.stopPropagation(); handleAddField(type); }}
-                    className="px-3 py-1.5 bg-white hover:bg-dash-border/40 !text-dash-textMuted hover:!text-dash-text rounded-lg text-[10px] font-bold transition-colors motion-reduce:transition-none border border-dash-border"
-                  >
-                    + {type}
-                  </button>
-                ))}
+
+              <div className="w-full max-w-[380px] pt-5 border-t border-dash-border flex flex-col items-center gap-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-wide !text-dash-textMuted">Quick add</span>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {QUICK_ADD.map(({ type, label, icon }) => (
+                    <button
+                      key={type}
+                      onClick={(e) => { e.stopPropagation(); handleAddField(type); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-dash-surface hover:bg-dash-accent/10 border border-dash-border hover:border-dash-accent/30 !text-dash-textMuted hover:!text-dash-accent rounded-lg text-[11px] font-bold transition-colors motion-reduce:transition-none"
+                    >
+                      {icon} {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
