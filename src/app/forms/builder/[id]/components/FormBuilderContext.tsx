@@ -11,7 +11,7 @@ const BuilderContext = createContext<{
   state: BuilderState;
   dispatch: React.Dispatch<BuilderAction>;
   saveForm: () => Promise<void>;
-  addField: (type: FieldType, index?: number) => void;
+  addField: (type: FieldType, index?: number, labelOverride?: string) => void;
 } | undefined>(undefined);
 
 export function FormBuilderProvider({
@@ -59,8 +59,8 @@ export function FormBuilderProvider({
     }
   }, [initialForm]);
 
-  const addField = (type: FieldType, index?: number) => {
-    const defaultLabel = {
+  const addField = (type: FieldType, index?: number, labelOverride?: string) => {
+    const defaultLabel = labelOverride || {
       text: 'Short Text',
       email: 'Email Address',
       phone: 'Phone Number',
@@ -72,7 +72,7 @@ export function FormBuilderProvider({
       payment: 'Payment Integration',
     }[type] || 'Field Label';
 
-    const defaultPlaceholder = {
+    const defaultPlaceholder = labelOverride ? `Enter ${labelOverride.toLowerCase()}...` : {
       text: 'Enter response...',
       email: 'Enter email...',
       phone: 'Enter phone number...',

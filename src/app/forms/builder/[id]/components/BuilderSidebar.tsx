@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useFormBuilder, FieldType } from './FormBuilderContext';
 import { StepManager } from './StepManager';
 import { IntelligenceBuilder } from './IntelligenceBuilder';
-import { Type, Mail, Phone, AlignLeft, ChevronDown, CheckSquare, Search, LayoutGrid, Layers, Settings2, UploadCloud, PenTool, CreditCard } from 'lucide-react';
+import { Type, Mail, Phone, AlignLeft, ChevronDown, CheckSquare, Search, LayoutGrid, Layers, Settings2, UploadCloud, PenTool, CreditCard, Link2, Plus, Check, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LibraryField {
@@ -12,6 +12,9 @@ interface LibraryField {
   label: string;
   category: 'standard' | 'contact' | 'transactional';
   icon: React.ReactNode;
+  /** When set, the added field is pre-labeled with this instead of the type's generic default —
+   * used for CRM-mapped fields (e.g. "First Name") that share a generic FieldType ('text'). */
+  overrideLabel?: string;
 }
 
 const FIELD_LIBRARY: LibraryField[] = [
@@ -19,6 +22,8 @@ const FIELD_LIBRARY: LibraryField[] = [
   { type: 'textarea', label: 'Long Text', category: 'standard', icon: <AlignLeft size={14} /> },
   { type: 'dropdown', label: 'Dropdown Select', category: 'standard', icon: <ChevronDown size={14} /> },
   { type: 'checkbox', label: 'Checkbox Option', category: 'standard', icon: <CheckSquare size={14} /> },
+  { type: 'text', label: 'First Name', category: 'contact', icon: <User size={14} />, overrideLabel: 'First Name' },
+  { type: 'text', label: 'Last Name', category: 'contact', icon: <User size={14} />, overrideLabel: 'Last Name' },
   { type: 'email', label: 'Email Address', category: 'contact', icon: <Mail size={14} /> },
   { type: 'phone', label: 'Phone Number', category: 'contact', icon: <Phone size={14} /> },
   { type: 'upload', label: 'File Upload', category: 'transactional', icon: <UploadCloud size={14} /> },
@@ -46,27 +51,28 @@ export function BuilderSidebar() {
   const contactFields = filteredFields.filter(f => f.category === 'contact');
   const transactionalFields = filteredFields.filter(f => f.category === 'transactional');
 
-  const handleDragStart = (e: React.DragEvent, type: FieldType) => {
+  const handleDragStart = (e: React.DragEvent, type: FieldType, overrideLabel?: string) => {
     e.dataTransfer.setData('field-type', type);
+    if (overrideLabel) e.dataTransfer.setData('field-label', overrideLabel);
     e.dataTransfer.effectAllowed = 'copy';
   };
 
   const renderFieldCard = (field: LibraryField) => (
     <div
-      key={field.type}
+      key={field.label}
       draggable="true"
-      onDragStart={(e) => handleDragStart(e, field.type)}
-      onClick={() => addField(field.type)}
+      onDragStart={(e) => handleDragStart(e, field.type, field.overrideLabel)}
+      onClick={() => addField(field.type, undefined, field.overrideLabel)}
       className="builder-field-card group flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-dash-accent/40 hover:bg-dash-accent/5 select-none"
     >
       <div className="flex items-center gap-3">
-        <span className="builder-field-card__icon group-hover:text-dash-accent transition-colors motion-reduce:transition-none">
+        <span className="builder-field-card__icon flex items-center justify-center w-7 h-7 rounded-lg bg-dash-surface group-hover:bg-dash-accent/10 group-hover:text-dash-accent transition-colors motion-reduce:transition-none">
           {field.icon}
         </span>
         <span className="text-xs font-bold !text-dash-text">{field.label}</span>
       </div>
-      <span className="text-[10px] !text-dash-textMuted font-bold opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none">
-        + Add
+      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-dash-accent/10 text-dash-accent opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none">
+        <Plus size={11} strokeWidth={2.5} />
       </span>
     </div>
   );
@@ -75,11 +81,11 @@ export function BuilderSidebar() {
     <div className="builder-panel w-[280px] flex flex-col">
 
       {/* Sidebar Navigation Tabs */}
-      <div className="flex border-b border-dash-border bg-white p-1 m-2.5 rounded-xl overflow-hidden">
+      <div className="flex border border-dash-border bg-white p-1 m-2.5 rounded-xl">
         <button
           onClick={() => setActiveTab('fields')}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none",
+            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none",
             activeTab === 'fields' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'
           )}
         >
@@ -88,7 +94,7 @@ export function BuilderSidebar() {
         <button
           onClick={() => setActiveTab('steps')}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none",
+            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none",
             activeTab === 'steps' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'
           )}
         >
@@ -97,7 +103,7 @@ export function BuilderSidebar() {
         <button
           onClick={() => setActiveTab('config')}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none",
+            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none",
             activeTab === 'config' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'
           )}
         >
@@ -123,34 +129,54 @@ export function BuilderSidebar() {
 
           <div className="builder-panel__body custom-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-2">
             {/* CRM Contact Checklist */}
-            <div className="mb-5 p-3.5 bg-white border border-dash-border rounded-2xl">
-              <p className="builder-section-label mb-2">CRM sync checklist</p>
+            <div className="mb-6 p-3.5 bg-gradient-to-br from-dash-accent/[0.07] to-dash-accent/[0.02] border border-dash-accent/20 rounded-2xl">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-dash-accent/10 text-dash-accent shrink-0">
+                  <Link2 size={12} />
+                </span>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-dash-accent">CRM sync checklist</p>
+              </div>
               <p className="text-[11px] !text-dash-textMuted mb-2.5 leading-relaxed">
                 Include these fields to automatically link submissions to CRM contacts.
               </p>
               <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                 <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className={hasFirstName ? "text-green" : "text-red"}>{hasFirstName ? '✓' : '○'}</span>
-                  <span className={hasFirstName ? "!text-dash-text" : "!text-dash-textMuted"}>First Name</span>
+                  <span className={cn(
+                    "flex items-center justify-center w-3.5 h-3.5 rounded-full shrink-0",
+                    hasFirstName ? "bg-success/15 text-success" : "border border-dash-border"
+                  )}>{hasFirstName && <Check size={9} strokeWidth={3} />}</span>
+                  <span className={hasFirstName ? "!text-dash-text font-semibold" : "!text-dash-textMuted"}>First Name</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className={hasLastName ? "text-green" : "text-red"}>{hasLastName ? '✓' : '○'}</span>
-                  <span className={hasLastName ? "!text-dash-text" : "!text-dash-textMuted"}>Last Name</span>
+                  <span className={cn(
+                    "flex items-center justify-center w-3.5 h-3.5 rounded-full shrink-0",
+                    hasLastName ? "bg-success/15 text-success" : "border border-dash-border"
+                  )}>{hasLastName && <Check size={9} strokeWidth={3} />}</span>
+                  <span className={hasLastName ? "!text-dash-text font-semibold" : "!text-dash-textMuted"}>Last Name</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className={hasEmail ? "text-green" : "text-red"}>{hasEmail ? '✓' : '○'}</span>
-                  <span className={hasEmail ? "!text-dash-text" : "!text-dash-textMuted"}>Email Address</span>
+                  <span className={cn(
+                    "flex items-center justify-center w-3.5 h-3.5 rounded-full shrink-0",
+                    hasEmail ? "bg-success/15 text-success" : "border border-dash-border"
+                  )}>{hasEmail && <Check size={9} strokeWidth={3} />}</span>
+                  <span className={hasEmail ? "!text-dash-text font-semibold" : "!text-dash-textMuted"}>Email Address</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className={hasPhone ? "text-green" : "text-red"}>{hasPhone ? '✓' : '○'}</span>
-                  <span className={hasPhone ? "!text-dash-text" : "!text-dash-textMuted"}>Phone Number</span>
+                  <span className={cn(
+                    "flex items-center justify-center w-3.5 h-3.5 rounded-full shrink-0",
+                    hasPhone ? "bg-success/15 text-success" : "border border-dash-border"
+                  )}>{hasPhone && <Check size={9} strokeWidth={3} />}</span>
+                  <span className={hasPhone ? "!text-dash-text font-semibold" : "!text-dash-textMuted"}>Phone Number</span>
                 </div>
               </div>
             </div>
 
             {standardFields.length > 0 && (
               <div className="mb-6">
-                <p className="builder-section-label">Standard input fields</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide !text-dash-textMuted">Standard input fields</p>
+                  <span className="flex-1 h-px bg-dash-border" />
+                </div>
                 <div className="flex flex-col gap-2">
                   {standardFields.map(renderFieldCard)}
                 </div>
@@ -159,7 +185,10 @@ export function BuilderSidebar() {
 
             {contactFields.length > 0 && (
               <div className="mb-6">
-                <p className="builder-section-label">Pre-built contact fields</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide !text-dash-textMuted">Pre-built contact fields</p>
+                  <span className="flex-1 h-px bg-dash-border" />
+                </div>
                 <div className="flex flex-col gap-2">
                   {contactFields.map(renderFieldCard)}
                 </div>
@@ -168,7 +197,10 @@ export function BuilderSidebar() {
 
             {transactionalFields.length > 0 && (
               <div className="mb-6">
-                <p className="builder-section-label">Transactional workflows</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide !text-dash-textMuted">Transactional workflows</p>
+                  <span className="flex-1 h-px bg-dash-border" />
+                </div>
                 <div className="flex flex-col gap-2">
                   {transactionalFields.map(renderFieldCard)}
                 </div>

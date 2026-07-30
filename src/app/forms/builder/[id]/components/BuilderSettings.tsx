@@ -16,10 +16,10 @@ export function BuilderSettings() {
     <div className="builder-panel builder-panel--right w-[300px] flex flex-col">
 
       {/* Right Sidebar Tabs */}
-      <div className="flex border-b border-dash-border bg-white p-1 m-2.5 rounded-xl">
+      <div className="flex border border-dash-border bg-white p-1 m-2.5 rounded-xl">
         <button
           onClick={() => setActiveTab('settings')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none ${
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none ${
             activeTab === 'settings'
               ? 'bg-dash-accent text-white shadow-md'
               : '!text-dash-textMuted hover:!text-dash-text'
@@ -29,7 +29,7 @@ export function BuilderSettings() {
         </button>
         <button
           onClick={() => setActiveTab('logic')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold rounded-lg transition-colors motion-reduce:transition-none ${
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none ${
             activeTab === 'logic'
               ? 'bg-dash-accent text-white shadow-md'
               : '!text-dash-textMuted hover:!text-dash-text'

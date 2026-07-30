@@ -26,21 +26,17 @@ export default async function HelpCenterPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] text-white font-dm-sans relative overflow-hidden">
-      {/* Background gradients */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-10" />
-      <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl -z-10" />
-
+      <div className="min-h-screen bg-dash-surface font-dm-sans relative overflow-hidden">
       {/* Hero Banner */}
-      <div className="py-20 px-4 md:px-8 border-b border-white/5 relative bg-[#060b1f]/50 backdrop-blur-md">
+      <div className="py-20 px-4 md:px-8 border-b border-dash-border relative bg-white">
         <div className="max-w-4xl mx-auto text-center space-y-6">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 px-3.5 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest">
+          <div className="inline-flex items-center gap-2 bg-dash-accent/10 text-dash-accent border border-dash-accent/20 px-3.5 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest">
             <Sparkles className="w-3.5 h-3.5" /> LeadsMind Support Hub
           </div>
-          <h1 className="font-space-grotesk text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white uppercase leading-tight">
-            How can we <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">help you today?</span>
+          <h1 className="font-space-grotesk text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight !text-dash-text leading-tight">
+            How can we <span className="text-dash-accent">help you today?</span>
           </h1>
-          <p className="text-xs sm:text-sm text-white/50 max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm !text-dash-textMuted max-w-xl mx-auto leading-relaxed">
             Search our knowledge database for step-by-step guides on configuring banking feeds, crm deal flows, or setting up automation triggers.
           </p>
           <div className="pt-2">
@@ -55,15 +51,15 @@ export default async function HelpCenterPage() {
           
           {/* Category: Getting Started */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-              <div className="p-3 bg-primary/10 border border-primary/20 rounded-2xl text-primary">
+            <div className="flex items-center gap-3 border-b border-dash-border pb-4">
+              <div className="p-3 bg-dash-accent/10 border border-dash-accent/20 rounded-2xl text-dash-accent">
                 <Settings className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-bold font-space-grotesk text-white uppercase tracking-wider">Getting Started</h2>
-                <p className="text-xs text-white/40">Workspace configuration, bank connections, and voice setups.</p>
+                <h2 className="text-xl font-bold font-space-grotesk !text-dash-text">Getting Started</h2>
+                <p className="text-xs !text-dash-textMuted">Workspace configuration, bank connections, and voice setups.</p>
               </div>
-              <span className="ml-auto bg-white/5 border border-white/5 text-[10px] font-bold px-2.5 py-1 rounded-md text-white/50">
+              <span className="ml-auto bg-dash-surface border border-dash-border text-[10px] font-bold px-2.5 py-1 rounded-md !text-dash-textMuted">
                 {gettingStarted.length} Guides
               </span>
             </div>
@@ -73,21 +69,21 @@ export default async function HelpCenterPage() {
                 <Link
                   key={item.id}
                   href={`/articles/${item.slug}`}
-                  className="p-5 bg-[#080f28]/60 border border-white/5 hover:border-primary/30 rounded-2xl transition duration-200 flex flex-col justify-between group h-40 shadow-sm"
+                  className="p-5 bg-white border border-dash-border hover:border-dash-accent/40 hover:shadow-md rounded-2xl transition-all duration-200 motion-reduce:transition-none flex flex-col justify-between group h-40 shadow-sm"
                 >
                   <div className="space-y-2">
-                    <h3 className="text-xs font-bold text-white group-hover:text-primary transition line-clamp-1">
+                    <h3 className="text-xs font-bold !text-dash-text group-hover:text-dash-accent transition-colors motion-reduce:transition-none line-clamp-1">
                       {item.title}
                     </h3>
-                    <p className="text-[11px] text-white/45 leading-relaxed line-clamp-3">
+                    <p className="text-[11px] !text-dash-textMuted leading-relaxed line-clamp-3">
                       {item.body_plain}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.03]">
-                    <span className="text-[9px] text-white/30 uppercase tracking-widest font-semibold flex items-center gap-1">
+                  <div className="flex items-center justify-between pt-2 border-t border-dash-border">
+                    <span className="text-[9px] !text-dash-textMuted uppercase tracking-widest font-semibold flex items-center gap-1">
                       <Calendar className="w-3 h-3" /> Reviewed {new Date(item.last_reviewed_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-white/20 group-hover:text-primary group-hover:translate-x-0.5 transition" />
+                    <ChevronRight className="w-3.5 h-3.5 !text-dash-textMuted group-hover:text-dash-accent group-hover:translate-x-0.5 transition-all motion-reduce:transition-none" />
                   </div>
                 </Link>
               ))}
@@ -96,15 +92,15 @@ export default async function HelpCenterPage() {
 
           {/* Category: CRM Foundations */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-              <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-2xl text-purple-400">
+            <div className="flex items-center gap-3 border-b border-dash-border pb-4">
+              <div className="p-3 bg-purple/10 border border-purple/20 rounded-2xl text-purple">
                 <Layers className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-bold font-space-grotesk text-white uppercase tracking-wider">CRM Foundations</h2>
-                <p className="text-xs text-white/40">Pipeline configurations, tagging segments, and lead tracking.</p>
+                <h2 className="text-xl font-bold font-space-grotesk !text-dash-text">CRM Foundations</h2>
+                <p className="text-xs !text-dash-textMuted">Pipeline configurations, tagging segments, and lead tracking.</p>
               </div>
-              <span className="ml-auto bg-white/5 border border-white/5 text-[10px] font-bold px-2.5 py-1 rounded-md text-white/50">
+              <span className="ml-auto bg-dash-surface border border-dash-border text-[10px] font-bold px-2.5 py-1 rounded-md !text-dash-textMuted">
                 {crmFoundations.length} Guides
               </span>
             </div>
@@ -114,21 +110,21 @@ export default async function HelpCenterPage() {
                 <Link
                   key={item.id}
                   href={`/articles/${item.slug}`}
-                  className="p-5 bg-[#080f28]/60 border border-white/5 hover:border-purple-500/30 rounded-2xl transition duration-200 flex flex-col justify-between group h-40 shadow-sm"
+                  className="p-5 bg-white border border-dash-border hover:border-purple/40 hover:shadow-md rounded-2xl transition-all duration-200 motion-reduce:transition-none flex flex-col justify-between group h-40 shadow-sm"
                 >
                   <div className="space-y-2">
-                    <h3 className="text-xs font-bold text-white group-hover:text-purple-400 transition line-clamp-1">
+                    <h3 className="text-xs font-bold !text-dash-text group-hover:text-purple transition-colors motion-reduce:transition-none line-clamp-1">
                       {item.title}
                     </h3>
-                    <p className="text-[11px] text-white/45 leading-relaxed line-clamp-3">
+                    <p className="text-[11px] !text-dash-textMuted leading-relaxed line-clamp-3">
                       {item.body_plain}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.03]">
-                    <span className="text-[9px] text-white/30 uppercase tracking-widest font-semibold flex items-center gap-1">
+                  <div className="flex items-center justify-between pt-2 border-t border-dash-border">
+                    <span className="text-[9px] !text-dash-textMuted uppercase tracking-widest font-semibold flex items-center gap-1">
                       <Calendar className="w-3 h-3" /> Reviewed {new Date(item.last_reviewed_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-white/20 group-hover:text-purple-400 group-hover:translate-x-0.5 transition" />
+                    <ChevronRight className="w-3.5 h-3.5 !text-dash-textMuted group-hover:text-purple group-hover:translate-x-0.5 transition-all motion-reduce:transition-none" />
                   </div>
                 </Link>
               ))}

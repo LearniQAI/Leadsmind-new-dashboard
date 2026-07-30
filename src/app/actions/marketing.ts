@@ -398,20 +398,61 @@ export async function updateCampaign(id: string, updates: any) {
   // so the number displayed always matches what was actually enqueued.
   let matchedContactsCount = 0;
   if (updates.status === 'scheduled') {
-   if (updates.segment?.tags?.length > 0 && data.workspace_id) {
-    const { data: matchedContacts, error: matchError } = await supabase
-     .from('contacts')
-     .select('id')
-     .eq('workspace_id', data.workspace_id)
-     .contains('tags', updates.segment.tags);
+   const segmentTags: string[] = Array.isArray(updates.segment?.tags) ? updates.segment.tags : [];
+   if (segmentTags.length > 0 && data.workspace_id) {
+    // New tag-picker saves store real tag ids (Smart Tags Part 1's tags.id, a uuid).
+    // Campaigns saved before that switch still have plain tag NAMES here — never
+    // silently dropped, matched via the legacy contacts.tags array exactly as before.
+    const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+    const tagIds = segmentTags.filter(isUuid);
+    const legacyTagNames = segmentTags.filter((v) => !isUuid(v));
+
+    const matchedContactIds = new Set<string>();
+    let matchError: any = null;
+
+    if (tagIds.length > 0) {
+     // Real, current relational membership — every contact presently carrying
+     // ALL of these tag ids per tag_assignments (Part 1's source of truth),
+     // not a stale free-text array snapshot.
+     const { data: assignments, error: assignErr } = await supabase
+      .from('tag_assignments')
+      .select('entity_id, tag_id')
+      .eq('workspace_id', data.workspace_id)
+      .eq('entity_type', 'contact')
+      .in('tag_id', tagIds);
+
+     if (assignErr) {
+      matchError = assignErr;
+     } else {
+      const countsByContact = new Map<string, number>();
+      (assignments ?? []).forEach((a) => countsByContact.set(a.entity_id, (countsByContact.get(a.entity_id) ?? 0) + 1));
+      Array.from(countsByContact.entries())
+       .filter(([, count]) => count === tagIds.length)
+       .forEach(([contactId]) => matchedContactIds.add(contactId));
+     }
+    }
+
+    if (!matchError && legacyTagNames.length > 0) {
+     const { data: legacyMatches, error: legacyErr } = await supabase
+      .from('contacts')
+      .select('id')
+      .eq('workspace_id', data.workspace_id)
+      .contains('tags', legacyTagNames);
+
+     if (legacyErr) {
+      matchError = legacyErr;
+     } else {
+      (legacyMatches ?? []).forEach((c) => matchedContactIds.add(c.id));
+     }
+    }
 
     if (matchError) {
      logger.error({ err: matchError, campaignId: id }, 'update.campaign.tag_match.failed');
-    } else if (matchedContacts && matchedContacts.length > 0) {
+    } else if (matchedContactIds.size > 0) {
      // Dedupe defensively — a contact must only ever get one queue row per
      // campaign even if future matching logic can return the same contact
      // via more than one path.
-     const uniqueContactIds = [...new Set(matchedContacts.map(c => c.id))];
+     const uniqueContactIds = Array.from(matchedContactIds);
 
      const queueRows = uniqueContactIds.map(contactId => ({
       campaign_id: id,

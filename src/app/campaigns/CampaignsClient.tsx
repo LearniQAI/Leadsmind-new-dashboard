@@ -19,10 +19,20 @@ import {
   DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter
 } from '@/components/dashboard-ui/Modal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { TagMultiSelect, TagOption } from '@/components/crm/TagMultiSelect';
 
-export default function CampaignsClient({ initialCampaigns }: { initialCampaigns: any[] }) {
+const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+export default function CampaignsClient({
+  initialCampaigns,
+  availableTags,
+}: {
+  initialCampaigns: any[];
+  availableTags: TagOption[];
+}) {
   const router = useRouter();
   const [campaigns, setCampaigns] = useState(initialCampaigns);
+  const [tags, setTags] = useState<TagOption[]>(availableTags);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState('');
@@ -34,7 +44,10 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
   const [editName, setEditName] = useState('');
   const [editSubject, setEditSubject] = useState('');
   const [editBody, setEditBody] = useState('');
-  const [editTags, setEditTags] = useState('');
+  // Real workspace tag NAMES currently selected in the picker — translated to
+  // real tag ids only at save time (see handleSaveEdit), since TagMultiSelect's
+  // established contract (shared with the Contact form) works in names.
+  const [editTagNames, setEditTagNames] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -101,16 +114,21 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
     setEditSubject(campaign.subject || '');
     setEditBody(campaign.preview_text || '');
 
-    // Extract tags from segment JSONB if available
-    let tags = '';
+    // segment.tags may already be real tag ids (saved via this picker) or, for
+    // campaigns saved before this change, plain tag NAMES — either way the
+    // picker itself always works in names, so ids get resolved back to their
+    // current name here. A stale id whose tag was since deleted is dropped
+    // rather than shown as a broken chip.
+    let names: string[] = [];
     try {
-      if (campaign.segment && typeof campaign.segment === 'object') {
-        if (Array.isArray(campaign.segment.tags)) {
-          tags = campaign.segment.tags.join(', ');
-        }
+      if (campaign.segment && typeof campaign.segment === 'object' && Array.isArray(campaign.segment.tags)) {
+        const stored: string[] = campaign.segment.tags;
+        names = stored
+          .map((entry) => (isUuid(entry) ? tags.find((t) => t.id === entry)?.name : entry))
+          .filter((n): n is string => !!n);
       }
     } catch (e) {}
-    setEditTags(tags);
+    setEditTagNames(names);
     setEditOpen(true);
   };
 
@@ -119,8 +137,24 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
     setSaving(true);
     try {
       const { updateCampaign } = await import('@/app/actions/marketing');
-      const tagsArray = editTags.split(',').map(t => t.trim()).filter(Boolean);
-      const segmentData = tagsArray.length > 0 ? { tags: tagsArray } : null;
+
+      // Re-fetch tags so a tag just created inline in this session (the picker
+      // can create a brand-new tag on the fly) resolves to a real id even
+      // though it wasn't in the list this page loaded with.
+      let currentTags = tags;
+      try {
+        const { listTags } = await import('@/app/actions/tags');
+        const freshRes = await listTags();
+        if (freshRes.success) {
+          currentTags = freshRes.data;
+          setTags(freshRes.data);
+        }
+      } catch (e) { /* fall back to the tags already in state */ }
+
+      const tagIds = editTagNames
+        .map((name) => currentTags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.id)
+        .filter((id): id is string => !!id);
+      const segmentData = tagIds.length > 0 ? { tags: tagIds } : null;
 
       const res = await updateCampaign(editCampaign.id, {
         name: editName,
@@ -298,8 +332,8 @@ export default function CampaignsClient({ initialCampaigns }: { initialCampaigns
             <DashFormField label="Subject">
               <DashInput value={editSubject} onChange={e => setEditSubject(e.target.value)} />
             </DashFormField>
-            <DashFormField label="Target audience tags (comma separated)" hint="Leave blank to send to all contacts.">
-              <DashInput value={editTags} onChange={e => setEditTags(e.target.value)} placeholder="e.g. VIP, Newsletter, Leads" />
+            <DashFormField label="Target audience tags" hint="Leave blank to send to all contacts.">
+              <TagMultiSelect availableTags={tags} value={editTagNames} onChange={setEditTagNames} />
             </DashFormField>
             <DashFormField label="Email body / plain text preview">
               <DashTextarea value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Write your email content..." className="min-h-[100px]" />

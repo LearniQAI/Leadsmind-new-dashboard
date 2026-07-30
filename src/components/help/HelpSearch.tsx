@@ -70,19 +70,19 @@ export default function HelpSearch() {
           }}
           onFocus={() => setIsOpen(true)}
           placeholder="Search documentation (e.g. FNB bank feeds)..."
-          className="w-full bg-[#080f28]/90 border border-white/10 rounded-2xl pl-12 pr-12 py-4 text-sm text-white placeholder-white/30 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-2xl transition duration-200"
+          className="w-full bg-white border border-dash-border rounded-2xl pl-12 pr-12 py-4 text-sm !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-dash-accent focus:ring-1 focus:ring-dash-accent shadow-lg transition-colors duration-200 motion-reduce:transition-none"
         />
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-        
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 !text-dash-textMuted" />
+
         {loading ? (
-          <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary animate-spin" />
+          <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-dash-accent animate-spin" />
         ) : query && (
           <button
             onClick={() => {
               setQuery('');
               setResults([]);
             }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-white/30 hover:text-white uppercase tracking-wider transition"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold !text-dash-textMuted hover:!text-dash-text uppercase tracking-wider transition-colors motion-reduce:transition-none"
           >
             Clear
           </button>
@@ -91,23 +91,23 @@ export default function HelpSearch() {
 
       {/* Results Dropdown */}
       {isOpen && (query.trim().length > 0) && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-[#060b1f] border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-50 animate-fade-in max-h-[480px] overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-dash-border rounded-2xl overflow-hidden shadow-xl z-50 animate-fade-in max-h-[480px] overflow-y-auto">
           {loading ? (
-            <div className="p-8 text-center text-white/40 text-xs flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            <div className="p-8 text-center !text-dash-textMuted text-xs flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-dash-accent" />
               <span>Scanning semantic vector models...</span>
             </div>
           ) : results.length === 0 ? (
             <div className="p-8 text-center space-y-2">
-              <HelpCircle className="w-8 h-8 text-rose-500/50 mx-auto" />
-              <p className="text-xs font-bold text-white uppercase tracking-wider">No matching guides found</p>
-              <p className="text-xs text-white/40 max-w-sm mx-auto">
+              <HelpCircle className="w-8 h-8 text-red/50 mx-auto" />
+              <p className="text-xs font-bold !text-dash-text uppercase tracking-wider">No matching guides found</p>
+              <p className="text-xs !text-dash-textMuted max-w-sm mx-auto">
                 Try searching for other terms like &quot;WhatsApp workflows&quot;, &quot;pipeline customisation&quot; or Absa / FNB banking.
               </p>
             </div>
           ) : (
-            <div className="py-2.5 divide-y divide-white/[0.04]">
-              <div className="px-4 py-2 text-[9px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+            <div className="py-2.5 divide-y divide-dash-border">
+              <div className="px-4 py-2 text-[9px] font-bold text-dash-accent uppercase tracking-widest flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 animate-pulse" />
                 Semantic Matching Results
               </div>
@@ -116,26 +116,26 @@ export default function HelpSearch() {
                   key={item.id}
                   href={`/articles/${item.slug}`}
                   onClick={() => handleResultClick(item.id)}
-                  className="block px-5 py-4 hover:bg-white/[0.02] transition duration-150 group"
+                  className="block px-5 py-4 hover:bg-dash-surface transition-colors duration-150 motion-reduce:transition-none group"
                 >
                   <div className="flex items-start gap-3">
-                    <FileText className="w-4.5 h-4.5 text-primary shrink-0 mt-0.5 group-hover:text-white transition" />
+                    <FileText className="w-4.5 h-4.5 text-dash-accent shrink-0 mt-0.5 transition-colors motion-reduce:transition-none" />
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center justify-between gap-4">
-                        <span className="text-xs font-bold text-white group-hover:text-primary transition">
+                        <span className="text-xs font-bold !text-dash-text group-hover:text-dash-accent transition-colors motion-reduce:transition-none">
                           {item.title}
                         </span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-white/30 bg-white/5 border border-white/5 px-2 py-0.5 rounded-md">
+                        <span className="text-[9px] font-bold uppercase tracking-wider !text-dash-textMuted bg-dash-surface border border-dash-border px-2 py-0.5 rounded-md">
                           {item.category}
                         </span>
                       </div>
-                      
+
                       {/* Highlighted Excerpt */}
-                      <p className="text-xs text-white/50 leading-relaxed font-light line-clamp-2">
+                      <p className="text-xs !text-dash-textMuted leading-relaxed font-light line-clamp-2">
                         {item.excerpt}
                       </p>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-white/20 shrink-0 self-center opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200" />
+                    <ArrowRight className="w-4 h-4 !text-dash-textMuted shrink-0 self-center opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200 motion-reduce:transition-none" />
                   </div>
                 </Link>
               ))}
