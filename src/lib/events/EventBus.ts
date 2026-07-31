@@ -27,6 +27,9 @@ export const EVENT_TRIGGERS = {
   TAG_UPDATED: 'tag_updated',
   TAG_EXPIRED: 'tag_expired',
   TAG_CONFIDENCE_CHANGED: 'tag_confidence_changed',
+  CONTACT_CREATED: 'contact_created',
+  APPOINTMENT_BOOKED: 'appointment_booked',
+  INVOICE_PAID: 'invoice_paid',
 } as const;
 
 export type EventTriggerType = typeof EVENT_TRIGGERS[keyof typeof EVENT_TRIGGERS];

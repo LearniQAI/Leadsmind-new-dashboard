@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 import {
   ArrowLeft, Plus, MoveUp, MoveDown, Trash2, Eye, ShieldCheck,
   CheckCircle, AlertTriangle, Monitor, Smartphone, Moon, Sun, Save, Sparkles, Upload,
-  Image as ImageIcon, Columns, Quote, Hourglass, MousePointerClick, AlignLeft, GitBranch, Loader2
+  Image as ImageIcon, Columns, Quote, Hourglass, MousePointerClick, AlignLeft, GitBranch, Loader2,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
 import { updateCampaign } from '@/app/actions/marketing';
@@ -17,6 +18,8 @@ import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
+import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 
 interface EmailBuilderClientProps {
   campaignId: string;
@@ -74,6 +77,21 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
     } catch(e){}
     return false;
   });
+  const [deployRuleGroup, setDeployRuleGroup] = useState<RuleGroup | null>(() => {
+    try {
+      return initialCampaign.segment?.ruleGroup || null;
+    } catch (e) {}
+    return null;
+  });
+  const [deployCombineMode, setDeployCombineMode] = useState<'AND' | 'OR'>(() => {
+    try {
+      return (initialCampaign.segment?.combineMode as 'AND' | 'OR') || 'AND';
+    } catch (e) {}
+    return 'AND';
+  });
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(
+    () => !!deployRuleGroup && deployRuleGroup.rules.length > 0
+  );
 
   const [preheaderText, setPreheaderText] = useState(initialCampaign.preview_text || '');
 
@@ -220,11 +238,16 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       const tokens = deployTags.split(',').map(t => t.trim()).filter(Boolean);
       const emailTokens = tokens.filter(t => t.includes('@'));
       const tagTokens = tokens.filter(t => !t.includes('@'));
+      const hasRuleGroup = !!deployRuleGroup && deployRuleGroup.rules.length > 0;
 
       const segmentData = {
         tags: tagTokens,
         emails: emailTokens,
-        is_automated: isAutomated
+        is_automated: isAutomated,
+        ruleGroup: hasRuleGroup ? deployRuleGroup : undefined,
+        // Only meaningful when both tags and ruleGroup are set; harmless
+        // otherwise since the resolver ignores it when only one is present.
+        combineMode: (tagTokens.length > 0 && hasRuleGroup) ? deployCombineMode : undefined,
       };
 
       const result = await updateCampaign(campaignId, {
@@ -1179,6 +1202,48 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                 placeholder="e.g. VIP, Newsletter, john@example.com"
               />
             </DashFormField>
+
+            <div className="border border-dash-border rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setAdvancedFiltersOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-3.5 py-3 text-[12px] font-bold !text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none"
+              >
+                Advanced filters
+                {advancedFiltersOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {advancedFiltersOpen && (
+                <div className="p-3.5 border-t border-dash-border space-y-3">
+                  <SegmentRuleBuilder value={deployRuleGroup} onChange={setDeployRuleGroup} />
+
+                  {deployTags.split(',').map(t => t.trim()).filter(t => t && !t.includes('@')).length > 0 &&
+                    !!deployRuleGroup && deployRuleGroup.rules.length > 0 && (
+                    <div className="pt-2 border-t border-dash-border">
+                      <span className="text-[11px] font-bold !text-dash-textMuted block mb-2">
+                        Match contacts who have these tags
+                      </span>
+                      <div className="inline-flex rounded-lg border border-dash-border overflow-hidden mb-2">
+                        {(['AND', 'OR'] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setDeployCombineMode(m)}
+                            className={`px-3 py-1 text-[11px] font-bold transition-colors motion-reduce:transition-none ${
+                              deployCombineMode === m ? 'bg-dash-accent text-white' : 'bg-white !text-dash-textMuted hover:bg-dash-surface'
+                            }`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                      <span className="text-[11px] font-bold !text-dash-textMuted block">
+                        these advanced filters
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="p-4 rounded-xl border border-dash-accent/20 bg-dash-accent/5">
               <label className="flex items-start gap-3 cursor-pointer">

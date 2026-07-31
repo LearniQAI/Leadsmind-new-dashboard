@@ -85,6 +85,11 @@ export async function createContact(values: any) {
  const result = await service.createContact(workspaceId, { ...values, consentIp });
  if (result.success === false) return { success: false, error: result.error };
 
+ if (result.data?.id) {
+  const { publishEvent } = await import('@/lib/events/EventBus');
+  publishEvent(workspaceId, 'contact_created', result.data.id).catch(() => {});
+ }
+
  revalidatePath('/contacts');
  return { success: true, data: result.data };
 }

@@ -1,16 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
- Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '@/components/ui/select';
 import {
  Plus, Zap, Play, Pause, MoreVertical, GitBranch, Pencil, Trash2,
- CheckCircle, Clock
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -21,58 +15,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-const TRIGGER_TYPES = ['contact_created', 'tag_added', 'form_submitted', 'appointment_booked', 'invoice_paid', 'manual'];
-
 export default function AutomationsClient({ initialWorkflows }: { initialWorkflows: any[] }) {
+ const router = useRouter();
  const [workflows, setWorkflows] = useState<any[]>(initialWorkflows);
-
- const [formOpen, setFormOpen] = useState(false);
- const [editingWf, setEditingWf] = useState<any>(null);
- const [formData, setFormData] = useState({ name: '', trigger_type: 'contact_created', description: '' });
- const [saving, setSaving] = useState(false);
 
  const [deleteOpen, setDeleteOpen] = useState(false);
  const [deleteTarget, setDeleteTarget] = useState<any>(null);
  const [deleting, setDeleting] = useState(false);
-
- const openCreate = () => {
-  setEditingWf(null);
-  setFormData({ name: '', trigger_type: 'contact_created', description: '' });
-  setFormOpen(true);
- };
-
- const openEdit = (wf: any) => {
-  setEditingWf(wf);
-  setFormData({ name: wf.name || '', trigger_type: wf.trigger_type || 'contact_created', description: wf.description || '' });
-  setFormOpen(true);
- };
-
- const handleSave = async () => {
-  if (!formData.name.trim()) { toast.error('Workflow name is required'); return; }
-  setSaving(true);
-  try {
-   if (editingWf) {
-    const { updateWorkflow } = await import('@/app/actions/automation_crud');
-    const res = await updateWorkflow(editingWf.id, formData);
-    if (res.error) { toast.error(res.error); }
-    else {
-     toast.success('Workflow updated!');
-     setWorkflows(prev => prev.map(w => w.id === editingWf.id ? { ...w, ...formData } : w));
-     setFormOpen(false);
-    }
-   } else {
-    const { createWorkflow } = await import('@/app/actions/automation_crud');
-    const res = await createWorkflow(formData);
-    if (res.error) { toast.error(res.error); }
-    else {
-     toast.success('Workflow created!');
-     setWorkflows(prev => [res.data!, ...prev]);
-     setFormOpen(false);
-    }
-   }
-  } catch { toast.error('Failed to save'); }
-  setSaving(false);
- };
 
  const handleToggleActive = async (wf: any) => {
   try {
@@ -107,14 +56,14 @@ export default function AutomationsClient({ initialWorkflows }: { initialWorkflo
      <h1 className="text-3xl font-bold !text-dash-text mb-1">Workflow <span className="text-dash-accent">engine</span></h1>
      <p className="text-xs !text-dash-textMuted">Scale your business with automated workflows.</p>
     </div>
-    <Button onClick={openCreate} className="bg-dash-accent hover:bg-dash-accent/90 text-white !rounded-xl text-[10px] font-bold px-8 shadow-lg shadow-dash-accent/20 transition-colors motion-reduce:transition-none">
+    <Button onClick={() => router.push('/automations/new')} className="bg-dash-accent hover:bg-dash-accent/90 text-white !rounded-xl text-[10px] font-bold px-8 shadow-lg shadow-dash-accent/20 transition-colors motion-reduce:transition-none">
      <Plus className="w-4 h-4 mr-2" /> New workflow
     </Button>
    </div>
 
    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
     {workflows.length === 0 ? (
-     <div className="col-span-full py-20 bg-dash-surface border-2 border-dashed border-dash-border rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-dash-accent/40 transition-all motion-reduce:transition-none" onClick={openCreate}>
+     <div className="col-span-full py-20 bg-dash-surface border-2 border-dashed border-dash-border rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-dash-accent/40 transition-all motion-reduce:transition-none" onClick={() => router.push('/automations/new')}>
       <div className="w-16 h-16 bg-dash-accent/10 rounded-full flex items-center justify-center mb-6 border border-dash-accent/20">
        <Zap className="w-8 h-8 text-dash-accent" />
       </div>
@@ -138,7 +87,7 @@ export default function AutomationsClient({ initialWorkflows }: { initialWorkflo
           </button>
          </DropdownMenuTrigger>
          <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-xl rounded-xl min-w-[170px]">
-          <DropdownMenuItem onClick={() => openEdit(wf)} className="flex items-center gap-2 cursor-pointer !text-dash-text hover:text-dash-accent hover:bg-dash-accent/5 rounded-lg mx-1 px-3 py-2">
+          <DropdownMenuItem onClick={() => router.push(`/automations/${wf.id}/edit`)} className="flex items-center gap-2 cursor-pointer !text-dash-text hover:text-dash-accent hover:bg-dash-accent/5 rounded-lg mx-1 px-3 py-2">
            <Pencil size={14} /> Edit workflow
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleToggleActive(wf)} className="flex items-center gap-2 cursor-pointer !text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2">
@@ -167,7 +116,7 @@ export default function AutomationsClient({ initialWorkflows }: { initialWorkflo
         <Button onClick={() => handleToggleActive(wf)} size="sm" className={`h-8 px-4 rounded-xl text-[9px] font-bold flex items-center gap-1.5 transition-colors motion-reduce:transition-none ${wf.is_active ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
          {wf.is_active ? <><Pause size={11} /> Pause</> : <><Play size={11} /> Activate</>}
         </Button>
-        <Button onClick={() => openEdit(wf)} variant="outline" size="sm" className="h-8 px-3 rounded-xl border-dash-border text-[9px] font-bold !text-dash-textMuted hover:text-dash-accent hover:border-dash-accent hover:bg-dash-accent/5 flex items-center gap-1.5 transition-colors motion-reduce:transition-none">
+        <Button onClick={() => router.push(`/automations/${wf.id}/edit`)} variant="outline" size="sm" className="h-8 px-3 rounded-xl border-dash-border text-[9px] font-bold !text-dash-textMuted hover:text-dash-accent hover:border-dash-accent hover:bg-dash-accent/5 flex items-center gap-1.5 transition-colors motion-reduce:transition-none">
          <Pencil size={11} /> Edit
         </Button>
        </div>
@@ -175,40 +124,6 @@ export default function AutomationsClient({ initialWorkflows }: { initialWorkflo
      </div>
     ))}
    </div>
-
-   {/* Create / Edit Dialog */}
-   <Dialog open={formOpen} onOpenChange={setFormOpen}>
-    <DialogContent className="bg-white border border-dash-border rounded-3xl max-w-lg p-8 shadow-2xl">
-     <DialogHeader>
-      <DialogTitle className="text-2xl font-bold !text-dash-text">
-       {editingWf ? 'Edit' : 'New'} <span className="text-dash-accent">workflow</span>
-      </DialogTitle>
-     </DialogHeader>
-     <div className="space-y-4 py-4">
-      <div className="space-y-2">
-       <Label className="text-[10px] font-bold !text-dash-textMuted">Workflow name *</Label>
-       <Input value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="e.g. New Lead Welcome Sequence" className="h-12 border-dash-border rounded-xl" />
-      </div>
-      <div className="space-y-2">
-       <Label className="text-[10px] font-bold !text-dash-textMuted">Trigger event</Label>
-       <Select value={formData.trigger_type} onValueChange={v => setFormData(p => ({ ...p, trigger_type: v }))}>
-        <SelectTrigger className="h-12 border-dash-border rounded-xl"><SelectValue /></SelectTrigger>
-        <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
-         {TRIGGER_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t.replace(/_/g, ' ')}</SelectItem>)}
-        </SelectContent>
-       </Select>
-      </div>
-      <div className="space-y-2">
-       <Label className="text-[10px] font-bold !text-dash-textMuted">Description</Label>
-       <Textarea value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="What does this workflow do?" className="min-h-[80px] border-dash-border rounded-xl" />
-      </div>
-     </div>
-     <DialogFooter className="gap-3">
-      <Button variant="outline" onClick={() => setFormOpen(false)} className="border-dash-border !text-dash-textMuted rounded-xl">Cancel</Button>
-      <Button onClick={handleSave} disabled={saving} className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl font-bold text-xs px-8 transition-colors motion-reduce:transition-none">{saving ? 'Saving...' : (editingWf ? 'Save changes' : 'Create workflow')}</Button>
-     </DialogFooter>
-    </DialogContent>
-   </Dialog>
 
    {/* Delete Dialog */}
    <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

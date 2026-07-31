@@ -164,6 +164,15 @@ export async function createAppointment(payload: {
       logger.error({ err: supportErr, appointmentId: data.id }, 'calendar.appointment.support_ticket.failed');
     }
 
+    if (data.contact_id) {
+      try {
+        const { publishEvent } = await import('@/lib/events/EventBus');
+        publishEvent(workspaceId, 'appointment_booked', data.contact_id, { appointmentId: data.id }).catch(() => {});
+      } catch (evtErr) {
+        logger.error({ err: evtErr, appointmentId: data.id }, 'calendar.appointment.automation_trigger.failed');
+      }
+    }
+
     revalidatePath('/calendar');
     return data;
   });
