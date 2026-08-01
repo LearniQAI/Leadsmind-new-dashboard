@@ -255,14 +255,22 @@ export const AutomationActions = {
  },
 
  notify_team: async (workspaceId: string, contactId: string, config: any) => {
-  const { message, type = "info" } = config;
+  // notifications.type is CHECK-constrained to
+  // ('message','contact','deal','system','team') — 'system' matches the
+  // existing convention for automation-triggered, non-contact-state-crossing
+  // alerts (see LeadScoringEngine.ts's "Email Reply Detected" notification,
+  // the closest precedent to this generic automation alert; 'contact' is
+  // reserved there for actual contact-state events like lead-score threshold
+  // crossings, not generic automation notices).
+  const { message, type = "system" } = config;
   const supabase = createAdminClient();
 
-  // Fetch contact name for the notification. Missing contact is not fatal here —
-  // the message already has a cosmetic fallback — but a real query error is.
+  // Fetch contact name (+ owner, for recipient fan-out below). Missing
+  // contact is not fatal here — the message already has a cosmetic
+  // fallback — but a real query error is.
   const { data: contact, error: fetchError } = await supabase
    .from("contacts")
-   .select("first_name, last_name")
+   .select("first_name, last_name, owner_id")
    .eq("id", contactId)
    .maybeSingle();
 
@@ -271,13 +279,39 @@ export const AutomationActions = {
   const contactName = contact ? `${contact.first_name} ${contact.last_name}` : "A contact";
   const finalMessage = message?.replace("{contact_name}", contactName) || `Automation alert for ${contactName}`;
 
-  const { error } = await supabase.from("notifications").insert({
+  // "Notify team" has no single natural recipient of its own, so this
+  // previously wrote user_id: null — a row the real bell UI can never show,
+  // since Notification.tsx always queries `.eq('user_id', user.id)`.
+  // Fan out to the contact's owner (if any) plus workspace admins instead —
+  // the same recipient set LeadScoringEngine.ts's automation alerts already
+  // use, rather than inventing a new convention.
+  const recipientIds = new Set<string>();
+  if (contact?.owner_id) recipientIds.add(contact.owner_id);
+
+  const { data: admins, error: adminsError } = await supabase
+   .from("workspace_members")
+   .select("user_id")
+   .eq("workspace_id", workspaceId)
+   .eq("role", "admin");
+
+  if (adminsError) throw adminsError;
+  (admins || []).forEach((a) => { if (a.user_id) recipientIds.add(a.user_id); });
+
+  if (recipientIds.size === 0) {
+   console.warn(`Automation: notify_team found no recipients (no contact owner, no workspace admins) for workspace ${workspaceId}`);
+   return;
+  }
+
+  const rows = Array.from(recipientIds).map((user_id) => ({
    workspace_id: workspaceId,
+   user_id,
    title: "Automation Triggered",
    message: finalMessage,
    type: type,
-   link: `/contacts/${contactId}`
-  });
+   link: `/contacts/${contactId}`,
+  }));
+
+  const { error } = await supabase.from("notifications").insert(rows);
 
   if (error) throw error;
  },

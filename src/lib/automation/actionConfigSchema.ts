@@ -109,7 +109,8 @@ export const STEP_TYPES: ActionDef[] = [
   { value: 'notify_team', label: 'Notify team', fields: [
     { key: 'message', label: 'Message', type: 'textarea', required: true, hint: 'Use {contact_name} to insert the contact\'s name.' },
     { key: 'type', label: 'Notification type', type: 'select', options: [
-      { value: 'info', label: 'Info' }, { value: 'warning', label: 'Warning' }, { value: 'success', label: 'Success' },
+      { value: 'system', label: 'System' }, { value: 'team', label: 'Team' }, { value: 'contact', label: 'Contact' },
+      { value: 'deal', label: 'Deal' }, { value: 'message', label: 'Message' },
     ]},
   ]},
   { value: 'send_webhook', label: 'Send webhook', fields: [
