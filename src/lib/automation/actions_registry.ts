@@ -1,4 +1,13 @@
-import { createServerClient } from "@/lib/supabase/server";
+// Every real trigger of Engine A actions is system-level — webhooks (Twilio,
+// PayFast), cron (tag-expiry), fire-and-forget EventBus.publishEvent calls,
+// and portal-contact sessions (getPortalSession(), never a Supabase Auth
+// session) — never a genuinely logged-in Supabase Auth dashboard user acting
+// on their own scoped permissions. createServerClient() resolves to an
+// anon-key, no-session client in exactly those contexts, so RLS silently
+// filters every read/write to nothing. Uses the admin client throughout,
+// matching the already-correct convention in executor.ts (5/5 sites) and
+// Engine B's WorkflowEngine.ts/AutomationLogger.ts.
+import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/sms";
 import { calculateLeadScore } from "../../app/actions/automation";
@@ -6,10 +15,11 @@ import { enrollStudent, updateProgress } from "../../app/actions/lms";
 import { UnifiedActivityEngine } from "@/lib/crm/UnifiedActivityEngine";
 import { resolveWorkspaceTwilioCredentials } from "@/lib/twilio/resolveWorkspaceTwilioCredentials";
 import { syncContactTagsToRelational } from "@/modules/tags/sync/syncContactTags";
+import { htmlToPdfBuffer } from "@/lib/pdf/htmlToPdf";
 
 export const AutomationActions = {
  send_email: async (workspaceId: string, contactId: string, config: any) => {
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
   
   // Fetch contact
   const { data: contact } = await supabase
@@ -43,7 +53,7 @@ export const AutomationActions = {
  },
 
  send_sms: async (workspaceId: string, contactId: string, config: any) => {
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
   
   // Fetch contact
   const { data: contact } = await supabase
@@ -77,19 +87,19 @@ export const AutomationActions = {
    return;
   }
 
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
   
   // Fetch contact with workspace security check
-  const { data: contact } = await supabase
+  const { data: contact, error: fetchError } = await supabase
    .from("contacts")
    .select("tags")
    .eq("id", contactId)
    .eq("workspace_id", workspaceId)
    .single();
 
+  if (fetchError) throw fetchError;
   if (!contact) {
-   console.warn(`Automation: contact ${contactId} not found in workspace ${workspaceId}`);
-   return;
+   throw new Error(`apply_tag: contact ${contactId} not found in workspace ${workspaceId}`);
   }
 
   const currentTags = contact.tags || [];
@@ -120,34 +130,41 @@ export const AutomationActions = {
 
  update_lead_score: async (workspaceId: string, contactId: string, config: any) => {
   const { points = 1 } = config;
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
   
   // Use an atomic update via RPC if possible, but here we can just update
   // since we are in a server action context. Note: SQL increment is safer.
-  const { data: contact } = await supabase
+  const { data: contact, error: fetchError } = await supabase
    .from("contacts")
    .select("lead_score")
    .eq("id", contactId)
    .single();
 
-  const currentScore = contact?.lead_score || 0;
+  if (fetchError) throw fetchError;
+  if (!contact) throw new Error(`update_lead_score: contact ${contactId} not found`);
+
+  const currentScore = contact.lead_score || 0;
   const newScore = currentScore + Number(points);
 
-  await supabase
+  const { error } = await supabase
    .from("contacts")
    .update({ lead_score: newScore })
    .eq("id", contactId);
+
+  if (error) throw error;
  },
 
  set_grade_tag: async (workspaceId: string, contactId: string, config: any) => {
   const { grade } = config;
   if (!grade) return;
 
-  const supabase = await createServerClient();
-  await supabase
+  const supabase = createAdminClient();
+  const { error } = await supabase
    .from("contacts")
    .update({ lead_grade: grade })
    .eq("id", contactId);
+
+  if (error) throw error;
  },
 
   social_post: async (workspaceId: string, contactId: string, config: any) => {
@@ -200,7 +217,7 @@ export const AutomationActions = {
   const { field, value } = config;
   if (!field) return;
 
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
   const { error } = await supabase
    .from("contacts")
    .update({ [field]: value })
@@ -214,10 +231,10 @@ export const AutomationActions = {
   const { stageId } = config;
   if (!stageId) return;
 
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
   
   // Find the latest opportunity for this contact
-  const { data: opportunity } = await supabase
+  const { data: opportunity, error: fetchError } = await supabase
    .from("opportunities")
    .select("id")
    .eq("contact_id", contactId)
@@ -226,49 +243,58 @@ export const AutomationActions = {
    .limit(1)
    .single();
 
-  if (opportunity) {
-   await supabase
-    .from("opportunities")
-    .update({ stage_id: stageId })
-    .eq("id", opportunity.id);
-  }
+  if (fetchError) throw fetchError;
+  if (!opportunity) throw new Error(`move_to_stage: no opportunity found for contact ${contactId}`);
+
+  const { error } = await supabase
+   .from("opportunities")
+   .update({ stage_id: stageId })
+   .eq("id", opportunity.id);
+
+  if (error) throw error;
  },
 
  notify_team: async (workspaceId: string, contactId: string, config: any) => {
   const { message, type = "info" } = config;
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
 
-  // Fetch contact name for the notification
-  const { data: contact } = await supabase
+  // Fetch contact name for the notification. Missing contact is not fatal here —
+  // the message already has a cosmetic fallback — but a real query error is.
+  const { data: contact, error: fetchError } = await supabase
    .from("contacts")
    .select("first_name, last_name")
    .eq("id", contactId)
-   .single();
+   .maybeSingle();
+
+  if (fetchError) throw fetchError;
 
   const contactName = contact ? `${contact.first_name} ${contact.last_name}` : "A contact";
   const finalMessage = message?.replace("{contact_name}", contactName) || `Automation alert for ${contactName}`;
 
-  await supabase.from("notifications").insert({
+  const { error } = await supabase.from("notifications").insert({
    workspace_id: workspaceId,
    title: "Automation Triggered",
    message: finalMessage,
    type: type,
    link: `/contacts/${contactId}`
   });
+
+  if (error) throw error;
  },
 
  send_webhook: async (workspaceId: string, contactId: string, config: any) => {
   const { url, method = 'POST', bodyTemplate } = config;
   if (!url) return;
 
-  const supabase = await createServerClient();
-  const { data: contact } = await supabase
+  const supabase = createAdminClient();
+  const { data: contact, error: fetchError } = await supabase
    .from("contacts")
    .select("*")
    .eq("id", contactId)
    .single();
 
-  if (!contact) return;
+  if (fetchError) throw fetchError;
+  if (!contact) throw new Error(`send_webhook: contact ${contactId} not found`);
 
   // Helper for Liquid-style token replacement: {{contact.first_name}}
   const replaceTokens = (str: string) => {
@@ -313,7 +339,7 @@ export const AutomationActions = {
  },
 
   send_whatsapp_voice: async (workspaceId: string, contactId: string, config: any) => {
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
     
     // 1. Fetch contact details
     const { data: contact } = await supabase
@@ -420,31 +446,34 @@ export const AutomationActions = {
   },
 
   create_opportunity: async (workspaceId: string, contactId: string, config: any) => {
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
 
     let stageId = config.stageId;
     if (!stageId) {
-      const { data: stages } = await supabase
+      const { data: stages, error: stagesError } = await supabase
         .from('pipeline_stages')
         .select('id')
         .eq('workspace_id', workspaceId)
         .order('position', { ascending: true })
         .limit(1);
+      if (stagesError) throw stagesError;
       stageId = stages?.[0]?.id;
     }
     if (!stageId) {
-      console.warn(`Automation: create_opportunity found no pipeline stage in workspace ${workspaceId}`);
-      return;
+      throw new Error(`create_opportunity: no pipeline stage found in workspace ${workspaceId}`);
     }
 
-    const { data: contact } = await supabase
+    // Missing contact is not fatal here — the title already has a cosmetic
+    // fallback — but a real query error is.
+    const { data: contact, error: contactError } = await supabase
       .from('contacts')
       .select('first_name, last_name')
       .eq('id', contactId)
       .eq('workspace_id', workspaceId)
-      .single();
+      .maybeSingle();
+    if (contactError) throw contactError;
 
-    await supabase.from('opportunities').insert({
+    const { error } = await supabase.from('opportunities').insert({
       workspace_id: workspaceId,
       contact_id: contactId,
       stage_id: stageId,
@@ -453,10 +482,11 @@ export const AutomationActions = {
       status: 'open',
       position: 0,
     });
+    if (error) throw error;
   },
 
   create_invoice: async (workspaceId: string, contactId: string, config: any) => {
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
     const amount = Number(config.amount ?? 0);
     const dueInDays = Number(config.dueInDays ?? 14);
     const dueDate = new Date(Date.now() + dueInDays * 24 * 60 * 60 * 1000).toISOString();
@@ -487,29 +517,158 @@ export const AutomationActions = {
     }
   },
 
+  // Runs as the step after create_invoice in a workflow. There is no
+  // step-output-passing mechanism in executor.ts (execution.context only ever
+  // carries wait/business-hours resume state), so this cannot assume it's
+  // handed the invoice created by a prior step — it looks up the contact's
+  // most recent draft invoice itself, same as move_to_stage above looks up
+  // the contact's most recent opportunity rather than expecting one passed in.
+  send_invoice: async (workspaceId: string, contactId: string, config: any) => {
+    const supabase = createAdminClient();
+
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('email, first_name, last_name')
+      .eq('id', contactId)
+      .eq('workspace_id', workspaceId)
+      .single();
+
+    if (!contact?.email) throw new Error('Contact has no email address');
+
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('contact_id', contactId)
+      .eq('workspace_id', workspaceId)
+      .eq('status', 'draft')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (invoiceError) throw invoiceError;
+    if (!invoice) {
+      throw new Error('No draft invoice found for this contact — send_invoice requires a preceding create_invoice step (or an existing draft invoice) before it can run.');
+    }
+
+    const { data: workspace } = await supabase
+      .from('workspaces')
+      .select('name, resend_api_key, email_from_name, email_from_address')
+      .eq('id', workspaceId)
+      .single();
+
+    // Same Liquid-style token replacement convention as send_webhook, extended
+    // with an {{invoice.field}} namespace so the subject/body can reference the
+    // looked-up invoice (e.g. {{invoice.invoice_number}}, {{invoice.total_amount}}).
+    const replaceTokens = (str: string) => {
+      return str
+        .replace(/\{\{contact\.([^}]+)\}\}/g, (_, field) => (contact as any)[field] ?? '')
+        .replace(/\{\{invoice\.([^}]+)\}\}/g, (_, field) => (invoice as any)[field] ?? '');
+    };
+
+    const contactName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'there';
+    const invoiceLabel = invoice.invoice_number || `INV-${String(invoice.id).substring(0, 8).toUpperCase()}`;
+
+    const subject = config.emailSubject
+      ? replaceTokens(config.emailSubject)
+      : `Invoice ${invoiceLabel} from ${workspace?.name || 'LeadsMind'}`;
+
+    const bodyHtml = config.emailBody
+      ? replaceTokens(config.emailBody)
+      : `<p>Hi ${contactName},</p><p>Please find attached invoice ${invoiceLabel} for ${invoice.currency || 'ZAR'} ${Number(invoice.total_amount ?? invoice.amount_due ?? 0).toFixed(2)}, due ${invoice.due_date ? new Date(invoice.due_date).toDateString() : 'on receipt'}.</p>`;
+
+    // Reuses the same Puppeteer/Chromium engine as the "Download PDF" flow for
+    // quotes (src/app/api/pdf/route.ts), called directly rather than over HTTP
+    // since this handler runs outside any authenticated browser session.
+    const items: any[] = Array.isArray(invoice.items) ? invoice.items : [];
+    const itemRows = items.map((item) => `
+      <tr>
+        <td style="padding:8px 0;">${item.description || ''}</td>
+        <td style="padding:8px 0; text-align:center;">${item.quantity ?? ''}</td>
+        <td style="padding:8px 0; text-align:right;">${Number(item.rate ?? item.unit_amount ?? 0).toFixed(2)}</td>
+        <td style="padding:8px 0; text-align:right;">${(Number(item.quantity || 0) * Number(item.rate ?? item.unit_amount ?? 0)).toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    const invoiceHtml = `
+      <div style="margin-bottom:24px;">
+        <p><strong>Invoice #:</strong> ${invoiceLabel}</p>
+        <p><strong>Billed to:</strong> ${contactName}${contact.email ? ` (${contact.email})` : ''}</p>
+        <p><strong>Due date:</strong> ${invoice.due_date ? new Date(invoice.due_date).toDateString() : 'On receipt'}</p>
+      </div>
+      ${items.length > 0 ? `
+      <table style="width:100%; border-collapse:collapse; font-size:12px;">
+        <thead>
+          <tr style="border-bottom:2px solid #e2e8f0; text-align:left;">
+            <th style="padding:8px 0;">Description</th>
+            <th style="padding:8px 0; text-align:center;">Qty</th>
+            <th style="padding:8px 0; text-align:right;">Unit Price</th>
+            <th style="padding:8px 0; text-align:right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+      </table>` : ''}
+      <div style="margin-top:16px; text-align:right; font-size:12px;">
+        <p style="font-size:16px; font-weight:700;">Total due: ${invoice.currency || 'ZAR'} ${Number(invoice.total_amount ?? invoice.amount_due ?? 0).toFixed(2)}</p>
+      </div>
+      ${invoice.notes ? `<div style="margin-top:24px;"><h3>Notes</h3><p style="white-space:pre-wrap;">${invoice.notes}</p></div>` : ''}
+    `;
+
+    const pdfBuffer = await htmlToPdfBuffer(invoiceHtml, `Invoice ${invoiceLabel}`);
+
+    await sendEmail({
+      to: contact.email,
+      subject,
+      html: bodyHtml,
+      attachments: [{ filename: `${invoiceLabel}.pdf`, content: pdfBuffer }],
+      config: {
+        apiKey: workspace?.resend_api_key,
+        fromEmail: workspace?.email_from_address,
+        fromName: workspace?.email_from_name,
+      },
+    });
+
+    const { error: updateError } = await supabase
+      .from('invoices')
+      .update({ status: 'sent' })
+      .eq('id', invoice.id)
+      .eq('workspace_id', workspaceId);
+
+    if (updateError) throw updateError;
+
+    try {
+      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+      dispatchWebhook(workspaceId, 'invoice.sent', {
+        invoice: { id: invoice.id, invoice_number: invoiceLabel, status: 'sent', contact_id: contactId },
+      }).catch(() => {});
+    } catch (e) {
+      console.error('[actions_registry] Failed to dispatch invoice.sent webhook:', e);
+    }
+  },
+
   assign_salesperson: async (workspaceId: string, contactId: string, config: any) => {
     if (!config?.ownerId || typeof config.ownerId !== 'string') {
       console.warn('Automation: assign_salesperson called without a valid ownerId');
       return;
     }
 
-    const supabase = await createServerClient();
-    const { data: membership } = await supabase
+    const supabase = createAdminClient();
+    const { data: membership, error: membershipError } = await supabase
       .from('workspace_members')
       .select('user_id')
       .eq('workspace_id', workspaceId)
       .eq('user_id', config.ownerId)
       .maybeSingle();
+    if (membershipError) throw membershipError;
     if (!membership) {
-      console.warn(`Automation: assign_salesperson target ${config.ownerId} is not a member of workspace ${workspaceId}`);
-      return;
+      throw new Error(`assign_salesperson: target ${config.ownerId} is not a member of workspace ${workspaceId}`);
     }
 
-    await supabase
+    const { error } = await supabase
       .from('contacts')
       .update({ owner_id: config.ownerId })
       .eq('id', contactId)
       .eq('workspace_id', workspaceId);
+    if (error) throw error;
   },
 
   // Reuses the same "paste a webhook URL" mechanism as send_webhook — Slack Incoming
@@ -520,7 +679,7 @@ export const AutomationActions = {
       return;
     }
 
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
     const { data: contact } = await supabase
       .from('contacts')
       .select('first_name, last_name')
@@ -549,21 +708,24 @@ export const AutomationActions = {
   // deduct_ai_credit RPC used by seoChecker.ts/plagiarismChecker.ts — the only
   // confirmed race-safe, RLS-safe credit spend mechanism in this codebase.
   generate_ai_task: async (workspaceId: string, contactId: string, config: any) => {
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
 
-    const { data: canSpend } = await supabase.rpc('deduct_ai_credit', { p_workspace_id: workspaceId, p_amount: 1 });
+    const { data: canSpend, error: rpcError } = await supabase.rpc('deduct_ai_credit', { p_workspace_id: workspaceId, p_amount: 1 });
+    if (rpcError) throw rpcError;
     if (!canSpend) {
+      // Legitimate business skip, not a failure — the workspace is out of AI credits.
       console.warn(`Automation: generate_ai_task skipped for workspace ${workspaceId} — AI credit limit reached`);
       return;
     }
 
-    const { data: contact } = await supabase
+    const { data: contact, error: contactError } = await supabase
       .from('contacts')
       .select('first_name, last_name, lead_score, tags')
       .eq('id', contactId)
       .eq('workspace_id', workspaceId)
       .single();
-    if (!contact) return;
+    if (contactError) throw contactError;
+    if (!contact) throw new Error(`generate_ai_task: contact ${contactId} not found in workspace ${workspaceId}`);
 
     let title = `Follow up with ${contact.first_name} ${contact.last_name}`;
     try {
@@ -584,11 +746,12 @@ export const AutomationActions = {
       console.error('[actions_registry] generate_ai_task LLM call failed, using fallback title:', err);
     }
 
-    await supabase.from('contact_tasks').insert({
+    const { error } = await supabase.from('contact_tasks').insert({
       workspace_id: workspaceId,
       contact_id: contactId,
       title,
       status: 'todo',
     });
+    if (error) throw error;
   },
 };

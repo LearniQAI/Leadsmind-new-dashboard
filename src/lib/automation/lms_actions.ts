@@ -1,4 +1,4 @@
-import { createAdminClient, createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/sms";
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
@@ -291,7 +291,7 @@ export async function lms_revoke_access(workspaceId: string, contactId: string, 
  */
 export async function update_community_privilege(workspaceId: string, contactId: string, config: any) {
   const { level = "member" } = config; // member, moderator, admin
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
 
   // Fetch current contact metadata
   const { data: contact } = await supabase
@@ -321,7 +321,7 @@ export async function update_community_privilege(workspaceId: string, contactId:
  */
 export async function send_whatsapp_template(workspaceId: string, contactId: string, config: any) {
   const { templateName, languageCode = "en", components = [] } = config;
-  const supabase = await createServerClient();
+  const supabase = createAdminClient();
 
   const { data: contact } = await supabase
     .from("contacts")

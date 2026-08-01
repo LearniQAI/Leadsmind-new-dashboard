@@ -43,10 +43,17 @@ export async function publishEvent(
   contactId: string,
   payload: any = {}
 ) {
-  logger.info({ eventType, contactId, workspaceId }, "event_bus.publishing");
+  // Logging is observability, not business logic — a broken log transport
+  // (e.g. pino's worker-thread transport dying) must never be able to abort
+  // event dispatch or mask a real triggerWorkflows failure.
+  try {
+    logger.info({ eventType, contactId, workspaceId }, "event_bus.publishing");
+  } catch { /* logging failure must not block dispatch */ }
 
   // Non-blocking asynchronous trigger
   triggerWorkflows(workspaceId, eventType, contactId).catch((err) => {
-    logger.error({ err, eventType }, "event_bus.trigger_workflows.failed");
+    try {
+      logger.error({ err, eventType }, "event_bus.trigger_workflows.failed");
+    } catch { /* logging failure must not mask the real error */ }
   });
 }

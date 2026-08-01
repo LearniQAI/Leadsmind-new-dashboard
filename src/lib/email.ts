@@ -8,6 +8,7 @@ interface SendEmailProps {
  html?: string
  text?: string
  scheduledAt?: string
+ attachments?: { filename: string; content: Buffer }[]
  config?: {
   apiKey?: string | null
   fromEmail?: string | null
@@ -17,13 +18,13 @@ interface SendEmailProps {
  }
 }
 
-export async function sendEmail({ to, subject, react, html, text, scheduledAt, config }: SendEmailProps) {
+export async function sendEmail({ to, subject, react, html, text, scheduledAt, attachments, config }: SendEmailProps) {
  const apiKey = config?.apiKey || process.env.RESEND_API_KEY
  const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@leadsmind.io'
  const fromName = config?.fromName || 'LeadsMind'
  
  if (!apiKey || apiKey === 're_123' || apiKey.includes('PLACEHOLDER')) {
-  logger.info({ to, subject, scheduledAt, tags: config?.tags }, 'email.mocked');
+  logger.info({ to, subject, scheduledAt, tags: config?.tags, attachmentCount: attachments?.length ?? 0 }, 'email.mocked');
   return { id: 'mock_' + Date.now() };
  }
 
@@ -38,6 +39,7 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, c
    text: text || '',
    tags: config?.tags,
    headers: config?.headers,
+   attachments: attachments,
    scheduledAt: scheduledAt || undefined,
   } as any)
 

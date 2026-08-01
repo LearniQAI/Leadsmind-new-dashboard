@@ -137,6 +137,10 @@ export const STEP_TYPES: ActionDef[] = [
     ]},
     { key: 'dueInDays', label: 'Due in (days)', type: 'number' },
   ]},
+  { value: 'send_invoice', label: 'Send invoice', fields: [
+    { key: 'emailSubject', label: 'Email subject (optional)', type: 'text', hint: 'Supports {{contact.field}} and {{invoice.field}} tokens. Defaults to a standard subject line.' },
+    { key: 'emailBody', label: 'Email body (HTML, optional)', type: 'textarea', hint: 'Supports {{contact.field}} and {{invoice.field}} tokens. Defaults to a standard message. Looks up the contact\'s most recent draft invoice — run this after a Create invoice step.' },
+  ]},
   { value: 'assign_salesperson', label: 'Assign salesperson', fields: [
     { key: 'ownerId', label: 'Team member', type: 'member', required: true },
   ]},
