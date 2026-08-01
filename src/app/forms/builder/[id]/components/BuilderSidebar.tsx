@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useFormBuilder, FieldType } from './FormBuilderContext';
 import { StepManager } from './StepManager';
 import { IntelligenceBuilder } from './IntelligenceBuilder';
+import { TagOnSubmitPicker } from './TagOnSubmitPicker';
 import { Type, Mail, Phone, AlignLeft, ChevronDown, CheckSquare, Search, LayoutGrid, Layers, Settings2, UploadCloud, PenTool, CreditCard, Link2, Plus, Check, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -224,6 +225,7 @@ export function BuilderSidebar() {
 
       {activeTab === 'config' && (
         <div className="builder-panel__body custom-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-4 flex flex-col gap-8">
+          <TagOnSubmitPicker />
           <IntelligenceBuilder />
         </div>
       )}
