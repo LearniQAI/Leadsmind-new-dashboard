@@ -63,23 +63,23 @@ export function TagOnSubmitPicker() {
   const selectedTag = tags.find((t) => t.id === selectedTagId);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <p className="builder-section-label m-0 flex items-center gap-1.5">
-          <TagIcon size={12} className="text-dash-accent" />
-          Tag submissions
-        </p>
+    <div className="p-3.5 bg-gradient-to-br from-dash-accent/[0.07] to-dash-accent/[0.02] border border-dash-accent/20 rounded-2xl">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-dash-accent/10 text-dash-accent shrink-0">
+          <TagIcon size={12} />
+        </span>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-dash-accent">Tag submissions</p>
       </div>
 
-      <p className="text-[11px] !text-dash-textMuted mb-4 leading-relaxed">
+      <p className="text-[11px] !text-dash-textMuted mb-3 leading-relaxed">
         Automatically apply a tag to the contact created or updated by each real submission of this form.
       </p>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2.5">
         <div className="flex gap-2">
           <div className="flex-1">
             <Select value={selectedTagId || undefined} onValueChange={(v) => setTagId(v)} disabled={loading}>
-              <SelectTrigger className="h-9 w-full border-dash-border rounded-lg text-[12px]">
+              <SelectTrigger className="h-10 w-full bg-white border-dash-border rounded-xl text-[12px] shadow-sm">
                 <SelectValue placeholder={loading ? 'Loading tags…' : 'No tag selected'} />
               </SelectTrigger>
               <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
@@ -100,7 +100,7 @@ export function TagOnSubmitPicker() {
               type="button"
               onClick={() => setTagId(null)}
               title="Remove tag"
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-dash-border text-dash-textMuted hover:text-red hover:border-red/40 transition-colors motion-reduce:transition-none"
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-dash-border text-dash-textMuted hover:text-red hover:border-red/40 transition-colors motion-reduce:transition-none shrink-0"
             >
               <X size={13} />
             </button>
@@ -123,7 +123,7 @@ export function TagOnSubmitPicker() {
             <Plus size={10} /> Create new tag
           </button>
         ) : (
-          <div className="p-3 bg-white border border-dash-border rounded-xl flex flex-col gap-2">
+          <div className="p-3 bg-white border border-dash-border rounded-xl flex flex-col gap-2 shadow-sm">
             <label className="text-[10px] font-bold !text-dash-textMuted block">New tag name</label>
             <div className="flex gap-2">
               <input
@@ -131,13 +131,13 @@ export function TagOnSubmitPicker() {
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}
                 placeholder="e.g. Webinar Signup"
-                className="flex-1 h-8 px-2 bg-dash-surface border border-dash-border rounded-lg !text-dash-text text-[11px] outline-none focus:border-dash-accent"
+                className="flex-1 h-9 px-2.5 bg-dash-surface border border-dash-border rounded-lg !text-dash-text text-[11px] outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
               />
               <button
                 type="button"
                 onClick={handleCreate}
                 disabled={creating || !newTagName.trim()}
-                className="h-8 px-3 rounded-lg bg-dash-accent text-white text-[11px] font-bold disabled:opacity-50 flex items-center justify-center gap-1"
+                className="h-9 px-3.5 rounded-lg bg-dash-accent text-white text-[11px] font-bold disabled:opacity-50 flex items-center justify-center gap-1 shrink-0"
               >
                 {creating ? <Loader2 size={11} className="animate-spin" /> : 'Create'}
               </button>
@@ -147,7 +147,7 @@ export function TagOnSubmitPicker() {
                   setShowCreate(false);
                   setNewTagName('');
                 }}
-                className="h-8 px-2 rounded-lg border border-dash-border text-[11px] !text-dash-textMuted"
+                className="h-9 px-3 rounded-lg border border-dash-border text-[11px] !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none shrink-0"
               >
                 Cancel
               </button>

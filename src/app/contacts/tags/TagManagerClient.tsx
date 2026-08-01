@@ -23,6 +23,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashInput, DashFormField } from '@/components/dashboard-ui/FormField';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { TAG_ICON_OPTIONS, TagIconGlyph } from '@/lib/tags/tagIcons';
+import { cn } from '@/lib/utils';
 import {
   createTag,
   updateTag,
@@ -285,7 +287,7 @@ export default function TagManagerClient({
               className="h-3 w-3 rounded-full shrink-0"
               style={{ backgroundColor: tag.color ?? '#9ca3af' }}
             />
-            {tag.icon && <span className="text-sm">{tag.icon}</span>}
+            <TagIconGlyph icon={tag.icon} size={14} className="!text-dash-textMuted shrink-0" />
             <span className="text-sm font-bold !text-dash-text truncate hover:text-dash-accent transition-colors">{tag.name}</span>
             {tag.visibility === 'private' && (
               <span className="text-[10px] font-bold text-dash-textMuted bg-dash-border/50 px-2 py-0.5 rounded-full shrink-0">
@@ -801,7 +803,7 @@ export default function TagManagerClient({
         <DialogContent className="bg-white border-dash-border !text-dash-text max-w-4xl w-full rounded-2xl shadow-xl p-6 z-[1001] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold !text-dash-text flex items-center gap-2">
-              {contactsModalTag?.icon && <span>{contactsModalTag.icon}</span>}
+              <TagIconGlyph icon={contactsModalTag?.icon} size={16} />
               <span
                 className="h-3 w-3 rounded-full shrink-0"
                 style={{ backgroundColor: contactsModalTag?.color ?? '#9ca3af' }}
@@ -909,20 +911,26 @@ function TagFormModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-5 py-2">
           <DashFormField label="Name" htmlFor="tag-name" required>
             <DashInput id="tag-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. VIP Client" />
           </DashFormField>
 
           <DashFormField label="Color" htmlFor="tag-color">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {COLOR_CHOICES.map((c) => (
                 <button
                   key={c}
                   type="button"
+                  aria-label={`Color ${c}`}
                   onClick={() => setColor(c)}
-                  className="h-7 w-7 rounded-full border-2 transition-all"
-                  style={{ backgroundColor: c, borderColor: color === c ? '#111827' : 'transparent' }}
+                  className={cn(
+                    'h-8 w-8 rounded-full transition-all',
+                    color === c
+                      ? 'ring-2 ring-dash-accent ring-offset-2 ring-offset-white'
+                      : 'ring-1 ring-dash-border hover:ring-dash-textMuted/50'
+                  )}
+                  style={{ backgroundColor: c }}
                 />
               ))}
             </div>
@@ -930,34 +938,55 @@ function TagFormModal({
 
           <DashFormField label="Icon (optional)" htmlFor="tag-icon">
             <div className="flex flex-wrap gap-2">
-              {EMOJI_CHOICES.map((e) => (
+              {TAG_ICON_OPTIONS.map(({ name: iconName, Icon }) => (
                 <button
-                  key={e}
+                  key={iconName}
                   type="button"
-                  onClick={() => setIcon(icon === e ? '' : e)}
-                  className={`h-8 w-8 rounded-lg border flex items-center justify-center text-base transition-all ${icon === e ? 'border-dash-accent bg-dash-accent/10' : 'border-dash-border'}`}
+                  aria-label={iconName}
+                  onClick={() => setIcon(icon === iconName ? '' : iconName)}
+                  className={cn(
+                    'h-9 w-9 rounded-xl flex items-center justify-center transition-all',
+                    icon === iconName
+                      ? 'ring-2 ring-dash-accent ring-offset-2 ring-offset-white bg-dash-accent/10 !text-dash-accent'
+                      : 'ring-1 ring-dash-border !text-dash-textMuted hover:!text-dash-text hover:ring-dash-textMuted/50'
+                  )}
                 >
-                  {e}
+                  <Icon size={16} />
                 </button>
               ))}
             </div>
           </DashFormField>
 
-          <DashFormField label="Category" htmlFor="tag-category">
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Uncategorized" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Uncategorized</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </DashFormField>
+          <div className="grid grid-cols-2 gap-4">
+            <DashFormField label="Category" htmlFor="tag-category">
+              <Select value={categoryId} onValueChange={setCategoryId}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Uncategorized" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Uncategorized</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DashFormField>
+
+            <DashFormField label="Visibility" htmlFor="tag-visibility">
+              <Select value={visibility} onValueChange={(v) => setVisibility(v as typeof visibility)}>
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="private">Private (only me)</SelectItem>
+                  <SelectItem value="team">Team</SelectItem>
+                  <SelectItem value="company">Company</SelectItem>
+                </SelectContent>
+              </Select>
+            </DashFormField>
+          </div>
 
           <DashFormField label="Parent tag (optional)" htmlFor="tag-parent">
             <Select value={parentTagId} onValueChange={setParentTagId}>
@@ -971,19 +1000,6 @@ function TagFormModal({
                     {t.name}
                   </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-          </DashFormField>
-
-          <DashFormField label="Visibility" htmlFor="tag-visibility">
-            <Select value={visibility} onValueChange={(v) => setVisibility(v as typeof visibility)}>
-              <SelectTrigger className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="private">Private (only me)</SelectItem>
-                <SelectItem value="team">Team</SelectItem>
-                <SelectItem value="company">Company</SelectItem>
               </SelectContent>
             </Select>
           </DashFormField>

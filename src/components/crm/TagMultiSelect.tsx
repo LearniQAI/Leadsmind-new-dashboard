@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { X, Plus, Tag as TagIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { createTag } from '@/app/actions/tags';
+import { TagIconGlyph } from '@/lib/tags/tagIcons';
 
 export interface TagOption {
   id: string;
@@ -87,7 +88,7 @@ export function TagMultiSelect({ availableTags, value, onChange }: TagMultiSelec
                 className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-[12px] font-bold border"
                 style={{ backgroundColor: `${color}1a`, borderColor: `${color}40`, color }}
               >
-                {tag?.icon && <span>{tag.icon}</span>}
+                <TagIconGlyph icon={tag?.icon} size={12} />
                 {name}
                 <button type="button" onClick={() => removeTag(name)} className="hover:opacity-70">
                   <X size={12} />
@@ -125,7 +126,7 @@ export function TagMultiSelect({ availableTags, value, onChange }: TagMultiSelec
                 className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-[13px] font-semibold !text-dash-text hover:bg-dash-surface transition-colors"
               >
                 <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: tag.color ?? '#9ca3af' }} />
-                {tag.icon && <span>{tag.icon}</span>}
+                <TagIconGlyph icon={tag.icon} size={12} />
                 {tag.name}
               </button>
             ))}
