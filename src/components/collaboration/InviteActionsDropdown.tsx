@@ -59,7 +59,7 @@ export function InviteActionsDropdown({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="p-2 rounded-lg text-t4 hover:text-t1 hover:bg-white/5 transition-colors"
+        className="p-2 rounded-lg !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors"
         aria-label="Invite actions"
       >
         <MoreVertical size={14} />
@@ -68,12 +68,12 @@ export function InviteActionsDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 w-52 bg-[#080f28] border border-white/10 rounded-xl shadow-2xl z-50 p-1.5 space-y-0.5">
+          <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-dash-border rounded-xl shadow-xl z-50 p-1.5 space-y-0.5">
             {status === 'pending' && (
               <button
                 onClick={() => handleAction('Resend', onResend)}
                 disabled={action !== null}
-                className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[11px] font-bold text-t2 hover:text-t1 hover:bg-white/5 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[11px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors disabled:opacity-50"
               >
                 {action === 'Resend' ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                 Resend Invitation
@@ -82,26 +82,26 @@ export function InviteActionsDropdown({
 
             <button
               onClick={copyInviteLink}
-              className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[11px] font-bold text-t2 hover:text-t1 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[11px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors"
             >
               <Copy size={14} /> Copy Invite Link
             </button>
 
             <button
               onClick={() => window.open(`/forms/${formId}/governance`, '_blank')}
-              className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[11px] font-bold text-t2 hover:text-t1 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[11px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors"
             >
               <ExternalLink size={14} /> Open Form
             </button>
 
             {(status === 'pending' || status === 'active') && (
               <>
-                <div className="border-t border-white/5 my-1" />
+                <div className="border-t border-dash-border my-1" />
 
                 <button
                   onClick={() => handleAction('Remove', onRemove)}
                   disabled={action !== null}
-                  className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[11px] font-bold text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[11px] font-bold text-red hover:bg-red/10 transition-colors disabled:opacity-50"
                 >
                   {action === 'Remove' ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
                   Remove Access

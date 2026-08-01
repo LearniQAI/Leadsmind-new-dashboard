@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { useDashboardContext } from '@/components/layouts/DashboardProvider';
+import { getFormSubmissionsData } from '@/app/actions/marketing';
 import { ArrowLeft, Mail, Database, Search, Eye, CheckCircle, X, AlertTriangle } from 'lucide-react';
 import { DashModal, DashModalContent } from '@/components/dashboard-ui/Modal';
 import { DashCard } from '@/components/dashboard-ui/Card';
@@ -15,8 +14,6 @@ import {
 
 export default function SubmissionsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const supabase = createClient();
-  const { workspace } = useDashboardContext();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -26,42 +23,20 @@ export default function SubmissionsPage({ params }: { params: { id: string } }) 
 
   useEffect(() => {
     async function loadData() {
-      if (!workspace?.id) return;
       setLoadError(null);
       try {
-        // Explicit workspace_id filter on both queries — defense in depth
-        // on top of RLS, not a substitute for it.
-        const { data: formData, error: formError } = await supabase
-          .from('forms')
-          .select('name, config, id')
-          .eq('id', params.id)
-          .eq('workspace_id', workspace.id)
-          .maybeSingle();
-
-        if (formError) {
-          setLoadError('Failed to load this form. Please try again.');
-          return;
-        }
-        if (!formData) {
-          setLoadError('Form not found.');
+        // Goes through requireFormAccess (owner OR active collaborator) —
+        // previously queried Supabase directly here, gated only by the
+        // viewer's own workspace_id, which silently rejected every real
+        // collaborator (invited cross-workspace by design).
+        const res = await getFormSubmissionsData(params.id);
+        if (res.error || !res.data) {
+          setLoadError(res.error || 'Form not found.');
           return;
         }
 
-        setForm(formData);
-
-        const { data: submissionData, error: submissionsError } = await supabase
-          .from('form_submissions')
-          .select('*, contact:contacts(first_name, last_name, email)')
-          .eq('form_id', params.id)
-          .eq('workspace_id', workspace.id)
-          .order('submitted_at', { ascending: false });
-
-        if (submissionsError) {
-          setLoadError('Failed to load submissions for this form. Please try again.');
-          return;
-        }
-
-        setSubmissions(submissionData || []);
+        setForm(res.data.form);
+        setSubmissions(res.data.submissions);
       } catch (err) {
         console.error('Failed to load submissions data:', err);
         setLoadError('Failed to load submissions data. Please try again.');
@@ -70,7 +45,7 @@ export default function SubmissionsPage({ params }: { params: { id: string } }) 
       }
     }
     loadData();
-  }, [params.id, supabase, workspace?.id]);
+  }, [params.id]);
 
   if (loading) {
     return (

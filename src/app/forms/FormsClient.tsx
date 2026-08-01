@@ -57,12 +57,19 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
   };
 
   const [acceptingCollabId, setAcceptingCollabId] = useState<string | null>(null);
+  // Set only on a successful accept (not decline) — InviteAcceptancePanel's
+  // onComplete fires for both outcomes 1.5s after this function returns and
+  // the panel has already unmounted (acceptingCollabId is cleared below in
+  // the same tick), so state wouldn't be visible to that stale closure by
+  // the time the timeout fires. A ref sidesteps that.
+  const acceptedFormIdRef = React.useRef<string | null>(null);
 
   const handleAcceptInvitation = async (collabId: string) => {
     setAcceptingCollabId(collabId);
     const res = await acceptFormInvitation(collabId);
     if (res.success) {
       await sendInviteNotificationAfterAcceptance(collabId);
+      acceptedFormIdRef.current = res.data?.formId ?? null;
       loadCollaborations();
     }
     setAcceptingCollabId(null);
@@ -336,7 +343,16 @@ export default function FormsClient({ initialForms }: { initialForms: any[] }) {
                           invitation={item}
                           onAccept={handleAcceptInvitation}
                           onDecline={handleDeclineInvitation}
-                          onComplete={() => { setAcceptingCollabId(null); loadCollaborations(); }}
+                          onComplete={() => {
+                            setAcceptingCollabId(null);
+                            if (acceptedFormIdRef.current) {
+                              const formId = acceptedFormIdRef.current;
+                              acceptedFormIdRef.current = null;
+                              router.push(`/forms/builder/${formId}`);
+                              return;
+                            }
+                            loadCollaborations();
+                          }}
                         />
                       );
                     }

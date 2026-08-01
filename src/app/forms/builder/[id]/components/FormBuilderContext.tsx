@@ -23,14 +23,25 @@ export function FormBuilderProvider({
 }) {
   const [state, dispatch] = useReducer(builderReducer, initialState);
   const stateRef = useRef(state);
+  const didInitialize = useRef(false);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
-  // Initialize state from server prop
+  // Initialize state from server prop. Hydrates the local draft exactly
+  // once, on mount — after that, the client is the source of truth for the
+  // in-progress edit (autosave persists it). This must NOT re-run if the
+  // `initialForm` prop reference changes later (e.g. a background
+  // router.refresh() elsewhere on the page re-executing the server
+  // component): confirmed live that re-running this reset state.config to
+  // the stale pre-edit snapshot mid-session, silently discarding whatever
+  // the user had just changed (e.g. a newly selected/created tagOnSubmit)
+  // and cancelling the pending debounced autosave in the same stroke.
   useEffect(() => {
+    if (didInitialize.current) return;
     if (initialForm) {
+      didInitialize.current = true;
       const config = initialForm.config || {};
       const steps = normalizeSteps(config);
       const fields = normalizeFields(initialForm.fields, steps[0]?.id || 'default_step');

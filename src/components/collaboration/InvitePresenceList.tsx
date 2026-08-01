@@ -87,65 +87,65 @@ export function InvitePresenceList({ formId }: InvitePresenceListProps) {
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           'flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-[10px] font-bold',
-          'bg-[#0c1535] border-white/5 text-t2 hover:text-t1 hover:border-white/10'
+          'bg-white border-dash-border !text-dash-textMuted hover:!text-dash-text hover:border-dash-text/20'
         )}
       >
         <div className="flex items-center -space-x-1.5">
           {userEmail && (
-            <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-[#0c1535] flex items-center justify-center text-[7px] font-black text-white z-10">
+            <div className="w-6 h-6 rounded-full bg-dash-accent border-2 border-white flex items-center justify-center text-[7px] font-black text-white z-10">
               {userInitials}
             </div>
           )}
           {activeUsers.slice(0, 3).map((u, i) => (
             <div
               key={i}
-              className="w-6 h-6 rounded-full bg-purple-500 border-2 border-[#0c1535] flex items-center justify-center text-[7px] font-black text-white"
+              className="w-6 h-6 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center text-[7px] font-black text-white"
               style={{ zIndex: 10 - i - 1 }}
             >
               {u.initials}
             </div>
           ))}
           {activeUsers.length > 3 && (
-            <div className="w-6 h-6 rounded-full bg-[#172458] border-2 border-[#0c1535] flex items-center justify-center text-[7px] font-bold text-t3">
+            <div className="w-6 h-6 rounded-full bg-dash-border border-2 border-white flex items-center justify-center text-[7px] font-bold !text-dash-textMuted">
               +{activeUsers.length - 3}
             </div>
           )}
         </div>
-        <span className="text-[9px] text-t3 hidden sm:inline">{totalActive} active</span>
-        <ChevronDown size={10} className="text-t4" />
+        <span className="text-[9px] !text-dash-textMuted hidden sm:inline">{totalActive} active</span>
+        <ChevronDown size={10} className="!text-dash-textMuted" />
       </button>
 
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full right-0 mt-2 w-64 bg-[#080f28] border border-white/10 rounded-xl shadow-2xl z-50 p-2">
-            <div className="px-2 py-1.5 border-b border-white/5 mb-1">
-              <span className="text-[9px] font-black uppercase tracking-widest text-t4">Active Session</span>
-              <span className="text-[9px] text-t3 ml-2">({totalActive})</span>
+          <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-dash-border rounded-xl shadow-xl z-50 p-2">
+            <div className="px-2 py-1.5 border-b border-dash-border mb-1">
+              <span className="text-[9px] font-bold uppercase tracking-widest !text-dash-textMuted">Active Session</span>
+              <span className="text-[9px] !text-dash-textMuted ml-2">({totalActive})</span>
             </div>
 
             {userEmail && (
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-blue-500/10 mb-1">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-dash-accent/10 mb-1">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-[8px] font-black flex items-center justify-center text-white">{userInitials}</div>
-                  <span className="text-[10px] font-bold text-white truncate max-w-[120px]">{userEmail}</span>
+                  <div className="w-6 h-6 rounded-full bg-dash-accent text-[8px] font-black flex items-center justify-center text-white">{userInitials}</div>
+                  <span className="text-[10px] font-bold !text-dash-text truncate max-w-[120px]">{userEmail}</span>
                 </div>
-                <span className="text-[8px] font-black uppercase tracking-wider text-t4">You</span>
+                <span className="text-[8px] font-bold uppercase tracking-wider !text-dash-textMuted">You</span>
               </div>
             )}
 
             {activeUsers.map((u, i) => (
-              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-white/5 transition-colors">
+              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-dash-surface transition-colors">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-6 h-6 rounded-full bg-purple-500 text-[8px] font-black flex items-center justify-center text-white flex-shrink-0">{u.initials}</div>
-                  <span className="text-[10px] font-bold text-white truncate">{u.email}</span>
+                  <span className="text-[10px] font-bold !text-dash-text truncate">{u.email}</span>
                 </div>
-                {u.locked && <Lock size={10} className="text-rose-400 flex-shrink-0" />}
+                {u.locked && <Lock size={10} className="text-red flex-shrink-0" />}
               </div>
             ))}
 
             {activeUsers.length === 0 && (
-              <div className="p-4 text-center text-[9px] font-bold text-t3 uppercase tracking-wider">
+              <div className="p-4 text-center text-[9px] font-bold !text-dash-textMuted uppercase tracking-wider">
                 No other active collaborators
               </div>
             )}
