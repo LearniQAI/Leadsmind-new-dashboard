@@ -1,6 +1,8 @@
 import { requireAuth, getCurrentWorkspaceId } from "@/lib/auth";
 import { getInvoices } from "@/app/actions/finance";
+import { getInvoiceAnalytics } from "@/app/actions/analytics/invoices";
 import { InvoiceMasterDetail } from "@/components/invoices/InvoiceMasterDetail";
+import { InvoiceMetricsStrip } from "@/components/invoices/InvoiceMetricsStrip";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -14,8 +16,9 @@ export default async function InvoicesPage() {
  const user = await requireAuth();
  const workspaceId = await getCurrentWorkspaceId();
  if (!workspaceId) redirect('/auth/signin-basic');
- 
+
  const invoices = await getInvoices(workspaceId);
+ const invoiceMetrics = await getInvoiceAnalytics(workspaceId);
 
   return (
     <MetaData pageTitle="Billing Ledger">
@@ -39,6 +42,12 @@ export default async function InvoicesPage() {
               </Link>
             </div>
           </div>
+
+          <InvoiceMetricsStrip
+            totalCollected={invoiceMetrics.total_collected}
+            totalOverdue={invoiceMetrics.total_overdue}
+            badDebtTotal={invoiceMetrics.bad_debt_total}
+          />
 
           <div className="flex-1 bg-white">
             <InvoiceMasterDetail invoices={invoices} />

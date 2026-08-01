@@ -20,6 +20,9 @@ import {
 } from '@/components/dashboard-ui/Modal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TagMultiSelect, TagOption } from '@/components/crm/TagMultiSelect';
+import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
+import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
@@ -48,6 +51,9 @@ export default function CampaignsClient({
   // real tag ids only at save time (see handleSaveEdit), since TagMultiSelect's
   // established contract (shared with the Contact form) works in names.
   const [editTagNames, setEditTagNames] = useState<string[]>([]);
+  const [editRuleGroup, setEditRuleGroup] = useState<RuleGroup | null>(null);
+  const [editCombineMode, setEditCombineMode] = useState<'AND' | 'OR'>('AND');
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -129,6 +135,14 @@ export default function CampaignsClient({
       }
     } catch (e) {}
     setEditTagNames(names);
+
+    const ruleGroup: RuleGroup | null = (campaign.segment && typeof campaign.segment === 'object' && campaign.segment.ruleGroup)
+      ? campaign.segment.ruleGroup
+      : null;
+    setEditRuleGroup(ruleGroup);
+    setEditCombineMode((campaign.segment?.combineMode as 'AND' | 'OR') || 'AND');
+    setAdvancedFiltersOpen(!!ruleGroup && ruleGroup.rules.length > 0);
+
     setEditOpen(true);
   };
 
@@ -154,7 +168,17 @@ export default function CampaignsClient({
       const tagIds = editTagNames
         .map((name) => currentTags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.id)
         .filter((id): id is string => !!id);
-      const segmentData = tagIds.length > 0 ? { tags: tagIds } : null;
+      const hasRuleGroup = !!editRuleGroup && editRuleGroup.rules.length > 0;
+      const segmentData = (tagIds.length > 0 || hasRuleGroup)
+        ? {
+            tags: tagIds.length > 0 ? tagIds : undefined,
+            ruleGroup: hasRuleGroup ? editRuleGroup : undefined,
+            // Only meaningful when both tags and ruleGroup are set — harmless
+            // to include otherwise, since the resolver ignores it when only
+            // one of the two is present.
+            combineMode: (tagIds.length > 0 && hasRuleGroup) ? editCombineMode : undefined,
+          }
+        : null;
 
       const res = await updateCampaign(editCampaign.id, {
         name: editName,
@@ -335,6 +359,48 @@ export default function CampaignsClient({
             <DashFormField label="Target audience tags" hint="Leave blank to send to all contacts.">
               <TagMultiSelect availableTags={tags} value={editTagNames} onChange={setEditTagNames} />
             </DashFormField>
+
+            <div className="border border-dash-border rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setAdvancedFiltersOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-3.5 py-3 text-[12px] font-bold !text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none"
+              >
+                Advanced filters
+                {advancedFiltersOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {advancedFiltersOpen && (
+                <div className="p-3.5 border-t border-dash-border space-y-3">
+                  <SegmentRuleBuilder value={editRuleGroup} onChange={setEditRuleGroup} />
+
+                  {editTagNames.length > 0 && !!editRuleGroup && editRuleGroup.rules.length > 0 && (
+                    <div className="pt-2 border-t border-dash-border">
+                      <span className="text-[11px] font-bold !text-dash-textMuted block mb-2">
+                        Match contacts who have these tags
+                      </span>
+                      <div className="inline-flex rounded-lg border border-dash-border overflow-hidden mb-2">
+                        {(['AND', 'OR'] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setEditCombineMode(m)}
+                            className={`px-3 py-1 text-[11px] font-bold transition-colors motion-reduce:transition-none ${
+                              editCombineMode === m ? 'bg-dash-accent text-white' : 'bg-white !text-dash-textMuted hover:bg-dash-surface'
+                            }`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                      <span className="text-[11px] font-bold !text-dash-textMuted block">
+                        these advanced filters
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <DashFormField label="Email body / plain text preview">
               <DashTextarea value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Write your email content..." className="min-h-[100px]" />
             </DashFormField>

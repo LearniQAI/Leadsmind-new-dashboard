@@ -66,10 +66,14 @@ export const SegmentationCompiler = {
       else if (rule.field === 'outstanding_zar_limit') {
         const threshold = parseFloat(val) || 0;
         const compareSign = op === 'less_than' ? '<' : op === 'greater_than' ? '>' : '>=';
+        // Explicit ::numeric cast: fn_execute_segment_sql substitutes
+        // placeholders as quoted text literals (its p_params is TEXT[]),
+        // so an uncast placeholder here would compare a numeric SUM(...)
+        // against a text literal and fail with "operator does not exist".
         sqlCond = `COALESCE((
-          SELECT SUM(amount_due - amount_paid) FROM public.invoices inv 
+          SELECT SUM(amount_due - amount_paid) FROM public.invoices inv
           WHERE inv.contact_id = c.id AND inv.currency = 'ZAR' AND inv.status = 'open'
-        ), 0) ${compareSign} ${getPlaceholder(threshold)}`;
+        ), 0) ${compareSign} ${getPlaceholder(threshold)}::numeric`;
       }
       // 5. LMS Course ID Enrollment
       else if (rule.field === 'lms_course_id') {
@@ -89,19 +93,20 @@ export const SegmentationCompiler = {
       else if (rule.field === 'email_open_count') {
         const countThreshold = parseInt(val, 10) || 0;
         const compareSign = op === 'less_than' ? '<' : op === 'greater_than' ? '>' : '>=';
+        // See outstanding_zar_limit above re: why the explicit ::numeric cast is required.
         sqlCond = `COALESCE((
-          SELECT COUNT(*) FROM public.email_tracking_logs etl 
+          SELECT COUNT(*) FROM public.email_tracking_logs etl
           WHERE etl.contact_id = c.id AND etl.event_type = 'open'
-        ), 0) ${compareSign} ${getPlaceholder(countThreshold)}`;
+        ), 0) ${compareSign} ${getPlaceholder(countThreshold)}::numeric`;
       }
       // 8. Click event tracking logs
       else if (rule.field === 'email_click_count') {
         const countThreshold = parseInt(val, 10) || 0;
         const compareSign = op === 'less_than' ? '<' : op === 'greater_than' ? '>' : '>=';
         sqlCond = `COALESCE((
-          SELECT COUNT(*) FROM public.email_tracking_logs etl 
+          SELECT COUNT(*) FROM public.email_tracking_logs etl
           WHERE etl.contact_id = c.id AND etl.event_type = 'click'
-        ), 0) ${compareSign} ${getPlaceholder(countThreshold)}`;
+        ), 0) ${compareSign} ${getPlaceholder(countThreshold)}::numeric`;
       }
 
       if (sqlCond) {

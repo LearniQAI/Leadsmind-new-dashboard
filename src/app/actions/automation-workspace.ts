@@ -16,10 +16,30 @@ export async function getAutomationDashboardData() {
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false });
 
+  // Per-workflow execution counts — `workflows.execution_count` isn't a real
+  // column, so each card's count is derived here by grouping
+  // workflow_executions rows (workflow_id only, no row limit) client-side.
+  // A single lightweight fetch, consistent with this function's existing
+  // pattern of separate targeted queries rather than one large join.
+  const { data: executionCountRows } = await supabase
+    .from('workflow_executions')
+    .select('workflow_id')
+    .eq('workspace_id', workspaceId);
+
+  const executionCountsByWorkflow: Record<string, number> = {};
+  for (const row of executionCountRows || []) {
+    executionCountsByWorkflow[row.workflow_id] = (executionCountsByWorkflow[row.workflow_id] || 0) + 1;
+  }
+
+  const workflowsWithCounts = (workflows || []).map((w: any) => ({
+    ...w,
+    execution_count: executionCountsByWorkflow[w.id] || 0
+  }));
+
   // Fetch recent executions
   const { data: executions } = await supabase
     .from('workflow_executions')
-    .select('*, workflows(name)')
+    .select('*, workflows(name, trigger_type)')
     .eq('workspace_id', workspaceId)
     .order('started_at', { ascending: false })
     .limit(10);
@@ -31,13 +51,22 @@ export async function getAutomationDashboardData() {
     .eq('workspace_id', workspaceId)
     .eq('status', 'failed');
 
-  return { 
-    success: true, 
-    data: { 
-      workflows: workflows || [],
+  // Real total-execution count, backing the "Total Executions" KPI —
+  // `workflows.execution_count` does not exist as a column; the count must
+  // come from the workflow_executions table itself.
+  const { count: totalExecutions } = await supabase
+    .from('workflow_executions')
+    .select('*', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId);
+
+  return {
+    success: true,
+    data: {
+      workflows: workflowsWithCounts,
       executions: executions || [],
-      failures: failures || []
-    } 
+      failures: failures || [],
+      totalExecutions: totalExecutions || 0
+    }
   };
 }
 
@@ -84,122 +113,20 @@ export async function seedSARecipes() {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { success: false, error: 'Unauthorized' };
 
-  // A. Invoice Overdue Chase
-  const { data: overdueExists } = await supabase
-    .from('workflows')
-    .select('id')
-    .eq('workspace_id', workspaceId)
-    .eq('name', 'Invoice Overdue Chase')
-    .maybeSingle();
+  // NOTE: "Invoice Overdue Chase" and "SARS Tax Calendar Reminders" recipes
+  // were removed from this seed. Both used trigger_type values
+  // ('invoice_overdue', 'sars_tax_reminder') that no engine has ever
+  // published — they are calendar/deadline-based conditions, not discrete
+  // events, and nothing in the codebase computes "invoice went overdue" or
+  // "N days before SARS deadline" as a trigger. Reintroducing them needs a
+  // real cron/scheduler to compute and publish those events; that's new
+  // infrastructure, out of scope for this pass. The seed previously
+  // inserted these as is_active: true, meaning they looked live in the UI
+  // but could never fire.
 
-  if (!overdueExists) {
-    const { data: wf } = await supabase
-      .from('workflows')
-      .insert({
-        workspace_id: workspaceId,
-        name: 'Invoice Overdue Chase',
-        description: 'Polite cross-channel notifications transitioning to structured collection tasks.',
-        trigger_type: 'invoice_overdue',
-        trigger_config: {},
-        is_active: true,
-        goal_rules: [{ field: 'invoice_paid', operator: 'equals', value: true }]
-      })
-      .select('id')
-      .single();
-
-    if (wf) {
-      await supabase.from('workflow_steps').insert([
-        { workflow_id: wf.id, workspace_id: workspaceId, position: 1, type: 'wait', config: { delaySeconds: 86400 } },
-        {
-          workflow_id: wf.id,
-          workspace_id: workspaceId,
-          position: 2,
-          type: 'send_email',
-          config: {
-            templateType: 'custom_followup',
-            subject: 'Overdue Reminder: Invoice ZAR {{invoice_amount_zar}}',
-            body: 'Hi {{first_name}}, this is a friendly reminder that invoice {{invoice_number}} for ZAR {{invoice_amount_zar}} is currently overdue. Let us know if you need any assistance.',
-            backup_whatsapp_body: 'Hi {{first_name}}, this is a friendly reminder that invoice {{invoice_number}} for ZAR {{invoice_amount_zar}} is overdue. Please settle it at your earliest convenience.'
-          }
-        },
-        {
-          workflow_id: wf.id,
-          workspace_id: workspaceId,
-          position: 3,
-          type: 'if_else',
-          config: {
-            conditions: [{ field: 'invoice_paid', operator: 'equals', value: true }],
-            matchAction: 'stop',
-            fallbackAction: 'continue'
-          }
-        },
-        {
-          workflow_id: wf.id,
-          workspace_id: workspaceId,
-          position: 4,
-          type: 'send_whatsapp',
-          config: {
-            body: 'URGENT: ZAR {{invoice_amount_zar}} payment is outstanding. Please reply to confirm payment.'
-          }
-        },
-        {
-          workflow_id: wf.id,
-          workspace_id: workspaceId,
-          position: 5,
-          type: 'create_task',
-          config: {
-            title: 'Call {{first_name}} - Overdue Invoice ZAR {{invoice_amount_zar}}',
-            description: 'Verify payment status for invoice {{invoice_number}}.',
-            priority: 'high'
-          }
-        }
-      ]);
-    }
-  }
-
-  // B. SARS Tax Calendar Reminders
-  const { data: taxExists } = await supabase
-    .from('workflows')
-    .select('id')
-    .eq('workspace_id', workspaceId)
-    .eq('name', 'SARS Tax Calendar Reminders')
-    .maybeSingle();
-
-  if (!taxExists) {
-    const { data: wf } = await supabase
-      .from('workflows')
-      .insert({
-        workspace_id: workspaceId,
-        name: 'SARS Tax Calendar Reminders',
-        description: 'Automations that check the SA Tax Calendar and trigger action sequences ahead of EMP201 deadlines.',
-        trigger_type: 'sars_tax_reminder',
-        trigger_config: {},
-        is_active: true,
-        goal_rules: []
-      })
-      .select('id')
-      .single();
-
-    if (wf) {
-      await supabase.from('workflow_steps').insert([
-        { workflow_id: wf.id, workspace_id: workspaceId, position: 1, type: 'wait', config: { delaySeconds: 432000 } },
-        {
-          workflow_id: wf.id,
-          workspace_id: workspaceId,
-          position: 2,
-          type: 'send_email',
-          config: {
-            templateType: 'notification',
-            subject: 'SARS EMP201 Deadline Reminder',
-            body: 'Hi team, the SARS EMP201 submission deadline is approaching. Please submit your monthly figures before the 7th.',
-            backup_whatsapp_body: 'Reminder: The SARS EMP201 submission deadline is approaching. Please calculate and submit monthly payroll figures before the 7th.'
-          }
-        }
-      ]);
-    }
-  }
-
-  // C. LMS Course Recoveries
+  // A. LMS Course Recoveries — trigger fixed to match the real EventBus
+  // event ('quiz_failed'); the seed previously used 'lms_quiz_failed',
+  // which was never published anywhere.
   const { data: quizExists } = await supabase
     .from('workflows')
     .select('id')
@@ -214,7 +141,7 @@ export async function seedSARecipes() {
         workspace_id: workspaceId,
         name: 'LMS Course Recoveries',
         description: 'Triggered immediately when quiz scores fall short.',
-        trigger_type: 'lms_quiz_failed',
+        trigger_type: 'quiz_failed',
         trigger_config: {},
         is_active: true,
         goal_rules: [{ field: 'passed_quiz', operator: 'equals', value: true }]

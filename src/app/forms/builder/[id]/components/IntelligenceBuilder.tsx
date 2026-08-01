@@ -32,12 +32,14 @@ export function IntelligenceBuilder() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <p className="builder-section-label m-0 flex items-center gap-1.5">
-            <Cpu size={12} className="text-dash-accent" />
-            Hidden fields &amp; tracking
-          </p>
+      <div className="p-3.5 bg-white border border-dash-border rounded-2xl shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-dash-surface !text-dash-textMuted shrink-0">
+              <Cpu size={12} />
+            </span>
+            <p className="text-[10px] font-bold uppercase tracking-wide !text-dash-textMuted">Hidden fields &amp; tracking</p>
+          </div>
           <button
             onClick={addHiddenField}
             className="text-[10px] font-bold text-dash-accent hover:text-dash-accent/80 flex items-center gap-1"
@@ -46,11 +48,11 @@ export function IntelligenceBuilder() {
           </button>
         </div>
 
-        <p className="text-[11px] !text-dash-textMuted mb-4 leading-relaxed">
+        <p className="text-[11px] !text-dash-textMuted mb-3 leading-relaxed">
           Hidden fields are automatically injected into submissions. Use them for UTM tracking or capturing URL parameters.
         </p>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {hiddenFields.length === 0 && (
             <div className="text-center py-6 border border-dash-border border-dashed rounded-xl bg-dash-surface">
               <p className="text-xs !text-dash-textMuted">No hidden fields configured.</p>
@@ -58,7 +60,7 @@ export function IntelligenceBuilder() {
           )}
 
           {hiddenFields.map((field: any, i: number) => (
-            <div key={field.id} className="p-3 bg-white border border-dash-border rounded-xl flex flex-col gap-3 relative group">
+            <div key={field.id} className="p-3 bg-dash-surface border border-dash-border rounded-xl flex flex-col gap-3 relative group">
               <button
                 onClick={() => removeHiddenField(i)}
                 className="absolute top-2 right-2 text-red/50 hover:text-red opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none"
@@ -72,7 +74,7 @@ export function IntelligenceBuilder() {
                   <select
                     value={field.type}
                     onChange={(e) => updateHiddenField(i, { type: e.target.value })}
-                    className="w-full h-8 px-2 bg-dash-surface border border-dash-border rounded-lg !text-dash-text text-[11px] outline-none focus:border-dash-accent"
+                    className="w-full h-8 px-2 bg-white border border-dash-border rounded-lg !text-dash-text text-[11px] outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
                   >
                     <option value="utm">UTM Parameter</option>
                     <option value="url_param">URL Parameter</option>
@@ -88,7 +90,7 @@ export function IntelligenceBuilder() {
                   value={field.name}
                   onChange={(e) => updateHiddenField(i, { name: e.target.value })}
                   placeholder="e.g. utm_campaign"
-                  className="w-full h-8 px-2 bg-dash-surface border border-dash-border rounded-lg !text-dash-text text-[11px] outline-none focus:border-dash-accent"
+                  className="w-full h-8 px-2 bg-white border border-dash-border rounded-lg !text-dash-text text-[11px] outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
                 />
               </div>
 
@@ -102,7 +104,7 @@ export function IntelligenceBuilder() {
                     value={field.value}
                     onChange={(e) => updateHiddenField(i, { value: e.target.value })}
                     placeholder={field.type === 'static' ? "Static value" : "Optional fallback"}
-                    className="w-full h-8 px-2 bg-dash-surface border border-dash-border rounded-lg !text-dash-text text-[11px] outline-none focus:border-dash-accent"
+                    className="w-full h-8 px-2 bg-white border border-dash-border rounded-lg !text-dash-text text-[11px] outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
                   />
                 </div>
               )}

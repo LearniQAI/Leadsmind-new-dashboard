@@ -47,11 +47,11 @@ export function WorkflowHistoryPanel({ executions, failures }: { executions: any
                    <Play size={16} />}
                 </div>
                 <div>
-                  <h4 className="font-bold text-white text-sm">{log.automation_workflows?.name || 'Deleted Workflow'}</h4>
+                  <h4 className="font-bold text-white text-sm">{log.workflows?.name || 'Deleted Workflow'}</h4>
                   <div className="flex items-center gap-2 text-[10px] text-t4 uppercase font-bold tracking-widest mt-1">
-                    <span>{log.trigger_event.replace(/_/g, ' ')}</span>
+                    <span>{(log.workflows?.trigger_type || 'unknown').replace(/_/g, ' ')}</span>
                     <span>•</span>
-                    <span>{new Date(log.created_at).toLocaleTimeString()}</span>
+                    <span>{new Date(log.started_at).toLocaleTimeString()}</span>
                   </div>
                 </div>
               </div>

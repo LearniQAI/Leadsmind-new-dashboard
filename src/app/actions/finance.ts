@@ -445,6 +445,15 @@ export async function updateInvoiceStatus(id: string, status: string) {
       logger.error({ err: e, invoiceId: id }, 'finance.invoice_paid.webhook_dispatch.failed');
     }
 
+    if (data.contact_id) {
+      try {
+        const { publishEvent } = await import('@/lib/events/EventBus');
+        publishEvent(data.workspace_id, 'invoice_paid', data.contact_id, { invoiceId: data.id }).catch(() => {});
+      } catch (e) {
+        logger.error({ err: e, invoiceId: id }, 'finance.invoice_paid.automation_trigger.failed');
+      }
+    }
+
     // Auto-create courier shipment if shipping address is present
     try {
       const metadata = (data.metadata || {}) as any

@@ -399,51 +399,85 @@ export async function updateCampaign(id: string, updates: any) {
   let matchedContactsCount = 0;
   if (updates.status === 'scheduled') {
    const segmentTags: string[] = Array.isArray(updates.segment?.tags) ? updates.segment.tags : [];
-   if (segmentTags.length > 0 && data.workspace_id) {
-    // New tag-picker saves store real tag ids (Smart Tags Part 1's tags.id, a uuid).
-    // Campaigns saved before that switch still have plain tag NAMES here — never
-    // silently dropped, matched via the legacy contacts.tags array exactly as before.
-    const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
-    const tagIds = segmentTags.filter(isUuid);
-    const legacyTagNames = segmentTags.filter((v) => !isUuid(v));
+   const ruleGroup = updates.segment?.ruleGroup && Array.isArray(updates.segment.ruleGroup.rules) && updates.segment.ruleGroup.rules.length > 0
+    ? updates.segment.ruleGroup
+    : null;
+   const combineMode: 'AND' | 'OR' = updates.segment?.combineMode === 'OR' ? 'OR' : 'AND';
 
-    const matchedContactIds = new Set<string>();
+   if ((segmentTags.length > 0 || ruleGroup) && data.workspace_id) {
     let matchError: any = null;
 
-    if (tagIds.length > 0) {
-     // Real, current relational membership — every contact presently carrying
-     // ALL of these tag ids per tag_assignments (Part 1's source of truth),
-     // not a stale free-text array snapshot.
-     const { data: assignments, error: assignErr } = await supabase
-      .from('tag_assignments')
-      .select('entity_id, tag_id')
-      .eq('workspace_id', data.workspace_id)
-      .eq('entity_type', 'contact')
-      .in('tag_id', tagIds);
+    // Tag-based match — unchanged from before (real relational membership
+    // via tag_assignments for uuid ids, legacy contacts.tags array match
+    // for pre-Smart-Tags campaigns storing plain names).
+    let tagMatchedIds: Set<string> | null = null;
+    if (segmentTags.length > 0) {
+     tagMatchedIds = new Set<string>();
+     const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+     const tagIds = segmentTags.filter(isUuid);
+     const legacyTagNames = segmentTags.filter((v) => !isUuid(v));
 
-     if (assignErr) {
-      matchError = assignErr;
-     } else {
-      const countsByContact = new Map<string, number>();
-      (assignments ?? []).forEach((a) => countsByContact.set(a.entity_id, (countsByContact.get(a.entity_id) ?? 0) + 1));
-      Array.from(countsByContact.entries())
-       .filter(([, count]) => count === tagIds.length)
-       .forEach(([contactId]) => matchedContactIds.add(contactId));
+     if (tagIds.length > 0) {
+      // Real, current relational membership — every contact presently carrying
+      // ALL of these tag ids per tag_assignments (Part 1's source of truth),
+      // not a stale free-text array snapshot.
+      const { data: assignments, error: assignErr } = await supabase
+       .from('tag_assignments')
+       .select('entity_id, tag_id')
+       .eq('workspace_id', data.workspace_id)
+       .eq('entity_type', 'contact')
+       .in('tag_id', tagIds);
+
+      if (assignErr) {
+       matchError = assignErr;
+      } else {
+       const countsByContact = new Map<string, number>();
+       (assignments ?? []).forEach((a) => countsByContact.set(a.entity_id, (countsByContact.get(a.entity_id) ?? 0) + 1));
+       Array.from(countsByContact.entries())
+        .filter(([, count]) => count === tagIds.length)
+        .forEach(([contactId]) => tagMatchedIds!.add(contactId));
+      }
+     }
+
+     if (!matchError && legacyTagNames.length > 0) {
+      const { data: legacyMatches, error: legacyErr } = await supabase
+       .from('contacts')
+       .select('id')
+       .eq('workspace_id', data.workspace_id)
+       .contains('tags', legacyTagNames);
+
+      if (legacyErr) {
+       matchError = legacyErr;
+      } else {
+       (legacyMatches ?? []).forEach((c) => tagMatchedIds!.add(c.id));
+      }
      }
     }
 
-    if (!matchError && legacyTagNames.length > 0) {
-     const { data: legacyMatches, error: legacyErr } = await supabase
-      .from('contacts')
-      .select('id')
-      .eq('workspace_id', data.workspace_id)
-      .contains('tags', legacyTagNames);
-
-     if (legacyErr) {
-      matchError = legacyErr;
-     } else {
-      (legacyMatches ?? []).forEach((c) => matchedContactIds.add(c.id));
+    // Rule-group match — new. SegmentationCompiler.executeSegment() already
+    // has its own DB-RPC-then-JS-fallback resilience, so no extra error
+    // handling is needed here beyond catching a hard throw.
+    let ruleGroupMatchedIds: Set<string> | null = null;
+    if (!matchError && ruleGroup) {
+     try {
+      const { SegmentationCompiler } = await import('@/lib/intelligence/SegmentationCompiler');
+      const ruleMatches = await SegmentationCompiler.executeSegment(data.workspace_id, ruleGroup);
+      ruleGroupMatchedIds = new Set(ruleMatches.map((c: any) => c.id));
+     } catch (ruleErr) {
+      matchError = ruleErr;
      }
+    }
+
+    // Combine per combineMode. Only one of the two sets present -> use it
+    // alone unchanged (this is what keeps existing tag-only campaigns
+    // resolving identically to before this change).
+    let matchedContactIds: Set<string>;
+    if (tagMatchedIds && ruleGroupMatchedIds) {
+     matchedContactIds = combineMode === 'OR'
+      ? new Set([...tagMatchedIds, ...ruleGroupMatchedIds])
+      : new Set([...tagMatchedIds].filter((cid) => ruleGroupMatchedIds!.has(cid)));
+    } else {
+     matchedContactIds = tagMatchedIds || ruleGroupMatchedIds || new Set<string>();
     }
 
     if (matchError) {

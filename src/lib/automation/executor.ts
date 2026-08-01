@@ -15,13 +15,22 @@ import { resolveWinningBranch } from "./condition_evaluator";
 import { cyrb53 } from "@/lib/utils";
 import { logger } from "@/shared/logger";
 
+// Logging is observability, not business logic — a broken log transport
+// (e.g. pino's worker-thread transport dying) must never be able to abort
+// step execution or, worse, escape the catch block that's supposed to be
+// the safety net for a failed step. Every logger call on this critical
+// path goes through this instead of calling `logger` directly.
+function safeLog(fn: () => void) {
+ try { fn(); } catch { /* logging failure must not affect execution */ }
+}
+
 /**
  * Trigger point for all automations.
  * Fetches all active workflows for the given trigger type.
  */
 export async function triggerWorkflows(workspaceId: string, triggerType: string, contactId: string) {
  const supabase = createAdminClient();
- 
+
  const { data: workflows } = await supabase
   .from("workflows")
   .select("*")
@@ -50,7 +59,7 @@ async function startWorkflowExecution(workflow: any, contactId: string) {
  });
 
  if (error) {
-  logger.error({ err: error }, "executor.enrollment_rpc.failed");
+  safeLog(() => logger.error({ err: error }, "executor.enrollment_rpc.failed"));
   return;
  }
 
@@ -58,7 +67,7 @@ async function startWorkflowExecution(workflow: any, contactId: string) {
  if (executionId) {
   await processNextStep(executionId);
  } else {
-  logger.info({ workflowId: workflow.id, contactId }, "executor.workflow.queued_or_skipped");
+  safeLog(() => logger.info({ workflowId: workflow.id, contactId }, "executor.workflow.queued_or_skipped"));
  }
 }
 
@@ -76,7 +85,7 @@ export async function processNextStep(executionId: string, depth = 0) {
  const supabase = createAdminClient();
 
  if (depth > MAX_WORKFLOW_STEP_DEPTH) {
-  logger.error({ executionId, depth }, 'executor.loop_protection.triggered');
+  safeLog(() => logger.error({ executionId, depth }, 'executor.loop_protection.triggered'));
   await supabase.from('workflow_executions').update({
    status: 'failed',
    error_message: `Loop protection triggered: workflow exceeded ${MAX_WORKFLOW_STEP_DEPTH} chained steps in a single run.`,
@@ -102,7 +111,7 @@ export async function processNextStep(executionId: string, depth = 0) {
    context: { ...execution.context, termination_reason: 'goal_achieved' }
   }).eq("id", executionId);
   
-  logger.info({ contactId: execution.contact_id, workflowId: execution.workflow_id }, "executor.termination.goal_met");
+  safeLog(() => logger.info({ contactId: execution.contact_id, workflowId: execution.workflow_id }, "executor.termination.goal_met"));
   return;
  }
 
@@ -255,7 +264,7 @@ export async function processNextStep(executionId: string, depth = 0) {
    const winner = resolveWinningBranch(branches, contact);
    const chosenBranch = winner?.name ?? 'Default';
 
-   logger.info({ chosenBranch, contactId: execution.contact_id }, "executor.route.branch_matched");
+   safeLog(() => logger.info({ chosenBranch, contactId: execution.contact_id }, "executor.route.branch_matched"));
    
    await updateLog({ 
     status: 'completed', 
@@ -349,7 +358,7 @@ export async function processNextStep(executionId: string, depth = 0) {
   }
 
  } catch (err: any) {
-  logger.error({ err, stepType: step.type }, "executor.step.failed");
+  safeLog(() => logger.error({ err, stepType: step.type }, "executor.step.failed"));
   await updateLog({ status: 'failed', error_message: err.message, completed_at: new Date().toISOString() });
 
   await supabase.from("workflow_executions").update({ 

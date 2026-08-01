@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useFormBuilder, FieldType } from './FormBuilderContext';
 import { StepManager } from './StepManager';
 import { IntelligenceBuilder } from './IntelligenceBuilder';
-import { Type, Mail, Phone, AlignLeft, ChevronDown, CheckSquare, Search, LayoutGrid, Layers, Settings2, UploadCloud, PenTool, CreditCard, Link2, Plus, Check, User } from 'lucide-react';
+import { TagOnSubmitPicker } from './TagOnSubmitPicker';
+import { Type, Mail, Phone, AlignLeft, ChevronDown, CheckSquare, Search, LayoutGrid, Layers, Tag as TagIcon, UploadCloud, PenTool, CreditCard, Link2, Plus, Check, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LibraryField {
@@ -81,12 +82,12 @@ export function BuilderSidebar() {
     <div className="builder-panel w-[280px] flex flex-col">
 
       {/* Sidebar Navigation Tabs */}
-      <div className="flex border border-dash-border bg-white p-1 m-2.5 rounded-xl">
+      <div className="flex gap-0.5 border border-dash-border bg-dash-surface p-1 m-2.5 rounded-xl shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]">
         <button
           onClick={() => setActiveTab('fields')}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none",
-            activeTab === 'fields' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'
+            "flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none",
+            activeTab === 'fields' ? 'bg-dash-accent text-white shadow-[0_4px_12px_rgba(19,89,255,0.28)]' : '!text-dash-textMuted hover:!text-dash-text hover:bg-white'
           )}
         >
           <LayoutGrid size={12} /> Fields
@@ -94,8 +95,8 @@ export function BuilderSidebar() {
         <button
           onClick={() => setActiveTab('steps')}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none",
-            activeTab === 'steps' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'
+            "flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none",
+            activeTab === 'steps' ? 'bg-dash-accent text-white shadow-[0_4px_12px_rgba(19,89,255,0.28)]' : '!text-dash-textMuted hover:!text-dash-text hover:bg-white'
           )}
         >
           <Layers size={12} /> Steps
@@ -103,11 +104,11 @@ export function BuilderSidebar() {
         <button
           onClick={() => setActiveTab('config')}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none",
-            activeTab === 'config' ? 'bg-dash-accent text-white shadow-md' : '!text-dash-textMuted hover:!text-dash-text'
+            "flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold rounded-lg transition-all duration-150 motion-reduce:transition-none",
+            activeTab === 'config' ? 'bg-dash-accent text-white shadow-[0_4px_12px_rgba(19,89,255,0.28)]' : '!text-dash-textMuted hover:!text-dash-text hover:bg-white'
           )}
         >
-          <Settings2 size={12} /> Config
+          <TagIcon size={12} /> Tags
         </button>
       </div>
 
@@ -224,6 +225,7 @@ export function BuilderSidebar() {
 
       {activeTab === 'config' && (
         <div className="builder-panel__body custom-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-4 flex flex-col gap-8">
+          <TagOnSubmitPicker />
           <IntelligenceBuilder />
         </div>
       )}

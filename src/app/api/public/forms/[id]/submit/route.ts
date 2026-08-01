@@ -387,6 +387,23 @@ export async function POST(
       }
     }
 
+    // 4.5 Apply the form's configured "tag on submit" tag, if any. Additive
+    // only — a form owner configuring this in the builder shouldn't cost the
+    // submission itself if the tag was since deleted or the write fails for
+    // any other reason, so this never throws or blocks the response below.
+    const tagOnSubmitId = (form.config as any)?.tagOnSubmit?.tagId;
+    if (tagOnSubmitId && contactId) {
+      const { error: tagAssignError } = await supabase
+        .from('tag_assignments')
+        .upsert(
+          { workspace_id: workspace_id, tag_id: tagOnSubmitId, entity_type: 'contact', entity_id: contactId },
+          { onConflict: 'tag_id,entity_type,entity_id', ignoreDuplicates: true }
+        );
+      if (tagAssignError) {
+        console.error('[Public Submit] Tag-on-submit assignment failed (non-fatal):', tagAssignError);
+      }
+    }
+
     // 4. Insert the form submission record first — the activity logged just
     // below references its id, so an activity can never exist without a
     // corresponding submission row. (Full three-way transaction — contact

@@ -17,10 +17,9 @@ export default async function AutomationDashboardPage() {
     );
   }
 
-  const { workflows, executions, failures } = data;
+  const { workflows, executions, failures, totalExecutions } = data;
 
   const activeWorkflows = workflows.filter((w: any) => w.is_active).length;
-  const totalExecutions = workflows.reduce((acc: number, w: any) => acc + w.execution_count, 0);
 
   return (
     <Wrapper>
@@ -34,9 +33,9 @@ export default async function AutomationDashboardPage() {
             </h1>
             <p className="!text-dash-textMuted">Operational orchestration connecting Forms, CRM, and intelligence workflows.</p>
           </div>
-          <button className="px-6 py-3 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl font-bold transition-colors motion-reduce:transition-none shadow-lg shadow-dash-accent/20">
+          <Link href="/automations/new" className="px-6 py-3 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl font-bold transition-colors motion-reduce:transition-none shadow-lg shadow-dash-accent/20">
             Create workflow
-          </button>
+          </Link>
         </div>
 
         {/* KPIs */}

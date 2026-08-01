@@ -27,6 +27,9 @@ export const EVENT_TRIGGERS = {
   TAG_UPDATED: 'tag_updated',
   TAG_EXPIRED: 'tag_expired',
   TAG_CONFIDENCE_CHANGED: 'tag_confidence_changed',
+  CONTACT_CREATED: 'contact_created',
+  APPOINTMENT_BOOKED: 'appointment_booked',
+  INVOICE_PAID: 'invoice_paid',
 } as const;
 
 export type EventTriggerType = typeof EVENT_TRIGGERS[keyof typeof EVENT_TRIGGERS];
@@ -40,10 +43,17 @@ export async function publishEvent(
   contactId: string,
   payload: any = {}
 ) {
-  logger.info({ eventType, contactId, workspaceId }, "event_bus.publishing");
+  // Logging is observability, not business logic — a broken log transport
+  // (e.g. pino's worker-thread transport dying) must never be able to abort
+  // event dispatch or mask a real triggerWorkflows failure.
+  try {
+    logger.info({ eventType, contactId, workspaceId }, "event_bus.publishing");
+  } catch { /* logging failure must not block dispatch */ }
 
   // Non-blocking asynchronous trigger
   triggerWorkflows(workspaceId, eventType, contactId).catch((err) => {
-    logger.error({ err, eventType }, "event_bus.trigger_workflows.failed");
+    try {
+      logger.error({ err, eventType }, "event_bus.trigger_workflows.failed");
+    } catch { /* logging failure must not mask the real error */ }
   });
 }

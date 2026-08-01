@@ -15,19 +15,19 @@ export default async function ExecutionHistoryPage() {
 
   // Fetch full execution history
   const { data: executions } = await supabase
-    .from('workflow_execution_logs')
-    .select('*, automation_workflows(name)')
+    .from('workflow_executions')
+    .select('*, workflows(name, trigger_type)')
     .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: false })
+    .order('started_at', { ascending: false })
     .limit(100);
 
-  // Fetch unresolved failures for the dead letter queue view
+  // Fetch failed executions for the dead letter queue view
   const { data: failures } = await supabase
-    .from('workflow_failures')
-    .select('*, automation_workflows!inner(name, workspace_id), workflow_execution_logs!inner(trigger_event)')
-    .eq('automation_workflows.workspace_id', workspaceId)
-    .eq('is_resolved', false)
-    .order('created_at', { ascending: false });
+    .from('workflow_executions')
+    .select('*, workflows!inner(name, workspace_id)')
+    .eq('workspace_id', workspaceId)
+    .eq('status', 'failed')
+    .order('started_at', { ascending: false });
 
   return (
     <Wrapper>
@@ -56,7 +56,7 @@ export default async function ExecutionHistoryPage() {
               {failures.map((failure: any) => (
                 <div key={failure.id} className="bg-white border border-red-200 rounded-2xl p-4 flex items-start justify-between shadow-sm">
                   <div>
-                    <h4 className="font-bold !text-dash-text text-sm">Failed: {failure.automation_workflows?.name}</h4>
+                    <h4 className="font-bold !text-dash-text text-sm">Failed: {failure.workflows?.name || 'Deleted workflow'}</h4>
                     <p className="text-xs text-red mt-1 font-mono bg-dash-surface p-2 rounded inline-block">
                       Error: {failure.error_message}
                     </p>
@@ -93,14 +93,14 @@ export default async function ExecutionHistoryPage() {
                     </div>
                     <div>
                       <h4 className="font-bold !text-dash-text text-sm">
-                        {log.automation_workflows?.name || 'Deleted workflow'}
+                        {log.workflows?.name || 'Deleted workflow'}
                       </h4>
                       <div className="flex items-center gap-3 text-xs !text-dash-textMuted mt-1 font-bold">
-                        <span className="!text-dash-text">{log.trigger_event.replace(/_/g, ' ')}</span>
+                        <span className="!text-dash-text">{(log.workflows?.trigger_type || 'unknown').replace(/_/g, ' ')}</span>
                         <span>•</span>
-                        <span>{log.entity_type} {log.entity_id.split('-')[0]}</span>
+                        <span>contact {log.contact_id?.split('-')[0]}</span>
                         <span>•</span>
-                        <span>{new Date(log.created_at).toLocaleString()}</span>
+                        <span>{new Date(log.started_at).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>

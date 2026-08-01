@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toggleWorkflowActive, deleteWorkflow, seedSARecipes } from '@/app/actions/automation-workspace';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import Link from 'next/link';
 
 export function WorkflowBuilder({ workflows }: { workflows: any[] }) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -64,7 +65,7 @@ export function WorkflowBuilder({ workflows }: { workflows: any[] }) {
       <div className="bg-white border border-dash-border rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
         <div>
           <h4 className="text-sm font-bold !text-dash-text mb-1">South African automation sequences</h4>
-          <p className="text-xs !text-dash-textMuted">Instantly load specialized sequences for Overdue Invoices, SARS Deadlines, and LMS recovery loops.</p>
+          <p className="text-xs !text-dash-textMuted">Instantly load a specialized LMS quiz-recovery sequence.</p>
         </div>
         <button
           onClick={handleSeed}
@@ -81,9 +82,9 @@ export function WorkflowBuilder({ workflows }: { workflows: any[] }) {
           <Settings size={48} className="!text-dash-textMuted mx-auto mb-4 opacity-30" />
           <h3 className="text-xl font-bold !text-dash-text mb-2">No active workflows</h3>
           <p className="!text-dash-textMuted mb-6">Create deterministic operational flows to automate your pipeline.</p>
-          <button className="px-6 py-3 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl font-bold transition-colors motion-reduce:transition-none inline-flex items-center gap-2 shadow-lg shadow-dash-accent/20">
+          <Link href="/automations/new" className="px-6 py-3 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl font-bold transition-colors motion-reduce:transition-none inline-flex items-center gap-2 shadow-lg shadow-dash-accent/20">
             <Plus size={18} /> Build first workflow
-          </button>
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
