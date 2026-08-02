@@ -90,6 +90,9 @@ export const STEP_TYPES: ActionDef[] = [
       { value: 'member', label: 'Member' }, { value: 'moderator', label: 'Moderator' }, { value: 'admin', label: 'Admin' },
     ]},
   ]},
+  { value: 'send_whatsapp', label: 'Send WhatsApp message', fields: [
+    { key: 'body', label: 'Message', type: 'textarea', required: true, hint: 'Supports {{contact.field}} tokens, e.g. {{contact.first_name}}.' },
+  ]},
   { value: 'send_whatsapp_template', label: 'Send WhatsApp template', fields: [
     { key: 'templateName', label: 'Template name', type: 'text', required: true },
     { key: 'languageCode', label: 'Language code', type: 'text', placeholder: 'en' },

@@ -210,6 +210,43 @@ export const AutomationActions = {
    await send_whatsapp_template(workspaceId, contactId, config);
   },
 
+  send_whatsapp: async (workspaceId: string, contactId: string, config: any) => {
+   const supabase = createAdminClient();
+
+   const { data: contact, error: fetchError } = await supabase
+    .from("contacts")
+    .select("*")
+    .eq("id", contactId)
+    .single();
+
+   if (fetchError) throw fetchError;
+   if (!contact) throw new Error(`send_whatsapp: contact ${contactId} not found`);
+   if (!contact.phone) throw new Error("Contact has no phone number");
+
+   const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number")
+    .eq("id", workspaceId)
+    .single();
+
+   // Same Liquid-style token replacement convention as send_webhook/send_invoice.
+   const replaceTokens = (str: string) => {
+    return str.replace(/\{\{contact\.([^}]+)\}\}/g, (_, field) => (contact as any)[field] ?? "");
+   };
+
+   const cleanPhone = contact.phone.startsWith("+") ? contact.phone : `+${contact.phone}`;
+   const bodyText = replaceTokens(config.body || "");
+
+   await sendSMS({
+    to: `whatsapp:${cleanPhone}`,
+    message: bodyText,
+    config: {
+     ...resolveWorkspaceTwilioCredentials(workspace),
+     fromNumber: `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`,
+    }
+   });
+  },
+
  lms_update_progress: async (workspaceId: string, contactId: string, config: any) => {
   const { lessonId, completed } = config;
   if (!lessonId) return;
