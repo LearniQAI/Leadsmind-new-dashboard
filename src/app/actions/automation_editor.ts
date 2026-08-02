@@ -5,6 +5,29 @@ import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+// Reused by seedSARecipes() (automation-workspace.ts) so seed-inserted
+// recipes get the same edge wiring a user gets by saving a plain,
+// non-branching step sequence through this editor. A workflow with steps
+// but no workflow_edges row between them stops after the first step —
+// executor.ts's progression lookup has no position-based fallback, only
+// this table (confirmed live: seedSARecipes' 2-step recipe never ran its
+// second step until this helper was reused here).
+export async function insertSequentialEdge(
+  supabase: any,
+  workspaceId: string,
+  workflowId: string,
+  sourceStepId: string,
+  targetStepId: string
+) {
+  return supabase.from('workflow_edges').insert({
+    workflow_id: workflowId,
+    workspace_id: workspaceId,
+    source_step_id: sourceStepId,
+    target_step_id: targetStepId,
+    source_handle: 'next',
+  });
+}
+
 // ---------- Reference data for the editor's entity pickers ----------
 export async function getEditorReferenceData() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -193,9 +216,7 @@ export async function saveWorkflowEditor(payload: SaveWorkflowPayload) {
     // here fails every plain-sequencing edge insert with a 23502 constraint
     // violation) -- executor.ts's standard-progression lookup doesn't filter
     // on this column at all, so any non-null placeholder is correct.
-    const { error: seqEdgeError } = await supabase.from('workflow_edges').insert({
-      workflow_id: payload.id, workspace_id: workspaceId, source_step_id: sourceStepId, target_step_id: targetStepId, source_handle: 'next',
-    });
+    const { error: seqEdgeError } = await insertSequentialEdge(supabase, workspaceId, payload.id, sourceStepId, targetStepId);
     if (seqEdgeError) return { success: false as const, error: 'Failed to save step sequencing' };
   }
 

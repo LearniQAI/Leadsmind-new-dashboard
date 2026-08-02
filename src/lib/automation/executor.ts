@@ -336,9 +336,17 @@ export async function processNextStep(executionId: string, depth = 0) {
 
   // Standard Actions
   const handler = (AutomationActions as any)[step.type];
-  if (handler) {
-   await handler(execution.workspace_id, execution.contact_id, step.config);
+  if (!handler) {
+   // Was previously `if (handler) { await handler(...) }` -- a step type
+   // with no registered action silently did nothing, then fell through to
+   // the same "completed" progression logic below as a real successful
+   // step, with no error anywhere. Same "reports success while doing
+   // nothing" failure mode already fixed for apply_tag/create_opportunity/
+   // etc. -- fail loudly instead, caught by the try/catch below and logged
+   // as a real failed step, same as any other action throwing.
+   throw new Error(`Unknown action type '${step.type}' — no handler registered in AutomationActions`);
   }
+  await handler(execution.workspace_id, execution.contact_id, step.config);
 
   // ── PROGRESSION ──────────────────────────────────────────────────────────
   await updateLog({ status: 'completed', completed_at: new Date().toISOString() });
