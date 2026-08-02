@@ -91,10 +91,8 @@ export async function markLessonComplete(courseId: string, lessonId: string) {
 
     // Hook telemetry triggers
     try {
-      const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
-      await emitLMSEvent('lesson.completed', {
-        workspaceId,
-        contactId,
+      const { publishEvent } = await import('@/lib/events/EventBus');
+      await publishEvent(workspaceId, 'lesson_completed', contactId, {
         courseId,
         lessonId
       });
@@ -120,9 +118,7 @@ export async function markLessonComplete(courseId: string, lessonId: string) {
           .in('lesson_id', (moduleLessons || []).map(l => l.id));
 
         if (completedLessons && completedLessons.length === moduleLessons?.length) {
-          await emitLMSEvent('section.completed', {
-            workspaceId,
-            contactId,
+          await publishEvent(workspaceId, 'module_completed', contactId, {
             courseId,
             moduleId: lesson.module_id
           });
@@ -142,9 +138,7 @@ export async function markLessonComplete(courseId: string, lessonId: string) {
         .eq('course_id', courseId);
 
       if (allCompletedCourseLessons && allCompletedCourseLessons.length === allCourseLessons?.length) {
-        await emitLMSEvent('course.completed', {
-          workspaceId,
-          contactId,
+        await publishEvent(workspaceId, 'course_completed', contactId, {
           courseId
         });
       }

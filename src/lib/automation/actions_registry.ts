@@ -88,40 +88,52 @@ export const AutomationActions = {
   }
 
   const supabase = createAdminClient();
-  
-  // Fetch contact with workspace security check
-  const { data: contact, error: fetchError } = await supabase
-   .from("contacts")
-   .select("tags")
-   .eq("id", contactId)
-   .eq("workspace_id", workspaceId)
-   .single();
-
-  if (fetchError) throw fetchError;
-  if (!contact) {
-   throw new Error(`apply_tag: contact ${contactId} not found in workspace ${workspaceId}`);
-  }
-
-  const currentTags = contact.tags || [];
   const tagName = config.tag.trim();
-  
-  if (currentTags.includes(tagName)) return; // Tag already exists
 
-  const newTags = [...currentTags, tagName];
-
-  const { error } = await supabase
-   .from("contacts")
-   .update({ tags: newTags })
-   .eq("id", contactId)
-   .eq("workspace_id", workspaceId);
+  // Atomic append+dedupe in a single UPDATE (no read-then-write window for
+  // a concurrent call to race against — see add_contact_tag_atomic).
+  const { data: newTags, error } = await supabase.rpc('add_contact_tag_atomic', {
+   p_contact_id: contactId,
+   p_workspace_id: workspaceId,
+   p_tag: tagName
+  });
 
   if (error) throw error;
+  if (!newTags) {
+   throw new Error(`apply_tag: contact ${contactId} not found in workspace ${workspaceId}`);
+  }
 
   syncContactTagsToRelational(workspaceId, contactId, newTags).catch(() => {});
  },
 
  add_tag: async (workspaceId: string, contactId: string, config: any) => {
   return (AutomationActions as any).apply_tag(workspaceId, contactId, config);
+ },
+
+ // Was referenced by the "LMS Course Recoveries" seed recipe's second step
+ // but had no handler here at all -- executor.ts's `if (handler) {...}`
+ // silently skips execution (and still marks the step 'completed') when a
+ // step type has no registered action, so this step never did anything.
+ // Mirrors CRMActionHandler.ts's createTask (a separate, Engine-B-only
+ // action dispatcher) with one correction: that version also writes a
+ // `priority` field, but contact_tasks has no such column (confirmed
+ // against every migration that ever touches this table) -- copying it
+ // here would just make every create_task insert fail.
+ create_task: async (workspaceId: string, contactId: string, config: any) => {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+   .from("contact_tasks")
+   .insert({
+    workspace_id: workspaceId,
+    contact_id: contactId,
+    title: config?.title || 'Workflow Task',
+    description: config?.description || 'Automatically created by LeadsMind workflow',
+    status: 'todo',
+    due_date: config?.dueDate || new Date(Date.now() + 86400000 * 2).toISOString()
+   });
+
+  if (error) throw error;
  },
 
  lead_score: async (workspaceId: string, contactId: string) => {
@@ -131,27 +143,18 @@ export const AutomationActions = {
  update_lead_score: async (workspaceId: string, contactId: string, config: any) => {
   const { points = 1 } = config;
   const supabase = createAdminClient();
-  
-  // Use an atomic update via RPC if possible, but here we can just update
-  // since we are in a server action context. Note: SQL increment is safer.
-  const { data: contact, error: fetchError } = await supabase
-   .from("contacts")
-   .select("lead_score")
-   .eq("id", contactId)
-   .single();
 
-  if (fetchError) throw fetchError;
-  if (!contact) throw new Error(`update_lead_score: contact ${contactId} not found`);
-
-  const currentScore = contact.lead_score || 0;
-  const newScore = currentScore + Number(points);
-
-  const { error } = await supabase
-   .from("contacts")
-   .update({ lead_score: newScore })
-   .eq("id", contactId);
+  // Atomic increment in a single UPDATE (see increment_contact_lead_score) —
+  // same read-then-write race as apply_tag existed here, just on lead_score
+  // instead of tags.
+  const { data, error } = await supabase.rpc('increment_contact_lead_score', {
+   p_contact_id: contactId,
+   p_points: Number(points)
+  });
 
   if (error) throw error;
+  const row = data?.[0];
+  if (!row?.found) throw new Error(`update_lead_score: contact ${contactId} not found`);
  },
 
  set_grade_tag: async (workspaceId: string, contactId: string, config: any) => {
@@ -205,6 +208,43 @@ export const AutomationActions = {
   send_whatsapp_template: async (workspaceId: string, contactId: string, config: any) => {
    const { send_whatsapp_template } = await import("./lms_actions");
    await send_whatsapp_template(workspaceId, contactId, config);
+  },
+
+  send_whatsapp: async (workspaceId: string, contactId: string, config: any) => {
+   const supabase = createAdminClient();
+
+   const { data: contact, error: fetchError } = await supabase
+    .from("contacts")
+    .select("*")
+    .eq("id", contactId)
+    .single();
+
+   if (fetchError) throw fetchError;
+   if (!contact) throw new Error(`send_whatsapp: contact ${contactId} not found`);
+   if (!contact.phone) throw new Error("Contact has no phone number");
+
+   const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number")
+    .eq("id", workspaceId)
+    .single();
+
+   // Same Liquid-style token replacement convention as send_webhook/send_invoice.
+   const replaceTokens = (str: string) => {
+    return str.replace(/\{\{contact\.([^}]+)\}\}/g, (_, field) => (contact as any)[field] ?? "");
+   };
+
+   const cleanPhone = contact.phone.startsWith("+") ? contact.phone : `+${contact.phone}`;
+   const bodyText = replaceTokens(config.body || "");
+
+   await sendSMS({
+    to: `whatsapp:${cleanPhone}`,
+    message: bodyText,
+    config: {
+     ...resolveWorkspaceTwilioCredentials(workspace),
+     fromNumber: `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`,
+    }
+   });
   },
 
  lms_update_progress: async (workspaceId: string, contactId: string, config: any) => {

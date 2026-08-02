@@ -2,17 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { ArrowLeft, Settings2, Sliders, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { WorkflowList } from './components/WorkflowList';
 import { WorkflowEditor } from './components/WorkflowEditor';
 import { ExecutionLogs } from './components/ExecutionLogs';
+import { getFormAutomationsData, createFormWorkflow, toggleFormWorkflowActive, deleteFormWorkflow } from '@/app/actions/marketing';
 
 export default function AutomationsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
   const [workflows, setWorkflows] = useState<any[]>([]);
@@ -28,23 +27,18 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
 
   const loadData = async () => {
     try {
-      const { data: formData } = await supabase
-        .from('forms')
-        .select('name, workspace_id')
-        .eq('id', params.id)
-        .single();
-
-      if (formData) {
-        setForm(formData);
+      // Goes through requireFormAccess (owner OR active collaborator) —
+      // previously an ungated direct Supabase query, open to any
+      // authenticated user regardless of workspace/collaborator status.
+      const res = await getFormAutomationsData(params.id);
+      if (res.error || !res.data) {
+        console.error('[AutomationsPage] Failed to fetch workflows:', res.error);
+        return;
       }
 
-      const { data: wfs } = await supabase
-        .from('workflows')
-        .select('*, steps:workflow_steps(count)')
-        .eq('form_id', params.id)
-        .order('created_at', { ascending: false });
+      setForm(res.data.form);
 
-      const mappedWfs = (wfs || []).map((w: any) => ({
+      const mappedWfs = res.data.workflows.map((w: any) => ({
         ...w,
         steps_count: w.steps?.[0]?.count || 0
       }));
@@ -62,29 +56,17 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
 
   useEffect(() => {
     loadData();
-  }, [params.id, supabase]);
+  }, [params.id]);
 
   const handleCreateWorkflow = async () => {
     if (!form) return;
     try {
-      const { data: newWf, error } = await supabase
-        .from('workflows')
-        .insert({
-          form_id: params.id,
-          workspace_id: form.workspace_id,
-          name: `New Workflow ${workflows.length + 1}`,
-          trigger_type: 'form_submitted',
-          trigger_config: {},
-          is_active: false
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const res = await createFormWorkflow(params.id, `New Workflow ${workflows.length + 1}`);
+      if (res.error || !res.data) throw new Error(res.error || 'Failed to create new workflow');
 
       toast.success('New workflow created!');
-      setWorkflows([newWf, ...workflows]);
-      setSelectedWorkflowId(newWf.id);
+      setWorkflows([res.data, ...workflows]);
+      setSelectedWorkflowId(res.data.id);
     } catch (err: any) {
       toast.error(err.message || 'Failed to create new workflow');
     }
@@ -92,12 +74,8 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('workflows')
-        .update({ is_active: !currentStatus })
-        .eq('id', id);
-
-      if (error) throw error;
+      const res = await toggleFormWorkflowActive(params.id, id, !currentStatus);
+      if (res.error) throw new Error(res.error);
 
       setWorkflows(prev =>
         prev.map(w => (w.id === id ? { ...w, is_active: !currentStatus } : w))
@@ -116,8 +94,8 @@ export default function AutomationsPage({ params }: { params: { id: string } }) 
       confirmLabel: 'Delete',
       onConfirm: async () => {
         try {
-          const { error } = await supabase.from('workflows').delete().eq('id', id).eq('workspace_id', form.workspace_id);
-          if (error) throw error;
+          const res = await deleteFormWorkflow(params.id, id);
+          if (res.error) throw new Error(res.error);
 
           setWorkflows(prev => prev.filter(w => w.id !== id));
           if (selectedWorkflowId === id) {

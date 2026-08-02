@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { ArrowLeft, Users, MousePointerClick, TrendingUp, AlertTriangle, Filter, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DashCard } from '@/components/dashboard-ui/Card';
+import { getFormAnalyticsAccessData } from '@/app/actions/marketing';
 
 export default function FormAnalyticsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
 
@@ -29,8 +28,11 @@ export default function FormAnalyticsPage({ params }: { params: { id: string } }
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('forms').select('name, id').eq('id', params.id).single();
-      setForm(data);
+      // Goes through requireFormAccess (owner OR active collaborator) —
+      // previously an ungated direct Supabase query, open to any
+      // authenticated user regardless of workspace/collaborator status.
+      const res = await getFormAnalyticsAccessData(params.id);
+      setForm(res.data ?? null);
       setLoading(false);
     }
     load();

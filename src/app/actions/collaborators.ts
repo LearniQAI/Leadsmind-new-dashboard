@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, requireFormAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
 import type { InviteActionResponse } from '@/types/invitation.types';
@@ -20,14 +20,19 @@ export async function inviteFormCollaborator({
   role: 'editor' | 'viewer';
 }): Promise<InviteActionResponse> {
   try {
-    const supabase = await createServerClient();
     const adminSupabase = createAdminClient();
-    
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    if (!currentUser) return { error: 'Unauthorized' };
 
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No active workspace' };
+    // Owner/workspace-member only ('manage') — an editor collaborator must
+    // not be able to invite other collaborators, regardless of role.
+    let currentUser: { id: string; email: string | null };
+    let workspaceId: string;
+    try {
+      const access = await requireFormAccess(formId, 'manage');
+      currentUser = { id: access.userId, email: access.userEmail };
+      workspaceId = access.workspaceId;
+    } catch (accessError: any) {
+      return { error: accessError.message || 'Unauthorized' };
+    }
 
     const targetEmail = email.trim().toLowerCase();
     if (!targetEmail.includes('@')) return { error: 'Invalid email address' };
@@ -66,6 +71,7 @@ export async function inviteFormCollaborator({
       .from('form_collaborators')
       .upsert({
         form_id: formId,
+        workspace_id: workspaceId,
         invited_by: currentUser.id,
         email: targetEmail,
         role: role,
@@ -142,28 +148,41 @@ export async function inviteFormCollaborator({
 
 export async function acceptFormInvitation(collabId: string): Promise<InviteActionResponse> {
   try {
+    const supabase = await createServerClient();
     const adminSupabase = createAdminClient();
-    const workspaceId = await getCurrentWorkspaceId();
 
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser?.email) return { error: 'Unauthorized' };
+
+    // Cross-workspace by design: the invitee is being invited INTO someone
+    // else's workspace to collaborate on a specific form, so they are not
+    // (and should not need to be) a member of that workspace themselves.
+    // Scoping this lookup by the invitee's own getCurrentWorkspaceId() (as
+    // the 6 other call sites in this file do for owner-initiated actions)
+    // made every real cross-workspace accept silently fail with "Invitation
+    // not found" — confirmed live. Authorize by matching the invite's own
+    // email to the logged-in user's email instead.
     const { data: existing } = await adminSupabase
       .from('form_collaborators')
       .select('id, status, form_id, email')
-      .eq("id", collabId).eq("workspace_id", workspaceId)
+      .eq("id", collabId)
       .single();
 
-    if (!existing) return { error: 'Invitation not found.' };
+    if (!existing || existing.email.toLowerCase() !== currentUser.email.toLowerCase()) {
+      return { error: 'Invitation not found.' };
+    }
     if (existing.status === 'active') return { error: 'This invitation has already been accepted.' };
     if (existing.status !== 'pending') return { error: 'This invitation is no longer valid.' };
 
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ status: 'active' })
-      .eq("id", collabId).eq("workspace_id", workspaceId);
+      .eq("id", collabId);
 
     if (error) throw error;
 
     revalidatePath('/forms');
-    return { success: true };
+    return { success: true, data: { formId: existing.form_id } };
   } catch (error: any) {
     logger.error({ err: error, collabId }, 'collaborators.invitation.accept.failed');
     const clientError = toClientError(error);
@@ -173,22 +192,29 @@ export async function acceptFormInvitation(collabId: string): Promise<InviteActi
 
 export async function declineFormInvitation(collabId: string): Promise<InviteActionResponse> {
   try {
+    const supabase = await createServerClient();
     const adminSupabase = createAdminClient();
-    const workspaceId = await getCurrentWorkspaceId();
 
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser?.email) return { error: 'Unauthorized' };
+
+    // Same cross-workspace reasoning as acceptFormInvitation above --
+    // scope by the invite's own email, not the invitee's workspace.
     const { data: existing } = await adminSupabase
       .from('form_collaborators')
-      .select('id, status')
-      .eq("id", collabId).eq("workspace_id", workspaceId)
+      .select('id, status, email')
+      .eq("id", collabId)
       .single();
 
-    if (!existing) return { error: 'Invitation not found.' };
+    if (!existing || existing.email.toLowerCase() !== currentUser.email.toLowerCase()) {
+      return { error: 'Invitation not found.' };
+    }
     if (existing.status !== 'pending') return { error: 'Can only decline pending invitations.' };
 
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ status: 'declined' })
-      .eq("id", collabId).eq("workspace_id", workspaceId);
+      .eq("id", collabId);
 
     if (error) throw error;
 
@@ -264,6 +290,15 @@ export async function resendFormInvitation(collabId: string, formId: string): Pr
 
 export async function getFormCollaborators(formId: string) {
   try {
+    // Owner/workspace-member only ('manage') — this lists every
+    // collaborator's email for the form; previously used the admin client
+    // with zero authorization check at all.
+    try {
+      await requireFormAccess(formId, 'manage');
+    } catch (accessError: any) {
+      return { error: accessError.message || 'Unauthorized' };
+    }
+
     const adminSupabase = createAdminClient();
     const { data, error } = await adminSupabase
       .from('form_collaborators')
@@ -281,15 +316,23 @@ export async function getFormCollaborators(formId: string) {
 
 export async function removeFormCollaborator(collabId: string, formId: string) {
   try {
+    // Owner/workspace-member only ('manage') — an editor collaborator must
+    // not be able to remove other collaborators, regardless of role.
+    let workspaceId: string;
+    try {
+      ({ workspaceId } = await requireFormAccess(formId, 'manage'));
+    } catch (accessError: any) {
+      return { error: accessError.message || 'Unauthorized' };
+    }
+
     const adminSupabase = createAdminClient();
-    const workspaceId = await getCurrentWorkspaceId();
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ status: 'removed' })
       .eq("id", collabId).eq("workspace_id", workspaceId);
 
     if (error) throw error;
-    
+
     revalidatePath('/forms');
     revalidatePath(`/forms/${formId}/governance`);
     return { success: true };
@@ -302,8 +345,17 @@ export async function removeFormCollaborator(collabId: string, formId: string) {
 
 export async function updateFormCollaboratorRole(collabId: string, role: 'editor' | 'viewer', formId: string) {
   try {
+    // Owner/workspace-member only ('manage') — an editor collaborator must
+    // not be able to change another collaborator's role, regardless of
+    // their own role.
+    let workspaceId: string;
+    try {
+      ({ workspaceId } = await requireFormAccess(formId, 'manage'));
+    } catch (accessError: any) {
+      return { error: accessError.message || 'Unauthorized' };
+    }
+
     const adminSupabase = createAdminClient();
-    const workspaceId = await getCurrentWorkspaceId();
     const { error } = await adminSupabase
       .from('form_collaborators')
       .update({ role })

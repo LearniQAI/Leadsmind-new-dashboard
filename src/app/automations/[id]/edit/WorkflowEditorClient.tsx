@@ -16,8 +16,17 @@ import { RouteBranchEditor, SplitEditor, RouteBranch } from '@/components/automa
 import { ReferenceData } from '@/components/automation/EntityPickers';
 import { saveWorkflowEditor } from '@/app/actions/automation_editor';
 
-// Full 28-value EVENT_TRIGGERS list from EventBus.ts, grouped by domain for
-// usability. Engine A only — no form_submitted/Engine-B trigger here.
+// Curated to only the trigger_type values that some real code path actually
+// calls EventBus.publishEvent(...) with (re-confirmed by grepping every
+// publishEvent call site) — not the full EVENT_TRIGGERS vocabulary. Listing
+// a trigger here that nothing ever publishes lets a user build a workflow
+// that silently never fires; see EVENT_TRIGGERS in EventBus.ts for the 8
+// registered-but-unpublished values deliberately excluded (cert_issued,
+// cert_expiring, course_expiring, student_inactive, assignment_submitted,
+// assignment_graded, live_session_booked, tag_confidence_changed) — none of
+// them have any supporting feature (no assignment-grading flow, no live-
+// session booking, no inactivity cron, no tag-confidence scoring) to wire a
+// publish call to yet. Engine A only — no form_submitted/Engine-B trigger.
 const TRIGGER_GROUPS: { label: string; options: { value: string; label: string }[] }[] = [
   { label: 'CRM / Contact', options: [
     { value: 'contact_created', label: 'Contact created' },
@@ -30,7 +39,6 @@ const TRIGGER_GROUPS: { label: string; options: { value: string; label: string }
     { value: 'tag_removed', label: 'Tag removed' },
     { value: 'tag_updated', label: 'Tag updated' },
     { value: 'tag_expired', label: 'Tag expired' },
-    { value: 'tag_confidence_changed', label: 'Tag confidence changed' },
   ]},
   { label: 'LMS / Course', options: [
     { value: 'student_enrolled_course', label: 'Student enrolled in course' },
@@ -41,17 +49,10 @@ const TRIGGER_GROUPS: { label: string; options: { value: string; label: string }
     { value: 'quiz_passed', label: 'Quiz passed' },
     { value: 'quiz_failed', label: 'Quiz failed' },
     { value: 'quiz_limit_reached', label: 'Quiz attempt limit reached' },
-    { value: 'cert_issued', label: 'Certificate issued' },
-    { value: 'cert_expiring', label: 'Certificate expiring' },
-    { value: 'course_expiring', label: 'Course access expiring' },
     { value: 'course_revoked', label: 'Course access revoked' },
-    { value: 'student_inactive', label: 'Student inactive' },
     { value: 'struggle_threshold_crossed', label: 'Struggle score threshold crossed' },
-    { value: 'assignment_submitted', label: 'Assignment submitted' },
-    { value: 'assignment_graded', label: 'Assignment graded' },
   ]},
   { label: 'Marketing / Payments', options: [
-    { value: 'live_session_booked', label: 'Live session booked' },
     { value: 'funnel_subscribed', label: 'Funnel form subscribed' },
     { value: 'payfast_payment_course', label: 'PayFast course payment received' },
   ]},

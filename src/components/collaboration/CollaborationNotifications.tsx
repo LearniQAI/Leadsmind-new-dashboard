@@ -17,9 +17,9 @@ interface CollabNotification {
 }
 
 const notificationConfig = {
-  active: { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Active' },
-  removed: { icon: UserX, color: 'text-rose-400', bg: 'bg-rose-500/10', label: 'Removed' },
-  resent: { icon: Send, color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'Resent' },
+  active: { icon: CheckCircle, color: 'text-success', bg: 'bg-success/10', label: 'Active' },
+  removed: { icon: UserX, color: 'text-red', bg: 'bg-red/10', label: 'Removed' },
+  resent: { icon: Send, color: 'text-dash-accent', bg: 'bg-dash-accent/10', label: 'Resent' },
 };
 
 function formatTime(dateStr: string) {
@@ -84,16 +84,16 @@ export function CollaborationNotifications() {
     <div className="flex flex-col gap-3">
       {notifications.length === 0 && !loading && (
         <div className="py-10 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 mx-auto mb-3 flex items-center justify-center">
-            <Bell size={20} className="text-t4 opacity-40" />
+          <div className="w-12 h-12 rounded-2xl bg-dash-surface border border-dash-border mx-auto mb-3 flex items-center justify-center">
+            <Bell size={20} className="!text-dash-textMuted opacity-60" />
           </div>
-          <p className="text-[11px] font-bold text-t3 uppercase tracking-widest">No collaboration updates</p>
+          <p className="text-[11px] font-bold !text-dash-textMuted uppercase tracking-widest">No collaboration updates</p>
         </div>
       )}
 
       {loading && (
         <div className="py-8 text-center">
-          <p className="text-[10px] font-bold text-t3 uppercase tracking-widest animate-pulse">Loading updates...</p>
+          <p className="text-[10px] font-bold !text-dash-textMuted uppercase tracking-widest animate-pulse">Loading updates...</p>
         </div>
       )}
 
@@ -105,8 +105,8 @@ export function CollaborationNotifications() {
             className={cn(
               'flex items-start gap-3 p-3.5 rounded-xl border transition-all',
               n.read
-                ? 'bg-[#04091a] border-white/5'
-                : 'bg-[#0b132c] border-blue-500/20'
+                ? 'bg-dash-surface border-dash-border'
+                : 'bg-white border-dash-accent/20 shadow-sm'
             )}
           >
             <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0', cfg.bg)}>
@@ -115,23 +115,23 @@ export function CollaborationNotifications() {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className={cn('text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded', cfg.bg, cfg.color)}>
+                <span className={cn('text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded', cfg.bg, cfg.color)}>
                   {cfg.label}
                 </span>
-                {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />}
+                {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-dash-accent animate-pulse" />}
               </div>
-              <p className="text-[11px] text-t2 leading-relaxed">
-                {n.type === 'active' && <><strong className="text-t1">{n.email}</strong> accepted your invitation to <strong className="text-blue-400">{n.formName}</strong></>}
-                {n.type === 'removed' && <>Invitation to <strong className="text-t1">{n.email}</strong> for <strong className="text-blue-400">{n.formName}</strong> was removed</>}
-                {n.type === 'resent' && <>Invitation resent to <strong className="text-t1">{n.email}</strong> for <strong className="text-blue-400">{n.formName}</strong></>}
+              <p className="text-[11px] !text-dash-textMuted leading-relaxed">
+                {n.type === 'active' && <><strong className="!text-dash-text">{n.email}</strong> accepted your invitation to <strong className="text-dash-accent">{n.formName}</strong></>}
+                {n.type === 'removed' && <>Invitation to <strong className="!text-dash-text">{n.email}</strong> for <strong className="text-dash-accent">{n.formName}</strong> was removed</>}
+                {n.type === 'resent' && <>Invitation resent to <strong className="!text-dash-text">{n.email}</strong> for <strong className="text-dash-accent">{n.formName}</strong></>}
               </p>
-              <p className="text-[9px] text-t4 mt-0.5">{formatTime(n.timestamp)}</p>
+              <p className="text-[9px] !text-dash-textMuted mt-0.5">{formatTime(n.timestamp)}</p>
             </div>
 
             {n.formId && (
               <a
                 href={`/forms/${n.formId}/governance`}
-                className="flex items-center gap-1 text-[9px] font-bold text-blue-400 hover:text-blue-300 transition-colors mt-1 flex-shrink-0"
+                className="flex items-center gap-1 text-[9px] font-bold text-dash-accent hover:text-dash-accent/80 transition-colors mt-1 flex-shrink-0"
               >
                 View <ArrowRight size={10} />
               </a>

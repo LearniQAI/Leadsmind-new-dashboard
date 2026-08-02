@@ -1,7 +1,7 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
-import { requireWorkspaceAccess } from '@/lib/auth';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
+import { requireWorkspaceAccess, requireFormAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 
 // FUNNELS
@@ -169,19 +169,17 @@ export async function getForms() {
 
 export async function getForm(id: string) {
  try {
-  const supabase = await createServerClient();
-  let workspaceId: string;
   try {
-   ({ workspaceId } = await requireWorkspaceAccess());
-  } catch {
-   return { error: 'Unauthorized' };
+   await requireFormAccess(id, 'read');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
   }
 
-  const { data, error } = await supabase
+  const adminSupabase = createAdminClient();
+  const { data, error } = await adminSupabase
    .from('forms')
    .select('*')
    .eq('id', id)
-   .eq('workspace_id', workspaceId)
    .single();
 
   if (error) throw error;
@@ -189,6 +187,276 @@ export async function getForm(id: string) {
  } catch (error: any) {
   logger.error({ err: error }, 'get.form.failed');
   return { error: 'Operation failed. Please try again.' };
+ }
+}
+
+// Server-action wrapper so the (client-side) submissions page can go
+// through requireFormAccess — the page previously queried Supabase
+// directly from the browser, gated only by the viewer's own workspace_id,
+// the same collaborator-blind bug as getForm above.
+export async function getFormSubmissionsData(formId: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'read');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+
+  const adminSupabase = createAdminClient();
+  const { data: form, error: formError } = await adminSupabase
+   .from('forms')
+   .select('name, config, id')
+   .eq('id', formId)
+   .maybeSingle();
+
+  if (formError) throw formError;
+  if (!form) return { error: 'Form not found.' };
+
+  const { data: submissions, error: submissionsError } = await adminSupabase
+   .from('form_submissions')
+   .select('*, contact:contacts(first_name, last_name, email)')
+   .eq('form_id', formId)
+   .order('submitted_at', { ascending: false });
+
+  if (submissionsError) throw submissionsError;
+
+  return { data: { form, submissions: submissions || [] } };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.form.submissions.failed');
+  return { error: 'Failed to load submissions data. Please try again.' };
+ }
+}
+
+// ── /forms/[id]/automations — page load is 'read' (a viewer collaborator
+// can see configured workflows); each individual write action below is
+// separately gated at 'write' so a viewer can't create/toggle/delete one. ──
+
+export async function getFormAutomationsData(formId: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'read');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+
+  const adminSupabase = createAdminClient();
+  const { data: form, error: formError } = await adminSupabase
+   .from('forms')
+   .select('name, workspace_id')
+   .eq('id', formId)
+   .single();
+  if (formError) throw formError;
+
+  const { data: workflows, error: wfError } = await adminSupabase
+   .from('workflows')
+   .select('*, steps:workflow_steps(count)')
+   .eq('form_id', formId)
+   .order('created_at', { ascending: false });
+  if (wfError) throw wfError;
+
+  return { data: { form, workflows: workflows || [] } };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.form.automations.failed');
+  return { error: 'Failed to load automations. Please try again.' };
+ }
+}
+
+export async function createFormWorkflow(formId: string, name: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'write');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+
+  const adminSupabase = createAdminClient();
+  const { data: form } = await adminSupabase.from('forms').select('workspace_id').eq('id', formId).single();
+  if (!form) return { error: 'Form not found' };
+
+  const { data, error } = await adminSupabase
+   .from('workflows')
+   .insert({
+    form_id: formId,
+    workspace_id: form.workspace_id,
+    name,
+    trigger_type: 'form_submitted',
+    trigger_config: {},
+    is_active: false,
+   })
+   .select()
+   .single();
+  if (error) throw error;
+  return { data };
+ } catch (error: any) {
+  logger.error({ err: error }, 'create.form.workflow.failed');
+  return { error: error.message || 'Failed to create new workflow' };
+ }
+}
+
+export async function toggleFormWorkflowActive(formId: string, workflowId: string, isActive: boolean) {
+ try {
+  try {
+   await requireFormAccess(formId, 'write');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase.from('workflows').update({ is_active: isActive }).eq('id', workflowId).eq('form_id', formId);
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  logger.error({ err: error }, 'toggle.form.workflow.failed');
+  return { error: error.message || 'Failed to update workflow status' };
+ }
+}
+
+export async function deleteFormWorkflow(formId: string, workflowId: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'write');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase.from('workflows').delete().eq('id', workflowId).eq('form_id', formId);
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  logger.error({ err: error }, 'delete.form.workflow.failed');
+  return { error: error.message || 'Failed to delete workflow' };
+ }
+}
+
+// ── /forms/[id]/partial-submissions — page load is 'read'; the two write
+// actions (generate recovery link, discard) are separately 'write'-gated. ──
+
+export async function getPartialSubmissionsData(formId: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'read');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+
+  const adminSupabase = createAdminClient();
+  const { data: form, error: formError } = await adminSupabase
+   .from('forms')
+   .select('name, config, id, workspace_id')
+   .eq('id', formId)
+   .single();
+  if (formError) throw formError;
+
+  const { data: partials, error: partialsError } = await adminSupabase
+   .from('form_partial_submissions')
+   .select('*')
+   .eq('form_id', formId)
+   .order('updated_at', { ascending: false });
+  if (partialsError) throw partialsError;
+
+  return { data: { form, partials: partials || [] } };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.partial.submissions.failed');
+  return { error: 'Failed to load incomplete submissions. Please try again.' };
+ }
+}
+
+export async function generatePartialSubmissionRecoveryLink(formId: string, partialId: string, token: string, expiresAt: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'write');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase
+   .from('form_partial_submissions')
+   .update({ recovery_token: token, recovery_token_expires_at: expiresAt })
+   .eq('id', partialId)
+   .eq('form_id', formId);
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  logger.error({ err: error }, 'generate.partial.recovery.link.failed');
+  return { error: 'Failed to generate recovery link' };
+ }
+}
+
+export async function deletePartialSubmission(formId: string, partialId: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'write');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase.from('form_partial_submissions').delete().eq('id', partialId).eq('form_id', formId);
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  logger.error({ err: error }, 'delete.partial.submission.failed');
+  return { error: 'Failed to delete incomplete submission' };
+ }
+}
+
+// ── /forms/[id]/analytics and /forms/[id]/ab-testing — pure read
+// surfaces, no write operations exist on either page today. ──
+
+export async function getFormAnalyticsAccessData(formId: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'read');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+  const adminSupabase = createAdminClient();
+  const { data, error } = await adminSupabase.from('forms').select('name, id').eq('id', formId).single();
+  if (error) throw error;
+  return { data };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.form.analytics.access.failed');
+  return { error: 'Failed to load form. Please try again.' };
+ }
+}
+
+export async function getFormAbTestingAccessData(formId: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'read');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+  const adminSupabase = createAdminClient();
+  const { data, error } = await adminSupabase.from('forms').select('name, id').eq('id', formId).single();
+  if (error) throw error;
+  return { data };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.form.abtesting.access.failed');
+  return { error: 'Failed to load form. Please try again.' };
+ }
+}
+
+// ── /forms/[id]/governance — owner/workspace-member only. Collaborators
+// (any role) never qualify — collaborator management itself is owner-only
+// per the confirmed role mapping. ──
+
+export async function getFormForGovernance(formId: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'manage');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+  const adminSupabase = createAdminClient();
+  const { data, error } = await adminSupabase.from('forms').select('*').eq('id', formId).single();
+  if (error) throw error;
+  return { data };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.form.governance.failed');
+  return { error: 'Failed to load form. Please try again.' };
  }
 }
 
@@ -575,12 +843,10 @@ export async function deleteCampaignAction(id: string) {
 
 export async function updateForm(id: string, updates: any) {
  try {
-  const supabase = await createServerClient();
-  let workspaceId: string;
   try {
-   ({ workspaceId } = await requireWorkspaceAccess());
-  } catch {
-   return { error: 'Unauthorized' };
+   await requireFormAccess(id, 'write');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
   }
 
   // Build a clean update payload — only include columns that exist in the schema
@@ -609,10 +875,11 @@ export async function updateForm(id: string, updates: any) {
   if (updates.config !== undefined) payload.config = updates.config;
   if (updates.settings !== undefined) payload.settings = updates.settings;
 
-  const { data, error } = await supabase
+  const adminSupabase = createAdminClient();
+  const { data, error } = await adminSupabase
    .from('forms')
    .update(payload)
-    .eq("id", id).eq("workspace_id", workspaceId)
+    .eq("id", id)
    .select()
    .single();
 
@@ -626,14 +893,13 @@ export async function updateForm(id: string, updates: any) {
 
 export async function deleteFormAction(id: string) {
  try {
-  const supabase = await createServerClient();
-  let workspaceId: string;
   try {
-   ({ workspaceId } = await requireWorkspaceAccess());
-  } catch {
-   return { error: 'Unauthorized' };
+   await requireFormAccess(id, 'manage');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
   }
-  const { error } = await supabase.from('forms').delete().eq("id", id).eq("workspace_id", workspaceId);
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase.from('forms').delete().eq("id", id);
   if (error) throw error;
   return { success: true };
  } catch (error: any) {

@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { insertSequentialEdge } from './automation_editor';
 
 export async function getAutomationDashboardData() {
   const supabase = await createServerClient();
@@ -150,7 +151,7 @@ export async function seedSARecipes() {
       .single();
 
     if (wf) {
-      await supabase.from('workflow_steps').insert([
+      const { data: insertedSteps } = await supabase.from('workflow_steps').insert([
         {
           workflow_id: wf.id,
           workspace_id: workspaceId,
@@ -174,7 +175,16 @@ export async function seedSARecipes() {
             priority: 'normal'
           }
         }
-      ]);
+      ]).select('id, position');
+
+      // Steps alone aren't enough to progress past the first one -- executor.ts's
+      // step-to-step lookup only follows workflow_edges, with no position-based
+      // fallback (confirmed live: without this, step 2 above never ran). Same
+      // helper the real editor's save path uses for a plain step sequence.
+      const ordered = (insertedSteps || []).sort((a: any, b: any) => a.position - b.position);
+      for (let i = 0; i < ordered.length - 1; i++) {
+        await insertSequentialEdge(supabase, workspaceId, wf.id, ordered[i].id, ordered[i + 1].id);
+      }
     }
   }
 

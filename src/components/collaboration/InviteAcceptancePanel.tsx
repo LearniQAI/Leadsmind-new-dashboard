@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { CheckCircle, XCircle, Loader2, UserCheck, ArrowRight, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { DashButton } from '@/components/dashboard-ui/Button';
 import { InviteStatusCard } from './InviteStatusCard';
 import type { UserCollaboration } from '@/types/invitation.types';
 
@@ -64,39 +64,39 @@ export function InviteAcceptancePanel({
 
   if (invitation.status === 'active' || state === 'active') {
     return (
-      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-8 text-center animate-in fade-in zoom-in-95 duration-300">
-        <div className="w-16 h-16 rounded-full bg-emerald-500/20 mx-auto mb-4 flex items-center justify-center">
-          <CheckCircle size={32} className="text-emerald-400" />
+      <div className="bg-success/10 border border-success/20 rounded-2xl p-8 text-center animate-in fade-in zoom-in-95 duration-300">
+        <div className="w-16 h-16 rounded-full bg-success/15 mx-auto mb-4 flex items-center justify-center">
+          <CheckCircle size={32} className="text-success" />
         </div>
-        <h3 className="text-lg font-space-grotesk font-bold text-white mb-1">Invitation Accepted</h3>
-        <p className="text-sm text-t2">You now have <strong className="text-t1">{invitation.role}</strong> access to <strong className="text-blue-400">{invitation.formName}</strong>.</p>
+        <h3 className="text-lg font-bold !text-dash-text mb-1">Invitation Accepted</h3>
+        <p className="text-sm !text-dash-textMuted">You now have <strong className="!text-dash-text">{invitation.role}</strong> access to <strong className="text-dash-accent">{invitation.formName}</strong>.</p>
       </div>
     );
   }
 
   if (invitation.status === 'removed' || state === 'removed') {
     return (
-      <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-8 text-center animate-in fade-in zoom-in-95 duration-300">
-        <div className="w-16 h-16 rounded-full bg-rose-500/20 mx-auto mb-4 flex items-center justify-center">
-          <XCircle size={32} className="text-rose-400" />
+      <div className="bg-red/10 border border-red/20 rounded-2xl p-8 text-center animate-in fade-in zoom-in-95 duration-300">
+        <div className="w-16 h-16 rounded-full bg-red/15 mx-auto mb-4 flex items-center justify-center">
+          <XCircle size={32} className="text-red" />
         </div>
-        <h3 className="text-lg font-space-grotesk font-bold text-white mb-1">Invitation Removed</h3>
-        <p className="text-sm text-t2">You have removed or declined the invitation to <strong className="text-t1">{invitation.formName}</strong>.</p>
+        <h3 className="text-lg font-bold !text-dash-text mb-1">Invitation Removed</h3>
+        <p className="text-sm !text-dash-textMuted">You have removed or declined the invitation to <strong className="!text-dash-text">{invitation.formName}</strong>.</p>
       </div>
     );
   }
 
   if (state === 'error') {
     return (
-      <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-8 text-center animate-in fade-in zoom-in-95 duration-300">
-        <div className="w-16 h-16 rounded-full bg-rose-500/20 mx-auto mb-4 flex items-center justify-center">
-          <XCircle size={32} className="text-rose-400" />
+      <div className="bg-red/10 border border-red/20 rounded-2xl p-8 text-center animate-in fade-in zoom-in-95 duration-300">
+        <div className="w-16 h-16 rounded-full bg-red/15 mx-auto mb-4 flex items-center justify-center">
+          <XCircle size={32} className="text-red" />
         </div>
-        <h3 className="text-lg font-space-grotesk font-bold text-white mb-1">Action Failed</h3>
-        <p className="text-sm text-t2">{errorMsg}</p>
+        <h3 className="text-lg font-bold !text-dash-text mb-1">Action Failed</h3>
+        <p className="text-sm !text-dash-textMuted">{errorMsg}</p>
         <button
           onClick={() => setState('idle')}
-          className="mt-4 px-6 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-sm text-t1 transition-colors"
+          className="mt-4 px-6 py-2 bg-dash-surface hover:bg-dash-border/60 border border-dash-border rounded-xl text-sm !text-dash-text transition-colors"
         >
           Try Again
         </button>
@@ -114,31 +114,31 @@ export function InviteAcceptancePanel({
         createdAt={invitation.createdAt}
       />
 
-      <div className="bg-[#0b132c] border border-white/5 rounded-2xl p-6 space-y-5">
+      <div className="bg-white border border-dash-border rounded-2xl p-6 space-y-5 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+          <div className="w-12 h-12 rounded-2xl bg-dash-accent/10 border border-dash-accent/20 flex items-center justify-center text-dash-accent">
             <UserCheck size={22} />
           </div>
           <div>
-            <h3 className="text-sm font-space-grotesk font-bold text-white">
+            <h3 className="text-sm font-bold !text-dash-text">
               Form Collaboration Invitation
             </h3>
-            <p className="text-[10px] text-t3 font-medium">
-              You've been invited by <strong className="text-t1">{invitation.invitedByEmail}</strong>
+            <p className="text-[10px] !text-dash-textMuted font-medium">
+              You've been invited by <strong className="!text-dash-text">{invitation.invitedByEmail}</strong>
             </p>
           </div>
         </div>
 
-        <div className="bg-[#04091a] border border-white/5 rounded-xl p-4">
+        <div className="bg-dash-surface border border-dash-border rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] text-t3 uppercase tracking-wider font-bold mb-1">Form</p>
-              <p className="text-sm font-bold text-white">{invitation.formName}</p>
+              <p className="text-[10px] !text-dash-textMuted uppercase tracking-wider font-bold mb-1">Form</p>
+              <p className="text-sm font-bold !text-dash-text">{invitation.formName}</p>
             </div>
-            <ArrowRight size={16} className="text-t4" />
+            <ArrowRight size={16} className="!text-dash-textMuted" />
             <div className="text-right">
-              <p className="text-[10px] text-t3 uppercase tracking-wider font-bold mb-1">Role</p>
-              <span className="text-[11px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-lg">
+              <p className="text-[10px] !text-dash-textMuted uppercase tracking-wider font-bold mb-1">Role</p>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-dash-accent bg-dash-accent/10 border border-dash-accent/20 px-3 py-1 rounded-lg">
                 {invitation.role}
               </span>
             </div>
@@ -146,37 +146,31 @@ export function InviteAcceptancePanel({
         </div>
 
         <div className="flex gap-3">
-          <button
+          <DashButton
             onClick={handleAccept}
             disabled={state === 'accepting' || state === 'declining'}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all',
-              'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
-            )}
+            variant="primary"
+            className="flex-1 text-[11px] font-bold uppercase tracking-widest"
           >
             {state === 'accepting' ? (
               <><Loader2 size={14} className="animate-spin" /> Accepting...</>
             ) : (
               <><CheckCircle size={14} /> Accept Invitation</>
             )}
-          </button>
+          </DashButton>
 
-          <button
+          <DashButton
             onClick={handleDecline}
             disabled={state === 'accepting' || state === 'declining'}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all',
-              'bg-white/5 hover:bg-rose-500/10 text-t2 hover:text-rose-400 border border-white/10 hover:border-rose-500/20',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
-            )}
+            variant="secondary"
+            className="flex-1 text-[11px] font-bold uppercase tracking-widest hover:!text-red hover:!border-red/40"
           >
             {state === 'declining' ? (
               <><Loader2 size={14} className="animate-spin" /> Declining...</>
             ) : (
               <><XCircle size={14} /> Decline</>
             )}
-          </button>
+          </DashButton>
         </div>
       </div>
     </div>

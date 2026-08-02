@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
-import { createServerClient } from './supabase/server';
+import { createServerClient, createAdminClient } from './supabase/server';
 import { cookies } from 'next/headers';
 import { logger } from '@/shared/logger';
 import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
@@ -154,6 +154,124 @@ export async function requireWorkspaceAccess(): Promise<{ userId: string; worksp
  }
 
  return { userId: user.id, workspaceId };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Form access (owner OR collaborator)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type FormAccessLevel = 'read' | 'write' | 'manage';
+
+export interface FormAccessContext {
+ userId: string;
+ userEmail: string | null;
+ formId: string;
+ /** The form's own workspace_id — NOT necessarily the caller's active
+  * workspace (a collaborator's own workspace is almost always different). */
+ workspaceId: string;
+ accessType: 'owner' | 'collaborator';
+ collaboratorRole?: 'editor' | 'viewer';
+}
+
+// Confirms the caller can access a specific form, either as a member of the
+// form's own workspace (existing/unchanged path — full access at every
+// level) or as an active form_collaborators row for their email.
+//
+// Fixes a systemic bug found across getForm/updateForm and 5+ other
+// form-scoped routes: they all gated on `workspace_id = the CALLER's own
+// active workspace`, with zero awareness that a collaborator is invited
+// cross-workspace by design (they are never a member of the form's
+// workspace) — every one of those checks silently rejected every real
+// collaborator, including the form's actual owner-invited editors/viewers.
+// A handful of other routes had gone the opposite direction and applied no
+// workspace check at all, open to any authenticated user; this closes both
+// as one shared gate rather than a patch per call site.
+//
+// Levels:
+//  - 'read': owner/workspace member OR any active collaborator (editor or viewer).
+//  - 'write': owner/workspace member OR active collaborator with role='editor'.
+//  - 'manage': owner/workspace member ONLY — collaborators never qualify
+//    regardless of role (governance/invite/remove/role-update/delete).
+//
+// Throws UnauthorizedError/ForbiddenError otherwise, matching
+// requireWorkspaceAccess()'s convention, so callers can catch-and-map to
+// their existing { error } response shape without new plumbing.
+export async function requireFormAccess(
+ formId: string,
+ requiredLevel: FormAccessLevel = 'read'
+): Promise<FormAccessContext> {
+ const supabase = await createServerClient();
+
+ const { data: { user }, error: userError } = await supabase.auth.getUser();
+ if (userError || !user) {
+  throw new UnauthorizedError();
+ }
+
+ const adminSupabase = createAdminClient();
+ const { data: form } = await adminSupabase
+  .from('forms')
+  .select('id, workspace_id')
+  .eq('id', formId)
+  .maybeSingle();
+
+ if (!form) {
+  throw new ForbiddenError('Form not found');
+ }
+
+ // Owner path: member of the form's own workspace — unchanged, full access
+ // at every level.
+ const { data: membership } = await supabase
+  .from('workspace_members')
+  .select('id')
+  .eq('workspace_id', form.workspace_id)
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+ if (membership) {
+  return {
+   userId: user.id,
+   userEmail: user.email ?? null,
+   formId,
+   workspaceId: form.workspace_id,
+   accessType: 'owner',
+  };
+ }
+
+ // 'manage' is owner-only — no collaborator role ever qualifies.
+ if (requiredLevel === 'manage') {
+  throw new ForbiddenError('Only the form owner or a workspace member can manage this form');
+ }
+
+ // Collaborator path: match by email (the invite/accept flow's own
+ // identity key — a collaborator is not, and is not expected to be, a
+ // workspace_members row for this workspace).
+ if (!user.email) {
+  throw new ForbiddenError('No access to this form');
+ }
+
+ const { data: collab } = await adminSupabase
+  .from('form_collaborators')
+  .select('role, status')
+  .eq('form_id', formId)
+  .ilike('email', user.email)
+  .maybeSingle();
+
+ if (!collab || collab.status !== 'active') {
+  throw new ForbiddenError('No access to this form');
+ }
+
+ if (requiredLevel === 'write' && collab.role !== 'editor') {
+  throw new ForbiddenError('You have read-only access to this form');
+ }
+
+ return {
+  userId: user.id,
+  userEmail: user.email,
+  formId,
+  workspaceId: form.workspace_id,
+  accessType: 'collaborator',
+  collaboratorRole: collab.role as 'editor' | 'viewer',
+ };
 }
 
 export const getCurrentWorkspace = cache(async (existingUser?: any): Promise<Workspace | null> => {

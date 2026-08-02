@@ -2,29 +2,33 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { ArrowLeft, ShieldAlert, GitCommit, History, Globe, BookOpen, Users } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, GitCommit, History, Globe, BookOpen, Users } from 'lucide-react';
 import { CollaborationIndicator } from './components/CollaborationIndicator';
 import { CollaboratorsManager } from './components/CollaboratorsManager';
+import { getFormForGovernance } from '@/app/actions/marketing';
 
 export default function GovernancePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
+  const [accessError, setAccessError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'collaborators'>('collaborators');
 
   const loadForm = async () => {
     try {
-      const { data } = await supabase
-        .from('forms')
-        .select('*')
-        .eq('id', params.id)
-        .single();
-      if (data) setForm(data);
+      // Owner/workspace-member only ('manage') — collaborators of any role
+      // never qualify to manage collaborators themselves. Previously an
+      // ungated direct Supabase query, open to any authenticated user.
+      const res = await getFormForGovernance(params.id);
+      if (res.error || !res.data) {
+        setAccessError(res.error || 'Access denied.');
+        return;
+      }
+      setForm(res.data);
     } catch (err) {
       console.error('[GovernancePage] Failed to fetch form details:', err);
+      setAccessError('Failed to load this form.');
     } finally {
       setLoading(false);
     }
@@ -42,6 +46,21 @@ export default function GovernancePage({ params }: { params: { id: string } }) {
     return (
       <div className="min-h-screen bg-white p-8 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-dash-accent border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
+      </div>
+    );
+  }
+
+  if (accessError) {
+    return (
+      <div className="min-h-screen bg-white p-8 flex flex-col items-center justify-center gap-3 text-center">
+        <ShieldAlert size={32} className="!text-dash-textMuted" />
+        <p className="text-sm font-bold !text-dash-text">{accessError}</p>
+        <button
+          onClick={() => router.push('/forms')}
+          className="text-xs font-bold text-dash-accent hover:text-dash-accent/80"
+        >
+          Back to forms
+        </button>
       </div>
     );
   }

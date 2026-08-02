@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { ArrowLeft, Mail, Link as LinkIcon, Trash2, Clock, CheckCircle, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -14,10 +13,10 @@ import {
   DashTableContainer, DashTable, DashTableHead, DashTableHeadCell,
   DashTableBody, DashTableRow, DashTableCell, DashTableEmptyState
 } from '@/components/dashboard-ui/Table';
+import { getPartialSubmissionsData, generatePartialSubmissionRecoveryLink, deletePartialSubmission } from '@/app/actions/marketing';
 
 export default function PartialSubmissionsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>(null);
   const [partials, setPartials] = useState<any[]>([]);
@@ -32,21 +31,17 @@ export default function PartialSubmissionsPage({ params }: { params: { id: strin
   useEffect(() => {
     async function loadData() {
       try {
-        const { data: formData } = await supabase
-          .from('forms')
-          .select('name, config, id, workspace_id')
-          .eq('id', params.id)
-          .single();
+        // Goes through requireFormAccess (owner OR active collaborator) —
+        // previously an ungated direct Supabase query, open to any
+        // authenticated user regardless of workspace/collaborator status.
+        const res = await getPartialSubmissionsData(params.id);
+        if (res.error || !res.data) {
+          console.error('Failed to load partial submissions data:', res.error);
+          return;
+        }
 
-        setForm(formData);
-
-        const { data: partialData } = await supabase
-          .from('form_partial_submissions')
-          .select('*')
-          .eq('form_id', params.id)
-          .order('updated_at', { ascending: false });
-
-        setPartials(partialData || []);
+        setForm(res.data.form);
+        setPartials(res.data.partials);
       } catch (err) {
         console.error('Failed to load partial submissions data:', err);
       } finally {
@@ -54,7 +49,7 @@ export default function PartialSubmissionsPage({ params }: { params: { id: strin
       }
     }
     loadData();
-  }, [params.id, supabase]);
+  }, [params.id]);
 
   const generateAndCopyLink = async (partial: any) => {
     let token = partial.recovery_token;
@@ -63,15 +58,9 @@ export default function PartialSubmissionsPage({ params }: { params: { id: strin
       token = RecoveryTokenHandler.createToken();
       const expiresAt = RecoveryTokenHandler.getExpirationDate(form?.config?.sessionExpirationDays ?? 7);
 
-      const { error } = await supabase
-        .from('form_partial_submissions')
-        .update({
-          recovery_token: token,
-          recovery_token_expires_at: expiresAt.toISOString(),
-        })
-        .eq('id', partial.id);
+      const res = await generatePartialSubmissionRecoveryLink(params.id, partial.id, token, expiresAt.toISOString());
 
-      if (error) {
+      if (res.error) {
         toast.error('Failed to generate recovery link');
         return;
       }
@@ -94,8 +83,8 @@ export default function PartialSubmissionsPage({ params }: { params: { id: strin
       description: 'Are you sure you want to discard this incomplete submission?',
       confirmLabel: 'Discard',
       onConfirm: async () => {
-        const { error } = await supabase.from('form_partial_submissions').delete().eq('id', id).eq('workspace_id', form.workspace_id);
-        if (error) {
+        const res = await deletePartialSubmission(params.id, id);
+        if (res.error) {
           toast.error('Failed to delete incomplete submission');
           return;
         }
