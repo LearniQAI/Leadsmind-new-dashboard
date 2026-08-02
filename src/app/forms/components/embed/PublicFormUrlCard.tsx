@@ -7,9 +7,10 @@ import { cn } from '@/lib/utils';
 
 interface PublicFormUrlCardProps {
   publicUrl: string;
+  isPublished: boolean;
 }
 
-export function PublicFormUrlCard({ publicUrl }: PublicFormUrlCardProps) {
+export function PublicFormUrlCard({ publicUrl, isPublished }: PublicFormUrlCardProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -26,8 +27,10 @@ export function PublicFormUrlCard({ publicUrl }: PublicFormUrlCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="relative flex h-2 w-2">
-              <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-green opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green"></span>
+              {isPublished && (
+                <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-green opacity-75"></span>
+              )}
+              <span className={cn('relative inline-flex rounded-full h-2 w-2', isPublished ? 'bg-green' : 'bg-amber-400')}></span>
             </div>
             <span className="text-[11px] font-bold !text-dash-textMuted">
               Production share URL
@@ -35,9 +38,15 @@ export function PublicFormUrlCard({ publicUrl }: PublicFormUrlCardProps) {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] bg-green/10 text-green px-2.5 py-0.5 rounded-full border border-green/20 font-bold">
-              Live &amp; ready
-            </span>
+            {isPublished ? (
+              <span className="text-[10px] bg-green/10 text-green px-2.5 py-0.5 rounded-full border border-green/20 font-bold">
+                Live &amp; ready
+              </span>
+            ) : (
+              <span className="text-[10px] bg-amber-50 text-amber-600 px-2.5 py-0.5 rounded-full border border-amber-200 font-bold">
+                Not published
+              </span>
+            )}
           </div>
         </div>
 
