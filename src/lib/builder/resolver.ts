@@ -11,6 +11,10 @@ import { Video } from '@/components/builder/user/Video';
 import { Icon } from '@/components/builder/user/Icon';
 import { Text } from '@/components/builder/user/Text';
 import { Form } from '@/components/builder/user/Form';
+import { OrderForm } from '@/components/builder/user/OrderForm';
+import { Upsell } from '@/components/builder/user/Upsell';
+import { Downsell } from '@/components/builder/user/Downsell';
+import { ThankYou } from '@/components/builder/user/ThankYou';
 import { Countdown } from '@/components/builder/user/Countdown';
 import { PricingTable } from '@/components/builder/user/PricingTable';
 import { FAQ } from '@/components/builder/user/FAQ';
@@ -58,6 +62,10 @@ export const RESOLVER = {
  Icon: wrapForReact19(Icon),
  Text: wrapForReact19(Text),
  Form: wrapForReact19(Form),
+ OrderForm: wrapForReact19(OrderForm),
+ Upsell: wrapForReact19(Upsell),
+ Downsell: wrapForReact19(Downsell),
+ ThankYou: wrapForReact19(ThankYou),
  Countdown: wrapForReact19(Countdown),
  PricingTable: wrapForReact19(PricingTable),
  FAQ: wrapForReact19(FAQ),

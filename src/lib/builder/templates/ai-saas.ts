@@ -6,6 +6,7 @@ export const aiSaasPremium: BuilderTemplate = {
   description: 'Ultra-dark high-tech landing page for AI and SaaS platforms.',
   category: 'SaaS',
   type: 'both',
+  step_type: 'sales_page',
   is_premium: true,
   thumbnail: 'https://images.unsplash.com/photo-1677442136019-21780ecad995',
   content: JSON.stringify({

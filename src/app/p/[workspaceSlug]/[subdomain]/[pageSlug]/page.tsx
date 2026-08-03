@@ -1,5 +1,5 @@
 import React from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import PublishedPageRenderer from '@/components/builder/PublishedPageRenderer';
 import { AlertCircle } from 'lucide-react';
@@ -9,7 +9,10 @@ export default async function PublishedSubdomainChildPage({
 }: {
     params: { workspaceSlug: string; subdomain: string; pageSlug: string }
 }) {
-    const supabase = await createClient();
+    // Admin client — see the root [workspaceSlug]/[subdomain]/page.tsx sibling for
+    // why: RLS on workspaces/websites/funnels/funnel_steps/pages requires workspace
+    // membership, which an anonymous public visitor never has.
+    const supabase = createAdminClient();
     const { workspaceSlug, subdomain, pageSlug } = await params;
 
     // 1. Resolve Workspace

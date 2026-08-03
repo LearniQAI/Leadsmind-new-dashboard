@@ -97,7 +97,6 @@ interface NlSearchResultContact {
   lead_score: number | null;
 }
 
-const EMOJI_CHOICES = ['🏷️', '⭐', '🔥', '💼', '📈', '🎯', '💰', '🎓', '🛟', '📣', '🤝', '⚡'];
 const COLOR_CHOICES = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4', '#6b7280'];
 
 export default function TagManagerClient({
@@ -675,7 +674,7 @@ export default function TagManagerClient({
                               <button onClick={() => toggleCollapsed(category.id)} className="text-dash-textMuted">
                                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                               </button>
-                              {category.icon && <span className="text-sm">{category.icon}</span>}
+                              <TagIconGlyph icon={category.icon} size={14} className="!text-dash-textMuted shrink-0" />
                               <span
                                 className="h-2.5 w-2.5 rounded-full shrink-0"
                                 style={{ backgroundColor: category.color ?? '#9ca3af' }}
@@ -1084,14 +1083,20 @@ function CategoryFormModal({
 
           <DashFormField label="Icon (optional)" htmlFor="category-icon">
             <div className="flex flex-wrap gap-2">
-              {EMOJI_CHOICES.map((e) => (
+              {TAG_ICON_OPTIONS.map(({ name: iconName, Icon }) => (
                 <button
-                  key={e}
+                  key={iconName}
                   type="button"
-                  onClick={() => setIcon(icon === e ? '' : e)}
-                  className={`h-8 w-8 rounded-lg border flex items-center justify-center text-base transition-all ${icon === e ? 'border-dash-accent bg-dash-accent/10' : 'border-dash-border'}`}
+                  aria-label={iconName}
+                  onClick={() => setIcon(icon === iconName ? '' : iconName)}
+                  className={cn(
+                    'h-9 w-9 rounded-xl flex items-center justify-center transition-all',
+                    icon === iconName
+                      ? 'ring-2 ring-dash-accent ring-offset-2 ring-offset-white bg-dash-accent/10 !text-dash-accent'
+                      : 'ring-1 ring-dash-border !text-dash-textMuted hover:!text-dash-text hover:ring-dash-textMuted/50'
+                  )}
                 >
-                  {e}
+                  <Icon size={16} />
                 </button>
               ))}
             </div>

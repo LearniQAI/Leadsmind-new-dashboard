@@ -16,6 +16,10 @@ import {
   saasHighConvertingLanding,
   leadCaptureAccelerator
 } from './predefined';
+import { orderFormBasic } from './order-form-basic';
+import { upsellBasic } from './upsell-basic';
+import { downsellBasic } from './downsell-basic';
+import { thankYouBasic } from './thank-you-basic';
 import { BuilderTemplate } from '../templates';
 
 export const ALL_TEMPLATES: BuilderTemplate[] = [
@@ -34,5 +38,9 @@ export const ALL_TEMPLATES: BuilderTemplate[] = [
   hutsArchitectural,
   agenticCopilot,
   saasHighConvertingLanding,
-  leadCaptureAccelerator
+  leadCaptureAccelerator,
+  orderFormBasic,
+  upsellBasic,
+  downsellBasic,
+  thankYouBasic
 ];

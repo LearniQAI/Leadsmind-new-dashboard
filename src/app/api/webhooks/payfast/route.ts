@@ -317,6 +317,12 @@ export async function POST(req: NextRequest) {
             subtotal: paidAmount,
             tax_total: 0,
             total_amount: paidAmount,
+            // amount_due is NOT NULL with no default — every other invoice writer in
+            // this codebase sets it to the full billed amount at creation (readers
+            // compute outstanding balance as amount_due - amount_paid), so for an
+            // invoice that's paid in full immediately, both equal paidAmount.
+            amount_due: paidAmount,
+            amount_paid: paidAmount,
             status: 'paid',
             paid_at: new Date().toISOString(),
             payment_method: 'payfast',
@@ -370,6 +376,106 @@ export async function POST(req: NextRequest) {
       }
     }
     // ── END COURSE PURCHASE: INVOICE + ENROLLMENT CREATION ───
+
+    // ── FUNNEL ORDER FORM: MARK PAID + RESOLVE NEXT STEP ─────
+    // A funnel Order Form purchase (custom_str4 = 'funnel_order', set by
+    // createFunnelOrder) — custom_str3 carries the funnel_orders.id created
+    // (as 'pending') before the visitor was redirected to PayFast, unlike the
+    // reactive course-purchase pattern above. Idempotent: only a still-'pending'
+    // order is moved to 'paid', so a PayFast ITN retry never double-processes.
+    if (paymentType === 'funnel_order' && custom_str3) {
+      const { data: order } = await supabase
+        .from('funnel_orders')
+        .select('id, status, funnel_id, funnel_step_id, amount, currency, contact_id, workspace_id')
+        .eq('id', custom_str3)
+        .maybeSingle();
+
+      if (!order) {
+        logger.error({ orderId: custom_str3 }, 'webhook.payfast.funnel_order.not_found');
+      } else if (order.status === 'paid') {
+        logger.info({ orderId: order.id }, 'webhook.payfast.funnel_order.already_paid');
+      } else {
+        // 1. Resolve next step from the paid step's own config.on_success_step_id,
+        // falling back to the next step by `order` when unset. Generic across
+        // order_form/upsell/downsell — all three use createFunnelOrder and this
+        // same branch (custom_str4='funnel_order'), and all three read/write the
+        // same config keys, so no step-type branching is needed here.
+        const { data: paidStep } = await supabase
+          .from('funnel_steps')
+          .select('id, order, config')
+          .eq('id', order.funnel_step_id)
+          .single();
+
+        let nextStepId: string | null = paidStep?.config?.on_success_step_id || null;
+        if (!nextStepId && paidStep) {
+          // PostgREST reserves the `order` query key for ORDER BY syntax, so
+          // .eq('order', value) as a *filter* on a column literally named `order`
+          // is silently misparsed ("failed to parse order (eq.N)") rather than
+          // applied as an equality filter — fetch this funnel's steps and match
+          // client-side instead of hitting that reserved-word collision.
+          const { data: siblingSteps } = await supabase
+            .from('funnel_steps')
+            .select('id, order')
+            .eq('funnel_id', order.funnel_id);
+          nextStepId = siblingSteps?.find((s) => s.order === paidStep.order + 1)?.id || null;
+        }
+
+        // 2. Write a mirroring invoices row for accounting parity (same shape as
+        // the course branch above), then link it back onto the order.
+        const paidAmount = parseFloat(amount_gross || String(order.amount) || '0');
+        const payfastRef = payload.pf_payment_id || m_payment_id;
+
+        const { data: newInvoice, error: invoiceErr } = await supabase
+          .from('invoices')
+          .insert({
+            workspace_id: order.workspace_id,
+            contact_id: order.contact_id,
+            invoice_number: `PF-${payfastRef}`,
+            items: [{ description: item_name || 'Funnel order', quantity: 1, unit_amount: paidAmount }],
+            subtotal: paidAmount,
+            tax_total: 0,
+            total_amount: paidAmount,
+            // amount_due is NOT NULL with no default. Every other invoice writer in this
+            // codebase sets it to the full billed amount at creation — readers compute
+            // outstanding balance as amount_due - amount_paid, so for an invoice paid in
+            // full immediately, both equal paidAmount (not 0, which would read as a
+            // negative/over-paid balance everywhere that formula is used).
+            amount_due: paidAmount,
+            amount_paid: paidAmount,
+            currency: order.currency || 'ZAR',
+            status: 'paid',
+            paid_at: new Date().toISOString(),
+            payment_method: 'payfast',
+            metadata: { funnelOrderId: order.id, funnelId: order.funnel_id, payfast_ref: payfastRef, type: 'funnel_order' },
+          })
+          .select('id')
+          .single();
+
+        if (invoiceErr) {
+          logger.error({ err: invoiceErr, orderId: order.id }, 'webhook.payfast.funnel_order_invoice.create.failed');
+        }
+
+        // 3. Mark the order paid and record the resolved next step, so the
+        // visitor's next page load (via getFunnelOrderStatus) lands correctly.
+        const { error: updateErr } = await supabase
+          .from('funnel_orders')
+          .update({
+            status: 'paid',
+            payfast_ref: payfastRef,
+            invoice_id: newInvoice?.id ?? null,
+            next_step_id: nextStepId,
+          })
+          .eq('id', order.id)
+          .eq('status', 'pending');
+
+        if (updateErr) {
+          logger.error({ err: updateErr, orderId: order.id }, 'webhook.payfast.funnel_order.mark_paid.failed');
+        } else {
+          logger.info({ orderId: order.id, nextStepId }, 'webhook.payfast.funnel_order.paid');
+        }
+      }
+    }
+    // ── END FUNNEL ORDER FORM ────────────────────────────────
 
     // 4. Log the transaction/activity
     await supabase.from("contact_activities").insert({

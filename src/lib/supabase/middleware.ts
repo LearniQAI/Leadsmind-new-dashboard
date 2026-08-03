@@ -144,6 +144,7 @@ export async function updateSession(request: NextRequest) {
    request.nextUrl.pathname.startsWith('/public/forms') ||
    request.nextUrl.pathname.startsWith('/public/events') ||
    request.nextUrl.pathname.startsWith('/public/unsubscribe') ||
+   request.nextUrl.pathname.startsWith('/p/') ||
    request.nextUrl.pathname.startsWith('/book') ||
    request.nextUrl.pathname.startsWith('/solutions') ||
    request.nextUrl.pathname.startsWith('/careers') ||

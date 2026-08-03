@@ -8,6 +8,7 @@ export const saasHighConvertingLanding: BuilderTemplate = {
   description: 'High-converting SaaS product page featuring alternating feature components, comparative tables, bento grids, and monthly/yearly pricing state toggles.',
   category: 'SaaS',
   type: 'both',
+  step_type: 'sales_page',
   thumbnail: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2670&auto=format&fit=crop',
   content: JSON.stringify({
     ROOT: {
@@ -321,6 +322,7 @@ export const leadCaptureAccelerator: BuilderTemplate = {
   description: 'High-converting landing page optimized for lead magnets and newsletter registrations, featuring a split hero, newsletter form, and clean comparative grid sections.',
   category: 'Lead Capture',
   type: 'both',
+  step_type: 'opt_in',
   thumbnail: 'https://images.unsplash.com/photo-1557200134-90327ee9fafa?q=80&w=2670',
   content: JSON.stringify({
     ROOT: {
