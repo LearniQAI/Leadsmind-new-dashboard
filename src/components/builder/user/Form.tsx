@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
-import { handlePageFormSubmission } from '@/app/actions/builder';
+import { handlePageFormSubmission, resolvePublicPageId } from '@/app/actions/builder';
 import { toast } from 'sonner';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { useBuilder } from '../BuilderContext';
 import { useEditor, useNode } from '@craftjs/core';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,17 @@ export const Form = (allProps: FormProps & any) => {
  const { websiteData } = useBuilder();
  const { pageId } = useParams();
  const { enabled } = useEditor((state) => ({ enabled: state.options.enabled }));
+ const pathname = usePathname();
+
+ // This widget also renders on the public /p/[workspaceSlug]/[subdomain]/[pageSlug]
+ // route, which has no [pageId] param — resolved via (funnelId, stepPath) instead
+ // when that's the case, same convention as OrderForm/WebinarRegistration.
+ const stepPath = (() => {
+  if (!pathname) return '/';
+  const match = pathname.match(/^\/p\/[^/]+\/[^/]+(\/.*)?$/);
+  const rest = match?.[1];
+  return rest && rest !== '' ? rest : '/';
+ })();
 
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [submitted, setSubmitted] = useState(false);
@@ -90,11 +101,19 @@ export const Form = (allProps: FormProps & any) => {
    });
 
    const workspaceId = websiteData?.workspace_id;
-   if (!workspaceId || !pageId) {
-    throw new Error("Missing workspace or page context");
+   if (!workspaceId) {
+    throw new Error("Missing workspace context");
    }
 
-   const result = await handlePageFormSubmission(pageId as string, workspaceId, payload);
+   let resolvedPageId = pageId as string | undefined;
+   if (!resolvedPageId) {
+    const funnelId = websiteData?.id;
+    if (!funnelId) throw new Error("Missing funnel context");
+    resolvedPageId = (await resolvePublicPageId(funnelId, stepPath)) || undefined;
+    if (!resolvedPageId) throw new Error("Could not resolve this page");
+   }
+
+   const result = await handlePageFormSubmission(resolvedPageId, workspaceId, payload);
 
    if (result.success) {
     setSubmitted(true);

@@ -8,11 +8,14 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
-const ROUTABLE_STEP_TYPES = ['order_form', 'upsell', 'downsell'];
+const ROUTABLE_STEP_TYPES = ['order_form', 'upsell', 'downsell', 'webinar_registration'];
+// webinar_registration only has a "success" concept (there's no decline/payment-
+// failure path for a free registration) — the decline dropdown is hidden for it.
+const DECLINE_CAPABLE_STEP_TYPES = ['order_form', 'upsell', 'downsell'];
 
-// Only order_form/upsell/downsell steps branch (per the Phase 2 design doc: live
-// navigation resolves config.on_success_step_id/on_decline_step_id first, falling
-// back to order+1 when unset). Renders nothing for any other step type.
+// Steps that branch (per the Phase 2 design doc: live navigation resolves
+// config.on_success_step_id/on_decline_step_id first, falling back to order+1
+// when unset). Renders nothing for any other step type.
 export const StepRoutingSettings = () => {
   const { pageId } = useParams();
   const [loading, setLoading] = useState(true);
@@ -82,8 +85,11 @@ export const StepRoutingSettings = () => {
 
   if (loading || !stepId) return null;
 
-  const successLabel = stepType === 'order_form' ? 'On payment success →' : 'On accept →';
+  const successLabel = stepType === 'order_form' ? 'On payment success →'
+    : stepType === 'webinar_registration' ? 'After registering →'
+    : 'On accept →';
   const declineLabel = stepType === 'order_form' ? 'On payment decline →' : 'On decline →';
+  const showDecline = DECLINE_CAPABLE_STEP_TYPES.includes(stepType || '');
 
   return (
     <section className="space-y-4 pt-4 border-t border-dash-border">
@@ -108,19 +114,21 @@ export const StepRoutingSettings = () => {
         </select>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-[10px] !text-dash-textMuted font-bold">{declineLabel}</Label>
-        <select
-          value={onDeclineStepId}
-          onChange={(e) => setOnDeclineStepId(e.target.value)}
-          className="w-full bg-white border border-dash-border rounded h-9 text-[11px] px-2 outline-none font-bold !text-dash-text focus:border-dash-accent"
-        >
-          <option value="">(none — declining stays here)</option>
-          {siblingSteps.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-      </div>
+      {showDecline && (
+        <div className="space-y-2">
+          <Label className="text-[10px] !text-dash-textMuted font-bold">{declineLabel}</Label>
+          <select
+            value={onDeclineStepId}
+            onChange={(e) => setOnDeclineStepId(e.target.value)}
+            className="w-full bg-white border border-dash-border rounded h-9 text-[11px] px-2 outline-none font-bold !text-dash-text focus:border-dash-accent"
+          >
+            <option value="">(none — declining stays here)</option>
+            {siblingSteps.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <Button
         disabled={saving}

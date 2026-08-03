@@ -36,10 +36,10 @@ export const STEP_TYPE_META: Record<StepType, StepTypeMeta> = {
   upsell: { businessGoal: 'Sales', label: 'Upsell', icon: TrendingUp, defaultTemplateId: 'upsell-basic' },
   downsell: { businessGoal: 'Sales', label: 'Downsell', icon: TrendingDown, defaultTemplateId: 'downsell-basic' },
   thank_you: { businessGoal: 'Sales', label: 'Thank-you Page', icon: CheckCircle, defaultTemplateId: 'thank-you-basic' },
-  info_page: { businessGoal: 'Info', label: 'Info / Contact Page', icon: Info, defaultTemplateId: 'blank-slate' },
-  webinar_registration: { businessGoal: 'Webinar', label: 'Webinar Registration', icon: Video, defaultTemplateId: 'blank-slate' },
-  webinar_thank_you: { businessGoal: 'Webinar', label: 'Webinar Thank-you / Broadcast', icon: Radio, defaultTemplateId: 'blank-slate' },
-  inline_popup_form: { businessGoal: 'Info', label: 'Inline / Popup Form', icon: FormInput, defaultTemplateId: 'blank-slate' },
+  info_page: { businessGoal: 'Info', label: 'Info / Contact Page', icon: Info, defaultTemplateId: 'info-contact-basic' },
+  webinar_registration: { businessGoal: 'Webinar', label: 'Webinar Registration', icon: Video, defaultTemplateId: 'webinar-registration-basic' },
+  webinar_thank_you: { businessGoal: 'Webinar', label: 'Webinar Thank-you / Broadcast', icon: Radio, defaultTemplateId: 'webinar-thank-you-basic' },
+  inline_popup_form: { businessGoal: 'Info', label: 'Inline / Popup Form', icon: FormInput, defaultTemplateId: 'inline-form-basic' },
 };
 
 export const BUSINESS_GOAL_ORDER: BusinessGoal[] = ['Sales', 'Opt-in', 'Webinar', 'Info'];
