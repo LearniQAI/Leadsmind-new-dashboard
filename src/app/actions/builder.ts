@@ -337,6 +337,35 @@ export async function resolvePageWorkspaceId(pageId: string): Promise<string | n
   return data?.workspace_id ?? null;
 }
 
+// The Form widget renders on the public /p/[workspaceSlug]/[subdomain]/[pageSlug]
+// route, which has no [pageId] route param (that only exists under
+// /editor/funnel/... and /editor/website/...) — useParams().pageId is always
+// undefined there, so every public submission of this widget has been silently
+// failing with "Missing workspace or page context" (confirmed live while testing
+// the new Info/Contact page, which reuses this same widget — this bug predates
+// that work and affects every Opt-in page's Form widget on real live funnel/
+// website pages). Resolves the real pages.id from (funnelId, stepPath) instead,
+// the same convention already used by createFunnelOrder/createWebinarRegistration
+// for the same structural reason.
+export async function resolvePublicPageId(funnelId: string, stepPath: string): Promise<string | null> {
+  if (!funnelId || !stepPath) return null;
+  const supabase = createAdminClient();
+  const { data: step } = await supabase
+    .from('funnel_steps')
+    .select('id')
+    .eq('funnel_id', funnelId)
+    .eq('path_name', stepPath)
+    .maybeSingle();
+  if (!step) return null;
+
+  const { data: page } = await supabase
+    .from('pages')
+    .select('id')
+    .eq('funnel_step_id', step.id)
+    .maybeSingle();
+  return page?.id ?? null;
+}
+
 export async function handlePageFormSubmission(pageId: string, _workspaceId: string, payload: any) {
   let workspaceId: string | null = null;
   try {

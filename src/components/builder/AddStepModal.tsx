@@ -9,11 +9,13 @@ import {
 } from '@/lib/builder/stepTypes';
 
 // Phase 1 (the spine) wired up opt_in / sales_page / order_form; Phase 2 (the
-// priority trio) adds upsell / downsell / thank_you. The remaining step types
-// still have a slot in STEP_TYPE_META (for grouping/labels) but no
-// logic/templates yet — shown as a locked "Coming soon" card rather than
-// hidden, so the full taxonomy stays visible.
-const ENABLED_STEP_TYPES: StepType[] = ['opt_in', 'sales_page', 'order_form', 'upsell', 'downsell', 'thank_you'];
+// priority trio) added upsell / downsell / thank_you; Phase 3 adds
+// info_page / webinar_registration / webinar_thank_you / inline_popup_form.
+// opt_in_thank_you remains the one type without dedicated logic/template yet.
+const ENABLED_STEP_TYPES: StepType[] = [
+  'opt_in', 'sales_page', 'order_form', 'upsell', 'downsell', 'thank_you',
+  'info_page', 'webinar_registration', 'webinar_thank_you', 'inline_popup_form',
+];
 
 interface AddStepModalProps {
   isOpen: boolean;

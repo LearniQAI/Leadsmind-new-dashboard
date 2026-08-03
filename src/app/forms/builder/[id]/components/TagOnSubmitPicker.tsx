@@ -16,25 +16,42 @@ export function TagOnSubmitPicker() {
   const { state, dispatch } = useFormBuilder();
   const [tags, setTags] = useState<TagOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [creating, setCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newTagName, setNewTagName] = useState('');
+  const [reloadToken, setReloadToken] = useState(0);
 
   const selectedTagId: string | null = state.config?.tagOnSubmit?.tagId ?? null;
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setLoadError(false);
     (async () => {
-      const res = await listTags();
-      if (!cancelled && res.success) {
-        setTags((res.data || []).map((t: any) => ({ id: t.id, name: t.name })));
+      try {
+        const res = await listTags();
+        if (cancelled) return;
+        if (res.success) {
+          setTags((res.data || []).map((t: any) => ({ id: t.id, name: t.name })));
+        } else {
+          setLoadError(true);
+        }
+      } catch (err) {
+        // A rejected fetch here (e.g. a stale Server Action reference after a
+        // deploy/HMR) previously left `loading` stuck true forever — since the
+        // Select's placeholder never shows once `value` is set, a form with an
+        // already-configured tag would render as a blank, unlabeled dropdown
+        // indistinguishable from "no tag selected".
+        if (!cancelled) setLoadError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      if (!cancelled) setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadToken]);
 
   const setTagId = (tagId: string | null) => {
     dispatch({ type: 'UPDATE_CONFIG', config: { tagOnSubmit: tagId ? { tagId } : null } });
@@ -76,36 +93,62 @@ export function TagOnSubmitPicker() {
       </p>
 
       <div className="flex flex-col gap-2.5">
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Select value={selectedTagId || undefined} onValueChange={(v) => setTagId(v)} disabled={loading}>
-              <SelectTrigger className="h-10 w-full bg-white border-dash-border rounded-xl text-[12px] shadow-sm">
-                <SelectValue placeholder={loading ? 'Loading tags…' : 'No tag selected'} />
-              </SelectTrigger>
-              <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
-                {tags.length === 0 ? (
-                  <div className="px-3 py-2 text-[12px] !text-dash-textMuted">No tags yet</div>
-                ) : (
-                  tags.map((t) => (
-                    <SelectItem key={t.id} value={t.id} className="text-[12px]">
-                      {t.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          {selectedTagId && (
+        {loadError ? (
+          <div className="p-2.5 bg-red/5 border border-red/20 rounded-xl flex items-center justify-between gap-2">
+            <p className="text-[11px] !text-red">
+              {selectedTagId
+                ? "Couldn't load tag names — a tag is saved on this form, but we can't confirm which one."
+                : "Couldn't load tags."}
+            </p>
             <button
               type="button"
-              onClick={() => setTagId(null)}
-              title="Remove tag"
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-dash-border text-dash-textMuted hover:text-red hover:border-red/40 transition-colors motion-reduce:transition-none shrink-0"
+              onClick={() => setReloadToken((n) => n + 1)}
+              className="text-[10px] font-bold text-dash-accent hover:text-dash-accent/80 shrink-0"
             >
-              <X size={13} />
+              Retry
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <div className="flex-1">
+              {/* `value` only bound once loading has actually settled — Radix's
+                  Select never shows the placeholder while a value is set, so
+                  binding this during the loading window (before `tags` has any
+                  items to resolve it against) would render a blank, unlabeled
+                  dropdown that looks identical to "no tag selected". */}
+              <Select
+                value={loading ? '' : selectedTagId || ''}
+                onValueChange={(v) => setTagId(v)}
+                disabled={loading}
+              >
+                <SelectTrigger className="h-10 w-full bg-white border-dash-border rounded-xl text-[12px] shadow-sm">
+                  <SelectValue placeholder={loading ? 'Loading tags…' : 'No tag selected'} />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
+                  {tags.length === 0 ? (
+                    <div className="px-3 py-2 text-[12px] !text-dash-textMuted">No tags yet</div>
+                  ) : (
+                    tags.map((t) => (
+                      <SelectItem key={t.id} value={t.id} className="text-[12px]">
+                        {t.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedTagId && (
+              <button
+                type="button"
+                onClick={() => setTagId(null)}
+                title="Remove tag"
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-dash-border text-dash-textMuted hover:text-red hover:border-red/40 transition-colors motion-reduce:transition-none shrink-0"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        )}
 
         {selectedTag && (
           <p className="text-[11px] !text-dash-textMuted">

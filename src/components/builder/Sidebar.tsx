@@ -27,7 +27,7 @@ import { Hero } from './user/Hero';
 import { Navbar } from './user/Navbar';
 import { Footer } from './user/Footer';
 import { PageSettings } from './PageSettings';
-import { Layout, Type, Image as ImageIcon, RectangleHorizontal as ButtonIcon, Square, Columns as ColumnsIcon, FormInput, Timer, CreditCard, MessageCircleQuestion, Section as SectionIcon, ArrowUpDown, Minus, Heading as HeadingIcon, AlignLeft, Video as VideoIcon, Star, Navigation, LayoutGrid, Layers, Search, Code as CodeIcon, ListOrdered, Sparkles, Plus, Paintbrush, PackageSearch, FileText, TrendingUp, TrendingDown, CheckCircle2 } from 'lucide-react';
+import { Layout, Type, Image as ImageIcon, RectangleHorizontal as ButtonIcon, Square, Columns as ColumnsIcon, FormInput, Timer, CreditCard, MessageCircleQuestion, Section as SectionIcon, ArrowUpDown, Minus, Heading as HeadingIcon, AlignLeft, Video as VideoIcon, Star, Navigation, LayoutGrid, Layers, Search, Code as CodeIcon, ListOrdered, Sparkles, Plus, Paintbrush, PackageSearch, FileText, TrendingUp, TrendingDown, CheckCircle2, CalendarCheck } from 'lucide-react';
 import { BlogFeed } from './user/BlogFeed';
 import { RESOLVER } from '@/lib/builder/resolver';
 import { WebsiteSettings } from './WebsiteSettings';
@@ -466,6 +466,9 @@ export const Sidebar = ({
               <DraggableItem name="Upsell" icon={TrendingUp} component={<RESOLVER.Upsell />} />
               <DraggableItem name="Downsell" icon={TrendingDown} component={<RESOLVER.Downsell />} />
               <DraggableItem name="Thank You" icon={CheckCircle2} component={<RESOLVER.ThankYou />} />
+              <DraggableItem name="Popup Form" icon={FormInput} component={<RESOLVER.PopupForm canvas />} />
+              <DraggableItem name="Webinar Registration" icon={VideoIcon} component={<RESOLVER.WebinarRegistration />} />
+              <DraggableItem name="Webinar Thank You" icon={CalendarCheck} component={<RESOLVER.WebinarThankYou />} />
               <DraggableItem name="Countdown" icon={Timer} component={<RESOLVER.Countdown />} />
               <DraggableItem name="Pricing" icon={CreditCard} component={<RESOLVER.PricingTable />} />
               <DraggableItem name="Progress" icon={Layout} component={<RESOLVER.ProgressBar value={65} color="#6c47ff" height={12} showLabel={true} label="Step 1 of 3" borderRadius={99} />} />

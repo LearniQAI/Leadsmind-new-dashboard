@@ -15,6 +15,9 @@ import { OrderForm } from '@/components/builder/user/OrderForm';
 import { Upsell } from '@/components/builder/user/Upsell';
 import { Downsell } from '@/components/builder/user/Downsell';
 import { ThankYou } from '@/components/builder/user/ThankYou';
+import { PopupForm } from '@/components/builder/user/PopupForm';
+import { WebinarRegistration } from '@/components/builder/user/WebinarRegistration';
+import { WebinarThankYou } from '@/components/builder/user/WebinarThankYou';
 import { Countdown } from '@/components/builder/user/Countdown';
 import { PricingTable } from '@/components/builder/user/PricingTable';
 import { FAQ } from '@/components/builder/user/FAQ';
@@ -66,6 +69,9 @@ export const RESOLVER = {
  Upsell: wrapForReact19(Upsell),
  Downsell: wrapForReact19(Downsell),
  ThankYou: wrapForReact19(ThankYou),
+ PopupForm: wrapForReact19(PopupForm),
+ WebinarRegistration: wrapForReact19(WebinarRegistration),
+ WebinarThankYou: wrapForReact19(WebinarThankYou),
  Countdown: wrapForReact19(Countdown),
  PricingTable: wrapForReact19(PricingTable),
  FAQ: wrapForReact19(FAQ),

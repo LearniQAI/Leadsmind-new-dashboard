@@ -118,6 +118,12 @@ export function FormBuilderProvider({
 
     dispatch({ type: 'SET_SAVING', isSaving: true });
     try {
+      // Content-only save — must never touch `status`. Publishing/
+      // unpublishing is a deliberate act taken through the governance
+      // flow (PublishManager.publishDraft) or the forms-list toggle;
+      // autosaving an edit here previously downgraded an already-live
+      // form straight to 'draft', silently taking real public
+      // submissions offline until someone noticed and re-published.
       const payload = {
         name: currentState.formName,
         fields: currentState.fields,
@@ -127,7 +133,6 @@ export function FormBuilderProvider({
           logicRules: currentState.logicRules,
           progressBarType: currentState.progressBarType,
         },
-        status: 'draft',
       };
 
       const res = await updateForm(currentState.formId, payload);
