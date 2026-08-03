@@ -6,6 +6,7 @@ export const educationLms: BuilderTemplate = {
   description: 'High-conversion sales page for online courses and coaches, with a real curriculum breakdown, student results, pricing, and FAQ.',
   category: 'Education',
   type: 'funnel',
+  step_type: 'sales_page',
   thumbnail: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644',
   content: JSON.stringify({
     ROOT: {

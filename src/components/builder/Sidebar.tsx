@@ -27,7 +27,7 @@ import { Hero } from './user/Hero';
 import { Navbar } from './user/Navbar';
 import { Footer } from './user/Footer';
 import { PageSettings } from './PageSettings';
-import { Layout, Type, Image as ImageIcon, RectangleHorizontal as ButtonIcon, Square, Columns as ColumnsIcon, FormInput, Timer, CreditCard, MessageCircleQuestion, Section as SectionIcon, ArrowUpDown, Minus, Heading as HeadingIcon, AlignLeft, Video as VideoIcon, Star, Navigation, LayoutGrid, Layers, Search, Code as CodeIcon, ListOrdered, Sparkles, Plus, Paintbrush, PackageSearch } from 'lucide-react';
+import { Layout, Type, Image as ImageIcon, RectangleHorizontal as ButtonIcon, Square, Columns as ColumnsIcon, FormInput, Timer, CreditCard, MessageCircleQuestion, Section as SectionIcon, ArrowUpDown, Minus, Heading as HeadingIcon, AlignLeft, Video as VideoIcon, Star, Navigation, LayoutGrid, Layers, Search, Code as CodeIcon, ListOrdered, Sparkles, Plus, Paintbrush, PackageSearch, FileText, TrendingUp, TrendingDown, CheckCircle2 } from 'lucide-react';
 import { BlogFeed } from './user/BlogFeed';
 import { RESOLVER } from '@/lib/builder/resolver';
 import { WebsiteSettings } from './WebsiteSettings';
@@ -38,6 +38,10 @@ import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import StepNavigator from '@/components/funnels/StepNavigator';
+import { StepTemplateModal } from './StepTemplateModal';
+import { AddStepModal } from './AddStepModal';
+import { STEP_TYPE_META, type StepType } from '@/lib/builder/stepTypes';
+import { getTemplateById, BLANK_PAGE } from '@/lib/builder/templates';
 import { NodeTreeExplorer } from './NodeTreeExplorer';
 import { Input } from '@/components/ui/input';
 import { generateAISectionLayout } from '@/app/actions/builderAI';
@@ -170,14 +174,43 @@ export const Sidebar = ({
     router.push(`/editor/funnel/${websiteData?.id}/${targetPageId}`);
   };
 
-  const handleAddStep = async () => {
+  const handleViewStep = async (step: { id: string; stepId?: string; name: string }) => {
+    if (!websiteData?.subdomain || !websiteData?.workspaceSlug) {
+      toast.error('Cannot preview: this funnel has no subdomain configured yet.');
+      return;
+    }
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('funnel_steps')
+        .select('path_name')
+        .eq('id', step.stepId)
+        .single();
+      if (error) throw error;
+
+      const pathName = data?.path_name || '/';
+      const url = pathName === '/'
+        ? `/p/${websiteData.workspaceSlug}/${websiteData.subdomain}`
+        : `/p/${websiteData.workspaceSlug}/${websiteData.subdomain}${pathName}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err: any) {
+      toast.error('Failed to open preview: ' + err.message);
+    }
+  };
+
+  const [changeTemplateStep, setChangeTemplateStep] = React.useState<{ id: string; name: string } | null>(null);
+  const [isAddStepModalOpen, setIsAddStepModalOpen] = React.useState(false);
+
+  const handleAddStepOfType = async (stepType: StepType) => {
     if (!websiteData?.id) return;
+    setIsAddStepModalOpen(false);
     const toastId = toast.loading('Adding new funnel step...');
     try {
       const supabase = createClient();
       const nextOrder = funnelSteps.length + 1;
-      const stepName = `Step ${nextOrder}`;
-      const stepPath = `/step-${nextOrder}`;
+      const meta = STEP_TYPE_META[stepType];
+      const stepName = funnelSteps.some((s: any) => s.name === meta.label) ? `${meta.label} ${nextOrder}` : meta.label;
+      const stepPath = `/${stepName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`;
 
       const { data: step, error: stepError } = await supabase
         .from('funnel_steps')
@@ -185,14 +218,16 @@ export const Sidebar = ({
           funnel_id: websiteData.id,
           name: stepName,
           path_name: stepPath,
-          order: nextOrder
+          order: nextOrder,
+          step_type: stepType
         })
         .select()
         .single();
 
       if (stepError) throw stepError;
 
-      const initialContent = '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
+      const template = getTemplateById(meta.defaultTemplateId);
+      const initialContent = template?.content || BLANK_PAGE;
       const { data: page, error: pageError } = await supabase
         .from('pages')
         .insert({
@@ -224,7 +259,7 @@ export const Sidebar = ({
           supabase
             .from('funnel_steps')
             .update({ order: idx + 1 })
-            .eq('id', step.id)
+            .eq('id', step.stepId)
         )
       );
 
@@ -264,6 +299,10 @@ export const Sidebar = ({
         <div className="flex flex-col items-center gap-1.5">
           <RailButton active={activeTab === 'elements'} onClick={() => setActiveTab('elements')} title="Elements" icon={Plus} />
           <RailButton active={activeTab === 'layers'} onClick={() => setActiveTab('layers')} title="Layers" icon={Layers} />
+          {type === 'funnel' && (
+            <RailButton active={activeTab === 'steps'} onClick={() => setActiveTab('steps')} title="Funnel steps" icon={ListOrdered} />
+          )}
+          <RailButton active={activeTab === 'page'} onClick={() => setActiveTab('page')} title="Page settings" icon={FileText} />
           <RailButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} title="Globals" icon={Paintbrush} />
         </div>
         <div className="flex-1" />
@@ -423,6 +462,10 @@ export const Sidebar = ({
             <div className="grid grid-cols-3 gap-2.5">
               <DraggableItem name="Button" icon={ButtonIcon} component={<RESOLVER.Button text="Click Here" size="md" variant="primary" color="#6c47ff" textColor="#ffffff" borderRadius={8} width="fit" link="#" iconPosition="right" />} />
               <DraggableItem name="Lead Form" icon={FormInput} component={<RESOLVER.Form />} />
+              <DraggableItem name="Order Form" icon={CreditCard} component={<RESOLVER.OrderForm />} />
+              <DraggableItem name="Upsell" icon={TrendingUp} component={<RESOLVER.Upsell />} />
+              <DraggableItem name="Downsell" icon={TrendingDown} component={<RESOLVER.Downsell />} />
+              <DraggableItem name="Thank You" icon={CheckCircle2} component={<RESOLVER.ThankYou />} />
               <DraggableItem name="Countdown" icon={Timer} component={<RESOLVER.Countdown />} />
               <DraggableItem name="Pricing" icon={CreditCard} component={<RESOLVER.PricingTable />} />
               <DraggableItem name="Progress" icon={Layout} component={<RESOLVER.ProgressBar value={65} color="#6c47ff" height={12} showLabel={true} label="Step 1 of 3" borderRadius={99} />} />
@@ -470,7 +513,9 @@ export const Sidebar = ({
             activeStepId={pageId as string}
             onSelectStep={handleSelectStep}
             onReorder={handleReorderSteps}
-            onAddStep={handleAddStep}
+            onAddStep={() => setIsAddStepModalOpen(true)}
+            onViewStep={handleViewStep}
+            onChangeTemplate={(step) => setChangeTemplateStep({ id: step.id, name: step.name })}
           />
         </div>
       ) : activeTab === 'page' ? (
@@ -486,6 +531,17 @@ export const Sidebar = ({
         </div>
       )}
       </div>
+      <StepTemplateModal
+        isOpen={!!changeTemplateStep}
+        onOpenChange={(open) => !open && setChangeTemplateStep(null)}
+        stepPageId={changeTemplateStep?.id || null}
+        stepName={changeTemplateStep?.name}
+      />
+      <AddStepModal
+        isOpen={isAddStepModalOpen}
+        onOpenChange={setIsAddStepModalOpen}
+        onPick={handleAddStepOfType}
+      />
     </div>
   );
 };

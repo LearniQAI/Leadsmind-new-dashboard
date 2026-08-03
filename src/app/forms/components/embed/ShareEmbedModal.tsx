@@ -191,7 +191,7 @@ export function ShareEmbedModal({ form, open, onClose }: ShareEmbedModalProps) {
             <span className="text-[11px] font-bold !text-dash-textMuted">
               Step 1: Direct share
             </span>
-            <PublicFormUrlCard publicUrl={publicUrl} />
+            <PublicFormUrlCard publicUrl={publicUrl} isPublished={isPublished} />
           </div>
 
           {/* Group 2: Segmented Embed Options & Code Block */}

@@ -6,6 +6,7 @@ export interface BuilderTemplate {
   description: string;
   category: string; // E.g. 'SaaS', 'Portfolio', 'E-commerce'
   type: 'website' | 'funnel' | 'both';
+  step_type?: string; // funnel step-type this template is pre-tagged for, e.g. 'opt_in' | 'sales_page'
   thumbnail?: string;
   preview_image?: string;
   content: string; // CraftJS JSON

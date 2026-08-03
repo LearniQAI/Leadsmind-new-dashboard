@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Users, Lock, Unlock, Eye, ChevronDown } from 'lucide-react';
 import { AuditLogger } from '@/lib/governance/AuditLogger';
+import { acquireFormPresenceChannel } from '@/lib/realtime/formPresenceChannel';
 
 interface ActiveUser {
   email: string;
@@ -24,16 +25,17 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
   const isOwner = userEmail.toLowerCase() === 'oderinwalematthew3@gmail.com';
 
   useEffect(() => {
-    let activeChannel: any;
-    
+    let handle: ReturnType<typeof acquireFormPresenceChannel> | null = null;
+    let cancelled = false;
+
     const initPresence = async () => {
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
       const { data } = await supabase.auth.getUser();
-      
+
       let email = 'Guest';
       let initials = 'G';
-      
+
       if (data?.user?.email) {
         email = data.user.email;
         initials = email.substring(0, 2).toUpperCase();
@@ -41,36 +43,28 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
         setUserInitials(initials);
       }
 
-      activeChannel = supabase.channel(`form_presence_${formId}`, {
-        config: { presence: { key: email } },
+      if (cancelled) return;
+
+      handle = acquireFormPresenceChannel(formId, { email, initials, locked: false });
+
+      handle.onPresenceSync((state) => {
+        const users: any[] = [];
+        for (const key in state) {
+          const presences = state[key] as any[];
+          if (presences && presences.length > 0) {
+            users.push(presences[0]);
+          }
+        }
+        setActiveUsers(users.filter(u => u.email !== email)); // Others
       });
 
-      activeChannel
-        .on('presence', { event: 'sync' }, () => {
-          const state = activeChannel.presenceState();
-          const users: any[] = [];
-          
-          for (const key in state) {
-            const presences = state[key] as any[];
-            if (presences && presences.length > 0) {
-              users.push(presences[0]);
-            }
-          }
-          
-          setActiveUsers(users.filter(u => u.email !== email)); // Others
-        })
-        .on('broadcast', { event: 'lock_state_change' }, ({ payload }: any) => {
-          if (payload.targetEmail === email && !isOwner) { // Owner cannot be locked
-            setIsLocked(payload.locked);
-          }
-        })
-        .subscribe(async (status: string) => {
-          if (status === 'SUBSCRIBED') {
-            await activeChannel.track({ email, initials, locked: false });
-          }
-        });
-        
-      setChannel(activeChannel);
+      handle.onBroadcastLock((payload) => {
+        if (payload.targetEmail === email && !isOwner) { // Owner cannot be locked
+          setIsLocked(payload.locked);
+        }
+      });
+
+      setChannel(handle.channel);
     };
 
     initPresence();
@@ -79,8 +73,14 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
       
-      const { data: form } = await supabase.from('forms').select('user_id').eq('id', formId).single();
-      const { data: owner } = await supabase.from('users').select('email').eq('id', form?.user_id).single();
+      // forms has no user_id column — ownership is resolved via the form's
+      // workspace, whose owner_id references users.id (see requireFormAccess
+      // in lib/auth.ts for the same workspace_id-based ownership chain).
+      const { data: form } = await supabase.from('forms').select('workspace_id').eq('id', formId).single();
+      const { data: workspace } = await supabase.from('workspaces').select('owner_id').eq('id', form?.workspace_id).single();
+      const { data: owner } = workspace?.owner_id
+        ? await supabase.from('users').select('email').eq('id', workspace.owner_id).single()
+        : { data: null };
       const { data: collabs } = await supabase.from('form_collaborators').select('email').eq('form_id', formId).eq('status', 'active');
       
       const emails = (collabs || []).map(c => c.email);
@@ -108,9 +108,9 @@ export function CollaborationIndicator({ formId }: { formId: string }) {
     document.addEventListener('mousedown', handleClickOutside);
 
     return () => {
-      if (activeChannel) {
-        activeChannel.untrack();
-        activeChannel.unsubscribe();
+      cancelled = true;
+      if (handle) {
+        handle.release();
       }
       if (sub) {
         sub.unsubscribe();

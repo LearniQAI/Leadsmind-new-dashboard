@@ -8,6 +8,7 @@ import { Textarea } from '../ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Search, Image, Globe, Sparkles, History, CheckCircle, FileCode, Plus } from 'lucide-react';
 import { updatePageSettings } from '@/app/actions/builder';
+import { StepRoutingSettings } from './StepRoutingSettings';
 import { getPageRevisions, restorePageRevision } from '@/app/actions/builderDeploy';
 import { generateAICopySuggestions } from '@/app/actions/builderAI';
 import { toast } from 'sonner';
@@ -207,6 +208,8 @@ export const PageSettings = () => {
             </div>
           </div>
         </section>
+
+        <StepRoutingSettings />
 
         {/* Revision Vault Rollbacks */}
         <section className="space-y-4 pt-4 border-t border-dash-border">

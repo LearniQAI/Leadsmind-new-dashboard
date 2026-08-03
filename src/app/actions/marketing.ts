@@ -3,6 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess, requireFormAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
+import { getTemplateById } from '@/lib/builder/templates';
 
 // FUNNELS
 export async function getFunnels() {
@@ -29,7 +30,7 @@ export async function getFunnels() {
  }
 }
 
-export async function createFunnel(name: string) {
+export async function createFunnel(name: string, templateId?: string) {
  try {
   const supabase = await createServerClient();
   let workspaceId: string;
@@ -68,7 +69,8 @@ export async function createFunnel(name: string) {
   if (stepError) throw stepError;
 
   // 3. Create initial CraftJS page content linked to funnel step
-  const initialContent = '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
+  const template = templateId ? getTemplateById(templateId) : undefined;
+  const initialContent = template?.content || '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
   const { error: pageError } = await supabase
    .from('pages')
    .insert({

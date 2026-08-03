@@ -6,6 +6,7 @@ export const fitnessPower: BuilderTemplate = {
   description: 'High-energy landing page for gyms and personal trainers, with real transformation stats, a client result, and coaching tiers.',
   category: 'Fitness',
   type: 'funnel',
+  step_type: 'sales_page',
   thumbnail: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48',
   content: JSON.stringify({
     ROOT: {

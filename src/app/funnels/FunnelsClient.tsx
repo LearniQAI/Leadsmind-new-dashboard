@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Plus, ArrowRight, Pencil, Trash2, CheckCircle, Clock, MoreVertical, Copy, BarChart2, Layout
+  Plus, ArrowRight, Pencil, Trash2, CheckCircle, Clock, MoreVertical, Copy, BarChart2, Layout,
+  Search, Zap, AlertCircle, Check, Loader2
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { createFunnel } from '@/app/actions/marketing';
+import { getTemplates } from '@/app/actions/builder';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/funnels/EmptyState';
@@ -17,7 +19,7 @@ import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
 import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 import {
-  DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter
+  DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalDescription, DashModalFooter
 } from '@/components/dashboard-ui/Modal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
@@ -29,6 +31,40 @@ export default function FunnelsClient({ initialFunnels }: { initialFunnels: any[
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [dbTemplates, setDbTemplates] = useState<any[]>([]);
+  const [templateError, setTemplateError] = useState<string | null>(null);
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templateCategory, setTemplateCategory] = useState('All');
+
+  const fetchTemplates = async () => {
+    setTemplateError(null);
+    try {
+      const templates = await getTemplates('funnel');
+      setDbTemplates(templates);
+    } catch (err: any) {
+      console.error('Error fetching funnel templates:', err);
+      setTemplateError(err.message || 'Failed to load templates');
+    }
+  };
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const categories = useMemo(() => {
+    const cats = new Set(dbTemplates.map(t => t.category).filter(Boolean));
+    return ['All', ...Array.from(cats).sort()];
+  }, [dbTemplates]);
+
+  const filteredTemplates = useMemo(() => {
+    return dbTemplates.filter(t => {
+      const matchesSearch = t.name.toLowerCase().includes(templateSearch.toLowerCase()) ||
+        t.description.toLowerCase().includes(templateSearch.toLowerCase());
+      const matchesCategory = templateCategory === 'All' || t.category === templateCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [dbTemplates, templateSearch, templateCategory]);
 
   // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
@@ -45,7 +81,7 @@ export default function FunnelsClient({ initialFunnels }: { initialFunnels: any[
   const handleCreate = async () => {
     if (!createName.trim()) { toast.error('Please enter a funnel name'); return; }
     setCreating(true);
-    const res = await createFunnel(createName.trim());
+    const res = await createFunnel(createName.trim(), selectedTemplate || undefined);
     setCreating(false);
     if (res.error) {
       toast.error(res.error);
@@ -53,6 +89,7 @@ export default function FunnelsClient({ initialFunnels }: { initialFunnels: any[
       toast.success('Funnel created!');
       setFunnels(prev => [res.data, ...prev]);
       setCreateName('');
+      setSelectedTemplate(null);
       setCreateOpen(false);
     }
   };
@@ -248,26 +285,182 @@ export default function FunnelsClient({ initialFunnels }: { initialFunnels: any[
         ))}
       </div>
 
-      {/* Create Dialog */}
-      <DashModal open={createOpen} onOpenChange={setCreateOpen}>
-        <DashModalContent className="max-w-md">
-          <DashModalHeader>
-            <DashModalTitle>Deploy <span className="text-dash-accent">new funnel</span></DashModalTitle>
-          </DashModalHeader>
-          <div className="space-y-4">
-            <DashFormField label="Funnel name">
-              <DashInput
-                value={createName}
-                onChange={e => setCreateName(e.target.value)}
-                placeholder="e.g. Lead Capture Funnel"
-                onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              />
-            </DashFormField>
+      {/* Create Dialog — template-first: picker is the default, never a blank canvas */}
+      <DashModal open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) setSelectedTemplate(null); }}>
+        <DashModalContent className="max-w-[950px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <div className="px-6 py-5 border-b border-dash-border">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-dash-accent/10 flex items-center justify-center border border-dash-accent/20">
+                <Zap className="h-5 w-5 text-dash-accent" />
+              </div>
+              <div>
+                <DashModalTitle>Deploy <span className="text-dash-accent">new funnel</span></DashModalTitle>
+                <DashModalDescription>Select a template or start from a blank canvas</DashModalDescription>
+              </div>
+            </div>
           </div>
-          <DashModalFooter>
-            <DashButton variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</DashButton>
-            <DashButton onClick={handleCreate} disabled={creating}>{creating ? 'Creating...' : 'Create'}</DashButton>
-          </DashModalFooter>
+
+          <div className="flex-1 overflow-hidden flex bg-dash-surface min-h-0">
+            {/* Sidebar for filtering */}
+            <div className="w-[240px] border-r border-dash-border p-6 space-y-8 hidden md:block overflow-y-auto custom-scrollbar">
+              <div className="space-y-3">
+                <label className="text-[11px] font-bold !text-dash-textMuted">Templates library</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 !text-dash-textMuted" />
+                  <DashInput
+                    placeholder="Search templates..."
+                    value={templateSearch}
+                    onChange={(e) => setTemplateSearch(e.target.value)}
+                    className="h-9 pl-9 text-[11px]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[11px] font-bold !text-dash-textMuted">Categories</label>
+                <div className="flex flex-col gap-1.5">
+                  {categories.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setTemplateCategory(cat)}
+                      className={cn(
+                        "px-3 py-2 rounded-lg text-left text-[11px] font-semibold transition-colors motion-reduce:transition-none",
+                        templateCategory === cat
+                          ? "bg-dash-accent/10 text-dash-accent border border-dash-accent/20"
+                          : "!text-dash-textMuted hover:!text-dash-text hover:bg-white"
+                      )}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Main content area */}
+            <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white">
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div className="space-y-8">
+                  <DashFormField label="Funnel name" htmlFor="funnel-name">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-4.5 h-4.5 rounded-full bg-dash-accent/10 text-dash-accent text-[9px] font-bold flex items-center justify-center border border-dash-accent/20">1</span>
+                    </div>
+                    <DashInput
+                      id="funnel-name"
+                      placeholder="e.g. Lead Capture Funnel"
+                      value={createName}
+                      onChange={e => setCreateName(e.target.value)}
+                      className="h-11 text-[14px]"
+                    />
+                  </DashFormField>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-4.5 h-4.5 rounded-full bg-dash-accent/10 text-dash-accent text-[9px] font-bold flex items-center justify-center border border-dash-accent/20">2</span>
+                        <label className="text-[11px] font-bold !text-dash-textMuted">Templates</label>
+                      </div>
+                      <div className="text-[10px] font-bold !text-dash-textMuted bg-dash-surface px-2.5 py-1 rounded-full border border-dash-border">
+                        {filteredTemplates.length} options matching
+                      </div>
+                    </div>
+
+                    {templateError ? (
+                      <div className="p-12 rounded-2xl border border-dashed border-red/20 bg-red/5 flex flex-col items-center justify-center gap-5 text-center">
+                        <div className="h-14 w-14 rounded-full bg-red/10 text-red flex items-center justify-center">
+                          <AlertCircle className="w-8 h-8" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold !text-dash-text">Could not load templates</h4>
+                          <p className="text-[11px] !text-dash-textMuted mt-1 max-w-[240px]">{templateError}</p>
+                        </div>
+                        <DashButton variant="secondary" onClick={fetchTemplates}>Retry</DashButton>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {filteredTemplates.map((t) => {
+                          const isBlank = t.id === 'blank-slate';
+                          return (
+                            <div
+                              key={t.id}
+                              onClick={() => setSelectedTemplate(t.id)}
+                              className={cn(
+                                "group relative cursor-pointer rounded-2xl border-2 transition-all duration-200 motion-reduce:transition-none overflow-hidden flex flex-col h-full hover:shadow-lg hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
+                                selectedTemplate === t.id
+                                  ? "border-dash-accent bg-dash-accent/5 shadow-md"
+                                  : isBlank
+                                    ? "border-dash-accent/30 border-dashed bg-dash-accent/[0.03] hover:border-dash-accent/50"
+                                    : "border-dash-border bg-dash-surface hover:border-dash-text/20"
+                              )}
+                            >
+                              <div className={cn(
+                                "aspect-[4/3] relative overflow-hidden shrink-0",
+                                isBlank ? "flex items-center justify-center bg-transparent" : "bg-dash-surface"
+                              )}>
+                                {isBlank ? (
+                                  <div className="w-14 h-14 rounded-2xl bg-dash-accent/10 flex items-center justify-center text-dash-accent group-hover:bg-dash-accent group-hover:text-white transition-colors motion-reduce:transition-none">
+                                    <Plus size={26} strokeWidth={2.25} />
+                                  </div>
+                                ) : (
+                                  (t.thumbnail || t.preview_image) && (
+                                    <img
+                                      src={t.thumbnail || t.preview_image}
+                                      alt={t.name}
+                                      className={cn(
+                                        "absolute inset-0 w-full h-full object-cover transition-all duration-500 motion-reduce:transition-none",
+                                        selectedTemplate === t.id ? "scale-105 opacity-90" : "opacity-80 group-hover:opacity-100"
+                                      )}
+                                    />
+                                  )
+                                )}
+
+                                {selectedTemplate === t.id && (
+                                  isBlank ? (
+                                    <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-dash-accent border-[4px] border-white flex items-center justify-center">
+                                      <Check className="w-3 h-3 text-white" strokeWidth={4} />
+                                    </div>
+                                  ) : (
+                                    <div className="absolute inset-0 flex items-center justify-center z-20 bg-dash-text/10">
+                                      <div className="w-10 h-10 rounded-full bg-dash-accent flex items-center justify-center">
+                                        <Check className="w-5 h-5 text-white" strokeWidth={4} />
+                                      </div>
+                                    </div>
+                                  )
+                                )}
+
+                                {!isBlank && (
+                                  <div className="absolute top-3 left-3 flex gap-2">
+                                    <div className="px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-sm border border-dash-border text-[9px] font-bold text-dash-accent">
+                                      {t.category}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className={cn("p-4", isBlank ? "bg-dash-surface" : "bg-white")}>
+                                <span className={cn(
+                                  "font-bold text-[12px] block transition-colors motion-reduce:transition-none leading-tight",
+                                  selectedTemplate === t.id ? "text-dash-accent" : "!text-dash-text group-hover:text-dash-accent"
+                                )}>{t.name}</span>
+                                <span className="text-[10px] font-medium !text-dash-textMuted line-clamp-2 mt-1 leading-relaxed">{t.description}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="px-6 py-5 border-t border-dash-border bg-white flex items-center justify-end gap-3">
+            <DashButton variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</DashButton>
+            <DashButton onClick={handleCreate} disabled={creating || !createName.trim()}>
+              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+              Create funnel
+            </DashButton>
+          </div>
         </DashModalContent>
       </DashModal>
 

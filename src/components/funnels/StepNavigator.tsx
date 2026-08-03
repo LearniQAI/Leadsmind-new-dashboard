@@ -2,11 +2,14 @@
 
 import React from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { 
+import {
   GripVertical, Plus, MoreVertical, Layout, Link as LinkIcon,
-  UserPlus, ShoppingCart, CreditCard, CheckCircle
+  UserPlus, ShoppingCart, CreditCard, CheckCircle, Eye, Pencil, LayoutTemplate
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 export interface FunnelStep {
@@ -23,6 +26,8 @@ interface StepNavigatorProps {
   onSelectStep?: (stepId: string) => void;
   onReorder: (newSteps: FunnelStep[]) => void;
   onAddStep?: () => void;
+  onViewStep?: (step: FunnelStep) => void;
+  onChangeTemplate?: (step: FunnelStep) => void;
 }
 
 const getStepIcon = (type?: string, name?: string) => {
@@ -71,7 +76,9 @@ export default function StepNavigator({
   activeStepId,
   onSelectStep,
   onReorder,
-  onAddStep
+  onAddStep,
+  onViewStep,
+  onChangeTemplate
 }: StepNavigatorProps) {
   
   const handleDragEnd = (result: DropResult) => {
@@ -163,10 +170,37 @@ export default function StepNavigator({
                             </div>
                           </div>
 
-                          {/* Quick action dots */}
-                          <button className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-white/5 rounded-lg transition-all text-[#4a5a82] hover:text-[#eef2ff]">
-                            <MoreVertical className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Step actions: View / Edit / Change template — no more than these 3 */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                onClick={(e) => e.stopPropagation()}
+                                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-white/5 rounded-lg transition-all text-[#4a5a82] hover:text-[#eef2ff] data-[state=open]:opacity-100"
+                              >
+                                <MoreVertical className="w-3.5 h-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44 bg-[#0c1535] border border-white/10 p-1.5 rounded-xl shadow-2xl z-[100]">
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); onViewStep?.(step); }}
+                                className="flex items-center gap-2.5 p-2 rounded-lg text-[11px] font-semibold text-[#eef2ff] cursor-pointer hover:bg-white/5 focus:bg-white/5 focus:text-[#eef2ff]"
+                              >
+                                <Eye size={13} /> View
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); onSelectStep?.(step.id); }}
+                                className="flex items-center gap-2.5 p-2 rounded-lg text-[11px] font-semibold text-[#eef2ff] cursor-pointer hover:bg-white/5 focus:bg-white/5 focus:text-[#eef2ff]"
+                              >
+                                <Pencil size={13} /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); onChangeTemplate?.(step); }}
+                                className="flex items-center gap-2.5 p-2 rounded-lg text-[11px] font-semibold text-[#eef2ff] cursor-pointer hover:bg-white/5 focus:bg-white/5 focus:text-[#eef2ff]"
+                              >
+                                <LayoutTemplate size={13} /> Change template
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       )}
                     </Draggable>

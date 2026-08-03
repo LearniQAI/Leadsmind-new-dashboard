@@ -1,5 +1,5 @@
 import React from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import PublishedPageRenderer from '@/components/builder/PublishedPageRenderer';
 import { AlertCircle } from 'lucide-react';
@@ -9,7 +9,13 @@ export default async function PublishedSubdomainRootPage({
 }: {
     params: { workspaceSlug: string; subdomain: string }
 }) {
-    const supabase = await createClient();
+    // Admin client: this route is fully public/unauthenticated (anonymous visitors
+    // viewing a live or preview-linked funnel/website have no session), and every
+    // relevant table's RLS policy (workspaces, websites, funnels, funnel_steps,
+    // pages) requires workspace membership — so the RLS-respecting client this used
+    // previously could never resolve anything for a real visitor, making this route
+    // 404 unconditionally. Same pattern as resolvePageWorkspaceId/PayFast webhook.
+    const supabase = createAdminClient();
     const { workspaceSlug, subdomain } = await params;
 
     // 1. Resolve Workspace

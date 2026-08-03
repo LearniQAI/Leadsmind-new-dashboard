@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Users, Eye, Lock, Unlock, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { acquireFormPresenceChannel } from '@/lib/realtime/formPresenceChannel';
 
 interface PresenceUser {
   email: string
@@ -31,7 +32,7 @@ export function InvitePresenceList({ formId }: InvitePresenceListProps) {
   }, []);
 
   useEffect(() => {
-    let activeChannel: any;
+    let handle: ReturnType<typeof acquireFormPresenceChannel> | null = null;
     let mounted = true;
 
     const init = async () => {
@@ -44,37 +45,27 @@ export function InvitePresenceList({ formId }: InvitePresenceListProps) {
       setUserEmail(email);
       setUserInitials(initials);
 
-      activeChannel = supabase.channel(`form_presence_${formId}`, {
-        config: { presence: { key: email } },
-      });
+      handle = acquireFormPresenceChannel(formId, { email, initials, locked: false });
 
-      activeChannel
-        .on('presence', { event: 'sync' }, () => {
-          if (!mounted) return;
-          const state = activeChannel.presenceState();
-          const users: PresenceUser[] = [];
-          for (const key in state) {
-            const presences = state[key] as any[];
-            if (presences?.length > 0) {
-              users.push({ email: key, ...presences[0] });
-            }
+      handle.onPresenceSync((state) => {
+        if (!mounted) return;
+        const users: PresenceUser[] = [];
+        for (const key in state) {
+          const presences = state[key] as any[];
+          if (presences?.length > 0) {
+            users.push({ email: key, ...presences[0] });
           }
-          setActiveUsers(users.filter(u => u.email !== email));
-        })
-        .subscribe(async (status: string) => {
-          if (status === 'SUBSCRIBED') {
-            await activeChannel.track({ email, initials, locked: false });
-          }
-        });
+        }
+        setActiveUsers(users.filter(u => u.email !== email));
+      });
     };
 
     init();
 
     return () => {
       mounted = false;
-      if (activeChannel) {
-        activeChannel.untrack();
-        activeChannel.unsubscribe();
+      if (handle) {
+        handle.release();
       }
     };
   }, [formId]);
