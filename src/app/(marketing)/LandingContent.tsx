@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { toast } from 'sonner';
-import { createCheckoutSession } from '@/app/actions/finance';
+import { createPaystackSubscription } from '@/app/actions/finance';
 import './landing/landing.css';
 import ScrollProgress from './landing/ScrollProgress';
 import Navbar from './landing/Navbar';
@@ -27,7 +27,7 @@ const LandingContent = ({ user }: { user?: any }) => {
       return;
     }
 
-    const res = await createCheckoutSession(tierId, interval);
+    const res = await createPaystackSubscription(tierId, interval);
     if (res.error) {
       toast.error(res.error);
       if (res.error === 'Not authenticated') {
