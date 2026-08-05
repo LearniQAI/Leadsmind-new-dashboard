@@ -313,6 +313,42 @@
     color: var(--t1);
   }
 
+  /* Account Settings page (ProfileForm/PasswordForm/WorkspaceList) renders on
+     the light dash-* page background, unlike the other legacy-template pages
+     still correctly using --t1/--card/--bdr against an actually-dark
+     background (e.g. the portal login page). Those vars are dark-theme-only
+     with no light variant, so plain .card__wrapper/.card__heading-title here
+     rendered near-white text (#eef2ff) on a light page -- the reported
+     "faded" heading/labels. Scoped override, not a change to the shared
+     vars/classes, so pages that depend on the dark styling are untouched. */
+  .dash-account-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: var(--r16);
+    padding: 24px;
+    height: 100%;
+  }
+
+  .dash-account-card .card__heading-title,
+  .dash-account-card h5,
+  .dash-account-card h6 {
+    color: #0F172A;
+  }
+
+  .dash-account-card .form__input-title label {
+    color: #0F172A !important;
+  }
+
+  .dash-account-card .form-control {
+    color: #0F172A !important;
+    background: #FFFFFF !important;
+    border-color: #E2E8F0 !important;
+  }
+
+  .dash-account-card .text-muted {
+    color: #475569 !important;
+  }
+
   .price-up {
     color: var(--green);
     font-weight: 600;

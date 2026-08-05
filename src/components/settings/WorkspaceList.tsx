@@ -35,7 +35,7 @@ export function WorkspaceList({ workspaces, activeWorkspaceId }: WorkspaceListPr
  }
 
  return (
-  <div className="card__wrapper">
+  <div className="dash-account-card">
    <div className="card__title-wrap mb-[20px] flex justify-between items-center">
     <h5 className="card__heading-title">Workspace Access</h5>
    </div>
@@ -45,12 +45,12 @@ export function WorkspaceList({ workspaces, activeWorkspaceId }: WorkspaceListPr
      <div key={ws.id} className="col-span-12 md:col-span-6 lg:col-span-4">
       <div className={`p-[20px] rounded-[10px] border ${ws.id === activeWorkspaceId ? 'border-primary bg-primary/5' : 'border-border'}`}>
        <div className="flex items-center justify-between mb-2">
-        <h6 className="mb-0">{ws.name}</h6>
+        <h6 className="mb-0 !text-dash-text">{ws.name}</h6>
         {ws.id === activeWorkspaceId && (
          <span className="badge badge-primary">Active</span>
         )}
        </div>
-       <p className="text-muted small mb-0 uppercase tracking-wider">{ws.role || 'Member'}</p>
+       <p className="text-muted small mb-0 uppercase tracking-wider !text-dash-textMuted">{ws.role || 'Member'}</p>
       </div>
      </div>
     ))}

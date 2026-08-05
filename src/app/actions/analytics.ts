@@ -15,6 +15,47 @@ import { toClientError } from '@/shared/errors/AppError';
 // rather than kept, since "intentionally narrower, differently-scoped" only
 // applies to something that actually works.
 
+// Numeric caps per tier, sourced from the marketing copy in
+// src/app/(marketing)/landing/data.tsx (pricingTiers[].features) where a tier
+// states an explicit number. Automations has no explicit number stated past
+// Spark's "3 basic automation flows" in that copy — inferred as unlimited for
+// paid tiers, consistent with how every other Spark-only cap ("Unlimited
+// courses", "Unlimited landing pages/funnels", "Unlimited custom domains") is
+// phrased for every tier above Spark. Flagged as a judgment call, not a
+// number pulled from a dedicated limits table (none exists in this codebase).
+const PLAN_USAGE_LIMITS: Record<string, { contacts: number; automations: number; websites: number }> = {
+ spark: { contacts: 1500, automations: 3, websites: 3 },
+ rise: { contacts: 10000, automations: Infinity, websites: Infinity },
+ surge: { contacts: 25000, automations: Infinity, websites: Infinity },
+ infinity: { contacts: Infinity, automations: Infinity, websites: Infinity },
+ dynasty: { contacts: Infinity, automations: Infinity, websites: Infinity },
+};
+
+export async function getWorkspaceUsage() {
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return null;
+ }
+
+ const supabase = await createServerClient();
+ const [{ count: contacts }, { count: automations }, { count: websites }, { data: ws }] = await Promise.all([
+  supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
+  supabase.from('automations').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
+  supabase.from('websites').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
+  supabase.from('workspaces').select('plan_tier').eq('id', workspaceId).maybeSingle(),
+ ]);
+
+ const limits = PLAN_USAGE_LIMITS[ws?.plan_tier || 'spark'] || PLAN_USAGE_LIMITS.spark;
+
+ return {
+  contacts: { used: contacts || 0, limit: limits.contacts },
+  automations: { used: automations || 0, limit: limits.automations },
+  websites: { used: websites || 0, limit: limits.websites },
+ };
+}
+
 export async function getDashboardStats() {
  let workspaceId: string | null = null;
  try {

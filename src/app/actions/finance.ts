@@ -5,7 +5,7 @@ import { stripe } from '@/lib/stripe';
 import * as paystack from '@/lib/paystack';
 import { PlanTier } from '@/types/planTier.types';
 import { revalidatePath } from 'next/cache';
-import { requireWorkspaceAccess, getUser } from '@/lib/auth';
+import { requireWorkspaceAccess, getUser, getCurrentWorkspaceId } from '@/lib/auth';
 import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
 import { logger } from '@/shared/logger';
 import { toClientError, ValidationError } from '@/shared/errors/AppError';
@@ -605,11 +605,15 @@ export async function createCheckoutSession(tierId: string, interval: 'month' | 
  if (!user) return { error: 'Not authenticated' };
 
  // Logic to find user's workspace
+ const activeWorkspaceId = await getCurrentWorkspaceId();
+ if (!activeWorkspaceId) return { error: 'No workspace found' };
+
  const { data: membership } = await supabase
   .from('workspace_members')
   .select('workspace_id')
+  .eq('workspace_id', activeWorkspaceId)
   .eq('user_id', user.id)
-  .single();
+  .maybeSingle();
 
  if (!membership) return { error: 'No workspace found' };
 
@@ -645,20 +649,40 @@ export async function createPaystackSubscription(tierId: string, interval: 'mont
  const { data: { user } } = await supabase.auth.getUser();
  if (!user || !user.email) return { error: 'Not authenticated' };
 
+ const activeWorkspaceId = await getCurrentWorkspaceId();
+ if (!activeWorkspaceId) return { error: 'No workspace found' };
+
  const { data: membership } = await supabase
   .from('workspace_members')
   .select('workspace_id')
+  .eq('workspace_id', activeWorkspaceId)
   .eq('user_id', user.id)
-  .single();
+  .maybeSingle();
 
  if (!membership) return { error: 'No workspace found' };
+
+ // Plan switch (not a fresh signup): if this workspace already has an active
+ // Paystack subscription, don't just fire a second one blindly — Paystack has
+ // no "change plan" endpoint, so a switch is inherently disable-old +
+ // create-new. Rather than disabling the old subscription right now (which
+ // would leave the workspace with no access if the new checkout is abandoned
+ // or fails), stash the old subscription code in the new transaction's
+ // metadata. The webhook's subscription.create handler disables the old one
+ // only once the new subscription is confirmed active, so there's never a
+ // gap in access.
+ const { data: workspaceRow } = await supabase
+  .from('workspaces')
+  .select('paystack_subscription_code')
+  .eq('id', membership.workspace_id)
+  .maybeSingle();
+ const previousSubscriptionCode = workspaceRow?.paystack_subscription_code || undefined;
 
  try {
   const result = await paystack.initializeTransaction({
    email: user.email,
    plan: planCode,
    callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?paystack=success`,
-   metadata: { workspaceId: membership.workspace_id, tierId },
+   metadata: { workspaceId: membership.workspace_id, tierId, previousSubscriptionCode },
   });
   return { url: result.authorization_url };
  } catch (err: any) {
@@ -684,11 +708,31 @@ export async function getWorkspaceBillingInfo() {
 
  if (error || !data) return null;
 
+ let nextPaymentDate: string | null = null;
+ let amount: number | null = null;
+ let subscriptionStatus: string | null = null;
+
+ if (data.paystack_subscription_code) {
+  try {
+   const sub = await paystack.fetchSubscription(data.paystack_subscription_code);
+   nextPaymentDate = sub.next_payment_date ?? null;
+   amount = typeof sub.amount === 'number' ? sub.amount : null;
+   subscriptionStatus = sub.status ?? null;
+  } catch (err: any) {
+   // Non-fatal: the page still shows the plan_tier we have on file, just
+   // without the live next-billing-date/amount from Paystack.
+   logger.error({ err, workspaceId }, 'finance.get_billing_info.paystack_fetch_failed');
+  }
+ }
+
  return {
   planTier: (data.plan_tier || 'spark') as PlanTier,
   stripeSubscriptionId: data.stripe_subscription_id as string | null,
   paystackCustomerCode: data.paystack_customer_code as string | null,
   paystackSubscriptionCode: data.paystack_subscription_code as string | null,
+  nextPaymentDate,
+  amount,
+  subscriptionStatus,
  };
 }
 
