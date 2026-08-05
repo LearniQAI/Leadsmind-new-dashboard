@@ -68,8 +68,8 @@ export async function inviteContactToPortal(contactId: string) {
     return { success: false, error: 'Permission denied: not a member of this workspace.' };
   }
 
-  const plan = workspace?.plan_tier || workspace?.plan || 'free';
-  const isWhiteLabeled = plan !== 'free';
+  const plan = workspace?.plan_tier || workspace?.plan || 'spark';
+  const isWhiteLabeled = plan !== 'spark';
   const portalName = (isWhiteLabeled && workspace?.name) ? workspace.name : 'LeadsMind';
 
   // 2. Set portal access fields in database
@@ -565,7 +565,7 @@ export async function requestEmailChange(newEmail: string) {
   const verifyUrl = `${appUrl}/portal/profile/verify-email?token=${token}`;
   
   const workspace = session.workspace || {};
-  const isWhiteLabeled = workspace.plan_tier !== 'free';
+  const isWhiteLabeled = workspace.plan_tier !== 'spark';
   const portalName = isWhiteLabeled ? workspace.name : 'LeadsMind';
 
   try {
@@ -689,7 +689,7 @@ export async function requestCopyOfData() {
 
   // 2. Format detailed POPIA subject access report
   const workspace = session.workspace || {};
-  const isWhiteLabeled = workspace.plan_tier !== 'free';
+  const isWhiteLabeled = workspace.plan_tier !== 'spark';
   const portalName = isWhiteLabeled ? workspace.name : 'LeadsMind';
 
   const report = `

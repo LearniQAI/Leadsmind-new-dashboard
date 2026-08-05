@@ -252,9 +252,9 @@ async function checkPlanGateForCustomDomain(workspaceId: string) {
     throw new ValidationError('Workspace not found or unauthorized access.');
   }
 
-  const tier = workspace.plan_tier || 'free';
-  if (!['starter', 'growth', 'agency', 'enterprise'].includes(tier)) {
-    throw new ValidationError('Custom domains are only available on Starter, Growth, Agency, and Enterprise plans.');
+  const tier = workspace.plan_tier || 'spark';
+  if (!['rise', 'surge', 'infinity', 'dynasty'].includes(tier)) {
+    throw new ValidationError('Custom domains are only available on Rise, Surge, Infinity, and Dynasty plans.');
   }
 }
 
