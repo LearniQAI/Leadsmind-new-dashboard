@@ -13,6 +13,7 @@ import { DashboardWorkspacePicker } from '@/components/auth/DashboardWorkspacePi
 
 import { AttributionEngine } from '@/lib/analytics/AttributionEngine';
 import { fetchDashboardMetrics } from '@/lib/analytics';
+import { PlanTier } from '@/types/planTier.types';
 
 const Home = async () => {
   const user = await requireAuth();
@@ -42,7 +43,7 @@ const Home = async () => {
     slug: string;
     logo_url: string | null;
     owner_id: string;
-    plan_tier: 'free' | 'pro' | 'enterprise';
+    plan_tier: PlanTier;
     created_at: string;
   };
 

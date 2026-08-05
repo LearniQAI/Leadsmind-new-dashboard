@@ -292,9 +292,10 @@ export type PricingTier = {
   id: 'spark' | 'rise' | 'surge' | 'infinity' | 'dynasty';
   name: string;
   description: string;
-  monthlyPrice: number;
-  price_zar_annual?: number;
-  price_zar_annual_monthly_equiv?: number;
+  monthlyPrice: number; // USD
+  price_zar_monthly?: number; // fixed ZAR monthly price (not FX-converted)
+  price_zar_annual?: number; // fixed ZAR annual price = round(price_zar_monthly * 12 * (1 - annual_discount_pct / 100))
+  price_zar_annual_monthly_equiv?: number; // round(price_zar_annual / 12)
   annual_discount_pct?: number;
   features: string[];
   cta: string;
@@ -323,8 +324,9 @@ export const pricingTiers: PricingTier[] = [
     name: 'Rise',
     description: 'For small teams starting to scale',
     monthlyPrice: 19,
-    price_zar_annual: 182,
-    price_zar_annual_monthly_equiv: 15,
+    price_zar_monthly: 349,
+    price_zar_annual: 3350,
+    price_zar_annual_monthly_equiv: 279,
     annual_discount_pct: 20,
     features: [
       '10,000 contacts',
@@ -344,8 +346,9 @@ export const pricingTiers: PricingTier[] = [
     name: 'Surge',
     description: 'For growing businesses',
     monthlyPrice: 79,
-    price_zar_annual: 758,
-    price_zar_annual_monthly_equiv: 63,
+    price_zar_monthly: 1449,
+    price_zar_annual: 13910,
+    price_zar_annual_monthly_equiv: 1159,
     annual_discount_pct: 20,
     features: [
       '25,000 contacts',
@@ -367,8 +370,9 @@ export const pricingTiers: PricingTier[] = [
     name: 'Infinity',
     description: 'For agencies and established businesses',
     monthlyPrice: 149,
-    price_zar_annual: 1430,
-    price_zar_annual_monthly_equiv: 119,
+    price_zar_monthly: 2749,
+    price_zar_annual: 26390,
+    price_zar_annual_monthly_equiv: 2199,
     annual_discount_pct: 20,
     features: [
       'Unlimited contacts',
@@ -387,8 +391,9 @@ export const pricingTiers: PricingTier[] = [
     name: 'Dynasty',
     description: 'For platforms who resell LeadsMind',
     monthlyPrice: 699,
-    price_zar_annual: 6710,
-    price_zar_annual_monthly_equiv: 559,
+    price_zar_monthly: 12999,
+    price_zar_annual: 124790,
+    price_zar_annual_monthly_equiv: 10399,
     annual_discount_pct: 20,
     features: [
       'Unlimited contacts, unlimited everything from Infinity',

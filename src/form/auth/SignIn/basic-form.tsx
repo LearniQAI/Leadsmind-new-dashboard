@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { WorkspacePicker } from "@/components/auth/WorkspacePicker";
 import { Workspace } from "@/types/workspace.types";
+import { PlanTier } from "@/types/planTier.types";
 import { setActiveWorkspace, notifySignIn, getEmailByUsername } from "@/app/actions/auth";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -93,7 +94,7 @@ const SignInBasicForm = () => {
     slug: string;
     logo_url: string | null;
     owner_id: string;
-    plan_tier: "free" | "pro" | "enterprise";
+    plan_tier: PlanTier;
     created_at: string;
    }
 

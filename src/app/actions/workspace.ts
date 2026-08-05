@@ -32,7 +32,7 @@ export async function createWorkspace(name: string) {
     name,
     slug,
     owner_id: user.id,
-    plan_tier: 'free',
+    plan_tier: 'spark',
    })
    .select('id, name')
    .single();

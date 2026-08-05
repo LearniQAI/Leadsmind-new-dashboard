@@ -5,7 +5,7 @@ import {
   Globe, Users, Palette, Code2, CreditCard, ShieldCheck, Monitor, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain, Mail
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { createClient } from '@/lib/supabase/client';
 
@@ -54,6 +54,7 @@ interface SettingsClientProps {
   invitations: any[];
   webhooks: any[];
   auditData: any;
+  billing: any;
 }
 
 export default function SettingsClient({
@@ -61,15 +62,17 @@ export default function SettingsClient({
   members,
   invitations = [],
   webhooks,
-  auditData
+  auditData,
+  billing
 }: SettingsClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const { theme, toggleTheme } = useGlobalContext();
   const { direction, toggleDirection } = useDirection();
 
   // State
-  const [activeTab, setActiveTab] = useState('team');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'team');
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -514,7 +517,7 @@ export default function SettingsClient({
             />
           )}
 
-          {activeTab === 'pricing' && <BillingTab memberCount={members.length} />}
+          {activeTab === 'pricing' && <BillingTab memberCount={members.length} billing={billing} />}
 
           {activeTab === 'audit' && <SecurityTab auditData={auditData} />}
 

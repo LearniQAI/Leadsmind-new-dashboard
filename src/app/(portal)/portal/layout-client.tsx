@@ -31,7 +31,7 @@ export default function ClientLayoutShell({
       {/* 1. Desktop Sidebar */}
       <aside className="hidden md:flex w-64 border-r border-[var(--bdr)] bg-[rgba(11,17,33,0.5)] backdrop-blur-xl flex-col p-6 shrink-0">
         {/* Logo */}
-        {session.workspace?.plan_tier !== 'free' ? (
+        {session.workspace?.plan_tier !== 'spark' ? (
           session.branding?.logo_url ? (
             <img 
               src={session.branding.logo_url} 
@@ -154,7 +154,7 @@ export default function ClientLayoutShell({
       {/* 2. Mobile Header */}
       <div className="flex flex-col flex-grow min-w-0">
         <header className="md:hidden h-14 border-b border-[var(--bdr)] bg-[rgba(11,17,33,0.8)] backdrop-blur-xl flex items-center justify-between px-6 z-40">
-          {session.workspace?.plan_tier !== 'free' ? (
+          {session.workspace?.plan_tier !== 'spark' ? (
             session.branding?.logo_url ? (
               <img 
                 src={session.branding.logo_url} 

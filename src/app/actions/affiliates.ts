@@ -55,13 +55,13 @@ async function checkPlanGateForProgrammeCreation(workspaceId: string) {
     throw new ValidationError('Workspace not found or unauthorized access.');
   }
 
-  const tier = workspace.plan_tier || 'free';
-  if (!['growth', 'agency'].includes(tier)) {
-    throw new ValidationError('Affiliate program creation is only available on Growth and Agency plans.');
+  const tier = workspace.plan_tier || 'spark';
+  if (!['surge', 'infinity'].includes(tier)) {
+    throw new ValidationError('Affiliate program creation is only available on Surge and Infinity plans.');
   }
 
-  if (tier === 'growth') {
-    // Growth limit: 1 programme
+  if (tier === 'surge') {
+    // Surge limit: 1 programme
     const { count, error: countError } = await supabase
       .from('affiliate_programmes')
       .select('id', { count: 'exact', head: true })
@@ -85,8 +85,8 @@ async function checkPlanGateForAffiliateLimit(workspaceId: string) {
 
   if (wsError || !workspace) return;
 
-  const tier = workspace.plan_tier || 'free';
-  if (tier === 'growth') {
+  const tier = workspace.plan_tier || 'spark';
+  if (tier === 'surge') {
     const { count, error: countError } = await supabase
       .from('affiliates')
       .select('id', { count: 'exact', head: true })
@@ -94,7 +94,7 @@ async function checkPlanGateForAffiliateLimit(workspaceId: string) {
 
     if (countError) throw new DatabaseError('Failed to verify affiliate limits.');
     if (count && count >= 50) {
-      throw new ValidationError('Growth plan is limited to 50 affiliates. Upgrade to Agency for unlimited affiliates.');
+      throw new ValidationError('Surge plan is limited to 50 affiliates. Upgrade to Infinity for unlimited affiliates.');
     }
   }
 }

@@ -1,4 +1,5 @@
 import { UserRole } from './auth.types';
+import { PlanTier } from './planTier.types';
 
 export interface Workspace {
  id: string;
@@ -6,7 +7,7 @@ export interface Workspace {
  slug: string;
  logoUrl: string | null;
  ownerId: string;
- plan: 'free' | 'pro' | 'enterprise' | 'agency';
+ plan: PlanTier;
  createdAt: string;
 }
 

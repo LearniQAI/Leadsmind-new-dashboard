@@ -42,6 +42,16 @@ const cardPop = {
   },
 };
 
+// USD annual figures are derived from monthlyPrice + annual_discount_pct
+// rather than stored, so there's a single source of truth for the discount.
+// Rounding matches the ZAR fixed annual prices in data.tsx: round(monthly * 12 * (1 - pct/100)).
+function usdAnnualTotal(monthlyPrice: number, discountPct: number) {
+  return Math.round(monthlyPrice * 12 * (1 - discountPct / 100));
+}
+function usdAnnualMonthlyEquiv(monthlyPrice: number, discountPct: number) {
+  return Math.round(usdAnnualTotal(monthlyPrice, discountPct) / 12);
+}
+
 export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: string, interval: 'month' | 'year') => void }) {
   const [isAnnual, setIsAnnual] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -102,9 +112,13 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
           className="flex flex-col lg:flex-row lg:flex-wrap justify-center gap-6 max-w-[480px] lg:max-w-[1100px] mx-auto items-start"
         >
           {pricingTiers.map((tier) => {
-            const hasAnnual = tier.price_zar_annual != null && tier.price_zar_annual_monthly_equiv != null;
+            const hasAnnual = tier.annual_discount_pct != null;
             const showAnnual = isAnnual && hasAnnual;
-            const price = showAnnual ? tier.price_zar_annual_monthly_equiv! : tier.monthlyPrice;
+            const discountPct = tier.annual_discount_pct ?? 0;
+            const usdAnnual = hasAnnual ? usdAnnualTotal(tier.monthlyPrice, discountPct) : 0;
+            const usdAnnualEquiv = hasAnnual ? usdAnnualMonthlyEquiv(tier.monthlyPrice, discountPct) : 0;
+            const price = showAnnual ? usdAnnualEquiv : tier.monthlyPrice;
+            const hasZar = tier.price_zar_monthly != null;
             const isPro = !!tier.highlighted;
             const isEnterprise = tier.id === 'dynasty';
 
@@ -172,7 +186,14 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
                     </div>
                     {showAnnual && (
                       <div className={`text-xs mt-1.5 ${isPro ? '!text-[#64748B]' : '!text-[#94A3B8]'}`}>
-                        billed ${tier.price_zar_annual!.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year
+                        billed ${usdAnnual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year
+                      </div>
+                    )}
+                    {hasZar && (
+                      <div className={`text-xs mt-1 ${isPro ? '!text-[#64748B]' : '!text-[#94A3B8]'}`}>
+                        {showAnnual
+                          ? `R${tier.price_zar_annual!.toLocaleString('en-US')}/year, billed in ZAR`
+                          : `R${tier.price_zar_monthly!.toLocaleString('en-US')}/month, billed in ZAR`}
                       </div>
                     )}
                   </div>

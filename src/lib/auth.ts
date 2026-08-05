@@ -6,6 +6,7 @@ import { createServerClient, createAdminClient } from './supabase/server';
 import { cookies } from 'next/headers';
 import { logger } from '@/shared/logger';
 import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
+import { PlanTier } from '@/types/planTier.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Session & User
@@ -115,7 +116,7 @@ export interface Workspace {
  slug: string;
  logoUrl: string | null;
  ownerId: string;
- plan: 'free' | 'pro' | 'enterprise' | 'agency';
+ plan: PlanTier;
  createdAt: string;
 }
 
@@ -350,7 +351,7 @@ export const getCurrentWorkspace = cache(async (existingUser?: any): Promise<Wor
   slug: data.slug,
   logoUrl: data.logo_url ?? null,
   ownerId: data.owner_id,
-  plan: data.plan_tier as 'free' | 'pro' | 'enterprise' | 'agency',
+  plan: data.plan_tier as PlanTier,
   createdAt: data.created_at,
  };
 });

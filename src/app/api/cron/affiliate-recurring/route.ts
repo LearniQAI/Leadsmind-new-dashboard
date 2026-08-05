@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
           .select('plan_tier, stripe_subscription_id')
           .eq('id', comm.workspace_id)
           .maybeSingle()
-        isSubscriptionActive = !!(ws && ws.plan_tier !== 'free' && ws.stripe_subscription_id)
+        isSubscriptionActive = !!(ws && ws.plan_tier !== 'spark' && ws.stripe_subscription_id)
       } else if (comm.source_type === 'enrollment' || (comm.source_type === 'order' && comm.source_id)) {
         // Course enrollment check
         const { data: enroll } = await supabase

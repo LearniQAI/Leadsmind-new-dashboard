@@ -2,6 +2,8 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
+import * as paystack from '@/lib/paystack';
+import { PlanTier } from '@/types/planTier.types';
 import { revalidatePath } from 'next/cache';
 import { requireWorkspaceAccess, getUser } from '@/lib/auth';
 import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
@@ -577,30 +579,6 @@ export async function updateQuoteStatus(id: string, status: string) {
 
 // --- Stripe & SaaS Subscription Actions ---
 
-
-export async function getSaaSTiers() {
- return [
-  {
-   id: 'starter',
-   name: 'Starter',
-   monthlyPrice: 0,
-   features: ['Up to 500 contacts', '1 Pipeline', 'Basic support'],
-  },
-  {
-   id: 'pro',
-   name: 'Pro',
-   monthlyPrice: 77,
-   features: ['Unlimited contacts', 'Social Inbox', 'Priority support'],
-  },
-  {
-   id: 'enterprise',
-   name: 'Enterprise',
-   monthlyPrice: 237,
-   features: ['Everything in Pro', 'White-label', 'SLA guarantee'],
-  },
- ];
-}
-
 // Spark is the free tier and never reaches checkout — it routes straight to signup.
 const PAID_TIER_PRICE_ENV: Record<string, { month: string; year: string }> = {
  rise: { month: 'STRIPE_RISE_MONTHLY_PRICE_ID', year: 'STRIPE_RISE_ANNUAL_PRICE_ID' },
@@ -647,6 +625,110 @@ export async function createCheckoutSession(tierId: string, interval: 'month' | 
 
  return { url: session.url };
 }
+
+// --- Paystack Subscription Actions ---
+
+export async function createPaystackSubscription(tierId: string, interval: 'month' | 'year' = 'month') {
+ const tierEnv = paystack.PAID_TIER_PLAN_CODE_ENV[tierId];
+ if (!tierEnv) {
+  logger.error({ tierId }, 'finance.paystack_checkout.unrecognized_tier');
+  return { error: 'Unrecognized pricing tier' };
+ }
+
+ const planCode = process.env[tierEnv[interval]];
+ if (!planCode) {
+  logger.error({ tierId, interval, envVar: tierEnv[interval] }, 'finance.paystack_checkout.missing_plan_code');
+  return { error: 'This plan is not yet available for checkout' };
+ }
+
+ const supabase = await createServerClient();
+ const { data: { user } } = await supabase.auth.getUser();
+ if (!user || !user.email) return { error: 'Not authenticated' };
+
+ const { data: membership } = await supabase
+  .from('workspace_members')
+  .select('workspace_id')
+  .eq('user_id', user.id)
+  .single();
+
+ if (!membership) return { error: 'No workspace found' };
+
+ try {
+  const result = await paystack.initializeTransaction({
+   email: user.email,
+   plan: planCode,
+   callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?paystack=success`,
+   metadata: { workspaceId: membership.workspace_id, tierId },
+  });
+  return { url: result.authorization_url };
+ } catch (err: any) {
+  logger.error({ err, tierId, interval }, 'finance.paystack_checkout.initialize_failed');
+  return { error: 'Failed to start Paystack checkout' };
+ }
+}
+
+export async function getWorkspaceBillingInfo() {
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return null;
+ }
+
+ const supabase = await createServerClient();
+ const { data, error } = await supabase
+  .from('workspaces')
+  .select('plan_tier, stripe_subscription_id, paystack_customer_code, paystack_subscription_code')
+  .eq('id', workspaceId)
+  .single();
+
+ if (error || !data) return null;
+
+ return {
+  planTier: (data.plan_tier || 'spark') as PlanTier,
+  stripeSubscriptionId: data.stripe_subscription_id as string | null,
+  paystackCustomerCode: data.paystack_customer_code as string | null,
+  paystackSubscriptionCode: data.paystack_subscription_code as string | null,
+ };
+}
+
+export async function cancelPaystackSubscription() {
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return { error: 'Not authenticated' };
+ }
+
+ const supabase = await createServerClient();
+ const { data: workspace, error: wsError } = await supabase
+  .from('workspaces')
+  .select('paystack_subscription_code')
+  .eq('id', workspaceId)
+  .single();
+
+ if (wsError || !workspace?.paystack_subscription_code) {
+  return { error: 'No active Paystack subscription found for this workspace' };
+ }
+
+ try {
+  const subscription = await paystack.fetchSubscription(workspace.paystack_subscription_code);
+  await paystack.disableSubscription(workspace.paystack_subscription_code, subscription.email_token);
+
+  const admin = createAdminClient();
+  await admin
+   .from('workspaces')
+   .update({ plan_tier: 'spark' })
+   .eq('id', workspaceId);
+
+  safeRevalidatePath('/settings');
+  return { success: true };
+ } catch (err: any) {
+  logger.error({ err, workspaceId }, 'finance.paystack_cancel.failed');
+  return { error: 'Failed to cancel Paystack subscription' };
+ }
+}
+
 export async function writeOffInvoice(invoiceId: string, _workspaceId: string, amount: number, reason: string) {
   const { userId, workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();

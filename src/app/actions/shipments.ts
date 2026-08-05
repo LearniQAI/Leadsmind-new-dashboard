@@ -56,14 +56,14 @@ export async function createShipment(
   if (!trackingNumber) return { success: false, error: 'Tracking number is required' }
 
   // 1. Plan Quota Check
-  let plan = 'free'
+  let plan = 'spark'
   try {
     const { data: ws } = await supabase
       .from('workspaces')
       .select('plan_tier')
       .eq('id', workspaceId)
       .single()
-    if (ws) plan = ws.plan_tier || 'free'
+    if (ws) plan = ws.plan_tier || 'spark'
   } catch (e) {}
 
   let quota: any = null
@@ -92,14 +92,14 @@ export async function createShipment(
 
     if (quota) {
       let limit = 3
-      if (plan === 'growth') {
+      if (plan === 'surge') {
         limit = 25
-      } else if (plan === 'scale' || plan === 'custom' || plan === 'enterprise' || plan === 'unlimited') {
+      } else if (plan === 'infinity' || plan === 'dynasty') {
         limit = Infinity
       }
 
       if (quota.used_count >= limit) {
-        if ((plan === 'free' || plan === 'spark') && !quota.test_used) {
+        if (plan === 'spark' && !quota.test_used) {
           bypassQuota = true
         } else {
           return { success: false, error: 'Monthly quota exceeded' }
