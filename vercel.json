@@ -5,8 +5,10 @@
     { "path": "/api/cron/quota-refill", "schedule": "0 0 * * *" },
     { "path": "/api/cron/tracking-sync", "schedule": "0 4 * * *" },
     { "path": "/api/cron/workers/campaign-dispatch", "schedule": "0 3 * * *" },
+    { "path": "/api/cron/workers/email-queue", "schedule": "0 1 * * *" },
     { "path": "/api/cron/workers/auto-tag-sweep", "schedule": "0 5 * * *" },
     { "path": "/api/cron/workers/tag-expiry", "schedule": "0 2 * * *" },
+    { "path": "/api/cron/workers/course-expiry", "schedule": "0 7 * * *" },
     { "path": "/api/cron/workers/ai-tag-suggestions", "schedule": "0 6 * * *" }
   ]
 }

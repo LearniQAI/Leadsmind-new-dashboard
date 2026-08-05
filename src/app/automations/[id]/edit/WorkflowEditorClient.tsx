@@ -20,19 +20,20 @@ import { saveWorkflowEditor } from '@/app/actions/automation_editor';
 // calls EventBus.publishEvent(...) with (re-confirmed by grepping every
 // publishEvent call site) — not the full EVENT_TRIGGERS vocabulary. Listing
 // a trigger here that nothing ever publishes lets a user build a workflow
-// that silently never fires; see EVENT_TRIGGERS in EventBus.ts for the 8
-// registered-but-unpublished values deliberately excluded (cert_issued,
-// cert_expiring, course_expiring, student_inactive, assignment_submitted,
-// assignment_graded, live_session_booked, tag_confidence_changed) — none of
-// them have any supporting feature (no assignment-grading flow, no live-
-// session booking, no inactivity cron, no tag-confidence scoring) to wire a
-// publish call to yet. Engine A only — no form_submitted/Engine-B trigger.
+// that silently never fires; see EVENT_TRIGGERS in EventBus.ts for the
+// registered-but-unpublished values still deliberately excluded (cert_issued,
+// cert_expiring, tag_confidence_changed) — cert_issued/cert_expiring have no
+// supporting feature yet (certificates aren't persisted anywhere), and
+// tag_confidence_changed needs a product decision on its shared-value
+// semantics before it's wired. Engine A only — no form_submitted/Engine-B
+// trigger.
 const TRIGGER_GROUPS: { label: string; options: { value: string; label: string }[] }[] = [
   { label: 'CRM / Contact', options: [
     { value: 'contact_created', label: 'Contact created' },
     { value: 'opportunity_stage_changed', label: 'Opportunity stage changed' },
     { value: 'appointment_booked', label: 'Appointment booked' },
     { value: 'invoice_paid', label: 'Invoice paid' },
+    { value: 'live_session_booked', label: 'Live session booked' },
   ]},
   { label: 'Tags', options: [
     { value: 'tag_added', label: 'Tag added' },
@@ -51,6 +52,10 @@ const TRIGGER_GROUPS: { label: string; options: { value: string; label: string }
     { value: 'quiz_limit_reached', label: 'Quiz attempt limit reached' },
     { value: 'course_revoked', label: 'Course access revoked' },
     { value: 'struggle_threshold_crossed', label: 'Struggle score threshold crossed' },
+    { value: 'student_inactive', label: 'Student inactive (14+ days)' },
+    { value: 'assignment_submitted', label: 'Assignment submitted' },
+    { value: 'assignment_graded', label: 'Assignment graded' },
+    { value: 'course_expiring', label: 'Course access expiring soon' },
   ]},
   { label: 'Marketing / Payments', options: [
     { value: 'funnel_subscribed', label: 'Funnel form subscribed' },
