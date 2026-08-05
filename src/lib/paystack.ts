@@ -1,19 +1,27 @@
 // Thin fetch-based wrapper around Paystack's REST API — there is no
 // official Paystack Node SDK on par with `stripe` (see src/lib/stripe.ts).
 // Unlike stripe.ts's silent dummy-key fallback, a missing secret key fails
-// loudly in production instead of letting the app boot with billing silently broken.
+// loudly in production — but that check must happen lazily, inside the
+// function that actually performs a Paystack call, never at module scope.
+// A module-scope throw runs the moment anything imports this file — including
+// unrelated pages that merely import a shared actions file (e.g. finance.ts)
+// which happens to also export Paystack functions — which broke the
+// production build for /invoices/[id]/edit, a page with no Paystack call at all.
 const PAYSTACK_API_BASE = 'https://api.paystack.co';
 
-const secretKey = process.env.PAYSTACK_SECRET_KEY;
-
-if (!secretKey) {
- if (process.env.NODE_ENV === 'production') {
-  throw new Error('[FATAL] PAYSTACK_SECRET_KEY environment variable is not configured');
+function getPaystackSecretKey(): string {
+ const secretKey = process.env.PAYSTACK_SECRET_KEY;
+ if (!secretKey) {
+  if (process.env.NODE_ENV === 'production') {
+   throw new Error('[FATAL] PAYSTACK_SECRET_KEY environment variable is not configured');
+  }
+  console.warn('Missing PAYSTACK_SECRET_KEY environment variable. Paystack billing will fail if attempted.');
  }
- console.warn('Missing PAYSTACK_SECRET_KEY environment variable. Paystack billing will fail if attempted.');
+ return secretKey || '';
 }
 
 async function paystackFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
+ const secretKey = getPaystackSecretKey();
  if (!secretKey) {
   throw new Error('[FATAL] PAYSTACK_SECRET_KEY environment variable is not configured');
  }
