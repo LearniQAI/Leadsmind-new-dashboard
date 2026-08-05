@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { applyAutoTag } from '@/modules/tags/autoTagging/applySystemTag';
+import { publishEvent } from '@/lib/events/EventBus';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
@@ -108,6 +109,13 @@ export async function GET(req: Request) {
       const isActive = lastActive >= studentCutoff;
       await applyAutoTag(workspaceId, 'contact', contactId, 'Active Student', isActive);
       await applyAutoTag(workspaceId, 'contact', contactId, 'Inactive Student', !isActive);
+      // Reuses this same already-computed isActive signal — no second definition
+      // of "inactive" anywhere else. Fires every sweep the contact still
+      // qualifies (same idempotent-tag-reapply pattern as the lines above),
+      // not just on the transition, since a workflow may want to re-nudge.
+      if (!isActive) {
+        await publishEvent(workspaceId, 'student_inactive', contactId, { lastActiveAt: lastActive ? new Date(lastActive).toISOString() : null });
+      }
       results.students++;
     }
   } catch (err) {

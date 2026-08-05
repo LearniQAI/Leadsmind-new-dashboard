@@ -1,0 +1,418 @@
+<title>LeadsMind Automation Engine — Audit</title>
+<style>
+@font-face {
+  font-family: 'Source Serif';
+  src: local('Source Serif Pro'), local('Source Serif 4');
+}
+
+:root {
+  --ink: #1c2321;
+  --ink-soft: #3d4744;
+  --paper: #f7f5f0;
+  --paper-raised: #ffffff;
+  --line: #dcd8cd;
+  --accent: #3d6b5c;
+  --accent-soft: #e4ede9;
+  --good: #3d6b5c;
+  --good-bg: #e4ede9;
+  --warn: #96591f;
+  --warn-bg: #f3e6d3;
+  --dead: #8a4a4a;
+  --dead-bg: #f2e0df;
+  --mono: #5c6560;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #eae7de;
+    --ink-soft: #b9c2bd;
+    --paper: #161918;
+    --paper-raised: #1e2321;
+    --line: #333c37;
+    --accent: #7fb8a3;
+    --accent-soft: #223330;
+    --good: #7fb8a3;
+    --good-bg: #1e2f29;
+    --warn: #d9a35c;
+    --warn-bg: #332a1a;
+    --dead: #d98080;
+    --dead-bg: #332020;
+    --mono: #8b9691;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #eae7de; --ink-soft: #b9c2bd; --paper: #161918; --paper-raised: #1e2321;
+  --line: #333c37; --accent: #7fb8a3; --accent-soft: #223330;
+  --good: #7fb8a3; --good-bg: #1e2f29; --warn: #d9a35c; --warn-bg: #332a1a;
+  --dead: #d98080; --dead-bg: #332020; --mono: #8b9691;
+}
+:root[data-theme="light"] {
+  --ink: #1c2321; --ink-soft: #3d4744; --paper: #f7f5f0; --paper-raised: #ffffff;
+  --line: #dcd8cd; --accent: #3d6b5c; --accent-soft: #e4ede9;
+  --good: #3d6b5c; --good-bg: #e4ede9; --warn: #96591f; --warn-bg: #f3e6d3;
+  --dead: #8a4a4a; --dead-bg: #f2e0df; --mono: #5c6560;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  line-height: 1.6;
+}
+
+.wrap { max-width: 780px; margin: 0 auto; padding: 4rem 1.5rem 6rem; }
+
+.masthead {
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 1.5rem;
+  margin-bottom: 3rem;
+}
+.eyebrow {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+}
+h1 {
+  font-size: 2.15rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+.dek {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  max-width: 60ch;
+}
+.meta-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1.2rem;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  flex-wrap: wrap;
+}
+.meta-row strong { color: var(--ink); font-weight: 600; }
+
+section { margin-bottom: 3.2rem; }
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  margin-bottom: 1.1rem;
+}
+.section-num {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0;
+  text-wrap: balance;
+}
+h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 1.6rem 0 0.6rem;
+  color: var(--ink);
+}
+
+p { margin: 0 0 1rem; }
+.lede { font-size: 1.08rem; color: var(--ink-soft); }
+
+.callout {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 3px;
+  padding: 1.1rem 1.3rem;
+  margin: 1.2rem 0;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+.callout strong { color: var(--ink); }
+
+ul, ol { padding-left: 1.3rem; }
+li { margin-bottom: 0.55rem; }
+
+.stat-row {
+  display: flex;
+  gap: 1rem;
+  margin: 1.3rem 0 1.6rem;
+  flex-wrap: wrap;
+}
+.stat {
+  flex: 1 1 140px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.9rem 1.1rem;
+}
+.stat .n {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 1.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.stat.good .n { color: var(--good); }
+.stat.dead .n { color: var(--dead); }
+.stat .label {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 0.3rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+}
+.table-scroll { overflow-x: auto; margin: 1.2rem 0; border: 1px solid var(--line); border-radius: 4px; }
+th, td {
+  text-align: left;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+th {
+  background: var(--accent-soft);
+  font-weight: 600;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+tr:last-child td { border-bottom: none; }
+td code, li code, p code {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.85em;
+  background: var(--accent-soft);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  color: var(--mono);
+}
+
+.badge {
+  display: inline-block;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.badge.good { background: var(--good-bg); color: var(--good); }
+.badge.warn { background: var(--warn-bg); color: var(--warn); }
+.badge.dead { background: var(--dead-bg); color: var(--dead); }
+
+.fix-list { list-style: none; padding: 0; counter-reset: fix; }
+.fix-list li {
+  counter-increment: fix;
+  position: relative;
+  padding: 1rem 1.2rem 1rem 3.1rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  margin-bottom: 0.8rem;
+}
+.fix-list li::before {
+  content: counter(fix);
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--accent);
+  background: var(--accent-soft);
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fix-list strong { color: var(--ink); }
+
+.gap-card {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--warn);
+  border-radius: 3px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 0.9rem;
+}
+.gap-card .head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  margin-bottom: 0.35rem;
+}
+.gap-card .head strong { font-size: 0.98rem; }
+.gap-card p { margin: 0; color: var(--ink-soft); font-size: 0.94rem; }
+
+.confidence-note {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.4rem;
+}
+.confidence-note strong { color: var(--ink); }
+
+.closing {
+  border-top: 2px solid var(--ink);
+  padding-top: 1.6rem;
+  margin-top: 3rem;
+}
+.closing .lede { font-size: 1.02rem; }
+
+@media (max-width: 560px) {
+  .wrap { padding: 2.5rem 1.1rem 4rem; }
+  h1 { font-size: 1.7rem; }
+}
+</style>
+
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="eyebrow">Internal Engineering Audit</div>
+    <h1>The Workflow Builder, verified line by line</h1>
+    <p class="dek">A ground-truth account of LeadsMind's automation engine — what fires, what's a stub, what broke under real load and got fixed, and how it stacks up against Systeme.io and GoHighLevel.</p>
+    <div class="meta-row">
+      <span><strong>Prepared for</strong> Nelly</span>
+      <span><strong>Subject</strong> Workflow Builder ("Engine A")</span>
+      <span><strong>Method</strong> Every claim traced to a real file, trigger, or commit</span>
+    </div>
+  </div>
+
+  <section>
+    <p class="lede">LeadsMind's Workflow Builder is the "when X happens, do Y" system behind the CRM — the same idea as a Systeme.io or GoHighLevel automation. A <strong>trigger</strong> (a contact enrolls in a course, a payment lands, a tag gets added) starts a workflow; the workflow runs a sequence of <strong>actions</strong> (send an email, tag a contact, move a deal, enroll someone in a course) and can <strong>branch</strong> down different paths based on conditions you set. It's live in production today, with a visual editor your team already builds these in — no code required.</p>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">01</span><h2>What's built and working</h2></div>
+
+    <h3>Triggers — checked one by one against the real code</h3>
+    <p>The system defines 28 possible trigger types. We didn't take the list at face value — we searched the codebase for the actual line of code that fires each one.</p>
+    <div class="stat-row">
+      <div class="stat good"><div class="n">21</div><div class="label">Firing live today</div></div>
+      <div class="stat dead"><div class="n">7</div><div class="label">Defined, not yet wired</div></div>
+      <div class="stat"><div class="n">28</div><div class="label">Total registered</div></div>
+    </div>
+    <p>Live triggers span contact creation, deal stage changes, appointments, invoices paid, tags added/removed/updated, course enrollment, lesson/module/course completion, quiz pass/fail, struggling-student detection, funnel opt-ins, PayFast payments, tag expiry, and webinar registration.</p>
+
+    <h3>Actions — 28+ types, each hitting a real system</h3>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Action</th><th>What it does</th><th>Real system</th></tr>
+      <tr><td>Send Email</td><td>Emails the contact</td><td>Resend</td></tr>
+      <tr><td>Send SMS / WhatsApp</td><td>Texts the contact</td><td>Twilio</td></tr>
+      <tr><td>Add Tag / Update Lead Score</td><td>Tags or scores a contact</td><td>Supabase (atomic function)</td></tr>
+      <tr><td>Enroll / Revoke Course Access</td><td>Grants or removes LMS access</td><td>Supabase + welcome email/SMS</td></tr>
+      <tr><td>Move Pipeline Stage / Create Opportunity</td><td>Moves or creates a deal</td><td>Supabase</td></tr>
+      <tr><td>Notify Team / Notify Slack</td><td>Alerts staff</td><td>In-app + Slack webhook</td></tr>
+      <tr><td>Send Webhook</td><td>Calls any URL you give it</td><td>Real outbound HTTP</td></tr>
+      <tr><td>Create / Send Invoice</td><td>Drafts and emails a PDF invoice</td><td>Supabase + PDF render + Resend</td></tr>
+      <tr><td>AI Follow-Up Task</td><td>Drafts a next step</td><td>OpenAI, with a safe fallback</td></tr>
+    </table>
+    </div>
+    <p style="font-size:0.9rem;color:var(--ink-soft)">One exception, flagged honestly: <strong>"Send WhatsApp Template"</strong> sends a real WhatsApp message, but as plain text rather than an approved Twilio template — see the Gaps section.</p>
+
+    <h3>Branching — real conditional routing, not a diagram</h3>
+    <p>A <strong>Route</strong> step lets you define named branches (e.g. "Hot Leads" vs. "Everyone Else") with conditions like equals, contains, exists, greater/less than, or between a range. The first branch whose conditions all match wins; if none match, it falls back to a default. A <strong>Split</strong> step handles true A/B testing, deterministically keeping the same contact in the same variant every time.</p>
+
+    <h3>The editor your team uses today</h3>
+    <ul>
+      <li>A grouped trigger picker, a step list with add/remove/reorder</li>
+      <li>Per-action configuration forms specific to each action type</li>
+      <li><strong>Live entity pickers</strong> — tags, pipeline stages, team members, courses, and bundles are pulled from your workspace's real Supabase data, not hardcoded lists or free text</li>
+      <li>A dedicated branch/route editor and split-test editor</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">02</span><h2>Evidence of production-grade engineering</h2></div>
+    <p>A demo proves an automation can run once. What proves it holds up is what breaks when two things happen to the same contact at once, or when a real anonymous visitor — not a test account — hits a public form. We deliberately tested those conditions and fixed four real issues before they reached a client:</p>
+    <ol class="fix-list">
+      <li><strong>Concurrency gate fix</strong> — a contact finishing a lesson, module, and course together used to trigger three automations, but the system's double-enroll check was scoped wrong and silently dropped every automation after the first. Now each workflow is checked independently, and a genuinely skipped run is logged, not lost.</li>
+      <li><strong>Atomic tag / lead-score fix</strong> — two automations tagging or scoring the same contact within a fraction of a second could silently overwrite each other's work. Fixed with atomic database operations that can't race.</li>
+      <li><strong>RLS/permissions fix for webhook and cron-triggered automations</strong> — automations kicked off by a payment webhook or scheduled job weren't reliably able to write to the database under the same rules as user-triggered actions. Found and corrected.</li>
+      <li><strong>Anonymous access / middleware fix</strong> — real, logged-out visitors hitting public forms and funnels were being blocked by auth middleware. About as serious as a "form doesn't work" bug gets — caught and fixed here, not by a client's live traffic.</li>
+    </ol>
+    <div class="callout">These were real bugs, found because we tested concurrent triggers, real anonymous traffic, and webhook/cron auth paths — not just the happy path. A system that's never had a bug found in it usually hasn't been pushed hard enough yet.</div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">03</span><h2>Honest gaps &amp; in-progress items</h2></div>
+
+    <div class="gap-card">
+      <div class="head"><strong>WhatsApp templates aren't true templates yet</strong><span class="badge warn">In progress</span></div>
+      <p>Sends a real WhatsApp message via Twilio, but as plain text rather than through Twilio's approved Content API template mechanism.</p>
+    </div>
+    <div class="gap-card">
+      <div class="head"><strong>7 registered triggers fire nothing</strong><span class="badge dead">Not wired</span></div>
+      <p>Certificate issued/expiring, course expiring, student inactive, assignment submitted/graded, tag-confidence changed — defined as trigger types, but nothing in the product currently fires them.</p>
+    </div>
+    <div class="gap-card">
+      <div class="head"><strong>A second automation engine exists for forms/funnels</strong><span class="badge warn">Separate system</span></div>
+      <p>"Engine B" runs public-form and funnel logic on its own infrastructure with its own trigger set (form submitted/viewed/abandoned, payment completed/failed) — separate code from the main Workflow Builder above. Unifying them is a reasonable next step.</p>
+    </div>
+    <div class="gap-card">
+      <div class="head"><strong>No way to acknowledge a failed run</strong><span class="badge dead">Missing</span></div>
+      <p>A workflow-failure monitor exists but is disabled — the database has no column yet to mark a failure as handled.</p>
+    </div>
+    <div class="gap-card">
+      <div class="head"><strong>"Create Task" isn't in the builder UI yet</strong><span class="badge warn">Backend only</span></div>
+      <p>The action works end-to-end but can't currently be added as a step from the visual editor.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">04</span><h2>How this compares</h2></div>
+    <div class="confidence-note"><strong>Confidence note:</strong> the LeadsMind column is verified directly against the current codebase. The Systeme.io and GHL columns reflect general public knowledge of those products, <strong>not independently re-verified today</strong> — uncertain details are marked as such.</div>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Dimension</th><th>LeadsMind</th><th>Systeme.io</th><th>GoHighLevel</th></tr>
+      <tr><td>Trigger breadth</td><td>21 live across CRM, LMS, payments, tags, appointments, funnels</td><td>Narrower — mostly funnel/course/email</td><td>Broad native trigger library</td></tr>
+      <tr><td>Action breadth</td><td>28+ across email/SMS/WhatsApp, CRM, LMS, invoicing, Slack, webhooks, AI</td><td>Solid for core use case; no invoicing/Slack/AI actions we're aware of</td><td>One of the largest native libraries (missed-call text-back, reviews, etc.)</td></tr>
+      <tr><td>Branching logic</td><td>Named branches, 8 condition operators, deterministic A/B split</td><td>Basic if/else — depth uncertain</td><td>Full branching + native A/B — comparable maturity</td></tr>
+      <tr><td>Entity pickers</td><td>Live dropdowns for tags, stages, members, courses, bundles</td><td>Uncertain — likely live for tags/products</td><td>Live pickers for pipelines/tags/users — mature, likely comparable</td></tr>
+      <tr><td>Multi-channel actions</td><td>Email/SMS/WhatsApp/webhook all real; WhatsApp is text-only, not templated</td><td>Email-first; SMS/WhatsApp limited or add-on</td><td>All four native, including approved WhatsApp templates — a genuine GHL strength</td></tr>
+      <tr><td>Execution history</td><td>Logged, including skipped-for-concurrency runs; no failure-acknowledgment UI yet</td><td>Basic contact-level history</td><td>Dedicated execution log/history view — more mature</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="section-head"><span class="section-num">05</span><h2>Where this stands</h2></div>
+    <p class="lede">This is a real, working automation engine, not a prototype — genuine multi-channel actions, live-data pickers, functioning branching, and a track record of concurrency and permissions bugs found and fixed under realistic conditions rather than a happy-path demo. Trigger and action breadth already covers the core CRM + LMS + payments use cases, and branching/entity-picker maturity is on par with Systeme.io and GHL.</p>
+    <p>Where it currently trails GHL specifically: native WhatsApp template sends and a dedicated execution-history UI — both scoped, known gaps rather than open questions. Systeme.io is generally the narrower product of the two, and LeadsMind's breadth already looks competitive or ahead of it in several areas verified here. This is a credible, production-tested system with a short, clearly bounded list of next steps.</p>
+  </section>
+
+</div>

@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId, getUserAccessInfo } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { markLessonComplete, markLessonIncomplete } from '@/app/actions/studentProgress';
+import { publishEvent } from '@/lib/events/EventBus';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,6 +131,12 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error;
 
+    publishEvent(workspaceId, 'assignment_submitted', contactId, {
+      submissionId: submission.id,
+      courseId,
+      lessonId,
+    }).catch((err) => console.error('[POST /api/lms/assignments publishEvent error]:', err));
+
     return NextResponse.json({ success: true, submission });
   } catch (err: any) {
     console.error('[POST /api/lms/assignments error]:', err);
@@ -185,6 +192,13 @@ export async function PATCH(req: NextRequest) {
     } else if (gradeStatus === 'failed') {
       await markLessonIncomplete(submission.course_id, submission.lesson_id);
     }
+
+    publishEvent(workspaceId, 'assignment_graded', submission.contact_id, {
+      submissionId: submission.id,
+      courseId: submission.course_id,
+      lessonId: submission.lesson_id,
+      gradeStatus,
+    }).catch((err) => console.error('[PATCH /api/lms/assignments publishEvent error]:', err));
 
     return NextResponse.json({ success: true, submission });
   } catch (err: any) {
