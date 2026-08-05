@@ -23,6 +23,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
  const [isUploading, setIsUploading] = useState(false)
  const [avatarPreview, setAvatarPreview] = useState(user.avatarUrl)
  const fileInputRef = useRef<HTMLInputElement>(null)
+ const initials = ((user.firstName?.[0] || '') + (user.lastName?.[0] || '')).toUpperCase() || 'U'
 
  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue } = useForm<ProfileFormValues>({
   resolver: zodResolver(profileSchema),
@@ -83,7 +84,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
  }
 
  return (
-  <div className="card__wrapper">
+  <div className="dash-account-card">
    <div className="card__title-wrap mb-[20px]">
     <h5 className="card__heading-title">Profile Information</h5>
    </div>
@@ -104,18 +105,27 @@ export function ProfileForm({ user }: ProfileFormProps) {
         </label>
        </div>
        <div className="employee__profile-preview">
-        <div
-         className="employee__profile-preview-box"
-         style={{
-          backgroundImage: `url(${avatarPreview || "/assets/images/avatar/avatar.png"})`,
-         }}
-        >
-         {isUploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/50 rounded-full">
-           <div className="spinner-border text-primary" role="status"></div>
-          </div>
-         )}
-        </div>
+        {avatarPreview ? (
+         <div
+          className="employee__profile-preview-box"
+          style={{ backgroundImage: `url(${avatarPreview})` }}
+         >
+          {isUploading && (
+           <div className="absolute inset-0 flex items-center justify-center bg-white/50 rounded-full">
+            <div className="spinner-border text-primary" role="status"></div>
+           </div>
+          )}
+         </div>
+        ) : (
+         <div className="employee__profile-preview-box relative flex items-center justify-center rounded-full overflow-hidden bg-dash-accent !text-white font-bold text-3xl">
+          {initials}
+          {isUploading && (
+           <div className="absolute inset-0 flex items-center justify-center bg-white/50 rounded-full">
+            <div className="spinner-border text-primary" role="status"></div>
+           </div>
+          )}
+         </div>
+        )}
        </div>
       </div>
      </div>

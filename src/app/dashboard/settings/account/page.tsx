@@ -6,10 +6,12 @@ import {
  getUserWorkspaces,
  getCurrentWorkspaceId
 } from '@/lib/auth'
+import { getWorkspaceUsage } from '@/app/actions/analytics'
 import { ProfileForm } from '@/components/settings/ProfileForm'
 import { PasswordForm } from '@/components/settings/PasswordForm'
 import { WorkspaceList } from '@/components/settings/WorkspaceList'
 import { IntegrationsList } from '@/components/settings/IntegrationsList'
+import { WorkspaceUsage } from '@/components/settings/WorkspaceUsage'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import Breadcrumb from '@/common/Breadcrumb/breadcrumb'
 
@@ -25,6 +27,7 @@ export default async function AccountSettingsPage() {
  const profile = await getCurrentProfile(authUser)
  const workspaces = await getUserWorkspaces()
  const activeWorkspaceId = await getCurrentWorkspaceId()
+ const usage = await getWorkspaceUsage()
 
  if (!activeWorkspaceId) {
   if (workspaces.length > 0) {
@@ -57,6 +60,10 @@ export default async function AccountSettingsPage() {
       <div className="flex flex-col gap-y-6">
        <section id="profile">
         <ProfileForm user={profileData} />
+       </section>
+
+       <section id="usage">
+        <WorkspaceUsage usage={usage} />
        </section>
 
        <section id="security">

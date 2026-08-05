@@ -3,8 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { profileSchema, passwordSchema, ProfileFormValues, PasswordFormValues } from '@/lib/validations/account.schema';
-import { getUser, getCurrentWorkspaceId } from '@/lib/auth';
-import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
+import { getUser } from '@/lib/auth';
 import { generateAvatarPng } from '@/lib/avatar/generateAvatarPng';
 import { logger } from '@/shared/logger';
 
@@ -16,9 +15,13 @@ export async function updateProfile(values: ProfileFormValues) {
  if (!validated.success) return { success: false, error: 'Invalid data' };
 
  const supabase = await createServerClient();
- const workspaceId = await getCurrentWorkspaceId();
- if (!workspaceId) throw new ForbiddenError('No active workspace');
- 
+
+ // public.users is a per-user profile table with no workspace_id column at
+ // all (confirmed against the live schema — the workspace_id filter below
+ // used to reference a nonexistent column, so every save failed with a real
+ // Postgres error: "column users.workspace_id does not exist"). user.id is
+ // already the correct, sufficient key — it's the row's primary key and is
+ // scoped to the authenticated session via getUser().
  const { error } = await supabase
   .from('users')
   .update({
@@ -31,10 +34,10 @@ export async function updateProfile(values: ProfileFormValues) {
    profile_photo_url: values.profilePhotoUrl || null,
    identity_color: values.identityColor || '#3b82f6',
   })
-  .eq("id", user.id).eq("workspace_id", workspaceId);
+  .eq("id", user.id);
 
  if (error) {
-  logger.error({ err: error, userId: user.id, workspaceId }, 'account.profile.update.failed');
+  logger.error({ err: error, userId: user.id }, 'account.profile.update.failed');
   return { success: false, error: 'Failed to update profile. Please try again.' };
  }
 

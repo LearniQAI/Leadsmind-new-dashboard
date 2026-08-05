@@ -106,10 +106,10 @@ export function IntegrationsList() {
 
   return (
     <>
-      <div className="flex flex-col gap-6">
-        <div>
-          <h4 className="text-xl font-bold tracking-tight text-white font-space-grotesk">Messaging Integrations</h4>
-          <p className="text-sm text-white/50 font-dm-sans mt-1">
+      <div className="dash-account-card">
+        <div className="card__title-wrap mb-[20px]">
+          <h5 className="card__heading-title">Messaging Integrations</h5>
+          <p className="text-sm !text-dash-textMuted mt-1">
             Connect your customer communication channels to automatically sync and access all direct messages within your LeadsMind Unified Inbox.
           </p>
         </div>
@@ -117,50 +117,48 @@ export function IntegrationsList() {
         {isLoading && connectedPlatforms.length === 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-[#090e24]/60 border border-white/5 rounded-2xl p-6 h-[220px] animate-pulse flex flex-col justify-between">
+              <div key={i} className="bg-dash-surface border border-dash-border rounded-2xl p-6 h-[220px] animate-pulse flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-white/5"></div>
-                  <div className="w-16 h-5 rounded-full bg-white/5"></div>
+                  <div className="w-12 h-12 rounded-xl bg-white"></div>
+                  <div className="w-16 h-5 rounded-full bg-white"></div>
                 </div>
                 <div className="flex-1 mt-4 flex flex-col gap-2">
-                  <div className="h-4 bg-white/5 rounded w-2/3"></div>
-                  <div className="h-3 bg-white/5 rounded w-full"></div>
-                  <div className="h-3 bg-[#090e24] rounded w-full"></div>
+                  <div className="h-4 bg-white rounded w-2/3"></div>
+                  <div className="h-3 bg-white rounded w-full"></div>
+                  <div className="h-3 bg-dash-surface rounded w-full"></div>
                 </div>
-                <div className="h-9 bg-white/5 rounded-xl w-full"></div>
+                <div className="h-9 bg-white rounded-xl w-full"></div>
               </div>
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Facebook Card */}
-            <div className="relative group bg-[#090e24]/60 border border-white/5 hover:border-[#1877f2]/30 rounded-2xl p-6 transition-all duration-300 backdrop-blur-md flex flex-col justify-between min-h-[220px]">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#1877f2]/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              
+            <div className="relative group bg-dash-surface border border-dash-border hover:border-[#1877f2]/30 rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between min-h-[220px]">
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 rounded-xl bg-[#1877f2]/10 border border-[#1877f2]/20 flex items-center justify-center">
                     <i className="fa-brands fa-facebook-messenger text-2xl text-[#1877f2]"></i>
                   </div>
                   {fbConn ? (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-200 bg-emerald-50 text-emerald-600 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                       Connected
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-white/10 bg-white/5 text-white/40">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-dash-border bg-white !text-dash-textMuted">
                       Not Connected
                     </span>
                   )}
                 </div>
 
-                <h5 className="text-base font-bold text-white tracking-tight font-space-grotesk">Facebook Messenger</h5>
-                <p className="text-xs text-white/40 leading-relaxed mt-1 font-dm-sans">
+                <h5 className="text-base font-bold !text-dash-text tracking-tight font-space-grotesk">Facebook Messenger</h5>
+                <p className="text-xs !text-dash-textMuted leading-relaxed mt-1 font-dm-sans">
                   Route DMs and customer inquiries sent to your Facebook Page directly to the CRM.
                 </p>
 
                 {fbConn && (
-                  <div className="mt-4 p-2.5 rounded-lg bg-white/5 border border-white/5 text-[11px] font-medium text-white/80">
+                  <div className="mt-4 p-2.5 rounded-lg bg-white border border-dash-border text-[11px] font-medium !text-dash-text">
                     <div className="flex items-center justify-between">
                       <span>Linked Page:</span>
                       <span className="text-[#1877f2] font-semibold">{fbConn.credentials?.page_name || 'Facebook Page'}</span>
@@ -173,7 +171,7 @@ export function IntegrationsList() {
                 {fbConn ? (
                   <button
                     onClick={() => handleDisconnect('facebook')}
-                    className="w-full h-9 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/10 text-xs font-bold transition-all"
+                    className="w-full h-9 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-all"
                   >
                     Disconnect Channel
                   </button>
@@ -190,33 +188,31 @@ export function IntegrationsList() {
             </div>
 
             {/* Instagram Card */}
-            <div className="relative group bg-[#090e24]/60 border border-white/5 hover:border-[#ec4899]/30 rounded-2xl p-6 transition-all duration-300 backdrop-blur-md flex flex-col justify-between min-h-[220px]">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#ec4899]/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              
+            <div className="relative group bg-dash-surface border border-dash-border hover:border-[#ec4899]/30 rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between min-h-[220px]">
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 rounded-xl bg-[#ec4899]/10 border border-[#ec4899]/20 flex items-center justify-center">
                     <i className="fa-brands fa-instagram text-2xl text-[#ec4899]"></i>
                   </div>
                   {igConn ? (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-200 bg-emerald-50 text-emerald-600 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                       Connected
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-white/10 bg-white/5 text-white/40">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-dash-border bg-white !text-dash-textMuted">
                       Not Connected
                     </span>
                   )}
                 </div>
 
-                <h5 className="text-base font-bold text-white tracking-tight font-space-grotesk">Instagram Direct</h5>
-                <p className="text-xs text-white/40 leading-relaxed mt-1 font-dm-sans">
+                <h5 className="text-base font-bold !text-dash-text tracking-tight font-space-grotesk">Instagram Direct</h5>
+                <p className="text-xs !text-dash-textMuted leading-relaxed mt-1 font-dm-sans">
                   Access DMs, story replies, and mentions sent to your Instagram Business profile.
                 </p>
 
                 {igConn && (
-                  <div className="mt-4 p-2.5 rounded-lg bg-white/5 border border-white/5 text-[11px] font-medium text-white/80">
+                  <div className="mt-4 p-2.5 rounded-lg bg-white border border-dash-border text-[11px] font-medium !text-dash-text">
                     <div className="flex items-center justify-between">
                       <span>Linked Account:</span>
                       <span className="text-[#ec4899] font-semibold">@{igConn.credentials?.instagram_username || 'username'}</span>
@@ -229,7 +225,7 @@ export function IntegrationsList() {
                 {igConn ? (
                   <button
                     onClick={() => handleDisconnect('instagram')}
-                    className="w-full h-9 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/10 text-xs font-bold transition-all"
+                    className="w-full h-9 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-all"
                   >
                     Disconnect Channel
                   </button>
@@ -246,40 +242,38 @@ export function IntegrationsList() {
             </div>
 
             {/* WhatsApp Card */}
-            <div className="relative group bg-[#090e24]/60 border border-white/5 hover:border-[#25d366]/30 rounded-2xl p-6 transition-all duration-300 backdrop-blur-md flex flex-col justify-between min-h-[220px]">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#25d366]/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              
+            <div className="relative group bg-dash-surface border border-dash-border hover:border-[#25d366]/30 rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between min-h-[220px]">
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 rounded-xl bg-[#25d366]/10 border border-[#25d366]/20 flex items-center justify-center">
                     <i className="fa-brands fa-whatsapp text-2xl text-[#25d366]"></i>
                   </div>
                   {waConn ? (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-200 bg-emerald-50 text-emerald-600 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                       Connected
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-white/10 bg-white/5 text-white/40">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-dash-border bg-white !text-dash-textMuted">
                       Not Connected
                     </span>
                   )}
                 </div>
 
-                <h5 className="text-base font-bold text-white tracking-tight font-space-grotesk">WhatsApp Cloud API</h5>
-                <p className="text-xs text-white/40 leading-relaxed mt-1 font-dm-sans">
+                <h5 className="text-base font-bold !text-dash-text tracking-tight font-space-grotesk">WhatsApp Cloud API</h5>
+                <p className="text-xs !text-dash-textMuted leading-relaxed mt-1 font-dm-sans">
                   Integrate your WhatsApp Business phone line for rich customer messaging and automated chat flows.
                 </p>
 
                 {waConn && (
-                  <div className="mt-4 p-2.5 rounded-lg bg-white/5 border border-white/5 text-[11px] font-medium text-white/80 flex flex-col gap-1">
+                  <div className="mt-4 p-2.5 rounded-lg bg-white border border-dash-border text-[11px] font-medium !text-dash-text flex flex-col gap-1">
                     <div className="flex items-center justify-between">
                       <span>Account Name:</span>
                       <span className="text-[#25d366] font-semibold">{waConn.credentials?.whatsapp_business_name || 'WhatsApp API'}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Phone Line:</span>
-                      <span className="text-white/60">{waConn.credentials?.whatsapp_phone_number || 'N/A'}</span>
+                      <span className="!text-dash-textMuted">{waConn.credentials?.whatsapp_phone_number || 'N/A'}</span>
                     </div>
                   </div>
                 )}
@@ -289,7 +283,7 @@ export function IntegrationsList() {
                 {waConn ? (
                   <button
                     onClick={() => handleDisconnect('whatsapp')}
-                    className="w-full h-9 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/10 text-xs font-bold transition-all"
+                    className="w-full h-9 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-all"
                   >
                     Disconnect Channel
                   </button>

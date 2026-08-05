@@ -3,7 +3,7 @@ import Image from 'next/image';
 import UserAvatar from '@/components/ui/UserAvatar';
 import Link from 'next/link';
 import React, { useEffect, useRef } from 'react';
-import { User, Settings, CreditCard, Bell, HelpCircle, LogOut as LogOutIcon, CheckCircle2 } from 'lucide-react';
+import { Settings, CreditCard, LogOut as LogOutIcon } from 'lucide-react';
 import { useDashboardContext } from '../../DashboardProvider';
 import { handleLogout } from '@/app/actions/auth';
 import LogoutModal from '@/components/auth/LogoutModal';
@@ -17,6 +17,8 @@ type TUserProps = {
 
 const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUserProps) => {
   const { user, workspace } = useDashboardContext();
+  const planId = workspace?.plan || 'spark';
+  const planLabel = planId.charAt(0).toUpperCase() + planId.slice(1);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = React.useState(false);
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,7 +94,7 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
               <div className="relative flex items-center justify-between mb-4">
                 <span className="text-[12px] font-bold !text-slate-500 truncate">{workspace?.name || 'LeadsMind Workspace'}</span>
                 <DashStatusPill variant="accent" className="uppercase tracking-wider text-[10px]">
-                  Pro Plan
+                  {planLabel} Plan
                 </DashStatusPill>
               </div>
               <div className="relative flex items-center gap-3.5">
@@ -111,42 +113,6 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
               </div>
             </div>
 
-            {/* Usage Metrics Section */}
-            <div className="p-4 border-b border-[#EEF2F7]">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] font-bold !text-slate-400 uppercase tracking-wider">Workspace Usage</span>
-              </div>
-              <div className="space-y-3.5">
-                <div>
-                  <div className="flex justify-between text-[11px] mb-1.5">
-                    <span className="font-medium !text-slate-600">Contacts</span>
-                    <span className="!text-slate-400 font-medium">234 / 500</span>
-                  </div>
-                  <div className="w-full bg-dash-surface rounded-full h-2">
-                    <div className="bg-dash-accent h-2 rounded-full w-[46%]"></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-[11px] mb-1.5">
-                    <span className="font-medium !text-slate-600">Automations</span>
-                    <span className="!text-slate-400 font-medium">18 / 50</span>
-                  </div>
-                  <div className="w-full bg-dash-surface rounded-full h-2">
-                    <div className="bg-dash-accent h-2 rounded-full w-[36%]"></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-[11px] mb-1.5">
-                    <span className="font-medium !text-slate-600">Websites</span>
-                    <span className="!text-slate-400 font-medium">3 / 10</span>
-                  </div>
-                  <div className="w-full bg-dash-surface rounded-full h-2">
-                    <div className="bg-dash-accent h-2 rounded-full w-[30%]"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Menu Links */}
             <div className="p-1.5">
               <Link
@@ -157,34 +123,12 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
                 <Settings size={15} className="!text-slate-400" /> Profile Settings
               </Link>
               <Link
-                href="/dashboard/settings/billing"
+                href="/settings/billing"
                 onClick={handleShowUserDrowdown}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium !text-slate-700 hover:bg-slate-50 hover:!text-slate-900 transition-colors"
               >
                 <CreditCard size={15} className="!text-slate-400" /> Billing
               </Link>
-              <Link
-                href="/activities"
-                onClick={handleShowUserDrowdown}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium !text-slate-700 hover:bg-slate-50 hover:!text-slate-900 transition-colors"
-              >
-                <Bell size={15} className="!text-slate-400" /> Notifications
-              </Link>
-              <Link
-                href="/help"
-                onClick={handleShowUserDrowdown}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium !text-slate-700 hover:bg-slate-50 hover:!text-slate-900 transition-colors"
-              >
-                <HelpCircle size={15} className="!text-slate-400" /> Help Center
-              </Link>
-            </div>
-
-            {/* System Status */}
-            <div className="px-4 py-3 bg-slate-50/50 border-t border-b border-[#EEF2F7] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 size={14} className="!text-emerald-500" />
-                <span className="text-[11px] font-medium !text-slate-600">All systems operational</span>
-              </div>
             </div>
 
             {/* Logout Area */}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/server';
-import { resolveTierFromPlanCode } from '@/lib/paystack';
+import { resolveTierFromPlanCode, fetchSubscription, disableSubscription } from '@/lib/paystack';
 import { logger } from '@/shared/logger';
 
 export const runtime = 'nodejs';
@@ -104,6 +104,23 @@ export async function POST(req: NextRequest) {
      await deadLetter(admin, payloadObj, 'No workspace matched paystack_customer_code for subscription.create', 'validation_failed', 'dropped');
     } else {
      logger.info({ subscriptionCode, customerCode, tierId }, 'webhook.paystack.subscription_create.applied');
+
+     // Plan-switch completion: the new subscription is now confirmed active
+     // on this workspace, so it's safe to disable whichever subscription it
+     // replaced (stashed by createPaystackSubscription). Doing this only here
+     // -- after the new one is live -- avoids a gap in access if the new
+     // checkout had been abandoned instead of completed.
+     const previousSubscriptionCode = data.metadata?.previousSubscriptionCode;
+     if (previousSubscriptionCode && previousSubscriptionCode !== subscriptionCode) {
+      try {
+       const previousSub = await fetchSubscription(previousSubscriptionCode);
+       await disableSubscription(previousSubscriptionCode, previousSub.email_token);
+       logger.info({ previousSubscriptionCode, newSubscriptionCode: subscriptionCode }, 'webhook.paystack.subscription_create.previous_disabled');
+      } catch (disableErr: any) {
+       logger.error({ err: disableErr, previousSubscriptionCode, newSubscriptionCode: subscriptionCode }, 'webhook.paystack.subscription_create.previous_disable_failed');
+       await deadLetter(admin, payloadObj, `Failed to disable previous subscription ${previousSubscriptionCode}: ${disableErr.message}`, 'infrastructure_failure', 'pending');
+      }
+     }
     }
    } else {
     logger.warn({}, 'webhook.paystack.subscription_create.missing_fields');

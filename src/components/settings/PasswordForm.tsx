@@ -32,7 +32,7 @@ export function PasswordForm() {
  }
 
  return (
-  <div className="card__wrapper">
+  <div className="dash-account-card">
    <div className="card__title-wrap mb-[20px]">
     <h5 className="card__heading-title">Security Settings</h5>
    </div>
