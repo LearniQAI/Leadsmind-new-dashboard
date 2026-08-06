@@ -50,6 +50,7 @@ const OLD_SIDEBAR_DATA = [
       { link: "/finance" }, { link: "/finance/transactions" }, { link: "/finance/reconciliation" },
       { link: "/finance/connected-accounts" }, { link: "/finance/payment-gateways" },
       { link: "/finance/reports" }, { link: "/finance/expenses" },
+      { link: "/finance/credit-notes" }, { link: "/finance/retainers" },
     ]},
   ]},
   { items: [
