@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import {
   Search, Download, MoreVertical, Calendar, FileText, X, CheckCircle2,
   AlertTriangle, Clock, ArrowRight, ShieldCheck, Printer, Trash2,
-  CheckCircle, XCircle, Send, Pencil, Eraser, Globe
+  CheckCircle, XCircle, Send, Pencil, Eraser, Globe, FileMinus
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -278,6 +278,11 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator className="my-1 bg-dash-border" />
+                    <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2 text-xs">
+                      <Link href={`/finance/credit-notes?invoiceId=${selectedInvoice.id}`}>
+                        <FileMinus size={14} /> Issue Credit Note
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setWriteOffOpen(true)} className="flex items-center gap-2 cursor-pointer text-red hover:bg-red/10 rounded-lg mx-1 px-3 py-2 text-xs">
                       <Eraser size={14} /> Write Off Debt
                     </DropdownMenuItem>

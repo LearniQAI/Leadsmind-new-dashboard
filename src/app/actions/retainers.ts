@@ -143,3 +143,130 @@ export async function getRetainerBalance(contactId: string, workspaceId: string)
   if (error) return 0;
   return Number(data?.amount_remaining) || 0;
 }
+
+export async function listRetainers(workspaceId: string) {
+  const supabase = await createServerClient();
+  if (!(await requireWorkspaceMember(supabase, workspaceId))) return [];
+
+  const { data, error } = await supabase
+    .from('retainers')
+    .select('*, contact:contacts(first_name, last_name, email)')
+    .eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'retainers.list.failed');
+    return [];
+  }
+  return data || [];
+}
+
+export async function getRetainerLedger(retainerId: string, workspaceId: string) {
+  const supabase = await createServerClient();
+  if (!(await requireWorkspaceMember(supabase, workspaceId))) return [];
+
+  // Ledger entries have no direct retainer_id — they're tied to the same
+  // (workspace_id, contact_id) pair a retainer is scoped to (confirmed via
+  // live schema: retainer_ledger_entries has no retainer_id column at all).
+  const { data: retainer } = await supabase
+    .from('retainers')
+    .select('contact_id')
+    .eq('id', retainerId)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+
+  if (!retainer) return [];
+
+  const { data, error } = await supabase
+    .from('retainer_ledger_entries')
+    .select('*, invoice:invoices(invoice_number)')
+    .eq('workspace_id', workspaceId)
+    .eq('contact_id', retainer.contact_id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    logger.error({ err: error, retainerId, workspaceId }, 'retainers.ledger.fetch.failed');
+    return [];
+  }
+  return data || [];
+}
+
+// Creates a retainer with its initial deposit — one retainer per (workspace,
+// contact) is the model this app's existing applyRetainerToInvoice()/
+// getRetainerBalance() already assume (both look up by contact_id, not by a
+// list of retainers). A second call for a contact that already has one tops
+// it up instead of creating a duplicate row.
+export async function createOrTopUpRetainer(data: { workspaceId: string; contactId: string; amount: number }) {
+  const supabase = await createServerClient();
+  if (!(await requireWorkspaceMember(supabase, data.workspaceId))) {
+    return { success: false, error: 'Unauthorized' };
+  }
+  if (!data.contactId) return { success: false, error: 'Select a contact.' };
+  if (!data.amount || data.amount <= 0) return { success: false, error: 'Enter a deposit amount greater than zero.' };
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('retainers')
+    .select('id, amount_remaining, total_amount')
+    .eq('workspace_id', data.workspaceId)
+    .eq('contact_id', data.contactId)
+    .maybeSingle();
+
+  if (fetchError) {
+    logger.error({ err: fetchError, ...data }, 'retainers.create_or_top_up.fetch.failed');
+    return { success: false, error: 'Failed to look up existing retainer.' };
+  }
+
+  let retainerId: string;
+
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from('retainers')
+      .update({
+        amount_remaining: Number(existing.amount_remaining) + data.amount,
+        total_amount: Number(existing.total_amount) + data.amount,
+        status: 'active',
+      })
+      .eq('id', existing.id);
+
+    if (updateError) {
+      logger.error({ err: updateError, ...data }, 'retainers.top_up.update.failed');
+      return { success: false, error: 'Failed to top up retainer.' };
+    }
+    retainerId = existing.id;
+  } else {
+    const { data: created, error: insertError } = await supabase
+      .from('retainers')
+      .insert({
+        workspace_id: data.workspaceId,
+        contact_id: data.contactId,
+        amount_remaining: data.amount,
+        total_amount: data.amount,
+        status: 'active',
+      })
+      .select('id')
+      .single();
+
+    if (insertError || !created) {
+      logger.error({ err: insertError, ...data }, 'retainers.create.insert.failed');
+      return { success: false, error: 'Failed to create retainer.' };
+    }
+    retainerId = created.id;
+  }
+
+  const { error: ledgerError } = await supabase
+    .from('retainer_ledger_entries')
+    .insert({
+      workspace_id: data.workspaceId,
+      contact_id: data.contactId,
+      amount: data.amount,
+      entry_type: 'credit_advance',
+    });
+
+  if (ledgerError) {
+    logger.error({ err: ledgerError, ...data }, 'retainers.create_or_top_up.ledger_entry.failed');
+    return { success: false, error: 'Retainer balance updated, but failed to record the ledger entry.' };
+  }
+
+  revalidatePath('/finance/retainers');
+  return { success: true, retainerId };
+}

@@ -5,7 +5,7 @@ import { useFormBuilder, FieldType } from './FormBuilderContext';
 import { StepManager } from './StepManager';
 import { IntelligenceBuilder } from './IntelligenceBuilder';
 import { TagOnSubmitPicker } from './TagOnSubmitPicker';
-import { Type, Mail, Phone, AlignLeft, ChevronDown, CheckSquare, Search, LayoutGrid, Layers, Tag as TagIcon, UploadCloud, PenTool, CreditCard, Link2, Plus, Check, User } from 'lucide-react';
+import { Type, Mail, Phone, AlignLeft, ChevronDown, CheckSquare, Search, LayoutGrid, Layers, Tag as TagIcon, UploadCloud, PenTool, Link2, Plus, Check, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LibraryField {
@@ -29,7 +29,9 @@ const FIELD_LIBRARY: LibraryField[] = [
   { type: 'phone', label: 'Phone Number', category: 'contact', icon: <Phone size={14} /> },
   { type: 'upload', label: 'File Upload', category: 'transactional', icon: <UploadCloud size={14} /> },
   { type: 'signature', label: 'E-Signature', category: 'transactional', icon: <PenTool size={14} /> },
-  { type: 'payment', label: 'Payment Block', category: 'transactional', icon: <CreditCard size={14} /> },
+  // 'payment' intentionally omitted: PaymentBlock collects real card data via Stripe.js
+  // but never sends it anywhere for an actual charge (see PaymentBlock.tsx). Re-add once
+  // it's wired to a real server-side charge.
 ];
 
 export function BuilderSidebar() {
