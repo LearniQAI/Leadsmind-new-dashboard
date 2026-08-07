@@ -6,6 +6,10 @@ import { encrypt } from '@/lib/encryption'
 import { stripe } from '@/lib/stripe'
 import { toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
+import { encryptPaystackCredentials, encryptFlutterwaveCredentials, encryptOzowCredentials } from '@/lib/paymentGateways/credentials'
+import { validatePaystackKey } from '@/lib/paymentGateways/paystackGateway'
+import { validateFlutterwaveKey } from '@/lib/paymentGateways/flutterwaveGateway'
+import { validateOzowCredentials } from '@/lib/paymentGateways/ozowGateway'
 
 export const dynamic = 'force-dynamic';
 
@@ -75,7 +79,50 @@ export async function POST(req: NextRequest) {
     // nothing usable. Every secret value is encrypted at rest with the same AES-256-CBC
     // helper already used for bank connection credentials (src/lib/encryption.ts).
     let storedCredentials: Record<string, string> | undefined;
-    if (category === 'payment_gateway') {
+    const providerKey = (provider || '').toLowerCase();
+
+    // Paystack/Flutterwave/Ozow: bring-your-own-key gateways where a real
+    // validation call against the provider's own API is required before
+    // ever marking the connection "connected" — this is the exact bug this
+    // build exists to not repeat (Task 32: any typed string previously
+    // flipped a green "Connected" badge with zero provider-side check).
+    if (category === 'payment_gateway' && providerKey === 'paystack') {
+      const secretKey = credentials?.secretKey?.trim();
+      if (!secretKey) {
+        return NextResponse.json({ error: 'Paystack secret key is required' }, { status: 400 })
+      }
+      try {
+        await validatePaystackKey(secretKey);
+      } catch (err: any) {
+        return NextResponse.json({ error: `Paystack rejected this key: ${err.message}` }, { status: 400 })
+      }
+      storedCredentials = encryptPaystackCredentials(secretKey);
+    } else if (category === 'payment_gateway' && providerKey === 'flutterwave') {
+      const secretKey = credentials?.secretKey?.trim();
+      const webhookSecretHash = credentials?.webhookSecretHash?.trim();
+      if (!secretKey || !webhookSecretHash) {
+        return NextResponse.json({ error: 'Flutterwave secret key and webhook secret hash are required' }, { status: 400 })
+      }
+      try {
+        await validateFlutterwaveKey(secretKey);
+      } catch (err: any) {
+        return NextResponse.json({ error: `Flutterwave rejected this key: ${err.message}` }, { status: 400 })
+      }
+      storedCredentials = encryptFlutterwaveCredentials(secretKey, webhookSecretHash);
+    } else if (category === 'payment_gateway' && providerKey === 'ozow') {
+      const siteCode = credentials?.siteCode?.trim();
+      const apiKey = credentials?.apiKey?.trim();
+      const privateKey = credentials?.privateKey?.trim();
+      if (!siteCode || !apiKey || !privateKey) {
+        return NextResponse.json({ error: 'Ozow SiteCode, API key, and private key are all required' }, { status: 400 })
+      }
+      try {
+        await validateOzowCredentials(siteCode, apiKey);
+      } catch (err: any) {
+        return NextResponse.json({ error: `Ozow rejected this SiteCode/API key: ${err.message}` }, { status: 400 })
+      }
+      storedCredentials = encryptOzowCredentials(siteCode, apiKey, privateKey);
+    } else if (category === 'payment_gateway') {
       const apiKey = credentials?.apiKey?.trim();
       const apiSecret = credentials?.apiSecret?.trim();
       const passphrase = credentials?.passphrase?.trim();
@@ -93,9 +140,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Paystack/Flutterwave/Ozow are always stored lowercase — every reader of
+    // these 3 (getGatewayCredentials, the checkout/webhook routes) queries by
+    // the lowercase key, since that's also what the URL path segments and env
+    // var lookups use. Every other provider keeps whatever casing the client
+    // sends (pre-existing behavior — e.g. Stripe is stored/queried lowercase
+    // too, but PayFast/Ozow's `comingSoon` placeholder rows use the display
+    // name — not something to change outside the 3 gateways this task owns).
+    const storedProvider = ['paystack', 'flutterwave', 'ozow'].includes(providerKey) ? providerKey : provider;
+
     const upsertPayload: Record<string, any> = {
       workspace_id: workspaceId,
-      provider,
+      provider: storedProvider,
       category,
       connected: true,
       account_label: accountLabel ?? null,
@@ -122,10 +178,14 @@ export async function POST(req: NextRequest) {
 // DELETE — disconnect an integration
 export async function DELETE(req: NextRequest) {
   try {
-    const provider = req.nextUrl.searchParams.get('provider')
-    if (!provider) {
+    const rawProvider = req.nextUrl.searchParams.get('provider')
+    if (!rawProvider) {
       return NextResponse.json({ error: 'provider required' }, { status: 400 })
     }
+    // Match the same lowercase-for-these-3 storage convention as POST above.
+    const provider = ['paystack', 'flutterwave', 'ozow'].includes(rawProvider.toLowerCase())
+      ? rawProvider.toLowerCase()
+      : rawProvider;
 
     const { workspaceId } = await requireWorkspaceRole(ALLOWED_INTEGRATIONS_ROLES);
     const supabase = await createServerClient();

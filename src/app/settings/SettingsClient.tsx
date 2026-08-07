@@ -2,15 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Globe, Users, Palette, Code2, CreditCard, ShieldCheck, Monitor, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain, Mail
+  Globe, Users, Code2, CreditCard, ShieldCheck, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain, Mail, Wallet
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { createClient } from '@/lib/supabase/client';
 
-import useGlobalContext from "@/hooks/use-context";
-import { useDirection } from "@/hooks/useDirection";
 import {
   inviteTeamMember,
   updateWorkspaceBranding,
@@ -30,11 +28,9 @@ import SettingsSidebar from './components/SettingsSidebar';
 import SettingsHeader from './components/SettingsHeader';
 import WorkspaceTab from './components/tabs/WorkspaceTab';
 import TeamTab from './components/tabs/TeamTab';
-import BrandingTab from './components/tabs/BrandingTab';
 import ApiTab from './components/tabs/ApiTab';
 import BillingTab from './components/tabs/BillingTab';
 import SecurityTab from './components/tabs/SecurityTab';
-import AppearanceTab from './components/tabs/AppearanceTab';
 import DomainsTab from './components/tabs/DomainsTab';
 import CustomDomainsTab from './components/tabs/CustomDomainsTab';
 import AiTab from './components/tabs/AiTab';
@@ -68,8 +64,6 @@ export default function SettingsClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
-  const { theme, toggleTheme } = useGlobalContext();
-  const { direction, toggleDirection } = useDirection();
 
   // State
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'team');
@@ -123,22 +117,48 @@ export default function SettingsClient({
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 
-  const menuItems = [
-    { id: 'workspace', label: 'Workspace', icon: Globe, description: 'Neural configuration & identity' },
-    { id: 'team', label: 'Team Node', icon: Users, description: 'Manage access protocols' },
-    { id: 'branding', label: 'Branding', icon: Palette, description: 'Interface identity markers' },
-    { id: 'integrations', label: 'Messaging Connections', icon: Zap, description: 'Connect Meta & platform channels' },
-    { id: 'ai', label: 'AI Voice Profile', icon: Sparkles, description: 'Neural voice & templates' },
-    { id: 'ai-credits', label: 'AI Credit Ledger', icon: Brain, description: 'Token balance & consumption' },
-    { id: 'domains', label: 'Email Domains', icon: ShieldCheck, description: 'Email verification & security' },
-    { id: 'custom-domains', label: 'Custom Domains', icon: Globe, description: 'Connect your own domain' },
-    { id: 'email-provider', label: 'Email Provider', icon: Mail, description: 'Custom transactional email gateway' },
-    { id: 'seo', label: 'SEO Settings', icon: TrendingUp, description: 'Google Search Console sync' },
-    { id: 'api', label: 'Developer', icon: Code2, description: 'API keys, webhooks & SDK' },
-    { id: 'pricing', label: 'Billing', icon: CreditCard, description: 'Resource allocation' },
-    { id: 'audit', label: 'Security', icon: ShieldCheck, description: 'Audit logs & integrity' },
-    { id: 'appearance', label: 'Appearance', icon: Monitor, description: 'Visual preferences' },
+  const menuGroups = [
+    {
+      label: 'Workspace',
+      items: [
+        { id: 'workspace', label: 'Workspace', icon: Globe, description: 'Name, branding, and general settings' },
+        { id: 'team', label: 'Team', icon: Users, description: 'Invite members and manage roles' },
+      ],
+    },
+    {
+      label: 'Communications',
+      items: [
+        { id: 'integrations', label: 'Messaging Connections', icon: Zap, description: 'Connect Meta & platform channels' },
+        { id: 'domains', label: 'Email Domains', icon: ShieldCheck, description: 'Email verification & security' },
+        { id: 'custom-domains', label: 'Custom Domains', icon: Globe, description: 'Connect a domain for this workspace' },
+        { id: 'email-provider', label: 'Email Provider', icon: Mail, description: 'Custom transactional email gateway' },
+        { id: 'seo', label: 'SEO Settings', icon: TrendingUp, description: 'Google Search Console sync' },
+      ],
+    },
+    {
+      label: 'AI',
+      items: [
+        { id: 'ai', label: 'AI Voice Profile', icon: Sparkles, description: 'Brand voice and content templates' },
+        { id: 'ai-credits', label: 'AI Credits', icon: Brain, description: 'Usage, balance, and top-ups' },
+      ],
+    },
+    {
+      label: 'Billing & Security',
+      items: [
+        { id: 'pricing', label: 'Billing', icon: CreditCard, description: 'Plans, invoices, and payment history' },
+        { id: 'payment', label: 'Payment Settings', icon: Wallet, description: 'Stripe, Paystack, Flutterwave & Ozow', href: '/finance/payment-gateways' },
+        { id: 'audit', label: 'Security', icon: ShieldCheck, description: 'Workspace activity overview' },
+      ],
+    },
+    {
+      label: 'Developer',
+      items: [
+        { id: 'api', label: 'Developer', icon: Code2, description: 'API keys, webhooks & SDK' },
+      ],
+    },
   ];
+
+  const menuItems = menuGroups.flatMap((g) => g.items);
 
   // Effects
   useEffect(() => {
@@ -242,7 +262,7 @@ export default function SettingsClient({
       document.documentElement.style.setProperty('--btn-color', buttonColor);
       document.documentElement.style.setProperty('--txt-color', textColor);
       document.documentElement.style.setProperty('--font-family', typography);
-      toast.success('Neural branding settings and colors synced globally');
+      toast.success('Branding settings saved');
       router.refresh();
     }
     setIsSaving(false);
@@ -327,7 +347,7 @@ export default function SettingsClient({
       // The signing secret is only ever returned here, once — it is never included in the
       // webhooks list again, so this is the caller's only chance to copy it.
       if (res.secret) setNewWebhookSecret(res.secret);
-      toast.success('Neural Webhook endpoint generated successfully');
+      toast.success('Webhook endpoint created');
       router.refresh();
     }
   };
@@ -404,9 +424,15 @@ export default function SettingsClient({
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-160px)]">
       <SettingsSidebar
-        menuItems={menuItems}
+        groups={menuGroups}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        onSelect={(item) => {
+          if (item.href) {
+            router.push(item.href);
+            return;
+          }
+          setActiveTab(item.id);
+        }}
       />
 
       <div className="flex-1 min-w-0 bg-dash-bg relative overflow-y-auto">
@@ -423,6 +449,24 @@ export default function SettingsClient({
               onSave={handleSaveWorkspace}
               onCopy={copyToClipboard}
               copiedId={copied}
+              primaryColor={primaryColor}
+              setPrimaryColor={setPrimaryColor}
+              buttonColor={buttonColor}
+              setButtonColor={setButtonColor}
+              textColor={textColor}
+              setTextColor={setTextColor}
+              typography={typography}
+              setTypography={setTypography}
+              customDomain={customDomain}
+              setCustomDomain={setCustomDomain}
+              sslStatus={sslStatus}
+              isVerifyingCname={isVerifyingCname}
+              onLogoUpload={handleLogoUpload}
+              onFaviconUpload={handleFaviconUpload}
+              onSaveBranding={handleSaveBranding}
+              onVerifyCname={handleVerifyCname}
+              fileInputRef={fileInputRef}
+              faviconInputRef={faviconInputRef}
             />
           )}
 
@@ -468,31 +512,6 @@ export default function SettingsClient({
             />
           )}
 
-          {activeTab === 'branding' && (
-            <BrandingTab
-              branding={branding}
-              primaryColor={primaryColor}
-              setPrimaryColor={setPrimaryColor}
-              buttonColor={buttonColor}
-              setButtonColor={setButtonColor}
-              textColor={textColor}
-              setTextColor={setTextColor}
-              typography={typography}
-              setTypography={setTypography}
-              customDomain={customDomain}
-              setCustomDomain={setCustomDomain}
-              sslStatus={sslStatus}
-              isSaving={isSaving}
-              isVerifyingCname={isVerifyingCname}
-              onLogoUpload={handleLogoUpload}
-              onFaviconUpload={handleFaviconUpload}
-              onSaveBranding={handleSaveBranding}
-              onVerifyCname={handleVerifyCname}
-              fileInputRef={fileInputRef}
-              faviconInputRef={faviconInputRef}
-            />
-          )}
-
           {activeTab === 'integrations' && (
             <div className="space-y-6">
               <IntegrationsList />
@@ -501,7 +520,12 @@ export default function SettingsClient({
 
           {activeTab === 'seo' && <SeoTab />}
           {activeTab === 'ai' && <AiTab workspaceId={branding?.workspace_id} />}
-          {activeTab === 'ai-credits' && <AiCreditsTab workspaceId={branding?.workspace_id} />}
+          {activeTab === 'ai-credits' && (
+            <AiCreditsTab
+              workspaceId={branding?.workspace_id}
+              onUpgradeTier={() => setActiveTab('pricing')}
+            />
+          )}
 
           {activeTab === 'api' && (
             <ApiTab
@@ -524,15 +548,6 @@ export default function SettingsClient({
           {activeTab === 'domains' && <DomainsTab />}
           {activeTab === 'custom-domains' && <CustomDomainsTab workspaceId={branding?.workspace_id} />}
           {activeTab === 'email-provider' && <EmailProviderTab workspaceId={branding?.workspace_id} />}
-
-          {activeTab === 'appearance' && (
-            <AppearanceTab
-              theme={theme || 'dark'}
-              toggleTheme={toggleTheme}
-              direction={direction || 'ltr'}
-              toggleDirection={toggleDirection}
-            />
-          )}
         </div>
       </div>
 

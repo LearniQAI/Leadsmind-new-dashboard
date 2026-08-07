@@ -17,6 +17,10 @@ interface CreateFunnelOrderInput {
   // the PayFast redirect) is pulled from the order this one follows on from,
   // instead of the firstName/lastName/email fields above.
   parentOrderId?: string;
+  // Tasks 35-37: which connected gateway to route this checkout through.
+  // Defaults to 'payfast' (the only gateway this flow supported before) so
+  // every existing caller of createFunnelOrder keeps working unmodified.
+  gateway?: 'payfast' | 'paystack' | 'flutterwave' | 'ozow' | 'paypal';
 }
 
 // Reachable from a fully public, unauthenticated funnel page (anonymous visitors
@@ -32,7 +36,7 @@ interface CreateFunnelOrderInput {
 // so there is no page id available to key off client-side.
 export async function createFunnelOrder(input: CreateFunnelOrderInput) {
   try {
-    const { funnelId, stepPath, productName, amount, currency, parentOrderId } = input;
+    const { funnelId, stepPath, productName, amount, currency, parentOrderId, gateway = 'payfast' } = input;
     let { firstName, lastName, email } = input;
     if (!funnelId || !stepPath || !amount || amount <= 0) {
       return { success: false, error: 'Missing required order details' };
@@ -125,20 +129,18 @@ export async function createFunnelOrder(input: CreateFunnelOrderInput) {
         status: 'pending',
         amount,
         currency: currency || 'ZAR',
+        gateway,
       })
       .select('id')
       .single();
 
     if (orderError) throw orderError;
 
-    // 4. Build the signed PayFast redirect, same pattern as courseCommerce.ts.
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const workspaceInfo = Array.isArray(funnelInfo?.workspace) ? funnelInfo?.workspace[0] : funnelInfo?.workspace;
     const orderFormUrl = workspaceInfo?.slug && funnelInfo?.subdomain
       ? `${appUrl}/p/${workspaceInfo.slug}/${funnelInfo.subdomain}${stepPath === '/' ? '' : stepPath}`
       : appUrl;
-
-    const notifyUrl = `${appUrl}/api/webhooks/payfast`;
 
     // For a follow-on (Upsell/Downsell) order, ?order= must keep meaning "the
     // parent order" throughout this page's lifecycle (it's how the widget knows
@@ -149,29 +151,167 @@ export async function createFunnelOrder(input: CreateFunnelOrderInput) {
       ? `order=${parentOrderId}&charge=${order.id}`
       : `order=${order.id}`;
 
-    const { generatePayFastCheckoutUrl } = await import('@/lib/calendar/payfast');
-    const checkoutUrl = generatePayFastCheckoutUrl({
-      merchantId: process.env.PAYFAST_MERCHANT_ID || '10000100',
-      merchantKey: process.env.PAYFAST_MERCHANT_KEY || '46f0z550522ac',
-      returnUrl: `${orderFormUrl}?payment=success&${returnParams}`,
-      cancelUrl: `${orderFormUrl}?payment=cancelled&${returnParams}`,
-      notifyUrl,
-      amount,
-      itemName: productName || 'Order',
-      paymentId: order.id,
-      firstName: firstName || 'Customer',
-      lastName: lastName || '',
-      email: email || '',
-      custom_str1: workspaceId,
-      custom_str2: contactId || '',
-      custom_str3: order.id,
-      custom_str4: 'funnel_order',
-    });
+    let checkoutUrl: string;
+    let gatewayRef: string | null = null;
+
+    if (gateway === 'paystack') {
+      const { getGatewayCredentials } = await import('@/lib/paymentGateways/credentials');
+      const creds = await getGatewayCredentials(workspaceId, 'paystack');
+      if (!creds) return { success: false, error: 'Paystack is not connected for this workspace' };
+
+      const { initializeCheckout } = await import('@/lib/paymentGateways/paystackGateway');
+      gatewayRef = `fo_${order.id}`;
+      const result = await initializeCheckout({
+        secretKey: creds.secretKey,
+        email: email || 'customer@example.com',
+        amount,
+        currency: currency || 'ZAR',
+        reference: gatewayRef,
+        callback_url: `${orderFormUrl}?payment=success&${returnParams}`,
+        metadata: { workspaceId, orderId: order.id, type: 'funnel_order' },
+      });
+      checkoutUrl = result.authorization_url;
+    } else if (gateway === 'flutterwave') {
+      const { getGatewayCredentials } = await import('@/lib/paymentGateways/credentials');
+      const creds = await getGatewayCredentials(workspaceId, 'flutterwave');
+      if (!creds) return { success: false, error: 'Flutterwave is not connected for this workspace' };
+
+      const { initializeCheckout } = await import('@/lib/paymentGateways/flutterwaveGateway');
+      gatewayRef = `fo_${order.id}`;
+      const result = await initializeCheckout({
+        secretKey: creds.secretKey,
+        email: email || 'customer@example.com',
+        name: `${firstName || ''} ${lastName || ''}`.trim() || undefined,
+        amount,
+        currency: currency || 'ZAR',
+        tx_ref: gatewayRef,
+        redirect_url: `${orderFormUrl}?${returnParams}`,
+        meta: { workspaceId, orderId: order.id, type: 'funnel_order' },
+      });
+      checkoutUrl = result.link;
+    } else if (gateway === 'ozow') {
+      const { getGatewayCredentials } = await import('@/lib/paymentGateways/credentials');
+      const creds = await getGatewayCredentials(workspaceId, 'ozow');
+      if (!creds) return { success: false, error: 'Ozow is not connected for this workspace' };
+
+      const { initializeCheckout } = await import('@/lib/paymentGateways/ozowGateway');
+      gatewayRef = order.id;
+      // BankReference shows on the customer's own bank statement — Ozow caps
+      // this at 20 characters, so a truncated order id is used rather than a
+      // full UUID.
+      const result = await initializeCheckout({
+        siteCode: creds.siteCode,
+        apiKey: creds.apiKey,
+        privateKey: creds.privateKey,
+        amount,
+        transactionReference: order.id,
+        bankReference: `Order-${order.id.slice(0, 12)}`,
+        cancelUrl: `${orderFormUrl}?payment=cancelled&${returnParams}`,
+        errorUrl: `${orderFormUrl}?payment=error&${returnParams}`,
+        successUrl: `${orderFormUrl}?payment=success&${returnParams}`,
+        notifyUrl: `${appUrl}/api/webhooks/ozow`,
+        isTest: process.env.NODE_ENV !== 'production',
+      });
+      checkoutUrl = result.url;
+    } else if (gateway === 'paypal') {
+      const { getGatewayCredentials } = await import('@/lib/paymentGateways/credentials');
+      const creds = await getGatewayCredentials(workspaceId, 'paypal');
+      if (!creds) return { success: false, error: 'PayPal is not connected for this workspace' };
+
+      const { initializeCheckout } = await import('@/lib/paymentGateways/paypalGateway');
+      gatewayRef = `fo_${order.id}`;
+      const successNext = `${orderFormUrl}?payment=success&${returnParams}`;
+      const cancelNext = `${orderFormUrl}?payment=cancelled&${returnParams}`;
+      const result = await initializeCheckout({
+        sellerMerchantId: creds.merchantId,
+        amount,
+        currency: currency || 'USD',
+        customId: gatewayRef,
+        description: productName || 'Funnel order',
+        // Approval alone doesn't capture funds for Orders v2 — the return_url
+        // routes through our own capture-triggering route first (see
+        // src/app/api/integrations/paypal/checkout-return/route.ts), which
+        // then forwards the browser on to successNext. Cancellation needs no
+        // capture step, so it goes straight to cancelNext.
+        returnUrl: `${appUrl}/api/integrations/paypal/checkout-return?order=${order.id}&next=${encodeURIComponent(successNext)}`,
+        cancelUrl: cancelNext,
+      });
+      checkoutUrl = result.approveUrl;
+    } else {
+      // PayFast — unchanged from before this task, same signed redirect,
+      // same platform-wide env-var credentials (see Task 32's finding: this
+      // page's "Connect" toggle is cosmetic for PayFast, real checkout is
+      // env-var-only).
+      const { generatePayFastCheckoutUrl } = await import('@/lib/calendar/payfast');
+      checkoutUrl = generatePayFastCheckoutUrl({
+        merchantId: process.env.PAYFAST_MERCHANT_ID || '10000100',
+        merchantKey: process.env.PAYFAST_MERCHANT_KEY || '46f0z550522ac',
+        returnUrl: `${orderFormUrl}?payment=success&${returnParams}`,
+        cancelUrl: `${orderFormUrl}?payment=cancelled&${returnParams}`,
+        notifyUrl: `${appUrl}/api/webhooks/payfast`,
+        amount,
+        itemName: productName || 'Order',
+        paymentId: order.id,
+        firstName: firstName || 'Customer',
+        lastName: lastName || '',
+        email: email || '',
+        custom_str1: workspaceId,
+        custom_str2: contactId || '',
+        custom_str3: order.id,
+        custom_str4: 'funnel_order',
+      });
+    }
+
+    if (gatewayRef) {
+      await supabase.from('funnel_orders').update({ gateway_ref: gatewayRef }).eq('id', order.id);
+    }
 
     return { success: true, checkoutUrl, orderId: order.id };
   } catch (err: any) {
     logger.error({ err }, 'funnel_orders.create.failed');
     return { success: false, error: 'Failed to start checkout' };
+  }
+}
+
+// Public, unauthenticated read — lets the Order Form widget know which
+// gateways it can actually offer a visitor, WITHOUT exposing
+// useWorkspaceIntegrations (that hook's route requires an authenticated
+// admin/owner session, unusable on this public checkout page). Only ever
+// returns provider names + a boolean, never touches `credentials`.
+// PayFast is always included: unlike the 3 bring-your-own-key gateways, its
+// real checkout path is platform-wide env vars, not a per-workspace
+// `workspace_integrations` row (confirmed in Task 32 — that row is cosmetic
+// for PayFast), so its availability isn't gated by a "connected" flag here.
+export async function getAvailablePaymentGateways(funnelId: string): Promise<{ gateway: string; label: string }[]> {
+  const available: { gateway: string; label: string }[] = [{ gateway: 'payfast', label: 'PayFast' }];
+  try {
+    if (!funnelId) return available;
+    const supabase = createAdminClient();
+
+    const { data: funnel } = await supabase
+      .from('funnels')
+      .select('workspace_id')
+      .eq('id', funnelId)
+      .maybeSingle();
+
+    if (!funnel?.workspace_id) return available;
+
+    const { data: integrations } = await supabase
+      .from('workspace_integrations')
+      .select('provider, connected')
+      .eq('workspace_id', funnel.workspace_id)
+      .eq('category', 'payment_gateway')
+      .eq('connected', true)
+      .in('provider', ['paystack', 'flutterwave', 'ozow', 'paypal']);
+
+    const labels: Record<string, string> = { paystack: 'Paystack', flutterwave: 'Flutterwave', ozow: 'Ozow', paypal: 'PayPal' };
+    for (const row of integrations || []) {
+      available.push({ gateway: row.provider, label: labels[row.provider] || row.provider });
+    }
+    return available;
+  } catch (err: any) {
+    logger.error({ err, funnelId }, 'funnel_orders.get_available_gateways.failed');
+    return available;
   }
 }
 

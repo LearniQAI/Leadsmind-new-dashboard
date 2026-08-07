@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { Globe, Copy, Check, CreditCard, Shield } from 'lucide-react';
+import { Globe, Copy, Check, CreditCard, Shield, Plus, Palette, ShieldCheck, RefreshCw } from 'lucide-react';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -12,14 +12,50 @@ interface WorkspaceTabProps {
   onSave: (name: string) => void;
   onCopy: (text: string, id: string) => void;
   copiedId: string | null;
+  primaryColor: string;
+  setPrimaryColor: (color: string) => void;
+  buttonColor: string;
+  setButtonColor: (color: string) => void;
+  textColor: string;
+  setTextColor: (color: string) => void;
+  typography: string;
+  setTypography: (font: string) => void;
+  customDomain: string;
+  setCustomDomain: (domain: string) => void;
+  sslStatus: string;
+  isVerifyingCname: boolean;
+  onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onFaviconUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSaveBranding: () => void;
+  onVerifyCname: () => void;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  faviconInputRef: React.RefObject<HTMLInputElement>;
 }
 
-export default function WorkspaceTab({ 
-  branding, 
-  isSaving, 
-  onSave, 
-  onCopy, 
-  copiedId 
+export default function WorkspaceTab({
+  branding,
+  isSaving,
+  onSave,
+  onCopy,
+  copiedId,
+  primaryColor,
+  setPrimaryColor,
+  buttonColor,
+  setButtonColor,
+  textColor,
+  setTextColor,
+  typography,
+  setTypography,
+  customDomain,
+  setCustomDomain,
+  sslStatus,
+  isVerifyingCname,
+  onLogoUpload,
+  onFaviconUpload,
+  onSaveBranding,
+  onVerifyCname,
+  fileInputRef,
+  faviconInputRef,
 }: WorkspaceTabProps) {
   const [name, setName] = React.useState(branding?.platform_name || 'LeadsMind Workspace');
   const { role } = useDashboardContext() as any;
@@ -171,7 +207,7 @@ export default function WorkspaceTab({
               <label className="text-[11px] font-bold !text-dash-textMuted">Permanent slug</label>
               <div className="flex gap-2">
                 <div className="flex-1 bg-dash-surface border border-dash-border rounded-xl px-4 py-3 !text-dash-textMuted font-mono text-[11px] flex items-center">
-                  leadsmind.io/w/{branding?.workspace_id || 'neural-node-01'}
+                  leadsmind.io/w/{branding?.workspace_id || 'your-workspace-id'}
                 </div>
                 <button
                   onClick={() => onCopy(`leadsmind.io/w/${branding?.workspace_id}`, 'slug')}
@@ -195,6 +231,247 @@ export default function WorkspaceTab({
             </div>
           )}
         </div>
+
+        {/* Branding: logo, favicon, colors, typography, custom domain */}
+        {isAdmin && (
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-white border border-dash-border rounded-2xl p-8 space-y-8 shadow-sm">
+              <div className="flex items-center gap-4 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
+                  <Palette size={20} />
+                </div>
+                <div>
+                  <h4 className="text-[15px] font-bold !text-dash-text">Branding</h4>
+                  <p className="text-[11px] !text-dash-textMuted font-medium">Logo, colors, and typography</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h4 className="text-xs font-bold text-dash-accent border-b border-dash-border pb-2">Platform assets</h4>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold !text-dash-text">Business logo</label>
+                    <input type="file" ref={fileInputRef} onChange={onLogoUpload} className="hidden" accept="image/*" />
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-32 border border-dashed border-dash-border rounded-2xl flex flex-col items-center justify-center gap-2 bg-dash-surface overflow-hidden relative hover:border-dash-accent/30 hover:bg-dash-accent/5 cursor-pointer group"
+                    >
+                      {branding?.logo_url ? (
+                        <div className="w-full h-full bg-dash-surface flex items-center justify-center p-4">
+                          <img src={branding.logo_url} alt="Logo" className="max-h-16 object-contain" />
+                          <div className="absolute inset-0 bg-dash-text/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity motion-reduce:transition-none backdrop-blur-xs">
+                            <span className="text-[9px] font-bold text-white">Change</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Plus size={18} className="!text-dash-textMuted group-hover:text-dash-accent" />
+                          <span className="text-[9px] font-bold !text-dash-textMuted">Upload logo</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold !text-dash-text">Favicon (.ico/.png)</label>
+                    <input type="file" ref={faviconInputRef} onChange={onFaviconUpload} className="hidden" accept="image/*" />
+                    <div
+                      onClick={() => faviconInputRef.current?.click()}
+                      className="h-32 border border-dashed border-dash-border rounded-2xl flex flex-col items-center justify-center gap-2 bg-dash-surface overflow-hidden relative hover:border-dash-accent/30 hover:bg-dash-accent/5 cursor-pointer group"
+                    >
+                      {branding?.favicon_url ? (
+                        <div className="w-full h-full bg-dash-surface flex items-center justify-center p-4">
+                          <img src={branding.favicon_url} alt="Favicon" className="max-h-10 w-10 object-contain rounded" />
+                          <div className="absolute inset-0 bg-dash-text/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity motion-reduce:transition-none backdrop-blur-xs">
+                            <span className="text-[9px] font-bold text-white">Change</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Plus size={18} className="!text-dash-textMuted group-hover:text-dash-accent" />
+                          <span className="text-[9px] font-bold !text-dash-textMuted">Upload favicon</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-dash-accent border-b border-dash-border pb-2">Theme colors</h4>
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <span className="block text-[11px] font-bold !text-dash-text">Primary background</span>
+                    <span className="text-[10px] !text-dash-textMuted">Sidebar & main frame layout fill</span>
+                  </div>
+                  <div className="flex items-center gap-2 w-48">
+                    <input
+                      type="color"
+                      value={primaryColor.startsWith('#') ? primaryColor.substring(0, 7) : '#04091a'}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      className="w-10 h-10 rounded-lg border border-dash-border cursor-pointer bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      className="w-full bg-white border border-dash-border rounded-lg px-2.5 py-1.5 !text-dash-text font-mono text-xs uppercase outline-none focus:border-dash-accent/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <span className="block text-[11px] font-bold !text-dash-text">Button & brand accent</span>
+                    <span className="text-[10px] !text-dash-textMuted">Highlights, CTAs, and active outlines</span>
+                  </div>
+                  <div className="flex items-center gap-2 w-48">
+                    <input
+                      type="color"
+                      value={buttonColor.startsWith('#') ? buttonColor.substring(0, 7) : '#2563eb'}
+                      onChange={(e) => setButtonColor(e.target.value)}
+                      className="w-10 h-10 rounded-lg border border-dash-border cursor-pointer bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={buttonColor}
+                      onChange={(e) => setButtonColor(e.target.value)}
+                      className="w-full bg-white border border-dash-border rounded-lg px-2.5 py-1.5 !text-dash-text font-mono text-xs uppercase outline-none focus:border-dash-accent/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <span className="block text-[11px] font-bold !text-dash-text">Global text color</span>
+                    <span className="text-[10px] !text-dash-textMuted">Main copy, descriptions, and labels</span>
+                  </div>
+                  <div className="flex items-center gap-2 w-48">
+                    <input
+                      type="color"
+                      value={textColor.startsWith('#') ? textColor.substring(0, 7) : '#eef2ff'}
+                      onChange={(e) => setTextColor(e.target.value)}
+                      className="w-10 h-10 rounded-lg border border-dash-border cursor-pointer bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={textColor}
+                      onChange={(e) => setTextColor(e.target.value)}
+                      className="w-full bg-white border border-dash-border rounded-lg px-2.5 py-1.5 !text-dash-text font-mono text-xs uppercase outline-none focus:border-dash-accent/50"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-dash-accent border-b border-dash-border pb-2">Typography</h4>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <span className="block text-[11px] font-bold !text-dash-text">Font family</span>
+                    <span className="text-[10px] !text-dash-textMuted">Adaptive layout text rendering</span>
+                  </div>
+                  <select
+                    value={typography}
+                    onChange={(e) => setTypography(e.target.value)}
+                    className="w-48 bg-white border border-dash-border rounded-lg px-2.5 py-2 !text-dash-text text-xs outline-none focus:border-dash-accent/50"
+                  >
+                    <option value="Inter">Inter (Default)</option>
+                    <option value="Outfit">Outfit (Premium)</option>
+                    <option value="Poppins">Poppins</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="system-ui">System Default</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={onSaveBranding}
+                disabled={isSaving}
+                className="w-full bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] h-11 rounded-xl transition-all motion-reduce:transition-none shadow-lg shadow-dash-accent/20"
+              >
+                {isSaving ? 'Saving...' : 'Save branding'}
+              </button>
+            </div>
+
+            <div className="bg-white border border-dash-border rounded-2xl p-8 space-y-6 shadow-sm">
+              <div className="flex items-center gap-3 border-b border-dash-border pb-3">
+                <div className="w-8 h-8 rounded-lg bg-dash-accent/15 flex items-center justify-center text-dash-accent">
+                  <ShieldCheck size={16} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold !text-dash-text">Custom DNS domain</h4>
+                  <p className="text-[10px] !text-dash-textMuted">White-label your customer portal</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold !text-dash-textMuted">Custom domain URL</label>
+                  <input
+                    type="text"
+                    value={customDomain}
+                    onChange={(e) => setCustomDomain(e.target.value)}
+                    placeholder="e.g. portal.mybusiness.co.za"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-bold text-xs focus:border-dash-accent/50 outline-none placeholder:!text-dash-textMuted placeholder:font-normal"
+                  />
+                </div>
+
+                {customDomain && (
+                  <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-3">
+                    <span className="text-[10px] font-bold !text-dash-textMuted">Required DNS configuration</span>
+                    <p className="text-[11px] !text-dash-textMuted leading-relaxed">
+                      Access your DNS manager dashboard (GoDaddy, Cloudflare, etc.) and register the following record:
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 text-[10px] font-mono p-2.5 bg-white rounded border border-dash-border">
+                      <div>
+                        <span className="block !text-dash-textMuted">Type</span>
+                        <span className="text-dash-accent font-bold">CNAME</span>
+                      </div>
+                      <div>
+                        <span className="block !text-dash-textMuted">Name / Subdomain</span>
+                        <span className="!text-dash-text font-bold">{customDomain.split('.')[0]}</span>
+                      </div>
+                      <div>
+                        <span className="block !text-dash-textMuted">Points to</span>
+                        <span className="!text-dash-text font-bold break-all">cname.leadsmind.io</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {customDomain && (
+                  <div className="flex items-center justify-between p-3.5 bg-dash-surface border border-dash-border rounded-xl">
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold !text-dash-text block">SSL / CNAME status</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          sslStatus === 'active'
+                            ? 'bg-green/10 text-green border border-green/20'
+                            : sslStatus === 'failed'
+                              ? 'bg-red/10 text-red border border-red/20'
+                              : 'bg-amber-50 text-amber-600 border border-amber-200'
+                        }`}>
+                          {sslStatus === 'active' ? 'Active / SSL provisioned' : sslStatus === 'failed' ? 'Failed / DNS error' : 'Pending verification'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={onVerifyCname}
+                      disabled={isVerifyingCname}
+                      className="flex items-center gap-2 bg-dash-accent/10 border border-dash-accent/20 text-dash-accent hover:bg-dash-accent/20 font-bold text-[9px] h-9 px-4 rounded-lg transition-all motion-reduce:transition-none"
+                    >
+                      <RefreshCw size={10} className={isVerifyingCname ? 'animate-spin motion-reduce:animate-none' : ''} />
+                      {isVerifyingCname ? 'Checking...' : 'Check DNS'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* KYC & POPIA Consent Configurations */}
         {isAdmin && (
@@ -267,8 +544,8 @@ export default function WorkspaceTab({
                 <CreditCard size={20} />
               </div>
               <div>
-                <h4 className="text-[15px] font-bold !text-dash-text">Financial & portal configurations</h4>
-                <p className="text-[11px] !text-dash-textMuted font-medium">Customer portal visibility & payment protocols</p>
+                <h4 className="text-[15px] font-bold !text-dash-text">Billing & portal settings</h4>
+                <p className="text-[11px] !text-dash-textMuted font-medium">Customer portal visibility and payment options</p>
               </div>
             </div>
 

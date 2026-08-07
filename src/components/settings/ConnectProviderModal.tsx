@@ -29,6 +29,15 @@ export default function ConnectProviderModal({
   const [field3, setField3] = useState('');
   const [field4, setField4] = useState('');
 
+  // Paystack/Flutterwave/Ozow have real, provider-specific credential shapes
+  // (confirmed from each provider's current docs) — not the generic
+  // apiKey/apiSecret/passphrase boilerplate every other payment_gateway
+  // provider uses. Keeping this as a small lookup rather than new components
+  // per provider since the modal chrome (header/buttons/error state) is
+  // identical either way.
+  const providerKey = provider.toLowerCase();
+  const isByoKeyGateway = category === 'payment_gateway' && ['paystack', 'flutterwave', 'ozow'].includes(providerKey);
+
   // Status state
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -80,8 +89,23 @@ export default function ConnectProviderModal({
       return;
     }
 
-    // Validation: at least one field must have a value
-    if (!field1.trim() && !field2.trim() && !field3.trim()) {
+    // Validation: real required fields per provider for the 3 bring-your-own-key
+    // gateways (a missing field here should never reach the server as a vague
+    // "credential fields" error — tell the user exactly what's missing).
+    if (isByoKeyGateway) {
+      if (providerKey === 'paystack' && !field1.trim()) {
+        setErrorMsg('Enter your Paystack secret key.');
+        return;
+      }
+      if (providerKey === 'flutterwave' && (!field1.trim() || !field2.trim())) {
+        setErrorMsg('Enter both your Flutterwave secret key and webhook secret hash.');
+        return;
+      }
+      if (providerKey === 'ozow' && (!field1.trim() || !field2.trim() || !field4.trim())) {
+        setErrorMsg('Enter your Ozow SiteCode, API key, and private key.');
+        return;
+      }
+    } else if (!field1.trim() && !field2.trim() && !field3.trim()) {
       setErrorMsg('Please fill in the required credential fields.');
       return;
     }
@@ -101,11 +125,12 @@ export default function ConnectProviderModal({
         label = field2.trim() || provider;
       }
 
-      // For payment gateways, the entered API key/secret (and optional passphrase) are the
-      // actual credential — these previously never left the browser at all (only the account
-      // label was sent). They're sent here as a distinct `credentials` object rather than
-      // reusing the automation category's `webhookUrl` field so the backend can validate and
-      // encrypt them explicitly per category, instead of silently accepting an unlabeled blob.
+      // For payment gateways, the entered credentials are the actual secret —
+      // these previously never left the browser at all (only the account label
+      // was sent). Sent as a distinct `credentials` object (shape matching each
+      // provider's real requirements, not a generic apiKey/apiSecret pair) so
+      // the backend can run a real validation call and encrypt each field
+      // explicitly, instead of silently accepting an unlabeled blob.
       const body: Record<string, any> = {
         workspaceId,
         provider,
@@ -113,7 +138,13 @@ export default function ConnectProviderModal({
         accountLabel: label,
       };
 
-      if (category === 'payment_gateway') {
+      if (providerKey === 'paystack') {
+        body.credentials = { secretKey: field1.trim() };
+      } else if (providerKey === 'flutterwave') {
+        body.credentials = { secretKey: field1.trim(), webhookSecretHash: field2.trim() };
+      } else if (providerKey === 'ozow') {
+        body.credentials = { siteCode: field1.trim(), apiKey: field2.trim(), privateKey: field4.trim() };
+      } else if (category === 'payment_gateway') {
         body.credentials = {
           apiKey: field1.trim(),
           apiSecret: field2.trim(),
@@ -268,8 +299,143 @@ export default function ConnectProviderModal({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* CATEGORY: Bank / Payments */}
-            {(category === 'bank' || category === 'payment_gateway') && (
+            {/* CATEGORY: Paystack / Flutterwave / Ozow — bring-your-own-key,
+                real per-provider credential shape, not the generic apiKey/apiSecret
+                fields below (which still apply to any other payment_gateway
+                provider until it gets a real integration built). */}
+            {providerKey === 'paystack' && (
+              <>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                    Paystack Secret Key
+                  </label>
+                  <input
+                    type="password"
+                    value={field1}
+                    onChange={e => setField1(e.target.value)}
+                    placeholder="sk_live_... or sk_test_..."
+                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                    Account Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={field3}
+                    onChange={e => setField3(e.target.value)}
+                    placeholder="e.g. Main Paystack Account"
+                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
+                  />
+                </div>
+                <p className="text-[#4a5a82] text-[11px] font-dm-sans leading-relaxed pt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  Find your secret key in Paystack &gt; Settings &gt; API Keys &amp; Webhooks. We verify it with a real read-only call before connecting.
+                </p>
+              </>
+            )}
+
+            {providerKey === 'flutterwave' && (
+              <>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                    Flutterwave Secret Key
+                  </label>
+                  <input
+                    type="password"
+                    value={field1}
+                    onChange={e => setField1(e.target.value)}
+                    placeholder="FLWSECK_TEST-... or FLWSECK-..."
+                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                    Webhook Secret Hash
+                  </label>
+                  <input
+                    type="password"
+                    value={field2}
+                    onChange={e => setField2(e.target.value)}
+                    placeholder="Set under Flutterwave > Settings > Webhooks"
+                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                    Account Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={field3}
+                    onChange={e => setField3(e.target.value)}
+                    placeholder="e.g. Main Flutterwave Account"
+                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
+                  />
+                </div>
+                <p className="text-[#4a5a82] text-[11px] font-dm-sans leading-relaxed pt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  The secret key authorizes API calls; the webhook secret hash is a separate value you set yourself under Flutterwave's webhook settings — both are required.
+                </p>
+              </>
+            )}
+
+            {providerKey === 'ozow' && (
+              <>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                    Ozow Site Code
+                  </label>
+                  <input
+                    type="text"
+                    value={field1}
+                    onChange={e => setField1(e.target.value)}
+                    placeholder="e.g. TSTSTE0001"
+                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={field2}
+                    onChange={e => setField2(e.target.value)}
+                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                    Private Key
+                  </label>
+                  <input
+                    type="password"
+                    value={field4}
+                    onChange={e => setField4(e.target.value)}
+                    placeholder="Used to sign/verify checkout requests"
+                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
+                    Account Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={field3}
+                    onChange={e => setField3(e.target.value)}
+                    placeholder="e.g. Main Ozow Account"
+                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
+                  />
+                </div>
+                <p className="text-[#4a5a82] text-[11px] font-dm-sans leading-relaxed pt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  All three values are in your Ozow Merchant Admin under Settings. All three are required — Ozow has no separate "test" toggle, so use a real (or Ozow-provided sandbox) SiteCode.
+                </p>
+              </>
+            )}
+
+            {/* CATEGORY: Bank / other Payments (generic — Paystack/Flutterwave/Ozow handled above) */}
+            {(category === 'bank' || category === 'payment_gateway') && !isByoKeyGateway && (
               <>
                 <div className="flex flex-col">
                   <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">

@@ -773,6 +773,38 @@ export async function cancelPaystackSubscription() {
  }
 }
 
+// 100 AI credits for R99 — matches the price shown on the AI Credit top-up
+// card. Credits are only granted once the Paystack webhook confirms
+// charge.success; this action just starts checkout.
+const AI_CREDITS_ADDON_AMOUNT_ZAR_CENTS = 9900;
+const AI_CREDITS_ADDON_CREDIT_COUNT = 100;
+
+export async function createAiCreditsTopupTransaction() {
+ const supabase = await createServerClient();
+ const { data: { user } } = await supabase.auth.getUser();
+ if (!user || !user.email) return { error: 'Not authenticated' };
+
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch {
+  return { error: 'Not authenticated' };
+ }
+
+ try {
+  const result = await paystack.initializeOneTimeTransaction({
+   email: user.email,
+   amount: AI_CREDITS_ADDON_AMOUNT_ZAR_CENTS,
+   callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=ai-credits&success=credits_purchased`,
+   metadata: { workspaceId, purchaseType: 'ai_credits_addon', creditAmount: AI_CREDITS_ADDON_CREDIT_COUNT },
+  });
+  return { url: result.authorization_url };
+ } catch (err: any) {
+  logger.error({ err, workspaceId }, 'finance.ai_credits_topup.initialize_failed');
+  return { error: 'Failed to start checkout' };
+ }
+}
+
 export async function writeOffInvoice(invoiceId: string, _workspaceId: string, amount: number, reason: string) {
   const { userId, workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();

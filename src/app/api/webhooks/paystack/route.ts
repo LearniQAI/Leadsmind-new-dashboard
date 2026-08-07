@@ -57,9 +57,28 @@ export async function POST(req: NextRequest) {
   if (event === 'charge.success') {
    const workspaceId = data.metadata?.workspaceId;
    const tierId = data.metadata?.tierId;
+   const purchaseType = data.metadata?.purchaseType;
    const customerCode = data.customer?.customer_code;
 
-   if (workspaceId && tierId) {
+   if (purchaseType === 'ai_credits_addon') {
+    const creditAmount = Number(data.metadata?.creditAmount);
+    if (workspaceId && Number.isFinite(creditAmount) && creditAmount > 0) {
+     const { data: granted, error } = await admin.rpc('add_ai_credits_addon', {
+      p_workspace_id: workspaceId,
+      p_amount: creditAmount,
+      p_reference: data.reference,
+     });
+
+     if (error || !granted) {
+      logger.error({ err: error, workspaceId, creditAmount }, 'webhook.paystack.charge_success.ai_credits_topup_failed');
+      await deadLetter(admin, payloadObj, error?.message || 'add_ai_credits_addon matched no workspace', 'validation_failed', 'pending');
+     } else {
+      logger.info({ workspaceId, creditAmount }, 'webhook.paystack.charge_success.ai_credits_topup_applied');
+     }
+    } else {
+     logger.warn({ reference: data.reference }, 'webhook.paystack.charge_success.ai_credits_topup_missing_metadata');
+    }
+   } else if (workspaceId && tierId) {
     const { error } = await admin
      .from('workspaces')
      .update({
