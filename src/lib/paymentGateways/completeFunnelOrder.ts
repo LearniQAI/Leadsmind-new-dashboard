@@ -9,7 +9,7 @@ import { logger } from '@/shared/logger';
 // path for the new gateways.
 export async function completeFunnelOrder(params: {
   orderId: string;
-  gateway: 'paystack' | 'flutterwave' | 'ozow';
+  gateway: 'paystack' | 'flutterwave' | 'ozow' | 'paypal';
   gatewayRef: string;
   paidAmount: number;
   itemDescription?: string;

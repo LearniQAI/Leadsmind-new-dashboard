@@ -8,6 +8,7 @@ import ConnectionCard from '@/components/settings/ConnectionCard';
 import ConnectProviderModal from '@/components/settings/ConnectProviderModal';
 import { useWorkspaceIntegrations } from '@/hooks/useWorkspaceIntegrations';
 import { getStripeConnectAuthUrl } from '@/app/actions/stripeConnect';
+import { getPaypalConnectAuthUrl } from '@/app/actions/paypalConnect';
 import { toast } from 'sonner';
 
 export default function PaymentGatewaysPage() {
@@ -30,8 +31,9 @@ function PaymentGatewaysContent() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [connectingStripe, setConnectingStripe] = useState(false);
+  const [connectingPaypal, setConnectingPaypal] = useState(false);
 
-  // Reflect the Stripe Connect OAuth callback's redirect result
+  // Reflect the Stripe Connect / PayPal Partner Referrals OAuth callbacks' redirect results
   useEffect(() => {
     if (searchParams.get('stripe_success')) {
       toast.success('Stripe connected successfully via Stripe Connect');
@@ -39,6 +41,13 @@ function PaymentGatewaysContent() {
       router.replace('/finance/payment-gateways');
     } else if (searchParams.get('stripe_error')) {
       toast.error('Stripe connection failed. Please try again.');
+      router.replace('/finance/payment-gateways');
+    } else if (searchParams.get('paypal_success')) {
+      toast.success('PayPal connected successfully via PayPal Commerce Platform');
+      refetch();
+      router.replace('/finance/payment-gateways');
+    } else if (searchParams.get('paypal_error')) {
+      toast.error('PayPal connection failed. Please try again.');
       router.replace('/finance/payment-gateways');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,6 +85,17 @@ function PaymentGatewaysContent() {
     }
   };
 
+  const handleConnectPaypal = async () => {
+    setConnectingPaypal(true);
+    try {
+      const url = await getPaypalConnectAuthUrl();
+      window.location.href = url;
+    } catch (err: any) {
+      toast.error(err.message || 'Unable to start PayPal Connect.');
+      setConnectingPaypal(false);
+    }
+  };
+
   // PayFast checkout is genuinely live in this app (bookings, courses, funnels all process
   // real PayFast payments) but always via workspace-wide platform credentials
   // (PAYFAST_MERCHANT_ID/KEY env vars) — nothing reads this per-workspace connection back
@@ -98,6 +118,8 @@ function PaymentGatewaysContent() {
 
   const stripeConnected = isConnected('stripe');
   const stripeLabel = getLabel('stripe');
+  const paypalConnected = isConnected('paypal');
+  const paypalLabel = getLabel('paypal');
 
   return (
     <Wrapper>
@@ -125,6 +147,19 @@ function PaymentGatewaysContent() {
             loading={connectingStripe}
             onConnect={handleConnectStripe}
             onDisconnect={() => handleDisconnect('stripe')}
+          />
+
+          {/* PayPal — real PayPal Commerce Platform (Partner Referrals onboarding), not the generic API-key modal */}
+          <ConnectionCard
+            name="PayPal"
+            shortName="PP"
+            color="#003087"
+            description="Real PayPal Commerce Platform — checkouts route directly to your own connected PayPal account"
+            connected={paypalConnected}
+            accountLabel={paypalLabel}
+            loading={connectingPaypal}
+            onConnect={handleConnectPaypal}
+            onDisconnect={() => handleDisconnect('paypal')}
           />
 
           {gateways.map(gw => {

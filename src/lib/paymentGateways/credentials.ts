@@ -6,7 +6,7 @@ import { encrypt, decrypt } from '@/lib/encryption';
 // JSONB column raw and casts `as any`). Centralizing read+decrypt here so the
 // 3 new gateways' checkout/webhook code never touches raw encrypted fields.
 
-export type GatewayProvider = 'paystack' | 'flutterwave' | 'ozow';
+export type GatewayProvider = 'paystack' | 'flutterwave' | 'ozow' | 'paypal';
 
 export interface PaystackCredentials {
   secretKey: string;
@@ -26,19 +26,38 @@ export interface OzowCredentials {
   privateKey: string;
 }
 
+// PayPal is structurally different from the 3 BYO-key gateways above: this is
+// NOT a secret the workspace supplied — it's the connected seller's PayPal
+// merchant id, an identifier returned by PayPal after onboarding under
+// LeadsMind's own Partner credentials (PAYPAL_CLIENT_ID/SECRET, env-level,
+// never per-workspace). Nothing here is sensitive enough to need encryption
+// (see Phase 1 research note in paypalGateway.ts), so it's stored as plain
+// fields rather than an `_encrypted` column, mirroring how Stripe Connect
+// stores its non-secret `stripe_user_id`/`scope` fields alongside its one
+// genuinely secret `access_token_encrypted` field.
+export interface PaypalCredentials {
+  merchantId: string;
+  paymentsReceivable: boolean;
+  primaryEmailConfirmed: boolean;
+}
+
 type CredentialsByProvider = {
   paystack: PaystackCredentials;
   flutterwave: FlutterwaveCredentials;
   ozow: OzowCredentials;
+  paypal: PaypalCredentials;
 };
 
 // Field-name maps between the encrypted-at-rest JSONB shape and the plain
 // decrypted shape callers work with — one place to change if a provider's
-// stored field names ever need to move.
+// stored field names ever need to move. PayPal has no encrypted fields (see
+// PaypalCredentials note above) — its raw field names are read directly in
+// getGatewayCredentials below instead.
 const ENCRYPTED_FIELDS: Record<GatewayProvider, string[]> = {
   paystack: ['secret_key_encrypted'],
   flutterwave: ['secret_key_encrypted', 'webhook_secret_hash_encrypted'],
   ozow: ['site_code_encrypted', 'api_key_encrypted', 'private_key_encrypted'],
+  paypal: [],
 };
 
 export async function getGatewayCredentials<P extends GatewayProvider>(
@@ -76,6 +95,14 @@ export async function getGatewayCredentials<P extends GatewayProvider>(
         siteCode: decrypt(c.site_code_encrypted),
         apiKey: decrypt(c.api_key_encrypted),
         privateKey: decrypt(c.private_key_encrypted),
+      } as CredentialsByProvider[P];
+    }
+    if (provider === 'paypal') {
+      if (!c.merchant_id) return null;
+      return {
+        merchantId: c.merchant_id,
+        paymentsReceivable: !!c.payments_receivable,
+        primaryEmailConfirmed: !!c.primary_email_confirmed,
       } as CredentialsByProvider[P];
     }
   } catch {

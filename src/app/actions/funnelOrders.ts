@@ -20,7 +20,7 @@ interface CreateFunnelOrderInput {
   // Tasks 35-37: which connected gateway to route this checkout through.
   // Defaults to 'payfast' (the only gateway this flow supported before) so
   // every existing caller of createFunnelOrder keeps working unmodified.
-  gateway?: 'payfast' | 'paystack' | 'flutterwave' | 'ozow';
+  gateway?: 'payfast' | 'paystack' | 'flutterwave' | 'ozow' | 'paypal';
 }
 
 // Reachable from a fully public, unauthenticated funnel page (anonymous visitors
@@ -213,6 +213,30 @@ export async function createFunnelOrder(input: CreateFunnelOrderInput) {
         isTest: process.env.NODE_ENV !== 'production',
       });
       checkoutUrl = result.url;
+    } else if (gateway === 'paypal') {
+      const { getGatewayCredentials } = await import('@/lib/paymentGateways/credentials');
+      const creds = await getGatewayCredentials(workspaceId, 'paypal');
+      if (!creds) return { success: false, error: 'PayPal is not connected for this workspace' };
+
+      const { initializeCheckout } = await import('@/lib/paymentGateways/paypalGateway');
+      gatewayRef = `fo_${order.id}`;
+      const successNext = `${orderFormUrl}?payment=success&${returnParams}`;
+      const cancelNext = `${orderFormUrl}?payment=cancelled&${returnParams}`;
+      const result = await initializeCheckout({
+        sellerMerchantId: creds.merchantId,
+        amount,
+        currency: currency || 'USD',
+        customId: gatewayRef,
+        description: productName || 'Funnel order',
+        // Approval alone doesn't capture funds for Orders v2 — the return_url
+        // routes through our own capture-triggering route first (see
+        // src/app/api/integrations/paypal/checkout-return/route.ts), which
+        // then forwards the browser on to successNext. Cancellation needs no
+        // capture step, so it goes straight to cancelNext.
+        returnUrl: `${appUrl}/api/integrations/paypal/checkout-return?order=${order.id}&next=${encodeURIComponent(successNext)}`,
+        cancelUrl: cancelNext,
+      });
+      checkoutUrl = result.approveUrl;
     } else {
       // PayFast — unchanged from before this task, same signed redirect,
       // same platform-wide env-var credentials (see Task 32's finding: this
@@ -278,9 +302,9 @@ export async function getAvailablePaymentGateways(funnelId: string): Promise<{ g
       .eq('workspace_id', funnel.workspace_id)
       .eq('category', 'payment_gateway')
       .eq('connected', true)
-      .in('provider', ['paystack', 'flutterwave', 'ozow']);
+      .in('provider', ['paystack', 'flutterwave', 'ozow', 'paypal']);
 
-    const labels: Record<string, string> = { paystack: 'Paystack', flutterwave: 'Flutterwave', ozow: 'Ozow' };
+    const labels: Record<string, string> = { paystack: 'Paystack', flutterwave: 'Flutterwave', ozow: 'Ozow', paypal: 'PayPal' };
     for (const row of integrations || []) {
       available.push({ gateway: row.provider, label: labels[row.provider] || row.provider });
     }
