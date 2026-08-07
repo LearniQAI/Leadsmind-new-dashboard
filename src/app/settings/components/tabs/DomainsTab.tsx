@@ -169,7 +169,7 @@ export default function DomainsTab() {
             </form>
 
             <div className="border-t border-dash-border pt-4">
-              <label className="text-xs font-bold !text-dash-textMuted block mb-3">Registered nodes</label>
+              <label className="text-xs font-bold !text-dash-textMuted block mb-3">Registered domains</label>
 
               {isLoading ? (
                 <div className="py-8 text-center text-sm !text-dash-textMuted">Loading domains...</div>

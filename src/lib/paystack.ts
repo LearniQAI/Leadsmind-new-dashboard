@@ -83,6 +83,22 @@ export async function initializeTransaction(params: PaystackInitializeParams) {
  });
 }
 
+export interface PaystackOneTimeParams {
+ email: string;
+ amount: number; // smallest currency unit (e.g. kobo/cents)
+ callback_url: string;
+ metadata?: Record<string, any>;
+}
+
+// Plain one-time charge, no subscription plan attached — used for add-on
+// purchases (e.g. AI credit top-ups) rather than recurring billing.
+export function initializeOneTimeTransaction(params: PaystackOneTimeParams) {
+ return paystackFetch<PaystackInitializeResult>('/transaction/initialize', {
+  method: 'POST',
+  body: JSON.stringify(params),
+ });
+}
+
 export function verifyTransaction(reference: string) {
  return paystackFetch<any>(`/transaction/verify/${encodeURIComponent(reference)}`, {
   method: 'GET',

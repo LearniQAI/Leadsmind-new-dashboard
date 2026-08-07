@@ -112,7 +112,7 @@ export default function SeoTab() {
         return;
       }
       if (authRes.data) {
-        toast.info('Redirecting to Google authorization protocols...');
+        toast.info('Redirecting to Google...');
         window.location.href = authRes.data;
       }
     } catch (err: any) {
@@ -264,7 +264,7 @@ export default function SeoTab() {
   // Manual Trigger Cron Sync to backfill/update stats on demand
   const handleManualSync = async () => {
     setIsSyncingGSC(true);
-    toast.info('Connecting to API node to retrieve South African GSC click logs...');
+    toast.info('Fetching the latest Google Search Console data...');
     try {
       const response = await fetch('/api/cron/gsc-sync');
       const data = await response.json();

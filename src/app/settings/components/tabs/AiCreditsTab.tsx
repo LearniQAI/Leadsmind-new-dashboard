@@ -4,15 +4,18 @@ import { Sparkles, AlertTriangle, ShieldCheck, Zap, ArrowUpRight, CheckCircle2 }
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { ENFORCE_PLAN_LIMITS } from '@/lib/config/flags';
+import { createAiCreditsTopupTransaction } from '@/app/actions/finance';
 
 interface AiCreditsTabProps {
   workspaceId: string;
+  onUpgradeTier: () => void;
 }
 
-export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
+export default function AiCreditsTab({ workspaceId, onUpgradeTier }: AiCreditsTabProps) {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [credits, setCredits] = useState<any>(null);
+  const [purchasing, setPurchasing] = useState(false);
 
   async function loadCredits() {
     if (!workspaceId) return;
@@ -37,8 +40,18 @@ export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
     loadCredits();
   }, [workspaceId]);
 
-  const handleUpgradeTier = () => {
-    toast.success('Redirecting to subscription plans portal...');
+  const handlePurchaseAddon = async () => {
+    setPurchasing(true);
+    try {
+      const result = await createAiCreditsTopupTransaction();
+      if (result.error || !result.url) {
+        toast.error(result.error || 'Failed to start checkout');
+        return;
+      }
+      window.location.href = result.url;
+    } finally {
+      setPurchasing(false);
+    }
   };
 
   if (loading) {
@@ -74,8 +87,8 @@ export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
             <Zap size={20} className="text-dash-accent" />
           </div>
           <div>
-            <h4 className="text-[15px] font-bold !text-dash-text">AI balance manager</h4>
-            <p className="text-[11px] !text-dash-textMuted font-medium">Monitor token consumption &amp; ledger limits</p>
+            <h4 className="text-[15px] font-bold !text-dash-text">AI credit balance</h4>
+            <p className="text-[11px] !text-dash-textMuted font-medium">Track usage and your remaining balance</p>
           </div>
         </div>
 
@@ -109,7 +122,7 @@ export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
           <div>
             <h5 className="text-xs font-bold text-red">Usage limit reached</h5>
             <p className="text-[11px] !text-dash-textMuted mt-0.5">
-              This workspace has depleted 100% of its assigned AI credits. Downstream intelligence synthesis and content generation workflows are blocked.
+              This workspace has used all of its available AI credits. AI content generation and enrichment features are paused until next cycle or a top-up.
             </p>
           </div>
         </div>
@@ -129,7 +142,7 @@ export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
           <div>
             <h5 className="text-xs font-bold text-green">Credits healthy</h5>
             <p className="text-[11px] !text-dash-textMuted mt-0.5">
-              Downstream OpenAI engines and enrichment processes are running normally. No warnings triggered.
+              AI features are running normally with no usage warnings.
             </p>
           </div>
         </div>
@@ -151,14 +164,12 @@ export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
             </div>
           </div>
 
-          {/* Self-serve top-up is not wired to a real payment flow yet — the button is
-              inert (no onClick, no network call) rather than left as an unpaid credit grant. */}
           <button
-            disabled
-            title="Add-on top-ups are not available yet — contact your account manager"
-            className="w-full h-10 rounded-xl bg-dash-surface border border-dash-border !text-dash-textMuted font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60"
+            onClick={handlePurchaseAddon}
+            disabled={purchasing}
+            className="w-full h-10 rounded-xl bg-dash-accent text-white hover:opacity-90 disabled:opacity-60 font-bold text-xs flex items-center justify-center gap-1.5 transition-opacity motion-reduce:transition-none"
           >
-            Available soon
+            {purchasing ? 'Starting checkout…' : 'Purchase add-on credits'}
           </button>
         </div>
 
@@ -176,10 +187,10 @@ export default function AiCreditsTab({ workspaceId }: AiCreditsTabProps) {
           </div>
 
           <button
-            onClick={handleUpgradeTier}
+            onClick={onUpgradeTier}
             className="w-full h-10 rounded-xl bg-dash-surface border border-dash-border !text-dash-text hover:bg-dash-border/60 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none"
           >
-            Upgrade platform tier
+            View plans
             <ArrowUpRight size={14} />
           </button>
         </div>

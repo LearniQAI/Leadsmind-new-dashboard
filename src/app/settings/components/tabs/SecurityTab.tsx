@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { Users, CreditCard, ShieldCheck, Activity, Check, Terminal, ArrowRight } from 'lucide-react';
+import { Users, CreditCard, ShieldCheck, Activity, Terminal } from 'lucide-react';
 
 interface SecurityTabProps {
   auditData: any;
@@ -23,22 +23,10 @@ export default function SecurityTab({ auditData }: SecurityTabProps) {
             </div>
             <div>
               <span className="block text-[22px] font-bold !text-dash-text">{item.value}</span>
-              <span className="text-[10px] font-bold !text-dash-textMuted">{item.label} verified</span>
+              <span className="text-[10px] font-bold !text-dash-textMuted">Total {item.label.toLowerCase()}</span>
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="p-8 bg-green/5 border border-green/10 rounded-3xl flex items-center gap-6 group">
-        <div className="w-16 h-16 rounded-full bg-green/10 flex items-center justify-center text-green border border-green/20">
-          <Check size={32} />
-        </div>
-        <div>
-          <h4 className="text-[18px] font-bold !text-dash-text">Integrity verified</h4>
-          <p className="text-[12px] !text-dash-textMuted leading-relaxed max-w-lg">
-            All data migrations and workspace protocols have been verified. System integrity is currently at 100%.
-          </p>
-        </div>
       </div>
 
       <div className="bg-white border border-dash-border rounded-2xl p-8 flex items-center justify-between">
@@ -48,12 +36,15 @@ export default function SecurityTab({ auditData }: SecurityTabProps) {
           </div>
           <div className="flex flex-col">
             <span className="text-[13px] font-bold !text-dash-text">Audit logs</span>
-            <span className="text-[11px] !text-dash-textMuted">View full system access history</span>
+            <span className="text-[11px] !text-dash-textMuted">System access history isn't available yet</span>
           </div>
         </div>
-        <button className="flex items-center gap-2 text-dash-accent text-[11px] font-bold hover:opacity-80 transition-all motion-reduce:transition-none group">
-          Open logs <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform motion-reduce:transition-none" />
-        </button>
+        <span
+          title="Audit log storage isn't built yet — this view currently only surfaces live record counts above"
+          className="px-3 py-1.5 rounded-lg bg-dash-surface !text-dash-textMuted text-[11px] font-bold border border-dash-border"
+        >
+          Coming soon
+        </span>
       </div>
     </div>
   );
