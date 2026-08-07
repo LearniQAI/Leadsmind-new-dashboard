@@ -76,12 +76,24 @@ function PaymentGatewaysContent() {
     }
   };
 
+  // PayFast checkout is genuinely live in this app (bookings, courses, funnels all process
+  // real PayFast payments) but always via workspace-wide platform credentials
+  // (PAYFAST_MERCHANT_ID/KEY env vars) — nothing reads this per-workspace connection back
+  // out to actually process a payment yet, so its label must not imply this toggle controls
+  // real processing. Peach Payments/Yoco/SnapScan still have no payment backend — comingSoon
+  // disables Connect so no credential can produce a false "Connected" badge. Paystack,
+  // Flutterwave, and Ozow (Tasks 35-37) are real bring-your-own-key integrations: the
+  // workspace supplies their own credentials, a real validation call runs against the
+  // provider's API before "Connected" is ever shown, and checkout/webhooks route through
+  // that workspace's own account — see src/lib/paymentGateways/*.
   const gateways = [
-    { name: 'PayFast', shortName: 'PF', color: '#00b8f0', description: 'Automatically mark invoices paid when PayFast payment lands' },
-    { name: 'Ozow', shortName: 'OZ', color: '#00c49a', description: 'Instant EFT payment notifications' },
-    { name: 'Peach Payments', shortName: 'PP', color: '#ff6b35', description: 'Card and EFT reconciliation' },
-    { name: 'Yoco', shortName: 'YC', color: '#fd7c35', description: 'In-person card payments create invoices automatically' },
-    { name: 'SnapScan', shortName: 'SS', color: '#e91e63', description: 'QR code payment notifications' }
+    { name: 'PayFast', shortName: 'PF', color: '#00b8f0', description: 'Save your PayFast merchant details for reference — checkout currently runs on shared platform credentials, not this connection', comingSoon: false },
+    { name: 'Paystack', shortName: 'PS', color: '#00c3f7', description: 'Card, EFT, and mobile money — checkout routes directly to your own Paystack account', comingSoon: false },
+    { name: 'Flutterwave', shortName: 'FW', color: '#f5a623', description: 'Card, mobile money, and bank transfer — checkout routes directly to your own Flutterwave account', comingSoon: false },
+    { name: 'Ozow', shortName: 'OZ', color: '#00c49a', description: 'Instant EFT — checkout routes directly to your own Ozow account', comingSoon: false },
+    { name: 'Peach Payments', shortName: 'PP', color: '#ff6b35', description: 'Card and EFT reconciliation', comingSoon: true },
+    { name: 'Yoco', shortName: 'YC', color: '#fd7c35', description: 'In-person card payments create invoices automatically', comingSoon: true },
+    { name: 'SnapScan', shortName: 'SS', color: '#e91e63', description: 'QR code payment notifications', comingSoon: true },
   ];
 
   const stripeConnected = isConnected('stripe');
@@ -128,6 +140,7 @@ function PaymentGatewaysContent() {
                 description={gw.description}
                 connected={connected}
                 accountLabel={label}
+                comingSoon={gw.comingSoon}
                 onConnect={() => openConnectModal(gw.name)}
                 onDisconnect={() => handleDisconnect(gw.name)}
               />

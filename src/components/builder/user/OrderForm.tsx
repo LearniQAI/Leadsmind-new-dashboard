@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Loader2, Lock } from 'lucide-react';
-import { createFunnelOrder, getFunnelOrderStatus, markFunnelOrderAbandoned, getStepDeclineUrl } from '@/app/actions/funnelOrders';
+import { createFunnelOrder, getFunnelOrderStatus, markFunnelOrderAbandoned, getStepDeclineUrl, getAvailablePaymentGateways } from '@/app/actions/funnelOrders';
 import { toast } from 'sonner';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useBuilder } from '../BuilderContext';
@@ -61,6 +61,23 @@ export const OrderForm = (allProps: OrderFormProps & any) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customer, setCustomer] = useState({ firstName: '', lastName: '', email: '' });
   const [returnState, setReturnState] = useState<'idle' | 'checking' | 'cancelled'>('idle');
+  const [gateways, setGateways] = useState<{ gateway: string; label: string }[]>([{ gateway: 'payfast', label: 'PayFast' }]);
+  const [selectedGateway, setSelectedGateway] = useState('payfast');
+
+  // Real gateway options for this specific workspace — only ever shows a
+  // choice when more than one gateway is actually connected, so the common
+  // case (only PayFast) renders identically to before this task.
+  useEffect(() => {
+    if (enabled) return;
+    const funnelId = websiteData?.id;
+    if (!funnelId) return;
+    getAvailablePaymentGateways(funnelId).then((opts) => {
+      if (opts.length) {
+        setGateways(opts);
+        setSelectedGateway(opts[0].gateway);
+      }
+    });
+  }, [enabled, websiteData?.id]);
 
   // Handles the visitor's browser landing back on this page after PayFast —
   // 'success' polls for the webhook's paid+next-step resolution (the ITN can
@@ -139,6 +156,7 @@ export const OrderForm = (allProps: OrderFormProps & any) => {
         firstName: customer.firstName,
         lastName: customer.lastName,
         email: customer.email,
+        gateway: selectedGateway as any,
       });
 
       if (!result.success || !result.checkoutUrl) {
@@ -232,6 +250,26 @@ export const OrderForm = (allProps: OrderFormProps & any) => {
             onChange={(e) => handleChange('email', e.target.value)}
           />
         </div>
+        {gateways.length > 1 && (
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase tracking-tight" style={{ color: labelColor }}>Pay with</Label>
+            <div className="flex flex-wrap gap-2">
+              {gateways.map((g) => (
+                <button
+                  key={g.gateway}
+                  type="button"
+                  onClick={() => setSelectedGateway(g.gateway)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors"
+                  style={selectedGateway === g.gateway
+                    ? { backgroundColor: buttonBg, color: buttonTextColor, borderColor: buttonBg }
+                    : { backgroundColor: inputBg, color: labelColor, borderColor: inputBorderColor }}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <Button
           type="submit"
           disabled={isSubmitting}
@@ -251,7 +289,7 @@ export const OrderForm = (allProps: OrderFormProps & any) => {
           )}
         </Button>
         <p className="text-[10px] text-center opacity-60" style={{ color: labelColor }}>
-          Secure payment powered by PayFast
+          Secure payment powered by {gateways.find(g => g.gateway === selectedGateway)?.label || 'PayFast'}
         </p>
       </form>
     </div>

@@ -30,11 +30,17 @@ export function useWorkspaceIntegrations(workspaceId: string | null) {
 
   useEffect(() => { fetch() }, [fetch])
 
+  // Case-insensitive: Paystack/Flutterwave/Ozow are always stored lowercase
+  // (see api/settings/integrations/route.ts) since every server-side reader
+  // of those 3 queries lowercase, but this page's gateway list still passes
+  // the capitalized display name ("Paystack") into isConnected/getLabel — an
+  // exact-match comparison here would silently never show "Connected" for
+  // them even though the row is really there.
   const isConnected = (provider: string) =>
-    integrations.find(i => i.provider === provider)?.connected ?? false
+    integrations.find(i => i.provider.toLowerCase() === provider.toLowerCase())?.connected ?? false
 
   const getLabel = (provider: string) =>
-    integrations.find(i => i.provider === provider)?.account_label ?? null
+    integrations.find(i => i.provider.toLowerCase() === provider.toLowerCase())?.account_label ?? null
 
   const connect = async (provider: string, category: string, accountLabel?: string) => {
     await window.fetch('/api/settings/integrations', {
