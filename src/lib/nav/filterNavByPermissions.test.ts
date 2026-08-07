@@ -51,6 +51,7 @@ const OLD_SIDEBAR_DATA = [
       { link: "/finance/connected-accounts" }, { link: "/finance/payment-gateways" },
       { link: "/finance/reports" }, { link: "/finance/expenses" },
       { link: "/finance/credit-notes" }, { link: "/finance/retainers" },
+      { link: "/finance/chart-of-accounts" },
     ]},
   ]},
   { items: [
