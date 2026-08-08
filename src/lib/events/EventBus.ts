@@ -1,5 +1,6 @@
 import { triggerWorkflows } from "@/lib/automation/executor";
 import { logger } from "@/shared/logger";
+import { waitUntil } from "@vercel/functions";
 
 export const EVENT_TRIGGERS = {
   STUDENT_ENROLLED_COURSE: 'student_enrolled_course',
@@ -50,10 +51,22 @@ export async function publishEvent(
     logger.info({ eventType, contactId, workspaceId }, "event_bus.publishing");
   } catch { /* logging failure must not block dispatch */ }
 
-  // Non-blocking asynchronous trigger
-  triggerWorkflows(workspaceId, eventType, contactId).catch((err) => {
+  // Non-blocking asynchronous trigger. Callers intentionally don't await
+  // this (see contacts.ts, tags.ts, etc.) so the request/action returns
+  // fast — but an un-awaited promise has no guarantee of completing once
+  // the response is sent: Vercel can freeze/tear down the serverless
+  // invocation right after return, silently killing this mid-flight with
+  // no error anywhere (confirmed live: a real contact_created trigger
+  // produced zero workflow_executions rows and zero logged errors).
+  // waitUntil() extends the invocation's lifetime until this settles. In
+  // contexts with no Vercel request/cron context (local dev, tests, or
+  // any caller outside a Vercel Function), getContext().waitUntil is
+  // undefined and this call is a no-op — the promise still runs as a
+  // normal fire-and-forget, matching prior behavior exactly.
+  const trigger = triggerWorkflows(workspaceId, eventType, contactId).catch((err) => {
     try {
       logger.error({ err, eventType }, "event_bus.trigger_workflows.failed");
     } catch { /* logging failure must not mask the real error */ }
   });
+  waitUntil(trigger);
 }

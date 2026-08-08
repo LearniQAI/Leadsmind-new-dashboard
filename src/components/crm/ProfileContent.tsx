@@ -3,13 +3,12 @@
 import React, { useState } from 'react';
 import { Contact, ContactActivity, ContactNote } from '@/types/crm';
 import { cn } from '@/lib/utils';
-import { History, StickyNote, ListChecks, Sparkles, ShieldCheck, Network, type LucideIcon } from 'lucide-react';
+import { History, StickyNote, ListChecks, Sparkles, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { ContactTimeline } from './ContactTimeline';
 import { NotesManager } from './NotesManager';
 import { TasksManager } from './TasksManager';
 import IntelligenceTab from './tabs/IntelligenceTab';
-import VerificationTab from './VerificationTab';
-import { BeneficialOwnershipTab } from './BeneficialOwnershipTab';
+import { ComplianceTab } from './ComplianceTab';
 
 interface ProfileContentProps {
   contact: Contact;
@@ -19,15 +18,14 @@ interface ProfileContentProps {
 }
 
 export function ProfileContent({ contact, activities, notes, tasks }: ProfileContentProps) {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'notes' | 'tasks' | 'intelligence' | 'verification' | 'beneficial_ownership'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'notes' | 'tasks' | 'intelligence' | 'compliance'>('timeline');
 
   const tabs: { id: string; label: string; icon: LucideIcon }[] = [
     { id: 'timeline', label: 'Timeline', icon: History },
     { id: 'notes', label: 'Notes', icon: StickyNote },
     { id: 'tasks', label: 'Tasks', icon: ListChecks },
     { id: 'intelligence', label: 'AI Insights', icon: Sparkles },
-    { id: 'verification', label: 'Verification', icon: ShieldCheck },
-    { id: 'beneficial_ownership', label: 'Beneficial Ownership', icon: Network },
+    { id: 'compliance', label: 'Compliance', icon: ShieldCheck },
   ];
 
   return (
@@ -76,19 +74,8 @@ export function ProfileContent({ contact, activities, notes, tasks }: ProfileCon
           />
         )}
 
-        {activeTab === 'verification' && (
-          <VerificationTab 
-            contactId={contact.id} 
-            workspaceId={contact.workspace_id} 
-            contactName={`${contact.first_name} ${contact.last_name}`}
-            contactIdNumber={contact.id_number ?? undefined}
-          />
-        )}
-
-        {activeTab === 'beneficial_ownership' && (
-          <BeneficialOwnershipTab 
-            contact={contact}
-          />
+        {activeTab === 'compliance' && (
+          <ComplianceTab contact={contact} />
         )}
       </div>
     </div>

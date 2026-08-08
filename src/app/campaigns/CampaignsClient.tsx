@@ -21,17 +21,24 @@ import {
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TagMultiSelect, TagOption } from '@/components/crm/TagMultiSelect';
 import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui/select';
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
+interface SegmentOption { id: string; name: string; }
+
 export default function CampaignsClient({
   initialCampaigns,
   availableTags,
+  availableSegments = [],
 }: {
   initialCampaigns: any[];
   availableTags: TagOption[];
+  availableSegments?: SegmentOption[];
 }) {
   const router = useRouter();
   const [campaigns, setCampaigns] = useState(initialCampaigns);
@@ -53,6 +60,7 @@ export default function CampaignsClient({
   const [editTagNames, setEditTagNames] = useState<string[]>([]);
   const [editRuleGroup, setEditRuleGroup] = useState<RuleGroup | null>(null);
   const [editCombineMode, setEditCombineMode] = useState<'AND' | 'OR'>('AND');
+  const [editSegmentId, setEditSegmentId] = useState<string | null>(null);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -141,6 +149,7 @@ export default function CampaignsClient({
       : null;
     setEditRuleGroup(ruleGroup);
     setEditCombineMode((campaign.segment?.combineMode as 'AND' | 'OR') || 'AND');
+    setEditSegmentId((campaign.segment && typeof campaign.segment === 'object' && campaign.segment.segmentId) || null);
     setAdvancedFiltersOpen(!!ruleGroup && ruleGroup.rules.length > 0);
 
     setEditOpen(true);
@@ -169,14 +178,18 @@ export default function CampaignsClient({
         .map((name) => currentTags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.id)
         .filter((id): id is string => !!id);
       const hasRuleGroup = !!editRuleGroup && editRuleGroup.rules.length > 0;
-      const segmentData = (tagIds.length > 0 || hasRuleGroup)
+      // A saved segment and the ad-hoc rule builder are mutually exclusive —
+      // picking one clears the other (see the Select's onValueChange below).
+      const hasSegmentId = !!editSegmentId && !hasRuleGroup;
+      const segmentData = (tagIds.length > 0 || hasRuleGroup || hasSegmentId)
         ? {
             tags: tagIds.length > 0 ? tagIds : undefined,
             ruleGroup: hasRuleGroup ? editRuleGroup : undefined,
-            // Only meaningful when both tags and ruleGroup are set — harmless
-            // to include otherwise, since the resolver ignores it when only
-            // one of the two is present.
-            combineMode: (tagIds.length > 0 && hasRuleGroup) ? editCombineMode : undefined,
+            segmentId: hasSegmentId ? editSegmentId : undefined,
+            // Only meaningful when both tags and ruleGroup/segmentId are set —
+            // harmless to include otherwise, since the resolver ignores it
+            // when only one of the two is present.
+            combineMode: (tagIds.length > 0 && (hasRuleGroup || hasSegmentId)) ? editCombineMode : undefined,
           }
         : null;
 
@@ -360,7 +373,28 @@ export default function CampaignsClient({
               <TagMultiSelect availableTags={tags} value={editTagNames} onChange={setEditTagNames} />
             </DashFormField>
 
-            <div className="border border-dash-border rounded-xl overflow-hidden">
+            <DashFormField label="Saved segment" hint="Select a saved segment instead of building rules below.">
+              <Select
+                value={editSegmentId || 'none'}
+                onValueChange={(v) => {
+                  const next = v === 'none' ? null : v;
+                  setEditSegmentId(next);
+                  if (next) setEditRuleGroup(null);
+                }}
+              >
+                <SelectTrigger className="h-10 border-dash-border rounded-xl text-[12px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
+                  <SelectItem value="none" className="text-[12px]">None (build ad-hoc rules below)</SelectItem>
+                  {availableSegments.map((s) => (
+                    <SelectItem key={s.id} value={s.id} className="text-[12px]">{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DashFormField>
+
+            <div className={`border border-dash-border rounded-xl overflow-hidden ${editSegmentId ? 'opacity-50 pointer-events-none' : ''}`}>
               <button
                 type="button"
                 onClick={() => setAdvancedFiltersOpen((v) => !v)}

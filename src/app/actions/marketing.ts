@@ -669,9 +669,27 @@ export async function updateCampaign(id: string, updates: any) {
   let matchedContactsCount = 0;
   if (updates.status === 'scheduled') {
    const segmentTags: string[] = Array.isArray(updates.segment?.tags) ? updates.segment.tags : [];
-   const ruleGroup = updates.segment?.ruleGroup && Array.isArray(updates.segment.ruleGroup.rules) && updates.segment.ruleGroup.rules.length > 0
+   let ruleGroup = updates.segment?.ruleGroup && Array.isArray(updates.segment.ruleGroup.rules) && updates.segment.ruleGroup.rules.length > 0
     ? updates.segment.ruleGroup
     : null;
+
+   // Saved segment — resolve its current rule_group live at send time (not a
+   // snapshot), so an edit to the segment after this campaign was configured
+   // is picked up automatically. Mutually exclusive with an ad-hoc ruleGroup
+   // in the UI, but if both were somehow set the ad-hoc one wins above.
+   const segmentId: string | null = updates.segment?.segmentId || null;
+   if (!ruleGroup && segmentId && data.workspace_id) {
+    const { data: savedSegment } = await supabase
+     .from('segments')
+     .select('rule_group')
+     .eq('id', segmentId)
+     .eq('workspace_id', data.workspace_id)
+     .maybeSingle();
+    if (savedSegment?.rule_group && Array.isArray(savedSegment.rule_group.rules) && savedSegment.rule_group.rules.length > 0) {
+     ruleGroup = savedSegment.rule_group;
+    }
+   }
+
    const combineMode: 'AND' | 'OR' = updates.segment?.combineMode === 'OR' ? 'OR' : 'AND';
 
    if ((segmentTags.length > 0 || ruleGroup) && data.workspace_id) {

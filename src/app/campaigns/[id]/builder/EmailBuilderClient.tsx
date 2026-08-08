@@ -19,12 +19,18 @@ import { DashButton } from '@/components/dashboard-ui/Button';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui/select';
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
+
+interface SegmentOption { id: string; name: string; }
 
 interface EmailBuilderClientProps {
   campaignId: string;
   initialCampaign: any;
   brandKit: BrandKit;
+  availableSegments?: SegmentOption[];
 }
 
 const BLOCK_TYPES = [
@@ -36,7 +42,7 @@ const BLOCK_TYPES = [
   { type: 'text', name: 'Rich Text Paragraph', desc: 'Standard narrative copy blocks', icon: AlignLeft },
 ] as const;
 
-export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: initialBrandKit }: EmailBuilderClientProps) {
+export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: initialBrandKit, availableSegments = [] }: EmailBuilderClientProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
@@ -88,6 +94,12 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       return (initialCampaign.segment?.combineMode as 'AND' | 'OR') || 'AND';
     } catch (e) {}
     return 'AND';
+  });
+  const [deploySegmentId, setDeploySegmentId] = useState<string | null>(() => {
+    try {
+      return initialCampaign.segment?.segmentId || null;
+    } catch (e) {}
+    return null;
   });
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(
     () => !!deployRuleGroup && deployRuleGroup.rules.length > 0
@@ -239,15 +251,19 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       const emailTokens = tokens.filter(t => t.includes('@'));
       const tagTokens = tokens.filter(t => !t.includes('@'));
       const hasRuleGroup = !!deployRuleGroup && deployRuleGroup.rules.length > 0;
+      // A saved segment and the ad-hoc rule builder are mutually exclusive —
+      // picking a segment clears the ad-hoc rules (see the Select below).
+      const hasSegmentId = !!deploySegmentId && !hasRuleGroup;
 
       const segmentData = {
         tags: tagTokens,
         emails: emailTokens,
         is_automated: isAutomated,
         ruleGroup: hasRuleGroup ? deployRuleGroup : undefined,
-        // Only meaningful when both tags and ruleGroup are set; harmless
-        // otherwise since the resolver ignores it when only one is present.
-        combineMode: (tagTokens.length > 0 && hasRuleGroup) ? deployCombineMode : undefined,
+        segmentId: hasSegmentId ? deploySegmentId : undefined,
+        // Only meaningful when both tags and ruleGroup/segmentId are set;
+        // harmless otherwise since the resolver ignores it when only one is present.
+        combineMode: (tagTokens.length > 0 && (hasRuleGroup || hasSegmentId)) ? deployCombineMode : undefined,
       };
 
       const result = await updateCampaign(campaignId, {
@@ -1203,7 +1219,28 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
               />
             </DashFormField>
 
-            <div className="border border-dash-border rounded-xl overflow-hidden">
+            <DashFormField label="Saved segment" hint="Select a saved segment instead of building rules below.">
+              <Select
+                value={deploySegmentId || 'none'}
+                onValueChange={(v) => {
+                  const next = v === 'none' ? null : v;
+                  setDeploySegmentId(next);
+                  if (next) setDeployRuleGroup(null);
+                }}
+              >
+                <SelectTrigger className="h-10 border-dash-border rounded-xl text-[12px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
+                  <SelectItem value="none" className="text-[12px]">None (build ad-hoc rules below)</SelectItem>
+                  {availableSegments.map((s) => (
+                    <SelectItem key={s.id} value={s.id} className="text-[12px]">{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DashFormField>
+
+            <div className={`border border-dash-border rounded-xl overflow-hidden ${deploySegmentId ? 'opacity-50 pointer-events-none' : ''}`}>
               <button
                 type="button"
                 onClick={() => setAdvancedFiltersOpen((v) => !v)}

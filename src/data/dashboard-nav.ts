@@ -21,6 +21,8 @@ const dashboardNav: NavModule[] = [
       { id: 81, label: "Quotes", icon: "fa-light fa-file-invoice", link: "/quotes", permission: "invoices" },
       { id: 2, label: "Tasks", icon: "fa-light fa-circle-check", link: "/tasks", permission: "dashboard" },
       { id: 21, label: "Projects", icon: "icon-projects", link: "/projects", permission: "business" },
+      { id: 23, label: "Automations", icon: "fa-light fa-bolt", link: "/automations", permission: "automation" },
+
     ],
   },
   {
@@ -29,6 +31,9 @@ const dashboardNav: NavModule[] = [
     icon: "fa-light fa-bullhorn",
     items: [
       { id: 13, label: "Campaigns", icon: "fa-light fa-paper-plane", link: "/campaigns", permission: "marketing" },
+      { id: 115, label: "Segments", icon: "fa-light fa-users-rectangle", link: "/segments", permission: "marketing" },
+      { id: 114, label: "Email Sequences", icon: "fa-light fa-inbox-out", link: "/sequences", permission: "marketing" },
+      { id: 116, label: "Bulk SMS", icon: "fa-light fa-comment-sms", link: "/sms", permission: "marketing" },
       { id: 12, label: "Funnels", icon: "fa-light fa-filter", link: "/funnels", permission: "marketing" },
       { id: 14, label: "Forms", icon: "icon-document", link: "/forms", permission: "marketing" },
       { id: 15, label: "Social", icon: "fa-light fa-share-nodes", link: "/social", permission: "marketing" },
@@ -107,7 +112,6 @@ const dashboardNav: NavModule[] = [
       { id: 9, label: "Calendars", icon: "fa-light fa-calendar-days", link: "/calendar", permission: "calendar" },
       { id: 10, label: "Waitlists", icon: "fa-light fa-clock-rotate-left", link: "/calendar/waitlist", permission: "calendar" },
       { id: 101, label: "Instant Meet", icon: "fa-light fa-video", link: "/calendar/instant-meet", permission: "calendar" },
-      { id: 23, label: "Automations", icon: "fa-light fa-bolt", link: "/automations", permission: "automation" },
     ],
   },
   {
