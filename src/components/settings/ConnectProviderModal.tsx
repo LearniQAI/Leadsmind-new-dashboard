@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, AlertCircle } from 'lucide-react';
+import Image from 'next/image';
+import { X, ExternalLink, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 import { getWorkspaceApiKey } from '@/app/actions/settings';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 
 interface ConnectProviderModalProps {
   provider: string;
@@ -12,6 +15,22 @@ interface ConnectProviderModalProps {
   onClose: () => void;
   onConnected: (accountLabel: string) => void;
 }
+
+// Real logos already sourced/stored for the Payment Gateways page — reused here so the
+// same provider identity shows up everywhere, not a generic icon in this modal alone.
+const PROVIDER_LOGOS: Record<string, string> = {
+  stripe: '/assets/images/payment-gateways/stripe.svg',
+  paypal: '/assets/images/payment-gateways/paypal.svg',
+  paystack: '/assets/images/payment-gateways/paystack.png',
+  flutterwave: '/assets/images/payment-gateways/flutterwave.png',
+  ozow: '/assets/images/payment-gateways/ozow.png',
+};
+
+const PROVIDER_TAGLINES: Record<string, string> = {
+  paystack: 'Checkout will route directly to your own Paystack account.',
+  flutterwave: 'Checkout will route directly to your own Flutterwave account.',
+  ozow: 'Checkout will route directly to your own Ozow account.',
+};
 
 export default function ConnectProviderModal({
   provider,
@@ -37,6 +56,7 @@ export default function ConnectProviderModal({
   // identical either way.
   const providerKey = provider.toLowerCase();
   const isByoKeyGateway = category === 'payment_gateway' && ['paystack', 'flutterwave', 'ozow'].includes(providerKey);
+  const logoSrc = PROVIDER_LOGOS[providerKey];
 
   // Status state
   const [loading, setLoading] = useState(false);
@@ -57,6 +77,15 @@ export default function ConnectProviderModal({
       });
     }
   }, [open, provider]);
+
+  // Reset on close/re-open so a previous provider's typed values never leak into the next
+  // provider's fields, and so nothing looks "pre-filled" between separate connect attempts.
+  useEffect(() => {
+    if (!open) {
+      setField1(''); setField2(''); setField3(''); setField4('');
+      setErrorMsg(null); setOauthWarning(null);
+    }
+  }, [open]);
 
   const handleCopyKey = () => {
     if (apiKey) {
@@ -175,86 +204,78 @@ export default function ConnectProviderModal({
     }
   };
 
+  const description = provider === 'Zapier'
+    ? 'Follow the instructions below to authenticate your LeadsMind integration in Zapier.'
+    : (PROVIDER_TAGLINES[providerKey] || `Enter your credentials to connect ${provider} to LeadsMind.`);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
+      <div
         onClick={onClose}
-        className="fixed inset-0 bg-[rgba(4,9,26,0.75)] backdrop-blur-sm"
+        className="fixed inset-0 bg-dash-text/40 backdrop-blur-sm"
       />
 
       {/* Modal Content */}
-      <div className="relative bg-[#080f28] border border-[rgba(255,255,255,0.13)] rounded-2xl w-full max-w-md p-5 shadow-2xl z-10 text-slate-200 max-h-[90vh] overflow-y-auto">
-        
+      <div className="relative bg-white border border-dash-border rounded-2xl w-full max-w-md p-6 shadow-xl z-10 max-h-[90vh] overflow-y-auto">
+
         {/* Close Button */}
-        <button 
+        <button
           onClick={onClose}
-          className="absolute top-6 right-6 text-[#4a5a82] hover:text-[#eef2ff] transition-colors"
+          className="absolute top-5 right-5 !text-dash-textMuted hover:!text-dash-text transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Modal Header */}
-        <div className="mb-6">
-          <h3 className="text-[#eef2ff] text-[17px] font-semibold font-space-grotesk" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Connect {provider}
-          </h3>
-          <p className="text-[#4a5a82] text-[12px] mt-1 font-dm-sans" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            {provider === 'Zapier' 
-              ? 'Follow the instructions below to authenticate your LeadsMind integration in Zapier.'
-              : `Enter your credentials to connect ${provider} to LeadsMind.`}
-          </p>
+        {/* Modal Header — logo + name, then a short one-line description */}
+        <div className="flex items-start gap-3 mb-6 pr-6">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-white border border-dash-border p-2">
+            {logoSrc ? (
+              <Image src={logoSrc} alt={`${provider} logo`} width={36} height={36} className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-[13px] font-bold !text-dash-accent">{provider.slice(0, 2).toUpperCase()}</span>
+            )}
+          </div>
+          <div className="min-w-0 pt-0.5">
+            <h3 className="text-[16px] font-bold !text-dash-text">
+              Connect {provider}
+            </h3>
+            <p className="!text-dash-textMuted text-[12.5px] mt-0.5 leading-snug">
+              {description}
+            </p>
+          </div>
         </div>
 
         {provider === 'Zapier' ? (
           <div className="space-y-5">
-            <div className="space-y-1.5 flex flex-col">
-              <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] font-dm-sans">
-                Zapier Base URL
-              </label>
+            <DashFormField label="Zapier base URL">
               <div className="flex gap-2">
-                <input
+                <DashInput
                   type="text"
                   readOnly
                   value="https://www.leadsmind.io/api/v1"
-                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-[#eef2ff] text-[13px] w-full font-mono focus:outline-none"
+                  className="font-mono"
                 />
-                <button
-                  type="button"
-                  onClick={handleCopyUrl}
-                  className="px-3 bg-white/5 border border-white/5 text-[#94a3c8] hover:text-[#eef2ff] rounded-lg text-xs font-semibold font-dm-sans"
-                >
+                <DashButton type="button" variant="secondary" size="default" onClick={handleCopyUrl} className="flex-shrink-0">
                   {copiedUrl ? 'Copied' : 'Copy'}
-                </button>
+                </DashButton>
               </div>
-            </div>
+            </DashFormField>
 
-            <div className="space-y-1.5 flex flex-col">
-              <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] font-dm-sans">
-                Master API Secret Key
-              </label>
+            <DashFormField label="Master API secret key">
               {apiKey ? (
                 <div className="flex gap-2">
-                  <input
-                    type="password"
-                    readOnly
-                    value={apiKey}
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-3 py-2 text-[#eef2ff] text-[13px] w-full font-mono focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCopyKey}
-                    className="px-3 bg-white/5 border border-white/5 text-[#94a3c8] hover:text-[#eef2ff] rounded-lg text-xs font-semibold font-dm-sans"
-                  >
+                  <DashInput type="password" readOnly value={apiKey} className="font-mono" />
+                  <DashButton type="button" variant="secondary" size="default" onClick={handleCopyKey} className="flex-shrink-0">
                     {copiedKey ? 'Copied' : 'Copy'}
-                  </button>
+                  </DashButton>
                 </div>
               ) : (
-                <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 text-[12px] text-amber-400 font-dm-sans leading-relaxed">
+                <div className="bg-amber/10 border border-amber/20 rounded-lg p-3 text-[12px] text-amber leading-relaxed">
                   No Master API key found. Please generate one under{' '}
                   <a
                     href="/settings?tab=api"
-                    className="text-blue-400 hover:underline font-semibold"
+                    className="!text-dash-accent hover:underline font-semibold"
                     onClick={onClose}
                   >
                     Settings &gt; Developer
@@ -262,10 +283,10 @@ export default function ConnectProviderModal({
                   first.
                 </div>
               )}
-            </div>
+            </DashFormField>
 
-            <div className="bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl p-4 space-y-2 text-[12px] text-[#94a3c8] font-dm-sans leading-relaxed">
-              <p className="font-semibold text-white">Instructions:</p>
+            <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-2 text-[12px] !text-dash-textMuted leading-relaxed">
+              <p className="font-semibold !text-dash-text">Instructions:</p>
               <ol className="list-decimal list-inside space-y-1">
                 <li>Log in to your Zapier account and click "Create Zap".</li>
                 <li>Search for and select the "LeadsMind" app.</li>
@@ -274,331 +295,247 @@ export default function ConnectProviderModal({
               </ol>
             </div>
 
-            <div className="pt-2 flex justify-between items-center gap-3">
+            <div className="pt-2 flex items-center gap-3">
               {apiKey && (
-                <button
+                <DashButton
                   type="button"
+                  variant="primary"
+                  className="flex-1"
                   onClick={() => {
                     onConnected('Active Connection');
                     onClose();
                   }}
-                  className="bg-[#2563eb] text-white text-[13px] font-semibold rounded-lg px-4 py-2.5 hover:bg-[#1d4ed8] transition-colors font-dm-sans flex-1"
                 >
                   Mark Connected
-                </button>
+                </DashButton>
               )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-[#4a5a82] hover:text-[#cbd5e1] text-[12px] font-dm-sans transition-colors py-2.5 flex-1 text-center border border-[rgba(255,255,255,0.05)] rounded-lg hover:bg-white/5"
-              >
+              <DashButton type="button" variant="secondary" className="flex-1" onClick={onClose}>
                 Close
-              </button>
+              </DashButton>
             </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* CATEGORY: Paystack / Flutterwave / Ozow — bring-your-own-key,
-                real per-provider credential shape, not the generic apiKey/apiSecret
-                fields below (which still apply to any other payment_gateway
-                provider until it gets a real integration built). */}
+
+            {/* CATEGORY: Paystack — bring-your-own-key, real credential shape (one secret key) */}
             {providerKey === 'paystack' && (
               <>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Paystack Secret Key
-                  </label>
-                  <input
+                <DashFormField label="Paystack secret key" required hint="Find this in Paystack > Settings > API Keys & Webhooks. We verify it with a real read-only call before connecting.">
+                  <DashInput
                     type="password"
+                    autoComplete="new-password"
                     value={field1}
                     onChange={e => setField1(e.target.value)}
                     placeholder="sk_live_... or sk_test_..."
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Account Name (optional)
-                  </label>
-                  <input
+                </DashFormField>
+                <DashFormField label="Account name (optional)">
+                  <DashInput
                     type="text"
+                    autoComplete="off"
                     value={field3}
                     onChange={e => setField3(e.target.value)}
                     placeholder="e.g. Main Paystack Account"
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-                <p className="text-[#4a5a82] text-[11px] font-dm-sans leading-relaxed pt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  Find your secret key in Paystack &gt; Settings &gt; API Keys &amp; Webhooks. We verify it with a real read-only call before connecting.
-                </p>
+                </DashFormField>
               </>
             )}
 
+            {/* CATEGORY: Flutterwave — secret key + separately-generated webhook secret hash */}
             {providerKey === 'flutterwave' && (
               <>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Flutterwave Secret Key
-                  </label>
-                  <input
+                <DashFormField label="Flutterwave secret key" required>
+                  <DashInput
                     type="password"
+                    autoComplete="new-password"
                     value={field1}
                     onChange={e => setField1(e.target.value)}
                     placeholder="FLWSECK_TEST-... or FLWSECK-..."
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Webhook Secret Hash
-                  </label>
-                  <input
+                </DashFormField>
+                <DashFormField label="Webhook secret hash" required hint="A separate value you set yourself under Flutterwave's webhook settings — both fields are required.">
+                  <DashInput
                     type="password"
+                    autoComplete="new-password"
                     value={field2}
                     onChange={e => setField2(e.target.value)}
                     placeholder="Set under Flutterwave > Settings > Webhooks"
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Account Name (optional)
-                  </label>
-                  <input
+                </DashFormField>
+                <DashFormField label="Account name (optional)">
+                  <DashInput
                     type="text"
+                    autoComplete="off"
                     value={field3}
                     onChange={e => setField3(e.target.value)}
                     placeholder="e.g. Main Flutterwave Account"
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-                <p className="text-[#4a5a82] text-[11px] font-dm-sans leading-relaxed pt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  The secret key authorizes API calls; the webhook secret hash is a separate value you set yourself under Flutterwave's webhook settings — both are required.
-                </p>
+                </DashFormField>
               </>
             )}
 
+            {/* CATEGORY: Ozow — SiteCode + API key + private key, all three required */}
             {providerKey === 'ozow' && (
               <>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Ozow Site Code
-                  </label>
-                  <input
+                <DashFormField label="Ozow site code" required>
+                  <DashInput
                     type="text"
+                    autoComplete="off"
                     value={field1}
                     onChange={e => setField1(e.target.value)}
                     placeholder="e.g. TSTSTE0001"
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    API Key
-                  </label>
-                  <input
+                </DashFormField>
+                <DashFormField label="API key" required>
+                  <DashInput
                     type="password"
+                    autoComplete="new-password"
                     value={field2}
                     onChange={e => setField2(e.target.value)}
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Private Key
-                  </label>
-                  <input
+                </DashFormField>
+                <DashFormField label="Private key" required hint="Used to sign/verify checkout requests.">
+                  <DashInput
                     type="password"
+                    autoComplete="new-password"
                     value={field4}
                     onChange={e => setField4(e.target.value)}
-                    placeholder="Used to sign/verify checkout requests"
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Account Name (optional)
-                  </label>
-                  <input
+                </DashFormField>
+                <DashFormField label="Account name (optional)" hint="All three values are in your Ozow Merchant Admin under Settings. Ozow has no separate test toggle, so use a real (or Ozow-provided sandbox) SiteCode.">
+                  <DashInput
                     type="text"
+                    autoComplete="off"
                     value={field3}
                     onChange={e => setField3(e.target.value)}
                     placeholder="e.g. Main Ozow Account"
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-                <p className="text-[#4a5a82] text-[11px] font-dm-sans leading-relaxed pt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  All three values are in your Ozow Merchant Admin under Settings. All three are required — Ozow has no separate "test" toggle, so use a real (or Ozow-provided sandbox) SiteCode.
-                </p>
+                </DashFormField>
               </>
             )}
 
             {/* CATEGORY: Bank / other Payments (generic — Paystack/Flutterwave/Ozow handled above) */}
             {(category === 'bank' || category === 'payment_gateway') && !isByoKeyGateway && (
               <>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    API Key / Client ID
-                  </label>
-                  <input
+                <DashFormField label="API key or client ID">
+                  <DashInput
                     type="text"
+                    autoComplete="off"
                     value={field1}
                     onChange={e => setField1(e.target.value)}
                     placeholder={`Provided by ${provider} developer portal`}
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
+                </DashFormField>
 
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    API Secret
-                  </label>
-                  <input
+                <DashFormField label="API secret">
+                  <DashInput
                     type="password"
+                    autoComplete="new-password"
                     value={field2}
                     onChange={e => setField2(e.target.value)}
                     placeholder="Keep this private"
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
+                </DashFormField>
 
                 {category === 'payment_gateway' && (
-                  <div className="flex flex-col">
-                    <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                      Passphrase (optional, if required by {provider})
-                    </label>
-                    <input
+                  <DashFormField label={`Passphrase (optional, if required by ${provider})`}>
+                    <DashInput
                       type="password"
+                      autoComplete="new-password"
                       value={field4}
                       onChange={e => setField4(e.target.value)}
                       placeholder="Only required if your gateway account has one set"
-                      className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                     />
-                  </div>
+                  </DashFormField>
                 )}
 
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Account Name (optional)
-                  </label>
-                  <input
+                <DashFormField label="Account name (optional)" hint={`Find your API credentials in your ${provider} developer or business portal.`}>
+                  <DashInput
                     type="text"
+                    autoComplete="off"
                     value={field3}
                     onChange={e => setField3(e.target.value)}
                     placeholder="e.g. LeadsMind Business Account"
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-
-                <p className="text-[#4a5a82] text-[11px] font-dm-sans leading-relaxed pt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  Find your API credentials in your {provider} developer or business portal. These are stored securely and never shared.
-                </p>
+                </DashFormField>
               </>
             )}
 
             {/* CATEGORY: Tax / Government */}
             {category === 'tax_government' && (
               <>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Username or Tax Reference Number
-                  </label>
-                  <input
+                <DashFormField label="Username or tax reference number">
+                  <DashInput
                     type="text"
+                    autoComplete="off"
                     value={field1}
                     onChange={e => setField1(e.target.value)}
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
+                </DashFormField>
 
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Password
-                  </label>
-                  <input
+                <DashFormField label="Password" hint="Your SARS eFiling or CIPC login credentials. LeadsMind connects on your behalf using a secure session.">
+                  <DashInput
                     type="password"
+                    autoComplete="new-password"
                     value={field2}
                     onChange={e => setField2(e.target.value)}
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-
-                <p className="text-[#4a5a82] text-[11px] font-dm-sans leading-relaxed pt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  Your SARS eFiling or CIPC login credentials. LeadsMind connects on your behalf using a secure session.
-                </p>
+                </DashFormField>
               </>
             )}
 
             {/* CATEGORY: Identity, Credit Bureau, Fraud */}
             {(category === 'identity_verification' || category === 'credit_bureau' || category === 'fraud_screening') && (
               <>
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    API Key
-                  </label>
-                  <input
+                <DashFormField label="API key">
+                  <DashInput
                     type="text"
+                    autoComplete="off"
                     value={field1}
                     onChange={e => setField1(e.target.value)}
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
+                </DashFormField>
 
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Client ID (if required)
-                  </label>
-                  <input
+                <DashFormField label="Client ID (if required)">
+                  <DashInput
                     type="text"
+                    autoComplete="off"
                     value={field2}
                     onChange={e => setField2(e.target.value)}
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
+                </DashFormField>
 
-                <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                    Account Name (optional)
-                  </label>
-                  <input
+                <DashFormField label="Account name (optional)" hint={`Contact ${provider} to get your API credentials. Enterprise pricing applies.`}>
+                  <DashInput
                     type="text"
+                    autoComplete="off"
                     value={field3}
                     onChange={e => setField3(e.target.value)}
                     placeholder="e.g. Production"
-                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                   />
-                </div>
-
-                <p className="text-[#4a5a82] text-[11px] font-dm-sans leading-relaxed pt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  Contact {provider} to get your API credentials. Enterprise pricing applies — contact them for a quote.
-                </p>
+                </DashFormField>
               </>
             )}
 
             {/* CATEGORY: Email / Calendar & Communication (OAuth Flow) */}
             {(category === 'email_calendar' || category === 'communication') && (
-              <div className="space-y-6 py-4">
-                <div className="flex flex-col items-center justify-center p-6 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] text-center">
-                  <ExternalLink className="w-8 h-8 text-[#2563eb] mb-3" />
-                  <h4 className="text-[#eef2ff] text-[14px] font-semibold font-space-grotesk mb-1.5">
+              <div className="space-y-5 py-2">
+                <div className="flex flex-col items-center justify-center p-6 rounded-xl bg-dash-surface border border-dash-border text-center">
+                  <ExternalLink className="w-8 h-8 !text-dash-accent mb-3" />
+                  <h4 className="!text-dash-text text-[14px] font-bold mb-1.5">
                     Connect via OAuth
                   </h4>
-                  <p className="text-[#94a3c8] text-[12px] leading-relaxed max-w-xs font-dm-sans">
+                  <p className="!text-dash-textMuted text-[12px] leading-relaxed max-w-xs">
                     You will be redirected to {provider} to approve the connection. LeadsMind will only request read access to your calendar and email.
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  className="bg-[#2563eb] text-white text-[13px] font-semibold rounded-lg w-full py-2.5 hover:bg-[#1d4ed8] transition-colors font-dm-sans"
-                >
+                <DashButton type="button" variant="primary" className="w-full" onClick={handleSubmit}>
                   Continue to {provider}
-                </button>
+                </DashButton>
 
                 {oauthWarning && (
-                  <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11.5px] font-dm-sans leading-relaxed">
+                  <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber/10 border border-amber/20 text-amber text-[11.5px] leading-relaxed">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>{oauthWarning}</span>
                   </div>
@@ -612,63 +549,50 @@ export default function ConnectProviderModal({
                 {/* CATEGORY: Automation, eCommerce, Marketing, Analytics, Courier */}
                 {(category === 'automation' || category === 'ecommerce' || category === 'marketing' || category === 'analytics' || category === 'courier') && (
                   <>
-                    <div className="flex flex-col">
-                      <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                        API Key or Webhook URL
-                      </label>
-                      <input
+                    <DashFormField label="API key or webhook URL">
+                      <DashInput
                         type="text"
+                        autoComplete="off"
                         value={field1}
                         onChange={e => setField1(e.target.value)}
                         placeholder={`Provided in your ${provider} account settings`}
-                        className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                       />
-                    </div>
+                    </DashFormField>
 
-                    <div className="flex flex-col">
-                      <label className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#4a5a82] mb-1.5 font-dm-sans">
-                        Account Name (optional)
-                      </label>
-                      <input
+                    <DashFormField label="Account name (optional)" hint={`Check your ${provider} settings or integrations page for API keys.`}>
+                      <DashInput
                         type="text"
+                        autoComplete="off"
                         value={field2}
                         onChange={e => setField2(e.target.value)}
-                        className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-lg px-4 py-2.5 text-[#eef2ff] text-[13px] w-full focus:border-[#2563eb] focus:outline-none placeholder-[#4a5a82] font-dm-sans"
                       />
-                    </div>
-
-                    <p className="text-[#4a5a82] text-[11px] font-dm-sans leading-relaxed pt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                      Check your {provider} settings or integrations page for API keys.
-                    </p>
+                    </DashFormField>
                   </>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-[#2563eb] text-white text-[13px] font-semibold rounded-lg w-full py-2.5 mt-6 hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 font-dm-sans"
-                >
-                  {loading && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                  Save Connection
-                </button>
+                {/* Security reassurance — subtle info callout, not plain gray text */}
+                <div className="flex items-start gap-2.5 bg-dash-accent/5 border border-dash-accent/20 rounded-xl p-3 text-[12px] !text-dash-textMuted leading-relaxed">
+                  <ShieldCheck className="w-4 h-4 !text-dash-accent shrink-0 mt-0.5" />
+                  <span>These credentials are encrypted at rest and never shared — only used to process your workspace's own transactions.</span>
+                </div>
+
+                {errorMsg && (
+                  <div className="text-red text-[12px] text-center">
+                    {errorMsg}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 pt-1">
+                  <DashButton type="button" variant="secondary" className="flex-1" onClick={onClose}>
+                    Cancel
+                  </DashButton>
+                  <DashButton type="submit" variant="primary" className="flex-1" disabled={loading}>
+                    {loading && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />}
+                    Save Connection
+                  </DashButton>
+                </div>
               </>
             )}
-
-            {errorMsg && (
-              <div className="text-rose-400 text-[11.5px] mt-2 font-dm-sans text-center">
-                {errorMsg}
-              </div>
-            )}
-
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-[#4a5a82] hover:text-[#cbd5e1] text-[12px] font-dm-sans mt-3 transition-colors inline-block"
-              >
-                Cancel
-              </button>
-            </div>
 
           </form>
         )}

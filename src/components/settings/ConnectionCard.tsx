@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
 import { DashButton } from '@/components/dashboard-ui/Button'
 
 interface ConnectionCardProps {
@@ -8,6 +9,9 @@ interface ConnectionCardProps {
   shortName: string
   description: string
   color: string
+  // Path to the provider's official logo (e.g. '/assets/images/payment-gateways/stripe.svg').
+  // Falls back to a colored-initial tile when omitted.
+  logo?: string
   connected?: boolean
   accountLabel?: string | null
   onConnect?: () => void
@@ -25,6 +29,7 @@ export default function ConnectionCard({
   shortName,
   description,
   color,
+  logo,
   connected = false,
   accountLabel,
   onConnect,
@@ -40,13 +45,19 @@ export default function ConnectionCard({
 
       {/* Left — icon + info */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `${color}1F` }}>
-          <span className="text-[12px] font-bold"
-            style={{ color }}>
-            {shortName.slice(0, 4)}
-          </span>
-        </div>
+        {logo ? (
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-white border border-dash-border p-2">
+            <Image src={logo} alt={`${name} logo`} width={40} height={40} className="w-full h-full object-contain" />
+          </div>
+        ) : (
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${color}1F` }}>
+            <span className="text-[12px] font-bold"
+              style={{ color }}>
+              {shortName.slice(0, 4)}
+            </span>
+          </div>
+        )}
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="!text-dash-text text-[14px] font-semibold truncate">

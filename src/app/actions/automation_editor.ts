@@ -115,7 +115,11 @@ export interface EditorStepInput {
 export interface SaveWorkflowPayload {
   id: string;
   name: string;
-  description: string;
+  // Omitted entirely by the editor form (Description was removed from the
+  // "Edit workflow" UI) -- left optional and only written when explicitly
+  // provided, so existing workflows with real description data already
+  // stored aren't wiped out by saves made through this form.
+  description?: string;
   trigger_type: string;
   is_active: boolean;
   steps: EditorStepInput[];
@@ -133,7 +137,7 @@ export async function saveWorkflowEditor(payload: SaveWorkflowPayload) {
     .from('workflows')
     .update({
       name: payload.name,
-      description: payload.description,
+      ...(payload.description !== undefined ? { description: payload.description } : {}),
       trigger_type: payload.trigger_type,
       is_active: payload.is_active,
     })

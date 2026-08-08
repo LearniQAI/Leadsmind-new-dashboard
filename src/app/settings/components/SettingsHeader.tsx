@@ -10,10 +10,12 @@ export default function SettingsHeader({ title, description }: SettingsHeaderPro
   return (
     <div className="sticky top-0 z-10 bg-dash-bg/80 backdrop-blur-md px-8 py-6 border-b border-dash-border flex items-center justify-between">
       <div className="flex flex-col">
-        <h3 className="text-[18px] font-bold !text-dash-text tracking-tight">
-          {title} <span className="text-dash-accent">Settings</span>
-        </h3>
-        <p className="text-[11px] !text-dash-textMuted font-medium mt-0.5">
+        <div className="flex items-center gap-1.5 text-[13px] font-medium">
+          <span className="!text-dash-textMuted">Settings</span>
+          <span className="!text-dash-textMuted opacity-50">/</span>
+          <span className="!text-dash-text font-semibold">{title}</span>
+        </div>
+        <p className="text-[12px] !text-dash-textMuted mt-1">
           {description}
         </p>
       </div>

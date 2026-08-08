@@ -593,11 +593,11 @@ export async function seedHelpArticles() {
       {
         slug: 'payment-gateways',
         category: 'CRM Foundations',
-        title: 'Connecting Yoco, PayFast, & Stripe',
-        body_plain: 'Process checkouts and charge invoices using top payment processors. Connect local gateways easily.',
+        title: 'Connecting Stripe, PayPal, Paystack, Flutterwave & Ozow',
+        body_plain: 'Process checkouts and charge invoices using top payment processors. Connect your own gateway account so checkout routes directly to it.',
         content_json: [
           { step: 1, title: 'Choose Checkout Gateways', description: 'Go to billing settings > Payment Gateways.' },
-          { step: 2, title: 'Link API keys', description: 'Provide payment tokens (e.g. Yoco secret keys, PayFast Merchant IDs).' }
+          { step: 2, title: 'Connect your account', description: 'Use real OAuth Connect for Stripe/PayPal, or provide your own API keys for Paystack, Flutterwave, and Ozow.' }
         ],
         faq_json: [{ q: 'Are cards processed securely?', a: 'Payment gateways verify details through secure PCI-DSS portals.' }]
       },
