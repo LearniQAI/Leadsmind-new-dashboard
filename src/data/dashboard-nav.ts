@@ -34,6 +34,7 @@ const dashboardNav: NavModule[] = [
       { id: 115, label: "Segments", icon: "fa-light fa-users-rectangle", link: "/segments", permission: "marketing" },
       { id: 114, label: "Email Sequences", icon: "fa-light fa-inbox-out", link: "/sequences", permission: "marketing" },
       { id: 116, label: "Bulk SMS", icon: "fa-light fa-comment-sms", link: "/sms", permission: "marketing" },
+      { id: 117, label: "WhatsApp Broadcasts", icon: "fa-brands fa-whatsapp", link: "/whatsapp-broadcasts", permission: "marketing" },
       { id: 12, label: "Funnels", icon: "fa-light fa-filter", link: "/funnels", permission: "marketing" },
       { id: 14, label: "Forms", icon: "icon-document", link: "/forms", permission: "marketing" },
       { id: 15, label: "Social", icon: "fa-light fa-share-nodes", link: "/social", permission: "marketing" },
