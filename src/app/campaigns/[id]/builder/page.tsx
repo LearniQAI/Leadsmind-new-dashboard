@@ -4,6 +4,7 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import MetaData from '@/hooks/useMetaData';
 import { EmailBuilderClient } from './EmailBuilderClient';
+import { listSegments } from '@/app/actions/segments';
 
 interface PageProps {
   params: {
@@ -44,12 +45,16 @@ export default async function EmailBuilderPage({ params }: PageProps) {
     brandFontDefault: workspace?.brand_font_default || 'Inter'
   };
 
+  const segmentsRes = await listSegments();
+  const availableSegments = segmentsRes.success ? segmentsRes.data : [];
+
   return (
     <MetaData pageTitle={`${campaign.name || 'Untitled Campaign'} | Campaign Builder`}>
       <EmailBuilderClient
         campaignId={id}
         initialCampaign={campaign}
         brandKit={brandKit}
+        availableSegments={availableSegments}
       />
     </MetaData>
   );

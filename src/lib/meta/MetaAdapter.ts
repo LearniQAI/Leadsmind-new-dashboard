@@ -176,4 +176,70 @@ export class MetaAdapter {
       return { success: false, error: e.message };
     }
   }
+
+  /**
+   * Sends a pre-approved WhatsApp template message (message type "template"),
+   * the only way to business-initiate a message to a contact outside the 24h
+   * customer-service session window. Structurally distinct from sendWhatsApp's
+   * free-text "text" message type — templateName/languageCode must match a
+   * template already submitted to and approved by Meta in WhatsApp Manager;
+   * there is no self-serve instant-approval path, so this assumes the caller
+   * is passing an already-approved name (see listApprovedWhatsAppTemplates in
+   * whatsapp_broadcast.ts, which fetches the real approved set from the Graph
+   * API rather than trusting free-typed template names).
+   */
+  async sendWhatsAppTemplate(
+    to: string,
+    templateName: string,
+    languageCode: string,
+    bodyParams?: string[]
+  ): Promise<{ success: boolean; externalId?: string; error?: string }> {
+    logger.info({ to, templateName, languageCode }, 'meta_adapter.whatsapp_template.dispatching');
+
+    const phoneNumberId = this.credentials?.phone_number_id || '';
+    const encryptedToken = this.credentials?.access_token_encrypted || this.credentials?.system_user_access_token_encrypted || '';
+
+    if (phoneNumberId.startsWith('mock_') || !encryptedToken) {
+      logger.info({}, 'meta_adapter.whatsapp_template.mock_dispatch_successful');
+      return { success: true, externalId: `mock_wa_template_out_${Date.now()}` };
+    }
+
+    try {
+      const systemToken = decrypt(encryptedToken);
+      const cleanTo = to.replace('+', '').trim();
+
+      const components = bodyParams && bodyParams.length > 0
+        ? [{ type: 'body', parameters: bodyParams.map((text) => ({ type: 'text', text })) }]
+        : [];
+
+      const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${systemToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: cleanTo,
+          type: 'template',
+          template: {
+            name: templateName,
+            language: { code: languageCode },
+            ...(components.length > 0 ? { components } : {})
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed WhatsApp template request');
+      }
+
+      return { success: true, externalId: data.messages?.[0]?.id };
+    } catch (e: any) {
+      logger.error({ err: e.message, templateName }, 'meta_adapter.whatsapp_template.failed');
+      return { success: false, error: e.message };
+    }
+  }
 }

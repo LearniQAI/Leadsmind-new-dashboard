@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { decrypt } from '@/lib/encryption';
 import { logger } from '@/shared/logger';
+import { MetaAdapter } from '@/lib/meta/MetaAdapter';
 
 export const dynamic = 'force-dynamic';
 
@@ -736,4 +737,97 @@ async function handleWhatsAppMessage(message: any, metadata: any, webhookContact
     'whatsapp',
     messageText
   );
+
+  // Automated replies (keyword-trigger chatbot) — checked AFTER the
+  // compliance/STOP-START handling above, and only for real text messages
+  // (media captions aren't reliable trigger text). Never fires for a
+  // contact who is opted out, including one that just opted out via this
+  // very message.
+  if (messageType === 'text') {
+    await maybeSendWhatsAppAutomatedReply(workspaceId, conversationId, contactId, connection.credentials, cleanPhone, messageText);
+  }
+}
+
+// Matches inbound WhatsApp text against this workspace's active
+// whatsapp_bot_rules (simple keyword/contains/regex match, first match by
+// priority wins — see 20260808000004_whatsapp_broadcast_and_bot.sql) and
+// sends the configured canned reply via the same MetaAdapter used for
+// broadcasts and agent replies. A reply here fires because the contact just
+// messaged in, so the 24h session window is guaranteed open — 'text' replies
+// never need a template; 'template' is offered only for workspaces that
+// prefer a pre-approved formatted message.
+async function maybeSendWhatsAppAutomatedReply(
+  workspaceId: string,
+  conversationId: string,
+  contactId: string,
+  credentials: any,
+  toPhone: string,
+  messageText: string
+) {
+  const { data: contact } = await supabase
+    .from('contacts')
+    .select('opted_out')
+    .eq('id', contactId)
+    .maybeSingle();
+  if (contact?.opted_out) return;
+
+  const { data: rules } = await supabase
+    .from('whatsapp_bot_rules')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('active', true)
+    .order('priority', { ascending: true });
+
+  if (!rules || rules.length === 0) return;
+
+  const normalized = (messageText || '').trim();
+  const lower = normalized.toLowerCase();
+
+  const matchedRule = rules.find((rule: any) => {
+    if (rule.match_type === 'exact') return lower === (rule.match_value || '').trim().toLowerCase();
+    if (rule.match_type === 'contains') return lower.includes((rule.match_value || '').trim().toLowerCase());
+    if (rule.match_type === 'regex') {
+      try {
+        return new RegExp(rule.match_value, 'i').test(normalized);
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  if (!matchedRule) return;
+
+  const adapter = new MetaAdapter(credentials);
+  let result: { success: boolean; externalId?: string; error?: string };
+  if (matchedRule.reply_type === 'template' && matchedRule.reply_template_name) {
+    result = await adapter.sendWhatsAppTemplate(
+      toPhone,
+      matchedRule.reply_template_name,
+      matchedRule.reply_template_language || 'en_US',
+      matchedRule.reply_template_params || []
+    );
+  } else {
+    result = await adapter.sendWhatsApp(toPhone, matchedRule.reply_text || '');
+  }
+
+  if (result.success) {
+    await supabase.from('messages').insert({
+      workspace_id: workspaceId,
+      conversation_id: conversationId,
+      direction: 'outbound',
+      content: matchedRule.reply_type === 'template' ? `[Template: ${matchedRule.reply_template_name}]` : (matchedRule.reply_text || ''),
+      sender_handle: 'whatsapp_bot',
+      status: 'sent',
+      external_id: result.externalId,
+      metadata: { automated_reply: true, rule_id: matchedRule.id }
+    });
+    await supabase
+      .from('conversations')
+      .update({ last_message_at: new Date().toISOString() })
+      .eq('id', conversationId);
+    logger.info({ ruleId: matchedRule.id, conversationId }, 'webhook.meta.whatsapp.bot_reply.sent');
+  } else {
+    logger.error({ err: result.error, ruleId: matchedRule.id }, 'webhook.meta.whatsapp.bot_reply.failed');
+  }
 }

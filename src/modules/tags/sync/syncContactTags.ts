@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
+import { waitUntil } from '@vercel/functions';
 
 // contacts.tags (the TEXT[] column) stays the source of truth for the existing
 // automation/workflow/segmentation engines per the confirmed Part 1 migration
@@ -44,6 +45,18 @@ async function ensureTag(supabase: any, workspaceId: string, name: string): Prom
  * full tag-name array (the new state of contacts.tags after a write).
  */
 export async function syncContactTagsToRelational(workspaceId: string, contactId: string, tagNames: string[]): Promise<void> {
+  // Callers routinely fire this off un-awaited (contacts.ts, lead-workspace.ts,
+  // ContactService.ts, etc.) so a slow tag sync never blocks the response. Same
+  // failure mode as EventBus.publishEvent (see there): on Vercel, an un-awaited
+  // promise can be silently torn down mid-flight when the invocation ends, with
+  // nothing ever logged. waitUntil() extends the invocation's lifetime here too,
+  // and no-ops safely outside a Vercel request/cron context.
+  const p = syncContactTagsToRelationalImpl(workspaceId, contactId, tagNames);
+  waitUntil(p);
+  return p;
+}
+
+async function syncContactTagsToRelationalImpl(workspaceId: string, contactId: string, tagNames: string[]): Promise<void> {
   try {
     const supabase = createAdminClient();
     const cleanNames = Array.from(new Set(tagNames.map((t) => t.trim()).filter(Boolean)));
@@ -97,6 +110,13 @@ export async function syncContactTagsToRelational(workspaceId: string, contactId
 export async function syncBulkContactTagAdd(workspaceId: string, tagName: string, contactIds: string[]): Promise<void> {
   const name = tagName.trim();
   if (!name || contactIds.length === 0) return;
+  // See syncContactTagsToRelational above — same un-awaited-on-Vercel risk.
+  const p = syncBulkContactTagAddImpl(workspaceId, name, contactIds);
+  waitUntil(p);
+  return p;
+}
+
+async function syncBulkContactTagAddImpl(workspaceId: string, name: string, contactIds: string[]): Promise<void> {
   try {
     const supabase = createAdminClient();
     const tagId = await ensureTag(supabase, workspaceId, name);
@@ -114,7 +134,7 @@ export async function syncBulkContactTagAdd(workspaceId: string, tagName: string
     });
     if (error) logger.error({ err: error, workspaceId, tagId }, 'tags.syncBulkContactTagAdd.failed');
   } catch (err) {
-    logger.error({ err, workspaceId, tagName }, 'tags.syncBulkContactTagAdd.failed');
+    logger.error({ err, workspaceId, tagName: name }, 'tags.syncBulkContactTagAdd.failed');
   }
 }
 
@@ -124,6 +144,13 @@ export async function syncBulkContactTagAdd(workspaceId: string, tagName: string
 export async function syncBulkContactTagRemove(workspaceId: string, tagName: string, contactIds: string[]): Promise<void> {
   const name = tagName.trim();
   if (!name || contactIds.length === 0) return;
+  // See syncContactTagsToRelational above — same un-awaited-on-Vercel risk.
+  const p = syncBulkContactTagRemoveImpl(workspaceId, name, contactIds);
+  waitUntil(p);
+  return p;
+}
+
+async function syncBulkContactTagRemoveImpl(workspaceId: string, name: string, contactIds: string[]): Promise<void> {
   try {
     const supabase = createAdminClient();
     const { data: tag } = await supabase
@@ -143,6 +170,6 @@ export async function syncBulkContactTagRemove(workspaceId: string, tagName: str
       .in('entity_id', contactIds);
     if (error) logger.error({ err: error, workspaceId, tagId: tag.id }, 'tags.syncBulkContactTagRemove.failed');
   } catch (err) {
-    logger.error({ err, workspaceId, tagName }, 'tags.syncBulkContactTagRemove.failed');
+    logger.error({ err, workspaceId, tagName: name }, 'tags.syncBulkContactTagRemove.failed');
   }
 }

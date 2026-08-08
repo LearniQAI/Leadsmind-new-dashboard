@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
+import { waitUntil } from '@vercel/functions';
 import type { TagEntityType } from '@/modules/tags/repository/TagRepository';
 
 // Defaults for the auto-generated "system" tags this module applies. Real workspaces
@@ -68,6 +69,25 @@ async function ensureSystemTag(supabase: any, workspaceId: string, name: string)
  * removes the tag, not just adds it.
  */
 export async function applyAutoTag(
+  workspaceId: string,
+  entityType: TagEntityType,
+  entityId: string,
+  tagName: string,
+  shouldHaveTag: boolean,
+): Promise<void> {
+  // Callers routinely fire this off un-awaited (appointments.ts, lms.ts,
+  // pipelines.ts, portal.ts, quizzes.ts) so a tag write never blocks the
+  // response. Same failure mode as EventBus.publishEvent: on Vercel, an
+  // un-awaited promise can be silently torn down mid-flight when the
+  // invocation ends, with nothing ever logged. waitUntil() extends the
+  // invocation's lifetime here too, and no-ops safely outside a Vercel
+  // request/cron context.
+  const p = applyAutoTagImpl(workspaceId, entityType, entityId, tagName, shouldHaveTag);
+  waitUntil(p);
+  return p;
+}
+
+async function applyAutoTagImpl(
   workspaceId: string,
   entityType: TagEntityType,
   entityId: string,
