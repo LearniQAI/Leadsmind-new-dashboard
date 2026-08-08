@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from 'react';
-import EmailNotification from './EmailNotification';
 import Notification from './Notification';
 import HeaderUserProfile from './HeaderUserProfile';
 
@@ -20,11 +19,10 @@ const HeaderAction = () => {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1.5 mr-2 border-r border-[#EEF2F7] pr-4">
-        <EmailNotification />
-        <Notification 
-          handleShowNotification={handleShowNotification} 
-          isOpenNotification={isOpenNotification} 
+      <div className="flex items-center mr-2 border-r border-[#EEF2F7] pr-4">
+        <Notification
+          handleShowNotification={handleShowNotification}
+          isOpenNotification={isOpenNotification}
         />
       </div>
 

@@ -1,10 +1,10 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import HeaderAction from "./components/HeaderAction";
 import useGlobalContext from "@/hooks/use-context";
 import { useDashboardContext } from "../DashboardProvider";
-import { Menu, Search, Command as CommandIcon, HelpCircle, ChevronDown, Check, Layers } from "lucide-react";
+import { Menu, Search, ChevronDown, Check, Layers } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { setActiveWorkspace } from "@/app/actions/auth";
 import { toast } from "sonner";
@@ -21,9 +21,7 @@ interface WorkspaceItem {
 const DashboardHeader = () => {
     const { setSideMenuOpen, setSearchOpen } = useGlobalContext();
     const { enrichedWorkspace, user } = useDashboardContext();
-    const pathname = usePathname();
     const router = useRouter();
-    const [hasUpdate, setHasUpdate] = useState(false);
     const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
     const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -41,28 +39,6 @@ const DashboardHeader = () => {
             setHidden(false);
         }
     });
-
-    useEffect(() => {
-        if (!pathname) return;
-        
-        async function checkReleaseNotes() {
-            try {
-                const res = await fetch(`/api/platform/release-notes?route=${encodeURIComponent(pathname)}`);
-                if (res.ok) {
-                    const json = await res.json();
-                    setHasUpdate(json.data && json.data.length > 0);
-                }
-            } catch (err) {
-                console.error("Failed to check release notes:", err);
-            }
-        }
-
-        checkReleaseNotes();
-        
-        const handleDismiss = () => setHasUpdate(false);
-        window.addEventListener('dismiss-help-alert', handleDismiss);
-        return () => window.removeEventListener('dismiss-help-alert', handleDismiss);
-    }, [pathname]);
 
     useEffect(() => {
         async function fetchUserWorkspaces() {
@@ -188,10 +164,6 @@ const DashboardHeader = () => {
                         <span className="text-[14px] text-slate-500 flex-1 text-left select-none font-medium">
                             Search workspace...
                         </span>
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 border border-[#E5E7EB] rounded-lg px-2 py-1 bg-slate-50 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                            <CommandIcon size={10} />
-                            <span>K</span>
-                        </div>
                     </button>
                 </motion.div>
                 
@@ -228,10 +200,6 @@ const DashboardHeader = () => {
                             <span className="text-[13px] text-slate-500 flex-1 text-left select-none">
                                 Search anything...
                             </span>
-                            <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 border border-[#E5E7EB] rounded-lg px-2 py-1 bg-slate-50 shadow-[0_1px_2px_rgba(0,0,0,0.02)] ml-2">
-                                <CommandIcon size={10} />
-                                <span>K</span>
-                            </div>
                         </button>
                     </div>
 
@@ -276,21 +244,6 @@ const DashboardHeader = () => {
                                 )}
                             </div>
                         )}
-
-                        {/* Help Center Icon */}
-                        <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('open-help-drawer'))}
-                            title="Open page help documentation"
-                            className="relative w-9 h-9 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-50 rounded-xl transition-all active:scale-95 border border-[#E5E7EB] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)]"
-                        >
-                            <HelpCircle size={17} />
-                            {hasUpdate && (
-                                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping" style={{ animationDuration: '1.5s' }} />
-                            )}
-                            {hasUpdate && (
-                                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-amber-500 rounded-full" />
-                            )}
-                        </button>
 
                         {/* Notifications & Profile dropdown dropdowns */}
                         <HeaderAction />

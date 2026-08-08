@@ -3,6 +3,8 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getUser, requireWorkspaceAccess } from '@/lib/auth';
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { ForbiddenError } from '@/shared/errors/AppError';
 import { cookies } from 'next/headers';
 import { logger } from '@/shared/logger';
 
@@ -154,5 +156,114 @@ export async function saveWorkspaceKycSettings(
   } catch (err: any) {
     logger.error({ err, workspaceId }, 'workspace.kyc_settings.save.failed');
     return { error: 'Failed to save KYC settings' };
+  }
+}
+
+/**
+ * Renames the caller's active workspace. This is the single source of truth for
+ * `workspaces.name` — the dashboard header and every other "current workspace name"
+ * display read this column directly, so this is the only action that should ever
+ * write it (the Settings > Workspace tab's "Workspace name" field is a separate,
+ * unrelated `workspace_branding.platform_name` value used for white-label display).
+ */
+export async function updateWorkspace(name: string) {
+  try {
+    const { workspaceId } = await requireWorkspaceRole(['admin']);
+
+    const trimmed = name.trim();
+    if (!trimmed) return { error: 'Workspace name cannot be empty' };
+    if (trimmed.length > 100) return { error: 'Workspace name must be 100 characters or fewer' };
+
+    const supabase = await createServerClient();
+    const { error } = await supabase
+      .from('workspaces')
+      .update({ name: trimmed, updated_at: new Date().toISOString() })
+      .eq('id', workspaceId);
+
+    if (error) throw error;
+
+    revalidatePath('/', 'layout');
+    return { success: true };
+  } catch (err: any) {
+    logger.error({ err }, 'workspace.rename.failed');
+    return { error: err instanceof ForbiddenError
+      ? 'Only workspace admins can rename this workspace'
+      : 'Failed to rename workspace' };
+  }
+}
+
+/**
+ * Permanently deletes the caller's active workspace. Admin-only. Blocks outright
+ * (rather than silently cancelling) if the workspace has any sign of an active paid
+ * subscription, since there is no subscription table separate from `workspaces` —
+ * losing the row would orphan a live Paystack/Stripe subscription with nothing left
+ * to show for it. The caller must downgrade/cancel billing first.
+ *
+ * Every workspace-scoped table cascades on workspaces.id (see migrations
+ * 20260806000002/3, 20260805000001, 20240101000037/158, and
+ * 20260808000000 for the credit_notes/invoice_write_offs gap this closed) so a plain
+ * delete on the workspaces row is sufficient to remove all dependent data.
+ */
+export async function deleteWorkspace(confirmName: string) {
+  try {
+    const { userId, workspaceId, role } = await requireWorkspaceRole(['admin']);
+
+    const supabase = await createServerClient();
+    const { data: workspace, error: fetchError } = await supabase
+      .from('workspaces')
+      .select('name, plan_tier, paystack_subscription_code, stripe_subscription_id')
+      .eq('id', workspaceId)
+      .single();
+
+    if (fetchError || !workspace) return { error: 'Workspace not found' };
+
+    if (confirmName.trim() !== workspace.name) {
+      return { error: 'Workspace name does not match' };
+    }
+
+    // workspaces_plan_tier_check only allows 'spark' | 'rise' | 'surge' | 'infinity' | 'dynasty'
+    // (migration 20260805000002_paystack_billing.sql) — 'spark' is the free tier every
+    // workspace starts on (see createWorkspace above); anything else means a paid plan.
+    const hasActiveSubscription =
+      Boolean(workspace.paystack_subscription_code) ||
+      Boolean(workspace.stripe_subscription_id) ||
+      (workspace.plan_tier && workspace.plan_tier !== 'spark');
+
+    if (hasActiveSubscription) {
+      return {
+        error: 'This workspace has an active paid subscription. Cancel or downgrade billing before deleting the workspace.',
+      };
+    }
+
+    const { data: remainingWorkspaces } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', userId)
+      .neq('workspace_id', workspaceId);
+
+    const { error: deleteError } = await supabase
+      .from('workspaces')
+      .delete()
+      .eq('id', workspaceId);
+
+    if (deleteError) throw deleteError;
+
+    logger.info({ workspaceId, name: workspace.name, deletedBy: userId, role }, 'workspace.audit.delete');
+
+    const cookieStore = await cookies();
+    const fallbackWorkspaceId = remainingWorkspaces?.[0]?.workspace_id;
+    if (fallbackWorkspaceId) {
+      cookieStore.set('active_workspace_id', fallbackWorkspaceId, { maxAge: 60 * 60 * 24 * 30, path: '/' });
+    } else {
+      cookieStore.delete('active_workspace_id');
+    }
+
+    revalidatePath('/', 'layout');
+    return { success: true, fallbackWorkspaceId: fallbackWorkspaceId || null };
+  } catch (err: any) {
+    logger.error({ err }, 'workspace.delete.failed');
+    return { error: err instanceof ForbiddenError
+      ? 'Only workspace admins can delete this workspace'
+      : 'Failed to delete workspace' };
   }
 }

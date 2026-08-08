@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Bell, X, CheckCircle2, Zap, Settings, Inbox, Archive, Check, DollarSign, User, Globe, AlertCircle } from "lucide-react";
+import { Bell, X, Zap, Inbox, Archive, Check, DollarSign, User, Globe, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -194,29 +194,21 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
               className="absolute top-full right-0 mt-3 w-[400px] bg-white border border-dash-border rounded-[20px] shadow-[0_28px_64px_rgba(15,23,42,0.18)] z-50 overflow-hidden flex flex-col"
             >
               {/* Header */}
-              <div className="px-5 pt-4 pb-3 border-b border-[#EEF2F7] bg-white flex flex-col gap-3">
+              <div className="px-5 pt-4 pb-3 border-b border-dash-border bg-white flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h5 className="text-[14px] font-bold !text-slate-800">Notifications</h5>
+                  <h5 className="text-[15px] font-bold !text-dash-text">Notifications</h5>
+                  <div className="flex items-center gap-3">
                     {unreadCount > 0 && (
-                      <span className="px-2 py-0.5 rounded-full bg-red-50 !text-red-600 text-[10px] font-bold">{unreadCount} unread</span>
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[12px] font-semibold !text-dash-accent hover:opacity-80 transition-opacity"
+                      >
+                        Mark all as read
+                      </button>
                     )}
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full ml-1" title="Live Updates"></div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button 
-                      onClick={handleMarkAllRead}
-                      className="p-1.5 hover:bg-slate-50 rounded-lg !text-slate-400 hover:!text-slate-700 transition-colors"
-                      title="Mark all read"
-                    >
-                      <CheckCircle2 size={16} />
-                    </button>
-                    <button className="p-1.5 hover:bg-slate-50 rounded-lg !text-slate-400 hover:!text-slate-700 transition-colors">
-                      <Settings size={16} />
-                    </button>
-                    <button 
+                    <button
                       onClick={handleShowNotification}
-                      className="p-1.5 hover:bg-slate-50 rounded-lg !text-slate-400 hover:!text-slate-700 transition-colors ml-1"
+                      className="p-1 hover:bg-dash-surface rounded-lg !text-dash-textMuted hover:!text-dash-text transition-colors"
                     >
                       <X size={16} />
                     </button>
@@ -255,63 +247,69 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
                     <p className="!text-slate-500 text-[12px] mt-1">No new activity in your workspace.</p>
                   </div>
                 ) : (
-                  <div className="pb-2">
+                  <div>
                     {Object.entries(groupedNotifications).map(([groupLabel, groupItems]) => {
                       if (groupItems.length === 0) return null;
                       return (
-                        <div key={groupLabel} className="mb-2">
-                          <div className="px-5 py-2 sticky top-0 bg-dash-surface/90 backdrop-blur border-y border-dash-border/60 z-10">
-                            <span className="text-[10px] font-bold !text-slate-500 uppercase tracking-wider">{groupLabel}</span>
+                        <div key={groupLabel}>
+                          <div className="px-5 pt-4 pb-1.5 sticky top-0 bg-white/95 backdrop-blur z-10">
+                            <span className="text-[10px] font-bold !text-dash-textMuted uppercase tracking-wider">{groupLabel}</span>
                           </div>
-                          <div>
+                          <div className="divide-y divide-dash-border">
                             {groupItems.map((notification) => {
                               const isNew = !notification.read;
                               return (
                                 <div
                                   key={notification.id}
-                                  className={`group relative flex items-start gap-3.5 px-5 py-3 transition-colors ${
-                                    isNew ? 'bg-dash-accent/[0.05] border-l-4 border-l-dash-accent' : 'bg-white border-l-4 border-l-transparent hover:bg-slate-50'
-                                  }`}
-                                  onMouseEnter={() => { if(isNew) handleMarkAsRead(notification.id) }}
+                                  className="group relative flex items-start gap-3.5 px-5 py-4 hover:bg-dash-surface transition-colors"
+                                  onMouseEnter={() => { if (isNew) handleMarkAsRead(notification.id) }}
                                 >
+                                  {isNew && (
+                                    <span className="absolute left-2 top-[22px] w-1.5 h-1.5 rounded-full bg-dash-accent" />
+                                  )}
                                   {renderIcon(notification.type, !isNew)}
-                                  
+
                                   <div className="flex-1 min-w-0 pt-0.5">
-                                    <div className="flex items-center justify-between gap-2 mb-0.5">
-                                      <p className={`text-[13px] font-semibold truncate ${isNew ? '!text-slate-900' : '!text-slate-700'}`}>
+                                    <div className="flex items-start justify-between gap-3">
+                                      <p className="text-[13px] font-semibold !text-dash-text">
                                         {notification.title || notification.type}
                                       </p>
-                                      <span className="text-[10px] !text-slate-400 whitespace-nowrap font-medium flex-shrink-0">
-                                        {formatTimeAgo(notification.created_at)}
-                                      </span>
+                                      {isNew && (
+                                        <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-dash-accent/10 !text-dash-accent text-[10px] font-bold">
+                                          New
+                                        </span>
+                                      )}
                                     </div>
-                                    <p className={`text-[12px] leading-snug line-clamp-2 ${isNew ? '!text-slate-600' : '!text-slate-500'}`}>
+                                    <p className="text-[12px] leading-snug !text-dash-textMuted line-clamp-2 mt-0.5">
                                       {notification.message}
                                     </p>
-                                    
+                                    <span className="text-[11px] !text-dash-textMuted/70 font-medium mt-1 block">
+                                      {formatTimeAgo(notification.created_at)}
+                                    </span>
+
                                     {/* Action buttons on hover */}
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white shadow-sm border border-slate-200 rounded-lg p-1">
+                                    <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white shadow-sm border border-dash-border rounded-lg p-1">
                                       {notification.link && (
-                                        <Link 
+                                        <Link
                                           href={notification.link}
                                           onClick={handleShowNotification}
-                                          className="px-2 py-1 hover:bg-slate-50 rounded text-[10px] font-bold !text-slate-600 uppercase tracking-wider"
+                                          className="px-2 py-1 hover:bg-dash-surface rounded text-[10px] font-bold !text-dash-textMuted uppercase tracking-wider"
                                         >
                                           Open
                                         </Link>
                                       )}
                                       {!isNew && (
-                                        <button 
+                                        <button
                                           onClick={(e) => handleMarkAsRead(notification.id)}
-                                          className="p-1 hover:bg-slate-50 rounded !text-slate-400 hover:!text-emerald-600 transition-colors"
+                                          className="p-1 hover:bg-dash-surface rounded !text-dash-textMuted hover:!text-emerald-600 transition-colors"
                                           title="Mark read"
                                         >
                                           <Check size={14} />
                                         </button>
                                       )}
-                                      <button 
+                                      <button
                                         onClick={(e) => handleArchive(notification.id, e)}
-                                        className="p-1 hover:bg-slate-50 rounded !text-slate-400 hover:!text-red-500 transition-colors"
+                                        className="p-1 hover:bg-dash-surface rounded !text-dash-textMuted hover:!text-red-500 transition-colors"
                                         title="Archive"
                                       >
                                         <Archive size={14} />
@@ -330,11 +328,11 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
               </div>
 
               {/* Footer */}
-              <div className="p-3 border-t border-[#EEF2F7] bg-slate-50/50">
-                <Link 
+              <div className="p-3 border-t border-dash-border bg-white">
+                <Link
                   href="/activities"
                   onClick={handleShowNotification}
-                  className="flex items-center justify-center py-2 w-full rounded-xl text-[12px] font-semibold !text-slate-600 hover:!text-slate-900 hover:bg-slate-100 transition-colors"
+                  className="flex items-center justify-center py-2 w-full rounded-xl text-[12px] font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors"
                 >
                   View All Notifications →
                 </Link>

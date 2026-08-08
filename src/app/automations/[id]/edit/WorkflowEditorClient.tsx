@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Trash2, ArrowUp, ArrowDown, Zap } from 'lucide-react';
 import { DashButton } from '@/components/dashboard-ui/Button';
-import { DashInput, DashTextarea, DashFormField } from '@/components/dashboard-ui/FormField';
+import { DashInput, DashFormField } from '@/components/dashboard-ui/FormField';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup
@@ -103,7 +103,6 @@ export function WorkflowEditorClient({
 }) {
   const router = useRouter();
   const [name, setName] = useState(workflow.name || '');
-  const [description, setDescription] = useState(workflow.description || '');
   const [triggerType, setTriggerType] = useState(workflow.trigger_type || 'contact_created');
   const [isActive, setIsActive] = useState(!!workflow.is_active);
   const [steps, setSteps] = useState<EditorStep[]>(() =>
@@ -165,7 +164,7 @@ export function WorkflowEditorClient({
       });
 
       const res = await saveWorkflowEditor({
-        id: workflow.id, name, description, trigger_type: triggerType, is_active: isActive, steps: finalSteps,
+        id: workflow.id, name, trigger_type: triggerType, is_active: isActive, steps: finalSteps,
       });
       if (!res.success) { toast.error(res.error); return; }
       toast.success('Workflow saved');
@@ -191,9 +190,6 @@ export function WorkflowEditorClient({
       <DashCard padding="default" className="space-y-4">
         <DashFormField label="Workflow name" required>
           <DashInput value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
-        </DashFormField>
-        <DashFormField label="Description">
-          <DashTextarea value={description} onChange={(e) => setDescription(e.target.value)} />
         </DashFormField>
         <DashFormField label="Trigger event" required>
           <Select value={triggerType} onValueChange={setTriggerType}>
