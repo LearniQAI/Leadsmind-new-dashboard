@@ -53,7 +53,19 @@ export const createAdminClient = () => {
       auth: {
         autoRefreshToken: false,
         persistSession: false
-      }
+      },
+      // Without this, supabase-js's GET requests go through Next.js's patched
+      // global fetch, which caches them by default in a Route Handler.
+      // executor.ts's processNextStep recurses by writing a row then
+      // immediately re-fetching it in the next call -- with the default
+      // cache, that re-fetch returned the pre-write snapshot every time,
+      // so a resumed wait step re-read its own already-cleared resume_at
+      // forever and tripped the loop-protection guard. Confirmed live: a
+      // wait -> send_email -> wait chain never advanced past the first wait
+      // until this was added.
+      global: {
+        fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' } as RequestInit),
+      },
     }
   );
 }

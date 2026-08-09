@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { requireAuth } from '@/lib/auth';
 import { ProfileSidebar } from '@/components/crm/ProfileSidebar';
 import { ProfileContent } from '@/components/crm/ProfileContent';
-import { KycStatusPanel } from '@/components/crm/KycStatusPanel';
 import { DashButton } from '@/components/dashboard-ui/Button';
 
 /**
@@ -73,7 +72,7 @@ export default async function ContactProfilePage({ params }: ContactProfilePageP
             </div>
           </div>
 
-          {/* 360 Layout */}
+          {/* Profile Layout */}
           <div className="flex-1 flex flex-col lg:flex-row gap-6 px-6 pb-10">
             {/* 1. Sidebar (280px) */}
             <ProfileSidebar contact={contact} />
@@ -85,9 +84,6 @@ export default async function ContactProfilePage({ params }: ContactProfilePageP
               notes={notes}
               tasks={tasks}
             />
-
-            {/* 3. KYC Status Dashboard Panel (320px) */}
-            <KycStatusPanel contact={contact} />
           </div>
         </div>
       </Wrapper>

@@ -90,6 +90,33 @@ export async function POST(req: NextRequest) {
       return new NextResponse('<Response></Response>', { status: 200, headers: { 'Content-Type': 'text/xml' } });
     }
 
+    // SMS opt-out/opt-in — checked before any other command (ENROL, AI relay,
+    // etc.) since a STOP reply must always win regardless of what else the
+    // contact is mid-flow on. No equivalent existed for SMS prior to the
+    // Task 42 bulk-sender (email has global_suppression_list); this is the
+    // phone-side counterpart, gating bulk_sms_campaigns dispatch.
+    const normalizedBody = body.trim().toUpperCase();
+    if (['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'].includes(normalizedBody)) {
+      await supabaseAdmin
+        .from('contacts')
+        .update({ sms_opt_out: true, sms_opt_out_at: new Date().toISOString() })
+        .eq('id', contact.id);
+      return new NextResponse(
+        '<Response><Message>You have been unsubscribed from SMS messages and will not receive further texts. Reply START to resubscribe.</Message></Response>',
+        { status: 200, headers: { 'Content-Type': 'text/xml' } }
+      );
+    }
+    if (['START', 'UNSTOP', 'YES'].includes(normalizedBody)) {
+      await supabaseAdmin
+        .from('contacts')
+        .update({ sms_opt_out: false, sms_opt_out_at: null })
+        .eq('id', contact.id);
+      return new NextResponse(
+        '<Response><Message>You have been resubscribed to SMS messages.</Message></Response>',
+        { status: 200, headers: { 'Content-Type': 'text/xml' } }
+      );
+    }
+
     // Intercept "ENROL" command for WhatsApp AI self-service registration
     if (body.trim().toUpperCase().startsWith('ENROL')) {
       const { data: courses } = await supabaseAdmin
