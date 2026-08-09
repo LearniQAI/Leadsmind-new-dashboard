@@ -12,6 +12,7 @@ interface NavRailProps {
   onSelectModule: (moduleId: string) => void;
   onToggleCollapse: () => void;
   onHoverModule: (moduleId: string | null) => void;
+  onNavigate?: () => void;
 }
 
 const NavRail: React.FC<NavRailProps> = ({
@@ -23,6 +24,7 @@ const NavRail: React.FC<NavRailProps> = ({
   onSelectModule,
   onToggleCollapse,
   onHoverModule,
+  onNavigate,
 }) => {
   // Widths must stay in literal-string sync with src/lib/nav/sidebarWidth.ts
   // (RAIL_COLLAPSED_WIDTH=72, RAIL_EXPANDED_WIDTH=208) — Tailwind can't pick up
@@ -41,6 +43,7 @@ const NavRail: React.FC<NavRailProps> = ({
           activeItemId={activeItemId}
           onSelectModule={onSelectModule}
           onHoverModule={onHoverModule}
+          onNavigate={onNavigate}
         />
       ))}
 

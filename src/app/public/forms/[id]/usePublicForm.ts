@@ -14,10 +14,19 @@ export interface PublicFormStep {
   type: 'standard' | 'conditional' | 'completion';
 }
 
+export interface FormVariantSchema {
+  id: string;
+  name: string;
+  is_control: boolean;
+  traffic_weight: number;
+  field_overrides: Record<string, { label?: string }>;
+}
+
 export interface FormSchema {
   id: string;
   name: string;
   fields: PublicFieldSchema[];
+  variants?: FormVariantSchema[];
   config: {
     steps?: PublicFormStep[];
     logicRules?: LogicRule[];
@@ -28,6 +37,39 @@ export interface FormSchema {
     sessionExpirationDays?: number;
     partialSubmissionBehavior?: string;
   };
+}
+
+// A/B testing: sticky per-visitor variant assignment via cookie. Weighted
+// random on first view, then reused on every subsequent view/submission so
+// a visitor never flips between variants mid-session or on return visits.
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function setCookie(name: string, value: string, days: number) {
+  if (typeof document === 'undefined') return;
+  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function assignVariant(formId: string, variants?: FormVariantSchema[]): string | null {
+  if (typeof window === 'undefined' || !variants || variants.length === 0) return null;
+  const cookieName = `lm_variant_${formId}`;
+  const existing = getCookie(cookieName);
+  if (existing && variants.some(v => v.id === existing)) return existing;
+
+  const totalWeight = variants.reduce((sum, v) => sum + (v.traffic_weight || 0), 0) || variants.length;
+  let r = Math.random() * totalWeight;
+  let picked = variants[0].id;
+  for (const v of variants) {
+    const w = v.traffic_weight || 1;
+    if (r < w) { picked = v.id; break; }
+    r -= w;
+  }
+  setCookie(cookieName, picked, 180);
+  return picked;
 }
 
 export function usePublicForm(
@@ -60,8 +102,23 @@ export function usePublicForm(
 
   const logicRules: LogicRule[] = schema?.config?.logicRules || [];
   const progressBarType = schema?.config?.progressBarType || 'percentage';
-  const allFields: PublicFieldSchema[] = schema?.fields || [];
   const progressPercent = steps.length > 1 ? Math.round((stepIndex / (steps.length - 1)) * 100) : 0;
+
+  // A/B testing: assign once per mount (schema is fully server-loaded before
+  // this component ever renders, so it's safe to resolve synchronously).
+  const [variantId] = useState<string | null>(() => assignVariant(formId, schema?.variants));
+  const activeVariant = useMemo(
+    () => schema?.variants?.find(v => v.id === variantId) || null,
+    [schema, variantId]
+  );
+  const allFields: PublicFieldSchema[] = useMemo(() => {
+    const base = schema?.fields || [];
+    if (!activeVariant || !activeVariant.field_overrides) return base;
+    return base.map(f => {
+      const override = activeVariant.field_overrides[f.id];
+      return override?.label ? { ...f, label: override.label } : f;
+    });
+  }, [schema, activeVariant]);
 
   // Persistence and Auto-save hook
   const persistence = useFormPersistence({
@@ -95,8 +152,8 @@ export function usePublicForm(
   // Analytics Tracking Integration
   const tracker = useMemo(() => {
     if (!formId || !workspaceId) return null;
-    return new (require('@/lib/analytics/AnalyticsTracker').AnalyticsTracker)(formId, workspaceId);
-  }, [formId, workspaceId]);
+    return new (require('@/lib/analytics/AnalyticsTracker').AnalyticsTracker)(formId, workspaceId, variantId || undefined);
+  }, [formId, workspaceId, variantId]);
 
   // Initialization: fetch prefill, capture attribution, and evaluate hidden fields
   useEffect(() => {
@@ -259,7 +316,8 @@ export function usePublicForm(
       stepsCompleted: steps.length,
       attribution,
       isReturningContact: !!returningContact,
-      contactToken: searchParams.get('lm_token')
+      contactToken: searchParams.get('lm_token'),
+      variantId: variantId || undefined
     });
 
     setSubmitting(false);

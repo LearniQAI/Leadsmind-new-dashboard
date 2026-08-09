@@ -59,6 +59,15 @@ const DashBoardSidebar = () => {
     setIsCollapse(next);
   };
 
+  // Clicking a sub-link should always collapse the rail back to icon-only,
+  // same as the manual toggle — even if the user had previously expanded it
+  // on purpose, since picking a destination is a stronger signal than that
+  // earlier expand-by-choice.
+  const handleSubLinkNavigate = () => {
+    userExpandedRef.current = false;
+    setIsCollapse(true);
+  };
+
   // "True" active module — what the rail's own selected/highlighted state shows.
   // Never affected by hover; only by an actual click-to-pin or real navigation.
   const activeModuleId = manualModuleId ?? activeNav?.moduleId ?? null;
@@ -146,12 +155,20 @@ const DashBoardSidebar = () => {
             onSelectModule={setManualModuleId}
             onToggleCollapse={handleToggleCollapse}
             onHoverModule={setHoveredModuleId}
+            onNavigate={handleSubLinkNavigate}
           />
           {/* Gated on hasSubNav (not just previewModule?.items) so this never
               mounts while the rail is collapsed — collapsed mode has its own
               per-icon CSS flyout inside NavRail; rendering both at once is what
               produced two overlapping "module" panels on hover. */}
-          {hasSubNav && <NavSubPanel module={previewModule} pathname={pathName} activeItemId={activeNav?.itemId} />}
+          {hasSubNav && (
+            <NavSubPanel
+              module={previewModule}
+              pathname={pathName}
+              activeItemId={activeNav?.itemId}
+              onNavigate={handleSubLinkNavigate}
+            />
+          )}
         </div>
 
         {/* Mobile: rail modules as an accordion, no second column */}

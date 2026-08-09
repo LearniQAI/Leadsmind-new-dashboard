@@ -404,40 +404,333 @@ export async function deletePartialSubmission(formId: string, partialId: string)
  }
 }
 
-// ── /forms/[id]/analytics and /forms/[id]/ab-testing — pure read
-// surfaces, no write operations exist on either page today. ──
+// ── /forms/[id]/analytics — page load is 'read'. Real numbers computed
+// from form_analytics_events (view/field_focus/field_complete/abandon,
+// written by AnalyticsTracker on every public form render) and
+// form_submissions (source of truth for conversions). form_analytics_events
+// carries variant_id already, so per-variant breakdown reuses the same rows
+// the A/B testing page reads. ──
 
-export async function getFormAnalyticsAccessData(formId: string) {
+export async function getFormAnalyticsData(formId: string, days: number = 30) {
  try {
   try {
    await requireFormAccess(formId, 'read');
   } catch (accessError: any) {
    return { error: accessError.message || 'Unauthorized' };
   }
+
   const adminSupabase = createAdminClient();
-  const { data, error } = await adminSupabase.from('forms').select('name, id').eq('id', formId).single();
-  if (error) throw error;
-  return { data };
+  const { data: form, error: formError } = await adminSupabase
+   .from('forms')
+   .select('id, name, fields')
+   .eq('id', formId)
+   .single();
+  if (formError) throw formError;
+  if (!form) return { error: 'Form not found.' };
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const [eventsRes, submissionsRes] = await Promise.all([
+   adminSupabase
+    .from('form_analytics_events')
+    .select('event_type, field_id, session_id, variant_id, metadata, created_at')
+    .eq('form_id', formId)
+    .gte('created_at', since),
+   adminSupabase
+    .from('form_submissions')
+    .select('id, submitted_at, variant_id')
+    .eq('form_id', formId)
+    .gte('submitted_at', since),
+  ]);
+  if (eventsRes.error) throw eventsRes.error;
+  if (submissionsRes.error) throw submissionsRes.error;
+
+  const events = eventsRes.data || [];
+  const submissions = submissionsRes.data || [];
+
+  const viewEvents = events.filter(e => e.event_type === 'view');
+  const uniqueVisitorSessions = new Set(viewEvents.map(e => e.session_id));
+  const views = viewEvents.length;
+  const uniqueVisitors = uniqueVisitorSessions.size;
+  const totalSubmissions = submissions.length;
+  const conversionRate = views > 0 ? Math.round((totalSubmissions / views) * 1000) / 10 : 0;
+
+  // Time series: submissions per day over the range
+  const dayBuckets: Record<string, { date: string; views: number; submissions: number }> = {};
+  for (let i = days - 1; i >= 0; i--) {
+   const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+   const key = d.toISOString().slice(0, 10);
+   dayBuckets[key] = { date: key, views: 0, submissions: 0 };
+  }
+  for (const e of viewEvents) {
+   const key = String(e.created_at).slice(0, 10);
+   if (dayBuckets[key]) dayBuckets[key].views += 1;
+  }
+  for (const s of submissions) {
+   const key = String(s.submitted_at).slice(0, 10);
+   if (dayBuckets[key]) dayBuckets[key].submissions += 1;
+  }
+  const timeSeries = Object.values(dayBuckets);
+
+  // Field-level drop-off: focus vs complete counts per field, from real
+  // field_focus/field_complete events. A field focused often but rarely
+  // completed is where visitors are abandoning.
+  const fieldNames: Record<string, string> = {};
+  for (const f of (form.fields as any[]) || []) {
+   fieldNames[f.id] = f.label || f.id;
+  }
+  const focusCounts: Record<string, number> = {};
+  const completeCounts: Record<string, number> = {};
+  const timeSpentTotals: Record<string, { total: number; count: number }> = {};
+  for (const e of events) {
+   if (e.event_type === 'field_focus' && e.field_id) {
+    focusCounts[e.field_id] = (focusCounts[e.field_id] || 0) + 1;
+   }
+   if (e.event_type === 'field_complete' && e.field_id) {
+    completeCounts[e.field_id] = (completeCounts[e.field_id] || 0) + 1;
+    const ms = e.metadata?.timeSpentMs;
+    if (typeof ms === 'number' && ms > 0) {
+     const bucket = timeSpentTotals[e.field_id] || { total: 0, count: 0 };
+     bucket.total += ms;
+     bucket.count += 1;
+     timeSpentTotals[e.field_id] = bucket;
+    }
+   }
+  }
+  const fieldDropoff = Object.keys(focusCounts)
+   .map(fieldId => {
+    const focused = focusCounts[fieldId];
+    const completed = completeCounts[fieldId] || 0;
+    const dropoffRate = focused > 0 ? Math.round(((focused - completed) / focused) * 1000) / 10 : 0;
+    const avgTime = timeSpentTotals[fieldId] ? timeSpentTotals[fieldId].total / timeSpentTotals[fieldId].count / 1000 : null;
+    return {
+     fieldId,
+     fieldName: fieldNames[fieldId] || fieldId,
+     focused,
+     completed,
+     dropoffRate,
+     avgTimeSeconds: avgTime !== null ? Math.round(avgTime * 10) / 10 : null,
+    };
+   })
+   .filter(f => f.focused >= 3) // needs a minimal sample to be meaningful
+   .sort((a, b) => b.dropoffRate - a.dropoffRate)
+   .slice(0, 8);
+
+  // Average completion time: submit timestamp - view timestamp, joined by session.
+  const viewTimeBySession: Record<string, number> = {};
+  for (const e of viewEvents) {
+   const t = new Date(e.created_at).getTime();
+   if (!viewTimeBySession[e.session_id] || t < viewTimeBySession[e.session_id]) {
+    viewTimeBySession[e.session_id] = t;
+   }
+  }
+  const submitEvents = events.filter(e => e.event_type === 'submit');
+  const completionDurations: number[] = [];
+  for (const s of submitEvents) {
+   const startedAt = viewTimeBySession[s.session_id];
+   if (startedAt) {
+    const dur = new Date(s.created_at).getTime() - startedAt;
+    if (dur > 0 && dur < 1000 * 60 * 60 * 6) completionDurations.push(dur); // discard outliers beyond 6h (tab left open)
+   }
+  }
+  const avgCompletionSeconds = completionDurations.length > 0
+   ? Math.round(completionDurations.reduce((a, b) => a + b, 0) / completionDurations.length / 1000)
+   : null;
+
+  return {
+   data: {
+    form: { id: form.id, name: form.name },
+    range: { days },
+    kpis: { views, uniqueVisitors, submissions: totalSubmissions, conversionRate },
+    timeSeries,
+    fieldDropoff,
+    avgCompletionSeconds,
+   },
+  };
  } catch (error: any) {
-  logger.error({ err: error }, 'get.form.analytics.access.failed');
-  return { error: 'Failed to load form. Please try again.' };
+  logger.error({ err: error }, 'get.form.analytics.failed');
+  return { error: 'Failed to load analytics. Please try again.' };
  }
 }
 
-export async function getFormAbTestingAccessData(formId: string) {
+// ── /forms/[id]/ab-testing — page load and stats are 'read'; create/update/
+// delete are 'write'-gated. Variants are stored in form_variants (page_variants
+// from the funnel/page builder is FK-bound to public.pages and unrelated to
+// forms, so it can't be reused here). Views come from form_analytics_events
+// (event_type='view', variant_id set by AnalyticsTracker); submissions/
+// conversions come directly from form_submissions.variant_id, which is more
+// reliable than the client-fired 'submit' event since it's written
+// server-side at insert time. ──
+
+export async function getFormVariantsData(formId: string, days: number = 30) {
  try {
   try {
    await requireFormAccess(formId, 'read');
   } catch (accessError: any) {
    return { error: accessError.message || 'Unauthorized' };
   }
+
   const adminSupabase = createAdminClient();
-  const { data, error } = await adminSupabase.from('forms').select('name, id').eq('id', formId).single();
+  const { data: form, error: formError } = await adminSupabase
+   .from('forms')
+   .select('id, name')
+   .eq('id', formId)
+   .single();
+  if (formError) throw formError;
+  if (!form) return { error: 'Form not found.' };
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const [variantsRes, viewEventsRes, submissionsRes] = await Promise.all([
+   adminSupabase
+    .from('form_variants')
+    .select('*')
+    .eq('form_id', formId)
+    .order('created_at', { ascending: true }),
+   adminSupabase
+    .from('form_analytics_events')
+    .select('variant_id')
+    .eq('form_id', formId)
+    .eq('event_type', 'view')
+    .gte('created_at', since),
+   adminSupabase
+    .from('form_submissions')
+    .select('id, variant_id')
+    .eq('form_id', formId)
+    .gte('submitted_at', since),
+  ]);
+  if (variantsRes.error) throw variantsRes.error;
+  if (viewEventsRes.error) throw viewEventsRes.error;
+  if (submissionsRes.error) throw submissionsRes.error;
+
+  const variants = variantsRes.data || [];
+  const viewCounts: Record<string, number> = {};
+  for (const e of viewEventsRes.data || []) {
+   const key = e.variant_id || 'unassigned';
+   viewCounts[key] = (viewCounts[key] || 0) + 1;
+  }
+  const submissionCounts: Record<string, number> = {};
+  for (const s of submissionsRes.data || []) {
+   const key = s.variant_id || 'unassigned';
+   submissionCounts[key] = (submissionCounts[key] || 0) + 1;
+  }
+
+  const variantStats = variants.map(v => {
+   const views = viewCounts[v.id] || 0;
+   const submissions = submissionCounts[v.id] || 0;
+   const conversionRate = views > 0 ? Math.round((submissions / views) * 1000) / 10 : 0;
+   return { ...v, views, submissions, conversionRate };
+  });
+
+  let winnerId: string | null = null;
+  if (variantStats.length >= 2) {
+   const withSample = variantStats.filter(v => v.views >= 20);
+   if (withSample.length >= 2) {
+    const best = withSample.reduce((a, b) => (b.conversionRate > a.conversionRate ? b : a));
+    winnerId = best.id;
+   }
+  }
+
+  return { data: { form, variants: variantStats, winnerId } };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.form.variants.failed');
+  return { error: 'Failed to load A/B testing data. Please try again.' };
+ }
+}
+
+export async function createFormVariant(formId: string, name: string, trafficWeight: number, fieldOverrides: Record<string, { label?: string }> = {}) {
+ try {
+  try {
+   await requireFormAccess(formId, 'write');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+  if (!name?.trim()) return { error: 'Variant name is required' };
+
+  const adminSupabase = createAdminClient();
+  const { data: form } = await adminSupabase.from('forms').select('workspace_id').eq('id', formId).single();
+  if (!form) return { error: 'Form not found' };
+
+  const { data: existing, error: existingError } = await adminSupabase
+   .from('form_variants')
+   .select('id')
+   .eq('form_id', formId)
+   .eq('status', 'active');
+  if (existingError) throw existingError;
+
+  const rowsToInsert: any[] = [];
+  // First variant created also seeds an "Original (Control)" variant so
+  // traffic starts splitting immediately rather than leaving 100% on an
+  // untracked, variant-less form.
+  if (!existing || existing.length === 0) {
+   rowsToInsert.push({
+    workspace_id: form.workspace_id,
+    form_id: formId,
+    name: 'Original (Control)',
+    is_control: true,
+    traffic_weight: 50,
+    field_overrides: {},
+    status: 'active',
+   });
+  }
+  rowsToInsert.push({
+   workspace_id: form.workspace_id,
+   form_id: formId,
+   name: name.trim(),
+   is_control: false,
+   traffic_weight: Math.min(100, Math.max(1, Math.round(trafficWeight))) || 50,
+   field_overrides: fieldOverrides || {},
+   status: 'active',
+  });
+
+  const { data, error } = await adminSupabase.from('form_variants').insert(rowsToInsert).select();
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  logger.error({ err: error }, 'get.form.abtesting.access.failed');
-  return { error: 'Failed to load form. Please try again.' };
+  logger.error({ err: error }, 'create.form.variant.failed');
+  return { error: error.message || 'Failed to create variant' };
+ }
+}
+
+export async function updateFormVariantWeight(formId: string, variantId: string, trafficWeight: number) {
+ try {
+  try {
+   await requireFormAccess(formId, 'write');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase
+   .from('form_variants')
+   .update({ traffic_weight: Math.min(100, Math.max(1, Math.round(trafficWeight))), updated_at: new Date().toISOString() })
+   .eq('id', variantId)
+   .eq('form_id', formId);
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  logger.error({ err: error }, 'update.form.variant.failed');
+  return { error: 'Failed to update variant' };
+ }
+}
+
+export async function archiveFormVariant(formId: string, variantId: string) {
+ try {
+  try {
+   await requireFormAccess(formId, 'write');
+  } catch (accessError: any) {
+   return { error: accessError.message || 'Unauthorized' };
+  }
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase
+   .from('form_variants')
+   .update({ status: 'archived', updated_at: new Date().toISOString() })
+   .eq('id', variantId)
+   .eq('form_id', formId);
+  if (error) throw error;
+  return { success: true };
+ } catch (error: any) {
+  logger.error({ err: error }, 'archive.form.variant.failed');
+  return { error: 'Failed to archive variant' };
  }
 }
 
