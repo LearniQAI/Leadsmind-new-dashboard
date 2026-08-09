@@ -22,7 +22,6 @@ const dashboardNav: NavModule[] = [
       { id: 2, label: "Tasks", icon: "fa-light fa-circle-check", link: "/tasks", permission: "dashboard" },
       { id: 21, label: "Projects", icon: "icon-projects", link: "/projects", permission: "business" },
       { id: 23, label: "Automations", icon: "fa-light fa-bolt", link: "/automations", permission: "automation" },
-
     ],
   },
   {

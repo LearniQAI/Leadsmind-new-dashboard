@@ -12,6 +12,7 @@ describe("resolveActiveNav — every inventoried dashboard route resolves to its
     ["/quotes", "crm-sales"],
     ["/tasks", "crm-sales"],
     ["/projects", "crm-sales"],
+    ["/automations", "crm-sales"],
 
     ["/campaigns", "marketing"],
     ["/funnels", "marketing"],
@@ -48,7 +49,6 @@ describe("resolveActiveNav — every inventoried dashboard route resolves to its
     ["/calendar", "commerce-ops"],
     ["/calendar/waitlist", "commerce-ops"],
     ["/calendar/instant-meet", "commerce-ops"],
-    ["/automations", "commerce-ops"],
 
     ["/courses", "learning"],
     ["/student", "learning"],
