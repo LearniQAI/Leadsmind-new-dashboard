@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { BookOpen } from 'lucide-react';
 
 interface Article {
   id: string;
@@ -165,7 +166,9 @@ export default function KnowledgeBaseTab({ workspaceId }: KnowledgeBaseTabProps)
       <div className="space-y-3">
         {articles.length === 0 ? (
           <div className="bg-white border border-dashed border-dash-border p-8 rounded-xl text-center flex flex-col items-center gap-3">
-            <span className="text-[28px] opacity-55">📝</span>
+            <div className="w-11 h-11 rounded-2xl bg-dash-accent/10 flex items-center justify-center">
+              <BookOpen size={18} className="text-dash-accent" />
+            </div>
             <span className="text-[13px] font-semibold !text-dash-text">No articles added yet</span>
             <p className="text-[12px] !text-dash-textMuted max-w-[280px]">
               LENA has no information to learn from. Add articles containing details about your services or FAQs.

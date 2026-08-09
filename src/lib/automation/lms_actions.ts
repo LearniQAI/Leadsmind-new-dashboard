@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/sms";
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
+import { getWorkspaceEmailConfig } from "@/lib/email/resolveConfig";
 
 /**
  * Handles course enrollment with parametric configuration.
@@ -52,20 +53,16 @@ export async function lms_enroll(workspaceId: string, contactId: string, config:
 
   // Welcome Email Integration
   if (welcome_email_enabled && contact.email) {
-    const { data: workspace } = await supabase
-      .from("workspaces")
-      .select("resend_api_key, email_from_name, email_from_address")
-      .eq("id", workspaceId)
-      .single();
+    const emailConfig = await getWorkspaceEmailConfig(workspaceId);
 
     await sendEmail({
       to: contact.email,
       subject: config.email_subject || "Welcome to the Course!",
       html: config.email_body || `<p>Hello ${contact.first_name || "Student"},</p><p>You have been enrolled in the course. Start learning now!</p>`,
       config: {
-        apiKey: workspace?.resend_api_key,
-        fromEmail: workspace?.email_from_address,
-        fromName: workspace?.email_from_name,
+        apiKey: emailConfig?.apiKey,
+        fromEmail: emailConfig?.fromEmail,
+        fromName: emailConfig?.fromName,
       }
     } as any).catch(err => console.error("Failed to send welcome email:", err));
   }
@@ -162,20 +159,16 @@ export async function lms_enroll_bundle(workspaceId: string, contactId: string, 
 
   if (contact) {
     if (welcome_email_enabled && contact.email) {
-      const { data: workspace } = await supabase
-        .from("workspaces")
-        .select("resend_api_key, email_from_name, email_from_address")
-        .eq("id", workspaceId)
-        .single();
+      const emailConfig = await getWorkspaceEmailConfig(workspaceId);
 
       await sendEmail({
         to: contact.email,
         subject: config.email_subject || `Welcome to ${bundle.name}!`,
         html: config.email_body || `<p>Hello ${contact.first_name || "Student"},</p><p>You have been enrolled in the bundle <b>${bundle.name}</b>.</p>`,
         config: {
-          apiKey: workspace?.resend_api_key,
-          fromEmail: workspace?.email_from_address,
-          fromName: workspace?.email_from_name,
+          apiKey: emailConfig?.apiKey,
+          fromEmail: emailConfig?.fromEmail,
+          fromName: emailConfig?.fromName,
         }
       } as any).catch(err => console.error("Failed to send welcome email:", err));
     }
@@ -266,20 +259,16 @@ export async function lms_revoke_access(workspaceId: string, contactId: string, 
     const alarmMsg = config.alarm_message || `Important: Your access is expiring soon. Please contact support.`;
     
     if (contact.email) {
-      const { data: workspace } = await supabase
-        .from("workspaces")
-        .select("resend_api_key, email_from_name, email_from_address")
-        .eq("id", workspaceId)
-        .single();
+      const emailConfig = await getWorkspaceEmailConfig(workspaceId);
 
       await sendEmail({
         to: contact.email,
         subject: "LMS Access Expiring Alert",
         html: `<p>Hello ${contact.first_name || "Student"},</p><p>${alarmMsg}</p>`,
         config: {
-          apiKey: workspace?.resend_api_key,
-          fromEmail: workspace?.email_from_address,
-          fromName: workspace?.email_from_name,
+          apiKey: emailConfig?.apiKey,
+          fromEmail: emailConfig?.fromEmail,
+          fromName: emailConfig?.fromName,
         }
       } as any).catch(err => console.error("Alarm email failed:", err));
     }

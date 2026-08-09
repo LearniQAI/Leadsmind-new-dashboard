@@ -337,8 +337,7 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                   </div>
                   <div className="text-right shrink-0 pl-8">
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] !text-primary mb-2">Invoice</p>
-                    <p className="text-lg font-bold !text-slate-900 tracking-tight mb-3">{selectedInvoice.invoice_number}</p>
-                    <StatusBadge status={selectedInvoice.status} />
+                    <p className="text-lg font-bold !text-slate-900 tracking-tight">{selectedInvoice.invoice_number}</p>
                   </div>
                 </div>
 
@@ -364,7 +363,9 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                     </div>
                     <div>
                       <p className={`text-[10px] font-bold uppercase tracking-[0.2em] !${DOCUMENT_MUTED_TEXT} mb-2`}>Due Date</p>
-                      <p className="text-sm font-semibold !text-red">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), 'dd MMM yyyy') : 'On Receipt'}</p>
+                      <p className={`text-sm font-semibold ${selectedInvoice.due_date && new Date(selectedInvoice.due_date) < new Date() ? '!text-red' : '!text-slate-900'}`}>
+                        {selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), 'dd MMM yyyy') : 'On Receipt'}
+                      </p>
                     </div>
                   </div>
                 </div>

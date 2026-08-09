@@ -32,15 +32,9 @@ export const EmailAutomationService = {
     // 1. Fetch workspace custom email configs if they exist using getWorkspaceEmailConfig
     const providerConfig = await getWorkspaceEmailConfig(workspaceId);
 
-    const { data: ws } = await supabase
-      .from('workspaces')
-      .select('resend_api_key, email_from_name, email_from_address')
-      .eq('id', workspaceId)
-      .maybeSingle();
-
-    const apiKey = providerConfig?.apiKey || ws?.resend_api_key || process.env.RESEND_API_KEY;
-    const fromName = providerConfig?.fromName || ws?.email_from_name || config.fromName || 'LeadsMind';
-    const fromEmail = providerConfig?.fromEmail || ws?.email_from_address || config.fromEmail || 'onboarding@resend.dev';
+    const apiKey = providerConfig?.apiKey || process.env.RESEND_API_KEY;
+    const fromName = providerConfig?.fromName || config.fromName || 'LeadsMind';
+    const fromEmail = providerConfig?.fromEmail || config.fromEmail || 'onboarding@resend.dev';
 
     if (!apiKey) {
       return { success: false, error: 'Email service Resend API Key is missing in workspace config.' };

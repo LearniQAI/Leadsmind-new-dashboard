@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/email';
 import { parsePersonalTokens } from '@/lib/builder/emailRenderer';
 import { buildUnsubscribeLink } from '@/lib/email/unsubscribeLink';
+import { decrypt } from '@/lib/encryption';
 import { PredictiveIntelligence } from '@/lib/intelligence/PredictiveIntelligence';
 import { Observability } from '@/lib/observability';
 import { logger } from '@/shared/logger';
@@ -53,14 +54,25 @@ export async function GET(req: Request) {
       .select('id, workspace_id, subject, body_html, from_email, from_name')
       .in('id', campaignIds);
 
+    // Batched equivalent of getWorkspaceEmailConfig() (src/lib/email/resolveConfig.ts)
+    // — that helper is per-workspace, and this worker processes a batch of jobs
+    // spanning multiple workspaces per run, so the encrypted-key lookup and decrypt
+    // are done here in one query to keep the existing N+1 avoidance.
     const workspaceIds = [...new Set(campaigns?.map(c => c.workspace_id) || [])];
-    const { data: workspaces } = await supabaseAdmin
-      .from('workspaces')
-      .select('id, resend_api_key, email_from_address')
-      .in('id', workspaceIds);
+    const { data: emailProviders } = await supabaseAdmin
+      .from('workspace_email_providers')
+      .select('workspace_id, encrypted_api_key, from_email, from_name')
+      .in('workspace_id', workspaceIds);
 
     const campaignsMap = new Map(campaigns?.map((c: any) => [c.id, c]));
-    const workspacesMap = new Map(workspaces?.map((w: any) => [w.id, w]));
+    const emailConfigMap = new Map((emailProviders || []).map((p: any) => {
+      try {
+        return [p.workspace_id, { apiKey: decrypt(p.encrypted_api_key), fromEmail: p.from_email, fromName: p.from_name }];
+      } catch (err) {
+        logger.error({ err, workspaceId: p.workspace_id }, 'cron.campaign_dispatch.email_provider_decrypt.failed');
+        return [p.workspace_id, null];
+      }
+    }));
 
     // Pre-fetch contacts
     const contactIds = jobs.map((j: any) => j.contact_id);
@@ -77,7 +89,7 @@ export async function GET(req: Request) {
     // 2. Process Jobs
     for (const job of jobs) {
       const campaign = campaignsMap.get(job.campaign_id);
-      const workspace = workspacesMap.get(job.workspace_id);
+      const emailConfig = emailConfigMap.get(job.workspace_id);
       const contact = contactsMap.get(job.contact_id);
 
       if (!campaign || !contact || !contact.email) {
@@ -85,8 +97,8 @@ export async function GET(req: Request) {
         continue;
       }
 
-      const apiKey = workspace?.resend_api_key || process.env.RESEND_API_KEY;
-      const fromEmail = campaign.from_email || workspace?.email_from_address || 'onboarding@resend.dev';
+      const apiKey = emailConfig?.apiKey || process.env.RESEND_API_KEY;
+      const fromEmail = campaign.from_email || emailConfig?.fromEmail || 'onboarding@resend.dev';
 
       // Predictive Scheduling Check
       const optimizedTime = await PredictiveIntelligence.getOptimizedSendTime(contact, now);

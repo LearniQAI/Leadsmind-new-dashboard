@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Users } from 'lucide-react';
 
 interface Agent {
   id: string;
@@ -181,7 +182,9 @@ export default function AgentsTab({ workspaceId }: AgentsTabProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {agents.length === 0 ? (
           <div className="bg-white border border-dashed border-dash-border p-8 rounded-xl text-center col-span-full flex flex-col items-center gap-3">
-            <span className="text-[28px] opacity-55">👤</span>
+            <div className="w-11 h-11 rounded-2xl bg-dash-accent/10 flex items-center justify-center">
+              <Users size={18} className="text-dash-accent" />
+            </div>
             <span className="text-[13px] font-semibold !text-dash-text">No support agents added</span>
             <p className="text-[12px] !text-dash-textMuted max-w-[280px]">
               Add live agents to take over conversations when visitors request human assistance.

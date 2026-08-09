@@ -240,7 +240,7 @@ export default function AppearanceTab({ workspaceId }: AppearanceTabProps) {
         <div className="w-[300px] h-[500px] bg-white rounded-[32px] border-[6px] border-dash-border shadow-2xl relative overflow-hidden flex flex-col">
           {/* Header */}
           <div className="bg-dash-surface px-4 py-3 flex items-center gap-2.5 border-b border-dash-border flex-shrink-0">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold text-white uppercase" style={{ backgroundColor: primaryColor }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-bold text-white uppercase" style={{ backgroundColor: primaryColor }}>
               {botName[0]}
             </div>
             <div>

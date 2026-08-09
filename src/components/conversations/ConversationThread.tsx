@@ -54,7 +54,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
           Select a <span className="text-dash-accent">thread</span>
         </h2>
         <p className="!text-dash-textMuted max-w-sm relative z-10 leading-relaxed text-[13.5px]">
-          Your unified communications command center. Select a conversation to start dominating the conversation.
+          Your unified communications hub. Select a conversation on the left to view its full message history.
         </p>
       </div>
     );

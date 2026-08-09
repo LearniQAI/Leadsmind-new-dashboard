@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { logger } from '@/shared/logger';
 
 // 1. Get email configuration and DNS verified states
@@ -10,22 +11,24 @@ export async function getEmailDiagnostics() {
     const wsId = await getCurrentWorkspaceId();
     if (!wsId) return { error: 'No active workspace context' };
     const supabase = await createServerClient();
-    
+
     const { data: ws, error } = await supabase
       .from('workspaces')
-      .select('custom_domain, email_from_address, email_from_name, resend_api_key')
+      .select('custom_domain')
       .eq('id', wsId)
       .single();
-      
+
     if (error) throw error;
-    
+
+    const emailConfig = await getWorkspaceEmailConfig(wsId);
+
     const hasCustomDomain = !!ws?.custom_domain;
-    const isResendConfigured = !!ws?.resend_api_key;
-    
+    const isResendConfigured = !!emailConfig?.apiKey;
+
     return {
       custom_domain: ws?.custom_domain || null,
-      email_from_address: ws?.email_from_address || 'onboarding@resend.dev',
-      email_from_name: ws?.email_from_name || 'LeadsMind',
+      email_from_address: emailConfig?.fromEmail || 'onboarding@resend.dev',
+      email_from_name: emailConfig?.fromName || 'LeadsMind',
       dns_status: {
         mx: hasCustomDomain ? 'active' : 'missing',
         dkim: hasCustomDomain ? 'verified' : 'unverified',
