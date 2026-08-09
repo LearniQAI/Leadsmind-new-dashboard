@@ -2,17 +2,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
   DialogTitle,
   DialogTrigger
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { DashButton } from "@/components/dashboard-ui/Button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { 
+import { Label } from "@/components/ui/label";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -22,6 +23,13 @@ import {
 import { toast } from 'sonner';
 import { createSupportTicket } from '@/app/actions/operations';
 import { LifeBuoy, Send } from 'lucide-react';
+
+const PRIORITIES = [
+  { value: 'low', label: 'Low - General Inquiry' },
+  { value: 'normal', label: 'Normal - Functional Issue' },
+  { value: 'high', label: 'High - System Blocker' },
+  { value: 'urgent', label: 'Urgent - Data Security / Loss' },
+];
 
 export default function SubmitTicketModal() {
   const [open, setOpen] = useState(false);
@@ -43,7 +51,7 @@ export default function SubmitTicketModal() {
     try {
       const res = await createSupportTicket(formData);
       if (res.error) throw new Error(res.error);
-      
+
       toast.success('Ticket submitted successfully to LeadsMind');
       setOpen(false);
       setFormData({ subject: '', message: '', priority: 'normal' });
@@ -58,53 +66,59 @@ export default function SubmitTicketModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest h-12 px-6 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2">
+        <DashButton variant="primary" className="gap-2">
           <LifeBuoy size={18} />
           Submit Ticket
-        </Button>
+        </DashButton>
       </DialogTrigger>
-      <DialogContent className="bg-[#0b0b1a] border-white/10 text-white max-w-lg rounded-3xl p-8">
+      <DialogContent className="bg-white border border-dash-border !text-dash-text max-w-lg rounded-2xl p-8 shadow-xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-black uppercase tracking-tighter">New Support Ticket</DialogTitle>
-          <p className="text-white/40 text-sm font-medium">Describe your issue and the LeadsMind team will get back to you shortly.</p>
+          <DialogTitle className="text-2xl font-bold tracking-tight !text-dash-text">
+            New Support <span className="text-dash-accent">Ticket</span>
+          </DialogTitle>
+          <p className="!text-dash-textMuted text-sm">Describe your issue and the LeadsMind team will get back to you shortly.</p>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Subject</label>
-            <Input 
+            <Label className="text-[12px] font-semibold !text-dash-textMuted">Subject</Label>
+            <Input
               value={formData.subject}
               onChange={(e) => setFormData({...formData, subject: e.target.value})}
               placeholder="e.g., Problem with Lead Sync"
-              className="bg-white/5 border-white/10 rounded-xl h-12 text-white font-bold placeholder:text-white/20 focus:border-primary/50"
+              className="h-12 border-dash-border rounded-xl"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Priority Level</label>
-            <select
+            <Label className="text-[12px] font-semibold !text-dash-textMuted">Priority Level</Label>
+            <Select
               value={formData.priority}
-              onChange={(e) => setFormData({...formData, priority: e.target.value})}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 h-12 text-white font-bold focus:border-primary/50 transition-all outline-none text-sm appearance-none"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1em' }}
+              onValueChange={(v) => setFormData({...formData, priority: v})}
             >
-              <option value="low" className="bg-[#0b0b1a]">Low - General Inquiry</option>
-              <option value="normal" className="bg-[#0b0b1a]">Normal - Functional Issue</option>
-              <option value="high" className="bg-[#0b0b1a]">High - System Blocker</option>
-              <option value="urgent" className="bg-[#0b0b1a]">Urgent - Data Security / Loss</option>
-            </select>
+              <SelectTrigger className="h-12 border-dash-border rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-dash-border rounded-xl shadow-lg">
+                {PRIORITIES.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Detailed Message</label>
-            <Textarea 
+            <Label className="text-[12px] font-semibold !text-dash-textMuted">Detailed Message</Label>
+            <Textarea
               value={formData.message}
               onChange={(e) => setFormData({...formData, message: e.target.value})}
               placeholder="Provide as much detail as possible..."
-              className="bg-white/5 border-white/10 rounded-xl min-h-[150px] text-white font-bold placeholder:text-white/20 focus:border-primary/50"
+              className="min-h-[150px] border-dash-border rounded-xl"
             />
           </div>
-          <Button 
-            type="submit" 
+          <DashButton
+            type="submit"
+            variant="primary"
+            size="lg"
             disabled={isSubmitting}
-            className="w-full bg-primary hover:bg-primary-dark text-white font-black uppercase tracking-widest h-14 rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2"
+            className="w-full mt-2"
           >
             {isSubmitting ? 'Submitting...' : (
               <>
@@ -112,7 +126,7 @@ export default function SubmitTicketModal() {
                 Send Ticket
               </>
             )}
-          </Button>
+          </DashButton>
         </form>
       </DialogContent>
     </Dialog>

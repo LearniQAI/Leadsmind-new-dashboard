@@ -119,21 +119,31 @@ function PaymentGatewaysContent() {
   const paypalConnected = isConnected('paypal');
   const paypalLabel = getLabel('paypal');
 
+  const totalConnected = [stripeConnected, paypalConnected, ...gateways.map(gw => isConnected(gw.name))].filter(Boolean).length;
+
   return (
     <Wrapper>
-      <div className="min-h-screen bg-white px-6 py-6 max-w-4xl mx-auto">
+      <div className="min-h-screen bg-white px-6 py-8 max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-[22px] font-bold !text-dash-text">
-            Payment <span className="text-dash-accent">Gateways</span>
-          </h1>
-          <p className="text-[12px] font-medium mt-1 !text-dash-textMuted">
-            Connect payment providers to automatically mark invoices as paid
-          </p>
+        <div className="mb-8 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-[24px] font-bold !text-dash-text tracking-tight">
+              Payment <span className="bg-gradient-to-r from-dash-accent to-[#7c5cff] bg-clip-text text-transparent">Gateways</span>
+            </h1>
+            <p className="text-[13px] font-medium mt-1.5 !text-dash-textMuted">
+              Connect payment providers to automatically mark invoices as paid
+            </p>
+          </div>
+          <div className="flex items-center gap-2 bg-dash-accent/5 border border-dash-accent/15 rounded-full px-3.5 py-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green" />
+            <span className="text-[12px] font-semibold !text-dash-text">
+              {totalConnected} connected
+            </span>
+          </div>
         </div>
 
         {/* Gateways Grid */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3.5">
           {/* Stripe — real Stripe Connect (OAuth), not the generic API-key modal */}
           <ConnectionCard
             name="Stripe"

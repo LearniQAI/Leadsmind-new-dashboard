@@ -284,59 +284,6 @@ export default function ConnectedAccountsPage() {
             )}
           </div>
 
-          {/* Absa */}
-          <div className="bg-white border border-dash-border rounded-xl p-5 flex items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: '#dc00001F' }}>
-                <span className="text-[11px] font-bold" style={{ color: '#dc0000' }}>AB</span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold !text-dash-text">
-                    Absa
-                  </span>
-                  <span className="bg-amber-50 border border-amber-200 text-amber-600 text-[10px] font-semibold rounded-full px-2 py-0.5">
-                    Registration Required
-                  </span>
-                </div>
-                <p className="text-[12px] mt-0.5 !text-dash-textMuted">
-                  Register at developer.absa.africa as an AISP — coming once approved
-                </p>
-              </div>
-            </div>
-            <button disabled
-              className="!text-dash-textMuted text-[11.5px] font-semibold rounded-lg px-4 py-2 cursor-not-allowed opacity-50 border border-dash-border">
-              Coming Soon
-            </button>
-          </div>
-
-          {/* Capitec */}
-          <div className="bg-white border border-dash-border rounded-xl p-5 flex items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: '#0033a01F' }}>
-                <span className="text-[11px] font-bold" style={{ color: '#0033a0' }}>CAP</span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold !text-dash-text">
-                    Capitec Business
-                  </span>
-                  <span className="bg-amber-50 border border-amber-200 text-amber-600 text-[10px] font-semibold rounded-full px-2 py-0.5">
-                    Pilot Programme
-                  </span>
-                </div>
-                <p className="text-[12px] mt-0.5 !text-dash-textMuted">
-                  Apply via openbanking@capitecbank.co.za — pilot access available
-                </p>
-              </div>
-            </div>
-            <button disabled
-              className="!text-dash-textMuted text-[11.5px] font-semibold rounded-lg px-4 py-2 cursor-not-allowed opacity-50 border border-dash-border">
-              Coming Soon
-            </button>
-          </div>
         </div>
 
         {/* CSV Upload Section */}
