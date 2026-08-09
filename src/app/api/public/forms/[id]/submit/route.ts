@@ -65,7 +65,7 @@ export async function POST(
       return corsError('Invalid request body', 400);
     }
 
-    const { data: formData, workspace_id, steps_completed, attribution, is_returning, contact_token, transaction_id, transaction_status, attachments } = body;
+    const { data: formData, workspace_id, steps_completed, attribution, is_returning, contact_token, transaction_id, transaction_status, attachments, variant_id } = body;
 
     if (!formData || typeof formData !== 'object') {
       return corsError('Submission data is required', 400);
@@ -92,6 +92,20 @@ export async function POST(
 
     const userAgent = req.headers.get('user-agent') || '';
     const sourceUrl = req.headers.get('referer') || '';
+
+    // Re-verify the client-supplied variant_id actually belongs to this form
+    // before trusting it for conversion attribution — a tampered client
+    // could otherwise stuff an arbitrary UUID into another form's stats.
+    let verifiedVariantId: string | null = null;
+    if (variant_id) {
+      const { data: variantRow } = await supabase
+        .from('form_variants')
+        .select('id')
+        .eq('id', variant_id)
+        .eq('form_id', id)
+        .maybeSingle();
+      verifiedVariantId = variantRow?.id || null;
+    }
 
     // Honeypot spam check
     const honeypot = formData.lm_hp_field;
@@ -425,7 +439,8 @@ export async function POST(
         attachments: parsedAttachments,
         transaction_id: transaction_id || null,
         transaction_status: transaction_status || (transaction_id ? 'processing' : 'pending'),
-        contact_sync_error: contactSyncError
+        contact_sync_error: contactSyncError,
+        variant_id: verifiedVariantId
       })
       .select('id')
       .single();

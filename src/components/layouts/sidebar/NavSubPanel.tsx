@@ -7,9 +7,10 @@ interface NavSubPanelProps {
   module: NavModule | undefined;
   pathname: string;
   activeItemId?: number;
+  onNavigate?: () => void;
 }
 
-const NavSubPanel: React.FC<NavSubPanelProps> = ({ module, pathname, activeItemId }) => {
+const NavSubPanel: React.FC<NavSubPanelProps> = ({ module, pathname, activeItemId, onNavigate }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -33,7 +34,7 @@ const NavSubPanel: React.FC<NavSubPanelProps> = ({ module, pathname, activeItemI
         </h2>
       </div>
       <div className="flex-1 overflow-y-auto no-scrollbar py-4 px-3">
-        <NavItemsList items={module.items} pathname={pathname} activeItemId={activeItemId} />
+        <NavItemsList items={module.items} pathname={pathname} activeItemId={activeItemId} onNavigate={onNavigate} />
       </div>
     </div>
   );

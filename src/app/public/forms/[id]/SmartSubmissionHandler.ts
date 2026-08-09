@@ -10,6 +10,7 @@ export interface SmartSubmissionPayload {
   attribution: AttributionData;
   isReturningContact: boolean;
   contactToken?: string | null;
+  variantId?: string;
 }
 
 export interface SmartSubmissionResult {
@@ -34,6 +35,7 @@ export async function submitSmartForm(
         attribution: payload.attribution,
         is_returning: payload.isReturningContact,
         contact_token: payload.contactToken,
+        variant_id: payload.variantId || null,
       }),
     });
 

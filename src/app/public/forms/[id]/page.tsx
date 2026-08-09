@@ -36,7 +36,7 @@ export default async function PublicFormPage({ params, searchParams }: Props) {
     .single();
 
   const isPublished = form?.status === 'published';
-  let schema = null;
+  let schema: any = null;
   let finalError = error || !isPublished;
 
   if (isPublished && form) {
@@ -62,6 +62,17 @@ export default async function PublicFormPage({ params, searchParams }: Props) {
 
     if (!schema) {
       schema = sanitizeFormSchema(form);
+    }
+
+    // A/B testing: attach active variants so the client can assign a
+    // sticky variant per visitor and apply its field-label overrides.
+    if (schema) {
+      const { data: variants } = await supabase
+        .from('form_variants')
+        .select('id, name, is_control, traffic_weight, field_overrides')
+        .eq('form_id', params.id)
+        .eq('status', 'active');
+      schema.variants = variants || [];
     }
   }
 

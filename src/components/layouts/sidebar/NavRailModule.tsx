@@ -12,6 +12,7 @@ interface NavRailModuleProps {
   activeItemId?: number;
   onSelectModule: (moduleId: string) => void;
   onHoverModule: (moduleId: string | null) => void;
+  onNavigate?: () => void;
 }
 
 // Fixed-position, viewport-clamped flyout for the collapsed icon rail. The
@@ -29,6 +30,7 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
   activeItemId,
   onSelectModule,
   onHoverModule,
+  onNavigate,
 }) => {
   const isDirectLink = Boolean(module.link) && !module.items;
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -132,7 +134,12 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
           <h3 className="text-[11px] font-black uppercase tracking-wider !text-dash-text px-2 pb-2">
             {module.label}
           </h3>
-          <NavItemsList items={module.items} pathname={pathname} activeItemId={activeItemId} />
+          <NavItemsList
+            items={module.items}
+            pathname={pathname}
+            activeItemId={activeItemId}
+            onNavigate={onNavigate}
+          />
         </div>
       )}
     </div>
