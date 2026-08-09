@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useTransition } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { Plus, Layers } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pipeline, PipelineStage, Opportunity } from '@/types/crm';
 import { PipelineStats } from './components/PipelineStats';
 import { KanbanColumn } from './components/KanbanColumn';
@@ -136,18 +137,22 @@ export default function PipelinesClient({
               <h1 className="text-[10px] font-bold !text-dash-accent uppercase tracking-wide leading-none mb-2">
                 Pipelines
               </h1>
-              <div className="flex items-center gap-2">
-                <select
+              <div className="flex items-center gap-2.5">
+                <Select
                   value={activePipeline.id}
-                  onChange={(e) => router.push(`/pipelines?pipelineId=${e.target.value}`)}
-                  className="bg-transparent text-[24px] font-extrabold font-display !text-dash-text tracking-tight leading-none focus:outline-none cursor-pointer hover:text-dash-accent transition-colors appearance-none min-w-[140px]"
+                  onValueChange={(value) => router.push(`/pipelines?pipelineId=${value}`)}
                 >
-                  {pipelines.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-auto w-auto gap-1.5 border-0 bg-transparent p-0 shadow-none text-[18px] font-bold font-display !text-dash-text tracking-tight leading-none hover:text-dash-accent transition-colors focus:outline-none focus:ring-0 [&>svg]:opacity-60 [&>svg]:!text-dash-textMuted">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
+                    {pipelines.map(p => (
+                      <SelectItem key={p.id} value={p.id} className="text-[13px] font-semibold">
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <div className="w-1.5 h-1.5 rounded-full bg-green animate-pulse"></div>
               </div>
             </div>
@@ -177,7 +182,7 @@ export default function PipelinesClient({
               className="h-11 px-6 rounded-[12px] bg-dash-accent text-white hover:bg-dash-accent/90 text-[12px] font-bold transition-all flex items-center gap-2.5 shadow-xl shadow-dash-accent/20 active:scale-[0.98]"
             >
               <Plus size={12} />
-              Launch deal
+              Add deal
             </button>
           </div>
         </div>

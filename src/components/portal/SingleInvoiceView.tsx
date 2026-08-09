@@ -154,108 +154,104 @@ export default function SingleInvoiceView({
         <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-3 gap-12 items-start animate-in fade-in duration-300">
           {/* Left Column: Document */}
           <div className="lg:col-span-2 space-y-8">
-             <div className="bg-white text-[#04091a] p-12 md:p-16 rounded-[var(--r24)] shadow-2xl printable-area font-sans border border-gray-100">
-                <div className="flex justify-between items-start mb-16">
-                   <div>
-                      <div className="text-2xl font-space font-black tracking-tighter mb-4 text-[var(--accent)]">
-                        {invoice.workspace?.name || 'LEADSMIND'}
+             <div className="bg-white !text-slate-900 p-12 md:p-16 rounded-[var(--r24)] shadow-2xl printable-area font-sans border border-gray-100">
+                {/* Header: brand lockup + invoice meta, separated by a single rule.
+                    No status badge here — that indicator stays in dashboard/portal
+                    chrome only, never on the downloadable/printable document. */}
+                <div className="flex justify-between items-start pb-9 mb-9 border-b border-slate-100">
+                   <div className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0 mt-0.5">
+                        <ShieldCheck className="h-5 w-5 text-white" />
                       </div>
-                      <div className={`text-[10px] font-bold uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} space-y-1`}>
-                         <p>{invoice.workspace?.invoice_settings?.company_address || invoice.workspace?.registered_address || 'Address not configured'}</p>
-                         <p>{invoice.workspace?.invoice_settings?.company_email || 'billing@leadsmind.io'}</p>
+                      <div>
+                        <div className="text-lg font-bold uppercase tracking-tight !text-slate-900">
+                          Leadsmind <span className="!text-primary">HQ</span>
+                        </div>
+                        <div className={`text-xs ${DOCUMENT_MUTED_TEXT} leading-relaxed mt-1`}>
+                           <p className={`!${DOCUMENT_MUTED_TEXT}`}>{invoice.workspace?.invoice_settings?.company_address || invoice.workspace?.registered_address || 'Address not configured'}</p>
+                           <p className={`!${DOCUMENT_MUTED_TEXT}`}>{invoice.workspace?.invoice_settings?.company_email || 'billing@leadsmind.io'}</p>
+                        </div>
                       </div>
                    </div>
-                   <div className="text-right">
-                      <h1 className="text-5xl font-black uppercase tracking-tighter mb-2 text-gray-900 leading-none">Invoice</h1>
-                      <p className="text-xs font-black text-[var(--accent)] uppercase tracking-[0.2em]">{invoice.invoice_number}</p>
-                      <div className="mt-4">
-                         <span className={cn(
-                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
-                            invoice.status === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"
-                         )}>
-                            {invoice.status}
-                         </span>
-                      </div>
+                   <div className="text-right shrink-0 pl-8">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] !text-primary mb-2">Invoice</p>
+                      <p className="text-lg font-bold !text-slate-900 tracking-tight">{invoice.invoice_number}</p>
                    </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-12 mb-16">
-                   <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                      <span className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} block mb-3`}>Billed To</span>
-                      <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900 mb-1">
+                {/* Billed To / dates — plain columns, no boxed cards */}
+                <div className="flex justify-between items-start gap-10 mb-12">
+                   <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-[0.2em] !${DOCUMENT_MUTED_TEXT} mb-3`}>Billed To</p>
+                      <p className="text-base font-semibold !text-slate-900 mb-1">
                          {invoice.contact?.first_name} {invoice.contact?.last_name || ''}
-                      </h2>
-                      <p className={`text-xs font-bold ${DOCUMENT_MUTED_TEXT}`}>{invoice.contact?.email}</p>
+                      </p>
+                      <p className={`text-sm !${DOCUMENT_MUTED_TEXT}`}>{invoice.contact?.email}</p>
                    </div>
-                   <div className="grid grid-cols-2 gap-4">
+
+                   <div className="flex gap-10 text-right shrink-0">
                       <div>
-                         <span className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} block mb-1`}>Issue Date</span>
-                         <span className="text-sm font-black text-gray-900">{invoice.created_at ? format(new Date(invoice.created_at), 'dd MMM yyyy') : 'N/A'}</span>
+                         <p className={`text-[10px] font-bold uppercase tracking-[0.2em] !${DOCUMENT_MUTED_TEXT} mb-2`}>Issue Date</p>
+                         <p className="text-sm font-semibold !text-slate-900">{invoice.created_at ? format(new Date(invoice.created_at), 'dd MMM yyyy') : 'N/A'}</p>
                       </div>
                       <div>
-                         <span className={`text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} block mb-1`}>Due Date</span>
-                         <span className="text-sm font-black text-rose-600">{invoice.due_date ? format(new Date(invoice.due_date), 'dd MMM yyyy') : 'On Receipt'}</span>
+                         <p className={`text-[10px] font-bold uppercase tracking-[0.2em] !${DOCUMENT_MUTED_TEXT} mb-2`}>Due Date</p>
+                         <p className={`text-sm font-semibold ${invoice.due_date && new Date(invoice.due_date) < new Date() ? '!text-red' : '!text-slate-900'}`}>
+                            {invoice.due_date ? format(new Date(invoice.due_date), 'dd MMM yyyy') : 'On Receipt'}
+                         </p>
                       </div>
                    </div>
                 </div>
 
                 {(settings.show_line_items ?? true) ? (
-                  <table className="w-full mb-16 border-collapse">
+                  <div className="overflow-x-auto mb-10">
+                  <table className="w-full min-w-[500px] border-collapse">
                      <thead>
-                        <tr className="border-b-2 border-gray-100">
-                           <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-left`}>Description</th>
-                           <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Qty</th>
-                           <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Rate</th>
-                           <th className={`py-4 text-[9px] font-black uppercase tracking-widest ${DOCUMENT_MUTED_TEXT} text-right`}>Amount (ZAR)</th>
+                        <tr className="border-b-2 border-slate-900/90">
+                           <th className={`py-3 text-[10px] font-bold uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} text-left`}>Description</th>
+                           <th className={`py-3 text-[10px] font-bold uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} text-right`}>Qty</th>
+                           <th className={`py-3 text-[10px] font-bold uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} text-right`}>Rate</th>
+                           <th className={`py-3 text-[10px] font-bold uppercase tracking-[0.2em] ${DOCUMENT_MUTED_TEXT} text-right`}>Amount</th>
                         </tr>
                      </thead>
-                     <tbody className="divide-y divide-gray-50 text-gray-800">
+                     <tbody className="divide-y divide-slate-100">
                         {(invoice.items || []).map((item: any, idx: number) => {
                           const rate = Number(item.unit_price ?? item.rate ?? 0);
                           const quantity = Number(item.quantity ?? 1);
                           const amount = rate * quantity;
                           return (
                             <tr key={idx}>
-                               <td className="py-6 font-bold text-sm text-gray-900">{item.description}</td>
-                               <td className={`py-6 text-right text-sm ${DOCUMENT_MUTED_TEXT} font-bold`}>{quantity}</td>
-                               <td className={`py-6 text-right text-sm ${DOCUMENT_MUTED_TEXT} font-bold`}>R {rate.toLocaleString('en-ZA')}</td>
-                               <td className="py-6 text-right font-black text-base text-gray-900 font-space">R {amount.toLocaleString('en-ZA')}</td>
+                               <td className="py-4 text-sm font-medium !text-slate-900">{item.description}</td>
+                               <td className={`py-4 text-right text-sm ${DOCUMENT_MUTED_TEXT} tabular-nums`}>{quantity}</td>
+                               <td className={`py-4 text-right text-sm ${DOCUMENT_MUTED_TEXT} tabular-nums`}>R {rate.toLocaleString('en-ZA')}</td>
+                               <td className="py-4 text-right text-sm font-semibold !text-slate-900 tabular-nums">R {amount.toLocaleString('en-ZA')}</td>
                             </tr>
                           );
                         })}
                      </tbody>
                   </table>
+                  </div>
                 ) : (
-                  <div className={`mb-16 p-6 bg-gray-50 border border-gray-100 rounded-2xl text-xs ${DOCUMENT_MUTED_TEXT} font-medium`}>
+                  <div className={`mb-10 text-xs ${DOCUMENT_MUTED_TEXT} font-medium`}>
                     Detailed line items are hidden by the billing administrator. Only totals are displayed below.
                   </div>
                 )}
 
-                <div className="flex justify-end pt-8 border-t-2 border-gray-100">
-                   <div className="w-64 space-y-3">
-                      <div className={`flex justify-between ${DOCUMENT_MUTED_TEXT} text-xs font-bold`}>
+                <div className="flex justify-end">
+                   <div className="w-72 space-y-3">
+                      <div className={`flex justify-between items-center ${DOCUMENT_MUTED_TEXT} text-sm`}>
                          <span>Subtotal</span>
-                         <span>R {(Number(invoice.subtotal || invoice.total_amount) || 0).toLocaleString('en-ZA')}</span>
+                         <span className="font-medium !text-slate-900 tabular-nums">R {(Number(invoice.subtotal || invoice.total_amount) || 0).toLocaleString('en-ZA')}</span>
                       </div>
-                      <div className={`flex justify-between ${DOCUMENT_MUTED_TEXT} text-xs font-bold pb-3 border-b border-gray-50`}>
-                         <span>VAT</span>
-                         <span>R {(Number(invoice.tax_total) || 0).toLocaleString('en-ZA')}</span>
+                      <div className={`flex justify-between items-center ${DOCUMENT_MUTED_TEXT} text-sm pb-3 border-b border-slate-100`}>
+                         <span>Tax</span>
+                         <span className="font-medium !text-slate-900 tabular-nums">R {(Number(invoice.tax_total) || 0).toLocaleString('en-ZA')}</span>
                       </div>
-                      <div className="flex justify-between items-end pt-2">
-                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)]">Grand Total</span>
-                         <span className="text-3xl font-black font-space text-gray-950">R {(Number(invoice.total_amount) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                      <div className="flex justify-between items-end pt-1">
+                         <span className="text-[10px] font-bold uppercase tracking-[0.25em] !text-primary mb-1">Total Due</span>
+                         <span className="text-3xl font-bold !text-slate-900 tracking-tight tabular-nums">R {(Number(invoice.total_amount) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                       </div>
                    </div>
-                </div>
-                
-                <div className="mt-16 pt-8 border-t border-gray-50 flex items-center justify-between">
-                  <div className={`flex items-center gap-3 ${DOCUMENT_MUTED_TEXT}`}>
-                     <ShieldCheck size={32} className="text-emerald-500" />
-                     <div>
-                       <p className="text-[9px] font-black uppercase tracking-widest">Verified Merchant</p>
-                       <p className="text-[8px] font-bold font-mono">Document ID: {invoice.id}</p>
-                     </div>
-                  </div>
                 </div>
              </div>
           </div>

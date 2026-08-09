@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
+import { Palette, BookOpen, Users, MessagesSquare, Code2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import AppearanceTab from './components/AppearanceTab';
 import KnowledgeBaseTab from './components/KnowledgeBaseTab';
 import AgentsTab from './components/AgentsTab';
@@ -15,11 +17,11 @@ export default function LenaChatSettingsPage() {
   const [activeTab, setActiveTab] = useState<'widget' | 'knowledge' | 'agents' | 'conversations' | 'embed'>('widget');
 
   const tabs = [
-    { id: 'widget', label: 'Widget Appearance' },
-    { id: 'knowledge', label: 'Knowledge Base' },
-    { id: 'agents', label: 'Agents' },
-    { id: 'conversations', label: 'Conversations' },
-    { id: 'embed', label: 'Embed Code' }
+    { id: 'widget', label: 'Widget Appearance', icon: Palette },
+    { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen },
+    { id: 'agents', label: 'Agents', icon: Users },
+    { id: 'conversations', label: 'Conversations', icon: MessagesSquare },
+    { id: 'embed', label: 'Embed Code', icon: Code2 }
   ] as const;
 
   return (
@@ -38,20 +40,22 @@ export default function LenaChatSettingsPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-dash-border mb-6 gap-6">
+        <div className="flex items-center mb-6 bg-white border border-dash-border rounded-2xl px-6 overflow-x-auto no-scrollbar shadow-sm">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`pb-3 text-[13px] font-medium transition-colors motion-reduce:transition-none relative ${
+              className={cn(
+                "flex items-center gap-2.5 px-6 py-4 text-[12px] font-bold transition-all relative whitespace-nowrap",
                 activeTab === tab.id
-                  ? 'text-dash-accent'
-                  : '!text-dash-textMuted hover:!text-dash-text'
-              }`}
+                  ? "text-dash-accent"
+                  : "!text-dash-textMuted hover:!text-dash-text"
+              )}
             >
+              <tab.icon size={13} />
               {tab.label}
               {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-dash-accent" />
+                <div className="absolute bottom-0 left-6 right-6 h-[2px] bg-dash-accent rounded-t-full" />
               )}
             </button>
           ))}

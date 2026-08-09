@@ -9,6 +9,7 @@
 // Engine B's WorkflowEngine.ts/AutomationLogger.ts.
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
+import { getWorkspaceEmailConfig } from "@/lib/email/resolveConfig";
 import { sendSMS } from "@/lib/sms";
 import { calculateLeadScore } from "../../app/actions/automation";
 import { enrollStudent, updateProgress } from "../../app/actions/lms";
@@ -30,12 +31,11 @@ export const AutomationActions = {
 
   if (!contact?.email) throw new Error("Contact has no email address");
 
-  // Fetch workspace settings
-  const { data: workspace } = await supabase
-   .from("workspaces")
-   .select("resend_api_key, email_from_name, email_from_address")
-   .eq("id", workspaceId)
-   .single();
+  // Workspace's own Resend key/from-address, as configured via the
+  // Settings > Email Provider UI (workspace_email_providers, encrypted) —
+  // not the legacy plaintext workspaces.resend_api_key/email_from_address
+  // columns, which no code path ever writes to.
+  const emailConfig = await getWorkspaceEmailConfig(workspaceId);
 
   const isHtml = config.body?.startsWith('<') || config.isHtml;
 
@@ -45,9 +45,9 @@ export const AutomationActions = {
    react: !isHtml ? (config.body || `Hello ${contact.first_name}, this is an automated message.`) : undefined,
    html: isHtml ? config.body : undefined,
    config: {
-    apiKey: workspace?.resend_api_key,
-    fromEmail: workspace?.email_from_address,
-    fromName: workspace?.email_from_name,
+    apiKey: emailConfig?.apiKey,
+    fromEmail: emailConfig?.fromEmail,
+    fromName: emailConfig?.fromName,
    }
   } as any);
  },
@@ -626,9 +626,11 @@ export const AutomationActions = {
 
     const { data: workspace } = await supabase
       .from('workspaces')
-      .select('name, resend_api_key, email_from_name, email_from_address')
+      .select('name')
       .eq('id', workspaceId)
       .single();
+
+    const emailConfig = await getWorkspaceEmailConfig(workspaceId);
 
     // Same Liquid-style token replacement convention as send_webhook, extended
     // with an {{invoice.field}} namespace so the subject/body can reference the
@@ -695,9 +697,9 @@ export const AutomationActions = {
       html: bodyHtml,
       attachments: [{ filename: `${invoiceLabel}.pdf`, content: pdfBuffer }],
       config: {
-        apiKey: workspace?.resend_api_key,
-        fromEmail: workspace?.email_from_address,
-        fromName: workspace?.email_from_name,
+        apiKey: emailConfig?.apiKey,
+        fromEmail: emailConfig?.fromEmail,
+        fromName: emailConfig?.fromName,
       },
     });
 
