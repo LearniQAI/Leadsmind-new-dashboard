@@ -15,6 +15,7 @@ import { StepConfigForm } from '@/components/automation/StepConfigForm';
 import { RouteBranchEditor, SplitEditor, RouteBranch } from '@/components/automation/BranchListEditor';
 import { ReferenceData } from '@/components/automation/EntityPickers';
 import { saveWorkflowEditor } from '@/app/actions/automation_editor';
+import { cn } from '@/lib/utils';
 
 // Curated to only the trigger_type values that some real code path actually
 // calls EventBus.publishEvent(...) with (re-confirmed by grepping every
@@ -194,11 +195,24 @@ export function WorkflowEditorClient({
         <DashFormField label="Trigger event" required>
           <Select value={triggerType} onValueChange={setTriggerType}>
             <SelectTrigger className="h-11 border-dash-border rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl max-h-80">
-              {TRIGGER_GROUPS.map((group) => (
+            <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl max-h-80 p-1.5">
+              {TRIGGER_GROUPS.map((group, gIdx) => (
                 <SelectGroup key={group.label}>
-                  <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider !text-dash-textMuted">{group.label}</div>
-                  {group.options.map((o) => <SelectItem key={o.value} value={o.value} className="text-[13px]">{o.label}</SelectItem>)}
+                  <div className={cn(
+                    "px-2.5 pb-1.5 text-[10.5px] font-extrabold uppercase tracking-wider !text-dash-accent",
+                    gIdx > 0 && "mt-2 pt-2.5 border-t border-dash-border/70"
+                  )}>
+                    {group.label}
+                  </div>
+                  {group.options.map((o) => (
+                    <SelectItem
+                      key={o.value}
+                      value={o.value}
+                      className="text-[13.5px] font-semibold !text-dash-text rounded-lg py-2 focus:!bg-dash-accent/10 focus:!text-dash-accent data-[state=checked]:!text-dash-accent data-[state=checked]:font-bold"
+                    >
+                      {o.label}
+                    </SelectItem>
+                  ))}
                 </SelectGroup>
               ))}
             </SelectContent>
@@ -221,8 +235,16 @@ export function WorkflowEditorClient({
               <span className="text-[11px] font-bold !text-dash-textMuted w-14 shrink-0">Step {idx + 1}</span>
               <Select value={step.type} onValueChange={(v) => updateStep(idx, { type: v, config: {}, branches: undefined, targets: undefined })}>
                 <SelectTrigger className="h-10 flex-1 border-dash-border rounded-xl text-[13px]"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl max-h-80">
-                  {STEP_TYPES.map((a) => <SelectItem key={a.value} value={a.value} className="text-[13px]">{a.label}</SelectItem>)}
+                <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl max-h-80 p-1.5">
+                  {STEP_TYPES.map((a) => (
+                    <SelectItem
+                      key={a.value}
+                      value={a.value}
+                      className="text-[13.5px] font-semibold !text-dash-text rounded-lg py-2 focus:!bg-dash-accent/10 focus:!text-dash-accent data-[state=checked]:!text-dash-accent data-[state=checked]:font-bold"
+                    >
+                      {a.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <div className="flex items-center gap-1 shrink-0">
