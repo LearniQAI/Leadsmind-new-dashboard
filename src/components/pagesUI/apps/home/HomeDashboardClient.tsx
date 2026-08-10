@@ -28,6 +28,7 @@ import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 import { createClient } from "@/lib/supabase/client";
+import { formatCurrency } from "@/lib/utils";
 import { SalesPipelineSummary } from "./SalesPipelineSummary";
 import type { DashboardMetrics } from "@/types/analytics.types";
 
@@ -201,13 +202,13 @@ const HomeDashboardClient = ({
     yaxis: {
       labels: {
         style: { colors: "#64748B", fontSize: "11px", fontWeight: 500 },
-        formatter: (v) => `$${Math.round(v).toLocaleString()}`
+        formatter: (v) => formatCurrency(Math.round(v))
       }
     },
     tooltip: {
       theme: "light",
       x: { show: true },
-      y: { formatter: (v) => `$${v.toLocaleString()}` }
+      y: { formatter: (v) => formatCurrency(v) }
     }
   };
 
@@ -360,7 +361,7 @@ const HomeDashboardClient = ({
         <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
           <div className="flex flex-col">
             <span className="text-[11px] font-medium !text-slate-400">Total Revenue</span>
-            <span className="text-[14px] font-bold !text-[#0F172A]">${stats.revenue.toLocaleString()}</span>
+            <span className="text-[14px] font-bold !text-[#0F172A]">{formatCurrency(stats.revenue)}</span>
           </div>
           <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
           <div className="flex flex-col">
@@ -436,7 +437,7 @@ const HomeDashboardClient = ({
               </div>
             </div>
             <div className="text-[36px] font-bold !text-[#0F172A] tracking-tight leading-none">
-              ${stats.revenue.toLocaleString()}
+              {formatCurrency(stats.revenue)}
             </div>
             <div className="text-[14px] font-bold !text-[#0F172A] mt-2">Total Revenue</div>
             <div className="text-[12px] !text-slate-500 mt-0.5">Total paid invoices</div>
@@ -793,7 +794,7 @@ const HomeDashboardClient = ({
                         </div>
                       </div>
                       <div className="text-[14px] font-bold !text-[#2563EB] flex-shrink-0">
-                        ${Number(opp.value).toLocaleString()}
+                        {formatCurrency(Number(opp.value))}
                       </div>
                     </div>
                   ))

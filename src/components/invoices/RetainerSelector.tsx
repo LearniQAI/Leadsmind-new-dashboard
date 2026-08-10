@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, ChevronDown, Check, CreditCard } from 'lucide-react';
 import { getRetainerBalance } from '@/app/actions/retainers';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface RetainerSelectorProps {
   contactId: string;
@@ -36,7 +36,7 @@ const RetainerSelector: React.FC<RetainerSelectorProps> = ({
           <Wallet className="h-4 w-4 text-[var(--accent2)]" />
           <span className="text-[10px] font-bold text-[var(--t1)] uppercase tracking-widest">Retainer Credit</span>
         </div>
-        <span className="text-sm font-bold text-[var(--accent2)] font-space">${balance.toLocaleString()}</span>
+        <span className="text-sm font-bold text-[var(--accent2)] font-space">{formatCurrency(balance)}</span>
       </div>
       
       <p className="text-[10px] text-[var(--t3)] leading-relaxed mb-4">

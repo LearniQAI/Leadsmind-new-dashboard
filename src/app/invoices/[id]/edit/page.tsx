@@ -36,7 +36,7 @@ export default async function EditInvoicePage({ params }: EditInvoicePageProps) 
     company_address: '',
     company_email: '',
     company_phone: '',
-    currency: 'USD'
+    currency: 'ZAR'
   };
 
   return (

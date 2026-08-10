@@ -5,6 +5,14 @@ export function cn(...inputs: ClassValue[]) {
  return twMerge(clsx(inputs))
 }
 
+// LeadsMind's default/official currency is ZAR (South African Rand) — every
+// invoice-writing path in this codebase already defaults to it (payfast
+// webhooks, completeFunnelOrder.ts, etc). Money display should match that
+// default rather than falling back to USD or a hardcoded "$".
+export function formatCurrency(amount: number, currency?: string | null) {
+ return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: currency || 'ZAR' }).format(amount || 0)
+}
+
 export function formatBytes(bytes: number, decimals = 2) {
  if (!+bytes) return '0 Bytes'
 

@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { saveInvoice, updateInvoice, sendInvoiceNow } from '@/app/actions/finance';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -89,7 +89,7 @@ export function InvoiceBuilder({
      notes: initialData?.notes || settings?.default_notes || '',
      terms: initialData?.terms || settings?.default_terms || '',
      status: initialData?.status || 'draft',
-     currency: initialData?.currency || settings?.currency || 'USD'
+     currency: initialData?.currency || settings?.currency || 'ZAR'
    }
   });
 
@@ -99,6 +99,7 @@ export function InvoiceBuilder({
   });
 
   const watchItems = watch("items");
+  const watchCurrency = watch("currency");
   const subtotal = watchItems.reduce((acc, item) => acc + (item.quantity * item.unit_amount), 0);
   const total = subtotal; // Simplified, can add tax later
 
@@ -314,7 +315,7 @@ export function InvoiceBuilder({
               </div>
               <div className="col-span-3 lg:col-span-2 flex justify-end gap-2">
                <div className="h-11 flex items-center px-4 bg-white/[0.02] border border-white/5 rounded-xl text-xs font-black text-white/40">
-                 ${(watchItems[index]?.quantity * watchItems[index]?.unit_amount || 0).toLocaleString()}
+                 {formatCurrency(watchItems[index]?.quantity * watchItems[index]?.unit_amount || 0, watchCurrency)}
                </div>
                <Button
                  type="button"
@@ -346,16 +347,16 @@ export function InvoiceBuilder({
          <div className="space-y-4 relative z-10">
            <div className="flex justify-between items-center text-white/40">
             <span className="text-[10px] font-black uppercase tracking-widest">Gross Amount</span>
-            <span className="text-sm font-black">${subtotal.toLocaleString()}</span>
+            <span className="text-sm font-black">{formatCurrency(subtotal, watchCurrency)}</span>
            </div>
            <div className="flex justify-between items-center text-white/40 pb-6 border-b border-white/5">
             <span className="text-[10px] font-black uppercase tracking-widest">Tax (0%)</span>
-            <span className="text-sm font-black">$0.00</span>
+            <span className="text-sm font-black">{formatCurrency(0, watchCurrency)}</span>
            </div>
            <div className="pt-4 space-y-1">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary block">Total Balance Due</span>
             <div className="text-5xl font-black tracking-tighter text-white">
-              ${total.toLocaleString()}
+              {formatCurrency(total, watchCurrency)}
             </div>
            </div>
          </div>

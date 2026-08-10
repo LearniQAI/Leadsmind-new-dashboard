@@ -9,7 +9,7 @@ import ContactSelector from './ContactSelector';
 import { DashFormField, DashInput, DashTextarea } from '@/components/dashboard-ui/FormField';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { LineItem, calculateInvoiceTotals } from '@/lib/invoicing/calculations';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InvoiceFormContainerProps {
@@ -196,7 +196,10 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
               <span>Processing...</span>
             </>
           ) : (
-            'Finalise document'
+            <>
+              <Send className="h-4 w-4" />
+              <span>Save & Send</span>
+            </>
           )}
         </DashButton>
       </div>

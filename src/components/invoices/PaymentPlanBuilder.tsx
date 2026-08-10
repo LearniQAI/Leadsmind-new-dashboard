@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Layers, Calendar, Plus, Trash2, ArrowRight } from 'lucide-react';
 import { PremiumInput } from '@/components/ui/premium-inputs';
 import { addDays, format } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 
 interface PaymentPlanBuilderProps {
   totalAmount: number;
@@ -91,7 +92,7 @@ const PaymentPlanBuilder: React.FC<PaymentPlanBuilderProps> = ({
                </div>
             </div>
             <div className="text-right">
-               <p className="text-sm font-bold text-[var(--accent2)] font-space">${item.amount_due.toLocaleString()}</p>
+               <p className="text-sm font-bold text-[var(--accent2)] font-space">{formatCurrency(item.amount_due)}</p>
                <p className="text-[9px] text-emerald-500 font-black uppercase tracking-widest">unpaid</p>
             </div>
           </div>

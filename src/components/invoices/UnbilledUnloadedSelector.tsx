@@ -5,7 +5,7 @@ import {
   FileCheck, Clock, Receipt, Plus, 
   ChevronDown, ChevronUp, AlertCircle 
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface UnbilledUnloadedSelectorProps {
   onImport: (items: any[]) => void;
@@ -90,7 +90,7 @@ const UnbilledUnloadedSelector: React.FC<UnbilledUnloadedSelectorProps> = ({
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-black text-[var(--t1)]">${entry.amount.toLocaleString()}</p>
+                  <p className="text-xs font-black text-[var(--t1)]">{formatCurrency(entry.amount)}</p>
                 </div>
               </div>
             ))}
