@@ -14,18 +14,18 @@ export function SaveStateIndicator({ state }: SaveStateIndicatorProps) {
   const config = {
     saving: {
       text: 'Saving progress...',
-      icon: <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />,
-      className: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
+      icon: <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />,
+      className: 'bg-blue-50 text-blue-700 border-blue-200',
     },
     saved: {
       text: 'Progress saved',
-      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />,
-      className: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
+      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />,
+      className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     },
     error: {
       text: 'Auto-save failed',
-      icon: <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />,
-      className: 'bg-rose-500/10 text-rose-300 border-rose-500/20',
+      icon: <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />,
+      className: 'bg-rose-50 text-rose-700 border-rose-200',
     },
   }[state] || {
     text: '',

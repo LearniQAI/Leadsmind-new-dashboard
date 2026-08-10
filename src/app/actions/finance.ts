@@ -286,7 +286,8 @@ export async function sendInvoiceNow(invoiceId: string) {
   }
  } catch (e) {
   logger.error({ err: e, invoiceId, workspaceId }, 'finance.invoice.send_now.failed');
-  return { success: false, error: 'Failed to send invoice' };
+  const message = e instanceof Error ? e.message : 'Failed to send invoice';
+  return { success: false, error: message };
  }
 
  safeRevalidatePath('/invoices');

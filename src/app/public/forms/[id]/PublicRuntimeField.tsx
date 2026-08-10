@@ -25,10 +25,10 @@ export function PublicRuntimeField({ field, value, error, onChange, onFocus, onB
     width: '100%',
     boxSizing: 'border-box',
     padding: '10px 14px',
-    background: 'rgba(255,255,255,0.05)',
-    border: `1px solid ${error ? '#ef4444' : 'rgba(255,255,255,0.1)'}`,
+    background: '#f8fafc',
+    border: `1px solid ${error ? '#ef4444' : '#e2e8f0'}`,
     borderRadius: 12,
-    color: '#eef2ff',
+    color: '#0f172a',
     fontSize: 13,
     fontFamily: 'DM Sans, sans-serif',
     outline: 'none',
@@ -41,7 +41,7 @@ export function PublicRuntimeField({ field, value, error, onChange, onFocus, onB
     fontWeight: 900,
     textTransform: 'uppercase',
     letterSpacing: '0.1em',
-    color: '#94a3c8',
+    color: '#64748b',
     marginBottom: 6,
     fontFamily: 'Space Grotesk, sans-serif',
   };
@@ -114,12 +114,12 @@ export function PublicRuntimeField({ field, value, error, onChange, onFocus, onB
             >
               <option value="" disabled>{field.placeholder || 'Select an option'}</option>
               {opts.map((opt, i) => (
-                <option key={i} value={opt} style={{ background: '#0b132c', color: '#eef2ff' }}>
+                <option key={i} value={opt} style={{ background: '#ffffff', color: '#0f172a' }}>
                   {opt}
                 </option>
               ))}
             </select>
-            <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#4a5a82', pointerEvents: 'none', fontSize: 11 }}>▼</span>
+            <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none', fontSize: 11 }}>▼</span>
           </div>
         );
       }
@@ -135,7 +135,7 @@ export function PublicRuntimeField({ field, value, error, onChange, onFocus, onB
             />
             <label
               htmlFor={inputId}
-              style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer', textTransform: 'none', letterSpacing: 'normal', color: '#eef2ff', fontSize: 13, fontWeight: 500 }}
+              style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer', textTransform: 'none', letterSpacing: 'normal', color: '#0f172a', fontSize: 13, fontWeight: 500 }}
             >
               {field.label}
               {field.required && <span style={{ color: '#ef4444', marginLeft: 4 }}>*</span>}
@@ -193,7 +193,7 @@ export function PublicRuntimeField({ field, value, error, onChange, onFocus, onB
       {renderInput()}
 
       {field.helpText && !error && (
-        <p style={{ margin: 0, fontSize: 11, color: '#4a5a82', fontFamily: 'DM Sans, sans-serif' }}>
+        <p style={{ margin: 0, fontSize: 11, color: '#94a3b8', fontFamily: 'DM Sans, sans-serif' }}>
           {field.helpText}
         </p>
       )}

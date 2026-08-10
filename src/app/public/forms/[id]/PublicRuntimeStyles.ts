@@ -10,11 +10,11 @@ export const containerStyle: React.CSSProperties = {
 export const cardStyle: React.CSSProperties = {
   maxWidth: 600,
   margin: '0 auto',
-  background: 'rgba(12, 21, 53, 0.9)',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: '#ffffff',
+  border: '1px solid #e6e9f2',
   borderRadius: 20,
   padding: '32px 28px',
-  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
+  boxShadow: '0 20px 40px -20px rgba(15,23,42,0.15)',
 };
 
 export const headingStyle: React.CSSProperties = {
@@ -23,13 +23,13 @@ export const headingStyle: React.CSSProperties = {
   fontSize: 22,
   textTransform: 'uppercase',
   letterSpacing: '-0.02em',
-  color: '#eef2ff',
+  color: '#101B4C',
   margin: 0,
 };
 
 export const primaryBtnStyle: React.CSSProperties = {
   padding: '12px 28px',
-  background: '#2563eb',
+  background: 'linear-gradient(135deg, #101B4C 0%, #2563eb 60%, #0EA5E9 100%)',
   color: '#fff',
   border: 'none',
   borderRadius: 12,
@@ -44,9 +44,9 @@ export const primaryBtnStyle: React.CSSProperties = {
 
 export const secondaryBtnStyle: React.CSSProperties = {
   padding: '12px 20px',
-  background: 'rgba(255,255,255,0.03)',
-  color: 'rgba(255,255,255,0.6)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  background: '#f1f5f9',
+  color: '#475569',
+  border: '1px solid #e2e8f0',
   borderRadius: 12,
   fontFamily: 'Space Grotesk, sans-serif',
   fontWeight: 900,

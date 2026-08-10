@@ -34,51 +34,51 @@ export function ResumeRuntime({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-      <div 
-        className="w-full max-w-md bg-[#0c1535]/95 border border-white/10 p-6 rounded-3xl shadow-2xl flex flex-col gap-5 relative overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+      <div
+        className="w-full max-w-md bg-white border border-[#e6e9f2] p-6 rounded-3xl shadow-2xl flex flex-col gap-5 relative overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
         style={{ fontFamily: 'DM Sans, sans-serif' }}
       >
         {/* Subtle top decoration */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
 
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
+          <div className="h-10 w-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-200">
             <RefreshCw className="w-5 h-5 animate-spin" style={{ animationDuration: '4s' }} />
           </div>
           <div>
-            <h3 className="text-lg font-black uppercase text-white font-space-grotesk tracking-tight">Resume Session?</h3>
-            <p className="text-xs text-[#94a3c8] font-bold uppercase tracking-widest mt-0.5">Unfinished progress found</p>
+            <h3 className="text-lg font-black uppercase text-[#101B4C] font-space-grotesk tracking-tight">Resume Session?</h3>
+            <p className="text-xs text-[#64748b] font-bold uppercase tracking-widest mt-0.5">Unfinished progress found</p>
           </div>
         </div>
 
-        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex flex-col gap-3">
+        <div className="bg-[#f8fafc] border border-[#e2e8f0] p-4 rounded-2xl flex flex-col gap-3">
           <div className="flex justify-between items-center text-xs">
-            <span className="text-[#94a3c8]">Saved On</span>
-            <span className="font-bold text-white">{formattedDate}</span>
+            <span className="text-[#64748b]">Saved On</span>
+            <span className="font-bold text-[#0f172a]">{formattedDate}</span>
           </div>
 
           <div className="flex justify-between items-center text-xs">
-            <span className="text-[#94a3c8]">Form Progress</span>
-            <span className="font-black text-blue-400 uppercase tracking-wider">{Math.round(completionPercentage)}% Complete</span>
+            <span className="text-[#64748b]">Form Progress</span>
+            <span className="font-black text-blue-600 uppercase tracking-wider">{Math.round(completionPercentage)}% Complete</span>
           </div>
 
           {stepName && (
             <div className="flex justify-between items-center text-xs">
-              <span className="text-[#94a3c8]">Active Step</span>
-              <span className="font-bold text-white truncate max-w-[200px]">{stepName}</span>
+              <span className="text-[#64748b]">Active Step</span>
+              <span className="font-bold text-[#0f172a] truncate max-w-[200px]">{stepName}</span>
             </div>
           )}
 
           {/* Simple progress bar */}
-          <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mt-1">
-            <div 
-              className="bg-blue-500 h-full rounded-full transition-all duration-500" 
+          <div className="w-full bg-[#e2e8f0] h-1.5 rounded-full overflow-hidden mt-1">
+            <div
+              className="bg-blue-500 h-full rounded-full transition-all duration-500"
               style={{ width: `${completionPercentage}%` }}
             />
           </div>
         </div>
 
-        <div className="text-xs text-[#4a5a82] leading-relaxed">
+        <div className="text-xs text-[#94a3b8] leading-relaxed">
           Would you like to resume your form submission from where you left off, or start fresh with a clean form?
         </div>
 
@@ -86,7 +86,7 @@ export function ResumeRuntime({
           <Button
             variant="outline"
             onClick={onDiscard}
-            className="flex-1 border-white/10 bg-transparent text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-rose-400 hover:border-rose-500/50 hover:bg-rose-500/5 rounded-xl h-11 transition-all flex items-center justify-center gap-1.5"
+            className="flex-1 border-[#e2e8f0] bg-transparent text-[10px] font-black uppercase tracking-widest text-[#64748b] hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 rounded-xl h-11 transition-all flex items-center justify-center gap-1.5"
           >
             <Trash2 size={13} /> Start Fresh
           </Button>

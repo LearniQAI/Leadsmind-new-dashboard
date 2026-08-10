@@ -79,7 +79,7 @@ export default async function PublicFormPage({ params, searchParams }: Props) {
   const workspaceId = form?.workspace_id || null;
 
   return (
-    <div style={{ minHeight: '100vh', background: isEmbedFrame ? 'transparent' : '#04081a' }}>
+    <div style={{ minHeight: '100vh', background: isEmbedFrame ? 'transparent' : 'linear-gradient(180deg, #f7f9fd 0%, #eef1f8 100%)' }}>
       <PublicFormRenderer
         schema={schema}
         workspaceId={workspaceId}
