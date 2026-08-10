@@ -2,16 +2,17 @@
 
 import React, { useState, useEffect, useTransition } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
-import { Plus, Layers } from 'lucide-react';
+import { Plus, Layers, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pipeline, PipelineStage, Opportunity } from '@/types/crm';
 import { PipelineStats } from './components/PipelineStats';
 import { KanbanColumn } from './components/KanbanColumn';
 import { OpportunityModal } from './components/OpportunityModal';
 import { StageSettingsModal } from './components/StageSettingsModal';
-import { updateDealStage } from '@/app/actions/pipelines';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { updateDealStage, deletePipeline } from '@/app/actions/pipelines';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Contact } from '@/types/crm';
 import { CreatePipelineModal } from './components/CreatePipelineModal';
 
@@ -33,6 +34,7 @@ export default function PipelinesClient({
   members
 }: PipelinesClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   // Modals state
@@ -41,6 +43,8 @@ export default function PipelinesClient({
   const [isPipelineModalOpen, setIsPipelineModalOpen] = useState(false);
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
   const [targetStageId, setTargetStageId] = useState<string | null>(null);
+  const [showDeletePipelineConfirm, setShowDeletePipelineConfirm] = useState(false);
+  const [isDeletingPipeline, setIsDeletingPipeline] = useState(false);
 
   // Board's own source of truth for opportunities, seeded from the server
   // props. The PRIMARY root cause of "deal added but invisible" was actually
@@ -75,10 +79,43 @@ export default function PipelinesClient({
     setIsOppModalOpen(true);
   };
 
+  // Deep-link entry point — the dashboard's Sales Pipeline widget links a
+  // deal card straight to `/pipelines?pipelineId=...&opportunityId=...`
+  // rather than duplicating this board's own detail UI. Opens the same
+  // OpportunityModal a manual click on the card would. `openedRef` stops it
+  // from reopening if the id ever matches after the user closes the modal.
+  const openedDealIdRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    const opportunityId = searchParams.get('opportunityId');
+    if (!opportunityId || openedDealIdRef.current === opportunityId) return;
+
+    const target = opportunities.find(o => o.id === opportunityId);
+    if (target) {
+      openedDealIdRef.current = opportunityId;
+      handleEditDeal(target);
+    }
+  }, [searchParams, opportunities]);
+
   const handleCreateDeal = (stageId?: string) => {
     setSelectedOpp(null);
     setTargetStageId(stageId || (initialStages.length > 0 ? initialStages[0].id : null));
     setIsOppModalOpen(true);
+  };
+
+  const handleDeletePipeline = async () => {
+    setIsDeletingPipeline(true);
+    const res = await deletePipeline(activePipeline.id);
+    setIsDeletingPipeline(false);
+
+    if (!res.success) {
+      toast.error(res.error || 'Failed to delete pipeline');
+      return;
+    }
+
+    toast.success('Pipeline deleted');
+    const remaining = pipelines.filter(p => p.id !== activePipeline.id);
+    router.push(remaining.length > 0 ? `/pipelines?pipelineId=${remaining[0].id}` : '/pipelines');
+    router.refresh();
   };
 
   // Called directly by OpportunityModal the moment createOpportunity/
@@ -154,6 +191,13 @@ export default function PipelinesClient({
                   </SelectContent>
                 </Select>
                 <div className="w-1.5 h-1.5 rounded-full bg-green animate-pulse"></div>
+                <button
+                  onClick={() => setShowDeletePipelineConfirm(true)}
+                  title="Delete this pipeline"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center !text-dash-textMuted hover:!text-red hover:bg-red/10 transition-colors"
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
             </div>
 
@@ -251,9 +295,20 @@ export default function PipelinesClient({
         initialStages={initialStages}
       />
 
-      <CreatePipelineModal 
+      <CreatePipelineModal
         isOpen={isPipelineModalOpen}
         onClose={() => setIsPipelineModalOpen(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeletePipelineConfirm}
+        onClose={() => setShowDeletePipelineConfirm(false)}
+        onConfirm={handleDeletePipeline}
+        title={`Delete "${activePipeline.name}"?`}
+        description="This permanently deletes the pipeline, all of its stages, and every deal inside them. This action can't be undone."
+        confirmLabel={isDeletingPipeline ? 'Deleting...' : 'Yes, delete pipeline'}
+        cancelLabel="Keep pipeline"
+        variant="danger"
       />
     </div>
   );

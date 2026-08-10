@@ -126,6 +126,7 @@ export async function createTask(taskData: {
     }
 
     revalidatePath('/tasks');
+    revalidatePath('/dashboard');
     return { data: task };
   } catch (error: any) {
     logger.error({ err: error }, 'create.task.failed');
@@ -197,6 +198,7 @@ export async function updateTask(taskId: string, updates: any) {
     }
 
     revalidatePath('/tasks');
+    revalidatePath('/dashboard');
     return { data };
   } catch (error: any) {
     logger.error({ err: error }, 'update.task.failed');
@@ -399,6 +401,7 @@ export async function deleteTask(taskId: string) {
     const { error } = await supabase.from('tasks').delete().eq('id', taskId).eq('workspace_id', workspaceId);
     if (error) throw error;
     revalidatePath('/tasks');
+    revalidatePath('/dashboard');
     return { success: true };
   } catch (error: any) {
     logger.error({ err: error }, 'delete.task.failed');

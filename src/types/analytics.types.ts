@@ -11,6 +11,26 @@ export interface ChartDataPoint {
  [key: string]: string | number;
 }
 
+export interface PipelineDealPreview {
+ id: string;
+ title: string;
+ value: number;
+ stageEnteredAt: string;
+ ownerId: string | null;
+ contact: { firstName: string; lastName: string } | null;
+ owner: { firstName: string | null; lastName: string | null; avatarUrl: string | null } | null;
+}
+
+export interface PipelineFunnelStage {
+ id: string;
+ label: string;
+ value: number;
+ totalValue: number;
+ pipelineId: string | null;
+ pipelineName: string | null;
+ deals: PipelineDealPreview[];
+}
+
 export interface DashboardMetrics {
  totalContacts: KpiData;
  revenueThisPeriod: KpiData;
@@ -19,7 +39,7 @@ export interface DashboardMetrics {
  contactsOverTime: ChartDataPoint[];
  revenueByWeek: ChartDataPoint[];
  contactsBySource: ChartDataPoint[];
- pipelineFunnel: ChartDataPoint[];
+ pipelineFunnel: PipelineFunnelStage[];
  topActiveContacts: {
   id: string;
   first_name: string;

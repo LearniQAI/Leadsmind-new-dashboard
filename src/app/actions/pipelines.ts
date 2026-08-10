@@ -2,7 +2,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { requireWorkspaceAccess } from '@/lib/auth';
+import { requireWorkspaceAccess, getUserRole } from '@/lib/auth';
 
 import { Pipeline, PipelineStage, Opportunity } from '@/types/crm';
 import { logger } from '@/shared/logger';
@@ -64,6 +64,37 @@ export async function createPipeline({ name, stages }: { name: string, stages: s
 
   revalidatePath('/pipelines');
   return { success: true, data: pipeline as Pipeline };
+}
+
+/**
+ * Deletes an entire pipeline. `pipeline_stages.pipeline_id` cascades
+ * ON DELETE CASCADE (schema.sql), and each stage cascades to its
+ * `opportunities` the same way (see deleteStage) — so this one delete
+ * removes the pipeline, all of its stages, and every deal inside them.
+ * Restricted to admin/manager, same tier as deleteTask/deleteStage.
+ */
+export async function deletePipeline(id: string) {
+  const supabase = await createServerClient();
+  let workspaceId: string;
+  try {
+    ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  const role = await getUserRole();
+  if (role !== 'admin' && role !== 'manager') {
+    return { success: false, error: 'Only admins/managers can delete a pipeline' };
+  }
+
+  const { error } = await supabase.from('pipelines').delete().eq('id', id).eq('workspace_id', workspaceId);
+  if (error) {
+    logger.error({ err: error, workspaceId, pipelineId: id }, 'pipelines.pipeline.delete.failed');
+    return { success: false, error: 'Failed to delete pipeline.' };
+  }
+
+  revalidatePath('/pipelines');
+  return { success: true };
 }
 
 export async function createOpportunity(values: any) {

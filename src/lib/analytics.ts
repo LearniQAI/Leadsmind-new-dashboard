@@ -168,12 +168,26 @@ export async function fetchDashboardMetrics(
  // legitimately share the same name (e.g. two pipelines each with their
  // own "Lead" stage), which previously rendered as visually-duplicate,
  // unlabeled cards with a colliding React `key={stage.label}`.
+ // Deal-level fields (title/contact/owner/stage_entered_at) added for the
+ // dashboard's Kanban-style pipeline widget — the stage aggregate alone
+ // (count + totalValue) can't render individual deal cards. Capped per
+ // stage in JS below (not in the query) since PostgREST embeds don't support
+ // a per-group LIMIT; this dashboard widget only ever needs a bounded
+ // preview slice, never the full stage (that's what "Manage Pipeline" is for).
  const { data: stagesRaw } = await supabase
   .from('pipeline_stages')
-  .select('id, name, position, pipeline:pipelines(name), opportunities(id, value)')
+  .select(`
+   id, name, position,
+   pipeline:pipelines(id, name),
+   opportunities(
+    id, title, value, stage_entered_at, owner_id,
+    contact:contacts!opportunities_contact_id_fkey(id, first_name, last_name)
+   )
+  `)
   .eq('workspace_id', workspaceId)
   .order('position', { ascending: true });
 
+ const DEALS_PREVIEW_LIMIT = 20;
  const pipelineFunnel = (stagesRaw ?? []).map(s => {
   const stageOpportunities = Array.isArray(s.opportunities) ? s.opportunities : [];
   const pipelineRel = Array.isArray(s.pipeline) ? s.pipeline[0] : s.pipeline;
@@ -182,8 +196,38 @@ export async function fetchDashboardMetrics(
    label: s.name,
    value: stageOpportunities.length,
    totalValue: stageOpportunities.reduce((sum, o: any) => sum + (Number(o.value) || 0), 0),
+   pipelineId: (pipelineRel as any)?.id ?? null,
    pipelineName: (pipelineRel as any)?.name ?? null,
+   deals: stageOpportunities.slice(0, DEALS_PREVIEW_LIMIT).map((o: any) => {
+    const contact = Array.isArray(o.contact) ? o.contact[0] : o.contact;
+    return {
+     id: o.id,
+     title: o.title,
+     value: Number(o.value) || 0,
+     stageEnteredAt: o.stage_entered_at,
+     ownerId: o.owner_id ?? null,
+     contact: contact ? { firstName: contact.first_name, lastName: contact.last_name } : null,
+     owner: null as { firstName: string | null; lastName: string | null; avatarUrl: string | null } | null,
+    };
+   }),
   };
+ });
+
+ // owner_id has no schema-registered FK to public.users (same gap documented
+ // for workspace_members.user_id elsewhere in this codebase, e.g.
+ // getAssignableMembers) — fetch owner profiles separately and stitch them in.
+ const ownerIds = Array.from(
+  new Set(pipelineFunnel.flatMap(s => s.deals.map(d => d.ownerId).filter(Boolean) as string[]))
+ );
+ const { data: owners } = ownerIds.length
+  ? await supabase.from('users').select('id, first_name, last_name, avatar_url').in('id', ownerIds)
+  : { data: [] as any[] };
+ const ownersById = new Map((owners ?? []).map(u => [u.id, u]));
+ pipelineFunnel.forEach(stage => {
+  stage.deals.forEach((d: any) => {
+   const owner = d.ownerId ? ownersById.get(d.ownerId) : null;
+   d.owner = owner ? { firstName: owner.first_name, lastName: owner.last_name, avatarUrl: owner.avatar_url } : null;
+  });
  });
 
  // --- Top active contacts ---
