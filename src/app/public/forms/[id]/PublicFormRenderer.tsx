@@ -17,21 +17,27 @@ export default function PublicFormRenderer({ schema, workspaceId, formId, isEmbe
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         minHeight: '100vh', fontFamily: 'DM Sans, sans-serif',
-        background: '#04081a', padding: 24, boxSizing: 'border-box'
+        background: 'linear-gradient(180deg, #f7f9fd 0%, #eef1f8 100%)', padding: 24, boxSizing: 'border-box'
       }}>
         <div style={{
           maxWidth: 420, textAlign: 'center', padding: 40,
-          background: 'rgba(12,21,53,0.9)', border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 20, color: '#eef2ff'
+          background: '#ffffff', border: '1px solid #e6e9f2',
+          borderRadius: 20, color: '#101B4C',
+          boxShadow: '0 20px 40px -20px rgba(15,23,42,0.15)'
         }}>
+          <img
+            src="/assets/images/brand/LeadsMind_Logo.png.png"
+            alt="LeadsMind"
+            style={{ height: 26, width: 'auto', objectFit: 'contain', margin: '0 auto 24px' }}
+          />
           <div style={{ fontSize: 36, marginBottom: 16 }}>🔒</div>
           <h2 style={{
             fontFamily: 'Space Grotesk, sans-serif', fontWeight: 900,
-            fontSize: 18, textTransform: 'uppercase', marginBottom: 8, color: '#eef2ff'
+            fontSize: 18, textTransform: 'uppercase', marginBottom: 8, color: '#101B4C'
           }}>
             Form Unavailable
           </h2>
-          <p style={{ color: '#94a3c8', fontSize: 13, lineHeight: 1.6 }}>
+          <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
             This form is not published or the link is invalid. Contact the form owner for access.
           </p>
         </div>

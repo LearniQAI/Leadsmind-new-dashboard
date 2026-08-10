@@ -62,9 +62,14 @@ export function PublicRuntimeRenderer({ schema, workspaceId, formId, isEmbedFram
     return (
       <div style={containerStyle}>
         <div style={{ ...cardStyle, textAlign: 'center', padding: '48px 32px' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 24 }}>✓</div>
+          <img
+            src="/assets/images/brand/LeadsMind_Logo.png.png"
+            alt="LeadsMind"
+            style={{ height: 28, width: 'auto', objectFit: 'contain', margin: '0 auto 28px' }}
+          />
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 24, color: '#059669' }}>✓</div>
           <h3 style={{ ...headingStyle, fontSize: 20, marginBottom: 8 }}>Submission Received</h3>
-          <p style={{ color: '#94a3c8', fontFamily: 'DM Sans, sans-serif', fontSize: 13, margin: 0 }}>
+          <p style={{ color: '#64748b', fontFamily: 'DM Sans, sans-serif', fontSize: 13, margin: 0 }}>
             Thank you for your response. Your submission has been captured.
           </p>
         </div>
@@ -75,15 +80,21 @@ export function PublicRuntimeRenderer({ schema, workspaceId, formId, isEmbedFram
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
+        <img
+          src="/assets/images/brand/LeadsMind_Logo.png.png"
+          alt="LeadsMind"
+          style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block', marginBottom: 24 }}
+        />
+
         {/* Returning contact welcome */}
         {returningContact && isFirstStep && (
-          <div style={{ marginBottom: 20, padding: '12px 16px', background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ marginBottom: 20, padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 14 }}>
               {returningContact.name.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#60a5fa', fontFamily: 'Space Grotesk, sans-serif' }}>Welcome Back</p>
-              <p style={{ margin: 0, fontSize: 13, color: '#eef2ff' }}>{returningContact.name}</p>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#2563eb', fontFamily: 'Space Grotesk, sans-serif' }}>Welcome Back</p>
+              <p style={{ margin: 0, fontSize: 13, color: '#0f172a' }}>{returningContact.name}</p>
             </div>
           </div>
         )}
@@ -93,7 +104,7 @@ export function PublicRuntimeRenderer({ schema, workspaceId, formId, isEmbedFram
           <div>
             <h2 style={headingStyle}>{currentStep?.title || schema.name}</h2>
             {currentStep?.description && (
-              <p style={{ color: '#94a3c8', fontFamily: 'DM Sans, sans-serif', fontSize: 13, margin: '6px 0 0' }}>
+              <p style={{ color: '#64748b', fontFamily: 'DM Sans, sans-serif', fontSize: 13, margin: '6px 0 0' }}>
                 {currentStep.description}
               </p>
             )}
@@ -105,22 +116,22 @@ export function PublicRuntimeRenderer({ schema, workspaceId, formId, isEmbedFram
         {steps.length > 1 && progressBarType !== 'minimal' && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94a3c8', fontFamily: 'Space Grotesk, sans-serif' }}>
+              <span style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b', fontFamily: 'Space Grotesk, sans-serif' }}>
                 Step {stepIndex + 1} of {steps.length}
               </span>
               {progressBarType === 'percentage' && (
-                <span style={{ fontSize: 10, fontWeight: 900, color: '#94a3c8', fontFamily: 'Space Grotesk, sans-serif' }}>{progressPercent}%</span>
+                <span style={{ fontSize: 10, fontWeight: 900, color: '#64748b', fontFamily: 'Space Grotesk, sans-serif' }}>{progressPercent}%</span>
               )}
             </div>
-            <div style={{ height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 99 }}>
+            <div style={{ height: 6, background: '#e2e8f0', borderRadius: 99 }}>
               <div style={{ height: '100%', width: `${progressPercent}%`, background: '#2563eb', borderRadius: 99, transition: 'width 0.4s ease' }} />
             </div>
           </div>
         )}
 
         {steps.length > 1 && progressBarType === 'minimal' && (
-          <div style={{ height: 2, background: 'rgba(255,255,255,0.03)', marginBottom: 24 }}>
-            <div style={{ height: '100%', width: `${progressPercent}%`, background: 'rgba(255,255,255,0.15)', transition: 'width 0.4s ease' }} />
+          <div style={{ height: 2, background: '#e2e8f0', marginBottom: 24 }}>
+            <div style={{ height: '100%', width: `${progressPercent}%`, background: '#2563eb', transition: 'width 0.4s ease' }} />
           </div>
         )}
 
@@ -143,7 +154,7 @@ export function PublicRuntimeRenderer({ schema, workspaceId, formId, isEmbedFram
               transform: prefilledFields.has(field.id) ? 'translateY(0)' : 'none',
               animation: prefilledFields.has(field.id) ? 'highlight 2s ease-out' : 'none'
             }}>
-              <style>{`@keyframes highlight { 0% { background: rgba(37,99,235,0.2); } 100% { background: transparent; } }`}</style>
+              <style>{`@keyframes highlight { 0% { background: rgba(37,99,235,0.12); } 100% { background: transparent; } }`}</style>
               <PublicRuntimeField
                 field={field}
                 value={values[field.id]}
@@ -157,7 +168,7 @@ export function PublicRuntimeRenderer({ schema, workspaceId, formId, isEmbedFram
         </div>
 
         {stepFields.length === 0 && (
-          <p style={{ color: '#4a5a82', fontSize: 13, textAlign: 'center', padding: '24px 0', fontFamily: 'DM Sans, sans-serif' }}>
+          <p style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', padding: '24px 0', fontFamily: 'DM Sans, sans-serif' }}>
             This step has no fields configured.
           </p>
         )}
@@ -169,7 +180,7 @@ export function PublicRuntimeRenderer({ schema, workspaceId, formId, isEmbedFram
         )}
 
         {/* Navigation */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, paddingTop: 20, borderTop: '1px solid #e6e9f2' }}>
           {!isFirstStep ? (
             <button onClick={handleBack} style={secondaryBtnStyle}>← Back</button>
           ) : <div />}
