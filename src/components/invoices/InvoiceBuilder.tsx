@@ -29,8 +29,8 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-import { saveInvoice, updateInvoice } from '@/app/actions/finance';
+import { cn, formatCurrency } from '@/lib/utils';
+import { saveInvoice, updateInvoice, sendInvoiceNow } from '@/app/actions/finance';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
@@ -89,7 +89,7 @@ export function InvoiceBuilder({
      notes: initialData?.notes || settings?.default_notes || '',
      terms: initialData?.terms || settings?.default_terms || '',
      status: initialData?.status || 'draft',
-     currency: initialData?.currency || settings?.currency || 'USD'
+     currency: initialData?.currency || settings?.currency || 'ZAR'
    }
   });
 
@@ -99,14 +99,19 @@ export function InvoiceBuilder({
   });
 
   const watchItems = watch("items");
+  const watchCurrency = watch("currency");
   const subtotal = watchItems.reduce((acc, item) => acc + (item.quantity * item.unit_amount), 0);
   const total = subtotal; // Simplified, can add tax later
 
-  const onSubmit = async (data: InvoiceFormValues) => {
+  const onSubmit = async (data: InvoiceFormValues, sendNow: boolean = false) => {
    setIsSubmitting(true);
    try {
      let result;
-     
+     // "Save & Send" only applies to real invoices — quotes have no
+     // sendInvoiceEmail equivalent, so sendNow is ignored in quote mode and
+     // that button behaves as a normal save there.
+     const willSendNow = sendNow && mode !== 'quote';
+
      if (mode === 'quote') {
        const payload = {
         workspace_id: workspaceId,
@@ -135,11 +140,27 @@ export function InvoiceBuilder({
         amount_paid: initialData?.amount_paid || 0
        };
        if (initialData?.id) result = await updateInvoice(initialData.id, payload);
-       else result = await saveInvoice(payload);
+       // skipAutoNotify: willSendNow — when Save & Send is used on a brand-new
+       // invoice, saveInvoice()'s own draft-status auto-notify email must be
+       // suppressed so sendInvoiceNow() below is the only email that goes out.
+       else result = await saveInvoice(payload, { skipAutoNotify: willSendNow });
      }
 
      if (result.success) {
-      toast.success(initialData?.id ? `${mode === 'quote' ? 'Proposal' : 'Invoice'} updated` : `${mode === 'quote' ? 'Proposal' : 'Invoice'} created`);
+      if (willSendNow) {
+        const invoiceId = initialData?.id || (result as any).data?.id;
+        const sendResult = invoiceId ? await sendInvoiceNow(invoiceId) : { success: false, error: 'Invoice id missing' };
+        if (sendResult.success) {
+          toast.success('Invoice sent');
+        } else {
+          toast.success('Invoice saved');
+          toast.error(sendResult.error || 'Invoice saved, but the email failed to send');
+        }
+      } else {
+        toast.success(initialData?.id
+          ? `${mode === 'quote' ? 'Proposal' : 'Invoice'} updated`
+          : mode === 'quote' ? 'Proposal created' : 'Invoice saved as draft — notification email sent');
+      }
       router.push(mode === 'quote' ? '/proposals' : '/invoices');
       router.refresh();
      } else {
@@ -162,7 +183,7 @@ export function InvoiceBuilder({
   };
 
   return (
-   <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in duration-700">
+   <form onSubmit={handleSubmit((data) => onSubmit(data))} className="space-y-8 animate-in fade-in duration-700">
      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
       {/* Left Column: Core Info */}
@@ -294,7 +315,7 @@ export function InvoiceBuilder({
               </div>
               <div className="col-span-3 lg:col-span-2 flex justify-end gap-2">
                <div className="h-11 flex items-center px-4 bg-white/[0.02] border border-white/5 rounded-xl text-xs font-black text-white/40">
-                 ${(watchItems[index]?.quantity * watchItems[index]?.unit_amount || 0).toLocaleString()}
+                 {formatCurrency(watchItems[index]?.quantity * watchItems[index]?.unit_amount || 0, watchCurrency)}
                </div>
                <Button
                  type="button"
@@ -326,16 +347,16 @@ export function InvoiceBuilder({
          <div className="space-y-4 relative z-10">
            <div className="flex justify-between items-center text-white/40">
             <span className="text-[10px] font-black uppercase tracking-widest">Gross Amount</span>
-            <span className="text-sm font-black">${subtotal.toLocaleString()}</span>
+            <span className="text-sm font-black">{formatCurrency(subtotal, watchCurrency)}</span>
            </div>
            <div className="flex justify-between items-center text-white/40 pb-6 border-b border-white/5">
             <span className="text-[10px] font-black uppercase tracking-widest">Tax (0%)</span>
-            <span className="text-sm font-black">$0.00</span>
+            <span className="text-sm font-black">{formatCurrency(0, watchCurrency)}</span>
            </div>
            <div className="pt-4 space-y-1">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary block">Total Balance Due</span>
             <div className="text-5xl font-black tracking-tighter text-white">
-              ${total.toLocaleString()}
+              {formatCurrency(total, watchCurrency)}
             </div>
            </div>
          </div>
@@ -351,6 +372,8 @@ export function InvoiceBuilder({
            <Button
             type="button"
             variant="outline"
+            disabled={isSubmitting}
+            onClick={handleSubmit((data) => onSubmit(data, true))}
             className="w-full btn btn-outline-theme-border h-12 rounded-2xl text-[10px] uppercase font-black tracking-widest"
            >
             <Send className="h-3 w-3 mr-2" /> Save & Send

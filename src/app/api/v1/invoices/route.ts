@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData, parsePagination } from '@/lib/api/auth'
 import { dispatchWebhook } from '@/lib/webhooks/dispatcher'
 import { verifyOwnedId } from '@/lib/api/foreignKeyOwnership'
+import { sendInvoiceEmail } from '@/lib/invoices/sendInvoiceEmail'
+import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,5 +64,17 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase.from('invoices').insert(payload).select('*').single()
   if (error) return apiError('Internal server error', 500)
   await dispatchWebhook(auth.workspaceId, 'invoice.created', { invoice: data })
+
+  if (data.status === 'paid') {
+    try {
+      const result = await sendInvoiceEmail({ workspaceId: auth.workspaceId, invoiceId: data.id })
+      if (!result.success) {
+        logger.error({ invoiceId: data.id, workspaceId: auth.workspaceId, reason: result.error }, 'api.v1.invoices.auto_send.failed')
+      }
+    } catch (sendErr) {
+      logger.error({ err: sendErr, invoiceId: data.id, workspaceId: auth.workspaceId }, 'api.v1.invoices.auto_send.failed')
+    }
+  }
+
   return apiData(data, 201)
 }

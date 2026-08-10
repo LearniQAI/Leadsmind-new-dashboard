@@ -7,7 +7,7 @@ import {
   CheckCircle, XCircle, Send, Pencil, Eraser, Globe, FileMinus
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -221,7 +221,7 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
               >
                 <div className="flex justify-between items-start mb-1">
                   <span className="text-[11px] font-bold text-dash-accent">{inv.invoice_number}</span>
-                  <span className="text-xs font-bold !text-dash-text">{(Number(inv.total_amount) || 0).toLocaleString('en-US', { style: 'currency', currency: inv.currency || 'USD' })}</span>
+                  <span className="text-xs font-bold !text-dash-text">{formatCurrency(Number(inv.total_amount) || 0, inv.currency)}</span>
                 </div>
                 <h4 className="text-[13px] font-semibold !text-dash-text truncate mb-2">
                   {inv.contact ? `${inv.contact.first_name} ${inv.contact.last_name}` : 'Unknown Client'}
@@ -390,8 +390,8 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                           <tr key={idx}>
                             <td className="py-4 text-sm font-medium text-slate-900">{item.description}</td>
                             <td className={`py-4 text-right text-sm ${DOCUMENT_MUTED_TEXT} tabular-nums`}>{quantity}</td>
-                            <td className={`py-4 text-right text-sm ${DOCUMENT_MUTED_TEXT} tabular-nums`}>${rate.toLocaleString()}</td>
-                            <td className="py-4 text-right text-sm font-semibold text-slate-900 tabular-nums">${amount.toLocaleString()}</td>
+                            <td className={`py-4 text-right text-sm ${DOCUMENT_MUTED_TEXT} tabular-nums`}>{formatCurrency(rate, selectedInvoice.currency)}</td>
+                            <td className="py-4 text-right text-sm font-semibold text-slate-900 tabular-nums">{formatCurrency(amount, selectedInvoice.currency)}</td>
                           </tr>
                         );
                       })}
@@ -404,15 +404,15 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                   <div className="w-72 space-y-3">
                     <div className={`flex justify-between items-center ${DOCUMENT_MUTED_TEXT} text-sm`}>
                       <span>Subtotal</span>
-                      <span className="font-medium text-slate-900 tabular-nums">${(Number(selectedInvoice.subtotal || selectedInvoice.total_amount) || 0).toLocaleString()}</span>
+                      <span className="font-medium text-slate-900 tabular-nums">{formatCurrency(Number(selectedInvoice.subtotal || selectedInvoice.total_amount) || 0, selectedInvoice.currency)}</span>
                     </div>
                     <div className={`flex justify-between items-center ${DOCUMENT_MUTED_TEXT} text-sm pb-3 border-b border-slate-100`}>
                       <span>Tax</span>
-                      <span className="font-medium text-slate-900 tabular-nums">${(Number(selectedInvoice.tax_total) || 0).toLocaleString()}</span>
+                      <span className="font-medium text-slate-900 tabular-nums">{formatCurrency(Number(selectedInvoice.tax_total) || 0, selectedInvoice.currency)}</span>
                     </div>
                     <div className="flex justify-between items-end pt-1">
                       <span className="text-[10px] font-bold uppercase tracking-[0.25em] !text-primary mb-1">Total Due</span>
-                      <span className="text-3xl font-bold !text-slate-900 tracking-tight tabular-nums">${(Number(selectedInvoice.total_amount) || 0).toLocaleString()}</span>
+                      <span className="text-3xl font-bold !text-slate-900 tracking-tight tabular-nums">{formatCurrency(Number(selectedInvoice.total_amount) || 0, selectedInvoice.currency)}</span>
                     </div>
                   </div>
                 </div>

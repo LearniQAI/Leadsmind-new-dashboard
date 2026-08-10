@@ -3,7 +3,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ShieldCheck, FileText, Scale } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { DOCUMENT_MUTED_TEXT } from '@/lib/design/documentTemplateTokens';
 
 interface SarsTaxInvoicePdfProps {
@@ -113,9 +113,9 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
                    {item.product_id && <p className={`text-[10px] ${DOCUMENT_MUTED_TEXT} mt-0.5`}>SKU: {item.product_id.substring(0,8).toUpperCase()}</p>}
                 </td>
                 <td className={`py-6 text-right text-sm font-bold ${DOCUMENT_MUTED_TEXT}`}>{item.quantity}</td>
-                <td className={`py-6 text-right text-sm font-bold ${DOCUMENT_MUTED_TEXT}`}>${(Number(item.rate) || 0).toLocaleString()}</td>
-                <td className={`py-6 text-right text-sm font-bold ${DOCUMENT_MUTED_TEXT}`}>${lineTax.toLocaleString()}</td>
-                <td className="py-6 text-right font-black text-base text-gray-900 font-space">${lineTotal.toLocaleString()}</td>
+                <td className={`py-6 text-right text-sm font-bold ${DOCUMENT_MUTED_TEXT}`}>{formatCurrency(Number(item.rate) || 0, invoice.currency)}</td>
+                <td className={`py-6 text-right text-sm font-bold ${DOCUMENT_MUTED_TEXT}`}>{formatCurrency(lineTax, invoice.currency)}</td>
+                <td className="py-6 text-right font-black text-base text-gray-900 font-space">{formatCurrency(lineTotal, invoice.currency)}</td>
               </tr>
             );
           })}
@@ -137,13 +137,13 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
         <div className="w-80 space-y-4">
           <div className={`flex justify-between ${DOCUMENT_MUTED_TEXT} text-xs font-bold`}>
             <span>Total Value (Excl. VAT)</span>
-            <span>${subtotal.toLocaleString()}</span>
+            <span>{formatCurrency(subtotal, invoice.currency)}</span>
           </div>
-          
+
           <div className="flex justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
             <div className="space-y-1">
                <p className="text-[9px] font-black uppercase tracking-widest text-blue-600">Total VAT</p>
-               <p className="text-xl font-black text-gray-900 font-space">${taxTotal.toLocaleString()}</p>
+               <p className="text-xl font-black text-gray-900 font-space">{formatCurrency(taxTotal, invoice.currency)}</p>
             </div>
             <div className="text-right">
                <FileText size={20} className="text-gray-200" />
@@ -152,7 +152,7 @@ const SarsTaxInvoicePdf: React.FC<SarsTaxInvoicePdfProps> = ({
 
           <div className="flex justify-between items-end pt-4 border-t border-gray-100">
             <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-900">Total Amount Due</span>
-            <span className="text-4xl font-black text-gray-900 font-space tracking-tighter">${grandTotal.toLocaleString()}</span>
+            <span className="text-4xl font-black text-gray-900 font-space tracking-tighter">{formatCurrency(grandTotal, invoice.currency)}</span>
           </div>
         </div>
       </div>

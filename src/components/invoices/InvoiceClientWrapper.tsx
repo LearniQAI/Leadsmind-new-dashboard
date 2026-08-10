@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CalendarClock } from 'lucide-react';
 import InvoiceFormContainer from './InvoiceFormContainer';
-import { saveInvoice, updateInvoice } from '@/app/actions/finance';
+import { saveInvoice, updateInvoice, sendInvoiceNow } from '@/app/actions/finance';
 import SchedulingModal, { SchedulingConfig } from './SchedulingModal';
 
 interface InvoiceClientWrapperProps {
@@ -28,18 +28,39 @@ const InvoiceClientWrapper: React.FC<InvoiceClientWrapperProps> = ({
   const handleSave = async (data: any) => {
     setIsSaving(true);
     try {
+      // InvoiceFormContainer's "Finalise document" button submits status:'sent'
+      // to signal "save and send now" — that must NOT be written to the DB
+      // directly (an invoice shouldn't read as 'sent' if the email never
+      // actually goes out). Strip status here and let sendInvoiceNow() below
+      // flip it to 'sent' only once the email genuinely succeeds.
+      const wantsSendNow = data.status === 'sent';
+      const { status, ...rest } = data;
+      const payload = {
+        ...rest,
+        ...(wantsSendNow ? {} : { status }),
+        workspace_id: workspaceId,
+      };
+
       const res = initialData?.id
-        ? await updateInvoice(initialData.id, {
-            ...data,
-            workspace_id: workspaceId,
-          })
-        : await saveInvoice({
-            ...data,
-            workspace_id: workspaceId,
-          });
+        ? await updateInvoice(initialData.id, payload)
+        // skipAutoNotify: wantsSendNow — when the user asked to send now,
+        // saveInvoice()'s own draft-status auto-notify must be suppressed so
+        // sendInvoiceNow() below is the only email that goes out.
+        : await saveInvoice(payload, { skipAutoNotify: wantsSendNow });
 
       if (res.success) {
-        toast.success(initialData?.id ? 'Invoice updated successfully' : 'Invoice saved successfully');
+        if (wantsSendNow) {
+          const invoiceId = initialData?.id || (res as any).data?.id;
+          const sendResult = invoiceId ? await sendInvoiceNow(invoiceId) : { success: false, error: 'Invoice id missing' };
+          if (sendResult.success) {
+            toast.success('Invoice sent');
+          } else {
+            toast.success(initialData?.id ? 'Invoice updated' : 'Invoice saved');
+            toast.error(sendResult.error || 'Saved, but the email failed to send');
+          }
+        } else {
+          toast.success(initialData?.id ? 'Invoice updated successfully' : 'Invoice saved as draft — notification email sent');
+        }
         router.push('/invoices');
         router.refresh();
       } else {
