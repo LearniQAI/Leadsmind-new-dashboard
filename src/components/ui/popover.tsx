@@ -19,7 +19,15 @@ const PopoverContent = React.forwardRef<
    align={align}
    sideOffset={sideOffset}
    className={cn(
-    "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+    // `bg-popover`/`text-popover-foreground` are shadcn defaults for a CSS
+    // variable pair (--popover/--popover-foreground) this app never defines
+    // (it uses its own `dash-*` tokens, see tailwind.config.js) — those
+    // classes compile to nothing, so any caller that doesn't override them
+    // renders a fully transparent, borderless panel with the page bleeding
+    // through it. Several callers (AssigneePicker, ColorPicker) already
+    // work around this by passing explicit `bg-white` in their own
+    // className; this makes that the real default instead of an opt-in fix.
+    "z-[1100] w-72 rounded-xl border border-dash-border bg-white p-4 !text-dash-text shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
     className
    )}
    {...props}

@@ -30,7 +30,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { saveInvoice, updateInvoice } from '@/app/actions/finance';
+import { saveInvoice, updateInvoice, sendInvoiceNow } from '@/app/actions/finance';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
@@ -102,11 +102,15 @@ export function InvoiceBuilder({
   const subtotal = watchItems.reduce((acc, item) => acc + (item.quantity * item.unit_amount), 0);
   const total = subtotal; // Simplified, can add tax later
 
-  const onSubmit = async (data: InvoiceFormValues) => {
+  const onSubmit = async (data: InvoiceFormValues, sendNow: boolean = false) => {
    setIsSubmitting(true);
    try {
      let result;
-     
+     // "Save & Send" only applies to real invoices — quotes have no
+     // sendInvoiceEmail equivalent, so sendNow is ignored in quote mode and
+     // that button behaves as a normal save there.
+     const willSendNow = sendNow && mode !== 'quote';
+
      if (mode === 'quote') {
        const payload = {
         workspace_id: workspaceId,
@@ -135,11 +139,27 @@ export function InvoiceBuilder({
         amount_paid: initialData?.amount_paid || 0
        };
        if (initialData?.id) result = await updateInvoice(initialData.id, payload);
-       else result = await saveInvoice(payload);
+       // skipAutoNotify: willSendNow — when Save & Send is used on a brand-new
+       // invoice, saveInvoice()'s own draft-status auto-notify email must be
+       // suppressed so sendInvoiceNow() below is the only email that goes out.
+       else result = await saveInvoice(payload, { skipAutoNotify: willSendNow });
      }
 
      if (result.success) {
-      toast.success(initialData?.id ? `${mode === 'quote' ? 'Proposal' : 'Invoice'} updated` : `${mode === 'quote' ? 'Proposal' : 'Invoice'} created`);
+      if (willSendNow) {
+        const invoiceId = initialData?.id || (result as any).data?.id;
+        const sendResult = invoiceId ? await sendInvoiceNow(invoiceId) : { success: false, error: 'Invoice id missing' };
+        if (sendResult.success) {
+          toast.success('Invoice sent');
+        } else {
+          toast.success('Invoice saved');
+          toast.error(sendResult.error || 'Invoice saved, but the email failed to send');
+        }
+      } else {
+        toast.success(initialData?.id
+          ? `${mode === 'quote' ? 'Proposal' : 'Invoice'} updated`
+          : mode === 'quote' ? 'Proposal created' : 'Invoice saved as draft — notification email sent');
+      }
       router.push(mode === 'quote' ? '/proposals' : '/invoices');
       router.refresh();
      } else {
@@ -162,7 +182,7 @@ export function InvoiceBuilder({
   };
 
   return (
-   <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in duration-700">
+   <form onSubmit={handleSubmit((data) => onSubmit(data))} className="space-y-8 animate-in fade-in duration-700">
      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
       {/* Left Column: Core Info */}
@@ -351,6 +371,8 @@ export function InvoiceBuilder({
            <Button
             type="button"
             variant="outline"
+            disabled={isSubmitting}
+            onClick={handleSubmit((data) => onSubmit(data, true))}
             className="w-full btn btn-outline-theme-border h-12 rounded-2xl text-[10px] uppercase font-black tracking-widest"
            >
             <Send className="h-3 w-3 mr-2" /> Save & Send

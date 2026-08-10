@@ -6,6 +6,7 @@ import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { sendBookingConfirmation } from '@/lib/calendar/notifications';
 import { logger } from '@/shared/logger';
+import { sendInvoiceEmail } from '@/lib/invoices/sendInvoiceEmail';
 
 export async function POST(req: NextRequest) {
   try {
@@ -138,6 +139,15 @@ export async function POST(req: NextRequest) {
             .single();
 
           if (invoice) {
+            try {
+              const result = await sendInvoiceEmail({ workspaceId: lease.workspace_id, invoiceId: invoice.id });
+              if (!result.success) {
+                logger.error({ invoiceId: invoice.id, leaseId: lease.id, reason: result.error }, 'payfast_webhook.invoice.auto_send.failed');
+              }
+            } catch (sendErr) {
+              logger.error({ err: sendErr, invoiceId: invoice.id, leaseId: lease.id }, 'payfast_webhook.invoice.auto_send.failed');
+            }
+
             // Create Invoice Line Items
             await supabase
               .from('invoice_items')

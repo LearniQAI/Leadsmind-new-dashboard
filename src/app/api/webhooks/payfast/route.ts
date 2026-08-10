@@ -6,6 +6,7 @@ import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
 import { verifyPayFastSignature } from '@/lib/calendar/payfast';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
+import { sendInvoiceEmail } from '@/lib/invoices/sendInvoiceEmail';
 
 /**
  * PayFast Webhook Receiver Route
@@ -336,6 +337,17 @@ export async function POST(req: NextRequest) {
         } else {
           courseInvoiceId = newInvoice?.id ?? null;
           logger.info({ invoiceId: courseInvoiceId, courseId, contactId }, 'webhook.payfast.course_invoice.created');
+
+          if (courseInvoiceId) {
+            try {
+              const result = await sendInvoiceEmail({ workspaceId, invoiceId: courseInvoiceId });
+              if (!result.success) {
+                logger.error({ invoiceId: courseInvoiceId, courseId, contactId, reason: result.error }, 'webhook.payfast.course_invoice.auto_send.failed');
+              }
+            } catch (sendErr) {
+              logger.error({ err: sendErr, invoiceId: courseInvoiceId, courseId, contactId }, 'webhook.payfast.course_invoice.auto_send.failed');
+            }
+          }
         }
       }
 
@@ -453,6 +465,15 @@ export async function POST(req: NextRequest) {
 
         if (invoiceErr) {
           logger.error({ err: invoiceErr, orderId: order.id }, 'webhook.payfast.funnel_order_invoice.create.failed');
+        } else if (newInvoice?.id) {
+          try {
+            const result = await sendInvoiceEmail({ workspaceId: order.workspace_id, invoiceId: newInvoice.id });
+            if (!result.success) {
+              logger.error({ invoiceId: newInvoice.id, orderId: order.id, reason: result.error }, 'webhook.payfast.funnel_order_invoice.auto_send.failed');
+            }
+          } catch (sendErr) {
+            logger.error({ err: sendErr, invoiceId: newInvoice.id, orderId: order.id }, 'webhook.payfast.funnel_order_invoice.auto_send.failed');
+          }
         }
 
         // 3. Mark the order paid and record the resolved next step, so the

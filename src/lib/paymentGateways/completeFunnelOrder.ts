@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
+import { sendInvoiceEmail } from '@/lib/invoices/sendInvoiceEmail';
 
 // Generic version of the funnel_order-paid branch in
 // src/app/api/webhooks/payfast/route.ts (next-step resolution + mirroring
@@ -47,7 +48,7 @@ export async function completeFunnelOrder(params: {
     nextStepId = siblingSteps?.find((s) => s.order === (paidStep as any).order + 1)?.id || null;
   }
 
-  const { error: invoiceErr } = await supabase
+  const { data: newInvoice, error: invoiceErr } = await supabase
     .from('invoices')
     .insert({
       workspace_id: order.workspace_id,
@@ -69,6 +70,15 @@ export async function completeFunnelOrder(params: {
 
   if (invoiceErr) {
     logger.error({ err: invoiceErr, orderId: order.id, gateway }, `webhook.${gateway}.funnel_order_invoice.create.failed`);
+  } else if (newInvoice?.id) {
+    try {
+      const result = await sendInvoiceEmail({ workspaceId: order.workspace_id, invoiceId: newInvoice.id });
+      if (!result.success) {
+        logger.error({ invoiceId: newInvoice.id, orderId: order.id, gateway, reason: result.error }, `webhook.${gateway}.funnel_order_invoice.auto_send.failed`);
+      }
+    } catch (sendErr) {
+      logger.error({ err: sendErr, invoiceId: newInvoice.id, orderId: order.id, gateway }, `webhook.${gateway}.funnel_order_invoice.auto_send.failed`);
+    }
   }
 
   const { error: updateErr } = await supabase

@@ -211,7 +211,7 @@ function validateInvoicePayload(data: Record<string, any>) {
  }
 }
 
-export async function saveInvoice(data: any) {
+export async function saveInvoice(data: any, options?: { skipAutoNotify?: boolean }) {
  const { workspaceId } = await requireWorkspaceAccess();
 
  try {
@@ -243,10 +243,54 @@ export async function saveInvoice(data: any) {
     } catch (e) {
       logger.error({ err: e, invoiceId: invoice.id }, 'finance.invoice.create_webhook_dispatch.failed');
     }
+
+    // Auto-email the newly created invoice to the contact — fires only here
+    // (a plain INSERT), never from updateInvoice(), so re-saving an existing
+    // draft never re-sends. Status stays 'draft' (markSent omitted); this
+    // only affects the initial creation from the manual Invoice Builder.
+    // Skipped when the caller (InvoiceBuilder's "Save & Send" button, via
+    // sendInvoiceNow below) is about to send its own markSent:true email
+    // immediately after this returns — otherwise the contact would get two
+    // emails for one click.
+    if (!options?.skipAutoNotify) {
+      try {
+        const { sendInvoiceEmail } = await import('@/lib/invoices/sendInvoiceEmail');
+        const result = await sendInvoiceEmail({ workspaceId: invoice.workspace_id, invoiceId: invoice.id });
+        if (!result.success) {
+          logger.error({ invoiceId: invoice.id, workspaceId: invoice.workspace_id, reason: result.error }, 'finance.invoice.auto_send.failed');
+        }
+      } catch (e) {
+        logger.error({ err: e, invoiceId: invoice.id }, 'finance.invoice.auto_send.failed');
+      }
+    }
   }
 
  safeRevalidatePath('/invoices');
  return { success: true, data: invoice };
+}
+
+// Backs InvoiceBuilder's "Save & Send" button: called right after
+// saveInvoice()/updateInvoice() succeeds, with markSent: true so the invoice
+// is genuinely flipped to 'sent' (not left as 'draft' like the plain-Save
+// auto-notify path). Reuses the same shared sendInvoiceEmail() as every
+// other auto-send call site rather than a third implementation.
+export async function sendInvoiceNow(invoiceId: string) {
+ const { workspaceId } = await requireWorkspaceAccess();
+
+ try {
+  const { sendInvoiceEmail } = await import('@/lib/invoices/sendInvoiceEmail');
+  const result = await sendInvoiceEmail({ workspaceId, invoiceId, markSent: true });
+  if (!result.success) {
+    logger.error({ invoiceId, workspaceId, reason: result.error }, 'finance.invoice.send_now.failed');
+    return { success: false, error: result.error || 'Failed to send invoice' };
+  }
+ } catch (e) {
+  logger.error({ err: e, invoiceId, workspaceId }, 'finance.invoice.send_now.failed');
+  return { success: false, error: 'Failed to send invoice' };
+ }
+
+ safeRevalidatePath('/invoices');
+ return { success: true };
 }
 
 export async function updateInvoice(id: string, data: any) {
