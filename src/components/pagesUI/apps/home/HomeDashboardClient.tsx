@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useLayoutEffect } from "react";
+import React, { useState, useLayoutEffect, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import {
@@ -8,7 +8,6 @@ import {
   TrendingDown,
   Activity,
   Target,
-  ArrowUpRight,
   Layers,
   Plus,
   FileText,
@@ -23,13 +22,13 @@ import {
   Calendar,
   Clock,
   MessageSquare,
-  AlertCircle,
-  ChevronRight,
-  Trophy
+  AlertCircle
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
+import { createClient } from "@/lib/supabase/client";
+import { SalesPipelineSummary } from "./SalesPipelineSummary";
 import type { DashboardMetrics } from "@/types/analytics.types";
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
@@ -80,18 +79,6 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   return <Chart options={options} series={series} type="line" height={40} width="100%" />;
 }
 
-// Clean horizontal progress bar for conversion tracking
-function ProgressBar({ value, colorClass = "bg-primary" }: { value: number; colorClass?: string }) {
-  return (
-    <div className="w-full bg-slate-200/70 h-2.5 rounded-full overflow-hidden">
-      <div
-        className={`h-full rounded-full transition-all duration-500 motion-reduce:transition-none ${colorClass}`}
-        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-      />
-    </div>
-  );
-}
-
 const HomeDashboardClient = ({
   stats,
   recentActivities,
@@ -101,9 +88,50 @@ const HomeDashboardClient = ({
   attributionMetrics,
   metrics,
 }: HomeDashboardClientProps) => {
-  const { user } = useDashboardContext();
+  const { user, workspace } = useDashboardContext();
   const [revenuePeriod, setRevenuePeriod] = useState<"this_month" | "last_month">("this_month");
-  
+  const [liveOverdueTasks, setLiveOverdueTasks] = useState(overdueTasks);
+
+  // Keep in sync with the server-rendered prop (e.g. after a full navigation).
+  useEffect(() => {
+    setLiveOverdueTasks(overdueTasks);
+  }, [overdueTasks]);
+
+  // Live-sync the Task Agenda card with the Tasks module: any insert/update/
+  // delete on `tasks` for this workspace re-runs the same overdue/high-
+  // priority filter the dashboard page query uses, so a task created or
+  // edited elsewhere shows up here without a page reload.
+  useEffect(() => {
+    const workspaceId = workspace?.id;
+    if (!workspaceId) return;
+
+    const supabase = createClient();
+
+    const refetch = async () => {
+      const { data } = await supabase
+        .from("tasks")
+        .select("id, title, due_date")
+        .eq("workspace_id", workspaceId)
+        .eq("priority", "high")
+        .neq("status", "done")
+        .lt("due_date", new Date().toISOString());
+      setLiveOverdueTasks(data || []);
+    };
+
+    const channel = supabase
+      .channel(`dashboard_tasks_${workspaceId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks", filter: `workspace_id=eq.${workspaceId}` },
+        refetch
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [workspace?.id]);
+
   // Calculate conversion rates & ratios
   const conversionRate = stats.leads > 0 ? ((stats.wonDeals / stats.leads) * 100).toFixed(1) : "0";
   const newLeadsPct = stats.leads > 0 ? ((stats.newLeads / stats.leads) * 100).toFixed(1) : "0";
@@ -273,16 +301,6 @@ const HomeDashboardClient = ({
     }
   ];
 
-  // Pipeline Stages definitions
-  const rawFunnel = metrics?.pipelineFunnel ?? [];
-  const pipelineStages = rawFunnel.length > 0 ? rawFunnel : [
-    { label: "Lead", value: 0 },
-    { label: "Contacted", value: 0 },
-    { label: "Proposal", value: 0 },
-    { label: "Negotiation", value: 0 },
-    { label: "Won", value: 0 }
-  ];
-
   // Real upcoming appointments, workspace-scoped (src/app/dashboard/page.tsx),
   // sorted by start_time — replaces the previous hardcoded sample entries.
   const calendarEvents = upcomingMeetings.map((apt, idx) => {
@@ -365,7 +383,7 @@ const HomeDashboardClient = ({
       <div className="px-6 py-6 space-y-6">
         
         {/* Critical Alerts (Redesign) */}
-        {overdueTasks.length > 0 && (
+        {liveOverdueTasks.length > 0 && (
           <div className="p-4 rounded-2xl bg-red-50/50 border border-red-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-red-100/60 flex items-center justify-center !text-[#EF4444] flex-shrink-0">
@@ -373,7 +391,7 @@ const HomeDashboardClient = ({
               </div>
               <div>
                 <h4 className="text-[14px] font-bold !text-[#0F172A]">
-                  {overdueTasks.length} High-priority task{overdueTasks.length === 1 ? "" : "s"} overdue
+                  {liveOverdueTasks.length} High-priority task{liveOverdueTasks.length === 1 ? "" : "s"} overdue
                 </h4>
                 <p className="text-[12px] !text-slate-500 mt-0.5">Please review and update deadline assignments.</p>
               </div>
@@ -562,95 +580,8 @@ const HomeDashboardClient = ({
         <div className="grid grid-cols-1 xl:grid-cols-10 gap-6">
           
           {/* Sales Pipeline (70% column width on large screens) */}
-          <div className="bg-white border border-[#EEF2F7] rounded-[20px] p-6 shadow-[0_1px_2px_rgba(0,0,0,0.01)] xl:col-span-7 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-[18px] font-bold !text-[#0F172A]">Sales Pipeline Summary</h3>
-                <p className="text-[12px] !text-slate-500 mt-0.5">Current stage breakdown and expected deal value</p>
-              </div>
-              <Link 
-                href="/pipelines" 
-                className="text-[12px] font-bold !text-[#2563EB] hover:text-blue-700 flex items-center gap-1"
-              >
-                Manage Pipeline <ArrowUpRight size={13} />
-              </Link>
-            </div>
-
-            {/* Stage Layout as Horizontal Cards */}
-            {rawFunnel.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-16 border border-dashed border-[#E5E7EB] rounded-2xl p-6 bg-slate-50/50">
-                <Layers size={28} className="!text-slate-300 mb-3" />
-                <h4 className="text-[14px] font-bold !text-[#0F172A]">No opportunities yet</h4>
-                <p className="text-[12px] !text-slate-500 mt-0.5 max-w-[280px]">
-                  Create your first opportunity to start tracking pipeline performance.
-                </p>
-                <Link
-                  href="/pipelines"
-                  className="mt-4 px-4 py-2 bg-[#2563EB] hover:bg-blue-700 !text-white rounded-xl text-[12px] font-bold shadow-sm transition-all"
-                >
-                  Create Opportunity
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3.5 mt-2">
-                {pipelineStages.map((stage, idx) => {
-                  const dealCount = stage.value;
-                  // Real sum of this stage's actual opportunity values —
-                  // previously `dealCount * 12500`, a flat made-up number
-                  // with no connection to real deal data. See analytics.ts.
-                  const stageValue = (stage as any).totalValue ?? 0;
-                  const pipelineName = (stage as any).pipelineName as string | null;
-                  const conversionPercent = Math.max(10, 100 - idx * 20);
-                  const isWon = idx === pipelineStages.length - 1;
-
-                  return (
-                    <div key={(stage as any).id ?? `${pipelineName}-${stage.label}-${idx}`} className="relative">
-                      <div
-                        className={`bg-white border-t-2 border border-y-[#E5E7EB] border-r-[#E5E7EB] rounded-xl p-3.5 flex flex-col justify-between h-[128px] transition-all duration-200 motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-md ${
-                          isWon ? "border-t-emerald-500" : "border-t-[#E2E8F0]"
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center justify-between gap-1.5">
-                            <div className="flex items-center gap-1.5 text-[11px] font-bold !text-slate-500 uppercase tracking-wider truncate">
-                              {isWon && <Trophy size={11} className="!text-emerald-500 flex-shrink-0" />}
-                              {stage.label}
-                            </div>
-                          </div>
-                          {/* Disambiguates stages that legitimately share a
-                              name across two different real pipelines —
-                              previously these rendered as unlabeled,
-                              seemingly-duplicate cards. */}
-                          {pipelineName && (
-                            <div className="text-[9px] font-medium !text-slate-400 truncate mt-0.5">{pipelineName}</div>
-                          )}
-                          <div className="text-[20px] font-bold !text-[#0F172A] mt-1 tabular-nums">
-                            {dealCount} <span className="text-[11px] font-normal !text-slate-500">deals</span>
-                          </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-end">
-                            <span className="font-bold text-[11px] !text-[#0F172A] tabular-nums">${stageValue.toLocaleString()}</span>
-                            <span className={`font-extrabold text-[15px] leading-none tabular-nums ${isWon ? "!text-emerald-600" : "!text-[#0F172A]"}`}>
-                              {conversionPercent}%
-                            </span>
-                          </div>
-                          <ProgressBar value={conversionPercent} colorClass={isWon ? "bg-emerald-500" : "bg-[#2563EB]"} />
-                        </div>
-                      </div>
-
-                      {/* Funnel connector to the next stage */}
-                      {idx < pipelineStages.length - 1 && (
-                        <div className="hidden sm:flex absolute top-1/2 -right-[9px] -translate-y-1/2 z-10 w-4 h-4 rounded-full bg-white border border-[#E5E7EB] items-center justify-center shadow-sm">
-                          <ChevronRight size={10} className="!text-slate-300" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+          <div className="xl:col-span-7">
+            <SalesPipelineSummary pipelineFunnel={metrics?.pipelineFunnel ?? []} />
           </div>
 
           {/* Recent Activity Timeline (30% column width) */}
@@ -728,7 +659,7 @@ const HomeDashboardClient = ({
             </div>
 
             <div className="flex-1 max-h-[300px] overflow-y-auto pr-1">
-              {overdueTasks.length === 0 ? (
+              {liveOverdueTasks.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center py-12 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-4">
                   <CircleCheck size={28} className="!text-[#10B981] mb-2" />
                   <span className="text-[13px] font-bold !text-[#0F172A]">All caught up!</span>
@@ -736,7 +667,7 @@ const HomeDashboardClient = ({
                 </div>
               ) : (
                 <div className="space-y-2 mt-1">
-                  {overdueTasks.map((task) => (
+                  {liveOverdueTasks.map((task) => (
                     <div 
                       key={task.id} 
                       className="flex items-center gap-3 p-3 bg-white border border-[#EEF2F7] hover:border-slate-300 rounded-xl transition-all duration-150 shadow-[0_1px_2px_rgba(0,0,0,0.01)] group"
