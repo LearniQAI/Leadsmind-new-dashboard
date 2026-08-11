@@ -12,8 +12,6 @@ import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
 
-const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback` : 'http://localhost:3000/api/auth/callback';
-
 export async function getMetaAuthUrl(targetPlatform?: string) {
 	// Mints a random opaque nonce bound server-side to the real authenticated user + their
 	// real (session-verified) workspace — the OAuth state param is never the workspace_id
@@ -141,18 +139,6 @@ export async function connectPlatformManually(platform: string, data: any) {
     logger.error({ err: error, platform }, 'messaging.platform_connection.save.failed');
     return { error: 'Failed to save connection' };
   }
-}
-
-export async function getLinkedInAuthUrl() {
- const clientId = process.env.LINKEDIN_CLIENT_ID;
- const scope = 'w_member_social,r_liteprofile';
- return `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${REDIRECT_URI}&scope=${scope}`;
-}
-
-export async function getTikTokAuthUrl() {
- const clientKey = process.env.TIKTOK_CLIENT_KEY;
- const scope = 'user.info.basic,video.list,video.publish';
- return `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&scope=${scope}&response_type=code&redirect_uri=${REDIRECT_URI}`;
 }
 
 export async function getConnectedPlatforms() {

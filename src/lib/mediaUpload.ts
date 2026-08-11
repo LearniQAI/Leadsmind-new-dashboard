@@ -101,3 +101,50 @@ export async function uploadBlogMedia({ file, altText, workspaceId }: UploadOpti
     return { publicUrl: '', error: error.message || 'Image upload/optimization pipeline failed.' };
   }
 }
+
+interface SocialUploadOptions {
+  file: File;
+  workspaceId: string;
+}
+
+/**
+ * Social-post media upload (images + video, for the Social Planner composer). Reuses the same
+ * WebP-conversion + Supabase Storage upload pattern as uploadBlogMedia, targeting the
+ * 'social-media' bucket instead. Video files pass through untouched (convertToWebP only
+ * transforms image/* — this is what makes it safe to reuse for TikTok/YouTube video uploads
+ * without a separate code path). No altText requirement — social captions serve that role.
+ */
+export async function uploadSocialMedia({ file, workspaceId }: SocialUploadOptions): Promise<{ publicUrl: string; error?: string }> {
+  try {
+    const supabase = createClient();
+    let uploadBlob: Blob = file;
+    let extension = file.name.split('.').pop() || '';
+
+    if (file.type.startsWith('image/')) {
+      uploadBlob = await convertToWebP(file);
+      extension = 'webp';
+    }
+
+    const randomId = Math.floor(Math.random() * 1000000);
+    const filePath = `${workspaceId}/${Date.now()}-${randomId}.${extension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('social-media')
+      .upload(filePath, uploadBlob, {
+        cacheControl: '31536000, public',
+        contentType: extension === 'webp' ? 'image/webp' : file.type,
+        upsert: false
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('social-media')
+      .getPublicUrl(filePath);
+
+    return { publicUrl };
+  } catch (error: any) {
+    console.error('[mediaUpload Error]:', error.message);
+    return { publicUrl: '', error: error.message || 'Media upload failed.' };
+  }
+}

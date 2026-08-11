@@ -18,47 +18,49 @@ export async function GET(req: Request) {
   try {
     // state is a random opaque nonce minted at flow-initiation time, bound server-side to
     // the real authenticated user + their real workspace — never trust its raw value.
-    const { workspaceId } = await consumeOAuthStateNonce(state, 'linkedin');
+    const { workspaceId } = await consumeOAuthStateNonce(state, 'youtube');
 
     const supabase = createAdminClient();
 
-    // 1. Exchange code for access token
-    const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+    // 1. Exchange code for access token — same Google OAuth client/endpoint as the existing
+    // GSC/Gmail/Calendar flows (src/app/api/auth/google/callback/route.ts), different redirect_uri.
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        client_id: process.env.LINKEDIN_CLIENT_ID!,
-        client_secret: process.env.LINKEDIN_CLIENT_SECRET!,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/linkedin`,
+        client_id: process.env.GOOGLE_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/youtube`,
       }),
     });
 
     const tokenData = await tokenResponse.json();
-    if (!tokenResponse.ok) throw new Error(tokenData.error_description || 'Failed to exchange token');
+    if (!tokenResponse.ok) throw new Error(tokenData.error_description || tokenData.error || 'Failed to exchange token');
 
-    // refresh_token is only present if this app has LinkedIn's separate "Programmatic Refresh
-    // Tokens" product granted — not automatic. getValidLinkedInAccessToken() in social.ts
-    // handles its absence by requiring reconnect rather than assuming a refresh is possible.
-    const { access_token, expires_in, refresh_token } = tokenData;
+    // Google only sends refresh_token on first consent or when prompt=consent is used
+    // (getYouTubeAuthUrl always passes prompt=consent, so this should be present).
+    const { access_token, refresh_token, expires_in } = tokenData;
+    if (!refresh_token) {
+      logger.warn({ workspaceId }, 'auth.youtube_callback.no_refresh_token');
+    }
 
-    // 2. Fetch user profile from LinkedIn to get account name
-    const profileResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
+    // 2. Fetch the connected YouTube channel's name
+    const channelResponse = await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', {
       headers: { Authorization: `Bearer ${access_token}` },
     });
+    const channelData = await channelResponse.json();
+    if (!channelResponse.ok) throw new Error(channelData.error?.message || 'Failed to fetch YouTube channel');
 
-    const profileData = await profileResponse.json();
-    const accountId = profileData.sub;
-    const accountName = profileData.name;
+    const channel = channelData.items?.[0];
+    const accountId = channel?.id;
+    const accountName = channel?.snippet?.title || 'YouTube Channel';
 
-    // 3. Store in platform_connections — the table createSocialPost()/getConnectedPlatforms()
-    // actually read from (matches the Meta/WhatsApp pattern in messaging.ts's
-    // saveMetaConnections). social_accounts is a separate, unread table; writing there left
-    // this connection permanently invisible to the publish flow.
+    // 3. Store in platform_connections — same table/shape every other publish platform uses.
     const { error } = await supabase.from('platform_connections').upsert({
       workspace_id: workspaceId,
-      platform: 'linkedin',
+      platform: 'youtube',
       credentials: {
         account_id: accountId,
         account_name: accountName,
@@ -73,9 +75,9 @@ export async function GET(req: Request) {
 
     if (error) throw error;
 
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/social?success=linkedin_connected`);
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/social?success=youtube_connected`);
   } catch (error: any) {
-    logger.error({ err: error }, 'auth.linkedin_callback.failed');
+    logger.error({ err: error }, 'auth.youtube_callback.failed');
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/social?error=auth_failed`);
   }
 }
