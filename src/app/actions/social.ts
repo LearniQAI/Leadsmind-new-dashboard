@@ -168,11 +168,32 @@ async function getValidTikTokAccessToken(supabase: any, workspaceId: string, cre
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// TikTok's documented chunk bounds for FILE_UPLOAD: each chunk must be 5MB-64MB, except a
+// video small enough to fit in one chunk may be sent as a single chunk of its full size.
+// These are the platform's stated limits as of when this was written — verify against
+// TikTok's current Content Posting API docs before relying on them, since API limits change
+// and this couldn't be confirmed against a real account in this environment.
+const TIKTOK_MIN_CHUNK_BYTES = 5 * 1024 * 1024;
+const TIKTOK_MAX_CHUNK_BYTES = 64 * 1024 * 1024;
+
 /**
- * TikTok's Content Posting API is async: initiate -> poll status until the platform confirms
- * PUBLISH_COMPLETE or FAILED. Faking a synchronous success here would be exactly the kind of
- * "no fake success" violation this whole rebuild exists to fix — so this polls for real, with
- * a bounded timeout, and only returns success on a real PUBLISH_COMPLETE status.
+ * TikTok's Content Posting API is async: initiate -> upload the video bytes -> poll status
+ * until the platform confirms PUBLISH_COMPLETE or FAILED. Faking a synchronous success here
+ * would be exactly the kind of "no fake success" violation this whole rebuild exists to fix —
+ * so this polls for real, with a bounded timeout, and only returns success on a real
+ * PUBLISH_COMPLETE status.
+ *
+ * Uses FILE_UPLOAD (direct chunked PUT of the video bytes to a TikTok-provided upload_url),
+ * not PULL_FROM_URL — PULL_FROM_URL requires TikTok to verify ownership of the domain the
+ * video_url lives on, which isn't possible against a shared *.supabase.co Storage domain we
+ * don't own. FILE_UPLOAD sidesteps that entirely since TikTok never fetches the URL itself.
+ *
+ * NOTE on hosting limits: this fetches the whole video into memory as an ArrayBuffer, then PUTs
+ * it to TikTok in chunks. The chunking keeps each individual outbound request small (bounded by
+ * TIKTOK_MAX_CHUNK_BYTES), but the full video still has to fit in this function's memory and
+ * total execution time — on typical serverless hosting (e.g. Vercel Functions) that means large
+ * videos can still hit a function timeout or memory ceiling even though no single HTTP request
+ * is oversized. Same class of limitation flagged for YouTube's resumable upload.
  */
 async function publishToTikTok(accessToken: string, content: string, videoUrl: string): Promise<{ postId?: string }> {
   // Privacy level is account-specific and app-audit-status-specific (unaudited apps are
@@ -188,6 +209,17 @@ async function publishToTikTok(accessToken: string, content: string, videoUrl: s
   }
   const privacyLevel = creatorInfo.data?.privacy_level_options?.[0] || 'SELF_ONLY';
 
+  // Fetch the video bytes from our own Storage first — needed up front now, since FILE_UPLOAD's
+  // init call must declare the exact video_size/chunk_size/total_chunk_count before any bytes move.
+  const videoRes = await fetch(videoUrl);
+  if (!videoRes.ok) throw new Error(`Failed to fetch video from storage (${videoRes.status}) before uploading to TikTok`);
+  const videoBuffer = new Uint8Array(await videoRes.arrayBuffer());
+  const videoSize = videoBuffer.byteLength;
+  const contentType = videoRes.headers.get('Content-Type') || 'video/mp4';
+
+  const chunkSize = videoSize <= TIKTOK_MAX_CHUNK_BYTES ? videoSize : TIKTOK_MIN_CHUNK_BYTES;
+  const totalChunkCount = Math.max(1, Math.ceil(videoSize / chunkSize));
+
   const initRes = await fetch('https://open.tiktokapis.com/v2/post/publish/video/init/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -199,7 +231,12 @@ async function publishToTikTok(accessToken: string, content: string, videoUrl: s
         disable_comment: false,
         disable_stitch: false,
       },
-      source_info: { source: 'PULL_FROM_URL', video_url: videoUrl },
+      source_info: {
+        source: 'FILE_UPLOAD',
+        video_size: videoSize,
+        chunk_size: chunkSize,
+        total_chunk_count: totalChunkCount,
+      },
     }),
   });
   const initData = await initRes.json();
@@ -207,6 +244,30 @@ async function publishToTikTok(accessToken: string, content: string, videoUrl: s
     throw new Error(initData.error?.message || 'TikTok publish init failed');
   }
   const publishId = initData.data.publish_id;
+  const uploadUrl = initData.data.upload_url;
+  if (!uploadUrl) throw new Error('TikTok did not return an upload_url for FILE_UPLOAD');
+
+  // Upload each chunk sequentially to the same upload_url, per TikTok's documented Content-Range
+  // protocol — one PUT per chunk, byte range and total size declared each time.
+  for (let i = 0; i < totalChunkCount; i++) {
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, videoSize) - 1;
+    const chunk = videoBuffer.subarray(start, end + 1);
+
+    const chunkRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(chunk.byteLength),
+        'Content-Range': `bytes ${start}-${end}/${videoSize}`,
+      },
+      body: chunk,
+    });
+    if (!chunkRes.ok) {
+      const errText = await chunkRes.text().catch(() => '');
+      throw new Error(`TikTok video chunk upload failed (chunk ${i + 1}/${totalChunkCount}, status ${chunkRes.status}): ${errText || 'no error body'}`);
+    }
+  }
 
   const POLL_INTERVAL_MS = 3000;
   const TIMEOUT_MS = 2 * 60 * 1000;
