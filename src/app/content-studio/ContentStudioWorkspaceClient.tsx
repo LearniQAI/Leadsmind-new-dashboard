@@ -31,8 +31,9 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { searchContacts, getContact } from '@/app/actions/contacts';
 import { createSocialPost } from '@/app/actions/social';
+import { getConnectedPlatforms } from '@/app/actions/messaging';
 import { createPost, updatePost } from '@/app/actions/blog';
-import { Instagram, Facebook, Twitter, Linkedin } from '@/components/icons/BrandIcons';
+import { Instagram, Facebook, Twitter, Linkedin, TikTok, YouTube } from '@/components/icons/BrandIcons';
 import {
   Sliders,
   Sparkles,
@@ -415,6 +416,13 @@ export default function ContentStudioWorkspaceClient({
   // Publish & Distribution states
   const [socialPlatforms, setSocialPlatforms] = useState<string[]>([]);
   const [socialSchedule, setSocialSchedule] = useState('');
+  const [connectedSocialPlatforms, setConnectedSocialPlatforms] = useState<string[]>([]);
+
+  useEffect(() => {
+    getConnectedPlatforms().then((platforms: any[]) => {
+      setConnectedSocialPlatforms(platforms.filter(p => p.status === 'connected').map(p => p.platform));
+    }).catch(() => {});
+  }, []);
   const [contactQuery, setContactQuery] = useState('');
   const [contactResults, setContactResults] = useState<any[]>([]);
   const [selectedContactId, setSelectedContactId] = useState<string>('');
@@ -479,12 +487,21 @@ export default function ContentStudioWorkspaceClient({
         content: editor.getText(),
         scheduled_at: socialSchedule || undefined
       });
-      if (res.error) {
+      if (res.error && !res.results) {
         toast.error(`Social queuing failed: ${res.error}`);
-      } else {
-        toast.success(socialSchedule ? 'Social post scheduled successfully!' : 'Social post queued successfully!');
-        setSocialPlatforms([]);
-        setSocialSchedule('');
+      } else if (res.results) {
+        // Per-platform outcome — a blanket toast would hide a mixed result across platforms.
+        Object.entries(res.results).forEach(([platform, r]: [string, any]) => {
+          if (r.success) {
+            toast.success(`${platform}: ${socialSchedule ? 'scheduled' : 'published'}${r.postId ? ` (${r.postId})` : ''}`);
+          } else {
+            toast.error(`${platform}: ${r.error || 'failed'}`);
+          }
+        });
+        if (Object.values(res.results).some((r: any) => r.success)) {
+          setSocialPlatforms([]);
+          setSocialSchedule('');
+        }
       }
     } catch (e: any) {
       toast.error(e.message || 'Failed to queue social post.');
@@ -2397,24 +2414,43 @@ export default function ContentStudioWorkspaceClient({
                             {[
                               { id: 'facebook', icon: <Facebook className="w-4 h-4 stroke-current" />, color: 'hover:bg-[#1877F2]/10 hover:text-[#1877F2]' },
                               { id: 'instagram', icon: <Instagram className="w-4 h-4 stroke-current" />, color: 'hover:bg-[#E4405F]/10 hover:text-[#E4405F]' },
-                              { id: 'twitter', icon: <Twitter className="w-4 h-4 stroke-current" />, color: 'hover:bg-[#1DA1F2]/10 hover:text-[#1DA1F2]' },
-                              { id: 'linkedin', icon: <Linkedin className="w-4 h-4 stroke-current" />, color: 'hover:bg-[#0A66C2]/10 hover:text-[#0A66C2]' }
+                              { id: 'x', icon: <Twitter className="w-4 h-4 stroke-current" />, color: 'hover:bg-[#1DA1F2]/10 hover:text-[#1DA1F2]' },
+                              { id: 'linkedin', icon: <Linkedin className="w-4 h-4 stroke-current" />, color: 'hover:bg-[#0A66C2]/10 hover:text-[#0A66C2]' },
+                              { id: 'tiktok', icon: <TikTok className="w-4 h-4 stroke-current" />, color: 'hover:bg-black/10', requiresMedia: true },
+                              { id: 'youtube', icon: <YouTube className="w-4 h-4 stroke-current" />, color: 'hover:bg-red-500/10 hover:text-red-500', requiresMedia: true }
                             ].map((p) => {
                               const selected = socialPlatforms.includes(p.id);
+                              const connected = connectedSocialPlatforms.includes(p.id);
+                              // Content Studio's publish tab has no media-attachment field today, so a
+                              // media-required platform can never be satisfied from here — disable it with
+                              // a distinct reason instead of letting it silently fail server-side later.
+                              const blockedByMedia = connected && p.requiresMedia;
                               return (
                                 <button
                                   key={p.id}
                                   type="button"
+                                  disabled={!connected || blockedByMedia}
+                                  title={
+                                    !connected
+                                      ? `Connect ${p.id} first (Social planner → Account health)`
+                                      : blockedByMedia
+                                        ? `${p.id} requires a video — publish via Social planner, which supports attaching media`
+                                        : undefined
+                                  }
                                   onClick={() => {
                                     setSocialPlatforms(prev =>
                                       prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id]
                                     );
                                   }}
                                   className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors motion-reduce:transition-none ${
-                                    selected
-                                      ? 'bg-dash-accent text-white shadow-sm'
-                                      : 'bg-white border border-dash-border !text-dash-textMuted hover:border-dash-text/20'
-                                  } ${p.color}`}
+                                    !connected
+                                      ? 'bg-dash-surface border border-dash-border opacity-30 grayscale cursor-not-allowed'
+                                      : blockedByMedia
+                                        ? 'bg-amber-50 border border-amber-300 opacity-60 cursor-not-allowed'
+                                        : selected
+                                          ? 'bg-dash-accent text-white shadow-sm'
+                                          : 'bg-white border border-dash-border !text-dash-textMuted hover:border-dash-text/20'
+                                  } ${connected && !blockedByMedia ? p.color : ''}`}
                                 >
                                   {p.icon}
                                 </button>

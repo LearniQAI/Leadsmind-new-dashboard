@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
  Plus,
  Calendar,
@@ -10,11 +10,14 @@ import {
  Clock,
  CheckCircle2,
  AlertCircle,
- Sparkles
+ Sparkles,
+ Loader2,
+ X as XIcon
 } from 'lucide-react';
-import { Instagram, Facebook } from '@/components/icons/BrandIcons';
-import { createSocialPost } from '@/app/actions/social';
+import { Instagram, Facebook, Twitter, Linkedin, TikTok, YouTube } from '@/components/icons/BrandIcons';
+import { createSocialPost, getXAuthUrl, getLinkedInAuthUrl, getTikTokAuthUrl, getYouTubeAuthUrl } from '@/app/actions/social';
 import { getMetaAuthUrl } from '@/app/actions/messaging';
+import { uploadSocialMedia } from '@/lib/mediaUpload';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import AIAssistantSidebar from '@/components/content-studio/AIAssistantSidebar';
@@ -43,6 +46,8 @@ export default function SocialPlannerClient({
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
  const mockEditor = {
   getText: () => content,
@@ -63,20 +68,61 @@ export default function SocialPlannerClient({
     if (platform === 'facebook' || platform === 'instagram') {
       const url = await getMetaAuthUrl(platform)
       if (url) window.location.href = url
+    } else if (platform === 'x') {
+      const url = await getXAuthUrl()
+      if (url) window.location.href = url
+    } else if (platform === 'linkedin') {
+      const url = await getLinkedInAuthUrl()
+      if (url) window.location.href = url
+    } else if (platform === 'tiktok') {
+      const url = await getTikTokAuthUrl()
+      if (url) window.location.href = url
+    } else if (platform === 'youtube') {
+      const url = await getYouTubeAuthUrl()
+      if (url) window.location.href = url
     }
   } catch (err: any) {
     toast.error(err.message || 'Failed to get connection URL')
   }
  };
 
+ const handleMediaFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return;
+
+  setIsUploadingMedia(true);
+  const res = await uploadSocialMedia({ file, workspaceId });
+  if (res.error) {
+   toast.error(res.error);
+  } else {
+   setMediaUrl(res.publicUrl);
+   toast.success('Media uploaded.');
+  }
+  setIsUploadingMedia(false);
+ };
+
  // Real brand marks are self-colored (see BrandIcons.tsx) — no separate
  // platform tint color needed to fill a badge behind them anymore.
+ // requiresMedia platforms reject a publish server-side with no media_urls (TikTok always
+ // needs a video) — surfaced in the composer as a distinct "requires video" state, not
+ // conflated with "not connected".
  const platforms = [
   { id: 'facebook', icon: <Facebook className="w-full h-full" /> },
   { id: 'instagram', icon: <Instagram className="w-full h-full" /> },
+  { id: 'x', icon: <Twitter className="w-full h-full" /> },
+  { id: 'linkedin', icon: <Linkedin className="w-full h-full" /> },
+  { id: 'tiktok', icon: <TikTok className="w-full h-full" />, requiresMedia: true },
+  { id: 'youtube', icon: <YouTube className="w-full h-full" />, requiresMedia: true },
  ];
 
+ const isPlatformConnected = (id: string) => accounts.some(a => a.platform === id);
+
  const togglePlatform = (id: string) => {
+  if (!isPlatformConnected(id)) {
+   toast.error(`Connect ${id} first before selecting it.`);
+   return;
+  }
   setSelectedPlatforms(prev =>
    prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
   );
@@ -88,6 +134,12 @@ export default function SocialPlannerClient({
    return;
   }
 
+  const missingMediaPlatform = platforms.find(p => p.requiresMedia && selectedPlatforms.includes(p.id) && !mediaUrl);
+  if (missingMediaPlatform) {
+   toast.error(`${missingMediaPlatform.id} requires a video URL — add one before publishing.`);
+   return;
+  }
+
   setIsSubmitting(true);
   const res = await createSocialPost({
    platforms: selectedPlatforms,
@@ -95,16 +147,27 @@ export default function SocialPlannerClient({
    media_urls: mediaUrl ? [mediaUrl] : [],
   });
 
-  if (res.error) {
+  if (res.error && !res.results) {
    toast.error(res.error);
-  } else {
-   toast.success('Post created successfully!');
-   setContent('');
-   setMediaUrl('');
-   setSelectedPlatforms([]);
-   setIsComposerOpen(false);
-   setIsCopilotOpen(false);
-   router.refresh();
+  } else if (res.results) {
+   // Per-platform outcome — a single blanket toast would hide a mixed result
+   // (e.g. Facebook succeeded, X failed). Report each platform's real result.
+   Object.entries(res.results).forEach(([platform, r]: [string, any]) => {
+    if (r.success) {
+     toast.success(`${platform}: published${r.postId ? ` (${r.postId})` : ''}`);
+    } else {
+     toast.error(`${platform}: ${r.error || 'failed'}`);
+    }
+   });
+   const anySuccess = Object.values(res.results).some((r: any) => r.success);
+   if (anySuccess) {
+    setContent('');
+    setMediaUrl('');
+    setSelectedPlatforms([]);
+    setIsComposerOpen(false);
+    setIsCopilotOpen(false);
+    router.refresh();
+   }
   }
   setIsSubmitting(false);
  };
@@ -130,20 +193,36 @@ export default function SocialPlannerClient({
         <div className="flex items-center gap-4 mb-4">
          <span className="text-xs font-bold !text-dash-textMuted">Select platforms</span>
          <div className="flex gap-2">
-          {platforms.map(p => (
-           <button
-            key={p.id}
-            onClick={() => togglePlatform(p.id)}
-            className={cn(
-              "w-10 h-10 p-2 rounded-xl flex items-center justify-center transition-all motion-reduce:transition-none border-2",
-              selectedPlatforms.includes(p.id)
-                ? "border-dash-accent bg-white scale-110 shadow-md motion-reduce:scale-100"
-                : "border-transparent bg-dash-surface opacity-50 hover:opacity-80"
-            )}
-           >
-            {p.icon}
-           </button>
-          ))}
+          {platforms.map(p => {
+           const connected = isPlatformConnected(p.id);
+           const selected = selectedPlatforms.includes(p.id);
+           const needsMedia = connected && p.requiresMedia && selected && !mediaUrl;
+           return (
+            <button
+             key={p.id}
+             onClick={() => togglePlatform(p.id)}
+             title={
+              !connected
+               ? `Connect ${p.id} first`
+               : needsMedia
+                 ? `${p.id} requires a video URL to publish`
+                 : undefined
+             }
+             className={cn(
+               "w-10 h-10 p-2 rounded-xl flex items-center justify-center transition-all motion-reduce:transition-none border-2",
+               !connected
+                 ? "border-transparent bg-dash-surface opacity-30 cursor-not-allowed grayscale"
+                 : needsMedia
+                   ? "border-amber-400 bg-amber-50 scale-110 shadow-md motion-reduce:scale-100"
+                   : selected
+                     ? "border-dash-accent bg-white scale-110 shadow-md motion-reduce:scale-100"
+                     : "border-transparent bg-dash-surface opacity-50 hover:opacity-80"
+             )}
+            >
+             {p.icon}
+            </button>
+           );
+          })}
          </div>
         </div>
 
@@ -154,16 +233,46 @@ export default function SocialPlannerClient({
          className="h-40 resize-none"
         />
 
-        <DashInput
-          type="text"
-          placeholder="Image URL (required for Instagram)..."
-          value={mediaUrl}
-          onChange={(e) => setMediaUrl(e.target.value)}
+        <div className="flex items-center gap-2">
+         <DashInput
+           type="text"
+           placeholder="Media URL (image required for Instagram, video required for TikTok/YouTube)..."
+           value={mediaUrl}
+           onChange={(e) => setMediaUrl(e.target.value)}
+           className="flex-1"
+         />
+         {mediaUrl && (
+          <button
+           type="button"
+           onClick={() => setMediaUrl('')}
+           title="Clear attached media"
+           className="text-dash-textMuted hover:text-dash-text p-2"
+          >
+           <XIcon className="w-4 h-4" />
+          </button>
+         )}
+        </div>
+
+        <input
+         ref={fileInputRef}
+         type="file"
+         accept="image/*,video/*"
+         className="hidden"
+         onChange={handleMediaFileSelect}
         />
 
         <div className="flex items-center justify-between flex-wrap gap-3">
          <div className="flex gap-2 flex-wrap">
-          <DashButton variant="ghost" size="sm"><ImageIcon className="w-4 h-4" /> Media</DashButton>
+          <DashButton
+           type="button"
+           variant="ghost"
+           size="sm"
+           disabled={isUploadingMedia}
+           onClick={() => fileInputRef.current?.click()}
+          >
+           {isUploadingMedia ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> : <ImageIcon className="w-4 h-4" />}
+           {isUploadingMedia ? 'Uploading...' : 'Upload media'}
+          </DashButton>
           <DashButton variant="ghost" size="sm"><Calendar className="w-4 h-4" /> Schedule</DashButton>
           <DashButton
            type="button"

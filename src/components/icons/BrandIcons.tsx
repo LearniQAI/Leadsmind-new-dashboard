@@ -52,6 +52,23 @@ export const Twitter = (props: React.SVGProps<SVGSVGElement>) => (
  </svg>
 );
 
+export const TikTok = (props: React.SVGProps<SVGSVGElement>) => (
+ <svg viewBox="0 0 24 24" {...props}>
+  <rect width="24" height="24" rx="5" fill="#000000" />
+  <path
+   fill="#ffffff"
+   d="M16.5 4c.24 1.2.94 2.28 1.93 3 .8.59 1.77.95 2.77 1.03v2.75a6.6 6.6 0 0 1-3.9-1.26v5.71c0 2.85-2.32 5.17-5.17 5.17S7 18.08 7 15.23c0-2.75 2.15-5 4.86-5.16v2.8a2.36 2.36 0 1 0 1.9 2.31V4h2.74Z"
+  />
+ </svg>
+);
+
+export const YouTube = (props: React.SVGProps<SVGSVGElement>) => (
+ <svg viewBox="0 0 24 24" {...props}>
+  <rect width="24" height="24" rx="5" fill="#FF0000" />
+  <path fill="#ffffff" d="M10 8.5v7l6-3.5-6-3.5Z" />
+ </svg>
+);
+
 export const Linkedin = (props: React.SVGProps<SVGSVGElement>) => (
  <svg viewBox="0 0 24 24" {...props}>
   <rect width="24" height="24" rx="4" fill="#0A66C2" />

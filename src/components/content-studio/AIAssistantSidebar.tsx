@@ -13,8 +13,9 @@ import {
 } from '@/app/actions/contentStudio';
 import { searchContacts } from '@/app/actions/contacts';
 import { createSocialPost } from '@/app/actions/social';
+import { getConnectedPlatforms } from '@/app/actions/messaging';
 import { createPost, updatePost } from '@/app/actions/blog';
-import { Instagram, Facebook, Twitter, Linkedin } from '@/components/icons/BrandIcons';
+import { Instagram, Facebook, Twitter, Linkedin, TikTok, YouTube } from '@/components/icons/BrandIcons';
 import { toast } from 'sonner';
 import {
   Sliders,
@@ -110,6 +111,13 @@ export default function AIAssistantSidebar({
   // Publish & Distribution states
   const [socialPlatforms, setSocialPlatforms] = useState<string[]>([]);
   const [socialSchedule, setSocialSchedule] = useState('');
+  const [connectedSocialPlatforms, setConnectedSocialPlatforms] = useState<string[]>([]);
+
+  useEffect(() => {
+    getConnectedPlatforms().then((platforms: any[]) => {
+      setConnectedSocialPlatforms(platforms.filter(p => p.status === 'connected').map(p => p.platform));
+    }).catch(() => {});
+  }, []);
   const [contactQuery, setContactQuery] = useState('');
   const [contactResults, setContactResults] = useState<any[]>([]);
   const [selectedContactId, setSelectedContactId] = useState<string>('');
@@ -243,12 +251,21 @@ export default function AIAssistantSidebar({
         content: editor.getText(),
         scheduled_at: socialSchedule || undefined
       });
-      if (res.error) {
+      if (res.error && !res.results) {
         toast.error(`Social queuing failed: ${res.error}`);
-      } else {
-        toast.success(socialSchedule ? 'Social post scheduled successfully!' : 'Social post queued successfully!');
-        setSocialPlatforms([]);
-        setSocialSchedule('');
+      } else if (res.results) {
+        // Per-platform outcome — a blanket toast would hide a mixed result across platforms.
+        Object.entries(res.results).forEach(([platform, r]: [string, any]) => {
+          if (r.success) {
+            toast.success(`${platform}: ${socialSchedule ? 'scheduled' : 'published'}${r.postId ? ` (${r.postId})` : ''}`);
+          } else {
+            toast.error(`${platform}: ${r.error || 'failed'}`);
+          }
+        });
+        if (Object.values(res.results).some((r: any) => r.success)) {
+          setSocialPlatforms([]);
+          setSocialSchedule('');
+        }
       }
     } catch (e: any) {
       toast.error('Failed to queue social post.');
@@ -651,24 +668,43 @@ export default function AIAssistantSidebar({
                 {[
                   { id: 'facebook', icon: <Facebook className="w-3.5 h-3.5 stroke-current" />, color: 'hover:bg-[#1877F2]/10 hover:text-[#1877F2]' },
                   { id: 'instagram', icon: <Instagram className="w-3.5 h-3.5 stroke-current" />, color: 'hover:bg-[#E4405F]/10 hover:text-[#E4405F]' },
-                  { id: 'twitter', icon: <Twitter className="w-3.5 h-3.5 stroke-current" />, color: 'hover:bg-[#1DA1F2]/10 hover:text-[#1DA1F2]' },
-                  { id: 'linkedin', icon: <Linkedin className="w-3.5 h-3.5 stroke-current" />, color: 'hover:bg-[#0A66C2]/10 hover:text-[#0A66C2]' }
+                  { id: 'x', icon: <Twitter className="w-3.5 h-3.5 stroke-current" />, color: 'hover:bg-[#1DA1F2]/10 hover:text-[#1DA1F2]' },
+                  { id: 'linkedin', icon: <Linkedin className="w-3.5 h-3.5 stroke-current" />, color: 'hover:bg-[#0A66C2]/10 hover:text-[#0A66C2]' },
+                  { id: 'tiktok', icon: <TikTok className="w-3.5 h-3.5 stroke-current" />, color: 'hover:bg-black/10', requiresMedia: true },
+                  { id: 'youtube', icon: <YouTube className="w-3.5 h-3.5 stroke-current" />, color: 'hover:bg-red-500/10 hover:text-red-500', requiresMedia: true }
                 ].map((p) => {
                   const selected = socialPlatforms.includes(p.id);
+                  const connected = connectedSocialPlatforms.includes(p.id);
+                  // No media-attachment field exists in this sidebar's publish tab, so a
+                  // media-required platform can never be satisfied from here — disable it with
+                  // a distinct reason instead of letting it silently fail server-side later.
+                  const blockedByMedia = connected && p.requiresMedia;
                   return (
                     <button
                       key={p.id}
                       type="button"
+                      disabled={!connected || blockedByMedia}
+                      title={
+                        !connected
+                          ? `Connect ${p.id} first (Social planner → Account health)`
+                          : blockedByMedia
+                            ? `${p.id} requires a video — publish via Social planner, which supports attaching media`
+                            : undefined
+                      }
                       onClick={() => {
                         setSocialPlatforms(prev =>
                           prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id]
                         );
                       }}
                       className={`w-7 h-7 rounded flex items-center justify-center transition-all ${
-                        selected 
-                          ? 'bg-primary text-white shadow-md shadow-primary/20' 
-                          : 'bg-[#080f28] border border-white/10 text-white/40'
-                      } ${p.color}`}
+                        !connected
+                          ? 'bg-[#080f28] border border-white/5 opacity-30 grayscale cursor-not-allowed'
+                          : blockedByMedia
+                            ? 'bg-amber-950/40 border border-amber-400/40 opacity-60 cursor-not-allowed'
+                            : selected
+                              ? 'bg-primary text-white shadow-md shadow-primary/20'
+                              : 'bg-[#080f28] border border-white/10 text-white/40'
+                      } ${connected && !blockedByMedia ? p.color : ''}`}
                     >
                       {p.icon}
                     </button>

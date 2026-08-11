@@ -38,20 +38,29 @@ export async function GET(req: Request) {
     const tokenData = await tokenResponse.json();
     if (!tokenResponse.ok) throw new Error(tokenData.error_description || 'Failed to exchange token');
 
-    const { access_token, expires_in, open_id: accountId } = tokenData;
+    const { access_token, expires_in, refresh_token, open_id: accountId } = tokenData;
 
     // 2. Fetch user profile (Optional, TikTok returns open_id in token response)
     const accountName = `TikTok User (${accountId.substring(0, 8)})`;
 
-    // 3. Store in social_accounts table
-    const { error } = await supabase.from('social_accounts').upsert({
+    // 3. Store in platform_connections — the table createSocialPost()/getConnectedPlatforms()
+    // actually read from (matches the Meta/WhatsApp pattern in messaging.ts's
+    // saveMetaConnections). social_accounts is a separate, unread table; writing there left
+    // this connection permanently invisible to the publish flow.
+    const { error } = await supabase.from('platform_connections').upsert({
       workspace_id: workspaceId,
       platform: 'tiktok',
-      account_name: accountName,
-      account_id: accountId,
-      access_token_encrypted: encrypt(access_token),
-      token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
-    }, { onConflict: 'workspace_id,platform,account_id' });
+      credentials: {
+        account_id: accountId,
+        account_name: accountName,
+        access_token_encrypted: encrypt(access_token),
+        refresh_token_encrypted: refresh_token ? encrypt(refresh_token) : null,
+        token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
+        health_status: 'connected'
+      },
+      status: 'connected',
+      last_sync_at: new Date().toISOString()
+    }, { onConflict: 'workspace_id,platform' });
 
     if (error) throw error;
 
