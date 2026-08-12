@@ -33,7 +33,7 @@ import { searchContacts, getContact } from '@/app/actions/contacts';
 import { createSocialPost } from '@/app/actions/social';
 import { getConnectedPlatforms } from '@/app/actions/messaging';
 import { createPost, updatePost } from '@/app/actions/blog';
-import { Instagram, Facebook, Twitter, Linkedin, TikTok, YouTube } from '@/components/icons/BrandIcons';
+import { Instagram, Facebook, Linkedin, TikTok, YouTube } from '@/components/icons/BrandIcons';
 import {
   Sliders,
   Sparkles,
@@ -2414,7 +2414,6 @@ export default function ContentStudioWorkspaceClient({
                             {[
                               { id: 'facebook', icon: <Facebook className="w-4 h-4 stroke-current" />, color: 'hover:bg-[#1877F2]/10 hover:text-[#1877F2]' },
                               { id: 'instagram', icon: <Instagram className="w-4 h-4 stroke-current" />, color: 'hover:bg-[#E4405F]/10 hover:text-[#E4405F]' },
-                              { id: 'x', icon: <Twitter className="w-4 h-4 stroke-current" />, color: 'hover:bg-[#1DA1F2]/10 hover:text-[#1DA1F2]' },
                               { id: 'linkedin', icon: <Linkedin className="w-4 h-4 stroke-current" />, color: 'hover:bg-[#0A66C2]/10 hover:text-[#0A66C2]' },
                               { id: 'tiktok', icon: <TikTok className="w-4 h-4 stroke-current" />, color: 'hover:bg-black/10', requiresMedia: true },
                               { id: 'youtube', icon: <YouTube className="w-4 h-4 stroke-current" />, color: 'hover:bg-red-500/10 hover:text-red-500', requiresMedia: true }

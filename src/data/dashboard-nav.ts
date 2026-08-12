@@ -36,12 +36,23 @@ const dashboardNav: NavModule[] = [
       { id: 117, label: "WhatsApp Broadcasts", icon: "fa-brands fa-whatsapp", link: "/whatsapp-broadcasts", permission: "marketing" },
       { id: 12, label: "Funnels", icon: "fa-light fa-filter", link: "/funnels", permission: "marketing" },
       { id: 14, label: "Forms", icon: "icon-document", link: "/forms", permission: "marketing" },
-      { id: 15, label: "Social", icon: "fa-light fa-share-nodes", link: "/social", permission: "marketing" },
       { id: 17, label: "Ads", icon: "icon-announcement", link: "/ads", permission: "marketing" },
       { id: 113, label: "Content Studio", icon: "fa-light fa-sparkles", link: "/ai-studio", permission: "marketing" },
       { id: 16, label: "Reputation", icon: "icon-trophy", link: "/reputation", permission: "marketing" },
       { id: 11, label: "Websites", icon: "fa-light fa-browser", link: "/websites", permission: "marketing" },
       { id: 112, label: "Blogs", icon: "fa-light fa-newspaper", link: "/blog/manage", permission: "marketing" },
+    ],
+  },
+  {
+    id: "social",
+    label: "Social",
+    icon: "fa-light fa-share-nodes",
+    items: [
+      { id: 150, label: "Composer", icon: "fa-light fa-pen-to-square", link: "/social", permission: "marketing" },
+      { id: 151, label: "Connections", icon: "fa-light fa-plug", link: "/social/connections", permission: "marketing" },
+      { id: 152, label: "Calendar", icon: "fa-light fa-calendar-days", link: "/social/calendar", permission: "marketing" },
+      { id: 153, label: "Inbox", icon: "fa-light fa-inbox", link: "/social/inbox", permission: "marketing" },
+      { id: 154, label: "Analytics", icon: "fa-light fa-chart-line", link: "/social/analytics", permission: "marketing" },
     ],
   },
   {
@@ -96,6 +107,16 @@ const dashboardNav: NavModule[] = [
         ],
       },
       { id: 31, label: "Inventory", icon: "fa-light fa-boxes-stacked", link: "/inventory", permission: "commerce" },
+      { id: 9, label: "Calendars", icon: "fa-light fa-calendar-days", link: "/calendar", permission: "calendar" },
+      { id: 10, label: "Waitlists", icon: "fa-light fa-clock-rotate-left", link: "/calendar/waitlist", permission: "calendar" },
+      { id: 101, label: "Instant Meet", icon: "fa-light fa-video", link: "/calendar/instant-meet", permission: "calendar" },
+    ],
+  },
+  {
+    id: "hr-payroll",
+    label: "HR & Payroll",
+    icon: "fa-light fa-users-gear",
+    items: [
       {
         id: 30,
         label: "HR & Payroll",
@@ -109,9 +130,6 @@ const dashboardNav: NavModule[] = [
           { label: "Time Tracking", link: "/hr/time-tracking" },
         ],
       },
-      { id: 9, label: "Calendars", icon: "fa-light fa-calendar-days", link: "/calendar", permission: "calendar" },
-      { id: 10, label: "Waitlists", icon: "fa-light fa-clock-rotate-left", link: "/calendar/waitlist", permission: "calendar" },
-      { id: 101, label: "Instant Meet", icon: "fa-light fa-video", link: "/calendar/instant-meet", permission: "calendar" },
     ],
   },
   {

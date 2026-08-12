@@ -4,12 +4,11 @@ import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { createOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { logger } from '@/shared/logger';
-import crypto from 'crypto';
 
 // getMetaAuthUrl below is confirmed dead in this file — messaging.ts's getMetaAuthUrl is what's
-// actually wired up for Meta. getLinkedInAuthUrl/getTikTokAuthUrl/getXAuthUrl now mint a real
-// opaque nonce via createOAuthStateNonce() (same pattern as messaging.ts's getMetaAuthUrl), so
-// they're safe to wire to a real "Connect" button.
+// actually wired up for Meta. getLinkedInAuthUrl/getTikTokAuthUrl now mint a real opaque nonce
+// via createOAuthStateNonce() (same pattern as messaging.ts's getMetaAuthUrl), so they're safe
+// to wire to a real "Connect" button.
 
 export async function getSocialAccounts() {
   try {
@@ -19,7 +18,7 @@ export async function getSocialAccounts() {
       .from('platform_connections')
       .select('platform, status, credentials')
       .eq('workspace_id', workspaceId)
-      .in('platform', ['facebook', 'instagram', 'linkedin', 'tiktok', 'x', 'youtube'])
+      .in('platform', ['facebook', 'instagram', 'linkedin', 'tiktok', 'youtube'])
       .eq('status', 'connected')
     if (error) throw error
     return { data: data || [] }
@@ -46,45 +45,6 @@ export async function getSocialPosts() {
   logger.error({ err: error }, 'social.posts.fetch.failed');
   return { error: 'Failed to fetch social posts.' };
  }
-}
-
-/**
- * X access tokens expire in ~2h. Refreshes lazily (called from the publish branch only when
- * the stored token_expires_at has passed) using the refresh_token minted by offline.access
- * scope, then persists the new pair back to platform_connections so the next publish reuses it.
- */
-async function getValidXAccessToken(supabase: any, workspaceId: string, creds: any): Promise<string> {
-  const { decrypt } = await import('@/lib/encryption');
-  const expired = !creds.token_expires_at || new Date(creds.token_expires_at).getTime() < Date.now();
-  if (!expired) return decrypt(creds.access_token_encrypted);
-
-  if (!creds.refresh_token_encrypted) throw new Error('X token expired and no refresh token is stored. Please reconnect X.');
-
-  const refreshToken = decrypt(creds.refresh_token_encrypted);
-  const basicAuth = Buffer.from(`${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`).toString('base64');
-  const res = await fetch('https://api.twitter.com/2/oauth2/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: `Basic ${basicAuth}` },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      client_id: process.env.X_CLIENT_ID!,
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error_description || data.error || 'Failed to refresh X token. Please reconnect X.');
-
-  const { encrypt } = await import('@/lib/encryption');
-  const newCreds = {
-    ...creds,
-    access_token_encrypted: encrypt(data.access_token),
-    refresh_token_encrypted: data.refresh_token ? encrypt(data.refresh_token) : creds.refresh_token_encrypted,
-    token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
-  };
-  await supabase.from('platform_connections').update({ credentials: newCreds, last_sync_at: new Date().toISOString() })
-    .eq('workspace_id', workspaceId).eq('platform', 'x');
-
-  return data.access_token;
 }
 
 /**
@@ -168,11 +128,32 @@ async function getValidTikTokAccessToken(supabase: any, workspaceId: string, cre
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// TikTok's documented chunk bounds for FILE_UPLOAD: each chunk must be 5MB-64MB, except a
+// video small enough to fit in one chunk may be sent as a single chunk of its full size.
+// These are the platform's stated limits as of when this was written — verify against
+// TikTok's current Content Posting API docs before relying on them, since API limits change
+// and this couldn't be confirmed against a real account in this environment.
+const TIKTOK_MIN_CHUNK_BYTES = 5 * 1024 * 1024;
+const TIKTOK_MAX_CHUNK_BYTES = 64 * 1024 * 1024;
+
 /**
- * TikTok's Content Posting API is async: initiate -> poll status until the platform confirms
- * PUBLISH_COMPLETE or FAILED. Faking a synchronous success here would be exactly the kind of
- * "no fake success" violation this whole rebuild exists to fix — so this polls for real, with
- * a bounded timeout, and only returns success on a real PUBLISH_COMPLETE status.
+ * TikTok's Content Posting API is async: initiate -> upload the video bytes -> poll status
+ * until the platform confirms PUBLISH_COMPLETE or FAILED. Faking a synchronous success here
+ * would be exactly the kind of "no fake success" violation this whole rebuild exists to fix —
+ * so this polls for real, with a bounded timeout, and only returns success on a real
+ * PUBLISH_COMPLETE status.
+ *
+ * Uses FILE_UPLOAD (direct chunked PUT of the video bytes to a TikTok-provided upload_url),
+ * not PULL_FROM_URL — PULL_FROM_URL requires TikTok to verify ownership of the domain the
+ * video_url lives on, which isn't possible against a shared *.supabase.co Storage domain we
+ * don't own. FILE_UPLOAD sidesteps that entirely since TikTok never fetches the URL itself.
+ *
+ * NOTE on hosting limits: this fetches the whole video into memory as an ArrayBuffer, then PUTs
+ * it to TikTok in chunks. The chunking keeps each individual outbound request small (bounded by
+ * TIKTOK_MAX_CHUNK_BYTES), but the full video still has to fit in this function's memory and
+ * total execution time — on typical serverless hosting (e.g. Vercel Functions) that means large
+ * videos can still hit a function timeout or memory ceiling even though no single HTTP request
+ * is oversized. Same class of limitation flagged for YouTube's resumable upload.
  */
 async function publishToTikTok(accessToken: string, content: string, videoUrl: string): Promise<{ postId?: string }> {
   // Privacy level is account-specific and app-audit-status-specific (unaudited apps are
@@ -188,6 +169,17 @@ async function publishToTikTok(accessToken: string, content: string, videoUrl: s
   }
   const privacyLevel = creatorInfo.data?.privacy_level_options?.[0] || 'SELF_ONLY';
 
+  // Fetch the video bytes from our own Storage first — needed up front now, since FILE_UPLOAD's
+  // init call must declare the exact video_size/chunk_size/total_chunk_count before any bytes move.
+  const videoRes = await fetch(videoUrl);
+  if (!videoRes.ok) throw new Error(`Failed to fetch video from storage (${videoRes.status}) before uploading to TikTok`);
+  const videoBuffer = new Uint8Array(await videoRes.arrayBuffer());
+  const videoSize = videoBuffer.byteLength;
+  const contentType = videoRes.headers.get('Content-Type') || 'video/mp4';
+
+  const chunkSize = videoSize <= TIKTOK_MAX_CHUNK_BYTES ? videoSize : TIKTOK_MIN_CHUNK_BYTES;
+  const totalChunkCount = Math.max(1, Math.ceil(videoSize / chunkSize));
+
   const initRes = await fetch('https://open.tiktokapis.com/v2/post/publish/video/init/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -199,7 +191,12 @@ async function publishToTikTok(accessToken: string, content: string, videoUrl: s
         disable_comment: false,
         disable_stitch: false,
       },
-      source_info: { source: 'PULL_FROM_URL', video_url: videoUrl },
+      source_info: {
+        source: 'FILE_UPLOAD',
+        video_size: videoSize,
+        chunk_size: chunkSize,
+        total_chunk_count: totalChunkCount,
+      },
     }),
   });
   const initData = await initRes.json();
@@ -207,6 +204,30 @@ async function publishToTikTok(accessToken: string, content: string, videoUrl: s
     throw new Error(initData.error?.message || 'TikTok publish init failed');
   }
   const publishId = initData.data.publish_id;
+  const uploadUrl = initData.data.upload_url;
+  if (!uploadUrl) throw new Error('TikTok did not return an upload_url for FILE_UPLOAD');
+
+  // Upload each chunk sequentially to the same upload_url, per TikTok's documented Content-Range
+  // protocol — one PUT per chunk, byte range and total size declared each time.
+  for (let i = 0; i < totalChunkCount; i++) {
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, videoSize) - 1;
+    const chunk = videoBuffer.subarray(start, end + 1);
+
+    const chunkRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(chunk.byteLength),
+        'Content-Range': `bytes ${start}-${end}/${videoSize}`,
+      },
+      body: chunk,
+    });
+    if (!chunkRes.ok) {
+      const errText = await chunkRes.text().catch(() => '');
+      throw new Error(`TikTok video chunk upload failed (chunk ${i + 1}/${totalChunkCount}, status ${chunkRes.status}): ${errText || 'no error body'}`);
+    }
+  }
 
   const POLL_INTERVAL_MS = 3000;
   const TIMEOUT_MS = 2 * 60 * 1000;
@@ -411,21 +432,6 @@ export async function createSocialPost(postData: {
           const publishData = await publishRes.json();
           if (!publishRes.ok) throw new Error(publishData.error?.message || 'Instagram publish failed');
           results[platform] = { success: true, postId: publishData.id };
-        } else if (platform === 'x') {
-          const accessToken = await getValidXAccessToken(supabase, workspaceId, creds);
-
-          const res = await fetch('https://api.twitter.com/2/tweets', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({ text: postData.content })
-          });
-
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || data.title || data.errors?.[0]?.message || 'X post failed');
-          results[platform] = { success: true, postId: data.data.id };
         } else if (platform === 'linkedin') {
           const accessToken = await getValidLinkedInAccessToken(supabase, workspaceId, creds);
           if (!creds.account_id) throw new Error('LinkedIn connection is missing an account ID. Please reconnect LinkedIn.');
@@ -559,20 +565,4 @@ export async function getYouTubeAuthUrl() {
  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/youtube`;
  const scope = 'https://www.googleapis.com/auth/youtube.upload';
  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&state=${nonce}`;
-}
-
-/**
- * X (Twitter) OAuth 2.0 requires PKCE even for confidential clients. The code_verifier is
- * generated here and stashed in the nonce record's `extra` JSONB (see stateNonce.ts) so the
- * callback can retrieve it without a second round trip or client-side storage.
- */
-export async function getXAuthUrl() {
- const codeVerifier = crypto.randomBytes(32).toString('base64url');
- const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
-
- const { nonce } = await createOAuthStateNonce('x', { code_verifier: codeVerifier });
- const clientId = process.env.X_CLIENT_ID;
- const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/x`;
- const scope = 'tweet.write tweet.read users.read offline.access';
- return `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${nonce}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 }
