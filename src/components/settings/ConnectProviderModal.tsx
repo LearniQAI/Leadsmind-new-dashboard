@@ -114,6 +114,10 @@ export default function ConnectProviderModal({
 
     // OAuth categories do not submit this way
     if (category === 'email_calendar' || category === 'communication') {
+      if (provider.toLowerCase().includes('google')) {
+        window.location.href = '/api/auth/google';
+        return;
+      }
       setOauthWarning(`OAuth connection for ${provider} is coming soon. You will be notified when it is ready.`);
       return;
     }
