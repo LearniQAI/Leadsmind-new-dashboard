@@ -134,7 +134,8 @@ export async function createAppointment(payload: {
          ? 'http://localhost:3000' 
          : (process.env.NEXT_PUBLIC_APP_URL || '');
          
-       const internalLink = `${baseUrl}/meet/${data.id}`;
+       const meetLink = await import('@/lib/calendar/googleMeet').then(m => m.createGoogleMeetLink({ title: data.title, start_time: data.start_time, end_time: data.end_time }));
+       const internalLink = meetLink || `${baseUrl}/meet/${data.id}`;
        await supabase.from('appointments').update({ 
          meeting_link: internalLink,
          meeting_mode: 'internal_meet' 
@@ -408,7 +409,8 @@ export async function createInstantMeeting(payload: { title?: string; durationMi
       ? 'http://localhost:3000' 
       : (process.env.NEXT_PUBLIC_APP_URL || '');
       
-    const internalLink = `${baseUrl}/meet/${data.id}`;
+    const meetLink = await import('@/lib/calendar/googleMeet').then(m => m.createGoogleMeetLink({ title: data.title, start_time: data.start_time, end_time: data.end_time }));
+    const internalLink = meetLink || `${baseUrl}/meet/${data.id}`;
     
     const { data: updated, error: updateErr } = await supabase
       .from('appointments')
