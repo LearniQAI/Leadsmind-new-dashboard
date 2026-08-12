@@ -4,12 +4,11 @@ import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { createOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { logger } from '@/shared/logger';
-import crypto from 'crypto';
 
 // getMetaAuthUrl below is confirmed dead in this file — messaging.ts's getMetaAuthUrl is what's
-// actually wired up for Meta. getLinkedInAuthUrl/getTikTokAuthUrl/getXAuthUrl now mint a real
-// opaque nonce via createOAuthStateNonce() (same pattern as messaging.ts's getMetaAuthUrl), so
-// they're safe to wire to a real "Connect" button.
+// actually wired up for Meta. getLinkedInAuthUrl/getTikTokAuthUrl now mint a real opaque nonce
+// via createOAuthStateNonce() (same pattern as messaging.ts's getMetaAuthUrl), so they're safe
+// to wire to a real "Connect" button.
 
 export async function getSocialAccounts() {
   try {
@@ -19,7 +18,7 @@ export async function getSocialAccounts() {
       .from('platform_connections')
       .select('platform, status, credentials')
       .eq('workspace_id', workspaceId)
-      .in('platform', ['facebook', 'instagram', 'linkedin', 'tiktok', 'x', 'youtube'])
+      .in('platform', ['facebook', 'instagram', 'linkedin', 'tiktok', 'youtube'])
       .eq('status', 'connected')
     if (error) throw error
     return { data: data || [] }
@@ -46,45 +45,6 @@ export async function getSocialPosts() {
   logger.error({ err: error }, 'social.posts.fetch.failed');
   return { error: 'Failed to fetch social posts.' };
  }
-}
-
-/**
- * X access tokens expire in ~2h. Refreshes lazily (called from the publish branch only when
- * the stored token_expires_at has passed) using the refresh_token minted by offline.access
- * scope, then persists the new pair back to platform_connections so the next publish reuses it.
- */
-async function getValidXAccessToken(supabase: any, workspaceId: string, creds: any): Promise<string> {
-  const { decrypt } = await import('@/lib/encryption');
-  const expired = !creds.token_expires_at || new Date(creds.token_expires_at).getTime() < Date.now();
-  if (!expired) return decrypt(creds.access_token_encrypted);
-
-  if (!creds.refresh_token_encrypted) throw new Error('X token expired and no refresh token is stored. Please reconnect X.');
-
-  const refreshToken = decrypt(creds.refresh_token_encrypted);
-  const basicAuth = Buffer.from(`${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`).toString('base64');
-  const res = await fetch('https://api.twitter.com/2/oauth2/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: `Basic ${basicAuth}` },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      client_id: process.env.X_CLIENT_ID!,
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error_description || data.error || 'Failed to refresh X token. Please reconnect X.');
-
-  const { encrypt } = await import('@/lib/encryption');
-  const newCreds = {
-    ...creds,
-    access_token_encrypted: encrypt(data.access_token),
-    refresh_token_encrypted: data.refresh_token ? encrypt(data.refresh_token) : creds.refresh_token_encrypted,
-    token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
-  };
-  await supabase.from('platform_connections').update({ credentials: newCreds, last_sync_at: new Date().toISOString() })
-    .eq('workspace_id', workspaceId).eq('platform', 'x');
-
-  return data.access_token;
 }
 
 /**
@@ -472,21 +432,6 @@ export async function createSocialPost(postData: {
           const publishData = await publishRes.json();
           if (!publishRes.ok) throw new Error(publishData.error?.message || 'Instagram publish failed');
           results[platform] = { success: true, postId: publishData.id };
-        } else if (platform === 'x') {
-          const accessToken = await getValidXAccessToken(supabase, workspaceId, creds);
-
-          const res = await fetch('https://api.twitter.com/2/tweets', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({ text: postData.content })
-          });
-
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || data.title || data.errors?.[0]?.message || 'X post failed');
-          results[platform] = { success: true, postId: data.data.id };
         } else if (platform === 'linkedin') {
           const accessToken = await getValidLinkedInAccessToken(supabase, workspaceId, creds);
           if (!creds.account_id) throw new Error('LinkedIn connection is missing an account ID. Please reconnect LinkedIn.');
@@ -620,20 +565,4 @@ export async function getYouTubeAuthUrl() {
  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/youtube`;
  const scope = 'https://www.googleapis.com/auth/youtube.upload';
  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&state=${nonce}`;
-}
-
-/**
- * X (Twitter) OAuth 2.0 requires PKCE even for confidential clients. The code_verifier is
- * generated here and stashed in the nonce record's `extra` JSONB (see stateNonce.ts) so the
- * callback can retrieve it without a second round trip or client-side storage.
- */
-export async function getXAuthUrl() {
- const codeVerifier = crypto.randomBytes(32).toString('base64url');
- const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
-
- const { nonce } = await createOAuthStateNonce('x', { code_verifier: codeVerifier });
- const clientId = process.env.X_CLIENT_ID;
- const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/x`;
- const scope = 'tweet.write tweet.read users.read offline.access';
- return `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${nonce}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 }

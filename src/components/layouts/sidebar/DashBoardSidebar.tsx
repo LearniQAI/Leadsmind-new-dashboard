@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import useGlobalContext from "@/hooks/use-context";
 import dashboardNav from "@/data/dashboard-nav";
 import { usePathname } from "next/navigation";
@@ -32,41 +32,18 @@ const DashBoardSidebar = () => {
     }
   }, [pathName, setSideMenuOpen]);
 
-  // Auto-collapse to the icon-only rail once the user navigates into a
-  // module's sub-page — the expanded rail + persistent sub-nav panel both
-  // eating horizontal space stops being worth it once someone is actively
-  // working inside a page. Dashboard home is exempt (it's a landing/overview
-  // screen that benefits from labels). A user's explicit expand is a real
-  // choice, so once they toggle back open we stop auto-collapsing until they
-  // manually collapse again — userExpandedRef tracks that override for the
-  // life of this mount; it isn't persisted, so a fresh load still gets the
-  // smart default.
-  const userExpandedRef = useRef(false);
-  const prevPathRef = useRef(pathName);
-  useEffect(() => {
-    const navigated = prevPathRef.current !== pathName;
-    prevPathRef.current = pathName;
-    if (!navigated || userExpandedRef.current) return;
-    if (activeNav?.itemId && activeNav.moduleId !== "dashboard") {
-      setIsCollapse(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathName]);
-
+  // The sidebar's expanded/collapsed state is purely a manual user choice via
+  // the toggle button (handleToggleCollapse), persisted to localStorage
+  // (AppProvider.tsx) so it stays however the user last left it. It no longer
+  // auto-collapses on navigation — normal state is open; collapsing is
+  // something the user does deliberately, not something that happens to them.
   const handleToggleCollapse = () => {
-    const next = !isCollapse;
-    userExpandedRef.current = !next; // true only while expanded-by-choice
-    setIsCollapse(next);
+    setIsCollapse(!isCollapse);
   };
 
-  // Clicking a sub-link should always collapse the rail back to icon-only,
-  // same as the manual toggle — even if the user had previously expanded it
-  // on purpose, since picking a destination is a stronger signal than that
-  // earlier expand-by-choice.
-  const handleSubLinkNavigate = () => {
-    userExpandedRef.current = false;
-    setIsCollapse(true);
-  };
+  // Clicking a sub-link no longer forces a collapse — navigating shouldn't
+  // change the user's chosen expanded/collapsed state.
+  const handleSubLinkNavigate = () => {};
 
   // "True" active module — what the rail's own selected/highlighted state shows.
   // Never affected by hover; only by an actual click-to-pin or real navigation.

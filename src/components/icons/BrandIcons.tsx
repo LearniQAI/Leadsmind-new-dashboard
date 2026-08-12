@@ -39,22 +39,24 @@ export const Instagram = (props: React.SVGProps<SVGSVGElement>) => {
  );
 };
 
-/** Renders the current X (formerly Twitter) mark — kept the `Twitter`
- *  export name so call sites don't need to change, since that's the
- *  platform's real, current brand identity. */
-export const Twitter = (props: React.SVGProps<SVGSVGElement>) => (
- <svg viewBox="0 0 24 24" {...props}>
-  <rect width="24" height="24" rx="5" fill="#000000" />
-  <path
-   fill="#ffffff"
-   d="M13.795 10.533 20.68 2.5h-1.63l-5.977 6.951L8.29 2.5H2.5l7.223 10.51L2.5 21.5h1.63l6.318-7.342 5.048 7.342h5.79l-7.492-10.967Zm-2.238 2.6-.732-1.047L4.98 3.75h2.505l4.716 6.745.733 1.047 6.128 8.77h-2.505l-5.001-7.179Z"
-  />
- </svg>
-);
-
+// TikTok's official mark is a duotone "glitch" effect — the note glyph is drawn three times,
+// offset slightly: cyan (#25F4EE) behind-left, red/pink (#FE2C55) behind-right, white on top —
+// on the black background used in their standard app-icon treatment. A flat single-color note
+// reads as a generic music-note glyph rather than TikTok specifically; this duotone offset is
+// what actually makes it recognizable as TikTok at a glance.
 export const TikTok = (props: React.SVGProps<SVGSVGElement>) => (
  <svg viewBox="0 0 24 24" {...props}>
   <rect width="24" height="24" rx="5" fill="#000000" />
+  <path
+   fill="#25F4EE"
+   transform="translate(-0.6, 0.6)"
+   d="M16.5 4c.24 1.2.94 2.28 1.93 3 .8.59 1.77.95 2.77 1.03v2.75a6.6 6.6 0 0 1-3.9-1.26v5.71c0 2.85-2.32 5.17-5.17 5.17S7 18.08 7 15.23c0-2.75 2.15-5 4.86-5.16v2.8a2.36 2.36 0 1 0 1.9 2.31V4h2.74Z"
+  />
+  <path
+   fill="#FE2C55"
+   transform="translate(0.6, -0.6)"
+   d="M16.5 4c.24 1.2.94 2.28 1.93 3 .8.59 1.77.95 2.77 1.03v2.75a6.6 6.6 0 0 1-3.9-1.26v5.71c0 2.85-2.32 5.17-5.17 5.17S7 18.08 7 15.23c0-2.75 2.15-5 4.86-5.16v2.8a2.36 2.36 0 1 0 1.9 2.31V4h2.74Z"
+  />
   <path
    fill="#ffffff"
    d="M16.5 4c.24 1.2.94 2.28 1.93 3 .8.59 1.77.95 2.77 1.03v2.75a6.6 6.6 0 0 1-3.9-1.26v5.71c0 2.85-2.32 5.17-5.17 5.17S7 18.08 7 15.23c0-2.75 2.15-5 4.86-5.16v2.8a2.36 2.36 0 1 0 1.9 2.31V4h2.74Z"

@@ -14,8 +14,8 @@ import {
  Loader2,
  X as XIcon
 } from 'lucide-react';
-import { Instagram, Facebook, Twitter, Linkedin, TikTok, YouTube } from '@/components/icons/BrandIcons';
-import { createSocialPost, getXAuthUrl, getLinkedInAuthUrl, getTikTokAuthUrl, getYouTubeAuthUrl } from '@/app/actions/social';
+import { Instagram, Facebook, Linkedin, TikTok, YouTube } from '@/components/icons/BrandIcons';
+import { createSocialPost, getLinkedInAuthUrl, getTikTokAuthUrl, getYouTubeAuthUrl } from '@/app/actions/social';
 import { getMetaAuthUrl } from '@/app/actions/messaging';
 import { uploadSocialMedia } from '@/lib/mediaUpload';
 import { toast } from 'sonner';
@@ -47,6 +47,7 @@ export default function SocialPlannerClient({
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [linkedinWarningDismissed, setLinkedinWarningDismissed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
  const mockEditor = {
@@ -67,9 +68,6 @@ export default function SocialPlannerClient({
   try {
     if (platform === 'facebook' || platform === 'instagram') {
       const url = await getMetaAuthUrl(platform)
-      if (url) window.location.href = url
-    } else if (platform === 'x') {
-      const url = await getXAuthUrl()
       if (url) window.location.href = url
     } else if (platform === 'linkedin') {
       const url = await getLinkedInAuthUrl()
@@ -110,13 +108,25 @@ export default function SocialPlannerClient({
  const platforms = [
   { id: 'facebook', icon: <Facebook className="w-full h-full" /> },
   { id: 'instagram', icon: <Instagram className="w-full h-full" /> },
-  { id: 'x', icon: <Twitter className="w-full h-full" /> },
   { id: 'linkedin', icon: <Linkedin className="w-full h-full" /> },
   { id: 'tiktok', icon: <TikTok className="w-full h-full" />, requiresMedia: true },
   { id: 'youtube', icon: <YouTube className="w-full h-full" />, requiresMedia: true },
  ];
 
  const isPlatformConnected = (id: string) => accounts.some(a => a.platform === id);
+
+ // LinkedIn tokens last 60 days and this app can't get refresh tokens (not
+ // eligible for LinkedIn's Marketing Developer Platform tier) — warn before
+ // the connection silently goes dead rather than surfacing it as a publish failure.
+ const linkedinAccount = accounts.find(a => a.platform === 'linkedin');
+ const linkedinExpiresAt = linkedinAccount?.credentials?.token_expires_at;
+ const linkedinDaysUntilExpiry = linkedinExpiresAt
+  ? Math.ceil((new Date(linkedinExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  : null;
+ const showLinkedinExpiryWarning =
+  !linkedinWarningDismissed &&
+  linkedinDaysUntilExpiry !== null &&
+  linkedinDaysUntilExpiry <= 5;
 
  const togglePlatform = (id: string) => {
   if (!isPlatformConnected(id)) {
@@ -183,6 +193,33 @@ export default function SocialPlannerClient({
      <Plus className="w-4 h-4" /> New post
     </DashButton>
    </div>
+
+   {showLinkedinExpiryWarning && (
+    <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-amber-50 border border-amber-200">
+     <div className="flex items-center gap-3">
+      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+      <p className="text-sm font-medium text-amber-800">
+       Your LinkedIn connection expires in {Math.max(linkedinDaysUntilExpiry ?? 0, 0)} day
+       {linkedinDaysUntilExpiry === 1 ? '' : 's'} — reconnect to keep publishing.
+      </p>
+     </div>
+     <div className="flex items-center gap-3 shrink-0">
+      <button
+       onClick={() => handleConnect('linkedin')}
+       className="text-[11px] font-bold text-amber-700 hover:text-amber-900 transition-colors motion-reduce:transition-none"
+      >
+       Reconnect LinkedIn
+      </button>
+      <button
+       onClick={() => setLinkedinWarningDismissed(true)}
+       title="Dismiss"
+       className="text-amber-600 hover:text-amber-800"
+      >
+       <XIcon className="w-4 h-4" />
+      </button>
+     </div>
+    </div>
+   )}
 
    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
     {/* Left Column: Composer / Queue */}
@@ -389,7 +426,13 @@ export default function SocialPlannerClient({
               <span className="text-xs font-bold !text-dash-text capitalize">{p.id}</span>
              </div>
              {isConnected ? (
-              <span className="text-[11px] font-bold text-green">Active</span>
+              p.id === 'linkedin' && linkedinDaysUntilExpiry !== null && linkedinDaysUntilExpiry <= 5 ? (
+               <span className="text-[11px] font-bold text-amber-600">
+                Expires in {Math.max(linkedinDaysUntilExpiry, 0)}d
+               </span>
+              ) : (
+               <span className="text-[11px] font-bold text-green">Active</span>
+              )
              ) : (
               <button
                onClick={() => handleConnect(p.id)}
