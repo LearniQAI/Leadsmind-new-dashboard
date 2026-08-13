@@ -112,11 +112,11 @@ export default function IntegrationsHubPage() {
             <div className="flex flex-col gap-3 mb-8">
               {[
                 { name: 'Gmail', shortName: 'GM', color: '#ea4335',
-                  desc: 'Emails from clients are automatically logged on their contact record', status: 'coming_soon', category: 'email_calendar' },
+                  desc: 'Emails from clients are automatically logged on their contact record', status: 'available', category: 'email_calendar' },
                 { name: 'Google Calendar', shortName: 'GC', color: '#4285f4',
-                  desc: 'Your calendar syncs with LeadsMind, letting contacts book meetings directly', status: 'coming_soon', category: 'email_calendar' },
+                  desc: 'Your calendar syncs with LeadsMind, letting contacts book meetings directly', status: 'available', category: 'email_calendar' },
                 { name: 'Outlook & Microsoft 365', shortName: 'MS', color: '#0078d4',
-                  desc: 'Sync your Outlook emails and calendar events automatically', status: 'coming_soon', category: 'email_calendar' },
+                  desc: 'Sync your Outlook emails and calendar events automatically', status: 'available', category: 'email_calendar' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
 
