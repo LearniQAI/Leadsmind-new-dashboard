@@ -15,12 +15,11 @@ import {
  X as XIcon
 } from 'lucide-react';
 import { Instagram, Facebook, Linkedin, TikTok, YouTube } from '@/components/icons/BrandIcons';
-import { createSocialPost, getLinkedInAuthUrl, getTikTokAuthUrl, getYouTubeAuthUrl } from '@/app/actions/social';
+import { createSocialPost, updateScheduledPost, cancelScheduledPost, getLinkedInAuthUrl, getTikTokAuthUrl, getYouTubeAuthUrl } from '@/app/actions/social';
 import { getMetaAuthUrl } from '@/app/actions/messaging';
 import { uploadSocialMedia } from '@/lib/mediaUpload';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import AIAssistantSidebar from '@/components/content-studio/AIAssistantSidebar';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
 import { cn } from '@/lib/utils';
 import { DashCard } from '@/components/dashboard-ui/Card';
@@ -28,6 +27,26 @@ import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
 import { DashTextarea, DashInput } from '@/components/dashboard-ui/FormField';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import * as Dialog from '@radix-ui/react-dialog';
+
+const STATUS_PILL_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'neutral' | 'accent'> = {
+ published: 'success',
+ scheduled: 'accent',
+ publishing: 'accent',
+ failed: 'danger',
+ cancelled: 'neutral',
+ draft: 'neutral',
+};
+
+// datetime-local has no timezone info — treat it as the browser's local time,
+// which is what a user picking "tomorrow at 9am" actually means.
+function toDatetimeLocalValue(iso: string): string {
+ const d = new Date(iso);
+ const pad = (n: number) => String(n).padStart(2, '0');
+ return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export default function SocialPlannerClient({
   initialPosts,
@@ -44,25 +63,14 @@ export default function SocialPlannerClient({
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
-  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [linkedinWarningDismissed, setLinkedinWarningDismissed] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState('');
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
- const mockEditor = {
-  getText: () => content,
-  getHTML: () => `<p>${content}</p>`,
-  commands: {
-   setContent: (val: string) => setContent(val)
-  },
-  applyFix: (issue: any, replacement: string) => {
-   const before = content.substring(0, issue.offset);
-   const after = content.substring(issue.offset + issue.length);
-   setContent(before + replacement + after);
-   toast.success(`Applied correction: "${replacement}"`);
-  }
- };
 
  const handleConnect = async (platform: string) => {
   try {
@@ -138,6 +146,35 @@ export default function SocialPlannerClient({
   );
  };
 
+ const resetComposer = () => {
+  setContent('');
+  setMediaUrl('');
+  setSelectedPlatforms([]);
+  setIsComposerOpen(false);
+  setIsScheduleModalOpen(false);
+  setScheduledAt('');
+  setEditingPostId(null);
+ };
+
+ const handleEditPost = (post: any) => {
+  setEditingPostId(post.id);
+  setContent(post.content || '');
+  setMediaUrl(post.media_urls?.[0] || '');
+  setSelectedPlatforms(post.platforms || []);
+  setScheduledAt(post.scheduled_at ? toDatetimeLocalValue(post.scheduled_at) : '');
+  setIsComposerOpen(true);
+ };
+
+ const handleCancelScheduled = async (postId: string) => {
+  const res = await cancelScheduledPost(postId);
+  if (res.error) {
+   toast.error(res.error);
+  } else {
+   toast.success('Scheduled post cancelled.');
+   router.refresh();
+  }
+ };
+
  const handlePost = async () => {
   if (!content.trim() || selectedPlatforms.length === 0) {
    toast.error('Please add content and select at least one platform');
@@ -150,14 +187,40 @@ export default function SocialPlannerClient({
    return;
   }
 
+  const scheduledIso = scheduledAt ? new Date(scheduledAt).toISOString() : undefined;
+
   setIsSubmitting(true);
+
+  if (editingPostId) {
+   const res = await updateScheduledPost(editingPostId, {
+    content,
+    media_urls: mediaUrl ? [mediaUrl] : [],
+    platforms: selectedPlatforms,
+    scheduled_at: scheduledIso,
+   });
+   if (res.error) {
+    toast.error(res.error);
+   } else {
+    toast.success('Scheduled post updated.');
+    resetComposer();
+    router.refresh();
+   }
+   setIsSubmitting(false);
+   return;
+  }
+
   const res = await createSocialPost({
    platforms: selectedPlatforms,
    content,
    media_urls: mediaUrl ? [mediaUrl] : [],
+   scheduled_at: scheduledIso,
   });
 
-  if (res.error && !res.results) {
+  if (res.scheduled) {
+   toast.success(`Scheduled for ${new Date(res.post.scheduled_at).toLocaleString()}`);
+   resetComposer();
+   router.refresh();
+  } else if (res.error && !res.results) {
    toast.error(res.error);
   } else if (res.results) {
    // Per-platform outcome — a single blanket toast would hide a mixed result
@@ -171,11 +234,7 @@ export default function SocialPlannerClient({
    });
    const anySuccess = Object.values(res.results).some((r: any) => r.success);
    if (anySuccess) {
-    setContent('');
-    setMediaUrl('');
-    setSelectedPlatforms([]);
-    setIsComposerOpen(false);
-    setIsCopilotOpen(false);
+    resetComposer();
     router.refresh();
    }
   }
@@ -310,22 +369,33 @@ export default function SocialPlannerClient({
            {isUploadingMedia ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> : <ImageIcon className="w-4 h-4" />}
            {isUploadingMedia ? 'Uploading...' : 'Upload media'}
           </DashButton>
-          <DashButton variant="ghost" size="sm"><Calendar className="w-4 h-4" /> Schedule</DashButton>
           <DashButton
            type="button"
            variant="ghost"
            size="sm"
-           onClick={() => setIsCopilotOpen(!isCopilotOpen)}
-           className={cn(isCopilotOpen && 'bg-purple-50 text-purple-600 hover:text-purple-600')}
+           onClick={() => setIsScheduleModalOpen(true)}
+           className={cn(scheduledAt && 'bg-dash-accent/10 text-dash-accent hover:text-dash-accent')}
           >
-           <Sparkles className="w-4 h-4" /> AI copilot
+           <Calendar className="w-4 h-4" />
+           {scheduledAt ? `Scheduled: ${new Date(scheduledAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'Schedule'}
+           {scheduledAt && (
+            <span
+             role="button"
+             tabIndex={0}
+             onClick={(e) => { e.stopPropagation(); setScheduledAt(''); }}
+             title="Clear schedule — publish immediately instead"
+             className="ml-1 -mr-1 !text-dash-accent/60 hover:!text-dash-accent"
+            >
+             <XIcon className="w-3.5 h-3.5" />
+            </span>
+           )}
           </DashButton>
           <DashButton
             type="button"
             variant="ghost"
             size="sm"
             onClick={() => setIsAiDrawerOpen(true)}
-            className="text-purple-600 hover:text-purple-600 border border-purple-200 bg-purple-50 hover:bg-purple-100"
+            className="text-dash-accent hover:text-dash-accent border border-dash-accent/20 bg-dash-accent/5 hover:bg-dash-accent/10"
           >
            <Sparkles className="w-4 h-4" /> Write with AI
           </DashButton>
@@ -333,10 +403,7 @@ export default function SocialPlannerClient({
          <div className="flex gap-3">
           <DashButton
            variant="ghost"
-           onClick={() => {
-            setIsComposerOpen(false);
-            setIsCopilotOpen(false);
-           }}
+           onClick={resetComposer}
           >
            Cancel
           </DashButton>
@@ -344,7 +411,9 @@ export default function SocialPlannerClient({
            onClick={handlePost}
            disabled={isSubmitting}
           >
-           {isSubmitting ? 'Publishing...' : 'Publish now'}
+           {isSubmitting
+            ? (scheduledAt ? 'Scheduling...' : 'Publishing...')
+            : (editingPostId ? 'Save changes' : scheduledAt ? 'Schedule post' : 'Publish now')}
           </DashButton>
          </div>
         </div>
@@ -377,18 +446,52 @@ export default function SocialPlannerClient({
             ))}
            </div>
            <div className="flex items-center gap-3">
-            <DashStatusPill variant={post.status === 'published' ? 'success' : 'warning'}>
+            <DashStatusPill variant={STATUS_PILL_VARIANT[post.status] || 'neutral'}>
              {post.status}
             </DashStatusPill>
-            <button className="!text-dash-textMuted hover:!text-dash-text"><MoreHorizontal className="w-4 h-4" /></button>
+            {post.status === 'scheduled' ? (
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+               <button className="!text-dash-textMuted hover:!text-dash-text"><MoreHorizontal className="w-4 h-4" /></button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-lg rounded-xl p-2 min-w-[140px]">
+               <DropdownMenuItem
+                className="cursor-pointer flex items-center gap-2 hover:bg-dash-surface rounded-lg p-2 font-bold !text-dash-accent"
+                onClick={() => handleEditPost(post)}
+               >
+                Edit
+               </DropdownMenuItem>
+               <DropdownMenuItem
+                className="cursor-pointer flex items-center gap-2 hover:bg-red/10 rounded-lg p-2 font-bold !text-red"
+                onClick={() => setCancelTarget(post.id)}
+               >
+                Cancel
+               </DropdownMenuItem>
+              </DropdownMenuContent>
+             </DropdownMenu>
+            ) : (
+             <button disabled className="!text-dash-textMuted/40 cursor-not-allowed"><MoreHorizontal className="w-4 h-4" /></button>
+            )}
            </div>
           </div>
           <p className="text-sm !text-dash-textMuted line-clamp-2 mb-3">{post.content}</p>
+          {post.status === 'failed' && post.error_message && (
+           <p className="text-[11px] text-red font-medium mb-3 bg-red/5 border border-red/20 rounded-lg px-2 py-1.5">{post.error_message}</p>
+          )}
           <div className="flex items-center justify-between text-[11px] !text-dash-textMuted font-medium pt-3 border-t border-dash-border">
-           <span>{new Date(post.created_at).toLocaleDateString()}</span>
+           <span>
+            {post.status === 'scheduled' && post.scheduled_at
+             ? `For ${new Date(post.scheduled_at).toLocaleString()}`
+             : new Date(post.created_at).toLocaleDateString()}
+           </span>
            <span className="flex items-center gap-1">
             {post.status === 'published' ? <CheckCircle2 className="w-3 h-3 text-green" /> : <Clock className="w-3 h-3" />}
-            {post.status === 'published' ? 'Published' : 'Scheduled'}
+            {post.status === 'published' ? 'Published'
+             : post.status === 'scheduled' ? 'Scheduled'
+             : post.status === 'publishing' ? 'Publishing…'
+             : post.status === 'failed' ? 'Failed'
+             : post.status === 'cancelled' ? 'Cancelled'
+             : post.status}
            </span>
           </div>
          </DashCard>
@@ -400,65 +503,97 @@ export default function SocialPlannerClient({
 
     {/* Right Column: Analytics / Status */}
     <div className="lg:col-span-4 space-y-6">
-      {isComposerOpen && isCopilotOpen ? (
-       <AIAssistantSidebar
-        editor={mockEditor}
-        title="Social Post"
-        workspaceId={workspaceId}
-        contentType="social"
-        tabsToShow={['grammar', 'seo']}
-        defaultTab="grammar"
-        onClose={() => setIsCopilotOpen(false)}
-       />
-      ) : (
-       <>
-        <DashCard padding="default" className="bg-gradient-to-br from-dash-accent/5 to-transparent border-dash-accent/20">
-         <h3 className="text-sm font-bold !text-dash-text mb-4">Account health</h3>
-         <div className="space-y-3">
-          {platforms.map(p => {
-           const isConnected = accounts.some(a => a.platform === p.id);
-           return (
-            <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border">
-             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shadow-sm">
-               {p.icon}
-              </div>
-              <span className="text-xs font-bold !text-dash-text capitalize">{p.id}</span>
-             </div>
-             {isConnected ? (
-              p.id === 'linkedin' && linkedinDaysUntilExpiry !== null && linkedinDaysUntilExpiry <= 5 ? (
-               <span className="text-[11px] font-bold text-amber-600">
-                Expires in {Math.max(linkedinDaysUntilExpiry, 0)}d
-               </span>
-              ) : (
-               <span className="text-[11px] font-bold text-green">Active</span>
-              )
-             ) : (
-              <button
-               onClick={() => handleConnect(p.id)}
-               className="text-[11px] font-bold text-dash-accent hover:text-dash-accent/80 transition-colors motion-reduce:transition-none"
-              >
-               Connect
-              </button>
-             )}
+      <DashCard padding="default" className="bg-gradient-to-br from-dash-accent/5 to-transparent border-dash-accent/20">
+       <h3 className="text-sm font-bold !text-dash-text mb-4">Account health</h3>
+       <div className="space-y-3">
+        {platforms.map(p => {
+         const isConnected = accounts.some(a => a.platform === p.id);
+         return (
+          <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-dash-surface border border-dash-border">
+           <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shadow-sm">
+             {p.icon}
             </div>
-           );
-          })}
-         </div>
-        </DashCard>
+            <span className="text-xs font-bold !text-dash-text capitalize">{p.id}</span>
+           </div>
+           {isConnected ? (
+            p.id === 'linkedin' && linkedinDaysUntilExpiry !== null && linkedinDaysUntilExpiry <= 5 ? (
+             <span className="text-[11px] font-bold text-amber-600">
+              Expires in {Math.max(linkedinDaysUntilExpiry, 0)}d
+             </span>
+            ) : (
+             <span className="text-[11px] font-bold text-green">Active</span>
+            )
+           ) : (
+            <button
+             onClick={() => handleConnect(p.id)}
+             className="text-[11px] font-bold text-dash-accent hover:text-dash-accent/80 transition-colors motion-reduce:transition-none"
+            >
+             Connect
+            </button>
+           )}
+          </div>
+         );
+        })}
+       </div>
+      </DashCard>
 
-        <DashCard padding="default">
-         <div className="flex items-center gap-2 mb-3 text-amber-600">
-          <AlertCircle className="w-4 h-4" />
-          <h3 className="text-xs font-bold">Pro tip</h3>
-         </div>
-         <p className="text-xs !text-dash-textMuted leading-relaxed">
-          Posts with media assets typically receive <span className="!text-dash-text font-bold">4.5x more engagement</span>. Use the media composer to upload high-quality images.
-         </p>
-        </DashCard>
-       </>
-      )}
+      <DashCard padding="default">
+       <div className="flex items-center gap-2 mb-3 text-amber-600">
+        <AlertCircle className="w-4 h-4" />
+        <h3 className="text-xs font-bold">Pro tip</h3>
+       </div>
+       <p className="text-xs !text-dash-textMuted leading-relaxed">
+        Posts with media assets typically receive <span className="!text-dash-text font-bold">4.5x more engagement</span>. Use the media composer to upload high-quality images.
+       </p>
+      </DashCard>
      </div>
+
+    {/* Schedule modal — centered, triggered by the composer's "Schedule" button */}
+    <Dialog.Root open={isScheduleModalOpen} onOpenChange={setIsScheduleModalOpen}>
+     <Dialog.Portal>
+      <Dialog.Overlay className="fixed inset-0 z-[1001] bg-dash-text/40 backdrop-blur-sm animate-in fade-in duration-300 motion-reduce:animate-none" />
+      <Dialog.Content className="fixed left-1/2 top-1/2 z-[1002] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white border border-dash-border p-6 shadow-xl animate-in zoom-in-95 fade-in duration-200 motion-reduce:animate-none">
+       <div className="flex items-center justify-between mb-4">
+        <Dialog.Title className="text-[15px] font-bold !text-dash-text flex items-center gap-2">
+         <Calendar className="w-4 h-4 text-dash-accent" /> Schedule post
+        </Dialog.Title>
+        <Dialog.Close className="!text-dash-textMuted hover:!text-dash-text">
+         <XIcon className="w-4 h-4" />
+        </Dialog.Close>
+       </div>
+       <Dialog.Description className="text-[12px] !text-dash-textMuted mb-4">
+        Pick when this post should go out. It'll publish automatically at that time.
+       </Dialog.Description>
+       <input
+        type="datetime-local"
+        value={scheduledAt}
+        min={toDatetimeLocalValue(new Date(Date.now() + 60000).toISOString())}
+        onChange={(e) => setScheduledAt(e.target.value)}
+        className="w-full bg-white border border-dash-border rounded-xl px-3.5 py-2.5 text-sm !text-dash-text font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent"
+       />
+       <div className="flex gap-3 mt-5">
+        <DashButton variant="secondary" className="flex-1" onClick={() => { setScheduledAt(''); setIsScheduleModalOpen(false); }}>
+         Clear
+        </DashButton>
+        <DashButton className="flex-1" disabled={!scheduledAt} onClick={() => setIsScheduleModalOpen(false)}>
+         Set schedule
+        </DashButton>
+       </div>
+      </Dialog.Content>
+     </Dialog.Portal>
+    </Dialog.Root>
+
+    <ConfirmDialog
+      isOpen={!!cancelTarget}
+      onClose={() => setCancelTarget(null)}
+      onConfirm={() => { if (cancelTarget) handleCancelScheduled(cancelTarget); }}
+      title="Cancel scheduled post?"
+      description="This post will not be published at its scheduled time. This can't be undone."
+      confirmLabel="Cancel post"
+      cancelLabel="Keep it"
+      variant="danger"
+    />
     <AISparkDrawer
       isOpen={isAiDrawerOpen}
       onClose={() => setIsAiDrawerOpen(false)}
