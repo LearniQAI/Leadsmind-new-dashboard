@@ -85,7 +85,7 @@ export default function SocialConnectionsClient({ accounts }: SocialConnectionsC
         <div className="min-w-0">
          <p className="text-sm font-bold !text-dash-text">{p.label}</p>
          {isConnected ? (
-          <p className="text-[11px] text-green truncate">
+          <p className="text-[11px] font-semibold !text-green truncate">
            Connected{accountName ? ` — ${accountName}` : ''}
           </p>
          ) : (

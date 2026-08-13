@@ -165,7 +165,12 @@ async function publishToTikTok(accessToken: string, content: string, videoUrl: s
   });
   const creatorInfo = await creatorInfoRes.json();
   if (!creatorInfoRes.ok || creatorInfo.error?.code !== 'ok') {
-    throw new Error(creatorInfo.error?.message || 'Failed to query TikTok creator info before publishing');
+    // TikTok's error.message is often a vague boilerplate string (e.g. "review our integration
+    // guidelines") while error.code is the specific, actionable reason (e.g.
+    // unaudited_client_can_only_post_to_private_accounts, scope_not_authorized). Log the code
+    // and fold it into the thrown message so it isn't lost before it reaches the user/logs.
+    logger.error({ tiktokErrorCode: creatorInfo.error?.code, tiktokErrorMessage: creatorInfo.error?.message }, 'social.tiktok.creator_info.failed');
+    throw new Error(`TikTok creator info failed [${creatorInfo.error?.code || 'unknown'}]: ${creatorInfo.error?.message || 'Failed to query TikTok creator info before publishing'}`);
   }
   const privacyLevel = creatorInfo.data?.privacy_level_options?.[0] || 'SELF_ONLY';
 
@@ -201,7 +206,8 @@ async function publishToTikTok(accessToken: string, content: string, videoUrl: s
   });
   const initData = await initRes.json();
   if (!initRes.ok || initData.error?.code !== 'ok') {
-    throw new Error(initData.error?.message || 'TikTok publish init failed');
+    logger.error({ tiktokErrorCode: initData.error?.code, tiktokErrorMessage: initData.error?.message }, 'social.tiktok.publish_init.failed');
+    throw new Error(`TikTok publish init failed [${initData.error?.code || 'unknown'}]: ${initData.error?.message || 'TikTok publish init failed'}`);
   }
   const publishId = initData.data.publish_id;
   const uploadUrl = initData.data.upload_url;
@@ -242,7 +248,8 @@ async function publishToTikTok(accessToken: string, content: string, videoUrl: s
     });
     const statusData = await statusRes.json();
     if (!statusRes.ok || statusData.error?.code !== 'ok') {
-      throw new Error(statusData.error?.message || 'TikTok publish status check failed');
+      logger.error({ tiktokErrorCode: statusData.error?.code, tiktokErrorMessage: statusData.error?.message }, 'social.tiktok.publish_status.failed');
+      throw new Error(`TikTok publish status check failed [${statusData.error?.code || 'unknown'}]: ${statusData.error?.message || 'TikTok publish status check failed'}`);
     }
     const status = statusData.data?.status;
     if (status === 'PUBLISH_COMPLETE') {
