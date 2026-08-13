@@ -1,11 +1,12 @@
 import React from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import MetaData from '@/hooks/useMetaData';
-import { CalendarDays } from 'lucide-react';
-import { DashCard } from '@/components/dashboard-ui/Card';
-import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
+import { getSocialPosts } from '@/app/actions/social';
+import SocialCalendarClient from './SocialCalendarClient';
 
-export default function SocialCalendarPage() {
+export default async function SocialCalendarPage() {
+ const { data: posts } = await getSocialPosts();
+
  return (
   <MetaData pageTitle="Social Calendar">
    <Wrapper>
@@ -16,13 +17,7 @@ export default function SocialCalendarPage() {
        A unified scheduling calendar across every connected platform.
       </p>
      </div>
-     <DashCard padding="default">
-      <DashEmptyState
-       icon={CalendarDays}
-       title="Coming soon"
-       description="The unified social scheduling calendar is on the roadmap. Scheduled posts will show here across all connected platforms."
-      />
-     </DashCard>
+     <SocialCalendarClient posts={posts || []} />
     </div>
    </Wrapper>
   </MetaData>

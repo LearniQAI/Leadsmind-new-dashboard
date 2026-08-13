@@ -8,8 +8,7 @@ import { BlogEditorSettings } from '@/components/blog/editor/BlogEditorSettings'
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import MetaData from '@/hooks/useMetaData';
 import { uploadBlogMedia } from '@/lib/mediaUpload';
-import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, AlertCircle, ExternalLink, Sparkles } from 'lucide-react';
-import AIAssistantSidebar from '@/components/content-studio/AIAssistantSidebar';
+import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, AlertCircle, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import {
@@ -34,7 +33,6 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
   const [showImageModal, setShowImageModal] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
-  const [showAiAssistant, setShowAiAssistant] = useState(false);
 
   // Image modal state fields
   const [imgFile, setImgFile] = useState<File | null>(null);
@@ -252,18 +250,6 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
                     <ExternalLink className="w-3.5 h-3.5" />
                     {post.status === 'published' ? 'View post' : 'Preview draft'}
                   </a>
-                  <button
-                    onClick={() => setShowAiAssistant(!showAiAssistant)}
-                    className={cn(
-                      "text-xs font-bold px-4 py-2 rounded-lg transition-colors motion-reduce:transition-none flex items-center gap-2",
-                      showAiAssistant
-                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                        : 'bg-white border border-dash-border !text-dash-textMuted hover:!text-dash-text'
-                    )}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    {showAiAssistant ? 'Hide AI assistant' : 'AI assistant'}
-                  </button>
                   <DashButton onClick={handleManualSave} disabled={isSaving} size="sm">
                     {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : <Save className="w-3.5 h-3.5" />}
                     Save changes
@@ -320,23 +306,13 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
 
             {!isZenMode && (
               <div className="w-full lg:w-[350px] shrink-0">
-                {showAiAssistant ? (
-                  <AIAssistantSidebar
-                    editor={editorRef.current}
-                    title={post.title}
-                    workspaceId={post.workspace_id}
-                    docId={post.id}
-                    contentType="blog"
-                  />
-                ) : (
-                  <BlogEditorSettings
-                    post={post}
-                    categories={categories}
-                    workspaceId={post.workspace_id}
-                    onUpdate={handleUpdate}
-                    onCreateCategory={handleCreateCategory}
-                  />
-                )}
+                <BlogEditorSettings
+                  post={post}
+                  categories={categories}
+                  workspaceId={post.workspace_id}
+                  onUpdate={handleUpdate}
+                  onCreateCategory={handleCreateCategory}
+                />
               </div>
             )}
           </div>
