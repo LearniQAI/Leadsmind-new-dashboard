@@ -40,8 +40,26 @@ export async function GET(req: Request) {
 
     const { access_token, expires_in, refresh_token, open_id: accountId } = tokenData;
 
-    // 2. Fetch user profile (Optional, TikTok returns open_id in token response)
-    const accountName = `TikTok User (${accountId.substring(0, 8)})`;
+    // 2. Fetch the real display name so reconnecting with a different TikTok account actually
+    // changes what's shown (matches the LinkedIn/YouTube callbacks, which both fetch a real
+    // profile name instead of deriving a placeholder from the account id).
+    let accountName = `TikTok User (${accountId.substring(0, 8)})`;
+    try {
+      const profileResponse = await fetch(
+        'https://open.tiktokapis.com/v2/user/info/?fields=display_name',
+        { headers: { Authorization: `Bearer ${access_token}` } }
+      );
+      const profileData = await profileResponse.json();
+      if (profileData?.data?.user?.display_name) {
+        accountName = profileData.data.user.display_name;
+      } else {
+        // e.g. user.info.basic not granted/approved for this app — falls back to the
+        // placeholder above rather than failing the whole connection.
+        logger.warn({ profileError: profileData?.error }, 'auth.tiktok_callback.profile_fetch_unavailable');
+      }
+    } catch (err: any) {
+      logger.warn({ err: err.message }, 'auth.tiktok_callback.profile_fetch_failed');
+    }
 
     // 3. Store in platform_connections — the table createSocialPost()/getConnectedPlatforms()
     // actually read from (matches the Meta/WhatsApp pattern in messaging.ts's

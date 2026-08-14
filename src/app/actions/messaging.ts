@@ -880,6 +880,24 @@ export async function saveMetaConnections(data: {
       }, { onConflict: 'workspace_id,platform' });
       if (fbErr) throw fbErr;
     } else if (targetPlatform === 'instagram') {
+      // Instagram publishing rides on the same Page's access token, so the Page picked in
+      // this wizard must also become the Facebook connection's Page — otherwise the two
+      // connections can silently point at different Pages.
+      const { error: fbErr } = await supabase.from('platform_connections').upsert({
+        workspace_id: workspaceId,
+        platform: 'facebook',
+        credentials: {
+          page_id: data.pageId,
+          page_name: data.pageName,
+          page_access_token_encrypted: encrypt(data.pageAccessToken),
+          user_access_token_encrypted: encrypt(oauth.token),
+          health_status: 'connected'
+        },
+        status: 'connected',
+        last_sync_at: new Date().toISOString()
+      }, { onConflict: 'workspace_id,platform' });
+      if (fbErr) throw fbErr;
+
       const { error: igErr } = await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
         platform: 'instagram',
@@ -887,6 +905,7 @@ export async function saveMetaConnections(data: {
           instagram_id: data.instagramBusinessAccountId,
           instagram_username: data.instagramUsername || 'IG Account',
           page_id: data.pageId,
+          page_name: data.pageName,
           page_access_token_encrypted: encrypt(data.pageAccessToken),
           health_status: 'connected'
         },
