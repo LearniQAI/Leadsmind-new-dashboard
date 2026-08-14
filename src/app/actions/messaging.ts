@@ -26,7 +26,13 @@ export async function getMetaAuthUrl(targetPlatform?: string) {
 		return `${metaRedirectUri}?code=mock_code&state=${nonce}`;
 	}
 
-	const scope = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_manage_posts,instagram_manage_messages,instagram_content_publish,whatsapp_business_messaging,whatsapp_business_management,business_management';
+	// pages_read_user_content, pages_manage_engagement, instagram_basic, and instagram_manage_comments
+	// were added for Task 93 (comment inbox) — confirmed missing by live-testing real Graph API calls
+	// against real posts (not assumed from docs alone): Facebook comment read 400'd asking for
+	// pages_read_user_content; Meta's own /{ig-comment-id}/replies docs list instagram_basic +
+	// instagram_manage_comments as required and a live reply attempt 400'd with Missing Permission;
+	// pages_manage_engagement is Meta's documented requirement for POST /{comment-id}/comments.
+	const scope = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_read_user_content,pages_manage_posts,pages_manage_engagement,instagram_basic,instagram_manage_messages,instagram_manage_comments,instagram_content_publish,whatsapp_business_messaging,whatsapp_business_management,business_management';
 	const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${nonce}`;
 	logger.info({ scope, workspaceId }, 'messaging.meta_oauth.url_generated');
 	return url;

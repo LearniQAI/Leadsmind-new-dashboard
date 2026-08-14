@@ -136,10 +136,12 @@ function newVisibleLinks(ctx: NavRoleContext): Set<string> {
 
 /**
  * Added by the HR & Payroll / Social nav-promotion change: Connections, Calendar, Inbox, and
- * Analytics are genuinely new pages under the new "social" module (Calendar/Inbox/Analytics are
- * placeholder pages for upcoming Tasks 92-94), so they don't exist in the frozen OLD_SIDEBAR_DATA
- * snapshot above by design — this isn't a permission regression, it's an intentional addition.
- * Excluded from the parity check below; covered by their own assertion instead.
+ * Analytics are genuinely new pages under the new "social" module (Calendar/Analytics are still
+ * placeholder pages for upcoming Task 92/94; Inbox got a real implementation in Task 93 —
+ * comment read/reply for Facebook, Instagram, and YouTube), so they don't exist in the frozen
+ * OLD_SIDEBAR_DATA snapshot above by design — this isn't a permission regression, it's an
+ * intentional addition. Excluded from the parity check below; covered by their own assertion
+ * instead.
  */
 const NEWLY_ADDED_SOCIAL_ROUTES = new Set([
   "/social/connections",
