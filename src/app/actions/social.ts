@@ -122,13 +122,18 @@ export async function createSocialPost(postData: {
       }
 
       if (results[platform]?.success) {
+        // Comment polling (social_comments) keys off platform_results[platform].postId to
+        // know which post/media to fetch comments for — without this, immediately-published
+        // posts (as opposed to scheduled ones, which the dispatch worker already stamps)
+        // would be invisible to the comment sync worker even though they published fine.
         await supabase.from('social_posts').insert({
           workspace_id: workspaceId,
           platforms: [platform],
           content: postData.content,
           media_urls: postData.media_urls || [],
           status: 'published',
-          published_at: new Date().toISOString()
+          published_at: new Date().toISOString(),
+          platform_results: { [platform]: { success: true, postId: results[platform].postId } },
         });
       }
     }
