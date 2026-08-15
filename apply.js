@@ -1,86 +1,76 @@
 const fs = require('fs');
 const path = require('path');
 
-const API_DIR = path.join(process.cwd(), 'src', 'app', 'api', 'cron', 'reminders');
-if (!fs.existsSync(API_DIR)) fs.mkdirSync(API_DIR, { recursive: true });
+// 1. Create the new Recurring utility file
+const libDir = path.join(process.cwd(), 'src', 'lib', 'calendar');
+if (!fs.existsSync(libDir)) fs.mkdirSync(libDir, { recursive: true });
 
-const routeTs = `import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server';
-import { sendEmail } from '@/lib/email';
-import { sendCalendarSMS } from '@/lib/calendar/sms';
+const recurTs = `import { addDays, addWeeks, addMonths, parseISO, formatISO } from 'date-fns';
 
-export const dynamic = 'force-dynamic';
+export interface RecurrenceRule {
+  frequency: 'daily' | 'weekly' | 'monthly';
+  interval: number;
+  occurrences: number; 
+}
 
-export async function GET(request) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== \`Bearer \${process.env.CRON_SECRET}\`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export function generateRecurringSlots(
+  baseStartTime: string, 
+  baseEndTime: string, 
+  rule: RecurrenceRule
+): Array<{ start: string, end: string }> {
+  const slots = [];
+  const baseStart = parseISO(baseStartTime);
+  const baseEnd = parseISO(baseEndTime);
+  
+  slots.push({ start: baseStartTime, end: baseEndTime });
+  if (!rule || rule.occurrences <= 1) return slots;
+
+  for (let i = 1; i < rule.occurrences; i++) {
+    let nextStart = baseStart;
+    let nextEnd = baseEnd;
+
+    if (rule.frequency === 'daily') {
+      nextStart = addDays(baseStart, i * rule.interval);
+      nextEnd = addDays(baseEnd, i * rule.interval);
+    } else if (rule.frequency === 'weekly') {
+      nextStart = addWeeks(baseStart, i * rule.interval);
+      nextEnd = addWeeks(baseEnd, i * rule.interval);
+    } else if (rule.frequency === 'monthly') {
+      nextStart = addMonths(baseStart, i * rule.interval);
+      nextEnd = addMonths(baseEnd, i * rule.interval);
     }
 
-    const supabase = createAdminClient();
-    const now = new Date();
-
-    const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const in1Hour = new Date(now.getTime() + 60 * 60 * 1000);
-
-    const start24h = new Date(in24Hours.getTime() - 15 * 60000).toISOString();
-    const end24h = new Date(in24Hours.getTime() + 15 * 60000).toISOString();
-    const start1h = new Date(in1Hour.getTime() - 15 * 60000).toISOString();
-    const end1h = new Date(in1Hour.getTime() + 15 * 60000).toISOString();
-
-    const { data: upcoming, error } = await supabase
-      .from('appointments')
-      .select(\`
-        id, title, start_time, meeting_link, workspace_id,
-        contact:contacts(first_name, last_name, email, phone)
-      \`)
-      .in('status', ['confirmed', 'scheduled'])
-      .or(\`and(start_time.gte.\${start24h},start_time.lte.\${end24h},reminder_24h_sent.eq.false),and(start_time.gte.\${start1h},start_time.lte.\${end1h},reminder_1h_sent.eq.false)\`);
-
-    if (error || !upcoming) return NextResponse.json({ success: false, error: 'Query failed' });
-    if (upcoming.length === 0) return NextResponse.json({ success: true, message: 'No reminders to send right now' });
-
-    let sentCount = 0;
-
-    for (const apt of upcoming) {
-      const is1Hour = new Date(apt.start_time).getTime() - now.getTime() < 2 * 60 * 60 * 1000;
-      const typeStr = is1Hour ? '1 hour' : '24 hours';
-      
-      const email = Array.isArray(apt.contact) ? apt.contact[0]?.email : (apt.contact as any)?.email;
-      const phone = Array.isArray(apt.contact) ? apt.contact[0]?.phone : (apt.contact as any)?.phone;
-      const name = Array.isArray(apt.contact) ? apt.contact[0]?.first_name : (apt.contact as any)?.first_name;
-
-      if (!email && !phone) continue;
-      const messageText = \`Hi \${name || 'there'},\n\nJust a quick reminder that your meeting "\${apt.title}" is coming up in \${typeStr}!\n\nStart time: \${new Date(apt.start_time).toLocaleString()}\nMeeting Link: \${apt.meeting_link || 'TBD'}\n\nSee you soon!\`;
-
-      try {
-        if (email) await sendEmail({ to: email, subject: \`Reminder: Upcoming Meeting in \${typeStr}\`, text: messageText, tags: [{ name: 'category', value: 'calendar_reminder' }] as any } as any);
-        if (phone) await sendCalendarSMS(apt.workspace_id, phone, \`Reminder: "\${apt.title}" starts in \${typeStr}. Link: \${apt.meeting_link || 'TBD'}\`);
-
-        await supabase.from('appointments').update(is1Hour ? { reminder_1h_sent: true } : { reminder_24h_sent: true }).eq('id', apt.id);
-        sentCount++;
-      } catch (err) {}
-    }
-
-    return NextResponse.json({ success: true, reminders_sent: sentCount });
-  } catch (error) {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    slots.push({ start: formatISO(nextStart), end: formatISO(nextEnd) });
   }
+  return slots;
 }
 `;
-fs.writeFileSync(path.join(API_DIR, 'route.ts'), routeTs);
+fs.writeFileSync(path.join(libDir, 'recurring.ts'), recurTs);
 
-const vercelPath = path.join(process.cwd(), 'vercel.json');
-let vercelData = { crons: [] };
-if (fs.existsSync(vercelPath)) {
-  try { vercelData = JSON.parse(fs.readFileSync(vercelPath, 'utf8')); } catch (e) {}
-}
-if (!vercelData.crons) vercelData.crons = [];
-const hasCron = vercelData.crons.find(c => c.path === '/api/cron/reminders');
-if (!hasCron) {
-  vercelData.crons.push({ path: '/api/cron/reminders', schedule: '0 * * * *' });
-  fs.writeFileSync(vercelPath, JSON.stringify(vercelData, null, 2));
-}
+// 2. Inject it into the Booking Engine
+const publicPath = path.join(process.cwd(), 'src', 'app', 'actions', 'calendar', 'public.ts');
+let publicCode = fs.readFileSync(publicPath, 'utf8');
 
-console.log("SUCCESS! Automated Cron Job Reminders built.");
+if (!publicCode.includes('recurringRule')) {
+  publicCode = publicCode.replace(
+    /popiaConsent: boolean;\n\s*answers\?: Record<string, string>;\n\s*\}/,
+    "popiaConsent: boolean;\n    answers?: Record<string, string>;\n    recurringRule?: { frequency: 'daily' | 'weekly' | 'monthly', interval: number, occurrences: number };\n  }"
+  );
+
+  publicCode = publicCode.replace(
+    "import { logPopiaConsent } from '@/lib/calendar/popia';",
+    "import { logPopiaConsent } from '@/lib/calendar/popia';\nimport { generateRecurringSlots } from '@/lib/calendar/recurring';"
+  );
+
+  publicCode = publicCode.replace(
+    /const validation = await validateSlot\(calendarId, startTime, endTime\);\n\s*if \(!validation\.available\) \{\n\s*return \{ success: false, error: validation\.reason \};\n\s*\}/,
+    "const validation = await validateSlot(calendarId, startTime, endTime);\n  if (!validation.available) {\n    return { success: false, error: validation.reason };\n  }\n\n  let allSlots = [{ start: startTime, end: endTime }];\n  if (leadData.recurringRule && leadData.recurringRule.occurrences > 1) {\n    allSlots = generateRecurringSlots(startTime, endTime, leadData.recurringRule);\n    for (const s of allSlots) {\n       const v = await validateSlot(calendarId, s.start, s.end);\n       if (!v.available) return { success: false, error: 'Cannot book recurring series: the slot on ' + s.start.split('T')[0] + ' is unavailable.' };\n    }\n  }"
+  );
+
+  publicCode = publicCode.replace(
+    /const \{ data: appointment, error: insertError \} = await supabase\s*\.from\('appointments'\)\s*\.insert\(\{([\s\S]*?)\}\)\s*\.select\(\)\s*\.single\(\);/,
+    "const appointmentsToInsert = allSlots.map((s) => ({" + "$1" + ", start_time: s.start, end_time: s.end}));\n  const { data: insertedList, error: insertError } = await supabase\n    .from('appointments')\n    .insert(appointmentsToInsert)\n    .select();\n  const appointment = insertedList?.[0];"
+  );
+  fs.writeFileSync(publicPath, publicCode);
+}
+console.log("SUCCESS! Recurring Meetings logic injected.");
