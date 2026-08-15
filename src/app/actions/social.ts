@@ -259,11 +259,15 @@ export async function getTikTokAuthUrl() {
  * client can request multiple scopes and have multiple authorized redirect URIs, so this only
  * needs youtube.upload added to that project's consent screen and this route's redirect URI
  * added to the authorized list, not a whole new client.
+ *
+ * yt-analytics.readonly added for Task 94 (engagement analytics, youtubeAnalytics.reports.query)
+ * — not previously requested, so every currently-connected token is missing it and needs a fresh
+ * reconnect before analytics calls can succeed.
  */
 export async function getYouTubeAuthUrl() {
  const { nonce } = await createOAuthStateNonce('youtube');
  const clientId = process.env.GOOGLE_CLIENT_ID;
  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/youtube`;
- const scope = 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly';
+ const scope = 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly';
  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&state=${nonce}`;
 }

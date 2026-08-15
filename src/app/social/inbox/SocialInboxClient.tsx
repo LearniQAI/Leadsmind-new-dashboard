@@ -165,18 +165,11 @@ export default function SocialInboxClient() {
    <div className="mb-6">
     <h1 className="text-3xl font-bold !text-dash-text">Social <span className="text-dash-accent">inbox</span></h1>
     <p className="!text-dash-textMuted text-[12px] font-medium mt-2">
-     Comments from Facebook, Instagram, and YouTube in one place. LinkedIn and TikTok comment
-     management isn&apos;t available yet — LinkedIn requires a partner-tier API approval we
-     don&apos;t hold, and TikTok&apos;s public API has no comment endpoints at any tier.
+     Comments from Facebook, Instagram, and YouTube in one place.
     </p>
-    <p className="!text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[12px] font-medium mt-2">
-     Live-tested against real posts: Facebook comment <em>reading</em> is currently blocked by
-     Meta — the connected Page token is missing the <code>pages_read_user_content</code>{' '}
-     permission (a real 400 from Graph API). Instagram comment <em>reading</em> works, but{' '}
-     <em>replying</em> is currently blocked — a real reply attempt returned Meta&apos;s
-     &quot;Missing Permission&quot; error, so <code>instagram_manage_comments</code> appears to
-     cover read but not write at our current app tier. Replies will keep failing with a clear
-     error (never silently succeed) until Meta grants write access.
+    <p className="!text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-[12px] font-medium mt-2">
+     Read and reply are live-verified working for Facebook, Instagram, and YouTube — real
+     comments fetched from real posts, real replies confirmed posted back to each platform.
     </p>
    </div>
 

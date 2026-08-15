@@ -32,7 +32,11 @@ export async function getMetaAuthUrl(targetPlatform?: string) {
 	// pages_read_user_content; Meta's own /{ig-comment-id}/replies docs list instagram_basic +
 	// instagram_manage_comments as required and a live reply attempt 400'd with Missing Permission;
 	// pages_manage_engagement is Meta's documented requirement for POST /{comment-id}/comments.
-	const scope = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_read_user_content,pages_manage_posts,pages_manage_engagement,instagram_basic,instagram_manage_messages,instagram_manage_comments,instagram_content_publish,whatsapp_business_messaging,whatsapp_business_management,business_management';
+	// read_insights (Page Insights) and instagram_manage_insights (IG media/account insights) added
+	// for Task 94 (engagement analytics) — neither was previously requested by this flow, so every
+	// currently-connected token is missing them regardless of Meta Dashboard product status; a fresh
+	// reconnect is required before any analytics call can succeed, same pattern as Task 93's scopes.
+	const scope = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_read_user_content,pages_manage_posts,pages_manage_engagement,read_insights,instagram_basic,instagram_manage_messages,instagram_manage_comments,instagram_content_publish,instagram_manage_insights,whatsapp_business_messaging,whatsapp_business_management,business_management';
 	const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${nonce}`;
 	logger.info({ scope, workspaceId }, 'messaging.meta_oauth.url_generated');
 	return url;

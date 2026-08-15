@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '@/shared/logger';
 import { fetchCommentsForPlatform } from '@/lib/social/comments';
+import { fetchEngagementMetricsForPlatform } from '@/lib/social/analytics';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -121,7 +122,107 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, processed: due.length, synced, failed, newComments });
+    // Engagement-metrics polling (Task 94) reuses this same worker rather than a third cron
+    // variant — same connected accounts, same due-post shape as comment sync — but is claimed
+    // independently via metrics_last_synced_at since it's a separate set of API calls with its
+    // own success/failure, not tied to comment-sync's claim.
+    const { data: metricsDue, error: metricsDueErr } = await supabaseAdmin
+      .from('social_posts')
+      .select('id')
+      .eq('status', 'published')
+      .overlaps('platforms', SUPPORTED_PLATFORMS)
+      .or(`metrics_last_synced_at.is.null,metrics_last_synced_at.lte.${staleBefore}`)
+      .order('published_at', { ascending: false })
+      .limit(batchSize);
+    if (metricsDueErr) throw metricsDueErr;
+
+    let metricsSynced = 0;
+    let metricsFailed = 0;
+    let metricPointsWritten = 0;
+
+    for (const row of metricsDue || []) {
+      const { data: claimed, error: claimErr } = await supabaseAdmin
+        .from('social_posts')
+        .update({ metrics_last_synced_at: new Date().toISOString() })
+        .eq('id', row.id)
+        .or(`metrics_last_synced_at.is.null,metrics_last_synced_at.lte.${staleBefore}`)
+        .select('*')
+        .maybeSingle();
+      if (claimErr) {
+        logger.error({ err: claimErr, postId: row.id }, 'cron.social_metrics_sync.claim.failed');
+        continue;
+      }
+      if (!claimed) continue; // already claimed by a concurrent run
+
+      try {
+        const platformResults = claimed.platform_results || {};
+        const platforms: string[] = (claimed.platforms || []).filter((p: string) => SUPPORTED_PLATFORMS.includes(p));
+
+        for (const platform of platforms) {
+          const platformPostId = platformResults[platform]?.postId;
+          if (!platformPostId) continue; // published before postId persistence was added, or platform failed
+
+          const { data: conn } = await supabaseAdmin
+            .from('platform_connections')
+            .select('credentials, status')
+            .eq('workspace_id', claimed.workspace_id)
+            .eq('platform', platform)
+            .maybeSingle();
+          if (!conn || conn.status !== 'connected' || !conn.credentials) continue;
+
+          try {
+            const points = await fetchEngagementMetricsForPlatform(
+              platform,
+              conn.credentials,
+              platformPostId,
+              supabaseAdmin,
+              claimed.workspace_id,
+              claimed.published_at || claimed.created_at
+            );
+
+            for (const p of points) {
+              const { error: upsertErr } = await supabaseAdmin
+                .from('social_engagement_metrics')
+                .upsert({
+                  workspace_id: claimed.workspace_id,
+                  post_id: claimed.id,
+                  platform,
+                  platform_post_id: platformPostId,
+                  metric_type: p.metricType,
+                  metric_date: p.metricDate,
+                  value: p.value,
+                  fetched_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: 'platform,platform_post_id,metric_type,metric_date' });
+              if (upsertErr) {
+                logger.error({ err: upsertErr, platform, metricType: p.metricType }, 'cron.social_metrics_sync.upsert.failed');
+              } else {
+                metricPointsWritten++;
+              }
+            }
+            metricsSynced++;
+          } catch (err: any) {
+            logger.error({ err, postId: claimed.id, platform }, 'cron.social_metrics_sync.platform_fetch.failed');
+            metricsFailed++;
+          }
+        }
+      } catch (err: any) {
+        logger.error({ err, postId: claimed.id }, 'cron.social_metrics_sync.post_failed');
+        metricsFailed++;
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      processed: due.length,
+      synced,
+      failed,
+      newComments,
+      metricsProcessed: (metricsDue || []).length,
+      metricsSynced,
+      metricsFailed,
+      metricPointsWritten,
+    });
   } catch (error: any) {
     logger.error({ err: error }, 'cron.social_comment_sync.failed');
     return NextResponse.json({ error: 'Social comment sync worker failed.' }, { status: 500 });
