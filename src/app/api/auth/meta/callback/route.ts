@@ -11,8 +11,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const REDIRECT_BASE = process.env.NEXT_PUBLIC_APP_URL 
+const REDIRECT_BASE = process.env.NEXT_PUBLIC_APP_URL
   ?? 'https://leadsmind-new-dashboard.vercel.app'
+
+// /settings/integrations is not a real route — the Messaging Integrations UI (which parses
+// meta_oauth/needs_instagram/needs_whatsapp and opens the account picker) lives at the
+// 'integrations' tab of /settings, same convention as every other /settings?tab=X redirect
+// in this app (billing, ai, ai-credits).
+const INTEGRATIONS_REDIRECT_PATH = '/settings?tab=integrations'
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -23,13 +29,13 @@ export async function GET(req: Request) {
   // User denied access
   if (errorParam) {
     return NextResponse.redirect(
-      `${REDIRECT_BASE}/settings/integrations?meta_oauth=1&error=access_denied`
+      `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=access_denied`
     )
   }
 
   if (!code || !stateStr) {
     return NextResponse.redirect(
-      `${REDIRECT_BASE}/settings/integrations?meta_oauth=1&error=missing_params`
+      `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=missing_params`
     )
   }
 
@@ -46,7 +52,7 @@ export async function GET(req: Request) {
   } catch (nonceErr: any) {
     logger.error({ err: nonceErr }, 'meta_oauth.state_nonce.invalid')
     return NextResponse.redirect(
-      `${REDIRECT_BASE}/settings/integrations?meta_oauth=1&error=invalid_state`
+      `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=invalid_state`
     )
   }
 
@@ -335,13 +341,13 @@ export async function GET(req: Request) {
     if (!wabaId) redirectParams.set('needs_whatsapp', 'true')
 
     return NextResponse.redirect(
-      `${REDIRECT_BASE}/settings/integrations?${redirectParams.toString()}`
+      `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&${redirectParams.toString()}`
     )
 
   } catch (err: any) {
     logger.error({ err: err.message }, 'meta_oauth.callback.failed')
     return NextResponse.redirect(
-      `${REDIRECT_BASE}/settings/integrations?meta_oauth=1&error=${encodeURIComponent(err.message)}`
+      `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=${encodeURIComponent(err.message)}`
     )
   }
 }

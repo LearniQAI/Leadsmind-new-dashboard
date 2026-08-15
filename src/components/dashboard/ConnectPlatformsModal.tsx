@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { 
-  getConnectedPlatforms, 
-  disconnectPlatform, 
-  getMetaAuthUrl, 
+import {
+  getConnectedPlatforms,
+  disconnectPlatform,
+  getMetaAuthUrl,
   connectPlatformManually,
   getMetaOauthToken,
   fetchMetaBusinesses,
@@ -15,7 +16,9 @@ import {
   fetchWhatsAppPhoneNumbers,
   saveMetaConnections
 } from '@/app/actions/messaging';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui/Button';
+import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
+import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -25,13 +28,19 @@ interface ConnectPlatformsModalProps {
   targetPlatform?: 'facebook' | 'instagram' | 'whatsapp' | null;
 }
 
+// Same dash-* control treatment DashInput uses — no dedicated DashSelect primitive exists yet
+// (see FormField.tsx's header comment), so native <select> is styled to match rather than
+// introducing a one-off dark control here.
+const selectBase =
+  "w-full h-11 rounded-xl border border-dash-border bg-white px-3.5 text-sm !text-dash-text transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent";
+
 export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = null }: ConnectPlatformsModalProps) {
   const [connections, setConnections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [metaUrl, setMetaUrl] = useState('');
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [activeManualPlatform, setActiveManualPlatform] = useState<string | null>(null);
-  
+
   // Wizard state variables
   const [isOauthWizard, setIsOauthWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
@@ -75,7 +84,7 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeManualPlatform) return;
-    
+
     setIsLoading(true);
     try {
       const res = await connectPlatformManually(activeManualPlatform, formData);
@@ -109,7 +118,7 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
       // Only include fully connected platforms in active list (exclude pending)
       const connectedData = data.filter((c: any) => c.status === 'connected');
       setConnections(connectedData);
-      
+
       const url = await getMetaAuthUrl(targetPlatform || undefined);
       setMetaUrl(url);
 
@@ -389,65 +398,73 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
 
   const getHealthBadge = (healthStatus: string, dbStatus: string) => {
     if (dbStatus === 'error') {
-      return { 
-        label: 'Reconnect Required', 
-        color: 'text-red-400 border-red-500/20 bg-red-500/5', 
-        icon: 'fa-solid fa-circle-exclamation' 
+      return {
+        label: 'Reconnect Required',
+        color: 'text-red-600 border-red-200 bg-red-50',
+        icon: 'fa-solid fa-circle-exclamation'
       };
     }
-    
+
     switch (healthStatus) {
       case 'token_expiring':
-        return { 
-          label: 'Token Expiring', 
-          color: 'text-amber-400 border-amber-500/20 bg-amber-500/5', 
-          icon: 'fa-solid fa-triangle-exclamation' 
+        return {
+          label: 'Token Expiring',
+          color: 'text-amber-600 border-amber-200 bg-amber-50',
+          icon: 'fa-solid fa-triangle-exclamation'
         };
       case 'token_expired':
-        return { 
-          label: 'Token Expired', 
-          color: 'text-red-400 border-red-500/20 bg-red-500/5', 
-          icon: 'fa-solid fa-circle-xmark' 
+        return {
+          label: 'Token Expired',
+          color: 'text-red-600 border-red-200 bg-red-50',
+          icon: 'fa-solid fa-circle-xmark'
         };
       case 'reconnect_required':
-        return { 
-          label: 'Reconnect Required', 
-          color: 'text-red-400 border-red-500/20 bg-red-500/5', 
-          icon: 'fa-solid fa-circle-exclamation' 
+        return {
+          label: 'Reconnect Required',
+          color: 'text-red-600 border-red-200 bg-red-50',
+          icon: 'fa-solid fa-circle-exclamation'
         };
       case 'connected':
       default:
-        return { 
-          label: 'Connected', 
-          color: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5', 
-          icon: 'fa-solid fa-circle-check' 
+        return {
+          label: 'Connected',
+          color: 'text-emerald-600 border-emerald-200 bg-emerald-50',
+          icon: 'fa-solid fa-circle-check'
         };
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] bg-[#080f28]/95 border border-white/10 backdrop-blur-2xl text-white rounded-2xl shadow-2xl">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-bold tracking-tight font-space-grotesk text-[#eef2ff]">
-              {isOauthWizard 
-                ? `${targetPlatform ? targetPlatform.charAt(0).toUpperCase() + targetPlatform.slice(1) : 'Meta'} Onboarding (Step ${wizardStep}/${totalSteps})` 
-                : 'Meta Connections'}
-            </DialogTitle>
-          </div>
-          <DialogDescription className="text-xs text-[#4a5a82] font-dm-sans leading-relaxed">
-            {isOauthWizard
-              ? `Select your ${targetPlatform === 'whatsapp' ? 'WhatsApp Business Account and Phone Line' : targetPlatform === 'instagram' ? 'Facebook Page and Instagram Account' : 'Facebook Page'} to finalize the integration.`
-              : 'Link and manage connected Pages, Instagram accounts, and WhatsApp lines integrated with the Unified Inbox.'}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[520px] bg-white border-dash-border !text-dash-text rounded-2xl shadow-xl p-0 gap-0 overflow-hidden max-h-[85vh] flex flex-col">
+        {/* Header — icon badge + title + subtitle, matches the AI/Write-with-AI and Tag modal chrome */}
+        <div className="px-6 py-5 border-b border-dash-border bg-dash-surface shrink-0">
+          <DialogHeader className="space-y-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-dash-accent/10 !text-dash-accent flex items-center justify-center shrink-0">
+                <i className="fa-brands fa-meta text-sm"></i>
+              </div>
+              <div className="min-w-0">
+                <DialogTitle className="text-sm font-bold !text-dash-text">
+                  {isOauthWizard
+                    ? `${targetPlatform ? targetPlatform.charAt(0).toUpperCase() + targetPlatform.slice(1) : 'Meta'} Onboarding (Step ${wizardStep}/${totalSteps})`
+                    : 'Meta Connections'}
+                </DialogTitle>
+                <DialogDescription className="text-[11px] font-medium !text-dash-textMuted mt-0.5 leading-relaxed">
+                  {isOauthWizard
+                    ? `Select your ${targetPlatform === 'whatsapp' ? 'WhatsApp Business Account and Phone Line' : targetPlatform === 'instagram' ? 'Facebook Page and Instagram Account' : 'Facebook Page'} to finalize the integration.`
+                    : 'Link and manage connected Pages, Instagram accounts, and WhatsApp lines integrated with the Unified Inbox.'}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        </div>
 
-        <div className="py-4 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto p-6 common-scrollbar">
           {isLoading ? (
             <div className="flex flex-col gap-4 py-8 items-center justify-center">
-              <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
-              <span className="text-xs text-[#4a5a82]">Loading connection details...</span>
+              <div className="w-8 h-8 rounded-full border-2 border-dash-accent border-t-transparent animate-spin motion-reduce:animate-none"></div>
+              <span className="text-xs !text-dash-textMuted">Loading connection details...</span>
             </div>
           ) : isOauthWizard ? (
             /* OAUTH-FIRST WIZARD STEP-BY-STEP UI */
@@ -458,12 +475,14 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                   const stepNum = index + 1;
                   return (
                     <div key={stepName} className="flex-1 flex flex-col gap-1.5">
-                      <div className={`h-1 rounded-full transition-all duration-300 ${
-                        stepNum <= wizardStep ? 'bg-indigo-500' : 'bg-white/10'
-                      }`} />
-                      <span className={`text-[8.5px] text-center font-bold tracking-wider uppercase ${
-                        stepNum === wizardStep ? 'text-indigo-400' : 'text-[#4a5a82]'
-                      }`}>
+                      <div className={cn(
+                        "h-1 rounded-full transition-all duration-300",
+                        stepNum <= wizardStep ? 'bg-dash-accent' : 'bg-dash-border'
+                      )} />
+                      <span className={cn(
+                        "text-[8.5px] text-center font-bold tracking-wider uppercase",
+                        stepNum === wizardStep ? '!text-dash-accent' : '!text-dash-textMuted'
+                      )}>
                         {stepName}
                       </span>
                     </div>
@@ -473,27 +492,26 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
 
               {wizardLoading ? (
                 <div className="flex flex-col gap-4 py-8 items-center justify-center">
-                  <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
-                  <span className="text-xs text-[#4a5a82]">Syncing asset metadata...</span>
+                  <div className="w-8 h-8 rounded-full border-2 border-dash-accent border-t-transparent animate-spin motion-reduce:animate-none"></div>
+                  <span className="text-xs !text-dash-textMuted">Syncing asset metadata...</span>
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
                   {/* STEP 1: SELECT BUSINESS */}
                   {wizardStep === 1 && (
                     <div className="flex flex-col gap-3">
-                      <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
-                        <span className="text-[11.5px] font-bold text-white block mb-1">Select Meta Business Account</span>
-                        <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                      <div className="p-3 bg-dash-accent/5 border border-dash-accent/10 rounded-xl">
+                        <span className="text-[11.5px] font-bold !text-dash-text block mb-1">Select Meta Business Account</span>
+                        <p className="text-[10px] !text-dash-textMuted leading-relaxed mb-0">
                           Choose the Business Manager portfolio containing your Facebook Pages and WhatsApp lines.
                         </p>
                       </div>
 
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-[#4a5a82] font-semibold">Meta Business Portfolio</label>
+                      <DashFormField label="Meta Business Portfolio">
                         <select
                           value={selectedBusiness}
                           onChange={(e) => handleBusinessSelect(e.target.value)}
-                          className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                          className={selectBase}
                         >
                           {businesses.length === 0 ? (
                             <option value="">No Business Portfolios Found</option>
@@ -503,25 +521,26 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                             ))
                           )}
                         </select>
-                      </div>
+                      </DashFormField>
 
                       <div className="flex items-center gap-3 mt-4">
-                        <Button 
-                          type="button" 
-                          onClick={handleExitWizard} 
-                          variant="ghost" 
-                          className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                        <DashButton
+                          type="button"
+                          onClick={handleExitWizard}
+                          variant="ghost"
+                          className="flex-1"
                         >
                           Cancel Setup
-                        </Button>
-                        <Button 
-                          type="button" 
+                        </DashButton>
+                        <DashButton
+                          type="button"
                           onClick={handleStep1Next}
                           disabled={!selectedBusiness}
-                          className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                          variant="primary"
+                          className="flex-1"
                         >
                           Continue
-                        </Button>
+                        </DashButton>
                       </div>
                     </div>
                   )}
@@ -530,19 +549,18 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                   {wizardStep === 2 && (
                     targetPlatform === 'whatsapp' ? (
                       <div className="flex flex-col gap-3">
-                        <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
-                          <span className="text-[11.5px] font-bold text-white block mb-1">Select WhatsApp Business Account</span>
-                          <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                        <div className="p-3 bg-dash-accent/5 border border-dash-accent/10 rounded-xl">
+                          <span className="text-[11.5px] font-bold !text-dash-text block mb-1">Select WhatsApp Business Account</span>
+                          <p className="text-[10px] !text-dash-textMuted leading-relaxed mb-0">
                             Select the WhatsApp Business Account (WABA) containing the phone lines you wish to link.
                           </p>
                         </div>
 
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-[#4a5a82] font-semibold">WhatsApp Business Account (WABA)</label>
+                        <DashFormField label="WhatsApp Business Account (WABA)">
                           <select
                             value={selectedWaba?.id || ''}
                             onChange={(e) => handleWabaChange(e.target.value)}
-                            className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                            className={selectBase}
                           >
                             {waAccounts.length === 0 ? (
                               <option value="">No WhatsApp Business Accounts Found</option>
@@ -552,45 +570,45 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                               ))
                             )}
                           </select>
-                        </div>
+                        </DashFormField>
 
                         <div className="flex items-center gap-3 mt-4">
-                          <Button 
-                            type="button" 
-                            onClick={() => setWizardStep(1)} 
-                            variant="ghost" 
-                            className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                          <DashButton
+                            type="button"
+                            onClick={() => setWizardStep(1)}
+                            variant="ghost"
+                            className="flex-1"
                           >
                             Back
-                          </Button>
-                          <Button 
-                            type="button" 
+                          </DashButton>
+                          <DashButton
+                            type="button"
                             onClick={handleStep2Next}
                             disabled={!selectedWaba}
-                            className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                            variant="primary"
+                            className="flex-1"
                           >
                             Continue
-                          </Button>
+                          </DashButton>
                         </div>
                       </div>
                     ) : (
                       <div className="flex flex-col gap-3">
-                        <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
-                          <span className="text-[11.5px] font-bold text-white block mb-1">Select Facebook Page</span>
-                          <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                        <div className="p-3 bg-dash-accent/5 border border-dash-accent/10 rounded-xl">
+                          <span className="text-[11.5px] font-bold !text-dash-text block mb-1">Select Facebook Page</span>
+                          <p className="text-[10px] !text-dash-textMuted leading-relaxed mb-0">
                             Select the Facebook Page you wish to link for routing messages.
                           </p>
                         </div>
 
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-[#4a5a82] font-semibold">Facebook Page</label>
+                        <DashFormField label="Facebook Page">
                           <select
                             value={selectedPage?.id || ''}
                             onChange={(e) => {
                               const pg = pages.find(p => p.id === e.target.value);
                               setSelectedPage(pg || null);
                             }}
-                            className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                            className={selectBase}
                           >
                             {pages.length === 0 ? (
                               <option value="">No Facebook Pages Found</option>
@@ -600,25 +618,26 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                               ))
                             )}
                           </select>
-                        </div>
+                        </DashFormField>
 
                         <div className="flex items-center gap-3 mt-4">
-                          <Button 
-                            type="button" 
-                            onClick={() => setWizardStep(1)} 
-                            variant="ghost" 
-                            className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                          <DashButton
+                            type="button"
+                            onClick={() => setWizardStep(1)}
+                            variant="ghost"
+                            className="flex-1"
                           >
                             Back
-                          </Button>
-                          <Button 
-                            type="button" 
+                          </DashButton>
+                          <DashButton
+                            type="button"
                             onClick={handleStep2Next}
                             disabled={!selectedPage}
-                            className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                            variant="primary"
+                            className="flex-1"
                           >
                             {targetPlatform === 'facebook' ? 'Save Connection' : 'Continue'}
-                          </Button>
+                          </DashButton>
                         </div>
                       </div>
                     )
@@ -629,21 +648,20 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                     targetPlatform === 'whatsapp' ? (
                       <div className="flex flex-col gap-3">
                         <div className="p-3 bg-[#25d366]/5 border border-[#25d366]/10 rounded-xl">
-                          <span className="text-[11.5px] font-bold text-white block mb-1">Select WhatsApp Phone Line</span>
-                          <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                          <span className="text-[11.5px] font-bold !text-dash-text block mb-1">Select WhatsApp Phone Line</span>
+                          <p className="text-[10px] !text-dash-textMuted leading-relaxed mb-0">
                             Select the specific phone number line to link for customer chats.
                           </p>
                         </div>
 
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-[#4a5a82] font-semibold">Phone Number / Line</label>
+                        <DashFormField label="Phone Number / Line">
                           <select
                             value={selectedPhone?.id || ''}
                             onChange={(e) => {
                               const phone = phoneNumbers.find(p => p.id === e.target.value);
                               setSelectedPhone(phone || null);
                             }}
-                            className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                            className={selectBase}
                           >
                             {phoneNumbers.length === 0 ? (
                               <option value="">No WhatsApp Phone Numbers Found</option>
@@ -655,32 +673,33 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                               ))
                             )}
                           </select>
-                        </div>
+                        </DashFormField>
 
                         <div className="flex items-center gap-3 mt-4">
-                          <Button 
-                            type="button" 
-                            onClick={() => setWizardStep(2)} 
-                            variant="ghost" 
-                            className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                          <DashButton
+                            type="button"
+                            onClick={() => setWizardStep(2)}
+                            variant="ghost"
+                            className="flex-1"
                           >
                             Back
-                          </Button>
-                          <Button 
-                            type="button" 
+                          </DashButton>
+                          <DashButton
+                            type="button"
                             onClick={handleSaveWizard}
                             disabled={!selectedPhone}
-                            className="flex-1 text-xs text-white bg-emerald-600 hover:bg-emerald-700 font-semibold"
+                            variant="primary"
+                            className="flex-1"
                           >
                             Save Connection
-                          </Button>
+                          </DashButton>
                         </div>
                       </div>
                     ) : (
                       <div className="flex flex-col gap-3">
                         <div className="p-3 bg-[#ec4899]/5 border border-[#ec4899]/10 rounded-xl">
-                          <span className="text-[11.5px] font-bold text-white block mb-1">Link Instagram Direct</span>
-                          <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                          <span className="text-[11.5px] font-bold !text-dash-text block mb-1">Link Instagram Direct</span>
+                          <p className="text-[10px] !text-dash-textMuted leading-relaxed mb-0">
                             Choose the Instagram Business Account connected to your selected Facebook page.
                           </p>
                         </div>
@@ -688,49 +707,49 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                         <div className="flex flex-col gap-2">
                           {igAccounts.length === 0 ? (
                             <div className="flex flex-col gap-3">
-                              <div className="p-3 rounded-lg border border-dashed border-white/10 text-center text-[11px] text-[#4a5a82]">
-                                Auto-detection unavailable. Enter your Instagram Business Account ID manually.
+                              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber/10 border border-amber/20 text-[11px] text-amber leading-relaxed">
+                                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                <span>Auto-detection unavailable. Enter your Instagram Business Account ID manually.</span>
                               </div>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[10px] text-[#4a5a82] font-semibold">Instagram Business Account ID</label>
-                                <input
+                              <DashFormField label="Instagram Business Account ID">
+                                <DashInput
                                   type="text"
                                   placeholder="Enter Instagram Business Account ID"
                                   value={selectedInstagram?.id || ''}
                                   onChange={(e) => setSelectedInstagram(e.target.value ? { id: e.target.value, username: 'instagram_account' } : null)}
-                                  className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
                                 />
-                                <label className="text-[10px] text-[#4a5a82] font-semibold mt-1">Instagram Username (optional)</label>
-                                <input
+                              </DashFormField>
+                              <DashFormField label="Instagram Username (optional)">
+                                <DashInput
                                   type="text"
                                   placeholder="Enter Instagram username"
                                   value={selectedInstagram?.username || ''}
                                   onChange={(e) => setSelectedInstagram(prev => prev ? { ...prev, username: e.target.value } : null)}
-                                  className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
                                 />
-                              </div>
+                              </DashFormField>
                             </div>
                           ) : (
                             igAccounts.map((ig) => (
-                              <label 
-                                key={ig.id} 
-                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
-                                  selectedInstagram?.id === ig.id 
-                                    ? 'bg-[#ec4899]/5 border-[#ec4899]/30' 
-                                    : 'bg-white/5 border-white/5 hover:border-white/10'
-                                }`}
+                              <label
+                                key={ig.id}
+                                className={cn(
+                                  "flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer",
+                                  selectedInstagram?.id === ig.id
+                                    ? 'bg-[#ec4899]/5 border-[#ec4899]/30'
+                                    : 'bg-dash-surface border-dash-border hover:border-dash-textMuted/40'
+                                )}
                               >
                                 <div className="flex items-center gap-3">
-                                  <input 
-                                    type="radio" 
-                                    name="instagram_select" 
+                                  <input
+                                    type="radio"
+                                    name="instagram_select"
                                     checked={selectedInstagram?.id === ig.id}
                                     onChange={() => setSelectedInstagram(ig)}
                                     className="accent-[#ec4899]"
                                   />
                                   <div className="flex flex-col">
-                                    <span className="text-[12px] font-bold text-white">@{ig.username}</span>
-                                    <span className="text-[9px] text-[#4a5a82] mt-0.5">ID: {ig.id}</span>
+                                    <span className="text-[12px] font-bold !text-dash-text">@{ig.username}</span>
+                                    <span className="text-[9px] !text-dash-textMuted mt-0.5">ID: {ig.id}</span>
                                   </div>
                                 </div>
                                 <i className="fa-brands fa-instagram text-[#ec4899] text-base"></i>
@@ -740,22 +759,23 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                         </div>
 
                         <div className="flex items-center gap-3 mt-4">
-                          <Button 
-                            type="button" 
-                            onClick={() => setWizardStep(2)} 
-                            variant="ghost" 
-                            className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                          <DashButton
+                            type="button"
+                            onClick={() => setWizardStep(2)}
+                            variant="ghost"
+                            className="flex-1"
                           >
                             Back
-                          </Button>
-                          <Button 
-                            type="button" 
+                          </DashButton>
+                          <DashButton
+                            type="button"
                             onClick={handleSaveWizard}
                             disabled={igAccounts.length > 0 && !selectedInstagram}
-                            className="flex-1 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-semibold"
+                            variant="primary"
+                            className="flex-1"
                           >
                             Save Connection
-                          </Button>
+                          </DashButton>
                         </div>
                       </div>
                     )
@@ -764,38 +784,36 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                   {/* STEP 4: LEGACY FALLBACK FOR WHATSAPP */}
                   {wizardStep === 4 && !targetPlatform && (
                     <div className="flex flex-col gap-3">
-                      <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
-                        <span className="text-[11.5px] font-bold text-white block mb-1">Link WhatsApp Cloud API</span>
-                        <p className="text-[10px] text-[#4a5a82] leading-relaxed mb-0">
+                      <div className="p-3 bg-dash-accent/5 border border-dash-accent/10 rounded-xl">
+                        <span className="text-[11.5px] font-bold !text-dash-text block mb-1">Link WhatsApp Cloud API</span>
+                        <p className="text-[10px] !text-dash-textMuted leading-relaxed mb-0">
                           Select the WhatsApp Business Account (WABA) and specific phone number you wish to link.
                         </p>
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-[#4a5a82] font-semibold">WhatsApp Business Account (WABA)</label>
+                        <DashFormField label="WhatsApp Business Account (WABA)">
                           <select
                             value={selectedWaba?.id || 'skip'}
                             onChange={(e) => handleWabaChange(e.target.value)}
-                            className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                            className={selectBase}
                           >
                             <option value="skip">Do not connect WhatsApp (Skip)</option>
                             {waAccounts.map((wa) => (
                               <option key={wa.id} value={wa.id}>{wa.name} ({wa.id})</option>
                             ))}
                           </select>
-                        </div>
+                        </DashFormField>
 
                         {selectedWaba && (
-                          <div className="flex flex-col gap-1 mt-1 animate-fadeIn">
-                            <label className="text-[10px] text-[#4a5a82] font-semibold">Phone Number / Line</label>
+                          <DashFormField label="Phone Number / Line" className="mt-1 animate-fadeIn">
                             <select
                               value={selectedPhone?.id || ''}
                               onChange={(e) => {
                                 const phone = phoneNumbers.find(p => p.id === e.target.value);
                                 setSelectedPhone(phone || null);
                               }}
-                              className="bg-[#0c1538] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full"
+                              className={selectBase}
                             >
                               {phoneNumbers.length === 0 ? (
                                 <option value="">No WhatsApp Phone Numbers Found</option>
@@ -807,27 +825,28 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                                 ))
                               )}
                             </select>
-                          </div>
+                          </DashFormField>
                         )}
                       </div>
 
                       <div className="flex items-center gap-3 mt-6">
-                        <Button 
-                          type="button" 
-                          onClick={() => setWizardStep(3)} 
-                          variant="ghost" 
-                          className="flex-1 text-xs text-[#4a5a82] hover:text-white"
+                        <DashButton
+                          type="button"
+                          onClick={() => setWizardStep(3)}
+                          variant="ghost"
+                          className="flex-1"
                         >
                           Back
-                        </Button>
-                        <Button 
-                          type="button" 
+                        </DashButton>
+                        <DashButton
+                          type="button"
                           onClick={handleSaveWizard}
                           disabled={selectedWaba && !selectedPhone}
-                          className="flex-1 text-xs text-white bg-emerald-600 hover:bg-emerald-700 font-semibold"
+                          variant="primary"
+                          className="flex-1"
                         >
                           Save Connection
-                        </Button>
+                        </DashButton>
                       </div>
                     </div>
                   )}
@@ -840,131 +859,140 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
               {!isAnyConnected ? (
                 /* Empty state, connect main button */
                 <div className="py-6 flex flex-col items-center justify-center text-center px-4">
-                  <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
-                    <i className="fa-brands fa-meta text-2xl text-indigo-400"></i>
+                  <div className="w-16 h-16 rounded-full bg-dash-accent/10 border border-dash-accent/20 flex items-center justify-center mb-4">
+                    <i className="fa-brands fa-meta text-2xl !text-dash-accent"></i>
                   </div>
-                  <h5 className="text-base font-bold text-[#eef2ff] mb-1 font-space-grotesk">OAuth-First Meta Onboarding</h5>
-                  <p className="text-[11.5px] text-[#4a5a82] max-w-sm mb-6 leading-relaxed">
+                  <h5 className="text-base font-bold !text-dash-text mb-1">OAuth-First Meta Onboarding</h5>
+                  <p className="text-[11.5px] !text-dash-textMuted max-w-sm mb-6 leading-relaxed">
                     Connect your Meta Business Account once to automatically discover and integrate Facebook Pages, Instagram DM endpoints, and WhatsApp Cloud APIs.
                   </p>
-                  <Button
+                  <DashButton
                     asChild
-                    className="w-full max-w-xs h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-center gap-2 rounded-xl"
+                    variant="primary"
+                    className="w-full max-w-xs"
                   >
                     <a href={metaUrl}>
                       <i className="fa-brands fa-facebook text-lg"></i>
                       Connect Meta Account
                     </a>
-                  </Button>
+                  </DashButton>
                 </div>
               ) : (
                 /* Connected Assets Display */
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between mb-1">
-                    <h5 className="text-[12px] font-bold uppercase tracking-wider text-indigo-400 font-space-grotesk">Connected Assets</h5>
-                    <Button
+                    <h5 className="text-[12px] font-bold uppercase tracking-wider !text-dash-accent">Connected Assets</h5>
+                    <DashButton
                       asChild
-                      className="h-7 px-2.5 text-[10px] bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-600/20"
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 px-2.5 text-[10px]"
                     >
                       <a href={metaUrl}>
-                        <i className="fa-solid fa-arrows-rotate me-1.5"></i>
+                        <i className="fa-solid fa-arrows-rotate"></i>
                         Reconnect Account
                       </a>
-                    </Button>
+                    </DashButton>
                   </div>
 
                   {/* Facebook Asset */}
-                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col gap-2.5">
+                  <div className="p-3 rounded-xl bg-dash-surface border border-dash-border flex flex-col gap-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <i className="fa-brands fa-facebook-messenger text-sm text-[#3b82f6]"></i>
-                        <span className="text-[11.5px] font-bold text-white">Facebook Messenger</span>
+                        <i className="fa-brands fa-facebook-messenger text-sm text-[#1877f2]"></i>
+                        <span className="text-[11.5px] font-bold !text-dash-text">Facebook Messenger</span>
                       </div>
                       {fbConn ? (
-                        <div className={`px-2 py-0.5 rounded text-[9px] font-bold border flex items-center gap-1.5 ${getHealthBadge(fbConn.credentials?.health_status, fbConn.status).color}`}>
+                        <div className={cn("px-2 py-0.5 rounded text-[9px] font-bold border flex items-center gap-1.5", getHealthBadge(fbConn.credentials?.health_status, fbConn.status).color)}>
                           <i className={getHealthBadge(fbConn.credentials?.health_status, fbConn.status).icon}></i>
                           {getHealthBadge(fbConn.credentials?.health_status, fbConn.status).label}
                         </div>
                       ) : (
-                        <span className="text-[9px] text-[#4a5a82] font-semibold">Not Linked</span>
+                        <span className="text-[9px] !text-dash-textMuted font-semibold">Not Linked</span>
                       )}
                     </div>
                     {fbConn && (
                       <div className="flex items-center justify-between mt-1 pl-6">
                         <div className="flex flex-col">
-                          <span className="text-[11px] text-white/90 font-bold">{fbConn.credentials?.page_name || 'Facebook Page'}</span>
-                          <span className="text-[9px] text-[#4a5a82] mt-0.5">ID: {fbConn.credentials?.page_id || 'N/A'}</span>
+                          <span className="text-[11px] !text-dash-text font-bold">{fbConn.credentials?.page_name || 'Facebook Page'}</span>
+                          <span className="text-[9px] !text-dash-textMuted mt-0.5">ID: {fbConn.credentials?.page_id || 'N/A'}</span>
                         </div>
-                        <Button
+                        <DashButton
                           onClick={() => handleDisconnect('facebook')}
-                          className="h-6 px-2 text-[9px] font-bold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400"
+                          variant="secondary"
+                          size="sm"
+                          className="h-6 px-2 text-[9px] bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
                         >
                           Disconnect
-                        </Button>
+                        </DashButton>
                       </div>
                     )}
                   </div>
 
                   {/* Instagram Asset */}
-                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col gap-2.5">
+                  <div className="p-3 rounded-xl bg-dash-surface border border-dash-border flex flex-col gap-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <i className="fa-brands fa-instagram text-sm text-[#ec4899]"></i>
-                        <span className="text-[11.5px] font-bold text-white">Instagram Direct</span>
+                        <span className="text-[11.5px] font-bold !text-dash-text">Instagram Direct</span>
                       </div>
                       {igConn ? (
-                        <div className={`px-2 py-0.5 rounded text-[9px] font-bold border flex items-center gap-1.5 ${getHealthBadge(igConn.credentials?.health_status, igConn.status).color}`}>
+                        <div className={cn("px-2 py-0.5 rounded text-[9px] font-bold border flex items-center gap-1.5", getHealthBadge(igConn.credentials?.health_status, igConn.status).color)}>
                           <i className={getHealthBadge(igConn.credentials?.health_status, igConn.status).icon}></i>
                           {getHealthBadge(igConn.credentials?.health_status, igConn.status).label}
                         </div>
                       ) : (
-                        <span className="text-[9px] text-[#4a5a82] font-semibold">Not Linked</span>
+                        <span className="text-[9px] !text-dash-textMuted font-semibold">Not Linked</span>
                       )}
                     </div>
                     {igConn && (
                       <div className="flex items-center justify-between mt-1 pl-6">
                         <div className="flex flex-col">
-                          <span className="text-[11px] text-white/90 font-bold">@{igConn.credentials?.instagram_username || 'ig_account'}</span>
-                          <span className="text-[9px] text-[#4a5a82] mt-0.5">ID: {igConn.credentials?.instagram_id || 'N/A'}</span>
+                          <span className="text-[11px] !text-dash-text font-bold">@{igConn.credentials?.instagram_username || 'ig_account'}</span>
+                          <span className="text-[9px] !text-dash-textMuted mt-0.5">ID: {igConn.credentials?.instagram_id || 'N/A'}</span>
                         </div>
-                        <Button
+                        <DashButton
                           onClick={() => handleDisconnect('instagram')}
-                          className="h-6 px-2 text-[9px] font-bold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400"
+                          variant="secondary"
+                          size="sm"
+                          className="h-6 px-2 text-[9px] bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
                         >
                           Disconnect
-                        </Button>
+                        </DashButton>
                       </div>
                     )}
                   </div>
 
                   {/* WhatsApp Asset */}
-                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 flex flex-col gap-2.5">
+                  <div className="p-3 rounded-xl bg-dash-surface border border-dash-border flex flex-col gap-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <i className="fa-brands fa-whatsapp text-sm text-[#25d366]"></i>
-                        <span className="text-[11.5px] font-bold text-white">WhatsApp Cloud API</span>
+                        <span className="text-[11.5px] font-bold !text-dash-text">WhatsApp Cloud API</span>
                       </div>
                       {waConn ? (
-                        <div className={`px-2 py-0.5 rounded text-[9px] font-bold border flex items-center gap-1.5 ${getHealthBadge(waConn.credentials?.health_status, waConn.status).color}`}>
+                        <div className={cn("px-2 py-0.5 rounded text-[9px] font-bold border flex items-center gap-1.5", getHealthBadge(waConn.credentials?.health_status, waConn.status).color)}>
                           <i className={getHealthBadge(waConn.credentials?.health_status, waConn.status).icon}></i>
                           {getHealthBadge(waConn.credentials?.health_status, waConn.status).label}
                         </div>
                       ) : (
-                        <span className="text-[9px] text-[#4a5a82] font-semibold">Not Linked</span>
+                        <span className="text-[9px] !text-dash-textMuted font-semibold">Not Linked</span>
                       )}
                     </div>
                     {waConn && (
                       <div className="flex items-center justify-between mt-1 pl-6">
                         <div className="flex flex-col">
-                          <span className="text-[11px] text-white/90 font-bold">{waConn.credentials?.whatsapp_business_name || 'WhatsApp Line'}</span>
-                          <span className="text-[9px] text-[#4a5a82] mt-0.5">Num: {waConn.credentials?.whatsapp_phone_number || 'N/A'}</span>
+                          <span className="text-[11px] !text-dash-text font-bold">{waConn.credentials?.whatsapp_business_name || 'WhatsApp Line'}</span>
+                          <span className="text-[9px] !text-dash-textMuted mt-0.5">Num: {waConn.credentials?.whatsapp_phone_number || 'N/A'}</span>
                         </div>
-                        <Button
+                        <DashButton
                           onClick={() => handleDisconnect('whatsapp')}
-                          className="h-6 px-2 text-[9px] font-bold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400"
+                          variant="secondary"
+                          size="sm"
+                          className="h-6 px-2 text-[9px] bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
                         >
                           Disconnect
-                        </Button>
+                        </DashButton>
                       </div>
                     )}
                   </div>
@@ -972,9 +1000,9 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
               )}
 
               {/* General details / Last sync */}
-              <div className="mt-2 p-3 rounded-lg bg-white/5 text-[10px] text-[#4a5a82] font-medium flex items-center justify-between">
+              <div className="mt-2 p-3 rounded-lg bg-dash-surface border border-dash-border text-[10px] !text-dash-textMuted font-medium flex items-center justify-between">
                 <span>Asset Synced State</span>
-                <span className="text-[#eef2ff]">
+                <span className="!text-dash-text">
                   {connections.length > 0 && connections[0].last_sync_at
                     ? format(new Date(connections[0].last_sync_at), 'MMM dd, yyyy hh:mm a')
                     : 'Never synced'}

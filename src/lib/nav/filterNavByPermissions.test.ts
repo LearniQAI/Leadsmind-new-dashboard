@@ -134,6 +134,22 @@ function newVisibleLinks(ctx: NavRoleContext): Set<string> {
   return links;
 }
 
+/**
+ * Added by the HR & Payroll / Social nav-promotion change: Connections, Calendar, Inbox, and
+ * Analytics are genuinely new pages under the new "social" module (Calendar/Analytics are still
+ * placeholder pages for upcoming Task 92/94; Inbox got a real implementation in Task 93 —
+ * comment read/reply for Facebook, Instagram, and YouTube), so they don't exist in the frozen
+ * OLD_SIDEBAR_DATA snapshot above by design — this isn't a permission regression, it's an
+ * intentional addition. Excluded from the parity check below; covered by their own assertion
+ * instead.
+ */
+const NEWLY_ADDED_SOCIAL_ROUTES = new Set([
+  "/social/connections",
+  "/social/calendar",
+  "/social/inbox",
+  "/social/analytics",
+]);
+
 describe("filterNavByPermissions matches the old inline filtering logic exactly", () => {
   const scenarios: Array<[label: string, role: string, permissions: string[]]> = [
     ["admin", "admin", []],
@@ -149,9 +165,18 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
     ]],
   ];
 
-  it.each(scenarios)("%s sees the identical set of routes", (_label, role, permissions) => {
+  it.each(scenarios)("%s sees the identical set of routes (plus the intentionally-added Social pages)", (_label, role, permissions) => {
     const oldLinks = oldVisibleLinks(role, permissions);
     const newLinks = newVisibleLinks({ role, permissions });
-    expect([...newLinks].sort()).toEqual([...oldLinks].sort());
+    const newLinksExcludingAdditions = [...newLinks].filter((l) => !NEWLY_ADDED_SOCIAL_ROUTES.has(l));
+    expect(newLinksExcludingAdditions.sort()).toEqual([...oldLinks].sort());
+  });
+
+  it.each(scenarios)("%s: new Social pages are visible iff /social already was (same 'marketing' permission)", (_label, role, permissions) => {
+    const newLinks = newVisibleLinks({ role, permissions });
+    const hadSocial = newLinks.has("/social");
+    NEWLY_ADDED_SOCIAL_ROUTES.forEach((route) => {
+      expect(newLinks.has(route)).toBe(hadSocial);
+    });
   });
 });

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { getConnectedPlatforms, disconnectPlatform, getMetaAuthUrl } from '@/app/actions/messaging';
 import { ConnectPlatformsModal } from '@/components/dashboard/ConnectPlatformsModal';
+import { Instagram as InstagramIcon } from '@/components/icons/BrandIcons';
 import { toast } from 'sonner';
 
 export function IntegrationsList() {
@@ -191,8 +192,8 @@ export function IntegrationsList() {
             <div className="relative group bg-dash-surface border border-dash-border hover:border-[#ec4899]/30 rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between min-h-[220px]">
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#ec4899]/10 border border-[#ec4899]/20 flex items-center justify-center">
-                    <i className="fa-brands fa-instagram text-2xl text-[#ec4899]"></i>
+                  <div className="w-12 h-12 rounded-xl overflow-hidden">
+                    <InstagramIcon className="w-full h-full" />
                   </div>
                   {igConn ? (
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-200 bg-emerald-50 text-emerald-600 flex items-center gap-1.5">

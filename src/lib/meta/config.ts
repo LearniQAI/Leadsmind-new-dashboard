@@ -2,14 +2,24 @@ export const META_CONFIG = {
   appId: process.env.NEXT_PUBLIC_META_APP_ID ?? '',
   appSecret: process.env.META_APP_SECRET ?? '',
   redirectUri: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://leadsmind-new-dashboard.vercel.app'}/api/auth/meta/callback`,
+  // Kept in sync with messaging.ts's getMetaAuthUrl scope string — both are live connect
+  // entry points (see src/components/meta/IntegrationsList.tsx vs SocialConnectionsClient.tsx),
+  // so a scope added for one flow needs to be added here too or reconnecting through the other
+  // entry point silently comes back with a token missing it.
   scopes: [
     'pages_show_list',
     'pages_messaging',
     'pages_manage_metadata',
     'pages_read_engagement',
+    'pages_read_user_content',
     'pages_manage_posts',
+    'pages_manage_engagement',
+    'read_insights',
+    'instagram_basic',
     'instagram_manage_messages',
-    'instagram_content_publishing',
+    'instagram_manage_comments',
+    'instagram_content_publish',
+    'instagram_manage_insights',
     'whatsapp_business_messaging',
     'whatsapp_business_management',
     'business_management',
