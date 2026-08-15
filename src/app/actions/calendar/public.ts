@@ -5,6 +5,7 @@ import { getAvailableSlots, getRoundRobinAssignee, updateRoundRobinStats } from 
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { addMinutes, parseISO } from 'date-fns';
 import { logPopiaConsent } from '@/lib/calendar/popia';
+import { generateRecurringSlots } from '@/lib/calendar/recurring';
 import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/calendar/payfast';
 import { syncBookingToExternal } from '@/lib/calendar/calendarSync';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
