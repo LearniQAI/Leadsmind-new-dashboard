@@ -107,6 +107,7 @@ export async function publishToTikTok(accessToken: string, content: string, vide
     logger.error({ tiktokErrorCode: creatorInfo.error?.code, tiktokErrorMessage: creatorInfo.error?.message }, 'social.tiktok.creator_info.failed');
     throw new Error(`TikTok creator info failed [${creatorInfo.error?.code || 'unknown'}]: ${creatorInfo.error?.message || 'Failed to query TikTok creator info before publishing'}`);
   }
+  logger.info({ creatorInfoData: creatorInfo.data }, 'social.tiktok.creator_info.succeeded');
   const privacyLevel = creatorInfo.data?.privacy_level_options?.[0] || 'SELF_ONLY';
 
   const videoRes = await fetch(videoUrl);
@@ -118,6 +119,7 @@ export async function publishToTikTok(accessToken: string, content: string, vide
   const chunkSize = videoSize <= TIKTOK_MAX_CHUNK_BYTES ? videoSize : TIKTOK_MIN_CHUNK_BYTES;
   const totalChunkCount = Math.max(1, Math.ceil(videoSize / chunkSize));
 
+  logger.info({ privacyLevelSent: privacyLevel, availableOptions: creatorInfo.data?.privacy_level_options }, 'social.tiktok.publish_init.request');
   const initRes = await fetch('https://open.tiktokapis.com/v2/post/publish/video/init/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },

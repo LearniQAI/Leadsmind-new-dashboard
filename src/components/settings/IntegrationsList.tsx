@@ -44,6 +44,7 @@ export function IntegrationsList() {
       if (params.get('meta_oauth') === '1') {
         const needsInstagram = params.get('needs_instagram') === 'true'
         const needsWhatsapp = params.get('needs_whatsapp') === 'true'
+        const webhookSubscriptionError = params.get('webhook_subscription_error') === 'true'
         if (process.env.NODE_ENV === 'development') {
           // eslint-disable-next-line no-console
           console.log('[IntegrationsList] needsInstagram:', needsInstagram, 'needsWhatsapp:', needsWhatsapp)
@@ -51,7 +52,14 @@ export function IntegrationsList() {
 
         window.history.replaceState({}, '', window.location.pathname)
         fetchPlatforms()
-        
+
+        // The Page connected, but Meta rejected the webhook subscription call — no Messenger/
+        // Instagram DM will ever arrive for it until this is retried, so this must not read as
+        // a quiet success (see the 'error' status set in api/auth/meta/callback/route.ts).
+        if (webhookSubscriptionError) {
+          toast.error('Connected, but Meta rejected the message-webhook subscription. Messenger/Instagram DMs will not be received until this is fixed — try reconnecting.')
+        }
+
         if (needsInstagram) {
           setActivePlatform('instagram')
           setIsOpen(true)

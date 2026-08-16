@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { encrypt } from '@/lib/encryption'
 import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce'
 import { logger } from '@/shared/logger'
+import { subscribePageToMetaWebhook } from '@/lib/meta/subscribeWebhook'
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +98,17 @@ export async function GET(req: Request) {
     logger.info({ igAccount: page?.instagram_business_account }, 'meta_oauth.instagram_business_account.from_page')
     logger.info({ wabaAccount: page?.whatsapp_business_account }, 'meta_oauth.whatsapp_business_account.from_page')
 
+    // STEP 1.5 - Subscribe the Page to our webhook BEFORE recording it as 'connected'. A Page
+    // that fails this call cannot receive any Messenger/Instagram events, so it must not read
+    // as a healthy connection to the rest of the app (see meta/connections/route.ts, which
+    // treats status === 'connected' as "integration is live").
+    const webhookSubscription = await subscribePageToMetaWebhook(page.id, page.access_token)
+    if (!webhookSubscription.success) {
+      logger.error({ pageId: page.id, err: webhookSubscription.error }, 'meta_oauth.facebook.webhook_subscription.failed')
+    } else {
+      logger.info({ pageId: page.id }, 'meta_oauth.facebook.webhook_subscription.succeeded')
+    }
+
     // STEP 2 - Always save Facebook:
     await supabase.from('platform_connections').upsert({
       workspace_id: workspaceId,
@@ -106,9 +118,10 @@ export async function GET(req: Request) {
         page_access_token_encrypted: encrypt(page.access_token),
         page_id: page.id,
         page_name: page.name,
-        health_status: 'connected',
+        health_status: webhookSubscription.success ? 'connected' : 'webhook_subscription_failed',
+        ...(webhookSubscription.success ? {} : { webhook_subscription_error: webhookSubscription.error }),
       },
-      status: 'connected',
+      status: webhookSubscription.success ? 'connected' : 'error',
       last_sync_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'workspace_id,platform' })
@@ -201,6 +214,10 @@ export async function GET(req: Request) {
         } catch (err: any) { logger.error({ err: err.message }, 'meta_oauth.instagram.username_discovery_failed') }
       }
 
+      // Instagram DMs for this account are delivered through the SAME Page-level
+      // subscribed_apps call made above (webhookSubscription) — there is no separate
+      // per-IG-account subscription for Page-linked Instagram professional accounts. So this
+      // row's health mirrors the Facebook row's subscription result, not a fresh check.
       logger.info({ igId, igUsername }, 'meta_oauth.instagram.saving')
       await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
@@ -212,9 +229,10 @@ export async function GET(req: Request) {
           page_name: page.name,
           instagram_id: igId,
           instagram_username: igUsername,
-          health_status: 'connected',
+          health_status: webhookSubscription.success ? 'connected' : 'webhook_subscription_failed',
+          ...(webhookSubscription.success ? {} : { webhook_subscription_error: webhookSubscription.error }),
         },
-        status: 'connected',
+        status: webhookSubscription.success ? 'connected' : 'error',
         last_sync_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'workspace_id,platform' })
@@ -339,6 +357,7 @@ export async function GET(req: Request) {
     })
     if (!igId) redirectParams.set('needs_instagram', 'true')
     if (!wabaId) redirectParams.set('needs_whatsapp', 'true')
+    if (!webhookSubscription.success) redirectParams.set('webhook_subscription_error', 'true')
 
     return NextResponse.redirect(
       `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&${redirectParams.toString()}`
