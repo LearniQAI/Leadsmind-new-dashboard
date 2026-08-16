@@ -1,10 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'hr');
-if (!fs.existsSync(API_DIR)) fs.mkdirSync(API_DIR, { recursive: true });
-
-const hrDocTs = `import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
 
 // Task 46: Secure Employee Document Upload
@@ -24,8 +18,8 @@ export async function uploadEmployeeDocument(employeeId: string, file: File, doc
 
     // 2. Generate a secure, randomized file path in the workspace bucket
     const fileExt = file.name.split('.').pop();
-    const fileName = \`\${Math.random().toString(36).substring(2, 15)}.\${fileExt}\`;
-    const filePath = \`\${workspaceId}/\${employeeId}/\${documentType}/\${fileName}\`;
+    const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const filePath = `${workspaceId}/${employeeId}/${documentType}/${fileName}`;
 
     // 3. Upload to Supabase Storage (Private HR Bucket)
     const { data: uploadData, error: uploadError } = await supabase
@@ -79,6 +73,3 @@ export async function getEmployeeDocuments(employeeId: string) {
 
   return { success: true, data: documentsWithUrls };
 }
-`;
-fs.writeFileSync(path.join(API_DIR, 'documents.ts'), hrDocTs);
-console.log("SUCCESS! HR Document Upload Engine Built.");
