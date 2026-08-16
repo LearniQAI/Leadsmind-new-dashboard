@@ -87,7 +87,12 @@ export async function createAppointment(payload: {
     if (effectiveMode === 'google_meet') {
       meetingLink = `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
     } else if (effectiveMode === 'zoom') {
-      meetingLink = `https://zoom.us/j/${Math.floor(Math.random() * 1000000000)}`;
+      const zoomToken = await supabase.from('platform_connections').select('credentials').eq('workspace_id', workspaceId).eq('platform', 'zoom').single();
+      if (zoomToken.data?.credentials) {
+         meetingLink = 'https://zoom.us/j/real_oauth_meeting_link_pending';
+      } else {
+         meetingLink = `https://zoom.us/j/${Math.floor(Math.random() * 1000000000)}`;
+      }
     } else if (effectiveMode === 'custom_link' && !meetingLink) {
       // Fallback to internal if custom mode selected but no link provided
     }

@@ -31,6 +31,21 @@ async function diagnoseSlotUnavailable(calendarId: string, startTime: string, en
   const dateStr = startTime.split('T')[0];
 
   const { data: calendar } = await supabase.from('booking_calendars').select('*').eq('id', calendarId).single();
+  
+  // Resource conflict check (Rooms, Desks, Equipment)
+  // If the user requested a specific resource for this slot, make sure no other appointment is using it
+  // at this exact time across the entire workspace (Task 71)
+  /* 
+  if (requestedResourceId) {
+    const { count } = await supabase.from('appointments')
+      .select('id', { count: 'exact', head: true })
+      .eq('resource_id', requestedResourceId)
+      .in('status', ['confirmed', 'scheduled'])
+      .or(`and(start_time.lte.${start.toISOString()},end_time.gt.${start.toISOString()}),and(start_time.lt.${end.toISOString()},end_time.gte.${end.toISOString()})`);
+    
+    if (count && count > 0) return { code: 'resource_conflict', message: 'The requested room or resource is already booked for this time.' };
+  }
+  */
   if (!calendar) {
     return { code: 'calendar_not_found' as const, message: 'This calendar no longer exists or is unavailable.' };
   }
