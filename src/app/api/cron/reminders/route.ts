@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
-import { sendCalendarSMS } from '@/lib/calendar/sms';
+import { sendSMS } from '@/lib/sms';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,13 @@ export async function GET(request) {
     if (error || !upcoming) return NextResponse.json({ success: false, error: 'Query failed' });
     if (upcoming.length === 0) return NextResponse.json({ success: true, message: 'No reminders to send right now' });
 
+    const workspaceIds = [...new Set(upcoming.map((apt) => apt.workspace_id))];
+    const { data: workspaces } = await supabase
+      .from('workspaces')
+      .select('id, twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number')
+      .in('id', workspaceIds);
+    const workspacesMap = new Map(workspaces?.map((w: any) => [w.id, w]));
+
     let sentCount = 0;
 
     for (const apt of upcoming) {
@@ -57,7 +65,18 @@ See you soon!`;
 
       try {
         if (email) await sendEmail({ to: email, subject: `Reminder: Upcoming Meeting in ${typeStr}`, text: messageText, tags: [{ name: 'category', value: 'calendar_reminder' }] as any } as any);
-        if (phone) await sendCalendarSMS(apt.workspace_id, phone, `Reminder: "${apt.title}" starts in ${typeStr}. Link: ${apt.meeting_link || 'TBD'}`);
+        if (phone) {
+          const workspace = workspacesMap.get(apt.workspace_id);
+          const cleanPhone = phone.startsWith('+') ? phone : `+${phone}`;
+          await sendSMS({
+            to: cleanPhone,
+            message: `Reminder: "${apt.title}" starts in ${typeStr}. Link: ${apt.meeting_link || 'TBD'}`,
+            config: {
+              ...resolveWorkspaceTwilioCredentials(workspace),
+              fromNumber: workspace?.twilio_number,
+            },
+          });
+        }
 
         await supabase.from('appointments').update(is1Hour ? { reminder_1h_sent: true } : { reminder_24h_sent: true }).eq('id', apt.id);
         sentCount++;
