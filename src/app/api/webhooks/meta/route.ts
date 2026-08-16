@@ -27,6 +27,27 @@ function isValidMetaSignature(rawBody: string, signatureHeader: string | null, a
   return crypto.timingSafeEqual(providedBuf, expectedBuf);
 }
 
+// A Page/IG/WABA ID that doesn't match any platform_connections row means an inbound message
+// is silently dropped after Meta already delivered it successfully (we still ack 200 to Meta,
+// which is correct — otherwise Meta retries/disables the subscription). Without this, that drop
+// was previously visible only in ephemeral server logs. Reuses webhook_dead_letters (already
+// used for other inbound-webhook failure classes, see api/admin/dead-letters) purely as a
+// durable, queryable record — not wired into the existing replay flow, since there's no
+// request to replay, just a routing gap to fix (reconnect the account, or fix a stale
+// platform_connections row).
+async function recordConnectionNotFound(errorType: string, externalId: string, rawEvent: any): Promise<void> {
+  const { error } = await supabase.from('webhook_dead_letters').insert({
+    provider: 'meta',
+    payload: { externalId, event: rawEvent },
+    error: `No platform_connections row matched external id ${externalId}`,
+    error_type: errorType,
+    retry_state: 'unresolved',
+  });
+  if (error) {
+    logger.error({ err: error, errorType, externalId }, 'webhook.meta.connection_not_found.dead_letter_insert_failed');
+  }
+}
+
 // GET Handler for Webhook Verification Challenge
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -300,6 +321,7 @@ async function handleFacebookMessengerMessage(messagingEvent: any) {
 
   if (!connection) {
     logger.error({ pageId: recipientId }, 'webhook.meta.facebook.connection_not_found');
+    await recordConnectionNotFound('meta_facebook_connection_not_found', recipientId, messagingEvent);
     return;
   }
 
@@ -437,6 +459,7 @@ async function handleInstagramDMMessage(messagingEvent: any) {
 
   if (!connection) {
     logger.error({ instagramId: recipientId }, 'webhook.meta.instagram.connection_not_found');
+    await recordConnectionNotFound('meta_instagram_connection_not_found', recipientId, messagingEvent);
     return;
   }
 
@@ -572,6 +595,7 @@ async function handleWhatsAppMessage(message: any, metadata: any, webhookContact
 
   if (!connection) {
     logger.error({ phoneNumberId: recipientPhoneId }, 'webhook.meta.whatsapp.connection_not_found');
+    await recordConnectionNotFound('meta_whatsapp_connection_not_found', recipientPhoneId, message);
     return;
   }
 
