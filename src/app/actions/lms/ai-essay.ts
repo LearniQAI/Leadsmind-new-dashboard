@@ -15,15 +15,14 @@ export async function gradeStudentEssay(attemptId: string, studentEssay: string,
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // AI Prompt for grading based on the teacher's rubric
     const prompt = `
       You are an expert, strict but fair teacher grading a student's essay. 
       Read the student's essay below and grade it against the provided Rubric.
       
       You must return ONLY a raw JSON object with this exact structure:
       {
-        "score_pct": number (0-100),
-        "passed": boolean (true if score is 60 or above),
+        "score_pct": number,
+        "passed": boolean,
         "feedback_for_student": "A 2-paragraph encouraging but constructive critique",
         "private_notes_for_teacher": "A 1-paragraph summary of why the student lost points"
       }
@@ -43,7 +42,6 @@ export async function gradeStudentEssay(attemptId: string, studentEssay: string,
 
     const aiGrading = JSON.parse(completion.choices[0].message.content || '{}');
 
-    // Save the AI grade to the database attempt record
     const { data: gradedAttempt, error: dbError } = await supabase
       .from('quiz_attempts')
       .update({
@@ -58,7 +56,6 @@ export async function gradeStudentEssay(attemptId: string, studentEssay: string,
       .single();
 
     if (dbError) throw dbError;
-
     return { success: true, data: gradedAttempt };
   } catch (error: any) {
     logger.error({ err: error, attemptId }, 'lms.ai_essay_grading.failed');

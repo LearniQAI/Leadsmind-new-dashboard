@@ -1,4 +1,4 @@
--- LeadsMind LMS Schema (Based on PRD Section 10)
+-- LeadsMind LMS Schema (Based on PRD Section 10 + Addendum)
 CREATE TABLE IF NOT EXISTS courses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   workspace_id UUID NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS modules (
   course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   "order" INTEGER DEFAULT 1,
-  unlock_type TEXT DEFAULT 'immediate' -- drip_days, drip_date, quiz_gated
+  unlock_type TEXT DEFAULT 'immediate'
 );
 
 CREATE TABLE IF NOT EXISTS lessons (
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   module_id UUID REFERENCES modules(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   content_blocks JSONB DEFAULT '[]'::jsonb,
-  video_provider TEXT, -- youtube, vimeo, wistia, bunny, aws
+  video_provider TEXT,
   video_ref TEXT
 );
 
@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   student_id UUID NOT NULL,
   score_pct NUMERIC,
   passed BOOLEAN,
+  grading_feedback TEXT,
+  teacher_notes TEXT,
+  graded_by TEXT,
   attempt_number INTEGER DEFAULT 1,
   locked_out BOOLEAN DEFAULT false
 );
