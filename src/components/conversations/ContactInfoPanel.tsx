@@ -12,11 +12,12 @@ import {
   updateContactConsent
 } from '@/app/actions/messaging';
 import { toast } from 'sonner';
-import { Phone, Mail } from 'lucide-react';
+import { Phone, Mail, X } from 'lucide-react';
 
 interface ContactInfoPanelProps {
   contact: any;
   conversation: any;
+  onClose?: () => void;
 }
 
 const DEFAULT_TAGS = ['Sales', 'Support', 'Billing', 'Complaint', 'VIP'];
@@ -28,7 +29,7 @@ const STATUS_OPTIONS = [
   { value: 'spam', label: 'Spam', color: 'text-red bg-red/10' }
 ];
 
-export function ContactInfoPanel({ contact, conversation }: ContactInfoPanelProps) {
+export function ContactInfoPanel({ contact, conversation, onClose }: ContactInfoPanelProps) {
   const router = useRouter();
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
 
@@ -147,7 +148,16 @@ export function ContactInfoPanel({ contact, conversation }: ContactInfoPanelProp
   const selectedStatusColor = STATUS_OPTIONS.find(o => o.value === status)?.color || '';
 
   return (
-    <div className="w-[240px] border-l border-dash-border flex flex-col bg-white h-full shrink-0 overflow-y-auto no-scrollbar">
+    <div className="relative w-[280px] xl:w-[240px] border-l border-dash-border flex flex-col bg-white h-full shrink-0 overflow-y-auto no-scrollbar shadow-xl xl:shadow-none">
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="xl:hidden absolute top-3 right-3 w-7 h-7 rounded-lg bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none"
+          title="Close panel"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      )}
       {/* Profile Section */}
       <div className="p-6 flex flex-col items-center text-center border-b border-dash-border">
         <div className="w-16 h-16 rounded-2xl bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-text font-bold text-xl mb-3 overflow-hidden shadow-sm">
