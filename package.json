@@ -81,6 +81,7 @@
     "html-to-text": "^10.0.0",
     "inngest": "^4.11.0",
     "jose": "^6.2.3",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.454.0",
     "next": "^14.2.35",
     "next-google-fonts": "^2.2.0",

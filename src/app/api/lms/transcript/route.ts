@@ -1,10 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const LMS_API_DIR = path.join(process.cwd(), 'src', 'app', 'api', 'lms', 'transcript');
-if (!fs.existsSync(LMS_API_DIR)) fs.mkdirSync(LMS_API_DIR, { recursive: true });
-
-const transcriptRouteTs = `import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { jsPDF } from 'jspdf';
@@ -33,8 +27,8 @@ export async function GET(request: Request) {
     doc.text('Official Student Transcript', 105, 20, { align: 'center' });
     
     doc.setFontSize(14);
-    doc.text(\`Course: \${course?.name || 'Unknown Course'}\`, 20, 40);
-    doc.text(\`Date Issued: \${new Date().toLocaleDateString()}\`, 20, 50);
+    doc.text(`Course: ${course?.name || 'Unknown Course'}`, 20, 40);
+    doc.text(`Date Issued: ${new Date().toLocaleDateString()}`, 20, 50);
     
     doc.setFontSize(12);
     let yPos = 70;
@@ -45,8 +39,8 @@ export async function GET(request: Request) {
     
     yPos += 10;
     attempts.forEach((attempt, index) => {
-      doc.text(\`Assessment \${index + 1}\`, 20, yPos);
-      doc.text(\`\${attempt.score_pct || 0}%\`, 130, yPos);
+      doc.text(`Assessment ${index + 1}`, 20, yPos);
+      doc.text(`${attempt.score_pct || 0}%`, 130, yPos);
       doc.text(attempt.passed ? 'PASS' : 'FAIL', 170, yPos);
       yPos += 10;
     });
@@ -55,13 +49,10 @@ export async function GET(request: Request) {
     return new NextResponse(pdfBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': \`attachment; filename="transcript-\${studentId}.pdf"\`
+        'Content-Disposition': `attachment; filename="transcript-${studentId}.pdf"`
       }
     });
   } catch (error) {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 }
-`;
-fs.writeFileSync(path.join(LMS_API_DIR, 'route.ts'), transcriptRouteTs);
-console.log("SUCCESS! Student Transcript Generator built.");
