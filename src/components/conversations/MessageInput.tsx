@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getQuickReplies, createQuickReply } from '@/app/actions/messaging';
 import { toast } from 'sonner';
-import { Mic, Trash2, Check, Loader2, History, Zap, Send, Lock, Mail, MessageCircle } from 'lucide-react';
-import { Instagram } from '@/components/icons/BrandIcons';
+import { Mic, Trash2, Check, Loader2, History, Zap, Send, Lock, Smile } from 'lucide-react';
+import { getPlatformMeta } from './platformMeta';
 
 interface MessageInputProps {
   onSend: (text: string, isNote: boolean, audioUrl?: string, transcript?: string) => void;
@@ -39,6 +39,8 @@ const APPROVED_WHATSAPP_TEMPLATES = [
   }
 ];
 
+const QUICK_EMOJI = ['😀', '😂', '😍', '👍', '🙏', '🎉', '❤️', '😢', '😮', '🔥', '👏', '✅', '💯', '🙌', '😅', '🤔', '👋', '😎', '🥳', '😴', '💪', '👀', '🚀', '✨'];
+
 export function MessageInput({
   onSend,
   placeholder,
@@ -51,6 +53,7 @@ export function MessageInput({
   const [text, setText] = useState('');
   const [isNote, setIsNote] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showQuickReplyCreator, setShowQuickReplyCreator] = useState(false);
   const [quickReplies, setQuickReplies] = useState<any[]>([]);
   const [quickReplySearch, setQuickReplySearch] = useState('');
@@ -65,6 +68,7 @@ export function MessageInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const emojiRef = useRef<HTMLDivElement>(null);
 
   // Voice Recording States
   const [isRecording, setIsRecording] = useState(false);
@@ -308,7 +312,7 @@ export function MessageInput({
 
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = '44px';
+      textareaRef.current.style.height = '22px';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [text]);
@@ -317,6 +321,9 @@ export function MessageInput({
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowTemplates(false);
+      }
+      if (emojiRef.current && !emojiRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -339,19 +346,29 @@ export function MessageInput({
     return preview;
   };
 
+  const insertEmoji = (emoji: string) => {
+    setText((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+    textareaRef.current?.focus();
+  };
+
   const isWhatsAppBlocked = selectedPlatform === 'whatsapp' && isWhatsAppWindowClosed && !isNote;
+  const canSend = (text.trim().length > 0 || !!selectedTemplate) && !disabled;
 
   return (
-    <div className="p-6 bg-white border-t border-dash-border z-10">
+    <div className={cn(
+      "px-4 py-3 border-t transition-colors motion-reduce:transition-none",
+      isNote ? "bg-[#FFFBEA] border-[#F5E9B8]" : "bg-white border-[#EFEFEF]"
+    )}>
       {/* 24-Hour window warning overlay */}
       {isWhatsAppBlocked && !selectedTemplate && (
-        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="mb-3 bg-[#FFF4E5] border border-[#FDE4BB] rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-amber-600 font-bold text-[12px]">
+            <div className="flex items-center gap-2 text-[#B45309] font-semibold text-[12px]">
               <History className="w-3.5 h-3.5" />
               WhatsApp 24-hour window closed
             </div>
-            <p className="text-[12.5px] !text-dash-textMuted mt-1">
+            <p className="text-[12.5px] text-[#8E8E8E] mt-1">
               You can only send approved Meta templates to initiate a conversation with this contact.
             </p>
           </div>
@@ -362,7 +379,7 @@ export function MessageInput({
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedTemplate(tmpl)}
-                className="h-8 px-3 text-[11px] bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold border border-amber-200"
+                className="h-8 px-3 text-[11px] bg-white hover:bg-[#FDE4BB]/40 text-[#B45309] font-semibold border border-[#FDE4BB]"
               >
                 Use {tmpl.name.replace('_', ' ')}
               </Button>
@@ -373,16 +390,16 @@ export function MessageInput({
 
       {/* WhatsApp Template variable config panel */}
       {selectedTemplate && isWhatsAppBlocked && (
-        <div className="mb-4 bg-dash-surface border border-dash-border rounded-xl p-4 space-y-4">
+        <div className="mb-3 bg-[#FAFAFA] border border-[#EFEFEF] rounded-2xl p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-amber-600">
+            <span className="text-[11px] font-semibold text-[#B45309]">
               Configure WhatsApp template: {selectedTemplate.name.replace('_', ' ')}
             </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSelectedTemplate(null)}
-              className="!text-dash-textMuted hover:!text-dash-text"
+              className="text-[#8E8E8E] hover:text-black"
             >
               Cancel
             </Button>
@@ -390,112 +407,248 @@ export function MessageInput({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {selectedTemplate.variables.map((vname: string, idx: number) => (
               <div key={idx} className="space-y-1">
-                <label className="text-[10px] font-bold !text-dash-textMuted">{vname}</label>
+                <label className="text-[10px] font-semibold text-[#8E8E8E]">{vname}</label>
                 <input
                   type="text"
                   placeholder={`Enter ${vname}`}
                   value={templateVars[idx + 1] || ''}
                   onChange={(e) => setTemplateVars(prev => ({ ...prev, [idx + 1]: e.target.value }))}
-                  className="w-full bg-white border border-dash-border rounded-lg px-3 py-1.5 text-[12.5px] !text-dash-text focus:outline-none focus:border-dash-accent"
+                  className="w-full bg-white border border-[#EFEFEF] rounded-full px-3.5 py-1.5 text-[12.5px] text-black focus:outline-none focus:ring-1 focus:ring-black/10"
                 />
               </div>
             ))}
           </div>
-          <div className="bg-white rounded-lg p-3 border border-dash-border text-[12.5px] !text-dash-textMuted leading-relaxed">
-            <span className="block text-[9px] font-bold !text-dash-textMuted mb-1">Preview message</span>
+          <div className="bg-white rounded-xl p-3 border border-[#EFEFEF] text-[12.5px] text-[#8E8E8E] leading-relaxed">
+            <span className="block text-[9px] font-semibold text-[#8E8E8E] mb-1">Preview message</span>
             {getTemplatePreview()}
           </div>
         </div>
       )}
 
-      {/* Mode switches (Reply vs Internal Note) */}
-      <div className="flex items-center gap-1.5 mb-3 border-b border-dash-border pb-2">
+      {/* Mode switch (Reply vs Internal Note) — compact segmented pills, kept
+          small so the pill composer below remains the visual focus. The
+          composer's background tint (pale yellow above) is what actually
+          signals "note mode" — this control doesn't need its own color. */}
+      <div className="flex items-center gap-1.5 mb-2.5">
         <button
           onClick={() => setIsNote(false)}
           className={cn(
-            "px-3 py-1 rounded-lg text-[11px] font-bold transition-all motion-reduce:transition-none flex items-center",
-            !isNote
-              ? "bg-dash-accent/10 text-dash-accent border border-dash-accent/20"
-              : "!text-dash-textMuted hover:!text-dash-text"
+            "px-3 py-1 rounded-full text-[11.5px] font-semibold transition-colors motion-reduce:transition-none",
+            !isNote ? "bg-black text-white" : "text-[#8E8E8E] border border-[#DBDBDB] hover:text-black"
           )}
         >
-          <Send className="w-3 h-3 mr-1.5" />
-          Customer reply
+          Reply
         </button>
         <button
           onClick={() => setIsNote(true)}
           className={cn(
-            "px-3 py-1 rounded-lg text-[11px] font-bold transition-all motion-reduce:transition-none flex items-center",
-            isNote
-              ? "bg-amber-100 text-amber-600 border border-amber-200"
-              : "!text-dash-textMuted hover:!text-dash-text"
+            "px-3 py-1 rounded-full text-[11.5px] font-semibold transition-colors motion-reduce:transition-none flex items-center gap-1",
+            isNote ? "bg-black text-white" : "text-[#8E8E8E] border border-[#DBDBDB] hover:text-black"
           )}
+          title="Internal note — not sent to the customer"
         >
-          <Lock className="w-3 h-3 mr-1.5" />
-          Internal agent note
+          <Lock className="w-2.5 h-2.5" />
+          Note
         </button>
+
+        {/* Platform Selector — real brand marks for consolidated threads */}
+        {availablePlatforms && availablePlatforms.length > 1 && (
+          <div className="flex items-center gap-1 ml-1">
+            {availablePlatforms.map((p: any) => {
+              const isActive = selectedPlatform === p.platform;
+              const meta = getPlatformMeta(p.platform);
+              return (
+                <button
+                  key={p.platform}
+                  onClick={() => onPlatformChange && onPlatformChange(p.platform)}
+                  title={meta.label}
+                  className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center transition-all motion-reduce:transition-none",
+                    isActive ? "ring-2 ring-black/70" : "opacity-50 hover:opacity-100"
+                  )}
+                >
+                  <meta.Icon className="w-full h-full" />
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <div className={cn(
-        "bg-dash-surface border border-dash-border rounded-[12px] p-2 focus-within:border-dash-accent/40 transition-all motion-reduce:transition-none shadow-inner flex flex-col gap-2",
-        (disabled || isUploading) && "opacity-50 pointer-events-none"
-      )}>
-        {isUploading ? (
-          <div className="flex items-center justify-center gap-2 py-6 text-sm !text-dash-textMuted">
-            <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none text-dash-accent" />
-            <span>Uploading voice note...</span>
+      {isUploading ? (
+        <div className="flex items-center justify-center gap-2 py-4 text-sm text-[#8E8E8E]">
+          <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" />
+          <span>Uploading voice note...</span>
+        </div>
+      ) : isRecording ? (
+        <div className="flex items-center justify-between gap-4 w-full bg-[#FFF1F0] border border-red/20 rounded-full px-4 py-2.5 animate-in slide-in-from-bottom-2 motion-reduce:animate-none">
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 bg-red rounded-full animate-ping motion-reduce:animate-none" />
+            <span className="font-mono text-sm font-semibold text-black tracking-widest">{formatTime(recordingSeconds)}</span>
           </div>
-        ) : isRecording ? (
-          <div className="flex items-center justify-between gap-4 w-full bg-red/5 border border-red/20 rounded-xl p-3 animate-in slide-in-from-bottom-2 motion-reduce:animate-none">
-            <div className="flex items-center gap-3">
-              <div className="w-2.5 h-2.5 bg-red rounded-full animate-ping motion-reduce:animate-none" />
-              <span className="font-mono text-sm font-bold !text-dash-text tracking-widest">{formatTime(recordingSeconds)}</span>
-            </div>
 
-            {/* Speech telemetry visualizer */}
-            <div className="flex-1 flex items-center justify-center gap-1 h-8 max-w-[180px] bg-white border border-dash-border rounded-xl px-3">
-              {audioLevels.map((lvl, index) => (
-                <div
-                  key={index}
-                  className="w-0.5 bg-red rounded-full transition-all motion-reduce:transition-none duration-75"
-                  style={{
-                    height: `${lvl}%`,
-                    minHeight: '4px',
-                  }}
-                />
-              ))}
-            </div>
+          {/* Speech telemetry visualizer */}
+          <div className="flex-1 flex items-center justify-center gap-1 h-8 max-w-[180px] bg-white border border-[#EFEFEF] rounded-full px-3">
+            {audioLevels.map((lvl, index) => (
+              <div
+                key={index}
+                className="w-0.5 bg-red rounded-full transition-all motion-reduce:transition-none duration-75"
+                style={{ height: `${lvl}%`, minHeight: '4px' }}
+              />
+            ))}
+          </div>
 
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={cancelRecording}
+              className="w-9 h-9 rounded-full bg-white hover:bg-red/10 border border-[#EFEFEF] text-[#8E8E8E] hover:text-red flex items-center justify-center transition-all motion-reduce:transition-none cursor-pointer"
+              title="Discard Recording"
+            >
+              <Trash2 size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={stopAndSaveRecording}
+              className="w-9 h-9 rounded-full bg-green hover:bg-green/90 text-white flex items-center justify-center transition-all motion-reduce:transition-none cursor-pointer"
+              title="Save & Send Voice Note"
+            >
+              <Check size={16} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={cn("flex items-end gap-2", disabled && "opacity-50 pointer-events-none")}>
+          {/* Quick replies — outside the pill, IG-style leading icon button */}
+          <div className="relative shrink-0" ref={dropdownRef}>
+            <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className={cn(
+                "w-9 h-9 rounded-full flex items-center justify-center transition-colors motion-reduce:transition-none",
+                showTemplates ? "bg-[#EFEFEF] text-black" : "text-[#8E8E8E] hover:bg-[#FAFAFA] hover:text-black"
+              )}
+              title="Quick replies"
+            >
+              <Zap className="w-[18px] h-[18px]" />
+            </button>
+
+            {showTemplates && (
+              <div className="absolute bottom-full left-0 mb-2 w-80 bg-white border border-[#EFEFEF] rounded-2xl shadow-lg p-3.5 z-50 flex flex-col gap-2.5 animate-in fade-in zoom-in duration-200 motion-reduce:animate-none">
+                <div className="flex items-center justify-between pb-1.5 border-b border-[#EFEFEF]">
+                  <span className="text-[10px] font-semibold text-[#8E8E8E]">Quick replies (/shortcut)</span>
+                  <button
+                    onClick={() => setShowQuickReplyCreator(!showQuickReplyCreator)}
+                    className="text-[10px] text-black font-semibold hover:underline"
+                  >
+                    {showQuickReplyCreator ? 'View list' : '+ Create new'}
+                  </button>
+                </div>
+
+                {!showQuickReplyCreator ? (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Search quick replies..."
+                      value={quickReplySearch}
+                      onChange={(e) => setQuickReplySearch(e.target.value)}
+                      className="w-full bg-[#EFEFEF] border-none rounded-full px-3.5 py-1.5 text-[12px] text-black placeholder:text-[#8E8E8E] focus:outline-none"
+                    />
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {filteredQuickReplies.length === 0 ? (
+                        <div className="text-[11px] text-[#8E8E8E] text-center py-4">No quick replies found. Type '/' in shortcut to filter.</div>
+                      ) : (
+                        filteredQuickReplies.map((tmpl) => (
+                          <button
+                            key={tmpl.id}
+                            onClick={() => {
+                              setText(tmpl.message);
+                              setShowTemplates(false);
+                              textareaRef.current?.focus();
+                            }}
+                            className="w-full flex flex-col items-start px-2.5 py-2 rounded-xl hover:bg-[#FAFAFA] text-left transition-all motion-reduce:transition-none group"
+                          >
+                            <span className="text-[12px] font-semibold text-black">{tmpl.shortcut}</span>
+                            <span className="text-[11px] text-[#8E8E8E] line-clamp-1 mt-0.5">{tmpl.message}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-2 text-left">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-semibold text-[#8E8E8E]">Shortcut</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. /welcome"
+                        value={newShortcut}
+                        onChange={(e) => setNewShortcut(e.target.value)}
+                        className="w-full bg-[#EFEFEF] border-none rounded-full px-3.5 py-1.5 text-[12px] text-black focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-semibold text-[#8E8E8E]">Message</label>
+                      <textarea
+                        placeholder="Enter response message..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        className="w-full bg-[#EFEFEF] border-none rounded-2xl px-3.5 py-2 text-[12px] text-black focus:outline-none h-16 resize-none"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={handleCreateQuickReply}
+                      className="w-full h-8 bg-black hover:bg-black/85 text-white text-[11px] font-semibold rounded-full"
+                    >
+                      Save quick reply
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* The pill input itself */}
+          <div className={cn(
+            "flex-1 flex items-end gap-2 rounded-[22px] px-2 py-1.5 min-h-[40px]",
+            isNote ? "bg-white border border-[#F5E9B8]" : "bg-[#EFEFEF]",
+            isWhatsAppBlocked && "opacity-60"
+          )}>
+            <div className="relative shrink-0" ref={emojiRef}>
               <button
                 type="button"
-                onClick={cancelRecording}
-                className="w-9 h-9 rounded-xl bg-white hover:bg-red/10 border border-dash-border !text-dash-textMuted hover:text-red flex items-center justify-center transition-all motion-reduce:transition-none cursor-pointer"
-                title="Discard Recording"
+                onClick={() => setShowEmojiPicker((v) => !v)}
+                disabled={isWhatsAppBlocked}
+                className="w-7 h-7 ml-1 mb-[1px] rounded-full flex items-center justify-center text-[#8E8E8E] hover:text-black transition-colors motion-reduce:transition-none"
+                title="Emoji"
               >
-                <Trash2 size={16} />
+                <Smile className="w-[18px] h-[18px]" />
               </button>
-              <button
-                type="button"
-                onClick={stopAndSaveRecording}
-                className="w-9 h-9 rounded-xl bg-green hover:bg-green/90 text-white flex items-center justify-center shadow-lg shadow-green/20 transition-all motion-reduce:transition-none cursor-pointer"
-                title="Save & Send Voice Note"
-              >
-                <Check size={16} />
-              </button>
+              {showEmojiPicker && (
+                <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-[#EFEFEF] rounded-2xl shadow-lg p-2.5 z-50 grid grid-cols-6 gap-1 animate-in fade-in zoom-in duration-200 motion-reduce:animate-none">
+                  {QUICK_EMOJI.map((e) => (
+                    <button
+                      key={e}
+                      type="button"
+                      onClick={() => insertEmoji(e)}
+                      className="w-8 h-8 rounded-lg hover:bg-[#FAFAFA] flex items-center justify-center text-[18px] transition-colors motion-reduce:transition-none"
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ) : (
-          <>
+
             <textarea
               ref={textareaRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={isWhatsAppBlocked}
-              placeholder={isWhatsAppBlocked ? "Free-form typing disabled. Choose a Template above." : (isNote ? "Add an internal note visible only to workspace members..." : (placeholder || "Type your message..."))}
+              placeholder={isWhatsAppBlocked ? "Free-form typing disabled. Choose a Template above." : (isNote ? "Add an internal note..." : (placeholder || "Message..."))}
               className={cn(
-                "w-full bg-transparent border-none !text-dash-text text-[13.5px] placeholder:!text-dash-textMuted resize-none max-h-32 min-h-[44px] p-3 focus:outline-none focus:ring-0",
-                isWhatsAppBlocked && "cursor-not-allowed opacity-50"
+                "flex-1 bg-transparent border-none text-black text-[14.5px] placeholder:text-[#8E8E8E] resize-none max-h-32 min-h-[22px] py-1.5 focus:outline-none focus:ring-0",
+                isWhatsAppBlocked && "cursor-not-allowed"
               )}
               rows={1}
               onKeyDown={(e) => {
@@ -505,155 +658,36 @@ export function MessageInput({
                 }
               }}
             />
+          </div>
 
-            <div className="flex items-center justify-between px-2 pb-1 relative">
-              <div className="flex items-center gap-3 relative">
-                <div className="relative" ref={dropdownRef}>
-                  <button
-                    onClick={() => setShowTemplates(!showTemplates)}
-                    className={cn(
-                      "h-8 px-3 rounded-lg flex items-center justify-center gap-2 !text-dash-textMuted hover:!text-dash-text hover:bg-dash-border/60 transition-all motion-reduce:transition-none text-[12px] font-bold",
-                      showTemplates && "bg-dash-border/60 !text-dash-text"
-                    )}
-                  >
-                    <Zap className="w-3.5 h-3.5" />
-                    Quick replies
-                  </button>
-
-                  {showTemplates && (
-                    <div className="absolute bottom-full left-0 mb-2 w-80 bg-white border border-dash-border rounded-xl shadow-2xl p-3.5 z-50 flex flex-col gap-2.5 animate-in fade-in zoom-in duration-200 motion-reduce:animate-none">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-dash-border">
-                        <span className="text-[10px] font-bold !text-dash-textMuted">Quick replies (/shortcut)</span>
-                        <button
-                          onClick={() => setShowQuickReplyCreator(!showQuickReplyCreator)}
-                          className="text-[10px] text-dash-accent font-bold hover:underline"
-                        >
-                          {showQuickReplyCreator ? 'View list' : '+ Create new'}
-                        </button>
-                      </div>
-
-                      {!showQuickReplyCreator ? (
-                        <>
-                          <input
-                            type="text"
-                            placeholder="Search quick replies..."
-                            value={quickReplySearch}
-                            onChange={(e) => setQuickReplySearch(e.target.value)}
-                            className="w-full bg-dash-surface border border-dash-border rounded-lg px-2.5 py-1.5 text-[12px] !text-dash-text placeholder:!text-dash-textMuted focus:outline-none"
-                          />
-                          <div className="max-h-48 overflow-y-auto space-y-1">
-                            {filteredQuickReplies.length === 0 ? (
-                              <div className="text-[11px] !text-dash-textMuted text-center py-4">No quick replies found. Type '/' in shortcut to filter.</div>
-                            ) : (
-                              filteredQuickReplies.map((tmpl) => (
-                                <button
-                                  key={tmpl.id}
-                                  onClick={() => {
-                                    setText(tmpl.message);
-                                    setShowTemplates(false);
-                                    textareaRef.current?.focus();
-                                  }}
-                                  className="w-full flex flex-col items-start px-2.5 py-2 rounded-lg hover:bg-dash-surface text-left transition-all motion-reduce:transition-none group"
-                                >
-                                  <span className="text-[12px] font-bold !text-dash-text group-hover:text-dash-accent transition-colors motion-reduce:transition-none">{tmpl.shortcut}</span>
-                                  <span className="text-[11px] !text-dash-textMuted line-clamp-1 mt-0.5">{tmpl.message}</span>
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="space-y-2 text-left">
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold !text-dash-textMuted">Shortcut</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. /welcome"
-                              value={newShortcut}
-                              onChange={(e) => setNewShortcut(e.target.value)}
-                              className="w-full bg-dash-surface border border-dash-border rounded-lg px-2.5 py-1.5 text-[12px] !text-dash-text focus:outline-none"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold !text-dash-textMuted">Message</label>
-                            <textarea
-                              placeholder="Enter response message..."
-                              value={newMessage}
-                              onChange={(e) => setNewMessage(e.target.value)}
-                              className="w-full bg-dash-surface border border-dash-border rounded-lg px-2.5 py-1.5 text-[12px] !text-dash-text focus:outline-none h-16 resize-none"
-                            />
-                          </div>
-                          <Button
-                            size="sm"
-                            onClick={handleCreateQuickReply}
-                            className="w-full h-8 bg-dash-accent text-white text-[11px] font-bold"
-                          >
-                            Save quick reply
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Platform Selector Tabs */}
-                {availablePlatforms && availablePlatforms.length > 1 && (
-                  <div className="flex items-center bg-dash-surface rounded-lg p-0.5 border border-dash-border">
-                    {availablePlatforms.map((p: any) => {
-                      const isActive = selectedPlatform === p.platform;
-                      return (
-                        <button
-                          key={p.platform}
-                          onClick={() => onPlatformChange && onPlatformChange(p.platform)}
-                          className={cn(
-                            "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all motion-reduce:transition-none flex items-center gap-1.5 capitalize",
-                            isActive
-                              ? "bg-dash-accent text-white"
-                              : "!text-dash-textMuted hover:!text-dash-text"
-                          )}
-                        >
-                          {p.platform === 'email' && <Mail className="w-3 h-3" />}
-                          {p.platform === 'whatsapp' && <MessageCircle className="w-3 h-3 text-green" />}
-                          {p.platform === 'sms' && <MessageCircle className="w-3 h-3" />}
-                          {p.platform === 'facebook' && <MessageCircle className="w-3 h-3" />}
-                          {p.platform === 'instagram' && <Instagram className="w-3 h-3" />}
-                          {p.platform}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                {!isNote && !isWhatsAppBlocked && (
-                  <button
-                    type="button"
-                    onClick={startRecording}
-                    className="h-9 w-9 rounded-[8px] bg-white hover:bg-dash-surface border border-dash-border !text-dash-text flex items-center justify-center transition-all motion-reduce:transition-none cursor-pointer"
-                    title="Record Voice Note"
-                  >
-                    <Mic size={16} className="!text-dash-textMuted" />
-                  </button>
-                )}
-                <button
-                  onClick={handleSend}
-                  disabled={(!text.trim() && !selectedTemplate) || disabled}
-                  className={cn(
-                    "h-9 px-4 rounded-[8px] flex items-center gap-2 shadow-lg active:scale-95 transition-all motion-reduce:transition-none motion-reduce:active:scale-100 disabled:opacity-50 disabled:pointer-events-none text-[13px] font-bold",
-                    isNote
-                      ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/10"
-                      : "bg-dash-accent hover:bg-dash-accent/90 text-white shadow-dash-accent/20"
-                  )}
-                >
-                  <span>{isNote ? 'Save note' : 'Send'}</span>
-                  {isNote ? <Lock className="w-3 h-3" /> : <Send className="w-3 h-3" />}
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+          {/* Trailing action: mic when empty (Instagram's own convention),
+              send button once there's something to send. */}
+          {canSend ? (
+            <button
+              onClick={handleSend}
+              disabled={!canSend}
+              className={cn(
+                "w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-all motion-reduce:transition-none active:scale-95 motion-reduce:active:scale-100",
+                isNote ? "bg-black text-white" : "bg-[#3797F0] text-white"
+              )}
+              title={isNote ? 'Save note' : 'Send'}
+            >
+              {isNote ? <Lock className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+            </button>
+          ) : (
+            !isNote && !isWhatsAppBlocked && (
+              <button
+                type="button"
+                onClick={startRecording}
+                className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-[#8E8E8E] hover:bg-[#FAFAFA] hover:text-black transition-colors motion-reduce:transition-none"
+                title="Record voice note"
+              >
+                <Mic className="w-[18px] h-[18px]" />
+              </button>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -104,6 +104,74 @@ export class MetaAdapter {
     }
   }
 
+  /**
+   * Fetches a PSID's real name/photo via the Messenger User Profile API. Requires the
+   * "Business Asset User Profile Access" feature to have Advanced Access — at Standard
+   * Access, Meta returns an empty object rather than an error, which this treats as a
+   * fetch failure (caller falls back to the "Facebook User {id}" placeholder).
+   */
+  async fetchFacebookProfile(
+    psid: string
+  ): Promise<{ success: boolean; firstName?: string; lastName?: string; profilePicUrl?: string; error?: string }> {
+    const encryptedToken = this.credentials?.page_access_token_encrypted || '';
+    if (!encryptedToken || psid.startsWith('mock_')) {
+      return { success: false, error: 'no_page_access_token' };
+    }
+
+    try {
+      const pageAccessToken = decrypt(encryptedToken);
+      const url = `https://graph.facebook.com/v18.0/${psid}?fields=first_name,last_name,profile_pic&access_token=${encodeURIComponent(pageAccessToken)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        return { success: false, error: data.error?.message || `HTTP ${response.status}` };
+      }
+      if (!data.first_name && !data.last_name && !data.profile_pic) {
+        // Empty object: most commonly the app lacks Advanced Access for
+        // Business Asset User Profile Access, not an actual API error.
+        return { success: false, error: 'empty_profile_response' };
+      }
+
+      return { success: true, firstName: data.first_name, lastName: data.last_name, profilePicUrl: data.profile_pic };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Fetches an IGSID's real name/photo via the Instagram Messaging User Profile API.
+   * Unlike the Messenger equivalent, Meta's docs don't gate this behind a separate
+   * Advanced Access feature — it rides on instagram_manage_messages, which this app
+   * already has since it's receiving live IG DM webhooks.
+   */
+  async fetchInstagramProfile(
+    igsid: string
+  ): Promise<{ success: boolean; name?: string; profilePicUrl?: string; error?: string }> {
+    const encryptedToken = this.credentials?.page_access_token_encrypted || '';
+    if (!encryptedToken || igsid.startsWith('mock_')) {
+      return { success: false, error: 'no_page_access_token' };
+    }
+
+    try {
+      const pageAccessToken = decrypt(encryptedToken);
+      const url = `https://graph.facebook.com/v18.0/${igsid}?fields=name,profile_pic&access_token=${encodeURIComponent(pageAccessToken)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        return { success: false, error: data.error?.message || `HTTP ${response.status}` };
+      }
+      if (!data.name && !data.profile_pic) {
+        return { success: false, error: 'empty_profile_response' };
+      }
+
+      return { success: true, name: data.name, profilePicUrl: data.profile_pic };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
   async sendWhatsApp(
     to: string,
     text: string,

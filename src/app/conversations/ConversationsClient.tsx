@@ -5,11 +5,24 @@ import { sendMessage } from '@/app/actions/messaging';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
 import { ConversationList } from '@/components/conversations/ConversationList';
 import { ConversationThread } from '@/components/conversations/ConversationThread';
 import { ContactInfoPanel } from '@/components/conversations/ContactInfoPanel';
 
-export default function ConversationsClient({ initialConversations }: { initialConversations: any[] }) {
+// Messaging channels actually built for the Communications Hub. LinkedIn/
+// TikTok/YouTube are Social Planner (publishing) integrations, not
+// messaging channels here — kept out of the derived tab set below even if
+// stray conversation/connection rows exist for them.
+const SUPPORTED_MESSAGING_CHANNELS = new Set(['facebook', 'instagram', 'whatsapp', 'email', 'sms']);
+
+export default function ConversationsClient({
+  initialConversations,
+  connectedPlatforms = [],
+}: {
+  initialConversations: any[];
+  connectedPlatforms?: { platform: string; status: string }[];
+}) {
   const router = useRouter();
   const supabase = createClient();
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -19,6 +32,8 @@ export default function ConversationsClient({ initialConversations }: { initialC
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPanel, setShowPanel] = useState(false);
+  // Mobile/tablet layout: only one pane is visible at a time below `lg`.
+  const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
 
   // Fetch current user on mount
   useEffect(() => {
@@ -116,6 +131,27 @@ export default function ConversationsClient({ initialConversations }: { initialC
 
     return allConsolidated.sort((a: any, b: any) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
   }, [initialConversations]);
+
+  // Channel tabs are derived, not hardcoded: a platform shows up only if the
+  // workspace has it live-connected (platform_connections) OR there's already
+  // real conversation history on it. This is what naturally hides an unused
+  // channel (e.g. SMS/Email with no active bridge) without us guessing.
+  //
+  // Capped to the messaging channels actually built for this hub — LinkedIn/
+  // TikTok/YouTube are social-publishing integrations (Social Planner), not
+  // messaging channels here, and were explicitly not built for the
+  // Communications Hub. Stray/legacy conversation rows on those platforms
+  // must never surface a tab for a channel that doesn't exist here.
+  const activeChannels = React.useMemo(() => {
+    const set = new Set<string>();
+    connectedPlatforms.forEach((c) => {
+      if (c.status === 'connected' && SUPPORTED_MESSAGING_CHANNELS.has(c.platform)) set.add(c.platform);
+    });
+    initialConversations.forEach((c: any) => {
+      if (c.platform && SUPPORTED_MESSAGING_CHANNELS.has(c.platform)) set.add(c.platform);
+    });
+    return Array.from(set);
+  }, [connectedPlatforms, initialConversations]);
 
   useEffect(() => {
     if (consolidatedConversations.length > 0 && !activeConvId) {
@@ -215,32 +251,57 @@ export default function ConversationsClient({ initialConversations }: { initialC
     setIsSending(false);
   };
 
+  const handleSelectConversation = (id: string) => {
+    setActiveConvId(id);
+    setMobileView('thread');
+  };
+
   return (
-    <div className="flex h-[calc(100vh-140px)] bg-white rounded-[24px] overflow-hidden border border-dash-border shadow-sm mx-6">
-      {/* 1. Conversation List (280px) */}
-      <ConversationList 
-        conversations={filteredConversations}
-        activeId={activeConvId}
-        onSelect={setActiveConvId}
-        filter={filter}
-        onFilterChange={setFilter}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        assigneeFilter={assigneeFilter}
-        onAssigneeFilterChange={setAssigneeFilter}
-      />
+    <div className="flex h-[calc(100vh-140px)] bg-white rounded-[24px] overflow-hidden border border-[#EFEFEF] shadow-sm mx-6 relative">
+      {/* 1. Conversation List — full-width takeover below lg, fixed rail above it */}
+      <div className={cn(
+        "w-full lg:w-[320px] lg:shrink-0",
+        mobileView === 'thread' ? "hidden lg:flex" : "flex"
+      )}>
+        <ConversationList
+          conversations={filteredConversations}
+          activeId={activeConvId}
+          onSelect={handleSelectConversation}
+          filter={filter}
+          onFilterChange={setFilter}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          assigneeFilter={assigneeFilter}
+          onAssigneeFilterChange={setAssigneeFilter}
+          activeChannels={activeChannels}
+        />
+      </div>
 
-      {/* 2. Main Thread (flex: 1) */}
-      <ConversationThread 
-        conversation={activeConv}
-        onSendMessage={handleSend}
-        isSending={isSending}
-        onTogglePanel={() => setShowPanel(p => !p)}
-      />
+      {/* 2. Main Thread */}
+      <div className={cn(
+        "flex-1 min-w-0",
+        mobileView === 'list' ? "hidden lg:flex" : "flex"
+      )}>
+        <ConversationThread
+          conversation={activeConv}
+          onSendMessage={handleSend}
+          isSending={isSending}
+          onTogglePanel={() => setShowPanel(p => !p)}
+          onBack={() => setMobileView('list')}
+        />
+      </div>
 
-      {/* 3. Contact Info Panel (240px) */}
+      {/* 3. Contact Info Panel — inline rail on xl+, slide-in overlay below it */}
       {activeConv && activeConv.contacts && showPanel && (
-        <ContactInfoPanel contact={activeConv.contacts} conversation={activeConv} />
+        <>
+          <div
+            className="fixed inset-0 bg-dash-text/20 backdrop-blur-[1px] z-30 xl:hidden"
+            onClick={() => setShowPanel(false)}
+          />
+          <div className="fixed right-0 top-0 bottom-0 z-40 xl:static xl:z-auto animate-in slide-in-from-right duration-200 motion-reduce:animate-none">
+            <ContactInfoPanel contact={activeConv.contacts} conversation={activeConv} onClose={() => setShowPanel(false)} />
+          </div>
+        </>
       )}
     </div>
   );

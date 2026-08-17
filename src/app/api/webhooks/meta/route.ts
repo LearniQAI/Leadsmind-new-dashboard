@@ -302,6 +302,78 @@ async function processInboundComplianceAndWindow(
   }
 }
 
+// A stored contact name is one of our own placeholders (never a real synced name) if it
+// still matches the exact "{Platform} User" + truncated-id shape the webhook falls back to.
+function isPlaceholderName(firstName: string | null | undefined, lastName: string | null | undefined, platformLabel: string, senderId: string): boolean {
+  return firstName === `${platformLabel} User` && lastName === senderId.substring(0, 8);
+}
+
+const PROFILE_REFRESH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+// Fetches a contact's real name/avatar from Meta on first contact, or on a periodic
+// refresh (>30 days since the last attempt — success or failure), and writes it to the
+// contacts row. Always stamps profile_synced_at, even on failure, so a permission denial
+// doesn't cause a live Graph API call on every single inbound message from that sender.
+// Returns the display name to use for the conversation title (real name if synced,
+// otherwise the existing/placeholder name unchanged).
+async function syncContactProfile(params: {
+  platform: 'facebook' | 'instagram';
+  platformLabel: string;
+  senderId: string;
+  contactId: string;
+  credentials: any;
+  currentFirstName: string | null;
+  currentLastName: string | null;
+  profileSyncedAt: string | null;
+}): Promise<string> {
+  const { platform, platformLabel, senderId, contactId, credentials, currentFirstName, currentLastName, profileSyncedAt } = params;
+
+  const isPlaceholder = isPlaceholderName(currentFirstName, currentLastName, platformLabel, senderId);
+  const isStale = !profileSyncedAt || (Date.now() - new Date(profileSyncedAt).getTime()) > PROFILE_REFRESH_MAX_AGE_MS;
+
+  const fallbackName = `${currentFirstName || ''} ${currentLastName || ''}`.trim();
+
+  if (!isPlaceholder && !isStale) {
+    return fallbackName;
+  }
+
+  const adapter = new MetaAdapter(credentials);
+  const update: any = { profile_synced_at: new Date().toISOString() };
+  let resultName = fallbackName;
+
+  if (platform === 'facebook') {
+    const profile = await adapter.fetchFacebookProfile(senderId);
+    if (profile.success && (profile.firstName || profile.lastName)) {
+      update.first_name = profile.firstName || '';
+      update.last_name = profile.lastName || '';
+      if (profile.profilePicUrl) update.avatar_url = profile.profilePicUrl;
+      resultName = `${update.first_name} ${update.last_name}`.trim();
+      logger.info({ senderId, contactId }, 'webhook.meta.facebook.profile_sync.succeeded');
+    } else {
+      logger.warn({ senderId, contactId, reason: profile.error }, 'webhook.meta.facebook.profile_sync.fallback_placeholder');
+    }
+  } else {
+    const profile = await adapter.fetchInstagramProfile(senderId);
+    if (profile.success && profile.name) {
+      const [firstName, ...rest] = profile.name.split(' ');
+      update.first_name = firstName || profile.name;
+      update.last_name = rest.join(' ');
+      if (profile.profilePicUrl) update.avatar_url = profile.profilePicUrl;
+      resultName = profile.name;
+      logger.info({ senderId, contactId }, 'webhook.meta.instagram.profile_sync.succeeded');
+    } else {
+      logger.warn({ senderId, contactId, reason: profile.error }, 'webhook.meta.instagram.profile_sync.fallback_placeholder');
+    }
+  }
+
+  const { error: updateErr } = await supabase.from('contacts').update(update).eq('id', contactId);
+  if (updateErr) {
+    logger.error({ err: updateErr, contactId }, 'webhook.meta.profile_sync.contact_update_failed');
+  }
+
+  return resultName;
+}
+
 // Handler helper for Facebook Messenger
 async function handleFacebookMessengerMessage(messagingEvent: any) {
   const senderId = messagingEvent.sender.id; // PSID (Page-Scoped ID)
@@ -313,7 +385,7 @@ async function handleFacebookMessengerMessage(messagingEvent: any) {
   // 1. Resolve workspace by checking platform_connections credentials page_id
   const { data: connection } = await supabase
     .from('platform_connections')
-    .select('workspace_id')
+    .select('workspace_id, credentials')
     .eq('platform', 'facebook')
     .filter('credentials->>page_id', 'eq', recipientId)
     .limit(1)
@@ -347,7 +419,7 @@ async function handleFacebookMessengerMessage(messagingEvent: any) {
   // Find if we have an existing conversation with this PSID
   const { data: existingConv } = await supabase
     .from('conversations')
-    .select('contact_id, contacts(first_name, last_name)')
+    .select('contact_id, contacts(first_name, last_name, profile_synced_at)')
     .eq('workspace_id', workspaceId)
     .eq('platform', 'facebook')
     .eq('external_thread_id', senderId)
@@ -358,10 +430,20 @@ async function handleFacebookMessengerMessage(messagingEvent: any) {
     contactId = existingConv.contact_id;
     const contactObj: any = existingConv.contacts;
     if (contactObj) {
-      contactName = `${contactObj.first_name || ''} ${contactObj.last_name || ''}`.trim();
+      contactName = await syncContactProfile({
+        platform: 'facebook',
+        platformLabel: 'Facebook',
+        senderId,
+        contactId,
+        credentials: connection.credentials,
+        currentFirstName: contactObj.first_name,
+        currentLastName: contactObj.last_name,
+        profileSyncedAt: contactObj.profile_synced_at,
+      });
     }
   } else {
-    // Insert new contact record
+    // Insert placeholder contact first (need a row/id to sync onto), then attempt a
+    // live profile fetch immediately — this is "first contact", the primary sync point.
     const { data: newContact, error: contactError } = await supabase
       .from('contacts')
       .insert({
@@ -375,7 +457,16 @@ async function handleFacebookMessengerMessage(messagingEvent: any) {
 
     if (contactError) throw contactError;
     contactId = newContact.id;
-    contactName = `${newContact.first_name} ${newContact.last_name}`;
+    contactName = await syncContactProfile({
+      platform: 'facebook',
+      platformLabel: 'Facebook',
+      senderId,
+      contactId,
+      credentials: connection.credentials,
+      currentFirstName: newContact.first_name,
+      currentLastName: newContact.last_name,
+      profileSyncedAt: null,
+    });
   }
 
   // 4. Resolve or Create Conversation
@@ -383,13 +474,13 @@ async function handleFacebookMessengerMessage(messagingEvent: any) {
   if (existingConv) {
     const { data: conv } = await supabase
       .from('conversations')
-      .update({ last_message_at: new Date().toISOString() })
+      .update({ last_message_at: new Date().toISOString(), title: contactName })
       .eq('workspace_id', workspaceId)
       .eq('platform', 'facebook')
       .eq('external_thread_id', senderId)
       .select('id')
       .single();
-    
+
     conversationId = conv.id;
   } else {
     const { data: newConv, error: convError } = await supabase
@@ -451,7 +542,7 @@ async function handleInstagramDMMessage(messagingEvent: any) {
   // 1. Resolve workspace by checking platform_connections credentials instagram_id
   const { data: connection } = await supabase
     .from('platform_connections')
-    .select('workspace_id')
+    .select('workspace_id, credentials')
     .eq('platform', 'instagram')
     .filter('credentials->>instagram_id', 'eq', recipientId)
     .limit(1)
@@ -485,7 +576,7 @@ async function handleInstagramDMMessage(messagingEvent: any) {
   // Find if we have an existing conversation with this IGSID
   const { data: existingConv } = await supabase
     .from('conversations')
-    .select('contact_id, contacts(first_name, last_name)')
+    .select('contact_id, contacts(first_name, last_name, profile_synced_at)')
     .eq('workspace_id', workspaceId)
     .eq('platform', 'instagram')
     .eq('external_thread_id', senderId)
@@ -496,10 +587,20 @@ async function handleInstagramDMMessage(messagingEvent: any) {
     contactId = existingConv.contact_id;
     const contactObj: any = existingConv.contacts;
     if (contactObj) {
-      contactName = `${contactObj.first_name || ''} ${contactObj.last_name || ''}`.trim();
+      contactName = await syncContactProfile({
+        platform: 'instagram',
+        platformLabel: 'Instagram',
+        senderId,
+        contactId,
+        credentials: connection.credentials,
+        currentFirstName: contactObj.first_name,
+        currentLastName: contactObj.last_name,
+        profileSyncedAt: contactObj.profile_synced_at,
+      });
     }
   } else {
-    // Insert new contact record
+    // Insert placeholder contact first (need a row/id to sync onto), then attempt a
+    // live profile fetch immediately — this is "first contact", the primary sync point.
     const { data: newContact, error: contactError } = await supabase
       .from('contacts')
       .insert({
@@ -513,7 +614,16 @@ async function handleInstagramDMMessage(messagingEvent: any) {
 
     if (contactError) throw contactError;
     contactId = newContact.id;
-    contactName = `${newContact.first_name} ${newContact.last_name}`;
+    contactName = await syncContactProfile({
+      platform: 'instagram',
+      platformLabel: 'Instagram',
+      senderId,
+      contactId,
+      credentials: connection.credentials,
+      currentFirstName: newContact.first_name,
+      currentLastName: newContact.last_name,
+      profileSyncedAt: null,
+    });
   }
 
   // 4. Resolve or Create Conversation
@@ -521,13 +631,13 @@ async function handleInstagramDMMessage(messagingEvent: any) {
   if (existingConv) {
     const { data: conv } = await supabase
       .from('conversations')
-      .update({ last_message_at: new Date().toISOString() })
+      .update({ last_message_at: new Date().toISOString(), title: contactName })
       .eq('workspace_id', workspaceId)
       .eq('platform', 'instagram')
       .eq('external_thread_id', senderId)
       .select('id')
       .single();
-    
+
     conversationId = conv.id;
   } else {
     const { data: newConv, error: convError } = await supabase

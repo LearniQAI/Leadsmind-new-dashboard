@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { Layers, MessageCircle, Mail, Search } from 'lucide-react';
-import { Instagram } from '@/components/icons/BrandIcons';
+import { format, isToday, isYesterday } from 'date-fns';
+import { Search, MessagesSquare } from 'lucide-react';
+import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
+import { getPlatformMeta, PlatformBadge, type ConversationPlatform } from './platformMeta';
 
 interface ConversationListProps {
   conversations: any[];
@@ -16,24 +17,15 @@ interface ConversationListProps {
   onSearchChange: (query: string) => void;
   assigneeFilter: string;
   onAssigneeFilterChange: (filter: string) => void;
+  activeChannels?: string[];
 }
 
-const CHANNELS = [
-  { id: 'all', icon: Layers, label: 'All' },
-  { id: 'sms', icon: MessageCircle, label: 'SMS' },
-  { id: 'email', icon: Mail, label: 'Email' },
-  { id: 'facebook', icon: MessageCircle, label: 'Facebook' },
-  { id: 'instagram', icon: Instagram, label: 'Instagram' },
-  { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
-];
-
-const STATUS_PILLS: Record<string, string> = {
-  open: 'bg-dash-accent/10 text-dash-accent border-dash-accent/20',
-  in_progress: 'bg-amber/10 text-amber border-amber/20',
-  waiting_for_client: 'bg-purple/10 text-purple border-purple/20',
-  resolved: 'bg-green/10 text-green border-green/20',
-  spam: 'bg-red/10 text-red border-red/20'
-};
+function formatThreadTimestamp(dateStr: string) {
+  const date = new Date(dateStr);
+  if (isToday(date)) return format(date, 'hh:mm a');
+  if (isYesterday(date)) return 'Yesterday';
+  return format(date, 'MMM d');
+}
 
 export function ConversationList({
   conversations,
@@ -44,51 +36,60 @@ export function ConversationList({
   searchQuery,
   onSearchChange,
   assigneeFilter,
-  onAssigneeFilterChange
+  onAssigneeFilterChange,
+  activeChannels = [],
 }: ConversationListProps) {
+  const channelTabs = [
+    { id: 'all', label: 'All' },
+    ...activeChannels.map((id) => ({ id, label: getPlatformMeta(id).label })),
+  ];
 
   return (
-    <div className="w-[300px] border-r border-dash-border flex flex-col bg-dash-surface h-full shrink-0">
+    <div className="w-full border-r border-[#EFEFEF] flex flex-col bg-white h-full shrink-0">
       {/* Header & Tabs */}
-      <div className="p-4 border-b border-dash-border space-y-3">
-        {/* 1. Search Input at Top */}
+      <div className="px-4 pt-4 pb-2 space-y-3">
+        {/* Search — pill, no border */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-[11px] h-[11px] !text-dash-textMuted" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-[#8E8E8E]" />
           <input
             type="text"
-            placeholder="Search threads..."
+            placeholder="Search"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-white border border-dash-border rounded-xl pl-9 pr-4 py-1.5 text-[12px] !text-dash-text placeholder:!text-dash-textMuted focus:outline-none focus:border-dash-accent transition-all motion-reduce:transition-none"
+            className="w-full bg-[#EFEFEF] border-none rounded-full pl-10 pr-4 py-2 text-[14px] text-black placeholder:text-[#8E8E8E] focus:outline-none focus:ring-1 focus:ring-black/10 transition-all motion-reduce:transition-none"
           />
         </div>
 
-        {/* 2. Channel Filter Scroll (Pill buttons: icon + text) */}
-        <div className="flex gap-1.5 overflow-x-auto common-scrollbar pb-1.5">
-          {CHANNELS.map(c => (
-            <button
-              key={c.id}
-              onClick={() => onFilterChange(c.id)}
-              className={cn(
-                "px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all motion-reduce:transition-none shrink-0 text-[10px] font-semibold",
-                filter === c.id
-                  ? "bg-dash-accent text-white"
-                  : "bg-white border border-dash-border !text-dash-textMuted hover:!text-dash-text hover:bg-dash-border/40"
-              )}
-            >
-              <c.icon className="w-[10px] h-[10px]" />
-              <span>{c.label}</span>
-            </button>
-          ))}
+        {/* Channel tabs — text-forward, Instagram tab-bar style */}
+        <div className="flex gap-4 overflow-x-auto common-scrollbar">
+          {channelTabs.map((c) => {
+            const isActive = filter === c.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => onFilterChange(c.id)}
+                className={cn(
+                  "shrink-0 pb-2 text-[13.5px] transition-colors motion-reduce:transition-none border-b-2",
+                  isActive
+                    ? "font-semibold text-black border-black"
+                    : "font-medium text-[#8E8E8E] border-transparent hover:text-black"
+                )}
+              >
+                {c.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* 3. Slimmer Assignee Segment Control (height 28px) */}
-        <div className="grid grid-cols-3 bg-white p-0.5 rounded-lg border border-dash-border text-[9.5px] h-7">
+        {/* Assignee segmented control — kept independent from the channel
+            filter (the two compose: e.g. "Mine" + "Instagram"), restyled onto
+            the neutral black/grey palette instead of the brand-blue accent. */}
+        <div className="grid grid-cols-3 bg-[#EFEFEF] p-0.5 rounded-full text-[11px] h-7">
           <button
             onClick={() => onAssigneeFilterChange('all')}
             className={cn(
-              "font-bold rounded-md transition-all motion-reduce:transition-none h-full flex items-center justify-center",
-              assigneeFilter === 'all' ? "bg-dash-accent text-white" : "!text-dash-textMuted hover:!text-dash-text"
+              "font-semibold rounded-full transition-all motion-reduce:transition-none h-full flex items-center justify-center",
+              assigneeFilter === 'all' ? "bg-white text-black shadow-sm" : "text-[#8E8E8E] hover:text-black"
             )}
           >
             All
@@ -96,8 +97,8 @@ export function ConversationList({
           <button
             onClick={() => onAssigneeFilterChange('me')}
             className={cn(
-              "font-bold rounded-md transition-all motion-reduce:transition-none h-full flex items-center justify-center",
-              assigneeFilter === 'me' ? "bg-dash-accent text-white" : "!text-dash-textMuted hover:!text-dash-text"
+              "font-semibold rounded-full transition-all motion-reduce:transition-none h-full flex items-center justify-center",
+              assigneeFilter === 'me' ? "bg-white text-black shadow-sm" : "text-[#8E8E8E] hover:text-black"
             )}
           >
             Mine
@@ -105,8 +106,8 @@ export function ConversationList({
           <button
             onClick={() => onAssigneeFilterChange('unassigned')}
             className={cn(
-              "font-bold rounded-md transition-all motion-reduce:transition-none h-full flex items-center justify-center",
-              assigneeFilter === 'unassigned' ? "bg-dash-accent text-white" : "!text-dash-textMuted hover:!text-dash-text"
+              "font-semibold rounded-full transition-all motion-reduce:transition-none h-full flex items-center justify-center",
+              assigneeFilter === 'unassigned' ? "bg-white text-black shadow-sm" : "text-[#8E8E8E] hover:text-black"
             )}
           >
             Unassigned
@@ -116,87 +117,82 @@ export function ConversationList({
 
       {/* List */}
       <div className="flex-1 overflow-y-auto common-scrollbar">
-        {conversations.map(conv => {
-          const isActive = activeId === conv.id;
-          const sortedMessages = conv.messages?.slice().sort((a: any, b: any) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
-          const latestMessage = sortedMessages?.[0];
-          const unread = conv.unread_count > 0;
+        {conversations.length === 0 ? (
+          <DashEmptyState
+            icon={MessagesSquare}
+            title="No conversations found"
+            description={searchQuery ? "Try a different search term or clear your filters." : "New messages from your connected channels will show up here."}
+            className="mt-4"
+          />
+        ) : (
+          conversations.map((conv) => {
+            const isActive = activeId === conv.id;
+            const sortedMessages = conv.messages?.slice().sort((a: any, b: any) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
+            const latestMessage = sortedMessages?.[0];
+            const unread = conv.unread_count > 0;
+            const primaryPlatform: ConversationPlatform = conv.availablePlatforms?.[0]?.platform || conv.platform;
+            const contactName = conv.contacts ? `${conv.contacts.first_name} ${conv.contacts.last_name || ''}`.trim() : conv.title;
 
-          // Compute SLA breached state for indicators
-          let isBreached = false;
-          if (latestMessage && latestMessage.direction === 'inbound') {
-            const diffMins = (Date.now() - new Date(latestMessage.sent_at).getTime()) / (1000 * 60);
-            if (diffMins > 15) {
-              isBreached = true;
-            }
-          }
-
-          const status = conv.status || 'open';
-
-          return (
-            <div
-              key={conv.id}
-              onClick={() => onSelect(conv.id)}
-              className={cn(
-                "p-4 border-b border-dash-border cursor-pointer transition-all motion-reduce:transition-none relative group",
-                isActive
-                  ? "bg-dash-accent/5 border-l-[3px] border-l-dash-accent"
-                  : "hover:bg-dash-border/20 border-l-[3px] border-l-transparent"
-              )}
-            >
-              {unread && (
-                <div className="absolute left-[2px] top-1/2 -translate-y-1/2 w-[5px] h-[5px] rounded-full bg-dash-accent" />
-              )}
-
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-white border border-dash-border flex items-center justify-center !text-dash-text font-bold text-[12px] shrink-0 overflow-hidden mt-0.5">
-                  {conv.contacts?.avatar_url ? (
-                    <img src={conv.contacts.avatar_url} alt={conv.contacts?.first_name || 'Contact avatar'} className="w-full h-full object-cover" />
-                  ) : (
-                    conv.contacts?.first_name?.[0] || 'U'
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-0.5">
-                    <h4 className="text-[13px] font-semibold !text-dash-text truncate">
-                      {conv.contacts ? `${conv.contacts.first_name} ${conv.contacts.last_name}` : conv.title}
-                    </h4>
-                    <span className="text-[10px] !text-dash-textMuted font-semibold shrink-0 ml-2">
-                      {format(new Date(conv.last_message_at), 'hh:mm a')}
-                    </span>
+            return (
+              <button
+                key={conv.id}
+                onClick={() => onSelect(conv.id)}
+                className={cn(
+                  "w-full text-left px-4 py-[10px] transition-colors motion-reduce:transition-none",
+                  isActive ? "bg-[#EFEFEF]" : "hover:bg-[#FAFAFA]"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Avatar with platform badge overlay */}
+                  <div className="relative shrink-0">
+                    <div className="w-14 h-14 rounded-full bg-[#EFEFEF] flex items-center justify-center text-black font-semibold text-[16px] overflow-hidden">
+                      {conv.contacts?.avatar_url ? (
+                        <img src={conv.contacts.avatar_url} alt={contactName || 'Contact avatar'} className="w-full h-full object-cover" />
+                      ) : (
+                        (contactName?.[0] || 'U').toUpperCase()
+                      )}
+                    </div>
+                    <PlatformBadge
+                      platform={primaryPlatform}
+                      size={18}
+                      className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white"
+                    />
                   </div>
 
-                  <p className="text-[11px] !text-dash-textMuted truncate mb-1.5">
-                    {latestMessage?.content || 'No messages yet'}
-                  </p>
-
-                  {/* Status & SLA badges */}
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {/* Status Pill */}
-                    <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded border capitalize", STATUS_PILLS[status])}>
-                      {status.replace('_', ' ')}
-                    </span>
-
-                    {/* SLA alert */}
-                    {isBreached && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red/10 text-red border border-red/20 animate-pulse motion-reduce:animate-none">
-                        Overdue
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline gap-2">
+                      <h4 className="text-[14px] font-semibold text-black truncate">
+                        {contactName || 'Unknown contact'}
+                      </h4>
+                      <span className="text-[12px] text-[#8E8E8E] shrink-0">
+                        {formatThreadTimestamp(conv.last_message_at)}
                       </span>
-                    )}
+                    </div>
 
-                    {/* First tag display */}
-                    {conv.tags && conv.tags.length > 0 && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple/10 text-purple border border-purple/20">
-                        {conv.tags[0]}
-                      </span>
-                    )}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <p className={cn(
+                        "text-[14px] truncate flex-1",
+                        unread ? "text-black font-medium" : "text-[#8E8E8E] font-normal"
+                      )}>
+                        {latestMessage?.direction === 'outbound' && <span>You: </span>}
+                        {latestMessage?.content || 'No messages yet'}
+                      </p>
+                      {unread && (
+                        conv.unread_count > 1 ? (
+                          <span className="shrink-0 min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#3797F0] text-white text-[10px] font-semibold flex items-center justify-center">
+                            {conv.unread_count > 9 ? '9+' : conv.unread_count}
+                          </span>
+                        ) : (
+                          <span className="shrink-0 w-2 h-2 rounded-full bg-[#3797F0]" />
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          );
-        })}
+              </button>
+            );
+          })
+        )}
       </div>
     </div>
   );
