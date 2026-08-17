@@ -1,84 +1,38 @@
 const fs = require('fs');
 const path = require('path');
 
-const API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'hr');
-if (!fs.existsSync(API_DIR)) fs.mkdirSync(API_DIR, { recursive: true });
+const supabaseDir = path.join(process.cwd(), 'src', 'supabase');
+const schemaPath = path.join(supabaseDir, 'lms_schema.sql');
 
-const hrDocTs = `import { createServerClient } from '@/lib/supabase/server';
-import { requireWorkspaceAccess } from '@/lib/auth';
+if (fs.existsSync(schemaPath)) {
+  let schema = fs.readFileSync(schemaPath, 'utf8');
+  
+  // Replace the old courses table with the new expanded one from the Addendum
+  const oldCoursesTable = /CREATE TABLE IF NOT EXISTS courses \([\s\S]*?\);/;
+  const newCoursesTable = `CREATE TABLE IF NOT EXISTS courses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workspace_id UUID NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  status TEXT DEFAULT 'draft',
+  language TEXT DEFAULT 'en',
+  domain_path TEXT,
+  font TEXT,
+  seo_title TEXT,
+  seo_description TEXT,
+  pass_mark_default INTEGER DEFAULT 60,
+  retry_count_default INTEGER,
+  cover_image TEXT,
+  color_theme TEXT,
+  template_id UUID,
+  tutor_id UUID,
+  certificate_template_id UUID,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);`;
 
-// Task 46: Secure Employee Document Upload
-export async function uploadEmployeeDocument(employeeId: string, file: File, documentType: string) {
-  try {
-    const { workspaceId } = await requireWorkspaceAccess();
-    const supabase = await createServerClient();
-
-    // 1. Validate file (PDF, PNG, JPG only, max 5MB)
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-    if (!allowedTypes.includes(file.type)) {
-      return { success: false, error: 'Invalid file type. Only PDF, JPG, and PNG are allowed.' };
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      return { success: false, error: 'File is too large. Maximum size is 5MB.' };
-    }
-
-    // 2. Generate a secure, randomized file path in the workspace bucket
-    const fileExt = file.name.split('.').pop();
-    const fileName = \`\${Math.random().toString(36).substring(2, 15)}.\${fileExt}\`;
-    const filePath = \`\${workspaceId}/\${employeeId}/\${documentType}/\${fileName}\`;
-
-    // 3. Upload to Supabase Storage (Private HR Bucket)
-    const { data: uploadData, error: uploadError } = await supabase
-      .storage
-      .from('hr_documents')
-      .upload(filePath, file, { upsert: false });
-
-    if (uploadError) throw uploadError;
-
-    // 4. Save the file metadata to the database
-    const { data: dbRecord, error: dbError } = await supabase
-      .from('employee_documents')
-      .insert({
-        workspace_id: workspaceId,
-        employee_id: employeeId,
-        document_type: documentType,
-        file_name: file.name,
-        file_path: uploadData.path,
-        content_type: file.type,
-        size_bytes: file.size
-      })
-      .select()
-      .single();
-
-    if (dbError) throw dbError;
-
-    return { success: true, data: dbRecord };
-  } catch (error: any) {
-    return { success: false, error: error.message || 'Failed to upload document.' };
-  }
+  schema = schema.replace(oldCoursesTable, newCoursesTable);
+  fs.writeFileSync(schemaPath, schema);
+  console.log("SUCCESS! LMS Database Schema updated with Course Catalog Addendum fields.");
+} else {
+  console.log("Error: lms_schema.sql not found.");
 }
-
-export async function getEmployeeDocuments(employeeId: string) {
-  const { workspaceId } = await requireWorkspaceAccess();
-  const supabase = await createServerClient();
-
-  const { data, error } = await supabase
-    .from('employee_documents')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .eq('employee_id', employeeId)
-    .order('created_at', { ascending: false });
-
-  if (error) return { success: false, error: error.message };
-
-  // Generate secure download URLs that expire in 1 hour
-  const documentsWithUrls = await Promise.all(data.map(async (doc) => {
-    const { data: urlData } = await supabase.storage.from('hr_documents').createSignedUrl(doc.file_path, 3600);
-    return { ...doc, download_url: urlData?.signedUrl };
-  }));
-
-  return { success: true, data: documentsWithUrls };
-}
-`;
-fs.writeFileSync(path.join(API_DIR, 'documents.ts'), hrDocTs);
-console.log("SUCCESS! HR Document Upload Engine Built.");
