@@ -33,12 +33,11 @@ export async function generateQuizFromTranscript(lessonId: string, transcriptTex
     const generatedQuestions = JSON.parse(completion.choices[0].message.content || '{"questions": []}');
     const questionsArray = generatedQuestions.questions || generatedQuestions;
 
-    // Save the AI generated quiz directly to the database as a draft (PRD Section 2)
     const { data: quiz, error: dbError } = await supabase
       .from('quizzes')
       .insert({
         lesson_id: lessonId,
-        pass_mark_pct: 60, // Default from PRD
+        pass_mark_pct: 60,
         ai_generated: true,
         questions: questionsArray
       })
@@ -46,7 +45,6 @@ export async function generateQuizFromTranscript(lessonId: string, transcriptTex
       .single();
 
     if (dbError) throw dbError;
-
     return { success: true, data: quiz };
   } catch (error: any) {
     logger.error({ err: error, lessonId }, 'lms.ai_quiz_generation.failed');
