@@ -1,76 +1,38 @@
 const fs = require('fs');
 const path = require('path');
 
-const LMS_API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'lms');
+const supabaseDir = path.join(process.cwd(), 'src', 'supabase');
+const schemaPath = path.join(supabaseDir, 'lms_schema.sql');
 
-const aiEssayTs = `import { createServerClient } from '@/lib/supabase/server';
-import { requireWorkspaceAccess } from '@/lib/auth';
-import { logger } from '@/shared/logger';
-import OpenAI from 'openai';
+if (fs.existsSync(schemaPath)) {
+  let schema = fs.readFileSync(schemaPath, 'utf8');
+  
+  // Replace the old courses table with the new expanded one from the Addendum
+  const oldCoursesTable = /CREATE TABLE IF NOT EXISTS courses \([\s\S]*?\);/;
+  const newCoursesTable = `CREATE TABLE IF NOT EXISTS courses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workspace_id UUID NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  status TEXT DEFAULT 'draft',
+  language TEXT DEFAULT 'en',
+  domain_path TEXT,
+  font TEXT,
+  seo_title TEXT,
+  seo_description TEXT,
+  pass_mark_default INTEGER DEFAULT 60,
+  retry_count_default INTEGER,
+  cover_image TEXT,
+  color_theme TEXT,
+  template_id UUID,
+  tutor_id UUID,
+  certificate_template_id UUID,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);`;
 
-// Task 60: Build AI essay grading
-export async function gradeStudentEssay(attemptId: string, studentEssay: string, gradingRubric: string) {
-  try {
-    const { workspaceId } = await requireWorkspaceAccess();
-    const supabase = await createServerClient();
-
-    if (!process.env.OPENAI_API_KEY) {
-      return { success: false, error: 'OpenAI API key is missing from environment.' };
-    }
-
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    // AI Prompt for grading based on the teacher's rubric
-    const prompt = \`
-      You are an expert, strict but fair teacher grading a student's essay. 
-      Read the student's essay below and grade it against the provided Rubric.
-      
-      You must return ONLY a raw JSON object with this exact structure:
-      {
-        "score_pct": number (0-100),
-        "passed": boolean (true if score is 60 or above),
-        "feedback_for_student": "A 2-paragraph encouraging but constructive critique",
-        "private_notes_for_teacher": "A 1-paragraph summary of why the student lost points"
-      }
-      
-      Grading Rubric / Criteria:
-      \${gradingRubric}
-      
-      Student Essay:
-      \${studentEssay}
-    \`;
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' }
-    });
-
-    const aiGrading = JSON.parse(completion.choices[0].message.content || '{}');
-
-    // Save the AI grade to the database attempt record
-    const { data: gradedAttempt, error: dbError } = await supabase
-      .from('quiz_attempts')
-      .update({
-        score_pct: aiGrading.score_pct,
-        passed: aiGrading.passed,
-        grading_feedback: aiGrading.feedback_for_student,
-        teacher_notes: aiGrading.private_notes_for_teacher,
-        graded_by: 'AI'
-      })
-      .eq('id', attemptId)
-      .select()
-      .single();
-
-    if (dbError) throw dbError;
-
-    return { success: true, data: gradedAttempt };
-  } catch (error: any) {
-    logger.error({ err: error, attemptId }, 'lms.ai_essay_grading.failed');
-    return { success: false, error: 'Failed to grade essay with AI.' };
-  }
+  schema = schema.replace(oldCoursesTable, newCoursesTable);
+  fs.writeFileSync(schemaPath, schema);
+  console.log("SUCCESS! LMS Database Schema updated with Course Catalog Addendum fields.");
+} else {
+  console.log("Error: lms_schema.sql not found.");
 }
-`;
-fs.writeFileSync(path.join(LMS_API_DIR, 'ai-essay.ts'), aiEssayTs);
-
-console.log("SUCCESS! AI Essay Grading Engine (Task 60) built.");
