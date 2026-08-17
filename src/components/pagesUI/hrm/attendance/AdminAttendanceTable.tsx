@@ -22,6 +22,7 @@ import {
 } from "@/data/hrm/admin-attendance-data";
 import { IAdminAttendance } from "@/interface/table.interface";
 import { useAttendanceHook } from "@/hooks/use-condition-class";
+import { getAttendanceRecords, clockIn, clockOut } from "@/app/actions/hr/attendance";
 import { adminAttendanceHeadCells } from "@/data/table-head-cell/table-head";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 const AdminAttendanceTable = () => {
