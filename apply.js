@@ -1,67 +1,106 @@
 const fs = require('fs');
 const path = require('path');
 
-const LMS_API_DIR = path.join(process.cwd(), 'src', 'app', 'api', 'lms', 'analytics');
+const LMS_API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'lms');
 if (!fs.existsSync(LMS_API_DIR)) fs.mkdirSync(LMS_API_DIR, { recursive: true });
 
-const analyticsRouteTs = `import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+// 1. Task 61: AI Quiz Generator
+const aiQuizTs = `import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
+import { logger } from '@/shared/logger';
+import OpenAI from 'openai';
 
-// Task 59: Build a student-facing learning analytics dashboard (Backend)
-export async function GET(request: Request) {
+export async function generateQuizFromTranscript(lessonId: string, transcriptText: string, questionCount: number = 5) {
   try {
-    const { searchParams } = new URL(request.url);
-    const studentId = searchParams.get('studentId');
-
-    if (!studentId) {
-      return NextResponse.json({ error: 'Missing studentId' }, { status: 400 });
-    }
-
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
 
-    // 1. Get all Quiz Attempts & Scores for this student
-    const { data: quizAttempts } = await supabase
-      .from('quiz_attempts')
-      .select('*, quizzes(lesson_id, pass_mark_pct)')
-      .eq('student_id', studentId);
+    if (!process.env.OPENAI_API_KEY) return { success: false, error: 'OpenAI API key is missing from environment.' };
 
-    // 2. Get all Certificates Earned by this student
-    // (Fails gracefully if the certificates table isn't fully populated yet)
-    const { data: certificates } = await supabase
-      .from('certificates')
-      .select('*')
-      .eq('student_id', studentId)
-      .catch(() => ({ data: [] })); 
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const prompt = \`You are an expert course creator. Read the following lesson transcript and generate a \${questionCount}-question multiple choice quiz.
+      Return ONLY a raw JSON array of objects with this exact structure:
+      [{ "question": "string", "options": ["A", "B", "C", "D"], "correctAnswer": "Exact string of correct option", "explanation": "Why it is correct" }]
+      Transcript: \${transcriptText}\`;
 
-    // 3. Crunch the numbers for the Analytics UI
-    const totalQuizzesTaken = quizAttempts?.length || 0;
-    const passedQuizzes = quizAttempts?.filter(a => a.passed)?.length || 0;
-    
-    // Calculate the student's average score across all courses
-    const averageScore = totalQuizzesTaken > 0
-      ? Math.round(quizAttempts!.reduce((acc, curr) => acc + Number(curr.score_pct || 0), 0) / totalQuizzesTaken)
-      : 0;
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        overview: {
-          total_quizzes_taken: totalQuizzesTaken,
-          passed_quizzes: passedQuizzes,
-          average_score_pct: averageScore,
-          certificates_earned: certificates?.length || 0
-        },
-        recent_activity: quizAttempts?.slice(0, 5) || [],
-        certificates: certificates || []
-      }
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' }
     });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to load student analytics' }, { status: 500 });
+
+    const generatedQuestions = JSON.parse(completion.choices[0].message.content || '{"questions": []}');
+    const questionsArray = generatedQuestions.questions || generatedQuestions;
+
+    const { data: quiz, error: dbError } = await supabase
+      .from('quizzes')
+      .insert({ lesson_id: lessonId, pass_mark_pct: 60, ai_generated: true, questions: questionsArray })
+      .select().single();
+
+    if (dbError) throw dbError;
+    return { success: true, data: quiz };
+  } catch (error: any) {
+    logger.error({ err: error, lessonId }, 'lms.ai_quiz_generation.failed');
+    return { success: false, error: 'Failed to generate AI quiz.' };
   }
 }
 `;
-fs.writeFileSync(path.join(LMS_API_DIR, 'route.ts'), analyticsRouteTs);
+fs.writeFileSync(path.join(LMS_API_DIR, 'ai-quiz.ts'), aiQuizTs);
 
-console.log("SUCCESS! Student Analytics API (Task 59) built.");
+// 2. Task 60: AI Essay Grader
+const aiEssayTs = `import { createServerClient } from '@/lib/supabase/server';
+import { requireWorkspaceAccess } from '@/lib/auth';
+import { logger } from '@/shared/logger';
+import OpenAI from 'openai';
+
+export async function gradeStudentEssay(attemptId: string, studentEssay: string, gradingRubric: string) {
+  try {
+    const { workspaceId } = await requireWorkspaceAccess();
+    const supabase = await createServerClient();
+
+    if (!process.env.OPENAI_API_KEY) return { success: false, error: 'OpenAI API key is missing from environment.' };
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const prompt = \`You are an expert, strict but fair teacher grading a student's essay. 
+      Read the student's essay below and grade it against the provided Rubric.
+      You must return ONLY a raw JSON object with this exact structure:
+      {
+        "score_pct": number,
+        "passed": boolean,
+        "feedback_for_student": "A 2-paragraph encouraging but constructive critique",
+        "private_notes_for_teacher": "A 1-paragraph summary of why the student lost points"
+      }
+      Grading Rubric / Criteria: \${gradingRubric}
+      Student Essay: \${studentEssay}\`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' }
+    });
+
+    const aiGrading = JSON.parse(completion.choices[0].message.content || '{}');
+
+    const { data: gradedAttempt, error: dbError } = await supabase
+      .from('quiz_attempts')
+      .update({
+        score_pct: aiGrading.score_pct,
+        passed: aiGrading.passed,
+        grading_feedback: aiGrading.feedback_for_student,
+        teacher_notes: aiGrading.private_notes_for_teacher,
+        graded_by: 'AI'
+      })
+      .eq('id', attemptId)
+      .select().single();
+
+    if (dbError) throw dbError;
+    return { success: true, data: gradedAttempt };
+  } catch (error: any) {
+    logger.error({ err: error, attemptId }, 'lms.ai_essay_grading.failed');
+    return { success: false, error: 'Failed to grade essay with AI.' };
+  }
+}
+`;
+fs.writeFileSync(path.join(LMS_API_DIR, 'ai-essay.ts'), aiEssayTs);
+
+console.log("SUCCESS! LMS AI files restored.");
