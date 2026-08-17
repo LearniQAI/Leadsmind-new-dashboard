@@ -1,9 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const LMS_API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'lms');
-
-const aiEssayTs = `import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import OpenAI from 'openai';
@@ -21,7 +16,7 @@ export async function gradeStudentEssay(attemptId: string, studentEssay: string,
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     // AI Prompt for grading based on the teacher's rubric
-    const prompt = \`
+    const prompt = `
       You are an expert, strict but fair teacher grading a student's essay. 
       Read the student's essay below and grade it against the provided Rubric.
       
@@ -34,11 +29,11 @@ export async function gradeStudentEssay(attemptId: string, studentEssay: string,
       }
       
       Grading Rubric / Criteria:
-      \${gradingRubric}
+      ${gradingRubric}
       
       Student Essay:
-      \${studentEssay}
-    \`;
+      ${studentEssay}
+    `;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -70,7 +65,3 @@ export async function gradeStudentEssay(attemptId: string, studentEssay: string,
     return { success: false, error: 'Failed to grade essay with AI.' };
   }
 }
-`;
-fs.writeFileSync(path.join(LMS_API_DIR, 'ai-essay.ts'), aiEssayTs);
-
-console.log("SUCCESS! AI Essay Grading Engine (Task 60) built.");
