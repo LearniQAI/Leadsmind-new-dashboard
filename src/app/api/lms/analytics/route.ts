@@ -1,10 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const LMS_API_DIR = path.join(process.cwd(), 'src', 'app', 'api', 'lms', 'analytics');
-if (!fs.existsSync(LMS_API_DIR)) fs.mkdirSync(LMS_API_DIR, { recursive: true });
-
-const analyticsRouteTs = `import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
 
@@ -62,7 +56,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to generate analytics' }, { status: 500 });
   }
 }
-`;
-fs.writeFileSync(path.join(LMS_API_DIR, 'route.ts'), analyticsRouteTs);
-
-console.log("SUCCESS! LMS Analytics TypeScript error fixed.");
