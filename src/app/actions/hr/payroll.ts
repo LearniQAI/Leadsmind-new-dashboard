@@ -1,10 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const HR_API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'hr');
-if (!fs.existsSync(HR_API_DIR)) fs.mkdirSync(HR_API_DIR, { recursive: true });
-
-const payrollTs = `import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 
@@ -31,7 +25,3 @@ export async function getMyPayslips(employeeId: string) {
     return { success: false, error: 'Failed to load payslips.' };
   }
 }
-`;
-fs.writeFileSync(path.join(HR_API_DIR, 'payroll.ts'), payrollTs);
-
-console.log("SUCCESS! Task 47 (Self-Service Payslips) backend built.");
