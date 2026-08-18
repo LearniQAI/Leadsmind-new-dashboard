@@ -39,7 +39,10 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, a
    text: text || '',
    tags: config?.tags,
    headers: config?.headers,
-   attachments: attachments,
+   attachments: attachments?.map((a) => ({
+    filename: a.filename,
+    content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : a.content,
+   })),
    scheduledAt: scheduledAt || undefined,
   } as any)
 
