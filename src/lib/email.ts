@@ -8,7 +8,7 @@ interface SendEmailProps {
  html?: string
  text?: string
  scheduledAt?: string
- attachments?: { filename: string; content: Buffer }[]
+ attachments?: { filename: string; content: Buffer | Uint8Array | string }[]
  config?: {
   apiKey?: string | null
   fromEmail?: string | null
@@ -39,9 +39,17 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, a
    text: text || '',
    tags: config?.tags,
    headers: config?.headers,
+   // puppeteer-core's page.pdf() returns a Uint8Array, not a real Node
+   // Buffer (htmlToPdf.ts casts it with `as Buffer`, but that's a
+   // compile-time-only lie) — Buffer.isBuffer() on it returns false, so a
+   // strict Buffer check leaves it unconverted and Resend's API rejects the
+   // JSON-serialized byte-index object with the same "must be
+   // base64-encoded string" error. Route both Buffer and Uint8Array through
+   // Buffer.from(...), which accepts either, and only leave real strings
+   // (already-base64/text content) untouched.
    attachments: attachments?.map((a) => ({
     filename: a.filename,
-    content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : a.content,
+    content: typeof a.content === 'string' ? a.content : Buffer.from(a.content).toString('base64'),
    })),
    scheduledAt: scheduledAt || undefined,
   } as any)

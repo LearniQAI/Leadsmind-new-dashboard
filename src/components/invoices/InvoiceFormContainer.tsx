@@ -42,6 +42,13 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>(
     initialData?.custom_field_values || {}
   );
+  // LeadsMind's default currency is ZAR — see src/lib/utils.ts formatCurrency.
+  // Previously this form had no currency state at all: the totals panel showed
+  // "R" purely from TotalsSummaryPanel's own hardcoded prop default, while the
+  // save payload never included a currency key, so every invoice silently
+  // inherited the invoices.currency column's DEFAULT 'USD'. Owning the value
+  // here ties what's displayed to what's actually persisted.
+  const [currency, setCurrency] = useState(initialData?.currency || 'ZAR');
 
   const handleSave = (status: 'draft' | 'sent') => {
     if (!contactId) {
@@ -69,6 +76,7 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
       amount_paid: 0,
       terms_and_conditions: terms,
       custom_field_values: customFieldValues,
+      currency,
       status,
     });
   };
@@ -126,6 +134,17 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
               onChange={(e) => setDueDate(e.target.value)}
             />
           </DashFormField>
+          <DashFormField label="Currency">
+            <select
+              className="w-full h-10 rounded-xl border border-dash-border bg-white px-3.5 text-sm !text-dash-text transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+            >
+              {['ZAR', 'USD', 'EUR', 'GBP'].map((code) => (
+                <option key={code} value={code}>{code}</option>
+              ))}
+            </select>
+          </DashFormField>
         </div>
       </div>
 
@@ -169,6 +188,7 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
           items={items}
           shippingCharges={shippingCharges}
           adjustment={adjustment}
+          currency={currency}
           onShippingChange={setShippingCharges}
           onAdjustmentChange={setAdjustment}
         />
