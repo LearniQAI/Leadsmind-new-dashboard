@@ -1,10 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'hr');
-if (!fs.existsSync(API_DIR)) fs.mkdirSync(API_DIR, { recursive: true });
-
-const notificationsTs = `import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/shared/logger';
@@ -34,13 +28,23 @@ export async function sendHRNotification(employeeId: string, eventType: 'payroll
 
     if (eventType === 'payroll_run') {
       subject = 'Your Payslip is Ready';
-      messageText = \`Hi \${employee.first_name},\n\nYour latest payslip has been generated and is now available in your employee portal.\n\nPlease log in to review your payment details.\`;
+      messageText = `Hi ${employee.first_name},
+
+Your latest payslip has been generated and is now available in your employee portal.
+
+Please log in to review your payment details.`;
     } else if (eventType === 'new_hire') {
       subject = 'Welcome to the Team!';
-      messageText = \`Hi \${employee.first_name},\n\nWelcome to the team! Your employee profile has been successfully created.\n\nPlease log in to complete your onboarding and upload your required documents.\`;
+      messageText = `Hi ${employee.first_name},
+
+Welcome to the team! Your employee profile has been successfully created.
+
+Please log in to complete your onboarding and upload your required documents.`;
     } else if (eventType === 'termination') {
       subject = 'Important Update Regarding Your Employment';
-      messageText = \`Hi \${employee.first_name},\n\nThis is an automated notification regarding the recent change to your employment status. Please contact HR if you have any questions.\`;
+      messageText = `Hi ${employee.first_name},
+
+This is an automated notification regarding the recent change to your employment status. Please contact HR if you have any questions.`;
     }
 
     // 3. Send the Email via Resend
@@ -48,16 +52,12 @@ export async function sendHRNotification(employeeId: string, eventType: 'payroll
       to: employee.email,
       subject: subject,
       text: messageText,
-      tags: [{ name: 'category', value: \`hr_\${eventType}\` }] as any,
+      tags: [{ name: 'category', value: `hr_${eventType}` }] as any,
     } as any);
 
     return { success: true };
   } catch (error: any) {
-    logger.error({ err: error, employeeId }, \`hr.notifications.failed_\${eventType}\`);
+    logger.error({ err: error, employeeId }, `hr.notifications.failed_${eventType}`);
     return { success: false, error: 'Failed to send HR notification.' };
   }
 }
-`;
-fs.writeFileSync(path.join(API_DIR, 'notifications.ts'), notificationsTs);
-
-console.log("SUCCESS! Task 49 (HR Notifications) backend built.");
