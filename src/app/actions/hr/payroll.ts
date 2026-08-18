@@ -59,7 +59,7 @@ export async function deletePayrollRun(runId: string) {
     const { error } = await supabase
       .from('payroll_runs')
       .delete()
-      .eq('id', run,id)
+      .eq('id', runId)
       .eq('workspace_id', workspaceId)
       .eq('status', 'draft'); // Security check: Only allow deleting drafts
 
