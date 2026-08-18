@@ -34,6 +34,20 @@ const nextConfig = {
                 'node_modules/@esbuild/linux-x64',
             ],
         },
+        // serverComponentsExternalPackages alone keeps webpack from mangling
+        // @sparticuz/chromium, but Vercel's output file tracing (@vercel/nft)
+        // still decides what actually gets uploaded into each Lambda — and it
+        // can't statically discover chromium's brotli binaries, since
+        // chromium.executablePath() resolves them at runtime, not via a
+        // traceable require(). Without this, every route calling
+        // htmlToPdfBuffer() gets a deployed function missing
+        // node_modules/@sparticuz/chromium/bin, even though it's present locally.
+        outputFileTracingIncludes: {
+            '/**/*': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+        },
     },
     async rewrites() {
         return [
