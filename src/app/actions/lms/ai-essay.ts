@@ -3,22 +3,16 @@ import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import OpenAI from 'openai';
 
-// Task 60: Build AI essay grading
 export async function gradeStudentEssay(attemptId: string, studentEssay: string, gradingRubric: string) {
   try {
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
 
-    if (!process.env.OPENAI_API_KEY) {
-      return { success: false, error: 'OpenAI API key is missing from environment.' };
-    }
+    if (!process.env.OPENAI_API_KEY) return { success: false, error: 'OpenAI API key is missing from environment.' };
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    const prompt = `
-      You are an expert, strict but fair teacher grading a student's essay. 
+    const prompt = `You are an expert, strict but fair teacher grading a student's essay. 
       Read the student's essay below and grade it against the provided Rubric.
-      
       You must return ONLY a raw JSON object with this exact structure:
       {
         "score_pct": number,
@@ -26,13 +20,8 @@ export async function gradeStudentEssay(attemptId: string, studentEssay: string,
         "feedback_for_student": "A 2-paragraph encouraging but constructive critique",
         "private_notes_for_teacher": "A 1-paragraph summary of why the student lost points"
       }
-      
-      Grading Rubric / Criteria:
-      ${gradingRubric}
-      
-      Student Essay:
-      ${studentEssay}
-    `;
+      Grading Rubric / Criteria: ${gradingRubric}
+      Student Essay: ${studentEssay}`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -52,8 +41,7 @@ export async function gradeStudentEssay(attemptId: string, studentEssay: string,
         graded_by: 'AI'
       })
       .eq('id', attemptId)
-      .select()
-      .single();
+      .select().single();
 
     if (dbError) throw dbError;
     return { success: true, data: gradedAttempt };
