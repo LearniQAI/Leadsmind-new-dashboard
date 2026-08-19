@@ -35,6 +35,7 @@ import { updatePageContent, updateWebsiteSettings } from '@/app/actions/builder'
 import { publishPageStatic } from '@/app/actions/builderDeploy';
 import { createClient } from '@/lib/supabase/client';
 import { TemplateDirectoryModal } from './TemplateDirectoryModal';
+import { AILandingCopyModal } from './AILandingCopyModal';
 
 import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
@@ -521,6 +522,7 @@ const BuilderEditorLayout = ({
     } = useBuilder();
 
     const [moreMenuOpen, setMoreMenuOpen] = React.useState(false);
+    const [isAiLandingCopyOpen, setIsAiLandingCopyOpen] = React.useState(false);
 
     const { actions: editorActions, query, canUndo, canRedo } = useEditor((state, query) => ({
         canUndo: query.history.canUndo(),
@@ -760,6 +762,13 @@ const BuilderEditorLayout = ({
                             <>
                                 <div className="fixed inset-0 z-40" onClick={() => setMoreMenuOpen(false)} />
                                 <div className="absolute right-0 mt-2 w-48 bg-white border border-dash-border shadow-xl rounded-xl py-1.5 z-50">
+                                    <button
+                                        onClick={() => { setIsAiLandingCopyOpen(true); setMoreMenuOpen(false); }}
+                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface w-full text-left"
+                                    >
+                                        <Sparkles className="w-4 h-4 text-dash-accent" />
+                                        Generate copy with AI
+                                    </button>
                                     <button
                                         onClick={() => { setIsTemplateDirectoryOpen(true); setMoreMenuOpen(false); }}
                                         className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface w-full text-left"
@@ -1002,6 +1011,12 @@ const BuilderEditorLayout = ({
             <TemplateDirectoryModal
                 isOpen={isTemplateDirectoryOpen}
                 onOpenChange={setIsTemplateDirectoryOpen}
+            />
+
+            {/* AI Landing Page Copy Generator Modal */}
+            <AILandingCopyModal
+                isOpen={isAiLandingCopyOpen}
+                onOpenChange={setIsAiLandingCopyOpen}
             />
         </div>
     );
