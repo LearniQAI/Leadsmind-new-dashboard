@@ -150,6 +150,17 @@ const NEWLY_ADDED_SOCIAL_ROUTES = new Set([
   "/social/analytics",
 ]);
 
+/**
+ * Added by Task 102 (AI Revenue Forecasting): a genuinely new page under the
+ * existing Finance > Finance subItems, gated by the same "commerce" permission
+ * as the rest of that group — not in the frozen OLD_SIDEBAR_DATA snapshot by
+ * design, since it didn't exist yet. Excluded from the parity check below,
+ * same treatment as the Social additions above.
+ */
+const NEWLY_ADDED_FINANCE_ROUTES = new Set([
+  "/finance/revenue-forecast",
+]);
+
 describe("filterNavByPermissions matches the old inline filtering logic exactly", () => {
   const scenarios: Array<[label: string, role: string, permissions: string[]]> = [
     ["admin", "admin", []],
@@ -168,7 +179,9 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
   it.each(scenarios)("%s sees the identical set of routes (plus the intentionally-added Social pages)", (_label, role, permissions) => {
     const oldLinks = oldVisibleLinks(role, permissions);
     const newLinks = newVisibleLinks({ role, permissions });
-    const newLinksExcludingAdditions = [...newLinks].filter((l) => !NEWLY_ADDED_SOCIAL_ROUTES.has(l));
+    const newLinksExcludingAdditions = [...newLinks].filter(
+      (l) => !NEWLY_ADDED_SOCIAL_ROUTES.has(l) && !NEWLY_ADDED_FINANCE_ROUTES.has(l)
+    );
     expect(newLinksExcludingAdditions.sort()).toEqual([...oldLinks].sort());
   });
 
@@ -177,6 +190,14 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
     const hadSocial = newLinks.has("/social");
     NEWLY_ADDED_SOCIAL_ROUTES.forEach((route) => {
       expect(newLinks.has(route)).toBe(hadSocial);
+    });
+  });
+
+  it.each(scenarios)("%s: Revenue Forecast is visible iff /finance already was (same 'commerce' permission)", (_label, role, permissions) => {
+    const newLinks = newVisibleLinks({ role, permissions });
+    const hadFinance = newLinks.has("/finance");
+    NEWLY_ADDED_FINANCE_ROUTES.forEach((route) => {
+      expect(newLinks.has(route)).toBe(hadFinance);
     });
   });
 });

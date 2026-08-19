@@ -16,6 +16,14 @@ export const createServerClient = async () => {
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
    auth: { flowType: 'pkce' },
+   // Same fix as createAdminClient() below, for the same documented reason
+   // (see that function's comment): supabase-js's GET requests go through
+   // Next.js's patched global fetch, which caches them by default even in a
+   // dynamically-rendered route/Server Component, so a read immediately after
+   // a write to the same table can replay the pre-write snapshot.
+   global: {
+    fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' } as RequestInit),
+   },
    cookies: {
     get(name: string) {
      return cookieStore?.get(name)?.value
