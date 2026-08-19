@@ -1,59 +1,56 @@
 const fs = require('fs');
 const path = require('path');
 
-const HR_API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'hr');
-const payrollPath = path.join(HR_API_DIR, 'payroll.ts');
-let payrollCode = fs.existsSync(payrollPath) ? fs.readFileSync(payrollPath, 'utf8') : '';
+const tablePath = path.join(process.cwd(), 'src', 'components', 'pagesUI', 'hrm', 'attendance', 'AdminAttendanceTable.tsx');
+let tableCode = fs.readFileSync(tablePath, 'utf8');
 
-if (!payrollCode.includes('markRunAsPaid')) {
-  payrollCode += `
-// Task 48: Fix "Mark as Paid" / "Delete Run" payroll buttons
-export async function markRunAsPaid(runId: string) {
-  try {
-    const { workspaceId } = await requireWorkspaceAccess();
-    const supabase = await createServerClient();
+// 1. We need to swap the fake "adminAttendanceData" for real database state
+if (!tableCode.includes('const [realData, setRealData] = React.useState')) {
+  
+  // Add the state and useEffect
+  tableCode = tableCode.replace(
+    /const AdminAttendanceTable = \(\) => \{/,
+    `const AdminAttendanceTable = () => {
+ const [realData, setRealData] = React.useState<any[]>([]);
+ const [isLoading, setIsLoading] = React.useState(true);
 
-    const { data, error } = await supabase
-      .from('payroll_runs')
-      .update({ 
-        status: 'paid',
-        payment_date: new Date().toISOString()
-      })
-      .eq('id', runId)
-      .eq('workspace_id', workspaceId)
-      .select()
-      .single();
+ React.useEffect(() => {
+   async function loadData() {
+     try {
+       const res = await getAttendanceRecords();
+       if (res.success && res.data) {
+         setRealData(res.data);
+       }
+     } catch(e) {
+       console.error("Failed to load attendance");
+     } finally {
+       setIsLoading(false);
+     }
+   }
+   loadData();
+ }, []);
+`
+  );
 
-    if (error) throw error;
-    return { success: true, data };
-  } catch (error: any) {
-    logger.error({ err: error, runId }, 'hr.payroll.mark_paid_failed');
-    return { success: false, error: 'Failed to mark payroll run as paid.' };
-  }
-}
+  // 2. Replace the fake data array with our real data array in the pagination logic
+  tableCode = tableCode.replace(/paginatedRows = filteredRows\.slice/g, "paginatedRows = (realData.length > 0 ? realData : filteredRows).slice");
 
-export async function deletePayrollRun(runId: string) {
-  try {
-    const { workspaceId } = await requireWorkspaceAccess();
-    const supabase = await createServerClient();
-
-    const { error } = await supabase
-      .from('payroll_runs')
-      .delete()
-      .eq('id', runId)
-      .eq('workspace_id', workspaceId)
-      .eq('status', 'draft'); // Security check: Only allow deleting drafts
-
-    if (error) throw error;
-    return { success: true };
-  } catch (error: any) {
-    logger.error({ err: error, runId }, 'hr.payroll.delete_failed');
-    return { success: false, error: 'Failed to delete payroll run.' };
-  }
-}
-`;
-  fs.writeFileSync(payrollPath, payrollCode);
-  console.log("SUCCESS! Task 48 (Payroll Buttons) backend built.");
+  // 3. Fix the mapping to use real database columns instead of fake ones
+  tableCode = tableCode.replace(
+    /row\.employeeImg/g,
+    "(row.employees?.avatar_url || row.employeeImg)"
+  );
+  tableCode = tableCode.replace(
+    /row\.name/g,
+    "(row.employees ? \`\${row.employees.first_name} \${row.employees.last_name}\` : row.name)"
+  );
+  tableCode = tableCode.replace(
+    />\s*\{row\.date1\}\s*<\/span>/g,
+    ">{row.status || row.date1}</span>"
+  );
+  
+  fs.writeFileSync(tablePath, tableCode);
+  console.log("SUCCESS! HR Attendance Table wired to Backend API.");
 } else {
-  console.log("Task 48 is already in the file!");
+  console.log("Already wired!");
 }
