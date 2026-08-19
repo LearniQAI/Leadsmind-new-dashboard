@@ -68,6 +68,7 @@ const dashboardNav: NavModule[] = [
         permission: "commerce",
         subItems: [
           { label: "Overview", link: "/finance" },
+          { label: "Revenue Forecast", link: "/finance/revenue-forecast" },
           { label: "Transactions", link: "/finance/transactions" },
           { label: "Reconciliation", link: "/finance/reconciliation" },
           { label: "Connected Accounts", link: "/finance/connected-accounts" },

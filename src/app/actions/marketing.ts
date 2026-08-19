@@ -833,16 +833,141 @@ export async function getAdCampaigns() {
    return { error: 'Unauthorized' };
   }
 
+  // ad_campaigns has no created_at/updated_at column (see its migration,
+  // 20240101000020_phase11_12_reputation_social.sql) — last_synced_at is the
+  // only timestamp column it has. Ordering by created_at 400'd on every call
+  // ("column ad_campaigns.created_at does not exist"), which this action's
+  // catch swallowed into a generic error, silently making /ads always render
+  // its empty state regardless of real data.
   const { data, error } = await supabase
    .from('ad_campaigns')
    .select('*')
    .eq('workspace_id', workspaceId)
-   .order('created_at', { ascending: false });
+   .order('last_synced_at', { ascending: false });
 
   if (error) throw error;
   return { data };
  } catch (error: any) {
   logger.error({ err: error }, 'get.ad.campaigns.failed');
+  return { error: 'Operation failed. Please try again.' };
+ }
+}
+
+export async function getAdCampaignById(id: string) {
+ try {
+  const supabase = await createServerClient();
+  let workspaceId: string;
+  try {
+   ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+   return { error: 'Unauthorized' };
+  }
+
+  const { data, error } = await supabase
+   .from('ad_campaigns')
+   .select('*')
+   .eq('workspace_id', workspaceId)
+   .eq('id', id)
+   .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return { error: 'Campaign not found' };
+  return { data };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.ad.campaign.by.id.failed');
+  return { error: 'Operation failed. Please try again.' };
+ }
+}
+
+export interface AdCampaignInput {
+ name: string;
+ platform: 'meta' | 'google';
+ status: 'active' | 'paused' | 'ended';
+ budget_daily?: number | null;
+ spend_to_date?: number | null;
+ impressions?: number;
+ clicks?: number;
+ conversions?: number;
+ leads_created?: number;
+}
+
+// No ad-platform integration (Meta/Google Ads API) exists in this app yet —
+// ad_campaigns has always been an empty, never-written-to table (see Task 101
+// audit). This is the manually-entered-metrics path agreed as the interim
+// data source until a real ad-platform sync is built.
+export async function createAdCampaign(input: AdCampaignInput) {
+ try {
+  const supabase = await createServerClient();
+  let workspaceId: string;
+  try {
+   ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+   return { error: 'Unauthorized' };
+  }
+
+  if (!input.name?.trim()) return { error: 'Campaign name is required' };
+  if (!['meta', 'google'].includes(input.platform)) return { error: 'Invalid platform' };
+  if (!['active', 'paused', 'ended'].includes(input.status)) return { error: 'Invalid status' };
+
+  const { data, error } = await supabase
+   .from('ad_campaigns')
+   .insert({
+    workspace_id: workspaceId,
+    name: input.name.trim(),
+    platform: input.platform,
+    status: input.status,
+    budget_daily: input.budget_daily ?? null,
+    spend_to_date: input.spend_to_date ?? 0,
+    impressions: input.impressions ?? 0,
+    clicks: input.clicks ?? 0,
+    conversions: input.conversions ?? 0,
+    leads_created: input.leads_created ?? 0,
+    last_synced_at: new Date().toISOString(),
+   })
+   .select()
+   .single();
+
+  if (error) throw error;
+  return { data };
+ } catch (error: any) {
+  logger.error({ err: error }, 'create.ad.campaign.failed');
+  return { error: 'Operation failed. Please try again.' };
+ }
+}
+
+export async function updateAdCampaign(id: string, input: Partial<AdCampaignInput>) {
+ try {
+  const supabase = await createServerClient();
+  let workspaceId: string;
+  try {
+   ({ workspaceId } = await requireWorkspaceAccess());
+  } catch {
+   return { error: 'Unauthorized' };
+  }
+
+  const updates: Record<string, unknown> = { last_synced_at: new Date().toISOString() };
+  if (input.name !== undefined) updates.name = input.name.trim();
+  if (input.platform !== undefined) updates.platform = input.platform;
+  if (input.status !== undefined) updates.status = input.status;
+  if (input.budget_daily !== undefined) updates.budget_daily = input.budget_daily;
+  if (input.spend_to_date !== undefined) updates.spend_to_date = input.spend_to_date;
+  if (input.impressions !== undefined) updates.impressions = input.impressions;
+  if (input.clicks !== undefined) updates.clicks = input.clicks;
+  if (input.conversions !== undefined) updates.conversions = input.conversions;
+  if (input.leads_created !== undefined) updates.leads_created = input.leads_created;
+
+  const { data, error } = await supabase
+   .from('ad_campaigns')
+   .update(updates)
+   .eq('id', id)
+   .eq('workspace_id', workspaceId)
+   .select()
+   .single();
+
+  if (error) throw error;
+  return { data };
+ } catch (error: any) {
+  logger.error({ err: error }, 'update.ad.campaign.failed');
   return { error: 'Operation failed. Please try again.' };
  }
 }

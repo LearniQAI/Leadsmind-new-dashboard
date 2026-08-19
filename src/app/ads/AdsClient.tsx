@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Target, BarChart3, TrendingUp, ArrowUpRight } from 'lucide-react';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashButton } from '@/components/dashboard-ui/Button';
@@ -9,8 +10,11 @@ import {
   DashTableContainer, DashTable, DashTableHead, DashTableHeadCell,
   DashTableBody, DashTableRow, DashTableCell, DashTableEmptyState
 } from '@/components/dashboard-ui/Table';
+import { AddCampaignModal } from './AddCampaignModal';
 
 export default function AdsClient({ initialCampaigns }: { initialCampaigns: any[] }) {
+ const router = useRouter();
+ const [modalOpen, setModalOpen] = useState(false);
  const totalSpend = initialCampaigns.reduce((acc, c) => acc + Number(c.spend_to_date || 0), 0);
 
  return (
@@ -20,8 +24,8 @@ export default function AdsClient({ initialCampaigns }: { initialCampaigns: any[
      <h1 className="text-3xl font-bold !text-dash-text">Ad <span className="text-dash-accent">command</span></h1>
      <p className="!text-dash-textMuted text-[12px] font-medium mt-2">Precision ad tracking and neural budget optimization.</p>
     </div>
-    <DashButton>
-     <Plus className="w-4 h-4" /> Connect ad account
+    <DashButton onClick={() => setModalOpen(true)}>
+     <Plus className="w-4 h-4" /> Add campaign
     </DashButton>
    </div>
 
@@ -70,11 +74,11 @@ export default function AdsClient({ initialCampaigns }: { initialCampaigns: any[
         colSpan={5}
         icon={Target}
         title="No active ad nodes detected"
-        description="Connect an ad account to start tracking campaigns."
+        description="Add a campaign's real metrics to start tracking and get AI recommendations."
        />
       ) : (
        initialCampaigns.map(campaign => (
-        <DashTableRow key={campaign.id}>
+        <DashTableRow key={campaign.id} clickable onClick={() => router.push(`/ads/${campaign.id}`)}>
          <DashTableCell className="font-bold">{campaign.name}</DashTableCell>
          <DashTableCell>
           <DashStatusPill variant="neutral">{campaign.platform}</DashStatusPill>
@@ -87,7 +91,7 @@ export default function AdsClient({ initialCampaigns }: { initialCampaigns: any[
          </DashTableCell>
          <DashTableCell className="font-bold !text-dash-textMuted">${Number(campaign.spend_to_date).toLocaleString()}</DashTableCell>
          <DashTableCell className="text-right">
-          <DashButton variant="ghost" size="icon">
+          <DashButton variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); router.push(`/ads/${campaign.id}`); }}>
            <BarChart3 size={16} />
           </DashButton>
          </DashTableCell>
@@ -97,6 +101,8 @@ export default function AdsClient({ initialCampaigns }: { initialCampaigns: any[
      </DashTableBody>
     </DashTable>
    </DashTableContainer>
+
+   <AddCampaignModal open={modalOpen} onOpenChange={setModalOpen} onCreated={() => router.refresh()} />
   </div>
  );
 }
