@@ -54,4 +54,6 @@ export async function deletePayrollRun(runId: string) {
 `;
   fs.writeFileSync(payrollPath, payrollCode);
   console.log("SUCCESS! Task 48 (Payroll Buttons) backend built.");
+} else {
+  console.log("Task 48 is already in the file!");
 }
