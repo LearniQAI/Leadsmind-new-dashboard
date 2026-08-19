@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Target, BarChart3, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { Plus, Target, BarChart3, TrendingUp, ArrowUpRight, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
@@ -24,9 +25,16 @@ export default function AdsClient({ initialCampaigns }: { initialCampaigns: any[
      <h1 className="text-3xl font-bold !text-dash-text">Ad <span className="text-dash-accent">command</span></h1>
      <p className="!text-dash-textMuted text-[12px] font-medium mt-2">Precision ad tracking and neural budget optimization.</p>
     </div>
-    <DashButton onClick={() => setModalOpen(true)}>
-     <Plus className="w-4 h-4" /> Add campaign
-    </DashButton>
+    <div className="flex items-center gap-2">
+     <DashButton asChild variant="secondary">
+      <Link href="/ads/copy-generator">
+       <Sparkles className="w-4 h-4" /> Generate ad copy
+      </Link>
+     </DashButton>
+     <DashButton onClick={() => setModalOpen(true)}>
+      <Plus className="w-4 h-4" /> Add campaign
+     </DashButton>
+    </div>
    </div>
 
    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

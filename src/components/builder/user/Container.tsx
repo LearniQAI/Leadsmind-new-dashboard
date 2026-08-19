@@ -156,15 +156,33 @@ const getResponsiveStyles = (id: string, props: any) => {
 };
 
 export const Container = (allProps: ContainerProps & any) => {
-  const { 
+  const {
     layoutType: _layoutType,
+    maxWidth: _maxWidth,
     backgroundColor,
     padding: _p,
-    children, 
-    canvas, 
+    children,
+    canvas,
     isCanvas,
     dragRef,
-    ...props 
+    // The rest of Container.craft.props (below) are style-only knobs consumed via
+    // getResponsiveStyles()/the inline `style` object above, never real DOM/HTML
+    // attributes. Previously only a handful of these were excluded from the
+    // `...props` spread onto the root <div>, so props like `maxWidth`, `gap`,
+    // `display`, `flexDirection`, etc. leaked through as unrecognized DOM
+    // attributes (React dev warning: "React does not recognize the `maxWidth`
+    // prop on a DOM element..."). Harmless visually (the real layout is driven
+    // by the `style`/CSS-rule logic above, this only silenced the duplicate
+    // raw attribute), but noisy on every single Container render.
+    display, flexDirection, justifyContent, alignItems, gap,
+    marginTop, marginRight, marginBottom, marginLeft,
+    paddingTop, paddingRight, paddingBottom, paddingLeft,
+    fontFamily, fontSize, fontWeight, textAlign, lineHeight, letterSpacing, color,
+    backgroundGradient, gradientColor1, gradientColor2, gradientAngle,
+    borderWidth, borderStyle, borderColor, borderRadius, borderRadiusIndividual,
+    borderTopLeftRadius, borderTopRightRadius, borderBottomRightRadius, borderBottomLeftRadius,
+    boxShadow, customClasses, hoverClasses, focusClasses,
+    ...props
   } = allProps;
   
   const { id, connectors: { connect, drag } } = useNode();
