@@ -21,6 +21,7 @@ import { uploadSocialMedia } from '@/lib/mediaUpload';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
+import VideoScriptGenerator from './VideoScriptGenerator';
 import { cn } from '@/lib/utils';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashButton } from '@/components/dashboard-ui/Button';
@@ -355,6 +356,11 @@ export default function SocialPlannerClient({
          accept="image/*,video/*"
          className="hidden"
          onChange={handleMediaFileSelect}
+        />
+
+        <VideoScriptGenerator
+         selectedPlatforms={selectedPlatforms}
+         onInsert={(text) => setContent(text)}
         />
 
         <div className="flex items-center justify-between flex-wrap gap-3">
