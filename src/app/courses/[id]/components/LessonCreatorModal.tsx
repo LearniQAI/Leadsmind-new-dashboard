@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { 
-  Loader2, X, ArrowLeft, BookOpen, PlayCircle, 
-  CheckSquare, FileEdit, FileText, Headphones, 
+import {
+  Loader2, X, ArrowLeft, BookOpen, PlayCircle,
+  CheckSquare, FileEdit, FileText, Headphones,
   Video, Layers, Code, Archive, Plus, Trash2,
-  AlertTriangle, Settings
+  AlertTriangle, Settings, Sparkles, AlertCircle
 } from "lucide-react";
 import { getLessonQuiz, upsertQuiz } from "@/app/actions/quizzes";
 
@@ -63,6 +63,8 @@ export default function LessonCreatorModal({
   const [isSaving, setIsSaving] = useState(false);
   const [quizId, setQuizId] = useState<string | null>(null);
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
+  const [isRegeneratingSummary, setIsRegeneratingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fileType: string) => {
     const file = e.target.files?.[0];
@@ -89,6 +91,23 @@ export default function LessonCreatorModal({
       toast.error('Network error uploading file');
     } finally {
       setUploadingType(null);
+    }
+  };
+
+  const handleRegenerateSummary = async () => {
+    if (!editingLesson?.id) return;
+    setIsRegeneratingSummary(true);
+    setSummaryError(null);
+    try {
+      const res = await fetch(`/api/lms/lesson-summary?lessonId=${editingLesson.id}`, { method: 'POST' });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Failed to regenerate summary');
+      toast.success('Lesson summary regenerated');
+    } catch (err: any) {
+      setSummaryError(err.message || 'Something went wrong');
+      toast.error(err.message || 'Failed to regenerate summary');
+    } finally {
+      setIsRegeneratingSummary(false);
     }
   };
 
@@ -121,6 +140,7 @@ export default function LessonCreatorModal({
   };
 
   useEffect(() => {
+    setSummaryError(null);
     if (editingLesson) {
       setTitle(editingLesson.title || "");
       setVideoUrl(editingLesson.video_url || "");
@@ -540,6 +560,40 @@ export default function LessonCreatorModal({
                 className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary transition-all motion-reduce:transition-none font-mono leading-relaxed"
               />
             </div>
+
+            {/* AI Lesson Summary — regenerate action (only meaningful for a
+                lesson that already exists; brand-new lessons get their
+                summary generated automatically on first save). */}
+            {editingLesson?.id && (
+              <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold !text-dash-textMuted block">AI Lesson Summary</label>
+                    <p className="text-[9px] !text-dash-textMuted mt-0.5">
+                      Regenerated automatically on save. Force a fresh one without re-saving:
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleRegenerateSummary}
+                    disabled={isRegeneratingSummary}
+                    className="h-9 bg-white border border-dash-border hover:bg-dash-border/40 !text-dash-text text-[10px] font-bold px-4 rounded-xl flex items-center gap-1.5 shrink-0 transition-colors motion-reduce:transition-none"
+                  >
+                    {isRegeneratingSummary ? (
+                      <Loader2 size={12} className="animate-spin motion-reduce:animate-none" />
+                    ) : (
+                      <Sparkles size={12} className="text-dash-accent" />
+                    )}
+                    Regenerate summary
+                  </Button>
+                </div>
+                {summaryError && (
+                  <p className="text-[10px] text-red flex items-center gap-1.5">
+                    <AlertCircle size={11} className="shrink-0" /> {summaryError}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Footer Actions */}
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-dash-border">
