@@ -4,6 +4,7 @@ import { requireLmsInstructor } from '@/lib/lms/access';
 import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 import { processLessonForRAG } from '@/lib/lms/ragPipeline';
+import { processLessonSummary } from '@/lib/lms/summaryPipeline';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,6 +114,17 @@ export async function POST(req: NextRequest) {
       logger.error({ err: ragErr, lessonId: lesson.id }, 'lms.lessons.post.rag_processing_threw');
     }
 
+    // Best-effort: generate the AI lesson summary (Task 95). Same
+    // never-fail-the-save rule as RAG processing above.
+    try {
+      const summaryResult = await processLessonSummary(lesson.id);
+      if (summaryResult.status === 'failed') {
+        logger.error({ lessonId: lesson.id, error: summaryResult.error }, 'lms.lessons.post.summary_processing_failed');
+      }
+    } catch (summaryErr) {
+      logger.error({ err: summaryErr, lessonId: lesson.id }, 'lms.lessons.post.summary_processing_threw');
+    }
+
     return NextResponse.json({ data: lesson });
   } catch (err: any) {
     logger.error({ err }, 'lms.lessons.post.failed');
@@ -164,6 +176,15 @@ export async function PATCH(req: NextRequest) {
         }
       } catch (ragErr) {
         logger.error({ err: ragErr, lessonId: lesson.id }, 'lms.lessons.patch.rag_processing_threw');
+      }
+
+      try {
+        const summaryResult = await processLessonSummary(lesson.id);
+        if (summaryResult.status === 'failed') {
+          logger.error({ lessonId: lesson.id, error: summaryResult.error }, 'lms.lessons.patch.summary_processing_failed');
+        }
+      } catch (summaryErr) {
+        logger.error({ err: summaryErr, lessonId: lesson.id }, 'lms.lessons.patch.summary_processing_threw');
       }
     }
 

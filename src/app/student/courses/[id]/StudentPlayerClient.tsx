@@ -16,6 +16,7 @@ import { getLessonLockReason } from './components/lock-utils';
 import LockedLessonPlaceholder from './components/LockedLessonPlaceholder';
 import LiveHelpWidget from './components/LiveHelpWidget';
 import CourseQAWidget from './components/CourseQAWidget';
+import LessonSummaryPanel from './components/LessonSummaryPanel';
 
 function getEmbeddablePdfUrl(url: string): string {
   if (!url) return '';
@@ -893,6 +894,8 @@ export default function StudentPlayerClient({
                   {activeLesson.content?.text || activeLesson.description || "No content available for this lesson."}
                 </div>
               )}
+
+              <LessonSummaryPanel key={activeLesson.id} lessonId={activeLesson.id} />
             </div>
 
             <div className="p-5 border-t border-white/5 bg-[#080f28]/30 shrink-0 flex justify-between items-center">
