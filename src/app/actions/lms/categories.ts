@@ -1,11 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const LMS_API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'lms');
-if (!fs.existsSync(LMS_API_DIR)) fs.mkdirSync(LMS_API_DIR, { recursive: true });
-
-// 1. Create the Course Categories API
-const categoryTs = `'use server';
+'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
@@ -78,29 +71,3 @@ export async function assignCourseCategory(courseId: string, categoryId: string)
     return { success: false, error: 'Failed to assign category to course.' };
   }
 }
-`;
-fs.writeFileSync(path.join(LMS_API_DIR, 'categories.ts'), categoryTs);
-
-// 2. Update the SQL Schema to include Categories
-const schemaPath = path.join(process.cwd(), 'src', 'supabase', 'lms_schema.sql');
-if (fs.existsSync(schemaPath)) {
-  let schema = fs.readFileSync(schemaPath, 'utf8');
-  
-  if (!schema.includes('course_categories')) {
-    const newTables = `CREATE TABLE IF NOT EXISTS course_categories (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  workspace_id UUID NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Add category_id to the courses table
-ALTER TABLE courses ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES course_categories(id) ON DELETE SET NULL;
-`;
-    schema = newTables + "\n" + schema;
-    fs.writeFileSync(schemaPath, schema);
-  }
-}
-
-console.log("SUCCESS! Course Categories Engine (Task 54) built.");
