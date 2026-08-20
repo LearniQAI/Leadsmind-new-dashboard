@@ -1,12 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const LMS_API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'lms');
-if (!fs.existsSync(LMS_API_DIR)) fs.mkdirSync(LMS_API_DIR, { recursive: true });
-
-const lessonPath = path.join(LMS_API_DIR, 'lessons.ts');
-
-const lessonTs = `'use server';
+'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
@@ -40,11 +32,11 @@ export async function uploadScormPackage(lessonId: string, file: File) {
 
     const manifestBuffer = await manifestFile.buffer();
     const manifestXml = manifestBuffer.toString('utf8');
-    const startHrefMatch = manifestXml.match(/href="([^"]+\\.html?)"/i);
+    const startHrefMatch = manifestXml.match(/href="([^"]+\.html?)"/i);
     const indexFile = startHrefMatch ? startHrefMatch[1] : 'index.html';
 
     // Upload the raw package to the secure SCORM storage bucket
-    const filePath = \`\${workspaceId}/\${lessonId}/\${file.name}\`;
+    const filePath = `${workspaceId}/${lessonId}/${file.name}`;
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from('scorm_packages')
@@ -105,6 +97,3 @@ export async function createFlashcardDeck(lessonId: string, cards: Array<{ front
     return { success: false, error: 'Failed to save flashcards.' };
   }
 }
-`;
-fs.writeFileSync(lessonPath, lessonTs);
-console.log("SUCCESS! Task 56 (SCORM & Flashcard Builders) backend built.");
