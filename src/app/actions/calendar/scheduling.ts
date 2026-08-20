@@ -1,3 +1,5 @@
+'use server';
+
 import { createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { addMinutes, isWithinInterval, parseISO, addDays } from 'date-fns';

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
+import { processLessonForRAG } from '@/lib/lms/ragPipeline';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,6 +99,20 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // Best-effort: re-chunk/re-embed for RAG Q&A (Task 96). Never let an
+    // embedding failure fail the lesson save itself — the save is the
+    // primary operation; a failed embed just means this lesson isn't
+    // searchable yet, and will retry on the next content-changing save.
+    try {
+      const ragResult = await processLessonForRAG(lesson.id);
+      if (ragResult.status === 'failed') {
+        logger.error({ lessonId: lesson.id, error: ragResult.error }, 'lms.lessons.post.rag_processing_failed');
+      }
+    } catch (ragErr) {
+      logger.error({ err: ragErr, lessonId: lesson.id }, 'lms.lessons.post.rag_processing_threw');
+    }
+
     return NextResponse.json({ data: lesson });
   } catch (err: any) {
     logger.error({ err }, 'lms.lessons.post.failed');
@@ -136,6 +151,22 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // Same best-effort re-chunk/re-embed as POST, only worth doing when
+    // content actually changed (title/position-only edits don't affect
+    // what's embedded, and processLessonForRAG's own content_hash check
+    // would no-op anyway, but skip the extra work/log noise here).
+    if (content !== undefined) {
+      try {
+        const ragResult = await processLessonForRAG(lesson.id);
+        if (ragResult.status === 'failed') {
+          logger.error({ lessonId: lesson.id, error: ragResult.error }, 'lms.lessons.patch.rag_processing_failed');
+        }
+      } catch (ragErr) {
+        logger.error({ err: ragErr, lessonId: lesson.id }, 'lms.lessons.patch.rag_processing_threw');
+      }
+    }
+
     return NextResponse.json({ data: lesson });
   } catch (err: any) {
     logger.error({ err }, 'lms.lessons.patch.failed');

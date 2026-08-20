@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
 import VideoScriptGenerator from './VideoScriptGenerator';
+import ImageGenerator from './ImageGenerator';
 import { cn } from '@/lib/utils';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashButton } from '@/components/dashboard-ui/Button';
@@ -361,6 +362,10 @@ export default function SocialPlannerClient({
         <VideoScriptGenerator
          selectedPlatforms={selectedPlatforms}
          onInsert={(text) => setContent(text)}
+        />
+
+        <ImageGenerator
+         onInsert={(url) => setMediaUrl(url)}
         />
 
         <div className="flex items-center justify-between flex-wrap gap-3">

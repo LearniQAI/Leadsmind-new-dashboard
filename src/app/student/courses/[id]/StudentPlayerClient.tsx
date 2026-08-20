@@ -15,6 +15,7 @@ import { useHeartbeat } from '@/hooks/useHeartbeat';
 import { getLessonLockReason } from './components/lock-utils';
 import LockedLessonPlaceholder from './components/LockedLessonPlaceholder';
 import LiveHelpWidget from './components/LiveHelpWidget';
+import CourseQAWidget from './components/CourseQAWidget';
 
 function getEmbeddablePdfUrl(url: string): string {
   if (!url) return '';
@@ -922,6 +923,13 @@ export default function StudentPlayerClient({
         )}
       </div>
       <LiveHelpWidget courseId={course.id} enrollment={enrollment} />
+      <CourseQAWidget
+        courseId={course.id}
+        onJumpToLesson={(lessonId) => {
+          const target = lessons.find((l: any) => l.id === lessonId);
+          if (target) setActiveLesson(target);
+        }}
+      />
 
       {isPdfFullscreen && (
         <div className="fixed inset-0 bg-[#04091a]/95 backdrop-blur-md z-[999] flex flex-col p-4 md:p-8 animate-in fade-in zoom-in-95 duration-200">
