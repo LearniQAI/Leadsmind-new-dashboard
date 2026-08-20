@@ -26,6 +26,25 @@ import { getAttendanceRecords, clockIn, clockOut } from "@/app/actions/hr/attend
 import { adminAttendanceHeadCells } from "@/data/table-head-cell/table-head";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 const AdminAttendanceTable = () => {
+ const [realData, setRealData] = React.useState<any[]>([]);
+ const [isLoading, setIsLoading] = React.useState(true);
+
+ React.useEffect(() => {
+   async function loadData() {
+     try {
+       const res = await getAttendanceRecords();
+       if (res.success && res.data) {
+         setRealData(res.data);
+       }
+     } catch(e) {
+       console.error("Failed to load attendance");
+     } finally {
+       setIsLoading(false);
+     }
+   }
+   loadData();
+ }, []);
+
  const {
   order,
   orderBy,
