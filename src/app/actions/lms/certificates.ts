@@ -1,10 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const LMS_API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'lms');
-if (!fs.existsSync(LMS_API_DIR)) fs.mkdirSync(LMS_API_DIR, { recursive: true });
-
-const certTs = `'use server';
+'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
@@ -56,7 +50,3 @@ export async function saveCertificateTemplate(courseId: string, templateId: stri
     return { success: false, error: 'Failed to save certificate template.' };
   }
 }
-`;
-fs.writeFileSync(path.join(LMS_API_DIR, 'certificates.ts'), certTs);
-
-console.log("SUCCESS! Task 50 (Certificates Fix) backend built.");
