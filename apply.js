@@ -1,56 +1,62 @@
 const fs = require('fs');
 const path = require('path');
 
-const tablePath = path.join(process.cwd(), 'src', 'components', 'pagesUI', 'hrm', 'attendance', 'AdminAttendanceTable.tsx');
-let tableCode = fs.readFileSync(tablePath, 'utf8');
+const pagePath = path.join(process.cwd(), 'src', 'app', 'student', 'page.tsx');
+let pageCode = fs.readFileSync(pagePath, 'utf8');
 
-// 1. We need to swap the fake "adminAttendanceData" for real database state
-if (!tableCode.includes('const [realData, setRealData] = React.useState')) {
+if (!pageCode.includes('averageScore')) {
+  pageCode = pageCode.replace(
+    /import \{ getEnrolledCoursesWithProgress \} from '@\/app\/actions\/studentEnrollments';/,
+    "import { getEnrolledCoursesWithProgress } from '@/app/actions/studentEnrollments';\nimport { createServerClient } from '@/lib/supabase/server';\nimport { getCurrentWorkspaceId } from '@/lib/auth';"
+  );
+
+  pageCode = pageCode.replace(
+    /const avgProgress = totalCourses > 0[\s\S]*?: 0;/,
+    `const avgProgress = totalCourses > 0 
+    ? Math.round(courses.reduce((acc: number, c: any) => acc + c.progressPercentage, 0) / totalCourses) 
+    : 0;
+
+  // Task 59: Fetch Real Learning Analytics
+  const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
+  const { data: quizAttempts } = await supabase.from('quiz_attempts').select('score_pct, passed').eq('student_id', profile?.id || '');
   
-  // Add the state and useEffect
-  tableCode = tableCode.replace(
-    /const AdminAttendanceTable = \(\) => \{/,
-    `const AdminAttendanceTable = () => {
- const [realData, setRealData] = React.useState<any[]>([]);
- const [isLoading, setIsLoading] = React.useState(true);
-
- React.useEffect(() => {
-   async function loadData() {
-     try {
-       const res = await getAttendanceRecords();
-       if (res.success && res.data) {
-         setRealData(res.data);
-       }
-     } catch(e) {
-       console.error("Failed to load attendance");
-     } finally {
-       setIsLoading(false);
-     }
-   }
-   loadData();
- }, []);
-`
-  );
-
-  // 2. Replace the fake data array with our real data array in the pagination logic
-  tableCode = tableCode.replace(/paginatedRows = filteredRows\.slice/g, "paginatedRows = (realData.length > 0 ? realData : filteredRows).slice");
-
-  // 3. Fix the mapping to use real database columns instead of fake ones
-  tableCode = tableCode.replace(
-    /row\.employeeImg/g,
-    "(row.employees?.avatar_url || row.employeeImg)"
-  );
-  tableCode = tableCode.replace(
-    /row\.name/g,
-    "(row.employees ? \`\${row.employees.first_name} \${row.employees.last_name}\` : row.name)"
-  );
-  tableCode = tableCode.replace(
-    />\s*\{row\.date1\}\s*<\/span>/g,
-    ">{row.status || row.date1}</span>"
-  );
+  const totalQuizzes = quizAttempts?.length || 0;
+  const passedQuizzes = quizAttempts?.filter(q => q.passed)?.length || 0;
   
-  fs.writeFileSync(tablePath, tableCode);
-  console.log("SUCCESS! HR Attendance Table wired to Backend API.");
-} else {
-  console.log("Already wired!");
+  let averageScore = 0;
+  if (totalQuizzes > 0) {
+    const totalScore = quizAttempts?.reduce((sum, q) => sum + Number(q.score_pct || 0), 0) || 0;
+    averageScore = Math.round(totalScore / totalQuizzes);
+  }`
+  );
+
+  pageCode = pageCode.replace(
+    /<DashCard padding="default" className="flex items-center gap-4">\s*<div className="w-10 h-10 rounded-xl bg-purple\/10 !text-purple flex items-center justify-center flex-shrink-0">\s*<CheckCircle2 size=\{18\} \/>\s*<\/div>\s*<div>\s*<div className="text-\[28px\] font-bold !text-dash-text leading-none">\{completedLessons\}<\/div>\s*<div className="text-\[13px\] font-medium !text-dash-textMuted mt-1">Lessons Completed<\/div>\s*<\/div>\s*<\/DashCard>/,
+    `<DashCard padding="default" className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-purple/10 !text-purple flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 size={18} />
+          </div>
+          <div>
+            <div className="text-[28px] font-bold !text-dash-text leading-none">{passedQuizzes}</div>
+            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Quizzes Passed</div>
+          </div>
+        </DashCard>`
+  );
+
+  pageCode = pageCode.replace(
+    /<DashCard padding="default" className="flex items-center gap-4">\s*<div className="w-10 h-10 rounded-xl bg-green\/10 !text-green flex items-center justify-center flex-shrink-0">\s*<Award size=\{18\} \/>\s*<\/div>\s*<div>\s*<div className="text-\[28px\] font-bold !text-dash-text leading-none">\{avgProgress\}%<\/div>\s*<div className="text-\[13px\] font-medium !text-dash-textMuted mt-1">Average Progress<\/div>\s*<\/div>\s*<\/DashCard>/,
+    `<DashCard padding="default" className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-green/10 !text-green flex items-center justify-center flex-shrink-0">
+            <Award size={18} />
+          </div>
+          <div>
+            <div className="text-[28px] font-bold !text-dash-text leading-none">{averageScore}%</div>
+            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Average Quiz Score</div>
+          </div>
+        </DashCard>`
+  );
+
+  fs.writeFileSync(pagePath, pageCode);
+  console.log("SUCCESS! Student Analytics Dashboard (Task 59) wired to UI.");
 }
