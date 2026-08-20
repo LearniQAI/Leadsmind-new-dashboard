@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { getCurrentProfile } from '@/lib/auth';
 import { getEnrolledCoursesWithProgress } from '@/app/actions/studentEnrollments';
+import { createServerClient } from '@/lib/supabase/server';
+import { getCurrentWorkspaceId } from '@/lib/auth';
 import { Progress } from '@/components/ui/progress';
 import { DashCard, DashButton, DashEmptyState } from '@/components/dashboard-ui';
 
@@ -19,6 +21,20 @@ export default async function StudentDashboardPage() {
   const avgProgress = totalCourses > 0 
     ? Math.round(courses.reduce((acc: number, c: any) => acc + c.progressPercentage, 0) / totalCourses) 
     : 0;
+
+  // Task 59: Fetch Real Learning Analytics
+  const supabase = await createServerClient();
+  const workspaceId = await getCurrentWorkspaceId();
+  const { data: quizAttempts } = await supabase.from('quiz_attempts').select('score_pct, passed').eq('student_id', profile?.id || '');
+  
+  const totalQuizzes = quizAttempts?.length || 0;
+  const passedQuizzes = quizAttempts?.filter(q => q.passed)?.length || 0;
+  
+  let averageScore = 0;
+  if (totalQuizzes > 0) {
+    const totalScore = quizAttempts?.reduce((sum, q) => sum + Number(q.score_pct || 0), 0) || 0;
+    averageScore = Math.round(totalScore / totalQuizzes);
+  }
 
   return (
     <div className="space-y-10 max-w-5xl mx-auto">
@@ -56,8 +72,8 @@ export default async function StudentDashboardPage() {
             <CheckCircle2 size={18} />
           </div>
           <div>
-            <div className="text-[28px] font-bold !text-dash-text leading-none">{completedLessons}</div>
-            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Lessons Completed</div>
+            <div className="text-[28px] font-bold !text-dash-text leading-none">{passedQuizzes}</div>
+            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Quizzes Passed</div>
           </div>
         </DashCard>
 
@@ -66,8 +82,8 @@ export default async function StudentDashboardPage() {
             <Award size={18} />
           </div>
           <div>
-            <div className="text-[28px] font-bold !text-dash-text leading-none">{avgProgress}%</div>
-            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Average Progress</div>
+            <div className="text-[28px] font-bold !text-dash-text leading-none">{averageScore}%</div>
+            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Average Quiz Score</div>
           </div>
         </DashCard>
       </div>
