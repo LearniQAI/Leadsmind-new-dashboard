@@ -38,6 +38,12 @@ export async function runCreditGuard(
   return { ok: true };
 }
 
-export async function consumeAICredit(workspaceId: string): Promise<void> {
-  await db('ai_usage_credits').where({ workspace_id: workspaceId }).increment('credits_used_this_period', 1);
+/**
+ * amount defaults to 1 (a single text generation). Pass a higher amount for
+ * operations with a meaningfully higher real cost — e.g. image generation
+ * (gpt-image-2 runs roughly 10x a gpt-4o-mini text call at 1024x1024 medium
+ * quality: ~$0.05/image vs a fraction of a cent for a short completion).
+ */
+export async function consumeAICredit(workspaceId: string, amount: number = 1): Promise<void> {
+  await db('ai_usage_credits').where({ workspace_id: workspaceId }).increment('credits_used_this_period', amount);
 }
