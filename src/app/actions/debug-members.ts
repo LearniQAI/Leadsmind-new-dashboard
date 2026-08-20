@@ -1,3 +1,5 @@
+'use server';
+
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 
