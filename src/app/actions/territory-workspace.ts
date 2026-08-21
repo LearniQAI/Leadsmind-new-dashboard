@@ -4,6 +4,14 @@ import { createServerClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { logger } from '@/shared/logger';
 
+interface Territory {
+  region: string;
+  leadCount: number;
+  saturation: string;
+  score: number;
+  level: string;
+}
+
 const hasCoordinates = (lead: any) =>
   lead.latitude !== null && lead.latitude !== undefined &&
   lead.longitude !== null && lead.longitude !== undefined &&
@@ -51,7 +59,7 @@ export async function getTerritoryMapData() {
   }
 
   const searchIds = (searches ?? []).map((search: any) => search.id);
-  if (searchIds.length === 0) return { success: true, data: { territories: [], networks: [], leads: [], noLocationLeads: [] } };
+  if (searchIds.length === 0) return { success: true, data: { territories: [] as Territory[], networks: [] as any[], leads: [] as any[], noLocationLeads: [] as any[] } };
 
   const { data: initialLeads, error } = await supabase
     .from('lead_finder_results')
@@ -64,7 +72,7 @@ export async function getTerritoryMapData() {
     return { success: false, error: 'Failed to fetch territory data.' };
   }
 
-  if (!initialLeads || initialLeads.length === 0) return { success: true, data: { territories: [], networks: [], leads: [], noLocationLeads: [] } };
+  if (!initialLeads || initialLeads.length === 0) return { success: true, data: { territories: [] as Territory[], networks: [] as any[], leads: [] as any[], noLocationLeads: [] as any[] } };
 
   const legacyCandidates = initialLeads
     .filter((lead: any) => lead.address && !hasCoordinates(lead) && !lead.geocode_attempted_at)
@@ -91,7 +99,7 @@ export async function getTerritoryMapData() {
     territoriesMap[loc].push(lead);
   });
 
-  const territories = Object.entries(territoriesMap).map(([region, tLeads]) => {
+  const territories: Territory[] = Object.entries(territoriesMap).map(([region, tLeads]) => {
     return {
       region,
       leadCount: tLeads.length,
