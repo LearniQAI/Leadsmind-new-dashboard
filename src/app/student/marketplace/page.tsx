@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ShoppingBag } from 'lucide-react';
 import { getMarketplaceCourses, getMyEnrollments } from '@/app/actions/studentEnrollments';
-import { getUserRole, getCurrentWorkspaceId } from '@/lib/auth';
+import { getUserRoleForWorkspace, getCurrentWorkspaceId } from '@/lib/auth';
 import MarketplaceClient from './MarketplaceClient';
 import { WorkspaceSync } from '@/components/auth/WorkspaceSync';
 
@@ -15,10 +15,16 @@ interface MarketplacePageProps {
 export default async function MarketplacePage({ searchParams }: MarketplacePageProps) {
   const workspaceId = searchParams.workspaceId || await getCurrentWorkspaceId();
 
+  // Role must be looked up against the same workspace the courses/activeWorkspaceId
+  // are scoped to — not the session's cookie-based "current workspace" — since
+  // workspaceId here can come from a ?workspaceId= query param that points at a
+  // workspace the user isn't even a member of. Using the cookie-based getUserRole()
+  // here previously let an admin of their own workspace appear as "admin" of any
+  // other workspace's courses simply because that other workspace was in the URL.
   const [coursesRes, enrolledRes, userRole] = await Promise.all([
     getMarketplaceCourses(workspaceId || undefined),
     getMyEnrollments(),
-    getUserRole()
+    workspaceId ? getUserRoleForWorkspace(workspaceId) : Promise.resolve(null)
   ]);
 
   const courses = coursesRes.data || [];

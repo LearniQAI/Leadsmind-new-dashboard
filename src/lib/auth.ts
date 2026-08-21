@@ -376,21 +376,41 @@ export const getUserAccessInfo = cache(async (): Promise<{ role: string | null; 
   }
   if (!workspaceId) return { role: null, permissions: [] };
 
+  return getUserAccessInfoForWorkspace(user.id, workspaceId);
+});
+
+/**
+ * Same lookup as getUserAccessInfo, but scoped to an explicitly-given workspace
+ * rather than the cookie-derived "current" one. Use this whenever the workspace
+ * being acted on can come from somewhere other than the user's own session
+ * cookie (e.g. a `?workspaceId=` query param) — otherwise a role check against
+ * the cookie's workspace can silently get paired with a resource lookup against
+ * a *different* workspace, letting an admin of workspace A appear as an admin
+ * of workspace B just because B happened to be the one in the URL.
+ */
+export const getUserAccessInfoForWorkspace = cache(async (userId: string, workspaceId: string): Promise<{ role: string | null; permissions: string[] }> => {
   const supabase = await createServerClient();
   const { data, error } = await supabase
    .from('workspace_members')
    .select('role, permissions')
    .eq('workspace_id', workspaceId)
-   .eq('user_id', user.id)
+   .eq('user_id', userId)
    .single();
 
   if (error || !data) return { role: null, permissions: [] };
-  
+
   // Ensure permissions is an array of strings
   const permissions = Array.isArray(data.permissions) ? data.permissions : [];
-  
+
   return { role: data.role, permissions };
 });
+
+export async function getUserRoleForWorkspace(workspaceId: string): Promise<string | null> {
+ const user = await getUser();
+ if (!user) return null;
+ const info = await getUserAccessInfoForWorkspace(user.id, workspaceId);
+ return info.role;
+}
 
 export async function requireAdmin() {
  const role = await getUserRole();
