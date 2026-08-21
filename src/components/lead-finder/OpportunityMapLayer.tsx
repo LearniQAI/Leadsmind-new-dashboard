@@ -1,74 +1,97 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Map, MapPin, Search, Layers, Navigation, ChevronRight, Building2, User } from 'lucide-react';
-import Link from 'next/link';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Building2, Layers, MapPin, Navigation } from 'lucide-react';
 
-export function OpportunityMapLayer({ leads }: { leads: any[] }) {
-  // Simulate map rendering with a simplified grid for MVP.
-  // In production, this mounts Mapbox GL JS or Google Maps.
-  
-  const [filter, setFilter] = useState('all');
+declare global {
+  interface Window { google?: any; __leadFinderGoogleMaps?: Promise<void>; }
+}
 
-  return (
-    <div className="bg-white border border-dash-border rounded-3xl overflow-hidden flex flex-col h-[600px] relative">
-      {/* Map Controls Overlay */}
-      <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between pointer-events-none">
-        <div className="bg-white/90 backdrop-blur-md border border-dash-border rounded-xl p-2 flex items-center gap-2 pointer-events-auto shadow-2xl">
-          <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider transition-colors ${filter ==='all' ?'bg-dash-border/60 !text-dash-text' :'!text-dash-textMuted hover:!text-dash-text'}`}>All Leads</button>
-          <button onClick={() => setFilter('high')} className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider transition-colors ${filter ==='high' ?'bg-emerald-500/20 text-emerald-400' :'!text-dash-textMuted hover:text-emerald-400'}`}>High Opp</button>
-          <button onClick={() => setFilter('gaps')} className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider transition-colors ${filter ==='gaps' ?'bg-amber-500/20 text-amber-400' :'!text-dash-textMuted hover:text-amber-400'}`}>Gaps</button>
-        </div>
-        <div className="bg-white/90 backdrop-blur-md border border-dash-border rounded-xl p-2 flex flex-col gap-1 pointer-events-auto shadow-2xl">
-          <button className="p-2 hover:bg-dash-border/60 rounded-lg !text-dash-text transition-colors"><Layers size={18} /></button>
-          <button className="p-2 hover:bg-dash-border/60 rounded-lg !text-dash-text transition-colors"><Navigation size={18} /></button>
-        </div>
+type Lead = {
+  id: string; business_name: string; address?: string | null; latitude: number; longitude: number;
+  lead_score?: number | null; website?: string | null; rating?: number | null;
+};
+
+function loadGoogleMaps(apiKey: string) {
+  if (window.google?.maps) return Promise.resolve();
+  if (window.__leadFinderGoogleMaps) return window.__leadFinderGoogleMaps;
+  window.__leadFinderGoogleMaps = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Google Maps could not be loaded.'));
+    document.head.appendChild(script);
+  });
+  return window.__leadFinderGoogleMaps;
+}
+
+export function OpportunityMapLayer({ leads, noLocationLeads, mapsApiKey }: { leads: Lead[]; noLocationLeads: Lead[]; mapsApiKey: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const [filter, setFilter] = useState<'all' | 'high' | 'gaps'>('all');
+  const [error, setError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+
+  const visibleLeads = useMemo(() => leads.filter((lead) => {
+    if (filter === 'high') return (lead.lead_score ?? 0) >= 70;
+    if (filter === 'gaps') return !lead.website || (lead.rating ?? 0) < 4;
+    return true;
+  }), [filter, leads]);
+
+  useEffect(() => {
+    if (!mapsApiKey) { setError('Google Maps is not configured for this environment.'); return; }
+    let cancelled = false;
+    loadGoogleMaps(mapsApiKey).then(() => {
+      if (cancelled || !containerRef.current) return;
+      mapRef.current = new window.google.maps.Map(containerRef.current, {
+        center: { lat: -30.5595, lng: 22.9375 }, zoom: 5, mapTypeControl: true, streetViewControl: false,
+      });
+      setReady(true);
+    }).catch((loadError) => !cancelled && setError(loadError.message));
+    return () => { cancelled = true; markersRef.current.forEach((marker) => marker.setMap(null)); };
+  }, [mapsApiKey]);
+
+  useEffect(() => {
+    if (!ready || !mapRef.current || !window.google?.maps) return;
+    markersRef.current.forEach((marker) => marker.setMap(null));
+    markersRef.current = [];
+    const bounds = new window.google.maps.LatLngBounds();
+    visibleLeads.forEach((lead) => {
+      const position = { lat: Number(lead.latitude), lng: Number(lead.longitude) };
+      const high = (lead.lead_score ?? 0) >= 70;
+      const gap = !lead.website || (lead.rating ?? 0) < 4;
+      const marker = new window.google.maps.Marker({
+        map: mapRef.current, position, title: lead.business_name,
+        icon: { path: window.google.maps.SymbolPath.CIRCLE, fillColor: high ? '#10b981' : gap ? '#f59e0b' : '#2563eb', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2, scale: 9 },
+      });
+      const info = new window.google.maps.InfoWindow({ content: `<strong>${lead.business_name.replace(/</g, '&lt;')}</strong><br/>${(lead.address || 'Address unavailable').replace(/</g, '&lt;')}` });
+      marker.addListener('click', () => { info.open({ map: mapRef.current, anchor: marker }); });
+      bounds.extend(position);
+      markersRef.current.push(marker);
+    });
+    if (visibleLeads.length === 1) mapRef.current.setCenter(bounds.getCenter());
+    else if (visibleLeads.length > 1) mapRef.current.fitBounds(bounds, 48);
+  }, [ready, visibleLeads]);
+
+  const recenter = () => {
+    if (!mapRef.current || visibleLeads.length === 0) return;
+    const bounds = new window.google.maps.LatLngBounds();
+    visibleLeads.forEach((lead) => bounds.extend({ lat: Number(lead.latitude), lng: Number(lead.longitude) }));
+    visibleLeads.length === 1 ? mapRef.current.setCenter(bounds.getCenter()) : mapRef.current.fitBounds(bounds, 48);
+  };
+
+  return <div className="bg-white border border-dash-border rounded-3xl overflow-hidden flex flex-col h-[600px] relative">
+    <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between pointer-events-none">
+      <div className="bg-white/95 backdrop-blur-md border border-dash-border rounded-xl p-2 flex items-center gap-2 pointer-events-auto shadow-xl">
+        {(['all', 'high', 'gaps'] as const).map((value) => <button key={value} onClick={() => setFilter(value)} className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider ${filter === value ? 'bg-dash-border/60 !text-dash-text' : '!text-dash-textMuted hover:!text-dash-text'}`}>{value === 'all' ? 'All Leads' : value === 'high' ? 'High Opp' : 'Gaps'}</button>)}
       </div>
-
-      {/* Abstract Map Visualization */}
-      <div className="flex-1 bg-[#0a1128] relative overflow-hidden flex items-center justify-center p-8">
-        {/* Decorative Grid */}
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
-        
-        {leads.length === 0 ? (
-          <div className="text-center z-10">
-            <Map size={48} className="!text-dash-textMuted mx-auto mb-4 opacity-30" />
-            <p className="!text-dash-textMuted font-bold tracking-widest text-sm">Map Data Unavailable</p>
-          </div>
-        ) : (
-          <div className="w-full h-full relative z-10">
-            {/* Render a scattered sample of leads to simulate map markers */}
-            {leads.slice(0, 30).map((lead, i) => {
-              // Deterministic fake position based on ID length/index
-              const top = `${20 + ((i * 17) % 60)}%`;
-              const left = `${10 + ((i * 23) % 80)}%`;
-              
-              const isHigh = lead.lead_score >= 70;
-              const isGap = !lead.website || lead.rating < 4.0;
-              
-              if (filter === 'high' && !isHigh) return null;
-              if (filter === 'gaps' && !isGap) return null;
-
-              return (
-                <Link key={lead.id} href={`/lead-finder/lead/${lead.id}`} className="absolute group transform -translate-x-1/2 -translate-y-1/2 hover:z-50 transition-all duration-300 hover:scale-110" style={{ top, left }}>
-                  <div className={`p-2 rounded-full shadow-xl shadow-black/50 ${isHigh ? 'bg-emerald-500 text-black' : isGap ? 'bg-amber-400 text-black' : 'bg-white text-black'}`}>
-                    {isHigh ? <Building2 size={14} /> : <MapPin size={14} />}
-                  </div>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border border-dash-border rounded-xl p-3 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-2xl">
-                    <p className="text-xs font-bold !text-dash-text truncate">{lead.business_name}</p>
-                    <p className="text-[10px] !text-dash-textMuted truncate mt-1">{lead.location}</p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="bg-white border-t border-dash-border p-4 flex items-center justify-between text-xs font-bold !text-dash-textMuted tracking-wider">
-        <span>{leads.length} Leads in Viewport</span>
-        <span className="flex items-center gap-1">Data Layer: Default <ChevronRight size={14} /></span>
-      </div>
+      <div className="bg-white/95 border border-dash-border rounded-xl p-2 pointer-events-auto shadow-xl flex gap-1"><Layers size={18} className="p-0.5 !text-dash-text" /><button aria-label="Recenter map on visible leads" onClick={recenter} className="p-1 hover:bg-dash-border/60 rounded-lg !text-dash-text"><Navigation size={18} /></button></div>
     </div>
-  );
+    <div ref={containerRef} className="flex-1 min-h-0 bg-dash-surface" />
+    {error && <div className="absolute inset-0 flex items-center justify-center bg-white/95 p-8 text-center"><div><AlertTriangle className="mx-auto text-amber-500 mb-3" /><p className="font-bold !text-dash-text">Map unavailable</p><p className="text-sm !text-dash-textMuted mt-1">{error}</p></div></div>}
+    {!error && ready && visibleLeads.length === 0 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-white/95 rounded-xl p-4 text-center shadow"><MapPin className="mx-auto !text-dash-textMuted mb-2" /><p className="text-sm font-bold !text-dash-text">No mapped leads match this filter</p></div></div>}
+    <div className="bg-white border-t border-dash-border p-4 text-xs font-bold !text-dash-textMuted flex flex-wrap gap-x-5 gap-y-2"><span>{visibleLeads.length} real lead location{visibleLeads.length === 1 ? '' : 's'} shown</span><span className="flex items-center gap-1"><Building2 size={14} /> {noLocationLeads.length} without usable location data</span>{noLocationLeads.slice(0, 3).map((lead) => <span key={lead.id} title={lead.address || 'No address'}>{lead.business_name}</span>)}</div>
+  </div>;
 }

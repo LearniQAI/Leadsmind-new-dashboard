@@ -462,6 +462,21 @@ export async function seedHelpArticles() {
         ]
       },
       {
+        slug: 'creating-a-contact',
+        category: 'CRM Foundations',
+        title: 'Creating a Contact Manually',
+        body_plain: 'Add a single contact directly from Contacts by clicking Add Contact and entering their name, email, phone, and any tags. This is separate from bulk CSV import, which is for adding many contacts at once.',
+        content_json: [
+          { step: 1, title: 'Open Contacts', description: 'Go to CRM then Contacts.' },
+          { step: 2, title: 'Click Add Contact', description: 'Enter the contact\'s name, email, phone number, and any tags.' },
+          { step: 3, title: 'Save', description: 'Save to add them to your CRM immediately.' }
+        ],
+        faq_json: [
+          { q: 'How can I create contacts in the CRM?', a: 'Go to Contacts and click Add Contact to add one manually, or use Import for adding many contacts at once from a CSV or Excel file.' },
+          { q: 'Can I add a contact directly to a pipeline stage?', a: 'Add the contact first, then assign them to a pipeline and stage from their contact record or the pipeline board.' }
+        ]
+      },
+      {
         slug: 'contact-import-csv',
         category: 'CRM Foundations',
         title: 'Importing Contacts from CSV or Excel',
@@ -1122,7 +1137,7 @@ export async function seedHelpArticles() {
     for (const article of allArticles) {
       const { data: existing } = await supabase
         .from('help_articles')
-        .select('id, title, body_plain')
+        .select('id, title, body_plain, faq_json')
         .eq('slug', article.slug)
         .maybeSingle();
 
@@ -1130,11 +1145,25 @@ export async function seedHelpArticles() {
       // an earlier seed survived under the same slug — update it in place
       // rather than silently leaving old content live (this happened once:
       // 'email-campaign-builder' kept its fabricated body until caught by hand).
-      if (existing && existing.title === article.title && existing.body_plain === article.body_plain) {
+      // Also re-embeds if faq_json changed, since FAQ text is now part of the
+      // embedding input.
+      if (
+        existing &&
+        existing.title === article.title &&
+        existing.body_plain === article.body_plain &&
+        JSON.stringify(existing.faq_json) === JSON.stringify(article.faq_json)
+      ) {
         continue;
       }
 
-      const embedText = `${article.title}. ${article.body_plain}`;
+      // Include FAQ Q&A text, not just title+body: users type short direct
+      // questions ("can I run multiple pipelines?"), but body_plain is written
+      // as narrative description — embedding only the narrative made even a
+      // verbatim FAQ question score ~0.42 against its own article (measured),
+      // while broad "what is X" phrasing scored 0.8+ just for matching that
+      // narrative style. Embedding the FAQ pairs closes that gap.
+      const faqText = (article.faq_json || []).map((f: any) => `${f.q} ${f.a}`).join(' ');
+      const embedText = `${article.title}. ${article.body_plain} ${faqText}`;
       const embeddingVec = await generateEmbedding(embedText);
 
       const row = {
