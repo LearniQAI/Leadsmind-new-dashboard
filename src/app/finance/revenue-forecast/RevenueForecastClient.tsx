@@ -4,34 +4,35 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { ApexOptions } from 'apexcharts';
 import { toast } from 'sonner';
-import { Sparkles, TrendingUp, RefreshCw, AlertCircle, Clock } from 'lucide-react';
+import { Sparkles, TrendingUp, RefreshCw, AlertCircle, Clock, CalendarRange } from 'lucide-react';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
+import { cn } from '@/lib/utils';
 
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
-interface MonthlyRevenuePoint {
-  month: string;
+type Granularity = 'weekly' | 'monthly';
+
+interface RevenuePeriodPoint {
+  period: string;
   total: number;
   invoiceCount: number;
 }
 
 interface CurrencyRevenueSeries {
   currency: string;
-  months: MonthlyRevenuePoint[];
+  periods: RevenuePeriodPoint[];
 }
 
 interface ForecastPeriod {
-  month: string;
+  period: string;
   projectedTotal: number;
 }
 
 interface CurrencyForecast {
   currency: string;
-  next1Month: ForecastPeriod[];
-  next3Months: ForecastPeriod[];
-  next6Months: ForecastPeriod[];
+  periods: ForecastPeriod[];
   reasoning: string;
 }
 
@@ -39,17 +40,42 @@ interface ForecastRow {
   id: string;
   created_at: string;
   expires_at: string;
-  forecast_result: { currencies: CurrencyForecast[] };
+  forecast_result: {
+    currencies: CurrencyForecast[];
+    granularity: Granularity;
+    horizonPeriods: number;
+    rangeMode: 'default' | 'custom';
+    rangeStart: string | null;
+    rangeEnd: string | null;
+  };
   tokens_used: number;
   model_used: string;
 }
 
 interface ForecastGetResponse {
   forecast: ForecastRow | null;
+  forecastMatchesView: boolean;
   history: CurrencyRevenueSeries[];
   hasEnoughData: boolean;
-  minMonthsRequired: number;
+  minPeriodsRequired: number;
+  granularity: Granularity;
 }
+
+const HORIZON_OPTIONS: Record<Granularity, { value: number; label: string }[]> = {
+  weekly: [
+    { value: 1, label: '1 week' },
+    { value: 2, label: '2 weeks' },
+    { value: 4, label: '4 weeks' },
+    { value: 12, label: '12 weeks' },
+  ],
+  monthly: [
+    { value: 1, label: '1 month' },
+    { value: 3, label: '3 months' },
+    { value: 6, label: '6 months' },
+  ],
+};
+const DEFAULT_HORIZON: Record<Granularity, number> = { weekly: 4, monthly: 3 };
+const STORAGE_KEY = 'revenue-forecast-prefs';
 
 function formatCurrency(value: number, currency: string) {
   try {
@@ -59,37 +85,68 @@ function formatCurrency(value: number, currency: string) {
   }
 }
 
+function loadPrefs(): { granularity: Granularity; horizonPeriods: number } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.granularity === 'weekly' || parsed?.granularity === 'monthly') return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function savePrefs(granularity: Granularity, horizonPeriods: number) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ granularity, horizonPeriods }));
+  } catch {
+    // best-effort only
+  }
+}
+
 export default function RevenueForecastClient() {
+  const initialPrefs = useMemo(() => loadPrefs(), []);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
   const [data, setData] = useState<ForecastGetResponse | null>(null);
   const [activeCurrency, setActiveCurrency] = useState<string | null>(null);
-  const [horizon, setHorizon] = useState<'next1Month' | 'next3Months' | 'next6Months'>('next3Months');
+
+  const [granularity, setGranularity] = useState<Granularity>(initialPrefs?.granularity ?? 'monthly');
+  const [horizonPeriods, setHorizonPeriods] = useState<number>(initialPrefs?.horizonPeriods ?? DEFAULT_HORIZON.monthly);
+  const [useCustomRange, setUseCustomRange] = useState(false);
+  const [rangeStart, setRangeStart] = useState('');
+  const [rangeEnd, setRangeEnd] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/finance/revenue-forecast');
+      const params = new URLSearchParams({ granularity });
+      if (useCustomRange && rangeStart) params.set('rangeStart', rangeStart);
+      if (useCustomRange && rangeEnd) params.set('rangeEnd', rangeEnd);
+      const res = await fetch(`/api/finance/revenue-forecast?${params.toString()}`);
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || 'Failed to load revenue forecast');
       setData(body);
-      if (body.history?.length && !activeCurrency) {
-        setActiveCurrency(body.history[0].currency);
-      }
+      setActiveCurrency(prev => {
+        if (prev && body.history?.some((s: CurrencyRevenueSeries) => s.currency === prev)) return prev;
+        return body.history?.[0]?.currency ?? null;
+      });
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
-  }, [activeCurrency]);
+  }, [granularity, useCustomRange, rangeStart, rangeEnd]);
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchData]);
 
   useEffect(() => {
     if (cooldownSeconds === null || cooldownSeconds <= 0) return;
@@ -97,11 +154,32 @@ export default function RevenueForecastClient() {
     return () => clearTimeout(t);
   }, [cooldownSeconds]);
 
+  const handleGranularityChange = (next: Granularity) => {
+    setGranularity(next);
+    const nextHorizon = DEFAULT_HORIZON[next];
+    setHorizonPeriods(nextHorizon);
+    savePrefs(next, nextHorizon);
+  };
+
+  const handleHorizonChange = (value: number) => {
+    setHorizonPeriods(value);
+    savePrefs(granularity, value);
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
     try {
-      const res = await fetch('/api/finance/revenue-forecast', { method: 'POST' });
+      const res = await fetch('/api/finance/revenue-forecast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          granularity,
+          horizonPeriods,
+          rangeStart: useCustomRange && rangeStart ? rangeStart : undefined,
+          rangeEnd: useCustomRange && rangeEnd ? rangeEnd : undefined,
+        }),
+      });
       const body = await res.json();
       if (!res.ok) {
         if (res.status === 429 && body.retryAfterSeconds) {
@@ -124,17 +202,17 @@ export default function RevenueForecastClient() {
     [data, activeCurrency]
   );
 
-  const currencyForecast = useMemo(
-    () => data?.forecast?.forecast_result?.currencies?.find(c => c.currency === activeCurrency) ?? null,
-    [data, activeCurrency]
-  );
+  const currencyForecast = useMemo(() => {
+    if (!data?.forecastMatchesView) return null;
+    return data?.forecast?.forecast_result?.currencies?.find(c => c.currency === activeCurrency) ?? null;
+  }, [data, activeCurrency]);
 
   const chart = useMemo(() => {
     if (!currencySeries) return null;
-    const historyPoints = currencySeries.months;
-    const projectedPoints = currencyForecast?.[horizon] ?? [];
+    const historyPoints = currencySeries.periods;
+    const projectedPoints = currencyForecast?.periods ?? [];
 
-    const categories = [...historyPoints.map(p => p.month), ...projectedPoints.map(p => p.month)];
+    const categories = [...historyPoints.map(p => p.period), ...projectedPoints.map(p => p.period)];
     const historicalData: (number | null)[] = [
       ...historyPoints.map(p => p.total),
       ...projectedPoints.map(() => null),
@@ -150,7 +228,7 @@ export default function RevenueForecastClient() {
       stroke: { curve: 'smooth', width: [2.5, 2.5], dashArray: [0, 6] },
       markers: { size: 3, hover: { size: 5 } },
       grid: { show: true, borderColor: '#F1F5F9', strokeDashArray: 4 },
-      xaxis: { categories, labels: { style: { colors: '#64748B', fontSize: '11px' } } },
+      xaxis: { categories, labels: { style: { colors: '#64748B', fontSize: '11px' }, rotate: granularity === 'weekly' ? -45 : 0 } },
       yaxis: { labels: { formatter: v => formatCurrency(Math.round(v || 0), currencySeries.currency), style: { colors: '#64748B', fontSize: '11px' } } },
       legend: { show: true, position: 'top', horizontalAlign: 'left' },
       tooltip: { theme: 'light', y: { formatter: v => (v == null ? 'N/A' : formatCurrency(v, currencySeries.currency)) } },
@@ -162,9 +240,12 @@ export default function RevenueForecastClient() {
     ];
 
     return { options, series };
-  }, [currencySeries, currencyForecast, horizon]);
+  }, [currencySeries, currencyForecast, granularity]);
 
-  if (loading) {
+  const cooldownActive = cooldownSeconds !== null && cooldownSeconds > 0;
+  const unitWord = granularity === 'weekly' ? 'weeks' : 'months';
+
+  if (loading && !data) {
     return (
       <div className="space-y-6">
         <div className="h-10 w-64 rounded-lg bg-dash-surface animate-pulse motion-reduce:animate-none" />
@@ -185,22 +266,105 @@ export default function RevenueForecastClient() {
             AI-assisted projections built on your real paid-invoice history — not a statistical model, just trend math plus reasoning.
           </p>
         </div>
-        <DashButton onClick={handleGenerate} disabled={generating || (cooldownSeconds !== null && cooldownSeconds > 0) || !data?.hasEnoughData}>
+        <DashButton onClick={handleGenerate} disabled={generating || cooldownActive || !data?.hasEnoughData}>
           {generating ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin motion-reduce:animate-none" /> Generating…
             </>
-          ) : cooldownSeconds !== null && cooldownSeconds > 0 ? (
+          ) : cooldownActive ? (
             <>
-              <Clock className="w-4 h-4" /> Wait {Math.ceil(cooldownSeconds / 60)}m
+              <Clock className="w-4 h-4" /> Wait {Math.ceil((cooldownSeconds ?? 0) / 60)}m
             </>
           ) : (
             <>
-              <Sparkles className="w-4 h-4" /> {data?.forecast ? 'Regenerate forecast' : 'Generate forecast'}
+              <Sparkles className="w-4 h-4" /> {data?.forecastMatchesView ? 'Regenerate forecast' : 'Generate forecast'}
             </>
           )}
         </DashButton>
       </div>
+
+      <DashCard padding="default" interactive={false} className="space-y-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold !text-dash-textMuted uppercase tracking-wide block">View</span>
+            <div className="flex gap-1.5">
+              {(['weekly', 'monthly'] as Granularity[]).map(g => (
+                <button
+                  key={g}
+                  onClick={() => handleGranularityChange(g)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-[12px] font-bold border transition-colors',
+                    granularity === g
+                      ? 'bg-dash-accent text-white border-dash-accent'
+                      : 'bg-dash-surface !text-dash-textMuted border-dash-border hover:!text-dash-text'
+                  )}
+                >
+                  {g === 'weekly' ? 'Weekly' : 'Monthly'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold !text-dash-textMuted uppercase tracking-wide block">Forecast horizon</span>
+            <div className="flex gap-1.5">
+              {HORIZON_OPTIONS[granularity].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleHorizonChange(opt.value)}
+                  className={cn(
+                    'px-2.5 py-1.5 rounded-lg text-[12px] font-bold border transition-colors',
+                    horizonPeriods === opt.value
+                      ? 'bg-dash-accent/10 text-dash-accent border-dash-accent/30'
+                      : 'bg-dash-surface !text-dash-textMuted border-dash-border hover:!text-dash-text'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold !text-dash-textMuted uppercase tracking-wide block">&nbsp;</span>
+            <button
+              onClick={() => setUseCustomRange(v => !v)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold border transition-colors',
+                useCustomRange
+                  ? 'bg-dash-accent/10 text-dash-accent border-dash-accent/30'
+                  : 'bg-dash-surface !text-dash-textMuted border-dash-border hover:!text-dash-text'
+              )}
+            >
+              <CalendarRange className="w-3.5 h-3.5" /> Custom range
+            </button>
+          </div>
+        </div>
+
+        {useCustomRange && (
+          <div className="flex items-center gap-3 flex-wrap pt-1">
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold !text-dash-textMuted uppercase tracking-wide block">From</span>
+              <input
+                type="date"
+                value={rangeStart}
+                onChange={e => setRangeStart(e.target.value)}
+                className="h-9 rounded-lg border border-dash-border bg-white px-3 text-[12px] !text-dash-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold !text-dash-textMuted uppercase tracking-wide block">To</span>
+              <input
+                type="date"
+                value={rangeEnd}
+                onChange={e => setRangeEnd(e.target.value)}
+                className="h-9 rounded-lg border border-dash-border bg-white px-3 text-[12px] !text-dash-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent"
+              />
+            </div>
+            <p className="text-[11px] !text-dash-textMuted pt-4">Leave blank to use the default lookback window.</p>
+          </div>
+        )}
+      </DashCard>
 
       {error && (
         <div className="p-4 rounded-xl bg-red/10 border border-red/20 text-red text-[12px] flex items-center gap-2">
@@ -213,8 +377,10 @@ export default function RevenueForecastClient() {
           <TrendingUp className="w-10 h-10 mx-auto text-dash-textMuted mb-3" />
           <h3 className="text-sm font-bold !text-dash-text mb-1">Not enough history yet</h3>
           <p className="text-[12px] !text-dash-textMuted max-w-md mx-auto">
-            A forecast needs at least {data?.minMonthsRequired ?? 3} months of paid invoices in the same currency.
-            Keep invoicing clients and this page will unlock automatically once you have enough data.
+            A {granularity} forecast needs at least {data?.minPeriodsRequired ?? 3} {unitWord} of paid invoices in the same currency.
+            {granularity === 'weekly'
+              ? ' Try switching to monthly view, or keep invoicing and check back once you have a few more weeks of history.'
+              : ' Try switching to weekly view if you have recent invoices but less than 3 full months of history, or keep invoicing and check back later.'}
           </p>
         </DashCard>
       ) : (
@@ -225,11 +391,12 @@ export default function RevenueForecastClient() {
                 <button
                   key={s.currency}
                   onClick={() => setActiveCurrency(s.currency)}
-                  className={`px-3 py-1.5 rounded-lg text-[12px] font-bold border transition-colors ${
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-[12px] font-bold border transition-colors',
                     activeCurrency === s.currency
                       ? 'bg-dash-accent text-white border-dash-accent'
                       : 'bg-dash-surface !text-dash-textMuted border-dash-border hover:!text-dash-text'
-                  }`}
+                  )}
                 >
                   {s.currency}
                 </button>
@@ -240,27 +407,18 @@ export default function RevenueForecastClient() {
           <DashCard padding="default" interactive={false}>
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <h3 className="text-sm font-bold !text-dash-text">
-                {currencySeries?.currency} revenue — historical & projected
+                {currencySeries?.currency} revenue — historical & projected ({granularity})
               </h3>
-              <div className="flex items-center gap-1.5">
-                {(['next1Month', 'next3Months', 'next6Months'] as const).map(h => (
-                  <button
-                    key={h}
-                    onClick={() => setHorizon(h)}
-                    disabled={!currencyForecast}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-colors disabled:opacity-40 ${
-                      horizon === h ? 'bg-dash-accent/10 text-dash-accent' : '!text-dash-textMuted hover:!text-dash-text'
-                    }`}
-                  >
-                    {h === 'next1Month' ? '1 month' : h === 'next3Months' ? '3 months' : '6 months'}
-                  </button>
-                ))}
-              </div>
+              {data.forecast && !data.forecastMatchesView && (
+                <DashStatusPill variant="warning">
+                  Latest forecast was {data.forecast.forecast_result.granularity} — regenerate for this view
+                </DashStatusPill>
+              )}
             </div>
 
             {!currencyForecast ? (
               <div className="py-12 text-center text-[12px] !text-dash-textMuted">
-                No forecast generated yet for {currencySeries?.currency}. Click "Generate forecast" above.
+                No {granularity} forecast generated yet for {currencySeries?.currency}. Click "Generate forecast" above.
               </div>
             ) : chart ? (
               <Chart options={chart.options} series={chart.series} type="line" height={320} />

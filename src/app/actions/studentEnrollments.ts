@@ -60,10 +60,10 @@ export async function enrollStudent(courseId: string) {
 
     const adminClient = createAdminClient();
 
-    // Fetch the course to find its workspace_id and price
+    // Fetch the course to find its workspace_id, price, and pricing_model
     const { data: course, error: courseError } = await adminClient
       .from('courses')
-      .select('workspace_id, price')
+      .select('workspace_id, price, pricing_model')
       .eq('id', courseId)
       .single();
 
@@ -103,11 +103,18 @@ export async function enrollStudent(courseId: string) {
 
     // Paid courses require a real, completed payment record before enrollment is created —
     // this is the only thing standing between a direct call to this action and a free ride
-    // into a paid course. Free courses (price 0 or unset) skip this check entirely. The
-    // payment record convention (a paid invoice whose metadata references this courseId)
+    // into a paid course. Gated on pricing_model === 'free' (the same authoritative field
+    // CheckoutClient itself reads to decide whether to show the free-enrollment UI at all),
+    // NOT on price > 0 — a course can have pricing_model = 'free' while still carrying a
+    // stale nonzero `price` left over from before it was switched to free access (e.g. it
+    // was a paid course whose price was never reset when the model changed), and gating on
+    // price alone made every such course wrongly demand a payment record that could never
+    // exist, permanently blocking real enrollment behind a contradictory "No completed
+    // payment found" error even though the checkout page correctly showed the free-entry UI.
+    // The payment record convention (a paid invoice whose metadata references this courseId)
     // mirrors the same metadata shape already used for Stripe course checkout sessions
     // (see createCourseCheckoutSession/createDirectCourseCheckoutSession below).
-    if (course.price && course.price > 0) {
+    if (course.pricing_model !== 'free' && course.price && course.price > 0) {
       const { data: paidInvoice } = await adminClient
         .from('invoices')
         .select('id')

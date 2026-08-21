@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Cpu } from 'lucide-react';
+import { X } from 'lucide-react';
 import { createSupportTicketFromLena } from '@/app/actions/help';
 import LENAChatMessageList from './components/LENAChatMessageList';
 import LENAChatInput from './components/LENAChatInput';
@@ -19,7 +19,7 @@ export default function LENAChat() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: "Hello! I'm LENA, your LeadsMind Workspace Diagnostic Assistant. Ask me anything about setting up bank feeds, email domains, custom workflows, or payment settings. I can also scan your workspace health directly!"
+      content: "Hi, I'm LENA, your LeadsMind assistant. Ask me anything — how a feature works, why something isn't behaving as expected, or I can scan your workspace for issues directly."
     }
   ]);
   const [loading, setLoading] = useState(false);
@@ -160,17 +160,32 @@ export default function LENAChat() {
   return (
     <>
       <style>{`
-        @keyframes pulse-glow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.6); }
-          50% { box-shadow: 0 0 20px 6px rgba(139, 92, 246, 0.3); }
+        .lena-chat-launcher {
+          animation: lena-launcher-breathe 3s ease-in-out infinite;
         }
-        .glowing-btn {
-          animation: pulse-glow 2.5s infinite ease-in-out;
+        .lena-chat-launcher:hover,
+        .lena-chat-launcher:focus-visible {
+          animation: none;
+          box-shadow: 0 0 28px color-mix(in srgb, var(--lena-launcher-brand) 42%, transparent),
+            0 10px 24px rgba(15, 23, 42, 0.16);
         }
-        .custom-glass {
-          background: rgba(8, 15, 40, 0.75);
-          backdrop-filter: blur(16px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+        @keyframes lena-launcher-breathe {
+          0%, 100% {
+            box-shadow: 0 0 14px color-mix(in srgb, var(--lena-launcher-brand) 22%, transparent),
+              0 8px 18px rgba(15, 23, 42, 0.13);
+          }
+          50% {
+            box-shadow: 0 0 22px color-mix(in srgb, var(--lena-launcher-brand) 32%, transparent),
+              0 9px 21px rgba(15, 23, 42, 0.14);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .lena-chat-launcher {
+            animation: none;
+          }
+        }
+        .lena-chat-modal-logo {
+          box-shadow: 0 0 12px color-mix(in srgb, var(--lena-launcher-brand) 24%, transparent);
         }
         .no-scrollbar::-webkit-scrollbar {
           display: none;
@@ -181,54 +196,69 @@ export default function LENAChat() {
         }
       `}</style>
 
-      {/* Floating Toggle Button (Touch Optimized Target Size) */}
+      {/* Floating Toggle Button (Touch Optimized Target Size) — matches the
+          white / brand-border / breathing-glow launcher used elsewhere for LENA */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 min-w-[48px] min-h-[48px] px-5 py-4 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 border border-white/10 flex items-center justify-center gap-2.5 glowing-btn font-dm-sans group"
-        title="Open Diagnostics AI Assistant"
+        aria-label="Ask LENA"
+        className="lena-chat-launcher fixed bottom-6 right-6 z-50 w-14 h-14 rounded-2xl flex items-center justify-center hover:scale-[1.07] active:scale-95 transition-all duration-200 border-[3px] bg-white group"
+        style={{ '--lena-launcher-brand': '#1359FF', borderColor: '#1359FF' } as React.CSSProperties}
+        title="Ask LENA"
       >
-        <Sparkles className="w-5 h-5 text-purple-200 group-hover:rotate-12 transition-transform duration-300" />
-        <span className="text-xs font-black uppercase tracking-widest">
-          Diagnostics AI
-        </span>
+        <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green rounded-full border-2 border-white animate-pulse" />
+        <img src="/icon0.svg" alt="LeadsMind" className="h-9 w-9 group-hover:rotate-6 transition-transform duration-300" />
       </button>
+
+      {/* Backdrop: dims + blurs the dashboard behind the panel and blocks
+          interaction with it while open; clicking it closes the panel, same
+          as the X button. Fully unmounts (no lingering blur) when closed. */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-[1999] bg-black/20 backdrop-blur-[5px] animate-fade-in"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Drawer Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000] animate-fade-in flex justify-end font-dm-sans">
-          {/* Drawer Body Container (Touch Swipe enabled & Safe keyboard height sizing via dvh) */}
-          <div 
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            style={{ 
-              transform: translateX > 0 ? `translateX(${translateX}px)` : undefined, 
-              transition: translateX === 0 ? 'transform 0.2s ease-out' : 'none' 
-            }}
-            className="w-full max-w-md bg-[#050a1e] border-l border-white/10 h-[100dvh] max-h-[100dvh] flex flex-col shadow-2xl relative animate-slide-in-right overflow-hidden"
-          >
-            
+        // Anchored popover near the launcher (matches LenaVisitorChat / CourseQAWidget /
+        // LiveHelpWidget's floating-panel convention) rather than a full-viewport drawer.
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{
+            transform: translateX > 0 ? `translateX(${translateX}px)` : undefined,
+            transition: translateX === 0 ? 'transform 0.2s ease-out' : 'none'
+          }}
+          className="fixed bottom-24 right-6 z-[2000] w-[calc(100vw-3rem)] max-w-md h-[650px] max-h-[75vh] bg-white border border-dash-border rounded-2xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300 font-dm-sans"
+        >
+
             {/* Header Block (Large touch target for close btn) */}
-            <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#080e29]/90 backdrop-blur-md">
+            <div className="p-5 border-b border-dash-border flex items-center justify-between bg-dash-surface">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shadow-inner">
-                  <Cpu className="w-5.5 h-5.5 animate-pulse" />
+                <div
+                  className="lena-chat-modal-logo w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border-2 bg-white"
+                  style={{ '--lena-launcher-brand': '#1359FF', borderColor: '#1359FF' } as React.CSSProperties}
+                >
+                  <img src="/icon0.svg" alt="LeadsMind" className="h-6 w-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider font-space-grotesk">LENA Assistant</h3>
+                    <h3 className="text-sm font-bold !text-dash-text font-space-grotesk">LENA</h3>
                     <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400">Live Diagnostics</span>
+                      <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600">Live Diagnostics</span>
                     </div>
                   </div>
-                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold pt-0.5">LeadsMind Automated Support Node</p>
+                  <p className="text-[10px] !text-dash-textMuted font-medium pt-0.5">Your LeadsMind product assistant</p>
                 </div>
               </div>
-              
+
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-11 h-11 flex items-center justify-center text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition duration-150 min-w-[44px] min-h-[44px]"
+                className="w-11 h-11 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text bg-dash-border/30 hover:bg-dash-border/50 rounded-xl transition duration-150 min-w-[44px] min-h-[44px]"
                 aria-label="Close Chat"
               >
                 <X className="w-5 h-5" />
@@ -245,14 +275,13 @@ export default function LENAChat() {
             />
 
             {/* Input Bar Form */}
-            <LENAChatInput 
+            <LENAChatInput
               query={query}
               setQuery={setQuery}
               handleSend={handleSend}
               loading={loading}
             />
 
-          </div>
         </div>
       )}
     </>

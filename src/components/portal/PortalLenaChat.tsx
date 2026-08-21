@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Sparkles, Loader2 } from 'lucide-react';
+import { X, Send, Loader2 } from 'lucide-react';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -109,8 +109,8 @@ export default function PortalLenaChat() {
           {/* Header */}
           <div className="px-5 py-4 border-b border-white/10 dark:border-neutral-800 flex items-center justify-between bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-transparent">
             <div className="flex items-center space-x-2.5">
-              <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500">
-                <Sparkles className="w-5 h-5 animate-pulse" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--btn-color,#2563eb)]">
+                <img src="/icon0.svg" alt="LeadsMind" className="h-6 w-6" />
               </div>
               <div>
                 <h4 className="font-semibold text-neutral-800 dark:text-neutral-100 text-sm tracking-wide">LENA AI</h4>
@@ -189,7 +189,11 @@ export default function PortalLenaChat() {
         className="flex items-center justify-center w-14 h-14 rounded-full text-white shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
         style={{ backgroundColor: 'var(--btn-color, #2563eb)' }}
       >
-        {isOpen ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
+        {isOpen ? (
+          <X className="w-6 h-6" />
+        ) : (
+          <img src="/icon0.svg" alt="Open LENA AI assistant" className="h-9 w-9" />
+        )}
       </button>
     </div>
   );

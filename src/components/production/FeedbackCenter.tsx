@@ -31,9 +31,12 @@ export function FeedbackCenter() {
 
   return (
     <>
-      <button 
+      {/* bottom-6 left-6, not right-6: the LENA assistant launcher owns the
+          bottom-right corner of the dashboard — sharing that spot made two
+          unrelated floating buttons visually collide/stack on top of each other */}
+      <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 p-4 bg-accent hover:bg-accent-hover text-white rounded-full shadow-2xl transition-all hover:scale-105 z-50 group"
+        className="fixed bottom-6 left-6 p-4 bg-accent hover:bg-accent-hover text-white rounded-full shadow-2xl transition-all hover:scale-105 z-50 group"
       >
         <MessageSquarePlus size={24} />
       </button>

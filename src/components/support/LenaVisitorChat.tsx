@@ -165,13 +165,52 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className={`fixed bottom-6 ${positionClass} w-14 h-14 rounded-2xl shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200 z-[1000] border border-white/20 text-white font-bold text-[15px] uppercase`}
-          style={{ backgroundColor: config.primary_color }}
+          aria-label="Open LENA AI assistant"
+          className={`lena-chat-launcher fixed bottom-6 ${positionClass} w-14 h-14 rounded-2xl flex items-center justify-center hover:scale-[1.07] active:scale-95 transition-all duration-200 z-[1000] border-[3px] bg-white`}
+          style={{
+            borderColor: config.primary_color,
+            '--lena-launcher-brand': config.primary_color,
+          } as React.CSSProperties}
         >
           <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green rounded-full border-2 border-white animate-pulse" />
-          {config.bot_name[0]}
+          <img src="/icon0.svg" alt="LeadsMind" className="h-9 w-9" />
         </button>
       )}
+
+      <style jsx>{`
+        .lena-chat-launcher {
+          animation: lena-launcher-breathe 3s ease-in-out infinite;
+        }
+
+        .lena-chat-launcher:hover,
+        .lena-chat-launcher:focus-visible {
+          animation: none;
+          box-shadow: 0 0 28px color-mix(in srgb, var(--lena-launcher-brand) 42%, transparent),
+            0 10px 24px rgba(15, 23, 42, 0.16);
+        }
+
+        .lena-chat-modal-logo {
+          box-shadow: 0 0 12px color-mix(in srgb, var(--lena-launcher-brand) 24%, transparent);
+        }
+
+        @keyframes lena-launcher-breathe {
+          0%,
+          100% {
+            box-shadow: 0 0 14px color-mix(in srgb, var(--lena-launcher-brand) 22%, transparent),
+              0 8px 18px rgba(15, 23, 42, 0.13);
+          }
+          50% {
+            box-shadow: 0 0 22px color-mix(in srgb, var(--lena-launcher-brand) 32%, transparent),
+              0 9px 21px rgba(15, 23, 42, 0.14);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .lena-chat-launcher {
+            animation: none;
+          }
+        }
+      `}</style>
 
       {/* Chat Window */}
       {isOpen && (
@@ -182,10 +221,13 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
           <div className="p-4 border-b border-dash-border bg-dash-surface flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-[13px] uppercase shrink-0"
-                style={{ backgroundColor: config.primary_color }}
+                className="lena-chat-modal-logo w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border-2 bg-white"
+                style={{
+                  borderColor: config.primary_color,
+                  '--lena-launcher-brand': config.primary_color,
+                } as React.CSSProperties}
               >
-                {config.bot_name[0]}
+                <img src="/icon0.svg" alt="LeadsMind" className="h-7 w-7" />
               </div>
               <div>
                 <h3 className="text-sm font-bold !text-dash-text font-space-grotesk">{config.bot_name}</h3>

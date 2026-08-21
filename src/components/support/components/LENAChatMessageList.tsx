@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Cpu, ShieldAlert, Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -26,74 +26,70 @@ export default function LENAChatMessageList({
   messagesEndRef
 }: LENAChatMessageListProps) {
   return (
-    <div className="flex-1 overflow-y-auto p-5 space-y-5 no-scrollbar bg-radial-gradient">
+    <div className="flex-1 overflow-y-auto p-5 space-y-5 no-scrollbar bg-white">
       {messages.map((msg, idx) => {
         const isUser = msg.role === 'user';
         return (
           <div key={idx} className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-            
+
             {/* Assistant Avatar */}
             {!isUser && (
-              <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shrink-0 shadow-sm mt-0.5">
-                <Cpu className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-xl bg-white border-2 shrink-0 shadow-sm mt-0.5 flex items-center justify-center" style={{ borderColor: '#1359FF' }}>
+                <img src="/icon0.svg" alt="LENA" className="h-4.5 w-4.5" />
               </div>
             )}
 
             <div className="max-w-[80%] flex flex-col gap-1">
               {/* Message Bubble (Optimized Touch Selection Zone) */}
-              <div className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-lg select-text ${
+              <div className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed select-text ${
                 isUser
-                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-tr-none border border-violet-400/20'
-                  : 'bg-[#080f28]/95 border border-white/[0.06] text-white/90 rounded-tl-none'
-              }`}>
-                <p className="font-light whitespace-pre-wrap">{msg.content}</p>
+                  ? '!text-white rounded-tr-none'
+                  : 'bg-dash-surface border border-dash-border !text-dash-text rounded-tl-none'
+              }`} style={isUser ? { backgroundColor: '#1359FF' } : undefined}>
+                <p className={`whitespace-pre-wrap ${isUser ? '!text-white' : ''}`}>{msg.content}</p>
 
-                {/* Diagnostic Escalation Panel (Touch Optimized) */}
+                {/* Escalation Offer (Touch Optimized) — a helpful offer, not a warning:
+                    no internal confidence-threshold language or packaging detail shown to the user. */}
                 {msg.lowConfidence && (
-                  <div className="mt-4 p-4 bg-[#0e0a1f] border border-rose-500/20 rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-rose-400">
-                      <ShieldAlert className="w-4 h-4 shrink-0" />
-                      <span>Escalation Gate (Similarity &lt; 70%)</span>
-                    </div>
-                    
-                    <p className="text-[10px] sm:text-[11px] text-white/50 leading-relaxed font-light">
-                      I will package your message history, DNS record flags, payment setup verification status, and workspace details to submit a support ticket.
+                  <div className="mt-4 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2.5">
+                    <p className="text-[11px] sm:text-xs text-emerald-800 leading-relaxed">
+                      I'm not fully confident in my answer for this one. Want me to loop in a human expert?
                     </p>
 
                     <button
                       onClick={() => handleEscalateTicket(idx)}
                       disabled={escalating === 'submitting'}
-                      className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:bg-rose-500/40 text-[11px] font-black uppercase tracking-wider text-white transition flex items-center justify-center gap-2 shadow-lg active:scale-95"
+                      className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-[11px] font-black uppercase tracking-wider text-white transition flex items-center justify-center gap-2 shadow-sm active:scale-95"
                     >
                       {escalating === 'submitting' ? (
                         <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Packaging parameters...
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Reaching out...
                         </>
                       ) : (
                         <>
-                          <CheckCircle2 className="w-4 h-4" /> Confirm Escalation
+                          <CheckCircle2 className="w-4 h-4" /> Talk to support
                         </>
                       )}
                     </button>
-                    
+
                     {escalating === 'error' && (
-                      <p className="text-[9px] text-rose-400 text-center font-bold uppercase tracking-widest pt-1">
-                        Telemetry registration failed. Try again.
+                      <p className="text-[9px] text-rose-500 text-center font-bold uppercase tracking-widest pt-1">
+                        Couldn't reach support right now. Try again.
                       </p>
                     )}
                   </div>
                 )}
               </div>
-              
+
               {/* Message Metadata Timestamp */}
-              <span className={`text-[8px] font-bold text-white/20 uppercase tracking-wider ${isUser ? 'text-right' : 'text-left'}`}>
+              <span className={`text-[8px] font-bold !text-dash-textMuted uppercase tracking-wider ${isUser ? 'text-right' : 'text-left'}`}>
                 {isUser ? 'You' : 'LENA'}
               </span>
             </div>
 
             {/* User Avatar */}
             {isUser && (
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 border border-violet-400/20 flex items-center justify-center text-white text-[9px] font-bold shrink-0 shadow-sm mt-0.5">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[9px] font-bold shrink-0 shadow-sm mt-0.5" style={{ backgroundColor: '#1359FF' }}>
                 ME
               </div>
             )}
@@ -105,17 +101,17 @@ export default function LENAChatMessageList({
       {/* Typing bounce animation */}
       {loading && (
         <div className="flex gap-3 justify-start animate-pulse">
-          <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shrink-0">
-            <Cpu className="w-4 h-4 animate-spin" />
+          <div className="w-8 h-8 rounded-xl bg-white border-2 flex items-center justify-center shrink-0" style={{ borderColor: '#1359FF' }}>
+            <img src="/icon0.svg" alt="LENA" className="h-4.5 w-4.5" />
           </div>
-          <div className="bg-[#080f28]/90 border border-white/[0.06] p-4 rounded-2xl rounded-tl-none flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full typing-dot animate-bounce" style={{ animationDelay: '0.1s' }} />
-            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full typing-dot animate-bounce" style={{ animationDelay: '0.2s' }} />
-            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full typing-dot animate-bounce" style={{ animationDelay: '0.3s' }} />
+          <div className="bg-dash-surface border border-dash-border p-4 rounded-2xl rounded-tl-none flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full typing-dot animate-bounce" style={{ animationDelay: '0.1s', backgroundColor: '#1359FF' }} />
+            <span className="w-1.5 h-1.5 rounded-full typing-dot animate-bounce" style={{ animationDelay: '0.2s', backgroundColor: '#1359FF' }} />
+            <span className="w-1.5 h-1.5 rounded-full typing-dot animate-bounce" style={{ animationDelay: '0.3s', backgroundColor: '#1359FF' }} />
           </div>
         </div>
       )}
-      
+
       <div ref={messagesEndRef} />
     </div>
   );
