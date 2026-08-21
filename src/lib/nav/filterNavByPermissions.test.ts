@@ -172,6 +172,17 @@ const NEWLY_ADDED_MARKETING_ROUTES = new Set([
   "/content-studio",
 ]);
 
+/**
+ * Added by the Territory Map feature: a genuinely new page under the existing
+ * Contacts > Lead Finder group, gated by the same "contacts" permission as the
+ * rest of that group — not in the frozen OLD_SIDEBAR_DATA snapshot by design,
+ * since it didn't exist yet. Excluded from the parity check below, same
+ * treatment as the Social, Finance, and Marketing additions above.
+ */
+const NEWLY_ADDED_LEAD_FINDER_ROUTES = new Set([
+  "/lead-finder/map",
+]);
+
 describe("filterNavByPermissions matches the old inline filtering logic exactly", () => {
   const scenarios: Array<[label: string, role: string, permissions: string[]]> = [
     ["admin", "admin", []],
@@ -194,7 +205,8 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
       (l) =>
         !NEWLY_ADDED_SOCIAL_ROUTES.has(l) &&
         !NEWLY_ADDED_FINANCE_ROUTES.has(l) &&
-        !NEWLY_ADDED_MARKETING_ROUTES.has(l)
+        !NEWLY_ADDED_MARKETING_ROUTES.has(l) &&
+        !NEWLY_ADDED_LEAD_FINDER_ROUTES.has(l)
     );
     expect(newLinksExcludingAdditions.sort()).toEqual([...oldLinks].sort());
   });
@@ -220,6 +232,14 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
     const hadMarketing = newLinks.has("/ai-studio");
     NEWLY_ADDED_MARKETING_ROUTES.forEach((route) => {
       expect(newLinks.has(route)).toBe(hadMarketing);
+    });
+  });
+
+  it.each(scenarios)("%s: Territory Map is visible iff /lead-finder already was (same 'contacts' permission)", (_label, role, permissions) => {
+    const newLinks = newVisibleLinks({ role, permissions });
+    const hadLeadFinder = newLinks.has("/lead-finder");
+    NEWLY_ADDED_LEAD_FINDER_ROUTES.forEach((route) => {
+      expect(newLinks.has(route)).toBe(hadLeadFinder);
     });
   });
 });

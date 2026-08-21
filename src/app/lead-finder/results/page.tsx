@@ -3,7 +3,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import { SearchResultsGrid } from '@/components/lead-finder/SearchResultsGrid';
-import { ArrowLeft, Target, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Target, Loader2, AlertTriangle, Map as MapIcon } from 'lucide-react';
 import Link from 'next/link';
 
 export default async function LeadFinderResultsPage({
@@ -81,6 +81,14 @@ export default async function LeadFinderResultsPage({
                 </p>
               )}
             </div>
+            {search && results.length > 0 && (
+              <Link
+                href={`/lead-finder/map?searchId=${search.id}`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-dash-surface hover:bg-dash-border/60 border border-dash-border rounded-xl text-sm font-bold !text-dash-text transition-all self-start md:self-auto"
+              >
+                <MapIcon size={16} /> Map View
+              </Link>
+            )}
           </div>
 
           {loadError ? (

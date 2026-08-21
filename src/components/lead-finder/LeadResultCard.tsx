@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Building2, MapPin, Phone, Globe, Star, Users, Plus, Check, Search, Linkedin, Facebook, Activity } from 'lucide-react';
 import { addLeadsToCRM } from '@/app/actions/lead-finder';
+import { toast } from 'sonner';
 
 interface LeadResultCardProps {
   lead: any;
@@ -21,9 +22,16 @@ export function LeadResultCard({ lead, selected, onSelect, onPreview }: LeadResu
     if (added || adding) return;
     
     setAdding(true);
-    const { success } = await addLeadsToCRM([lead], []);
+    const result = await addLeadsToCRM([lead], []);
     setAdding(false);
-    if (success) setAdded(true);
+    if (result.success) {
+      setAdded(true);
+      if (result.skippedCount && !result.addedCount) {
+        toast.info(`${lead.business_name} is already in the CRM.`);
+      }
+    } else {
+      toast.error(result.error || `Failed to add ${lead.business_name} to CRM.`);
+    }
   };
 
   return (

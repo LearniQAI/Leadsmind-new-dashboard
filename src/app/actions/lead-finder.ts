@@ -206,13 +206,42 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
 
   const supabase = await createServerClient();
   let addedCount = 0;
+  let skippedCount = 0;
+  let failedCount = 0;
+  const errors: string[] = [];
 
   for (const lead of leads) {
+    if (!lead.business_name) {
+      failedCount++;
+      errors.push('A lead is missing a business name and was skipped.');
+      continue;
+    }
+
+    // Leads from Google Places rarely include a phone number, but when they
+    // do, use it to avoid re-importing a business already in the CRM.
+    if (lead.phone) {
+      const { data: existing } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .eq('phone', lead.phone)
+        .maybeSingle();
+
+      if (existing) {
+        skippedCount++;
+        await supabase
+          .from('lead_finder_results')
+          .update({ status: 'added_to_crm' })
+          .eq('place_id', lead.place_id);
+        continue;
+      }
+    }
+
     const contactPayload = {
       workspace_id: workspaceId,
       first_name: lead.business_name,
-      last_name: null,
-      email: null, // Usually not provided by places API easily
+      last_name: '', // Lead Finder leads are businesses, not people; contacts.last_name is NOT NULL.
+      email: null, // Google Places does not provide email addresses.
       phone: lead.phone,
       source: 'Lead Finder',
       tags: [...(lead.smart_tags || []), ...(lead.tags || []), ...tags, 'Lead Finder'],
@@ -244,13 +273,22 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
         .update({ status: 'added_to_crm' })
         .eq('place_id', lead.place_id);
     } else {
+      failedCount++;
       logger.error({ err: contactError, workspaceId }, 'lead_finder.add_to_crm.failed');
-      return { success: false, error: 'Failed to add contact to CRM.' };
+      errors.push(`${lead.business_name}: ${contactError.message}`);
     }
   }
 
-  revalidatePath('/contacts');
-  return { success: addedCount > 0, addedCount };
+  if (addedCount > 0) revalidatePath('/contacts');
+
+  return {
+    success: addedCount > 0 || skippedCount > 0,
+    addedCount,
+    skippedCount,
+    failedCount,
+    error: errors[0],
+    errors,
+  };
 }
 
 export async function deleteSavedSearch(id: string) {
