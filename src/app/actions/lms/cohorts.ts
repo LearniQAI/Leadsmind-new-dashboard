@@ -1,10 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const LMS_API_DIR = path.join(process.cwd(), 'src', 'app', 'actions', 'lms');
-if (!fs.existsSync(LMS_API_DIR)) fs.mkdirSync(LMS_API_DIR, { recursive: true });
-
-const cohortTs = `'use server';
+'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
@@ -91,35 +85,3 @@ export async function getCourseCohorts(courseId: string) {
     return { success: false, error: 'Failed to load cohorts.' };
   }
 }
-`;
-fs.writeFileSync(path.join(LMS_API_DIR, 'cohorts.ts'), cohortTs);
-
-// 2. Update the SQL Schema to include Cohorts
-const schemaPath = path.join(process.cwd(), 'src', 'supabase', 'lms_schema.sql');
-if (fs.existsSync(schemaPath)) {
-  let schema = fs.readFileSync(schemaPath, 'utf8');
-  
-  if (!schema.includes('course_cohorts')) {
-    const newTables = `CREATE TABLE IF NOT EXISTS course_cohorts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  workspace_id UUID NOT NULL,
-  course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  start_date TIMESTAMP WITH TIME ZONE,
-  end_date TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS cohort_students (
-  cohort_id UUID REFERENCES course_cohorts(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL,
-  joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  PRIMARY KEY (cohort_id, student_id)
-);
-`;
-    schema = newTables + "\n" + schema;
-    fs.writeFileSync(schemaPath, schema);
-  }
-}
-
-console.log("SUCCESS! Cohort Grouping Engine (Task 51) built.");

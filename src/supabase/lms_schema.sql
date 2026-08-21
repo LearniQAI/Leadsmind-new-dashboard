@@ -1,3 +1,20 @@
+CREATE TABLE IF NOT EXISTS course_cohorts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workspace_id UUID NOT NULL,
+  course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  start_date TIMESTAMP WITH TIME ZONE,
+  end_date TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cohort_students (
+  cohort_id UUID REFERENCES course_cohorts(id) ON DELETE CASCADE,
+  student_id UUID NOT NULL,
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (cohort_id, student_id)
+);
+
 CREATE TABLE IF NOT EXISTS course_categories (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   workspace_id UUID NOT NULL,
