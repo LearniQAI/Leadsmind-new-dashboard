@@ -711,6 +711,15 @@ const BuilderEditorLayout = ({
                         {previewMode ? "Edit" : "Preview"}
                     </button>
 
+                    <button
+                        onClick={() => setIsAiLandingCopyOpen(true)}
+                        className="h-9 px-4 flex items-center gap-1.5 text-[12px] font-bold text-white rounded-xl bg-gradient-to-r from-violet-600 to-dash-accent shadow-[0_4px_16px_rgba(19,89,255,0.3)] hover:shadow-[0_8px_24px_rgba(19,89,255,0.4)] hover:-translate-y-0.5 transition-all motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                        title="Generate copy with AI"
+                    >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Generate copy with AI
+                    </button>
+
                     <DashButton
                         variant="secondary"
                         onClick={handleSaveDraft}
@@ -762,13 +771,6 @@ const BuilderEditorLayout = ({
                             <>
                                 <div className="fixed inset-0 z-40" onClick={() => setMoreMenuOpen(false)} />
                                 <div className="absolute right-0 mt-2 w-48 bg-white border border-dash-border shadow-xl rounded-xl py-1.5 z-50">
-                                    <button
-                                        onClick={() => { setIsAiLandingCopyOpen(true); setMoreMenuOpen(false); }}
-                                        className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface w-full text-left"
-                                    >
-                                        <Sparkles className="w-4 h-4 text-dash-accent" />
-                                        Generate copy with AI
-                                    </button>
                                     <button
                                         onClick={() => { setIsTemplateDirectoryOpen(true); setMoreMenuOpen(false); }}
                                         className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface w-full text-left"

@@ -47,7 +47,7 @@ export const HeadingSettings = () => {
           <div className="flex-1">
             <SliderWithInput
               label="Font size override"
-              value={getDisplayValue('fontSize', fontSize) || 32}
+              value={getDisplayValue('fontSize', fontSize) || 8}
               onChange={(val) => setResponsiveValue('fontSize', val)}
               min={8}
               max={160}

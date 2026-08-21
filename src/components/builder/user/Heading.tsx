@@ -116,6 +116,7 @@ Heading.craft = {
   fontWeight: 'bold',
   textAlign: 'left',
   color: '#111827',
+  fontSize: 8,
  },
  related: {
   settings: HeadingSettings,
