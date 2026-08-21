@@ -17,7 +17,7 @@ export default async function TerritoryDashboardPage() {
 
   const { territories, networks, leads, noLocationLeads, mapsApiKey } = data;
 
-  const totalLeads = territories.reduce((acc: number, t: any) => acc + t.leadCount, 0);
+  const totalLeads = territories.reduce<number>((acc, t: any) => acc + t.leadCount, 0);
   const highOppZones = territories.filter((t: any) => t.level === 'High').length;
 
   return (
