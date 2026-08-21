@@ -38,7 +38,7 @@ async function geocodeAndCacheLegacyLead(supabase: any, lead: any) {
   }
 }
 
-export async function getTerritoryMapData() {
+export async function getTerritoryMapData(searchId?: string) {
   const supabase = await createServerClient();
   const { data: userData, error: authError } = await supabase.auth.getUser();
   if (authError || !userData?.user?.id) return { success: false, error: 'Unauthorized' };
@@ -47,18 +47,34 @@ export async function getTerritoryMapData() {
   const workspaceId = cookieStore.get('active_workspace_id')?.value;
   if (!workspaceId) return { success: false, error: 'No active workspace' };
 
-  // Results are tenant-scoped through their parent search. The map is based
-  // on stored coordinates, never synthetic positions.
-  const { data: searches, error: searchesError } = await supabase
-    .from('lead_finder_searches')
-    .select('id')
-    .eq('workspace_id', workspaceId);
-  if (searchesError) {
-    logger.error({ err: searchesError, workspaceId }, 'territory_workspace.searches.fetch.failed');
-    return { success: false, error: 'Failed to fetch territory data.' };
+  let searchIds: string[];
+  if (searchId) {
+    // Scoped to one search — verify it belongs to this workspace before using it.
+    const { data: search, error: searchError } = await supabase
+      .from('lead_finder_searches')
+      .select('id')
+      .eq('id', searchId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (searchError) {
+      logger.error({ err: searchError, workspaceId, searchId }, 'territory_workspace.search.fetch.failed');
+      return { success: false, error: 'Failed to fetch territory data.' };
+    }
+    if (!search) return { success: false, error: 'Search not found.' };
+    searchIds = [search.id];
+  } else {
+    // Results are tenant-scoped through their parent search. The map is based
+    // on stored coordinates, never synthetic positions.
+    const { data: searches, error: searchesError } = await supabase
+      .from('lead_finder_searches')
+      .select('id')
+      .eq('workspace_id', workspaceId);
+    if (searchesError) {
+      logger.error({ err: searchesError, workspaceId }, 'territory_workspace.searches.fetch.failed');
+      return { success: false, error: 'Failed to fetch territory data.' };
+    }
+    searchIds = (searches ?? []).map((search: any) => search.id);
   }
-
-  const searchIds = (searches ?? []).map((search: any) => search.id);
   if (searchIds.length === 0) return { success: true, data: { territories: [] as Territory[], networks: [] as any[], leads: [] as any[], noLocationLeads: [] as any[] } };
 
   const { data: initialLeads, error } = await supabase

@@ -2,10 +2,15 @@ import React from 'react';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import { getTerritoryMapData } from '@/app/actions/territory-workspace';
 import { OpportunityMapLayer } from '@/components/lead-finder/OpportunityMapLayer';
-import { Map as MapIcon, Target, Users } from 'lucide-react';
+import { Map as MapIcon, Target, Users, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
-export default async function TerritoryDashboardPage() {
-  const { success, data, error } = await getTerritoryMapData();
+export default async function TerritoryDashboardPage({
+  searchParams,
+}: {
+  searchParams: { searchId?: string };
+}) {
+  const { success, data, error } = await getTerritoryMapData(searchParams.searchId);
 
   if (!success || !data) {
     return (
@@ -26,10 +31,20 @@ export default async function TerritoryDashboardPage() {
         
         {/* Header */}
         <div>
+          <Link
+            href={searchParams.searchId ? `/lead-finder/results?searchId=${searchParams.searchId}` : '/lead-finder'}
+            className="inline-flex items-center gap-2 text-sm font-bold !text-dash-textMuted hover:!text-dash-text transition-colors mb-2"
+          >
+            <ArrowLeft size={16} /> {searchParams.searchId ? 'Back to Search Results' : 'Back to Lead Finder'}
+          </Link>
           <h1 className="text-3xl font-black !text-dash-text mb-2 flex items-center gap-3">
             <MapIcon className="text-dash-accent" size={32} /> Territory Intelligence
           </h1>
-          <p className="!text-dash-textMuted">Analyze geographic opportunity zones, map business networks, and visualize market density.</p>
+          <p className="!text-dash-textMuted">
+            {searchParams.searchId
+              ? 'Showing pins for this search only.'
+              : 'Analyze geographic opportunity zones, map business networks, and visualize market density across all leads.'}
+          </p>
         </div>
 
         {/* Dashboard Stats */}

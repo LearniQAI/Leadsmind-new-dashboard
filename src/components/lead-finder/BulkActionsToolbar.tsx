@@ -32,17 +32,21 @@ export function BulkActionsToolbar({
     if (selectedCount === 0) return;
     setLoading(true);
     const tags = tagInput.split(',').map(t => t.trim()).filter(Boolean);
-    const { success, addedCount } = await addLeadsToCRM(selectedLeads, tags);
+    const { success, addedCount, skippedCount, failedCount, error } = await addLeadsToCRM(selectedLeads, tags);
     setLoading(false);
-    
+
     if (success) {
-      toast.success(`Successfully added ${addedCount} leads to CRM Contacts.`);
+      const parts = [];
+      if (addedCount) parts.push(`added ${addedCount}`);
+      if (skippedCount) parts.push(`${skippedCount} already in CRM`);
+      if (failedCount) parts.push(`${failedCount} failed`);
+      toast.success(`Import complete: ${parts.join(', ')}.`);
       onClearSelection();
       setShowTags(false);
       setTagInput('');
       onRefresh(); // Refresh statuses
     } else {
-      toast.error('Failed to add some leads to CRM.');
+      toast.error(error || 'Failed to add leads to CRM.');
     }
   };
 

@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MessageCircleQuestion, X, Send, Loader2, AlertCircle, Clock, History, BookOpen } from 'lucide-react';
+import { BookOpen, X, Send, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { DashEmptyState } from '@/components/dashboard-ui';
+
+const BRAND = '#1359FF';
 
 interface SourceChunk {
   lessonId: string;
@@ -92,93 +95,173 @@ export default function CourseQAWidget({ courseId, onJumpToLesson }: CourseQAWid
   const cooldownActive = cooldownSeconds !== null && cooldownSeconds > 0;
 
   return (
-    <div className="fixed bottom-6 left-6 z-50">
+    <>
+      <style>{`
+        .course-qa-launcher { animation: course-qa-breathe 3s ease-in-out infinite; }
+        .course-qa-launcher:hover,
+        .course-qa-launcher:focus-visible {
+          animation: none;
+          box-shadow: 0 0 28px color-mix(in srgb, var(--qa-brand) 42%, transparent),
+            0 10px 24px rgba(15, 23, 42, 0.16);
+        }
+        @keyframes course-qa-breathe {
+          0%, 100% {
+            box-shadow: 0 0 14px color-mix(in srgb, var(--qa-brand) 22%, transparent),
+              0 8px 18px rgba(15, 23, 42, 0.13);
+          }
+          50% {
+            box-shadow: 0 0 22px color-mix(in srgb, var(--qa-brand) 32%, transparent),
+              0 9px 21px rgba(15, 23, 42, 0.14);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .course-qa-launcher { animation: none; }
+        }
+        .course-qa-modal-logo {
+          box-shadow: 0 0 12px color-mix(in srgb, var(--qa-brand) 24%, transparent);
+        }
+      `}</style>
+
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-primary hover:bg-primary/90 text-white rounded-full p-4 shadow-2xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 border border-white/10 group"
+          aria-label="Ask about this course"
+          title="Ask about this course"
+          className="course-qa-launcher fixed bottom-6 left-6 z-50 w-14 h-14 rounded-2xl flex items-center justify-center hover:scale-[1.07] active:scale-95 transition-all duration-200 border-[3px] bg-white group"
+          style={{ '--qa-brand': BRAND, borderColor: BRAND } as React.CSSProperties}
         >
-          <MessageCircleQuestion size={20} className="group-hover:rotate-12 transition-transform" />
-          <span className="text-[10px] font-black uppercase tracking-wider pr-1 font-space-grotesk">Ask about this course</span>
+          <BookOpen className="h-6 w-6 group-hover:rotate-6 transition-transform duration-300" style={{ color: BRAND }} />
         </button>
       )}
 
       {isOpen && (
-        <div className="bg-[#080f28]/95 backdrop-blur-md border border-white/5 w-96 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[560px]">
-          <div className="bg-[#04091a]/80 px-4 py-3 border-b border-white/5 flex justify-between items-center shrink-0">
-            <div className="flex items-center gap-2">
-              <BookOpen size={16} className="text-primary" />
-              <span className="text-[11px] font-black uppercase tracking-wider text-white">Ask about this course</span>
+        <div
+          className="fixed inset-0 z-[1999] bg-black/20 backdrop-blur-[5px] animate-fade-in"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {isOpen && (
+        <div className="fixed bottom-24 left-6 z-[2000] w-[calc(100vw-3rem)] max-w-sm h-[560px] max-h-[75vh] bg-white border border-dash-border rounded-2xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300 font-dm-sans">
+          {/* Header */}
+          <div className="p-5 border-b border-dash-border flex items-center justify-between bg-dash-surface shrink-0">
+            <div className="flex items-center gap-3">
+              <div
+                className="course-qa-modal-logo w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border-2 bg-white"
+                style={{ '--qa-brand': BRAND, borderColor: BRAND } as React.CSSProperties}
+              >
+                <BookOpen className="h-5 w-5" style={{ color: BRAND }} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold !text-dash-text font-space-grotesk">Ask about this course</h3>
+                <p className="text-[10px] !text-dash-textMuted font-medium pt-0.5">Grounded in this course's lessons</p>
+              </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white">
-              <X size={16} />
+            <button
+              onClick={() => setIsOpen(false)}
+              className="w-11 h-11 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text bg-dash-border/30 hover:bg-dash-border/50 rounded-xl transition duration-150 min-w-[44px] min-h-[44px]"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            <p className="text-[10px] text-white/40 leading-relaxed">
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-white">
+            <p className="text-[11px] !text-dash-textMuted leading-relaxed">
               Answers are grounded only in this course's own lessons. If it's not covered here, you'll be told honestly rather than given a guess.
             </p>
 
             {historyLoaded && interactions.length === 0 && (
-              <p className="text-[11px] text-white/40 text-center py-6">No questions asked yet — try one below.</p>
+              <DashEmptyState
+                icon={BookOpen}
+                title="No questions asked yet"
+                description="Ask something below and I'll answer using this course's lessons."
+                compact
+              />
             )}
 
             {interactions.map(interaction => (
-              <div key={interaction.id} className="bg-white/5 border border-white/5 rounded-xl p-3 space-y-2">
-                <p className="text-[12px] font-bold text-white">{interaction.question}</p>
-                <p className={`text-[12px] leading-relaxed ${interaction.grounded ? 'text-white/80' : 'text-amber-300/90'}`}>
-                  {interaction.answer}
-                </p>
-                {interaction.grounded && interaction.source_chunks_used.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {Array.from(new Map(interaction.source_chunks_used.map(s => [s.lessonId, s])).values()).map(s => (
-                      <button
-                        key={s.lessonId}
-                        type="button"
-                        onClick={() => onJumpToLesson?.(s.lessonId)}
-                        className="text-[9px] font-bold uppercase tracking-wide bg-primary/15 text-primary px-2 py-1 rounded-full hover:bg-primary/25 transition-colors"
-                        title={s.moduleTitle ? `Module: ${s.moduleTitle}` : undefined}
-                      >
-                        {s.lessonTitle}
-                      </button>
-                    ))}
+              <div key={interaction.id} className="space-y-3">
+                {/* Question bubble (outbound) */}
+                <div className="flex justify-end">
+                  <div
+                    className="max-w-[85%] p-3.5 rounded-2xl rounded-tr-none text-xs sm:text-sm leading-relaxed !text-white"
+                    style={{ backgroundColor: BRAND }}
+                  >
+                    <p className="whitespace-pre-wrap !text-white">{interaction.question}</p>
                   </div>
-                )}
+                </div>
+
+                {/* Answer bubble (inbound) */}
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] flex flex-col gap-2">
+                    <div className="p-3.5 rounded-2xl rounded-tl-none text-xs sm:text-sm leading-relaxed bg-dash-surface border border-dash-border">
+                      <p className={`whitespace-pre-wrap ${interaction.grounded ? '!text-dash-text' : '!text-amber-700'}`}>
+                        {interaction.answer}
+                      </p>
+                    </div>
+                    {interaction.grounded && interaction.source_chunks_used.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {Array.from(new Map(interaction.source_chunks_used.map(s => [s.lessonId, s])).values()).map(s => (
+                          <button
+                            key={s.lessonId}
+                            type="button"
+                            onClick={() => onJumpToLesson?.(s.lessonId)}
+                            className="text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-full transition-colors"
+                            style={{ backgroundColor: `${BRAND}1A`, color: BRAND }}
+                            title={s.moduleTitle ? `Module: ${s.moduleTitle}` : undefined}
+                          >
+                            {s.lessonTitle}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
 
           {error && (
-            <div className="mx-4 mb-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-[11px] flex items-center gap-2 shrink-0">
+            <div className="mx-5 mb-3 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-[11px] flex items-center gap-2 shrink-0">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {error}
             </div>
           )}
 
-          <form onSubmit={handleAsk} className="p-3 border-t border-white/5 shrink-0 flex items-center gap-2">
-            <input
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder={cooldownActive ? `Wait ${cooldownSeconds}s…` : 'Ask a question about this course…'}
-              disabled={asking || cooldownActive}
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white placeholder-white/30 outline-none focus:border-primary disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={asking || cooldownActive || !question.trim()}
-              className="bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:pointer-events-none text-white rounded-xl p-2.5 shrink-0"
+          {/* Pill input */}
+          <div className="p-4 border-t border-dash-border bg-white pb-safe shrink-0">
+            <form
+              onSubmit={handleAsk}
+              className="relative flex items-center bg-dash-surface rounded-full p-1.5 focus-within:ring-2 transition duration-200"
+              style={{ ['--tw-ring-color' as any]: `${BRAND}33` }}
             >
-              {asking ? (
-                <Loader2 size={16} className="animate-spin motion-reduce:animate-none" />
-              ) : cooldownActive ? (
-                <Clock size={16} />
-              ) : (
-                <Send size={16} />
-              )}
-            </button>
-          </form>
+              <input
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder={cooldownActive ? `Wait ${cooldownSeconds}s…` : 'Ask a question about this course…'}
+                disabled={asking || cooldownActive}
+                className="flex-1 bg-transparent px-4 py-3.5 text-xs sm:text-sm !text-dash-text placeholder:!text-dash-textMuted outline-none min-h-[44px] disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={asking || cooldownActive || !question.trim()}
+                className="w-11 h-11 text-white rounded-full transition duration-150 flex items-center justify-center shrink-0 shadow-sm hover:scale-105 active:scale-95 disabled:opacity-30 disabled:scale-100 min-w-[44px]"
+                style={{ backgroundColor: BRAND }}
+              >
+                {asking ? (
+                  <Loader2 size={16} className="animate-spin motion-reduce:animate-none" />
+                ) : cooldownActive ? (
+                  <Clock size={16} />
+                ) : (
+                  <Send size={16} />
+                )}
+              </button>
+            </form>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
