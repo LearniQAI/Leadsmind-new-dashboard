@@ -47,16 +47,21 @@ export async function POST(req: NextRequest) {
       invoicing: invoiceDiag
     };
 
-    // 2. Confidence check (0.70 similarity bar). Below it, we no longer wall the
-    // user off with a canned "couldn't find a match" message before even calling
-    // the model — a global similarity number can't tell a genuinely off-topic
-    // question apart from an on-topic one whose best article just embeds a bit
-    // weakly (short articles, e.g. SSO/analytics caveats, scored 0.44-0.65 in
-    // testing despite being the objectively correct match). Instead: still
-    // answer from whatever was retrieved, but have the model explicitly hedge
-    // and offer a human escalation, rather than staying silent on real content.
+    // 2. Confidence check. Threshold is 0.40, not 0.70 — measured directly
+    // against this corpus (text-embedding-3-small, short help articles):
+    // genuinely off-topic questions ("what's the capital of France?") top out
+    // around 0.10-0.20 similarity, while real on-topic questions — even ones
+    // phrased tersely, the way users actually type — land 0.42-0.81. A 0.70
+    // bar sat well inside the genuine-match zone, so most correct answers
+    // were being needlessly hedged/escalated (e.g. a verbatim FAQ question
+    // scored only 0.55 against its own source article). 0.40 sits with margin
+    // above the ~0.20 noise ceiling and below every genuine match observed, so
+    // it separates real matches from noise without walling off real answers.
+    // Below it, we still answer from whatever was retrieved rather than
+    // refusing outright, but have the model explicitly hedge and offer a
+    // human escalation instead of staying silent on real content.
     const hasAnyMatch = articles.length > 0;
-    const isLowConfidence = !isGreeting && similarity < 0.70;
+    const isLowConfidence = !isGreeting && similarity < 0.40;
 
     // 3. Construct prompt incorporating vector match + system settings diagnostics context
     const topThreeArticlesContext = articles

@@ -154,6 +154,14 @@ export async function saveLeadSearchAndResults(
         enrichment_status: r.enrichment_status,
         industry: r.industry,
         description: r.description,
+        // Google Places already returned these coordinates during search.
+        // Cache them with the lead rather than making a geocoding request for
+        // every territory-map view.
+        latitude: Number.isFinite(r.latitude) ? r.latitude : null,
+        longitude: Number.isFinite(r.longitude) ? r.longitude : null,
+        geocoded_at: Number.isFinite(r.latitude) && Number.isFinite(r.longitude) ? new Date().toISOString() : null,
+        geocode_attempted_at: Number.isFinite(r.latitude) && Number.isFinite(r.longitude) ? new Date().toISOString() : null,
+        geocode_error: null,
       }));
 
       const { error: resultsError } = await supabase
