@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import BackToTop from "@/common/BackToTop/BackToTop";
 import DashboardFooter from "./footer/FooterOne";
 import DashboardHeader from "./header/DashboardHeader";
 import DashBoardSidebar from "./sidebar/DashBoardSidebar";
@@ -12,9 +11,8 @@ import AccessDenied from "../auth/AccessDenied";
 import { getRequiredPermission } from "@/lib/nav/deriveRouteMap";
 import { resolveActiveNav } from "@/lib/nav/matchActiveNav";
 import dashboardNav from "@/data/dashboard-nav";
-// import LENAChat from "../support/LENAChat";
+import LENAChat from "../support/LENAChat";
 // import LENAContextualSidebar from "../support/LENAContextualSidebar";
-import LenaVisitorChat from "../support/LenaVisitorChat";
 import HelpDrawer from "../platform/HelpDrawer";
 import { FeedbackCenter } from "@/components/production/FeedbackCenter";
 
@@ -24,8 +22,7 @@ interface WrapperProps {
 
 const Wrapper: React.FC<WrapperProps> = ({ children }) => {
  const { isCollapse } = useGlobalContext();
- const { role, permissions, workspace } = useDashboardContext() as any;
- const workspaceId = workspace?.id || null;
+ const { role, permissions } = useDashboardContext() as any;
  const pathName = usePathname();
  const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -78,8 +75,6 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
         isCollapse ? "lg:pl-[72px]" : hasSubNav ? "lg:pl-[428px]" : "lg:pl-[208px]"
       }`}
      >
-      <BackToTop />
-      
       {/* Header */}
       <DashboardHeader />
       
@@ -93,9 +88,8 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       
       {/* Global Modals */}
       <GlobalSearchModal />
-      {/* <LENAChat /> */}
+      <LENAChat />
       {/* <LENAContextualSidebar /> */}
-      <LenaVisitorChat workspaceId={workspaceId} />
       <HelpDrawer />
       <FeedbackCenter />
      </div>

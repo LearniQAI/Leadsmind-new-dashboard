@@ -61,6 +61,10 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
       justify-content: center;
       z-index: 999999;
       transition: transform 0.2s ease;
+      background-image: url('\${apiBase}/icon0.svg');
+      background-size: 38px 38px;
+      background-position: center;
+      background-repeat: no-repeat;
     }
     #lena-widget-bubble:hover {
       transform: scale(1.05);
@@ -226,7 +230,8 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
   // Widget elements
   const bubble = document.createElement('div');
   bubble.id = 'lena-widget-bubble';
-  bubble.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
+  bubble.setAttribute('role', 'button');
+  bubble.setAttribute('aria-label', 'Open LENA AI assistant');
   document.body.appendChild(bubble);
 
   const container = document.createElement('div');
