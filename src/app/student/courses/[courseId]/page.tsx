@@ -1,10 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const UI_DIR = path.join(process.cwd(), 'src', 'app', 'student', 'courses', '[courseId]');
-if (!fs.existsSync(UI_DIR)) fs.mkdirSync(UI_DIR, { recursive: true });
-
-const pageTsx = `import React from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { PlayCircle, CheckCircle2, Lock, ChevronLeft, BookOpen, Clock } from 'lucide-react';
 import { createServerClient } from '@/lib/supabase/server';
@@ -56,7 +50,7 @@ export default async function StudentCourseViewer({ params }: { params: { course
               <span className="text-blue-600">{progressPct}%</span>
             </div>
             <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-full rounded-full transition-all duration-500" style={{ width: \`\${progressPct}%\` }} />
+              <div className="bg-blue-600 h-full rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
             </div>
           </div>
         </div>
@@ -110,7 +104,3 @@ export default async function StudentCourseViewer({ params }: { params: { course
     </div>
   );
 }
-`;
-fs.writeFileSync(path.join(UI_DIR, 'page.tsx'), pageTsx);
-
-console.log("SUCCESS! Highly visual Student Course Portal UI injected.");
