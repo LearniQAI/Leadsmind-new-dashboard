@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { RecoveryTokenHandler } from '@/lib/persistence/RecoveryTokenHandler';
 import { RecoveryManager } from '@/lib/persistence/RecoveryManager';
+import { createHash, timingSafeEqual } from 'crypto';
 
 // Basic IP rate limiting — this is a public, unauthenticated endpoint that dispatches a real
 // email to an arbitrary attacker-supplied address; without a limit, it's a spam vector.
@@ -39,6 +40,8 @@ export async function POST(
     }
 
     const supabase = createAdminClient();
+    const ownerCookie = req.cookies.get(`lm_partial_owner_${formId}`)?.value;
+    const ownerHash = ownerCookie ? createHash('sha256').update(ownerCookie).digest('hex') : null;
 
     // 1. Fetch form info and config
     const { data: form, error: formError } = await supabase
@@ -69,7 +72,19 @@ export async function POST(
     const token = RecoveryTokenHandler.createToken();
     const expiresAt = RecoveryTokenHandler.getExpirationDate(sessionExpirationDays);
 
-    // 3. Update the existing partial submission or insert it
+    // 3. A recovery email can only be requested by the browser that owns the
+    // existing partial session. A session id alone is not an authorization secret.
+    const { data: existing } = await supabase
+      .from('form_partial_submissions')
+      .select('owner_token_hash')
+      .eq('form_id', formId)
+      .eq('session_id', sessionId)
+      .maybeSingle();
+    if (!existing || !ownerHash || !existing.owner_token_hash || !timingSafeEqual(Buffer.from(ownerHash), Buffer.from(existing.owner_token_hash))) {
+      return NextResponse.json({ error: 'Partial session not owned by this browser' }, { status: 403 });
+    }
+
+    // 4. Update the existing partial submission.
     const { error: upsertError } = await supabase
       .from('form_partial_submissions')
       .upsert({

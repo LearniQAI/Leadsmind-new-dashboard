@@ -1,5 +1,4 @@
 // PartialSubmissionStore — handles database read/write actions for partial submissions
-import { createClient } from '@/lib/supabase/client';
 
 export interface SavePartialPayload {
   stepId: string;
@@ -19,38 +18,12 @@ export const PartialSubmissionStore = {
     formId: string,
     sessionId: string,
     payload: SavePartialPayload,
-    customClient?: any
+    _customClient?: any
   ): Promise<{ success: boolean; data?: any; error?: any }> {
-    const supabase = customClient || createClient();
-
     try {
-      const dbPayload = {
-        form_id: formId,
-        session_id: sessionId,
-        field_values: payload.values,
-        current_step_id: payload.stepId,
-        completion_percentage: payload.completionPercentage,
-        email: payload.email || null,
-        recovery_token: payload.recoveryToken || null,
-        recovery_token_expires_at: payload.recoveryTokenExpiresAt
-          ? payload.recoveryTokenExpiresAt.toISOString()
-          : null,
-        metadata: payload.metadata || {},
-      };
-
-      // Perform upsert based on (form_id, session_id) constraint
-      const { data, error } = await supabase
-        .from('form_partial_submissions')
-        .upsert(dbPayload, { onConflict: 'form_id,session_id' })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('[PartialSubmissionStore] Save error:', error);
-        return { success: false, error };
-      }
-
-      return { success: true, data };
+      const response = await fetch(`/api/public/forms/${formId}/partial`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ formId, sessionId, ...payload }) });
+      const result = await response.json();
+      return response.ok ? { success: true, data: result.data } : { success: false, error: result.error };
     } catch (err) {
       console.error('[PartialSubmissionStore] Unexpected save error:', err);
       return { success: false, error: err };
@@ -63,22 +36,11 @@ export const PartialSubmissionStore = {
   async loadPartialBySession(
     formId: string,
     sessionId: string,
-    customClient?: any
+    _customClient?: any
   ): Promise<any | null> {
-    const supabase = customClient || createClient();
     try {
-      const { data, error } = await supabase
-        .from('form_partial_submissions')
-        .select('*')
-        .eq('form_id', formId)
-        .eq('session_id', sessionId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('[PartialSubmissionStore] Load error:', error);
-        return null;
-      }
-      return data;
+      const response = await fetch(`/api/public/forms/${formId}/partial?sessionId=${encodeURIComponent(sessionId)}`, { credentials: 'same-origin' });
+      return response.ok ? (await response.json()).data : null;
     } catch {
       return null;
     }
@@ -88,23 +50,13 @@ export const PartialSubmissionStore = {
    * Load partial submission by recovery token (used on recovery resume endpoints)
    */
   async loadPartialByToken(
+    formId: string,
     token: string,
-    customClient?: any
+    _customClient?: any
   ): Promise<any | null> {
-    const supabase = customClient || createClient();
     try {
-      const { data, error } = await supabase
-        .from('form_partial_submissions')
-        .select('*')
-        .eq('recovery_token', token)
-        .gt('recovery_token_expires_at', new Date().toISOString())
-        .maybeSingle();
-
-      if (error) {
-        console.error('[PartialSubmissionStore] Token load error:', error);
-        return null;
-      }
-      return data;
+      const response = await fetch(`/api/public/forms/${formId}/partial?recoveryToken=${encodeURIComponent(token)}`, { credentials: 'same-origin' });
+      return response.ok ? (await response.json()).data : null;
     } catch {
       return null;
     }
@@ -116,15 +68,10 @@ export const PartialSubmissionStore = {
   async deletePartial(
     formId: string,
     sessionId: string,
-    customClient?: any
+    _customClient?: any
   ): Promise<void> {
-    const supabase = customClient || createClient();
     try {
-      await supabase
-        .from('form_partial_submissions')
-        .delete()
-        .eq('form_id', formId)
-        .eq('session_id', sessionId);
+      await fetch(`/api/public/forms/${formId}/partial?sessionId=${encodeURIComponent(sessionId)}`, { method: 'DELETE', credentials: 'same-origin' });
     } catch (err) {
       console.error('[PartialSubmissionStore] Delete error:', err);
     }
