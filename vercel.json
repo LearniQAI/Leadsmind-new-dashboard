@@ -18,15 +18,55 @@
     },
     {
       "path": "/api/cron/workers/campaign-dispatch",
-      "schedule": "0 3 * * *"
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/workers/workflow-resume",
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/workers/social-scheduled-dispatch",
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/publish",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/workers/social-comment-sync",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/workers/whatsapp-dispatch",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/workers/sms-dispatch",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/workers/email-queue",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/workers/tag-expiry",
+      "schedule": "15 0 * * *"
+    },
+    {
+      "path": "/api/cron/workers/auto-tag-sweep",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/workers/course-expiry",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/workers/rescreen-aml",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/workers/ai-tag-suggestions",
+      "schedule": "0 5 * * *"
     },
     {
       "path": "/api/cron/reminders",

@@ -17,9 +17,22 @@ export async function createPostVersion(payload: {
   summary: string;
 }) {
   try {
+    const wsId = await getCurrentWorkspaceId();
+    if (!wsId) return { error: 'No active workspace context' };
     const supabase = await createServerClient();
+
+    const { data: post, error: postError } = await supabase
+      .from('blog_posts')
+      .select('id')
+      .eq('id', payload.postId)
+      .eq('workspace_id', wsId)
+      .maybeSingle();
+    if (postError) throw postError;
+    if (!post) throw new NotFoundError('Post');
+
     const { data, error } = await supabase.from('blog_post_versions').insert({
       post_id: payload.postId,
+      workspace_id: wsId,
       title: payload.title,
       body_html: payload.bodyHtml,
       body_plain: payload.bodyPlain,
@@ -37,11 +50,14 @@ export async function createPostVersion(payload: {
 
 export async function getPostVersions(postId: string) {
   try {
+    const wsId = await getCurrentWorkspaceId();
+    if (!wsId) return { error: 'No active workspace context' };
     const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('blog_post_versions')
       .select('*')
       .eq('post_id', postId)
+      .eq('workspace_id', wsId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -65,6 +81,7 @@ export async function rollbackPostVersion(postId: string, versionId: string) {
       .from('blog_post_versions')
       .select('*')
       .eq("id", versionId)
+      .eq("post_id", postId)
       .eq("workspace_id", wsId)
       .single();
 

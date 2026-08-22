@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { applyAutoTag } from '@/modules/tags/autoTagging/applySystemTag';
 import { publishEvent } from '@/lib/events/EventBus';
 import { logger } from '@/shared/logger';
+import { acquireCronWorkerLock, releaseCronWorkerLock } from '@/lib/cron/workerLock';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,6 +29,16 @@ export async function GET(req: Request) {
   if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
   if (req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const workerName = 'auto-tag-sweep';
+  try {
+    if (!await acquireCronWorkerLock(workerName, 6 * 60 * 60)) {
+      return NextResponse.json({ success: true, skipped: true, message: 'A prior sweep is still running' });
+    }
+  } catch (err) {
+    logger.error({ err }, 'cron.auto_tag_sweep.lock.failed');
+    return NextResponse.json({ success: false, error: 'Could not acquire auto-tag sweep lock' }, { status: 500 });
   }
 
   const supabase = createAdminClient();
@@ -122,6 +133,8 @@ export async function GET(req: Request) {
     results.errors++;
     logger.error({ err }, 'cron.auto_tag_sweep.failed');
     return NextResponse.json({ success: false, error: 'Auto-tag sweep failed', results }, { status: 500 });
+  } finally {
+    try { await releaseCronWorkerLock(workerName); } catch (err) { logger.error({ err }, 'cron.auto_tag_sweep.lock_release.failed'); }
   }
 
   return NextResponse.json({ success: true, results });

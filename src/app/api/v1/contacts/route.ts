@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey, apiError, apiData, parsePagination } from '@/lib/api/auth'
 import { dispatchWebhook } from '@/lib/webhooks/dispatcher'
 import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags'
+import { enqueueAutoSenderCampaigns } from '@/lib/campaigns/autoSender'
+import { waitUntil } from '@vercel/functions'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,6 +67,7 @@ export async function POST(req: NextRequest) {
   if (!insertRes.error && insertRes.data) {
     await dispatchWebhook(auth.workspaceId, 'contact.created', { contact: insertRes.data })
     syncContactTagsToRelational(auth.workspaceId, insertRes.data.id, payload.tags).catch(() => {})
+    waitUntil(enqueueAutoSenderCampaigns(auth.workspaceId, insertRes.data.id).catch(() => {}))
     return apiData(insertRes.data, 201)
   }
 
@@ -86,6 +89,7 @@ export async function POST(req: NextRequest) {
     if (upErr) return apiError(upErr.message, 500)
     await dispatchWebhook(auth.workspaceId, 'contact.updated', { contact: updated })
     syncContactTagsToRelational(auth.workspaceId, updated.id, payload.tags).catch(() => {})
+    waitUntil(enqueueAutoSenderCampaigns(auth.workspaceId, updated.id).catch(() => {}))
     return apiData(updated, 200)
   }
 

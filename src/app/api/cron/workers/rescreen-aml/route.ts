@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runRescreening } from '../../../../../../workers/rescreen-aml';
 import { logger } from '@/shared/logger';
+import { acquireCronWorkerLock, releaseCronWorkerLock } from '@/lib/cron/workerLock';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,16 @@ async function handleCronTrigger(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const workerName = 'rescreen-aml';
+  try {
+    if (!await acquireCronWorkerLock(workerName, 6 * 60 * 60)) {
+      return NextResponse.json({ success: true, skipped: true, message: 'A prior rescreening run is still active' });
+    }
+  } catch (err) {
+    logger.error({ err }, 'cron.aml_rescreen.lock.failed');
+    return NextResponse.json({ error: 'Could not acquire AML rescreening lock' }, { status: 500 });
+  }
+
   try {
     // 2. Execute rescreening pipeline
     const result = await runRescreening();
@@ -41,5 +52,7 @@ async function handleCronTrigger(req: NextRequest) {
   } catch (err: any) {
     logger.error({ err }, 'cron.aml_rescreen.failed');
     return NextResponse.json({ error: 'AML rescreening job failed.' }, { status: 500 });
+  } finally {
+    try { await releaseCronWorkerLock(workerName); } catch (err) { logger.error({ err }, 'cron.aml_rescreen.lock_release.failed'); }
   }
 }

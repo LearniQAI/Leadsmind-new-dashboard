@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
 import { sendSMS } from '@/lib/sms';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +81,9 @@ See you soon!`;
 
         await supabase.from('appointments').update(is1Hour ? { reminder_1h_sent: true } : { reminder_24h_sent: true }).eq('id', apt.id);
         sentCount++;
-      } catch (err) {}
+      } catch (err) {
+        logger.error({ err, appointmentId: apt.id, hasEmail: !!email, hasPhone: !!phone }, 'cron.reminders.delivery.failed');
+      }
     }
 
     return NextResponse.json({ success: true, reminders_sent: sentCount });

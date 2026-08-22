@@ -11,7 +11,7 @@ import {
   ChevronDown, ChevronUp
 } from 'lucide-react';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
-import { updateCampaign } from '@/app/actions/marketing';
+import { dispatchCampaignNow, updateCampaign } from '@/app/actions/marketing';
 import { renderEmailLayout, EmailBlock, BrandKit } from '@/lib/builder/emailRenderer';
 import { DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter } from '@/components/dashboard-ui/Modal';
 import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
@@ -106,6 +106,12 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
   );
 
   const [preheaderText, setPreheaderText] = useState(initialCampaign.preview_text || '');
+  const [scheduledFor, setScheduledFor] = useState(() => {
+    if (!initialCampaign.scheduled_for) return '';
+    const date = new Date(initialCampaign.scheduled_for);
+    const offset = date.getTimezoneOffset() * 60_000;
+    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  });
 
   // Selected block
   const selectedBlock = selectedBlockIndex !== null ? blocks[selectedBlockIndex] : null;
@@ -239,7 +245,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
   };
 
   // Launch / Automate Action
-  const handleDeploy = async () => {
+  const handleDeploy = async (mode: 'now' | 'schedule') => {
     setSaving(true);
     try {
       // 1. Compile final HTML
@@ -254,6 +260,19 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       // A saved segment and the ad-hoc rule builder are mutually exclusive —
       // picking a segment clears the ad-hoc rules (see the Select below).
       const hasSegmentId = !!deploySegmentId && !hasRuleGroup;
+
+      if (mode === 'schedule') {
+        if (!scheduledFor || Number.isNaN(new Date(scheduledFor).getTime()) || new Date(scheduledFor).getTime() <= Date.now()) {
+          toast.error('Choose a future date and time.');
+          return;
+        }
+        // Direct addresses are intentionally sent inline by the legacy path;
+        // they cannot be deferred safely because they have no queue contact id.
+        if (emailTokens.length > 0) {
+          toast.error('Scheduling supports CRM contacts and segments. Add direct addresses to CRM first.');
+          return;
+        }
+      }
 
       const segmentData = {
         tags: tagTokens,
@@ -271,18 +290,28 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
         body_html: compiledHtml,
         preview_text: plainTextPreview.replace(/\{\{[^}]+\}\}/g, '').trim(),
         segment: segmentData,
-        status: 'scheduled'
+        status: 'scheduled',
+        scheduled_for: mode === 'schedule' ? new Date(scheduledFor).toISOString() : null,
       });
 
       if (result.error) {
         toast.error(result.error);
       } else {
+        if (mode === 'now' && !isAutomated) {
+          const dispatchResult = await dispatchCampaignNow(campaignId);
+          if (dispatchResult.error) {
+            toast.error(dispatchResult.error);
+            return;
+          }
+        }
         const totalRecipients = (result.matchedContactsCount || 0) + emailTokens.length;
         const countMsg = `(Targeting ${totalRecipients} recipients)`;
         toast.success(
           isAutomated
             ? `Automated campaign activated! ${countMsg}`
-            : `Broadcast campaign scheduled! ${countMsg}`
+            : mode === 'schedule'
+              ? `Campaign scheduled for ${new Date(scheduledFor).toLocaleString()}. ${countMsg}`
+              : `Broadcast started immediately! ${countMsg}`
         );
         setDeployModalOpen(false);
         router.refresh();
@@ -1300,14 +1329,38 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                 </div>
               </label>
             </div>
+            {!isAutomated && (
+              <DashFormField
+                label="Schedule for later"
+                hint="Campaign dispatch runs every 15 minutes. Delivery begins in the first dispatch cycle after this time."
+              >
+                <DashInput
+                  type="datetime-local"
+                  value={scheduledFor}
+                  min={new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16)}
+                  onChange={(e) => setScheduledFor(e.target.value)}
+                />
+              </DashFormField>
+            )}
           </div>
           <DashModalFooter>
             <DashButton variant="secondary" onClick={() => setDeployModalOpen(false)}>
               Cancel
             </DashButton>
-            <DashButton onClick={handleDeploy} disabled={saving}>
-              {saving ? 'Processing...' : isAutomated ? 'Save & enable auto-sender' : 'Broadcast now'}
-            </DashButton>
+            {isAutomated ? (
+              <DashButton onClick={() => handleDeploy('now')} disabled={saving}>
+                {saving ? 'Processing...' : 'Save & enable auto-sender'}
+              </DashButton>
+            ) : (
+              <>
+                <DashButton variant="secondary" onClick={() => handleDeploy('schedule')} disabled={saving || !scheduledFor}>
+                  {saving ? 'Processing...' : 'Schedule for later'}
+                </DashButton>
+                <DashButton onClick={() => handleDeploy('now')} disabled={saving}>
+                  {saving ? 'Processing...' : 'Send now'}
+                </DashButton>
+              </>
+            )}
           </DashModalFooter>
         </DashModalContent>
       </DashModal>

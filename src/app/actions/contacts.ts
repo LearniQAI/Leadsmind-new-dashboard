@@ -125,6 +125,9 @@ export async function addTag(contactId: string, tag: string) {
  const result = await service.addTag(contactId, workspaceId, tag);
  if (result.success === false) return { success: false, error: result.error };
 
+ const { publishEvent } = await import('@/lib/events/EventBus');
+ publishEvent(workspaceId, 'tag_added', contactId, { tag }).catch(() => {});
+
  revalidatePath(`/contacts/${contactId}`);
  return { success: true };
 }
@@ -136,6 +139,11 @@ export async function bulkAddTag(ids: string[], tag: string) {
  const service = await getContactService();
  const result = await service.bulkAddTag(ids, tag, workspaceId);
  if (result.success === false) return { success: false, error: result.error };
+
+ const { publishEvent } = await import('@/lib/events/EventBus');
+ for (const contactId of ids) {
+  publishEvent(workspaceId, 'tag_added', contactId, { tag }).catch(() => {});
+ }
 
  revalidatePath('/contacts');
  revalidatePath('/contacts/tags');

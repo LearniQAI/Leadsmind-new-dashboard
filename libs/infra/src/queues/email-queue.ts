@@ -36,12 +36,15 @@ export async function processEmailQueue(batchSize: number = 20) {
 
   for (const job of jobs) {
     // Acquire lock (mark as processing)
-    const { error: lockErr } = await supabaseAdmin
+    const { data: claimedJob, error: lockErr } = await supabaseAdmin
       .from('email_queue')
       .update({ status: 'processing' })
-      .eq('id', job.id);
+      .eq('id', job.id)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle();
 
-    if (lockErr) continue; // Race condition / lock failed
+    if (lockErr || !claimedJob) continue; // Another invocation already claimed it.
 
     try {
       // Fetch workspace settings to fetch API keys and custom from addresses
@@ -123,6 +126,15 @@ export async function processDelayedActions(batchSize: number = 20) {
   let successCount = 0;
 
   for (const action of actions) {
+    const { data: claimedAction, error: claimErr } = await supabaseAdmin
+      .from('lms_delayed_actions')
+      .update({ status: 'processing' })
+      .eq('id', action.id)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle();
+    if (claimErr || !claimedAction) continue;
+
     try {
       await executeLMSAction(
         action.workspace_id,

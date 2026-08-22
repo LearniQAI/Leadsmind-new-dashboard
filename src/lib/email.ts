@@ -23,12 +23,17 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, a
  const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@leadsmind.io'
  const fromName = config?.fromName || 'LeadsMind'
  
- if (!apiKey || apiKey === 're_123' || apiKey.includes('PLACEHOLDER')) {
-  logger.info({ to, subject, scheduledAt, tags: config?.tags, attachmentCount: attachments?.length ?? 0 }, 'email.mocked');
-  return { id: 'mock_' + Date.now() };
+ // Sending must be fail-closed. Returning a synthetic id here previously made
+ // every caller report a successful delivery even though no provider request
+ // was made. A provider credential is required for every email environment.
+ const normalizedApiKey = apiKey?.trim();
+ if (!normalizedApiKey || normalizedApiKey === 're_123' || normalizedApiKey.toUpperCase().includes('PLACEHOLDER')) {
+  const error = new Error('Email delivery is unavailable: a valid Resend API key is not configured.');
+  logger.error({ to, subject, scheduledAt, tags: config?.tags, attachmentCount: attachments?.length ?? 0 }, 'email.resend_config.invalid');
+  throw error;
  }
 
- const resend = new Resend(apiKey)
+ const resend = new Resend(normalizedApiKey)
  try {
   const { data, error } = await resend.emails.send({
    from: `${fromName} <${fromAddress}>`,
