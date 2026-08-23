@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import Link from 'next/link';
 import {
   BookOpen, Calendar, Award, CheckCircle2, ChevronRight, Play
@@ -9,6 +9,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { Progress } from '@/components/ui/progress';
 import { DashCard, DashButton, DashEmptyState } from '@/components/dashboard-ui';
+import ContinueLearningBanner from '@/components/lms/ContinueLearningBanner';
 
 export default async function StudentDashboardPage() {
   const profile = await getCurrentProfile();
@@ -54,6 +55,8 @@ export default async function StudentDashboardPage() {
           </Link>
         </DashButton>
       </div>
+
+      <ContinueLearningBanner />
 
       {/* Metrics widgets */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -161,3 +164,5 @@ export default async function StudentDashboardPage() {
     </div>
   );
 }
+
+
