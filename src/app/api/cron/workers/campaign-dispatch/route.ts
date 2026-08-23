@@ -24,7 +24,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return await Observability.traceWorker('campaign_dispatch_worker', {}, async () => {
+  const targetCampaignId = new URL(req.url).searchParams.get('campaignId');
+  return await Observability.traceWorker('campaign_dispatch_worker', { targetCampaignId }, async () => {
     try {
       const workerId = `worker_${crypto.randomUUID()}`;
     const batchSize = 50;
@@ -32,7 +33,8 @@ export async function GET(req: Request) {
     // 1. Acquire Jobs with Atomic Lock
     const { data: jobs, error: lockErr } = await supabaseAdmin.rpc('acquire_campaign_jobs', {
       worker_id: workerId,
-      batch_size: batchSize
+      batch_size: batchSize,
+      target_campaign_id: targetCampaignId
     });
 
     if (lockErr) {
@@ -41,7 +43,7 @@ export async function GET(req: Request) {
     }
 
     if (!jobs || jobs.length === 0) {
-      return NextResponse.json({ success: true, processed: 0, message: 'Queue is empty' });
+      return NextResponse.json({ success: true, processed: 0, sent: 0, remaining: 0, message: 'Queue is empty' });
     }
 
     const now = new Date();
@@ -216,7 +218,18 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, processed: jobs.length, sent: sentCount });
+    let remaining = 0;
+    if (targetCampaignId) {
+      const { count, error: remainingError } = await supabaseAdmin
+        .from('campaign_dispatch_queue')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', targetCampaignId)
+        .in('status', ['pending', 'processing', 'deferred']);
+      if (remainingError) throw remainingError;
+      remaining = count ?? 0;
+    }
+
+    return NextResponse.json({ success: true, processed: jobs.length, sent: sentCount, remaining });
   } catch (error: any) {
     Observability.captureError(error, 'critical', { provider: 'worker' });
     logger.error({ err: error }, 'cron.campaign_dispatch.failed');

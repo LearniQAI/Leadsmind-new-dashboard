@@ -210,10 +210,12 @@ export async function POST(req: NextRequest) {
                 </a>
               </div>
             `,
-          }).catch(() => {})
+          }).catch((err) => logger.error({ err, payrollRunId: run.id }, 'hr.payroll.notification_email.failed'))
         }
       }
-    } catch {} // Don't fail payroll if email fails
+    } catch (err) {
+      logger.error({ err, payrollRunId: run.id }, 'hr.payroll.notification_email.lookup.failed')
+    }
 
     return NextResponse.json({ success: true, payrollRun: run })
 

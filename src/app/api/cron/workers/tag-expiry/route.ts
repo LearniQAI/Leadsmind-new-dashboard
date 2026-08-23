@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { publishEvent } from '@/lib/events/EventBus';
 import { logger } from '@/shared/logger';
+import { acquireCronWorkerLock, releaseCronWorkerLock } from '@/lib/cron/workerLock';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,6 +18,16 @@ export async function GET(req: Request) {
   if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
   if (req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const workerName = 'tag-expiry';
+  try {
+    if (!await acquireCronWorkerLock(workerName, 6 * 60 * 60)) {
+      return NextResponse.json({ success: true, skipped: true, message: 'A prior sweep is still running' });
+    }
+  } catch (err) {
+    logger.error({ err }, 'cron.tag_expiry.lock.failed');
+    return NextResponse.json({ success: false, error: 'Could not acquire tag-expiry lock' }, { status: 500 });
   }
 
   const supabase = createAdminClient();
@@ -56,6 +67,8 @@ export async function GET(req: Request) {
   } catch (err) {
     logger.error({ err }, 'cron.tag_expiry.failed');
     return NextResponse.json({ success: false, error: 'Tag expiry sweep failed' }, { status: 500 });
+  } finally {
+    try { await releaseCronWorkerLock(workerName); } catch (err) { logger.error({ err }, 'cron.tag_expiry.lock_release.failed'); }
   }
 
   return NextResponse.json({ success: true, expiredTags, notifiedContacts });

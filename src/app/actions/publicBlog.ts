@@ -3,21 +3,17 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { logger } from '@/shared/logger';
+import { resolvePublicBlogWorkspaceId } from '@/lib/blog/publicWorkspace';
 
 /**
- * Fetch all published blog posts in the active workspace or default workspace.
+ * Fetch all published blog posts for the tenant serving this request.
  * Resolves author details and categories.
  */
 export async function getPublicBlogPosts(filters?: { categoryId?: string; search?: string }) {
   try {
     const supabase = await createServerClient();
-    let workspaceId = await getCurrentWorkspaceId();
-    
-    // Fallback if workspace cookie not present (anonymous public visitors)
-    if (!workspaceId) {
-      const { data: firstWs } = await supabase.from('workspaces').select('id').limit(1).maybeSingle();
-      if (firstWs) workspaceId = firstWs.id;
-    }
+    const workspaceId = await resolvePublicBlogWorkspaceId();
+    if (!workspaceId) return { data: [] };
     
     let query = supabase
       .from('blog_posts')
@@ -28,9 +24,7 @@ export async function getPublicBlogPosts(filters?: { categoryId?: string; search
       `)
       .eq('status', 'published');
 
-    if (workspaceId) {
-      query = query.eq('workspace_id', workspaceId);
-    }
+    query = query.eq('workspace_id', workspaceId);
     if (filters?.categoryId) {
       query = query.eq('category_id', filters.categoryId);
     }
@@ -50,7 +44,7 @@ export async function getPublicBlogPosts(filters?: { categoryId?: string; search
 /**
  * Fetch details of a single blog post by its unique URL slug.
  * - When preview=true, skips the status=published filter (for admin draft previews).
- * - Workspace is resolved from the session cookie so slug collisions across workspaces are avoided.
+ * - Public requests are resolved from their tenant host so slug collisions across workspaces are avoided.
  */
 export async function getPublicBlogPost(slug: string, preview = false) {
   try {
@@ -72,10 +66,15 @@ export async function getPublicBlogPost(slug: string, preview = false) {
       // unpublished draft be read by slug.
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Dashboard previews use the authenticated active workspace. Public
+        // custom-domain previews use the resolved tenant host.
+        const workspaceId = await resolvePublicBlogWorkspaceId() || await getCurrentWorkspaceId();
+        if (!workspaceId) return { data: null };
         const { data: candidate } = await supabase
           .from('blog_posts')
           .select(selectShape)
           .eq('slug', slug)
+          .eq('workspace_id', workspaceId)
           .maybeSingle();
 
         if (candidate) {
@@ -96,10 +95,14 @@ export async function getPublicBlogPost(slug: string, preview = false) {
       // erroring in a way that reveals an unpublished post exists.
     }
 
+    const workspaceId = await resolvePublicBlogWorkspaceId();
+    if (!workspaceId) return { data: null };
+
     const { data, error } = await supabase
       .from('blog_posts')
       .select(selectShape)
       .eq('slug', slug)
+      .eq('workspace_id', workspaceId)
       .eq('status', 'published')
       .maybeSingle();
 
@@ -112,22 +115,15 @@ export async function getPublicBlogPost(slug: string, preview = false) {
 }
 
 /**
- * Fetch available categories in the active or default workspace for public filtering.
+ * Fetch available categories for the tenant serving this public request.
  */
 export async function getPublicCategories() {
   try {
     const supabase = await createServerClient();
-    let workspaceId = await getCurrentWorkspaceId();
+    const workspaceId = await resolvePublicBlogWorkspaceId();
+    if (!workspaceId) return { data: [] };
     
-    if (!workspaceId) {
-      const { data: firstWs } = await supabase.from('workspaces').select('id').limit(1).maybeSingle();
-      if (firstWs) workspaceId = firstWs.id;
-    }
-    
-    let query = supabase.from('blog_categories').select('*');
-    if (workspaceId) {
-      query = query.eq('workspace_id', workspaceId);
-    }
+    const query = supabase.from('blog_categories').select('*').eq('workspace_id', workspaceId);
     
     const { data, error } = await query.order('name', { ascending: true });
     if (error) throw error;
@@ -144,12 +140,11 @@ export async function getPublicCategories() {
 export async function subscribeToNewsletter(email: string, workspaceId?: string, referralCode?: string) {
   try {
     const supabase = await createServerClient();
-    let wsId = workspaceId || await getCurrentWorkspaceId();
-    if (!wsId) {
-      const { data: firstWs } = await supabase.from('workspaces').select('id').limit(1).maybeSingle();
-      if (firstWs) wsId = firstWs.id;
+    const hostWorkspaceId = await resolvePublicBlogWorkspaceId();
+    if (!hostWorkspaceId || (workspaceId && workspaceId !== hostWorkspaceId)) {
+      return { error: 'Public blog workspace could not be resolved.' };
     }
-    if (!wsId) return { error: 'Active workspace context could not be resolved.' };
+    const wsId = hostWorkspaceId;
 
     const contactPayload: any = {
       workspace_id: wsId,

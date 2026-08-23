@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
+import { acquireCronWorkerLock, releaseCronWorkerLock } from '@/lib/cron/workerLock';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -88,6 +89,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const workerName = 'ai-tag-suggestions';
+  try {
+    if (!await acquireCronWorkerLock(workerName, 6 * 60 * 60)) {
+      return NextResponse.json({ success: true, skipped: true, message: 'A prior sweep is still running' });
+    }
+  } catch (err) {
+    logger.error({ err }, 'cron.ai_tag_suggestions.lock.failed');
+    return NextResponse.json({ success: false, error: 'Could not acquire AI tag-suggestions lock' }, { status: 500 });
+  }
+
   const supabase = createAdminClient();
   let evaluated = 0;
   let proposed = 0;
@@ -145,6 +156,8 @@ export async function GET(req: Request) {
   } catch (err) {
     logger.error({ err }, 'cron.ai_tag_suggestions.failed');
     return NextResponse.json({ success: false, error: 'AI tag suggestion job failed' }, { status: 500 });
+  } finally {
+    try { await releaseCronWorkerLock(workerName); } catch (err) { logger.error({ err }, 'cron.ai_tag_suggestions.lock_release.failed'); }
   }
 
   return NextResponse.json({ success: true, evaluated, proposed });

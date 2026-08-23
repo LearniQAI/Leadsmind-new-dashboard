@@ -25,7 +25,7 @@ export async function generateMetadata({ params, searchParams }: PageProps) {
   if (!post) return { title: 'Article Not Found' };
 
   const title = post.seo_title || post.title;
-  const desc = post.summary || 'Discover insights and strategies from the LeadsMind team.';
+  const desc = post.meta_description || post.summary || 'Discover insights and strategies from the LeadsMind team.';
   const canonical = post.canonical_url || `https://www.leadsmind.io/blog/${post.slug}`;
 
   return {
@@ -36,7 +36,7 @@ export async function generateMetadata({ params, searchParams }: PageProps) {
     openGraph: {
       title,
       description: desc,
-      url: `https://www.leadsmind.io/blog/${post.slug}`,
+      url: canonical,
       type: 'article',
       publishedTime: post.published_at || post.created_at,
       modifiedTime: post.updated_at || post.created_at,
@@ -86,15 +86,15 @@ export default async function PublicBlogPostPage({ params, searchParams }: PageP
     return `<h2 id="${id}">${titleText}</h2>`;
   });
 
-  const articleUrl = `https://www.leadsmind.io/blog/${post.slug}`;
+  const articleUrl = post.canonical_url || `https://www.leadsmind.io/blog/${post.slug}`;
   const authorName = post.author ? `${post.author.first_name} ${post.author.last_name || ''}` : 'Corporate Content Director';
 
   // JSON-LD Semantic Schema definition (only for published posts)
   const schemaJson = !isDraft ? {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
-    'headline': post.title,
-    'description': post.summary || '',
+    'headline': post.seo_title || post.title,
+    'description': post.meta_description || post.summary || '',
     'image': post.cover_image ? [post.cover_image] : [],
     'datePublished': post.published_at || post.created_at,
     'dateModified': post.updated_at || post.created_at,

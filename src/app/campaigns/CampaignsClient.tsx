@@ -320,7 +320,9 @@ export default function CampaignsClient({
             <div className="flex items-center justify-between pt-5 border-t border-dash-border">
               <div className="flex items-center gap-2 text-[11px] font-semibold !text-dash-textMuted">
                 <Calendar className="w-3.5 h-3.5" />
-                {campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Not sent'}
+                {campaign.status === 'scheduled' && campaign.scheduled_for
+                  ? `Scheduled for ${new Date(campaign.scheduled_for).toLocaleString()}`
+                  : campaign.sent_at ? `Sent ${new Date(campaign.sent_at).toLocaleDateString()}` : 'Not sent'}
               </div>
               <div className="flex gap-2">
                 <DashButton onClick={() => openEdit(campaign)} variant="secondary" size="sm">

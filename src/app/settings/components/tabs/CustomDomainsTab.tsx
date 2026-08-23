@@ -19,6 +19,7 @@ export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
   const load = async () => {
     if (!workspaceId) { setLoading(false); return; }
@@ -51,6 +52,30 @@ export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string
     if ((res as any)?.success === false) { toast.error((res as any).error); return; }
     toast.success('Domain removed');
     load();
+  };
+
+  const handleVerify = async (domain: { id: string; hostname: string }) => {
+    setVerifyingId(domain.id);
+    try {
+      const response = await fetch('/api/domains/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domainId: domain.id }),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Verification did not complete. Confirm the DNS records and try again.');
+      }
+
+      toast.success(`${domain.hostname} is verified and active.`);
+      await load();
+    } catch (error: any) {
+      toast.error(error.message || `Could not verify ${domain.hostname}.`);
+      await load();
+    } finally {
+      setVerifyingId(null);
+    }
   };
 
   const copy = (text: string, id: string) => {
@@ -105,9 +130,22 @@ export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string
                       <Icon className="w-3 h-3" /> {s.label}
                     </span>
                   </div>
-                  <button onClick={() => handleDelete(d.id)} className="!text-dash-textMuted hover:text-red transition-colors motion-reduce:transition-none">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {d.status !== 'active' && (
+                      <button
+                        type="button"
+                        onClick={() => handleVerify(d)}
+                        disabled={verifyingId === d.id}
+                        className="inline-flex items-center gap-1.5 rounded-md bg-dash-accent px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-dash-accent/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors motion-reduce:transition-none"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${verifyingId === d.id ? 'animate-spin motion-reduce:animate-none' : ''}`} />
+                        {verifyingId === d.id ? 'Verifying…' : 'Verify'}
+                      </button>
+                    )}
+                    <button type="button" onClick={() => handleDelete(d.id)} className="!text-dash-textMuted hover:text-red transition-colors motion-reduce:transition-none">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {d.status !== 'active' && (

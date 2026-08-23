@@ -199,7 +199,7 @@ export async function POST(req: NextRequest) {
             </p>
           </div>
         `,
-      }).catch(() => {}) // Don't fail if email fails
+      }).catch((err) => logger.error({ err, leaveRequestId: data.id }, 'hr.leave.request_notification_email.failed'))
 
     }
 
@@ -283,7 +283,7 @@ export async function PATCH(req: NextRequest) {
               </p>
             </div>
           `,
-        }).catch(() => {})
+        }).catch((err) => logger.error({ err, leaveRequestId: existing.id }, 'hr.leave.approval_email.failed'))
       }
     }
 
@@ -305,7 +305,7 @@ export async function PATCH(req: NextRequest) {
             </p>
           </div>
         `,
-      }).catch(() => {})
+      }).catch((err) => logger.error({ err, leaveRequestId: existing.id }, 'hr.leave.rejection_email.failed'))
     }
 
     return NextResponse.json({ success: true, leaveRequest: data })

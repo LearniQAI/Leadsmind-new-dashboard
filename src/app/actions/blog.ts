@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createAdminClient, createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
@@ -152,14 +152,24 @@ export async function deletePost(postId: string) {
 
 export async function checkAndPublishScheduledPosts() {
   try {
-    const supabase = await createServerClient();
+    // This action is called only by the CRON_SECRET-protected route. It must
+    // use the service-role client because a cron request has no user session
+    // and scheduled rows are intentionally not publicly selectable through RLS.
+    const supabase = createAdminClient();
     const now = new Date().toISOString();
-    const { data, error: fError } = await supabase.from('blog_posts').select('id, slug').eq('status', 'scheduled').lte('scheduled_at', now);
-    if (fError) throw fError;
-    if (!data || data.length === 0) return { success: true, count: 0 };
 
-    const { error: uError } = await supabase.from('blog_posts').update({ status: 'published', published_at: now, scheduled_at: null, updated_at: now }).in('id', data.map(p => p.id));
+    // This conditional UPDATE is the claim: only rows still scheduled and due
+    // can transition. Overlapping cron invocations therefore cannot both
+    // publish a post; the later invocation returns no rows for an already
+    // claimed/published record.
+    const { data, error: uError } = await supabase
+      .from('blog_posts')
+      .update({ status: 'published', published_at: now, scheduled_at: null, updated_at: now })
+      .eq('status', 'scheduled')
+      .lte('scheduled_at', now)
+      .select('id, slug');
     if (uError) throw uError;
+    if (!data || data.length === 0) return { success: true, count: 0 };
 
     revalidatePath('/blog');
     data.forEach(p => revalidatePath(`/blog/${p.slug}`));

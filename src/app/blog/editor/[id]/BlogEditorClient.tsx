@@ -81,6 +81,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
             scheduled_at: post.scheduled_at,
             category_id: post.category_id,
             seo_title: post.seo_title,
+            meta_description: post.meta_description,
             canonical_url: post.canonical_url,
             target_keyword: post.target_keyword,
             layout_style: post.layout_style,

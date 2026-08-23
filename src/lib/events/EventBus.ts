@@ -68,5 +68,10 @@ export async function publishEvent(
       logger.error({ err, eventType }, "event_bus.trigger_workflows.failed");
     } catch { /* logging failure must not mask the real error */ }
   });
-  waitUntil(trigger);
+  const autoSender = (eventType === EVENT_TRIGGERS.CONTACT_CREATED || eventType === EVENT_TRIGGERS.TAG_ADDED)
+    ? import('@/lib/campaigns/autoSender')
+      .then(({ enqueueAutoSenderCampaigns }) => enqueueAutoSenderCampaigns(workspaceId, contactId))
+      .catch((err) => logger.error({ err, eventType, contactId, workspaceId }, 'event_bus.auto_sender.failed'))
+    : Promise.resolve();
+  waitUntil(Promise.all([trigger, autoSender]));
 }

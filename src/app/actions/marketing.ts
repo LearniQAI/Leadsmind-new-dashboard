@@ -4,6 +4,7 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess, requireFormAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { getTemplateById } from '@/lib/builder/templates';
+import { inngest } from '@/lib/inngest';
 
 // FUNNELS
 export async function getFunnels() {
@@ -1022,6 +1023,12 @@ export async function updateCampaign(id: string, updates: any) {
 
   // If moving status to sent or scheduled, enforce Domain Verification rules
   if (updates.status === 'sent' || updates.status === 'scheduled') {
+   if (updates.status === 'scheduled' && updates.scheduled_for) {
+    const scheduledAt = new Date(updates.scheduled_for);
+    if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now()) {
+     throw new Error('Campaign scheduled time must be in the future.');
+    }
+   }
    // Scoped to the caller's own verified workspace — previously this looked
    // up the campaign by id alone with no workspace filter, then overwrote
    // workspaceId with whatever workspace_id that row happened to have. That
@@ -1194,11 +1201,13 @@ export async function updateCampaign(id: string, updates: any) {
      // via more than one path.
      const uniqueContactIds = Array.from(matchedContactIds);
 
+     const queueScheduledFor = updates.scheduled_for || new Date().toISOString();
      const queueRows = uniqueContactIds.map(contactId => ({
-      campaign_id: id,
-      workspace_id: data.workspace_id,
-      contact_id: contactId,
-      status: 'pending',
+     campaign_id: id,
+     workspace_id: data.workspace_id,
+     contact_id: contactId,
+     status: 'pending',
+     scheduled_for: queueScheduledFor,
      }));
 
      // upsert + ignoreDuplicates -> ON CONFLICT (campaign_id, contact_id) DO NOTHING.
@@ -1212,6 +1221,16 @@ export async function updateCampaign(id: string, updates: any) {
       throw new Error('Failed to queue campaign recipients. Please try again.');
      }
 
+     // An existing row is intentionally not duplicated by the upsert. Update
+     // its due time too, so changing a future schedule to Send now (or
+     // rescheduling it) affects recipients already in the queue.
+     const { error: rescheduleError } = await supabase
+      .from('campaign_dispatch_queue')
+      .update({ scheduled_for: queueScheduledFor })
+      .eq('campaign_id', id)
+      .in('status', ['pending', 'deferred']);
+     if (rescheduleError) throw rescheduleError;
+
      matchedContactsCount = uniqueContactIds.length;
     }
    }
@@ -1220,7 +1239,7 @@ export async function updateCampaign(id: string, updates: any) {
    // never goes through the dispatch worker, so it must do its own
    // per-recipient personalization here — updates.body_html is stored with
    // {{tokens}} intact (see EmailBuilderClient's skipPersonalization).
-   if (updates.segment?.emails?.length > 0 && updates.body_html) {
+   if (updates.segment?.emails?.length > 0 && updates.body_html && !updates.scheduled_for) {
     const { sendEmail } = await import('@/lib/email');
     const { parsePersonalTokens } = await import('@/lib/builder/emailRenderer');
     const { buildUnsubscribeLink } = await import('@/lib/email/unsubscribeLink');
@@ -1258,6 +1277,35 @@ export async function updateCampaign(id: string, updates: any) {
  } catch (error: any) {
    logger.error({ err: error }, 'update.campaign.failed');
    return { error: 'Operation failed. Please try again.' };
+ }
+}
+
+/** Queue a durable immediate-dispatch job after recipients have been queued. */
+export async function dispatchCampaignNow(campaignId: string) {
+ try {
+  const supabase = await createServerClient();
+  const { workspaceId } = await requireWorkspaceAccess();
+  const { data: campaign, error } = await supabase
+   .from('email_campaigns')
+   .select('id, status')
+   .eq('id', campaignId)
+   .eq('workspace_id', workspaceId)
+   .single();
+  if (error || !campaign) throw new Error('Email campaign not found.');
+
+  const { count, error: queueError } = await supabase
+   .from('campaign_dispatch_queue')
+   .select('id', { count: 'exact', head: true })
+   .eq('campaign_id', campaignId)
+   .in('status', ['pending', 'processing', 'deferred']);
+  if (queueError) throw queueError;
+  if ((count ?? 0) === 0) return { success: true, queued: 0, message: 'No queued CRM recipients to dispatch.' };
+
+  await inngest.send({ name: 'campaign/dispatch', data: { campaignId } });
+  return { success: true, queued: count ?? 0 };
+ } catch (error: any) {
+  logger.error({ err: error, campaignId }, 'campaign.immediate_dispatch.enqueue.failed');
+  return { error: error.message || 'Failed to start immediate campaign delivery.' };
  }
 }
 

@@ -506,7 +506,26 @@ export const BlogEditorSettings: React.FC<BlogSettingsProps> = ({
             </p>
           </div>
 
-          {/* Keywords & Slugs */}
+          {/* Search metadata */}
+          <div className="space-y-1.5">
+            <label className={cn(labelClass, "text-[9px]")}>URL slug</label>
+            <input type="text" value={post.slug || ''} placeholder="article-url-slug" onChange={e => onUpdate({ slug: e.target.value })} className={cn(selectClass, "placeholder:text-dash-textMuted")} />
+            <p className="text-[9px] !text-dash-textMuted">Changing this changes the public article URL.</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className={cn(labelClass, "text-[9px]")}>SEO title</label>
+            <input type="text" value={post.seo_title || ''} placeholder="Defaults to the article title" onChange={e => onUpdate({ seo_title: e.target.value })} className={cn(selectClass, "placeholder:text-dash-textMuted")} />
+          </div>
+          <div className="space-y-1.5">
+            <label className={cn(labelClass, "text-[9px]")}>Meta description</label>
+            <textarea value={post.meta_description || ''} placeholder="Defaults to the abstract summary for existing posts" rows={3} onChange={e => onUpdate({ meta_description: e.target.value })} className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none resize-none placeholder:text-dash-textMuted" />
+          </div>
+          <div className="space-y-1.5">
+            <label className={cn(labelClass, "text-[9px]")}>Canonical URL</label>
+            <input type="url" value={post.canonical_url || ''} placeholder="https://example.com/blog/article" onChange={e => onUpdate({ canonical_url: e.target.value })} className={cn(selectClass, "placeholder:text-dash-textMuted")} />
+          </div>
+
+          {/* Keywords */}
           <div className="space-y-1.5">
             <label className={cn(labelClass, "text-[9px]")}>Target keyword</label>
             <input type="text" value={post.target_keyword || ''} placeholder="e.g. lead nurturing" onChange={e => onUpdate({ target_keyword: e.target.value })} className={cn(selectClass, "placeholder:text-dash-textMuted")} />

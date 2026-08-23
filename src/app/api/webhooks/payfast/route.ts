@@ -211,7 +211,7 @@ export async function POST(req: NextRequest) {
                   <p>Thank you for your payment.</p>
                 </div>
               `,
-            }).catch(() => {})
+            }).catch((err) => logger.error({ err, invoiceId: matchedInvoice.id }, 'webhook.payfast.payment_confirmation_email.failed'))
           }
 
           if (contact?.phone) {
