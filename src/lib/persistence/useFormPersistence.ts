@@ -61,7 +61,7 @@ export function useFormPersistence({
       let dbData: any = null;
       if (token) {
         toast.info('Validating recovery link...');
-        dbData = await PartialSubmissionStore.loadPartialByToken(token);
+        dbData = await PartialSubmissionStore.loadPartialByToken(formId, token);
       }
 
       // Check local storage fallback if no token recovery or if local is newer
