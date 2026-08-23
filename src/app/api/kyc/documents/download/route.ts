@@ -7,9 +7,15 @@ import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
-const ENCRYPTION_KEY = crypto.createHash('sha256')
-  .update(process.env.KYC_ENCRYPTION_KEY || 'default_secret_compliance_key_32_bytes')
-  .digest();
+// No fallback: a hardcoded default key here would mean anyone who reads this source (or any repo
+// fork/clone) could decrypt FICA/KYC documents for any deployment that forgot to set the env var.
+function getKycEncryptionKey(): Buffer {
+  const keyEnv = process.env.KYC_ENCRYPTION_KEY;
+  if (!keyEnv) {
+    throw new Error('[FATAL] KYC_ENCRYPTION_KEY env var is not configured');
+  }
+  return crypto.createHash('sha256').update(keyEnv).digest();
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -77,10 +83,26 @@ export async function GET(req: NextRequest) {
     const arrayBuffer = await fileData.arrayBuffer();
     const encryptedBuffer = Buffer.from(arrayBuffer);
 
-    // Decrypt using document-specific IV
+    // Decrypt using the document-specific IV and whichever scheme it was actually
+    // encrypted with (encryption_algorithm) -- rows uploaded before this GCM upgrade
+    // are explicitly tagged 'aes-256-cbc' (see 20260831000000 migration) and keep
+    // decrypting via the legacy path; new uploads use authenticated aes-256-gcm.
     const iv = Buffer.from(doc.encryption_iv, 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-    const decryptedBuffer = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
+    const key = getKycEncryptionKey();
+    const algorithm = doc.encryption_algorithm || 'aes-256-cbc';
+
+    let decryptedBuffer: Buffer;
+    if (algorithm === 'aes-256-gcm') {
+      if (!doc.encryption_auth_tag) {
+        throw new Error('Missing auth tag for GCM-encrypted document');
+      }
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+      decipher.setAuthTag(Buffer.from(doc.encryption_auth_tag, 'hex'));
+      decryptedBuffer = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
+    } else {
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      decryptedBuffer = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
+    }
 
     // Parse clean filename and map correct Content-Type response headers
     const rawFileName = doc.file_url.split('/').pop() || 'document.bin';
@@ -95,7 +117,7 @@ export async function GET(req: NextRequest) {
       contentType = 'image/jpeg';
     }
 
-    return new NextResponse(decryptedBuffer, {
+    return new NextResponse(new Uint8Array(decryptedBuffer), {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${cleanFileName}"`,
