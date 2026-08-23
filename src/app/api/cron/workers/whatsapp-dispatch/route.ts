@@ -68,7 +68,7 @@ export async function GET(req: Request) {
     const contactIds = jobs.map((j: any) => j.contact_id);
     const { data: contacts } = await supabaseAdmin
       .from('contacts')
-      .select('id, phone, first_name, last_name, opted_out')
+      .select('id, phone, first_name, last_name, opted_out, sms_opt_out')
       .in('id', contactIds);
 
     // 24h-window clock per contact — the same field
@@ -111,7 +111,7 @@ export async function GET(req: Request) {
 
       // Re-check opt-out at send time, not just enqueue time — same reasoning
       // as sms-dispatch's contact.sms_opt_out re-check.
-      if (contact.opted_out) {
+      if (contact.opted_out || contact.sms_opt_out) {
         updates.push({ id: job.id, status: 'skipped_opt_out', locked_by: null });
         optOutIncrements[job.campaign_id] = (optOutIncrements[job.campaign_id] || 0) + 1;
         continue;

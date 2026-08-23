@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { requirePlatformOperator } from '@/lib/auth/platformOperator';
 import { ForbiddenError, UnauthorizedError } from '@/shared/errors/AppError';
 import { decrypt } from '@/lib/encryption';
 import { logger } from '@/shared/logger';
@@ -26,16 +26,11 @@ const supabase = createClient(
 // status:'error' the same way a failed live connect is, so they surface in the Integrations UI
 // instead of continuing to look silently healthy.
 //
-// There is no platform-staff/superadmin role distinct from per-workspace roles in this
-// codebase (same limitation noted in api/admin/dead-letters/replay/route.ts) — this is
-// cross-tenant by nature (it must reach every workspace's connection, not just the caller's),
-// so it's gated the same way that route is: admin/owner of *some* workspace. Treat this as an
-// operator-run one-time migration endpoint, not a per-workspace self-service action.
-const ALLOWED_ROLES = ['admin', 'owner'];
-
+// This operates on every tenant's encrypted connection. It is a platform-operator
+// maintenance action, never a per-workspace self-service action.
 export async function POST() {
   try {
-    await requireWorkspaceRole(ALLOWED_ROLES);
+    await requirePlatformOperator();
 
     const { data: rows, error } = await supabase
       .from('platform_connections')

@@ -27,6 +27,7 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [visitorSession, setVisitorSession] = useState<string | null>(null);
   const [visitorId, setVisitorId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAgentTyping, setIsAgentTyping] = useState(false);
@@ -50,6 +51,7 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
     if (storedConvId) {
       setConversationId(storedConvId);
     }
+    setVisitorSession(localStorage.getItem(`lena_visitor_session_${workspaceId}`));
   }, [workspaceId]);
 
   // Fetch Config
@@ -79,11 +81,11 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
 
   // Fetch messages when conversationId is loaded or changes
   useEffect(() => {
-    if (!conversationId) return;
+    if (!conversationId || !visitorSession) return;
 
     async function fetchMessages() {
       try {
-        const res = await fetch(`/api/lena/messages?conversationId=${conversationId}`);
+        const res = await fetch(`/api/lena/messages?conversationId=${conversationId}`, { headers: { 'X-Lena-Visitor-Session': visitorSession } });
         const data = await res.json();
         if (res.ok) {
           if (data.messages) {
@@ -101,7 +103,7 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
     // Polling interval (1.5 seconds for real-time responsiveness)
     const interval = setInterval(fetchMessages, 1500);
     return () => clearInterval(interval);
-  }, [conversationId]);
+  }, [conversationId, visitorSession]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -124,7 +126,7 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
     try {
       const res = await fetch('/api/lena/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(visitorSession ? { 'X-Lena-Visitor-Session': visitorSession } : {}) },
         body: JSON.stringify({
           workspaceId,
           conversationId,
@@ -137,6 +139,10 @@ export default function LenaVisitorChat({ workspaceId }: LenaVisitorChatProps) {
         if (data.conversationId && data.conversationId !== conversationId) {
           setConversationId(data.conversationId);
           localStorage.setItem(`lena_conversation_id_${workspaceId}`, data.conversationId);
+        }
+        if (data.visitorSession) {
+          setVisitorSession(data.visitorSession);
+          localStorage.setItem(`lena_visitor_session_${workspaceId}`, data.visitorSession);
         }
         // Replace or append AI message
         setMessages(prev => {

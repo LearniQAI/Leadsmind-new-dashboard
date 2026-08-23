@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Sparkles, Upload, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { getMediaAssets, saveMediaAsset, deleteMediaAsset } from '@/app/actions/builder';
 import { createClient } from '@/lib/supabase/client';
+import { getActiveWorkspaceId } from '@/lib/workspace/activeWorkspaceClient';
 import { toast } from 'sonner';
 
 interface MediaVaultModalProps {
@@ -110,7 +111,7 @@ export const MediaVaultModal = ({
       const supabase = createClient();
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.floor(Math.random() * 10000)}.${fileExt}`;
-      const filePath = `vault/${fileName}`;
+      const filePath = `${getActiveWorkspaceId()}/vault/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('builder-media')

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { requirePlatformOperator } from '@/lib/auth/platformOperator';
 import { ForbiddenError, UnauthorizedError, toClientError } from '@/shared/errors/AppError';
 
 const supabaseAdmin = createClient(
@@ -8,18 +8,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Replaying a dead-lettered webhook re-fires real internal processing (contact lookups, AI
-// calls, DB writes) — same sensitivity bar as minting an API key or editing billing settings,
-// so it's restricted to admin/owner, matching that tier elsewhere in this codebase.
-const ALLOWED_DEAD_LETTER_ROLES = ['admin', 'owner'];
-
+// Replaying a global dead letter can re-fire real processing across tenants.
 export async function POST(req: Request) {
   try {
-    // There is no platform-staff/superadmin role in this codebase distinct from per-workspace
-    // roles, and `webhook_dead_letters` has no workspace_id column (these are global inbound-
-    // webhook failures, not scoped to any one workspace) — so the closest available check is:
-    // the caller must be an admin/owner of *some* workspace they belong to.
-    await requireWorkspaceRole(ALLOWED_DEAD_LETTER_ROLES);
+    // Tenant membership cannot authorize access to this global table.
+    await requirePlatformOperator();
 
     const { id } = await req.json();
     if (!id) {

@@ -7,6 +7,7 @@ import { ParagraphSettings } from './ParagraphSettings';
 import { replaceMergeTags } from '@/lib/builder/utils';
 import { useResponsiveValue } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
+import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 
 export interface ParagraphProps {
  text: string;
@@ -38,7 +39,7 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
   enabled: state.options.enabled
  }));
 
- const displayText = enabled ? text : replaceMergeTags(text);
+ const displayText = enabled ? text : sanitizeRichTextHtml(replaceMergeTags(text));
 
  // Responsive values
  const fontSize = useResponsiveValue(allProps, 'fontSize', 16);

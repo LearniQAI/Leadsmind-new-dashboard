@@ -63,7 +63,7 @@ export async function GET(req: Request) {
     const contactIds = jobs.map((j: any) => j.contact_id);
     const { data: contacts } = await supabaseAdmin
       .from('contacts')
-      .select('id, phone, first_name, last_name, sms_opt_out')
+      .select('id, phone, first_name, last_name, sms_opt_out, opted_out')
       .in('id', contactIds);
 
     const campaignsMap = new Map(campaigns?.map((c: any) => [c.id, c]));
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
       // Re-check opt-out at send time, not just at enqueue time — a contact
       // can text STOP after this campaign was scheduled but before the cron
       // worker actually reaches their row.
-      if (contact.sms_opt_out) {
+      if (contact.sms_opt_out || contact.opted_out) {
         updates.push({ id: job.id, status: 'skipped_opt_out', locked_by: null });
         optOutIncrements[job.campaign_id] = (optOutIncrements[job.campaign_id] || 0) + 1;
         continue;

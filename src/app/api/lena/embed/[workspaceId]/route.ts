@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { validateLenaEmbedOrigin } from '@/lib/lena/embedOrigin';
+import { serializeLenaEmbedConfig } from '@/lib/lena/embedSerialization';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,6 +13,9 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
     const { workspaceId } = params;
     if (!workspaceId) {
       return new NextResponse('Missing workspaceId', { status: 400 });
+    }
+    if (!await validateLenaEmbedOrigin(supabase, req, workspaceId)) {
+      return new NextResponse('LENA embed is not provisioned for this origin', { status: 403 });
     }
 
     // Fetch config
@@ -25,9 +30,15 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
     const primaryColor = config?.primary_color || '#6366F1';
     const position = config?.position || 'right';
     const quickReplies = config?.quick_replies || [];
+    // Serialize tenant data once as a JavaScript value. Never interpolate it into generated
+    // markup/CSS source: bot names and config fields are editable by tenants.
+    const widgetConfig = serializeLenaEmbedConfig({ botName, welcomeMsg, primaryColor, position, quickReplies, workspaceId });
 
     const jsCode = `
 (function() {
+  const widgetConfig = ${widgetConfig};
+  const position = widgetConfig.position === 'left' ? 'left' : 'right';
+  const primaryColor = /^#[0-9a-f]{3,8}$/i.test(widgetConfig.primaryColor) ? widgetConfig.primaryColor : '#6366F1';
   const scriptTag = document.currentScript;
   const scriptSrc = scriptTag ? scriptTag.src : '';
   let apiBase = '';
@@ -48,11 +59,11 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
     #lena-widget-bubble {
       position: fixed;
       bottom: 20px;
-      ${position}: 20px;
+      \${position}: 20px;
       width: 60px;
       height: 60px;
       border-radius: 50%;
-      background-color: ${primaryColor};
+      background-color: \${primaryColor};
       color: white;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       cursor: pointer;
@@ -72,7 +83,7 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
     #lena-widget-container {
       position: fixed;
       bottom: 90px;
-      ${position}: 20px;
+      \${position}: 20px;
       width: 360px;
       height: 500px;
       background: #080f28;
@@ -185,7 +196,7 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
       transition: all 0.15s ease;
     }
     .lena-qr-chip:hover {
-      background: ${primaryColor};
+      background: \${primaryColor};
       color: white;
     }
     #lena-widget-input-container {
@@ -206,10 +217,10 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
       outline: none;
     }
     #lena-widget-input:focus {
-      border-color: ${primaryColor};
+      border-color: \${primaryColor};
     }
     #lena-widget-send {
-      background: ${primaryColor};
+      background: \${primaryColor};
       color: white;
       border: none;
       border-radius: 8px;
@@ -239,7 +250,7 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
   container.innerHTML = \`
     <div id="lena-widget-header">
       <div>
-        <div id="lena-widget-header-title">${botName} AI</div>
+        <div id="lena-widget-header-title"></div>
         <div id="lena-widget-header-status">Online</div>
       </div>
       <button style="background:none;border:none;color:#94a3c8;cursor:pointer;font-size:16px;" id="lena-widget-close">✕</button>
@@ -252,13 +263,15 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
     </div>
   \`;
   document.body.appendChild(container);
+  document.getElementById('lena-widget-header-title').textContent = widgetConfig.botName + ' AI';
 
   // State
-  let conversationId = localStorage.getItem('lena_conversation_id_' + '${workspaceId}');
-  let visitorId = localStorage.getItem('lena_visitor_id_' + '${workspaceId}');
+  let conversationId = localStorage.getItem('lena_conversation_id_' + widgetConfig.workspaceId);
+  let visitorSession = localStorage.getItem('lena_visitor_session_' + widgetConfig.workspaceId);
+  let visitorId = localStorage.getItem('lena_visitor_id_' + widgetConfig.workspaceId);
   if (!visitorId) {
     visitorId = 'vis_' + Math.random().toString(36).substring(2, 15);
-    localStorage.setItem('lena_visitor_id_' + '${workspaceId}', visitorId);
+    localStorage.setItem('lena_visitor_id_' + widgetConfig.workspaceId, visitorId);
   }
   let isAiThinking = false;
   let isAgentTypingGlobal = false;
@@ -303,7 +316,7 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
   }
 
   // Load configuration details
-  const qrs = ${JSON.stringify(quickReplies)};
+  const qrs = Array.isArray(widgetConfig.quickReplies) ? widgetConfig.quickReplies : [];
   if (qrs && qrs.length > 0) {
     qrs.forEach(qr => {
       const chip = document.createElement('div');
@@ -319,11 +332,11 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
   }
 
   // Welcome message
-  appendMessage('bot', \`${welcomeMsg}\`);
+  appendMessage('bot', String(widgetConfig.welcomeMsg || 'Hi there! I am LENA. How can I help you today?'));
 
   // Load existing messages if conversationId exists
   if (conversationId) {
-    fetch(apiBase + '/api/lena/messages?conversationId=' + conversationId)
+    fetch(apiBase + '/api/lena/messages?conversationId=' + conversationId, { headers: { 'X-Lena-Visitor-Session': visitorSession } })
       .then(res => res.json())
       .then(data => {
         if (data.messages && data.messages.length > 0) {
@@ -346,9 +359,9 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
 
     fetch(apiBase + '/api/lena/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(visitorSession ? { 'X-Lena-Visitor-Session': visitorSession } : {}) },
       body: JSON.stringify({
-        workspaceId: '${workspaceId}',
+        workspaceId: widgetConfig.workspaceId,
         conversationId: conversationId,
         visitorMessage: text,
         visitorId: visitorId
@@ -358,7 +371,11 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
     .then(data => {
       if (data.conversationId) {
         conversationId = data.conversationId;
-        localStorage.setItem('lena_conversation_id_' + '${workspaceId}', conversationId);
+        localStorage.setItem('lena_conversation_id_' + widgetConfig.workspaceId, conversationId);
+      }
+      if (data.visitorSession) {
+        visitorSession = data.visitorSession;
+        localStorage.setItem('lena_visitor_session_' + widgetConfig.workspaceId, visitorSession);
       }
       if (data.reply) {
         appendMessage('bot', data.reply);
@@ -391,7 +408,7 @@ export async function GET(req: NextRequest, { params }: { params: { workspaceId:
   // Poll for messages every 1.5 seconds
   setInterval(() => {
     if (conversationId) {
-      fetch(apiBase + '/api/lena/messages?conversationId=' + conversationId)
+      fetch(apiBase + '/api/lena/messages?conversationId=' + conversationId, { headers: { 'X-Lena-Visitor-Session': visitorSession } })
         .then(res => res.json())
         .then(data => {
           isAgentTypingGlobal = !!data.isAgentTyping;

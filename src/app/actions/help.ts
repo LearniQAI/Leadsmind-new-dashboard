@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
@@ -328,7 +328,11 @@ const CATEGORY_FALLBACK: Record<string, string> = {
 
 export async function seedHelpArticles() {
   try {
-    const supabase = await createServerClient();
+    // Runs unauthenticated on every /articles page load to keep the KB
+    // upserted (see src/app/articles/page.tsx). help_articles write access
+    // is now service_role-only, so this must use the admin client rather
+    // than the session-bound server client.
+    const supabase = createAdminClient();
 
     // Getting Started Category Guides
     const gettingStarted: any[] = [

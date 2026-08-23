@@ -6,6 +6,11 @@ import { revalidatePath } from 'next/cache';
 import { BUILDER_TEMPLATES } from '@/lib/builder/templates';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
+import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+
+function containsCodeBlock(content?: string) {
+  return !!content && /"(?:resolvedName|displayName)"\s*:\s*"CodeBlock"|"CodeBlock"/.test(content);
+}
 
 /**
  * --- HELPER: STANDARD ACTION WRAPPER ---
@@ -208,6 +213,19 @@ export async function updateWebsiteSettings(websiteId: string, type: 'website' |
 
 export async function publishPage(pageId: string, content?: string) {
   return executeAction(async (supabase, workspaceId) => {
+    let pageContent = content;
+    if (!pageContent) {
+      const { data: page, error: pageError } = await supabase
+        .from('pages')
+        .select('content')
+        .eq('id', pageId)
+        .eq('workspace_id', workspaceId)
+        .maybeSingle();
+      if (pageError) throw pageError;
+      if (!page) throw new Error('Page not found');
+      pageContent = page.content;
+    }
+    if (containsCodeBlock(pageContent)) await requireWorkspaceRole(['admin', 'owner']);
     const updateData: any = { 
       status: 'published',
       published_at: new Date().toISOString()
@@ -230,6 +248,9 @@ export async function publishPage(pageId: string, content?: string) {
 }
 
 export async function updatePageContent(pageId: string, content: string) {
+  // Custom code intentionally remains an owner/admin-only feature. Members can edit normal
+  // blocks, but cannot introduce executable HTML/JS into a published page.
+  if (containsCodeBlock(content)) await requireWorkspaceRole(['admin', 'owner']);
   return executeAction(async (supabase, workspaceId) => {
     const { error } = await supabase
       .from('pages')

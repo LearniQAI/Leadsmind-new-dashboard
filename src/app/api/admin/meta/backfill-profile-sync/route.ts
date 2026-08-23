@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { requirePlatformOperator } from '@/lib/auth/platformOperator';
 import { ForbiddenError, UnauthorizedError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
@@ -20,18 +20,14 @@ const supabase = createClient(
 // webhook, and applies the result the same way — placeholder detection, profile_synced_at
 // stamping regardless of outcome, and a distinguishable log line on fallback.
 //
-// Same cross-tenant gating rationale as backfill-webhook-subscriptions: there's no
-// platform-staff role, so this is gated to admin/owner of *some* workspace and must be
-// triggered manually, not run automatically.
-const ALLOWED_ROLES = ['admin', 'owner'];
-
+// This can decrypt and use connections for every tenant, so it is platform-operator-only.
 function isPlaceholderName(firstName: string | null, lastName: string | null, platformLabel: string, senderId: string): boolean {
   return firstName === `${platformLabel} User` && lastName === senderId.substring(0, 8);
 }
 
 export async function POST() {
   try {
-    await requireWorkspaceRole(ALLOWED_ROLES);
+    await requirePlatformOperator();
 
     const { data: conversations, error } = await supabase
       .from('conversations')

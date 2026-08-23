@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { getActiveWorkspaceId } from '@/lib/workspace/activeWorkspaceClient';
 import { toast } from 'sonner';
 import { MediaVaultModal } from '../MediaVaultModal';
 import { SliderWithInput } from '../inspector/primitives';
@@ -36,7 +37,7 @@ export const ImageSettings = () => {
       
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.floor(Math.random() * 10000)}.${fileExt}`;
-      const filePath = `builder/${fileName}`;
+      const filePath = `${getActiveWorkspaceId()}/builder/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('builder-media')

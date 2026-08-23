@@ -162,13 +162,13 @@ async function resolveAudience(
 
   const { data: eligible, error: eligErr } = await supabase
     .from('contacts')
-    .select('id, phone, opted_out')
+    .select('id, phone, opted_out, sms_opt_out')
     .in('id', Array.from(matchedIds));
   if (eligErr) throw eligErr;
 
   const withPhone = (eligible ?? []).filter((c: any) => !!c.phone);
-  const excludedOptOut = withPhone.filter((c: any) => c.opted_out).length;
-  const contactIds = withPhone.filter((c: any) => !c.opted_out).map((c: any) => c.id);
+  const excludedOptOut = withPhone.filter((c: any) => c.opted_out || c.sms_opt_out).length;
+  const contactIds = withPhone.filter((c: any) => !c.opted_out && !c.sms_opt_out).map((c: any) => c.id);
 
   return { contactIds, excludedOptOut };
 }
