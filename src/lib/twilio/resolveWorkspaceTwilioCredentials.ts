@@ -7,12 +7,14 @@ export interface WorkspaceTwilioRow {
   twilio_token_encrypted?: string | null;
 }
 
-// No write path currently populates twilio_sid_encrypted/twilio_token_encrypted — there is no
-// live UI/action that lets a workspace configure Twilio credentials at all today (see the TODO in
-// the 20260725000000 migration). Until that's built, this always falls back to the legacy
-// plaintext twilio_sid/twilio_token columns so any out-of-band-seeded workspace keeps working;
-// once a real write path lands and starts populating the encrypted columns, those take priority
-// and the plaintext fallback naturally stops being used for that workspace.
+// saveTwilioCredentials() (src/app/actions/settings.ts), wired to Settings > API
+// (src/app/settings/components/tabs/ApiTab.tsx), is the write path and always
+// encrypts via src/lib/encryption.ts before saving, nulling the legacy plaintext
+// columns on write. The plaintext twilio_sid/twilio_token fallback below only
+// matters for a workspace whose row was seeded out-of-band (e.g. directly in the
+// database) before that write path existed; no such rows exist as of the
+// 20260830000000 audit (0 workspaces had plaintext-only Twilio credentials), so
+// no backfill migration was needed.
 export function resolveWorkspaceTwilioCredentials(row: WorkspaceTwilioRow | null | undefined) {
   if (!row) return { accountSid: undefined as string | undefined, authToken: undefined as string | undefined };
 

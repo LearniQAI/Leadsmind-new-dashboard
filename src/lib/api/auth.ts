@@ -39,10 +39,11 @@ export async function validateApiKey(req: NextRequest, requiredScope?: string): 
   
   if (!isApiKey) {
     try {
+      const tokenHash = createHash('sha256').update(raw).digest('hex')
       const { data: tokenRow } = await supabase
         .from('oauth_access_tokens')
         .select('*')
-        .eq('token', raw)
+        .eq('token_hash', tokenHash)
         .maybeSingle()
 
       if (tokenRow) {

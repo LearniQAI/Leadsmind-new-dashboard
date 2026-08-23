@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Upload, Loader2, Video as VideoIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { getActiveWorkspaceId } from '@/lib/workspace/activeWorkspaceClient';
 import { toast } from 'sonner';
 import { SliderWithInput } from '../inspector/primitives';
 
@@ -34,7 +35,7 @@ export const VideoSettings = () => {
 
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.floor(Math.random() * 10000)}.${fileExt}`;
-      const filePath = `builder/videos/${fileName}`;
+      const filePath = `${getActiveWorkspaceId()}/builder/videos/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('builder-media')

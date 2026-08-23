@@ -3,6 +3,7 @@
 import React from 'react';
 import { useNode, useEditor } from '@craftjs/core';
 import { InlineTextEditor } from './InlineTextEditor';
+import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import { HeadingSettings } from './HeadingSettings';
 import { replaceMergeTags } from '../../../lib/builder/utils';
 import { useResponsiveValue } from '../../../lib/builder/hooks';
@@ -41,7 +42,7 @@ export const Heading = (allProps: HeadingProps & any) => {
   }));
 
   const Tag = level;
-  const displayText = enabled ? text : replaceMergeTags(text);
+  const displayText = enabled ? text : sanitizeRichTextHtml(replaceMergeTags(text));
 
   // Responsive values
   const fontSize = useResponsiveValue(allProps, 'fontSize', undefined);

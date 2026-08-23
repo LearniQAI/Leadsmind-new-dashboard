@@ -67,11 +67,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'invalid_request', error_description: 'Missing authorization code' }, { status: 400 })
     }
 
-    // Fetch and validate authorization code
+    // Fetch and validate authorization code (looked up by hash — see
+    // 20260830000000_hash_oauth_tokens.sql)
+    const codeHash = createHash('sha256').update(code).digest('hex')
     const { data: codeRow, error: codeErr } = await adminSupabase
       .from('oauth_authorization_codes')
       .select('*')
-      .eq('code', code)
+      .eq('code_hash', codeHash)
       .eq('client_id', clientId)
       .maybeSingle()
 
@@ -92,7 +94,10 @@ export async function POST(req: NextRequest) {
     // Delete the code to prevent reuse
     await adminSupabase.from('oauth_authorization_codes').delete().eq('id', codeRow.id).eq('workspace_id', codeRow.workspace_id)
 
-    // Generate tokens
+    // Generate tokens. Only their SHA-256 hashes are stored -- the plaintext
+    // values are one-time bearer secrets returned to the client below and
+    // never need to be read back server-side (same pattern as
+    // oauth_clients.client_secret_hash / workspace_api_keys.key_hash).
     const accessToken = 'at_' + randomBytes(32).toString('hex')
     const refreshToken = 'rt_' + randomBytes(32).toString('hex')
     const expiresAt = new Date(Date.now() + 3600 * 1000) // 1 hour
@@ -100,8 +105,8 @@ export async function POST(req: NextRequest) {
     const { error: tokenErr } = await adminSupabase
       .from('oauth_access_tokens')
       .insert({
-        token: accessToken,
-        refresh_token: refreshToken,
+        token_hash: createHash('sha256').update(accessToken).digest('hex'),
+        refresh_token_hash: createHash('sha256').update(refreshToken).digest('hex'),
         client_id: clientId,
         workspace_id: codeRow.workspace_id,
         user_id: codeRow.user_id,
@@ -128,11 +133,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'invalid_request', error_description: 'Missing refresh_token' }, { status: 400 })
     }
 
-    // Fetch active token row matching refresh_token
+    // Fetch active token row matching refresh_token (looked up by hash)
+    const refreshTokenHash = createHash('sha256').update(refreshToken).digest('hex')
     const { data: tokenRow, error: tokenErr } = await adminSupabase
       .from('oauth_access_tokens')
       .select('*')
-      .eq('refresh_token', refreshToken)
+      .eq('refresh_token_hash', refreshTokenHash)
       .eq('client_id', clientId)
       .maybeSingle()
 
@@ -151,8 +157,8 @@ export async function POST(req: NextRequest) {
     const { error: insertErr } = await adminSupabase
       .from('oauth_access_tokens')
       .insert({
-        token: newAccessToken,
-        refresh_token: newRefreshToken,
+        token_hash: createHash('sha256').update(newAccessToken).digest('hex'),
+        refresh_token_hash: createHash('sha256').update(newRefreshToken).digest('hex'),
         client_id: clientId,
         workspace_id: tokenRow.workspace_id,
         user_id: tokenRow.user_id,

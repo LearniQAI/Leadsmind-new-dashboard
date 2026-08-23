@@ -3,29 +3,25 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
 import { toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
+import { lenaCorsHeaders, validateAnyLenaEmbedOrigin, validateLenaEmbedOrigin } from '@/lib/lena/embedOrigin';
 
 export const dynamic = 'force-dynamic';
 
 const LENA_TEAM_ROLES = ['admin', 'member'];
 
-function corsResponse(body: any, init?: ResponseInit) {
+function corsResponse(body: any, origin: string | null, init?: ResponseInit) {
   const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    ...lenaCorsHeaders(origin, 'GET, POST, PATCH, OPTIONS'),
     ...(init?.headers || {}),
   };
   return NextResponse.json(body, { ...init, headers });
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const origin = await validateAnyLenaEmbedOrigin(createAdminClient(), req);
   return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+    status: origin ? 204 : 403,
+    headers: lenaCorsHeaders(origin, 'GET, POST, PATCH, OPTIONS'),
   });
 }
 
@@ -35,13 +31,16 @@ export async function OPTIONS() {
 // name, welcome message, tone, colors, quick replies, trigger rules — all
 // intentionally-public branding/behavior), so this doesn't expose anything sensitive.
 export async function GET(req: NextRequest) {
+  let origin: string | null = null;
   try {
     const workspaceId = req.nextUrl.searchParams.get('workspaceId');
     if (!workspaceId) {
-      return corsResponse({ error: 'workspaceId required' }, { status: 400 });
+      return corsResponse({ error: 'workspaceId required' }, null, { status: 400 });
     }
 
     const adminClient = createAdminClient();
+    origin = await validateLenaEmbedOrigin(adminClient, req, workspaceId);
+    if (!origin) return corsResponse({ error: 'This workspace is not provisioned for this embed origin' }, null, { status: 403 });
     const { data, error } = await adminClient
       .from('lena_configs')
       .select('*')
@@ -52,22 +51,13 @@ export async function GET(req: NextRequest) {
       throw error;
     }
 
-    if (!data) {
-      const { data: newConfig, error: insertError } = await adminClient
-        .from('lena_configs')
-        .insert({ workspace_id: workspaceId })
-        .select()
-        .single();
+    if (!data) return corsResponse({ config: null }, origin, { status: 404 });
 
-      if (insertError) throw insertError;
-      return corsResponse({ config: newConfig });
-    }
-
-    return corsResponse({ config: data });
+    return corsResponse({ config: data }, origin);
   } catch (err: any) {
     logger.error({ err }, 'lena.config.get.failed');
     const clientError = toClientError(err);
-    return corsResponse({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+    return corsResponse({ error: clientError.error, code: clientError.code }, origin, { status: clientError.status });
   }
 }
 
@@ -92,11 +82,11 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
-    return corsResponse({ config: data });
+    return corsResponse({ config: data }, null);
   } catch (err: any) {
     logger.error({ err }, 'lena.config.post.failed');
     const clientError = toClientError(err);
-    return corsResponse({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+    return corsResponse({ error: clientError.error, code: clientError.code }, null, { status: clientError.status });
   }
 }
 

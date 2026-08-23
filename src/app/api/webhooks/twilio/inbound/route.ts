@@ -99,20 +99,20 @@ export async function POST(req: NextRequest) {
     if (['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'].includes(normalizedBody)) {
       await supabaseAdmin
         .from('contacts')
-        .update({ sms_opt_out: true, sms_opt_out_at: new Date().toISOString() })
+        .update({ opted_in: false, opted_out: true, opt_out_date: new Date().toISOString(), sms_opt_out: true, sms_opt_out_at: new Date().toISOString() })
         .eq('id', contact.id);
       return new NextResponse(
-        '<Response><Message>You have been unsubscribed from SMS messages and will not receive further texts. Reply START to resubscribe.</Message></Response>',
+        '<Response><Message>You have been unsubscribed from marketing messages. Reply START to resubscribe.</Message></Response>',
         { status: 200, headers: { 'Content-Type': 'text/xml' } }
       );
     }
     if (['START', 'UNSTOP', 'YES'].includes(normalizedBody)) {
       await supabaseAdmin
         .from('contacts')
-        .update({ sms_opt_out: false, sms_opt_out_at: null })
+        .update({ opted_in: true, opted_out: false, opt_out_date: null, sms_opt_out: false, sms_opt_out_at: null })
         .eq('id', contact.id);
       return new NextResponse(
-        '<Response><Message>You have been resubscribed to SMS messages.</Message></Response>',
+        '<Response><Message>You have been resubscribed to marketing messages.</Message></Response>',
         { status: 200, headers: { 'Content-Type': 'text/xml' } }
       );
     }

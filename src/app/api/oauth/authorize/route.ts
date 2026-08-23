@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createServerClient } from '@/lib/supabase/server'
-import { randomBytes } from 'crypto'
+import { randomBytes, createHash } from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
@@ -236,14 +236,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'access_denied', error_description: 'You are not a member of the requested workspace' }, { status: 403 })
   }
 
-  // Generate auth code
+  // Generate auth code. Only the SHA-256 hash is stored (same pattern as
+  // oauth_clients.client_secret_hash / workspace_api_keys.key_hash) --
+  // the plaintext code is a one-time bearer secret handed to the client via
+  // the redirect below and never needs to be read back server-side.
   const code = 'ac_' + randomBytes(24).toString('hex')
+  const codeHash = createHash('sha256').update(code).digest('hex')
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
 
   const { error } = await adminSupabase
     .from('oauth_authorization_codes')
     .insert({
-      code,
+      code_hash: codeHash,
       client_id: clientId,
       workspace_id: workspaceId,
       user_id: user.id,

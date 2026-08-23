@@ -5,6 +5,7 @@ import { useEditor, useNode } from '@craftjs/core';
 import { InlineTextEditor } from './InlineTextEditor';
 import { TextSettings } from './TextSettings';
 import { replaceMergeTags } from '@/lib/builder/utils';
+import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 
 export const Text = ({ text, fontSize, textAlign, color, dragRef, ...props }: any) => {
  const { connectors: { connect, drag }, actions: { setProp } } = useNode();
@@ -12,7 +13,7 @@ export const Text = ({ text, fontSize, textAlign, color, dragRef, ...props }: an
   enabled: state.options.enabled
  }));
 
- const displayText = enabled ? text : replaceMergeTags(text);
+ const displayText = enabled ? text : sanitizeRichTextHtml(replaceMergeTags(text));
 
  return (
   <div

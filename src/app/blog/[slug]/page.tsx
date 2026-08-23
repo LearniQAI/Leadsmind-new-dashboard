@@ -11,6 +11,7 @@ import NewsletterCapture from '@/components/blog/public/NewsletterCapture';
 import BlogTracker from '@/components/blog/public/BlogTracker';
 import BlogComments from '@/components/blog/public/BlogComments';
 import ExitIntentCapture from '@/components/blog/public/ExitIntentCapture';
+import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,7 +77,7 @@ export default async function PublicBlogPostPage({ params, searchParams }: PageP
   const readTime = Math.max(1, Math.ceil(wordCount / 200));
 
   // H2 Indexing Observer & Dynamic Anchor Generator
-  let bodyHtml = post.body_html || '';
+  let bodyHtml = sanitizeRichTextHtml(post.body_html);
   const headings: { text: string; id: string; }[] = [];
   let headingCounter = 0;
 

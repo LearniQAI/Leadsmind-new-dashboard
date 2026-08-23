@@ -80,6 +80,7 @@
     "framer-motion": "^11.0.0",
     "html-to-text": "^10.0.0",
     "inngest": "^4.11.0",
+    "isomorphic-dompurify": "^3.19.0",
     "jose": "^6.2.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.454.0",

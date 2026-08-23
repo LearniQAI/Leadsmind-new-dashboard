@@ -253,7 +253,9 @@ async function processInboundComplianceAndWindow(
       .update({
         opted_in: false,
         opted_out: true,
-        opt_out_date: new Date().toISOString()
+        opt_out_date: new Date().toISOString(),
+        sms_opt_out: true,
+        sms_opt_out_at: new Date().toISOString()
       })
       .eq("id", contactId).eq("workspace_id", workspaceId);
 
@@ -274,7 +276,9 @@ async function processInboundComplianceAndWindow(
       .update({
         opted_in: true,
         opted_out: false,
-        opt_out_date: null
+        opt_out_date: null,
+        sms_opt_out: false,
+        sms_opt_out_at: null
       })
       .eq("id", contactId).eq("workspace_id", workspaceId);
 
