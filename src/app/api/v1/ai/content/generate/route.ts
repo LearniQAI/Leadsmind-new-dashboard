@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Fast preflight only. The atomic charge below is the authoritative limit check.
     const creditGuard = await runCreditGuard(realWorkspaceId);
-    if (!creditGuard.ok) {
+    if (creditGuard.ok === false) {
       return NextResponse.json(creditGuard.body, { status: creditGuard.status });
     }
 
