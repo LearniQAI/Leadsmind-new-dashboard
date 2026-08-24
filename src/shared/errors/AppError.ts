@@ -50,6 +50,17 @@ export class ConflictError extends AppError {
   }
 }
 
+/** The atomic AI-credit ledger rejected a charge because its ceiling is reached. */
+export class CreditLimitExceededError extends AppError {
+  constructor() {
+    super(
+      'CREDIT_LIMIT_EXCEEDED',
+      'Your workspace has exhausted its available AI credits.',
+      402
+    );
+  }
+}
+
 // Helper to convert AppError to a safe client response
 // Never expose internal details to the frontend
 export function toClientError(error: unknown): {

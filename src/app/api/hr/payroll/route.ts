@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email'
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth'
 import { createAdminClient, createServerClient } from '@/lib/supabase/server'
-import { UnauthorizedError, ForbiddenError, toClientError } from '@/shared/errors/AppError'
+import { UnauthorizedError, ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
@@ -259,9 +259,10 @@ export async function PATCH(req: NextRequest) {
       .update(updates)
       .eq("id", id).eq("workspace_id", workspaceId)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) throw error;
+    if (!data) throw new NotFoundError('Payroll run');
     return NextResponse.json({ success: true, payrollRun: data })
   } catch (err: any) {
     logger.error({ err }, 'hr.payroll.patch.failed');
@@ -282,8 +283,9 @@ export async function DELETE(req: NextRequest) {
     assertPayrollRole(role);
 
     const adminClient = createAdminClient();
-    const { error } = await adminClient.from('payroll_runs').delete().eq("id", id).eq("workspace_id", workspaceId)
+    const { data, error } = await adminClient.from('payroll_runs').delete().eq("id", id).eq("workspace_id", workspaceId).select('id')
     if (error) throw error;
+    if (!data || data.length === 0) throw new NotFoundError('Payroll run');
     return NextResponse.json({ success: true })
   } catch (err: any) {
     logger.error({ err }, 'hr.payroll.delete.failed');

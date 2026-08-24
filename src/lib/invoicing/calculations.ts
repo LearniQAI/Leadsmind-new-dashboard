@@ -62,3 +62,25 @@ export function calculateInvoiceTotals(
     grandTotal: Number(grandTotal.toFixed(2)),
   };
 };
+
+/**
+ * Splits an already-collected gross amount (e.g. a payment-gateway/webhook invoice, where the
+ * customer has already been charged a fixed total and that total must not change) into a
+ * VAT-exclusive subtotal + tax_total, rather than adding tax on top the way calculateInvoiceTotals
+ * does for a manually-built line-item invoice. The gross amount is always preserved exactly as
+ * paid; only its subtotal/tax_total breakdown changes based on the workspace's vat_rate.
+ * Formula: subtotal = grossAmount / (1 + taxRate/100), taxTotal = grossAmount - subtotal.
+ */
+export function calculateInclusiveTax(
+  grossAmount: number,
+  taxRatePercent: number
+): { subtotal: number; taxTotal: number } {
+  const gross = Number(grossAmount) || 0;
+  const rate = Number(taxRatePercent) || 0;
+  if (!rate) {
+    return { subtotal: round(gross), taxTotal: 0 };
+  }
+  const subtotal = round(gross / (1 + rate / 100));
+  const taxTotal = round(gross - subtotal);
+  return { subtotal, taxTotal };
+}

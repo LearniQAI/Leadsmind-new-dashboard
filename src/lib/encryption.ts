@@ -74,3 +74,14 @@ export function decrypt(encryptedText: string): string {
 
   throw new Error('Invalid encryption payload structure.');
 }
+
+/**
+ * True if `encryptedText` is in the legacy pre-2026-08-30 AES-256-CBC format rather than the
+ * current GCM one. Used by callers that want to opportunistically re-encrypt a value to GCM the
+ * next time they legitimately decrypt it (lazy rotation), without a separate bulk migration.
+ */
+export function isLegacyCiphertext(encryptedText: string): boolean {
+  if (!encryptedText) return false;
+  const parts = encryptedText.split(':');
+  return parts.length === 2 && !encryptedText.startsWith(`${GCM_VERSION_TAG}:`);
+}

@@ -156,18 +156,39 @@ export default function ReportsPage() {
     }
   };
 
-  // LeadsMind does not currently calculate or track VAT anywhere in the invoice/expense
-  // creation flow (see Task 14 audit — invoices.tax_total is always 0, no per-invoice or
-  // per-expense VAT logic exists). This used to fabricate Output/Input VAT as a flat 15% of
-  // raw invoice/expense totals and present it as a "VAT201" filing figure — a real business
-  // could have acted on that fictional number. Rather than invent a calculation here (that's
-  // a business/billing decision, not a display fix), this report now states plainly that VAT
-  // isn't tracked instead of showing any computed number, since even "R0.00 payable" could be
-  // misread as a confirmed, verified position.
+  // invoices.tax_total was always 0 regardless of creation path (see Task 14 audit) until the
+  // VAT-wiring fix — every invoice-creation path now computes a real tax_total from the
+  // workspace's invoice_settings.vat_rate, so Output VAT can be genuinely summed here instead
+  // of fabricated. Input VAT (VAT paid on business expenses/purchases) is still not tracked
+  // anywhere in this codebase — no expense line item has ever captured a tax rate — so this
+  // still cannot present a real net VAT201 payable/refundable figure without inventing the
+  // input side. Showing Output VAT alone, clearly labeled, is honest; presenting a "net VAT"
+  // as if input VAT were accounted for would repeat the original fabrication bug.
   const generateVatReport = async () => {
     if (!workspaceId) return;
-    setVatData(null);
-    setLoading(false);
+    setLoading(true);
+    try {
+      const { start, end } = getStartEndDates(vatPeriod);
+      // Draft invoices aren't a completed supply yet — only sent/paid invoices count toward
+      // Output VAT for the period, consistent with how a real invoice-basis VAT return works.
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('tax_total, status, issue_date')
+        .eq('workspace_id', workspaceId)
+        .in('status', ['sent', 'paid'])
+        .gte('issue_date', start)
+        .lte('issue_date', end);
+
+      if (error) throw error;
+
+      const outputVat = (data || []).reduce((sum, inv) => sum + (Number(inv.tax_total) || 0), 0);
+      setVatData({ outputVat, inputVat: 0, netVat: outputVat });
+    } catch (err: any) {
+      toast.error(err.message || 'Error generating VAT report');
+      setVatData(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const generateCashFlowReport = async () => {
@@ -262,7 +283,9 @@ export default function ReportsPage() {
       fileName = `vat-report-${vatPeriod}.csv`;
       csvContent += 'VAT Report (VAT201)\n';
       csvContent += `Period: ${vatPeriod}\n\n`;
-      csvContent += 'VAT is not currently calculated or tracked by LeadsMind. Consult your accounting records for accurate SARS VAT201 filing figures.\n';
+      csvContent += `Output VAT (from sent/paid invoices),${vatData?.outputVat ?? 0}\n`;
+      csvContent += 'Input VAT (expenses),Not tracked\n\n';
+      csvContent += 'Input VAT (VAT paid on business expenses/purchases) is not tracked by LeadsMind, so this is Output VAT only, not a net VAT201 filing figure. Consult your accounting records for full SARS VAT201 filing.\n';
     } else if (activeReport === 'cashflow') {
       fileName = 'cash-flow-12-months.csv';
       csvContent += 'Cash Flow Statement (Last 12 Months)\n\n';
@@ -551,13 +574,31 @@ export default function ReportsPage() {
                     </span>
                   </div>
 
+                  {vatData && (
+                    <div className="mb-6 rounded-xl border border-dash-border overflow-hidden">
+                      <table className="w-full text-sm">
+                        <tbody className="divide-y divide-dash-border">
+                          <tr>
+                            <td className="py-3 px-4 !text-dash-textMuted font-medium print:text-black">Output VAT (from sent/paid invoices)</td>
+                            <td className="py-3 px-4 text-right font-semibold !text-dash-text print:text-black">{formatCurrency(vatData.outputVat)}</td>
+                          </tr>
+                          <tr>
+                            <td className="py-3 px-4 !text-dash-textMuted font-medium print:text-black">Input VAT (business expenses)</td>
+                            <td className="py-3 px-4 text-right font-semibold !text-dash-textMuted print:text-black">Not tracked</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
                   <div className="p-5 rounded-xl bg-dash-surface border border-dash-border flex items-start gap-3 print:border-slate-300 print:text-black">
                     <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <span className="text-[13px] font-bold !text-dash-text print:text-black block">VAT is not currently tracked</span>
+                      <span className="text-[13px] font-bold !text-dash-text print:text-black block">Output VAT only — not a full VAT201 figure</span>
                       <span className="text-[11px] !text-dash-textMuted block mt-1 leading-relaxed">
-                        LeadsMind does not currently calculate or record VAT on invoices or expenses.
-                        Consult your accounting records for accurate SARS VAT201 filing figures.
+                        LeadsMind now calculates real Output VAT from your sent/paid invoices, but does not track
+                        Input VAT on business expenses or purchases. A full SARS VAT201 return nets both — consult
+                        your accounting records for the input side before filing.
                       </span>
                     </div>
                   </div>

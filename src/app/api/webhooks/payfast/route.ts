@@ -7,6 +7,7 @@ import { verifyPayFastSignature } from '@/lib/calendar/payfast';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
 import { sendInvoiceEmail } from '@/lib/invoices/sendInvoiceEmail';
+import { calculateInclusiveTax } from '@/lib/invoicing/calculations';
 
 /**
  * PayFast Webhook Receiver Route
@@ -93,6 +94,17 @@ export async function POST(req: NextRequest) {
       logger.error({}, 'webhook.payfast.workspace_id.missing');
       return NextResponse.json({ error: "Missing workspace_id" }, { status: 400 });
     }
+
+    // The amounts below (amount_gross, course/funnel prices) are already collected in full via
+    // PayFast — splitting them into subtotal/tax_total based on the workspace's VAT setting,
+    // not adding tax on top, since the gross total must stay exactly what was actually charged.
+    const { data: vatWorkspaceRow } = await supabase
+      .from('workspaces')
+      .select('invoice_settings')
+      .eq('id', workspaceId)
+      .maybeSingle();
+    const vatSettings = (vatWorkspaceRow?.invoice_settings as any) || {};
+    const vatRate = vatSettings.vat_enabled ? (Number(vatSettings.vat_rate) || 0) : 0;
 
     // 2. Resolve Contact ID
     let contactId = custom_str2;
@@ -307,6 +319,7 @@ export async function POST(req: NextRequest) {
       if (!existingPaidInvoice) {
         const paidAmount = parseFloat(amount_gross || '0');
         const payfastRef = payload.pf_payment_id || m_payment_id;
+        const { subtotal: courseSubtotal, taxTotal: courseTaxTotal } = calculateInclusiveTax(paidAmount, vatRate);
 
         const { data: newInvoice, error: courseInvoiceErr } = await supabase
           .from('invoices')
@@ -315,8 +328,8 @@ export async function POST(req: NextRequest) {
             contact_id: contactId,
             invoice_number: `PF-${payfastRef}`,
             items: [{ description: item_name || 'Course purchase', quantity: 1, unit_amount: paidAmount }],
-            subtotal: paidAmount,
-            tax_total: 0,
+            subtotal: courseSubtotal,
+            tax_total: courseTaxTotal,
             total_amount: paidAmount,
             // amount_due is NOT NULL with no default — every other invoice writer in
             // this codebase sets it to the full billed amount at creation (readers
@@ -437,6 +450,18 @@ export async function POST(req: NextRequest) {
         const paidAmount = parseFloat(amount_gross || String(order.amount) || '0');
         const payfastRef = payload.pf_payment_id || m_payment_id;
 
+        // order.workspace_id is not necessarily the same workspace as the top-level
+        // `workspaceId` (resolved from custom_str1, unrelated to this funnel order's own
+        // record) — re-resolve VAT settings for the order's actual workspace.
+        const { data: funnelVatWorkspaceRow } = await supabase
+          .from('workspaces')
+          .select('invoice_settings')
+          .eq('id', order.workspace_id)
+          .maybeSingle();
+        const funnelVatSettings = (funnelVatWorkspaceRow?.invoice_settings as any) || {};
+        const funnelVatRate = funnelVatSettings.vat_enabled ? (Number(funnelVatSettings.vat_rate) || 0) : 0;
+        const { subtotal: funnelSubtotal, taxTotal: funnelTaxTotal } = calculateInclusiveTax(paidAmount, funnelVatRate);
+
         const { data: newInvoice, error: invoiceErr } = await supabase
           .from('invoices')
           .insert({
@@ -444,8 +469,8 @@ export async function POST(req: NextRequest) {
             contact_id: order.contact_id,
             invoice_number: `PF-${payfastRef}`,
             items: [{ description: item_name || 'Funnel order', quantity: 1, unit_amount: paidAmount }],
-            subtotal: paidAmount,
-            tax_total: 0,
+            subtotal: funnelSubtotal,
+            tax_total: funnelTaxTotal,
             total_amount: paidAmount,
             // amount_due is NOT NULL with no default. Every other invoice writer in this
             // codebase sets it to the full billed amount at creation — readers compute

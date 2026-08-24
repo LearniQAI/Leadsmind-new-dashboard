@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
 import { sendInvoiceEmail } from '@/lib/invoices/sendInvoiceEmail';
+import { calculateInclusiveTax } from '@/lib/invoicing/calculations';
 
 // Generic version of the funnel_order-paid branch in
 // src/app/api/webhooks/payfast/route.ts (next-step resolution + mirroring
@@ -48,6 +49,17 @@ export async function completeFunnelOrder(params: {
     nextStepId = siblingSteps?.find((s) => s.order === (paidStep as any).order + 1)?.id || null;
   }
 
+  // paidAmount is already collected in full via the gateway and must not change — split it
+  // into subtotal/tax_total based on the workspace's VAT setting instead of adding tax on top.
+  const { data: workspaceRow } = await supabase
+    .from('workspaces')
+    .select('invoice_settings')
+    .eq('id', order.workspace_id)
+    .maybeSingle();
+  const vatSettings = (workspaceRow?.invoice_settings as any) || {};
+  const vatRate = vatSettings.vat_enabled ? (Number(vatSettings.vat_rate) || 0) : 0;
+  const { subtotal, taxTotal } = calculateInclusiveTax(paidAmount, vatRate);
+
   const { data: newInvoice, error: invoiceErr } = await supabase
     .from('invoices')
     .insert({
@@ -55,8 +67,8 @@ export async function completeFunnelOrder(params: {
       contact_id: order.contact_id,
       invoice_number: `${gateway.toUpperCase().slice(0, 2)}-${gatewayRef}`,
       items: [{ description: itemDescription || 'Funnel order', quantity: 1, unit_amount: paidAmount }],
-      subtotal: paidAmount,
-      tax_total: 0,
+      subtotal,
+      tax_total: taxTotal,
       total_amount: paidAmount,
       amount_due: paidAmount,
       amount_paid: paidAmount,

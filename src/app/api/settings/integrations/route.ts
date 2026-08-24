@@ -122,6 +122,18 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Ozow rejected this SiteCode/API key: ${err.message}` }, { status: 400 })
       }
       storedCredentials = encryptOzowCredentials(siteCode, apiKey, privateKey);
+    } else if (category === 'payment_gateway' && ['stripe', 'paypal'].includes(providerKey)) {
+      // Stripe and PayPal are real-OAuth-only gateways (Stripe Connect / PayPal Partner
+      // Referrals — see stripeConnect.ts / paypalConnect.ts). This generic fallback branch
+      // stores unvalidated apiKey/apiSecret pairs; letting it through for these two providers
+      // would let a POST here silently overwrite a real, provider-verified OAuth connection
+      // (same workspace_id+provider upsert key) with fabricated credentials that were never
+      // checked against Stripe/PayPal at all. Reject outright and point the caller at the real
+      // OAuth flow instead.
+      return NextResponse.json(
+        { error: `${provider} must be connected via its OAuth flow (Connect ${provider} button), not this form.` },
+        { status: 400 }
+      )
     } else if (category === 'payment_gateway') {
       const apiKey = credentials?.apiKey?.trim();
       const apiSecret = credentials?.apiSecret?.trim();

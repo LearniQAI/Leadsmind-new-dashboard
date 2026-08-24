@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
-import { UnauthorizedError, ForbiddenError, toClientError } from '@/shared/errors/AppError'
+import { UnauthorizedError, ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
 
 export const dynamic = 'force-dynamic';
@@ -130,9 +130,10 @@ export async function PATCH(req: NextRequest) {
       .update(updates)
       .eq("id", id).eq("workspace_id", workspaceId)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) throw error;
+    if (!data) throw new NotFoundError('Inventory item');
     return NextResponse.json({ success: true, inventoryItem: data })
   } catch (err: any) {
     logger.error({ err }, 'inventory.patch.failed');
@@ -151,8 +152,9 @@ export async function DELETE(req: NextRequest) {
 
     const { workspaceId, supabase } = await resolveWorkspace(user.id);
 
-    const { error } = await supabase.from('inventory_items').delete().eq("id", id).eq("workspace_id", workspaceId)
+    const { data, error } = await supabase.from('inventory_items').delete().eq("id", id).eq("workspace_id", workspaceId).select('id')
     if (error) throw error;
+    if (!data || data.length === 0) throw new NotFoundError('Inventory item');
     return NextResponse.json({ success: true })
   } catch (err: any) {
     logger.error({ err }, 'inventory.delete.failed');

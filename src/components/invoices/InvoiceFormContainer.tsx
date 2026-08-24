@@ -18,6 +18,9 @@ interface InvoiceFormContainerProps {
   customFieldDefinitions?: CustomFieldDefinition[];
   onSave: (data: any) => void;
   isSaving?: boolean;
+  /** Workspace's invoice_settings.vat_rate when vat_enabled, else 0 — the starting tax rate
+   * for newly-added line items (still editable per line). */
+  defaultTaxRate?: number;
 }
 
 const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
@@ -26,6 +29,7 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
   customFieldDefinitions = [],
   onSave,
   isSaving = false,
+  defaultTaxRate = 0,
 }) => {
   const [contactId, setContactId] = useState(initialData?.contact_id || '');
   const [invoiceNumber, setInvoiceNumber] = useState(initialData?.invoice_number || '');
@@ -160,7 +164,7 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
         </div>
 
         <div className="bg-white border border-dash-border rounded-2xl overflow-hidden">
-          <LineItemBuilder items={items} onItemsChange={setItems} />
+          <LineItemBuilder items={items} onItemsChange={setItems} defaultTaxRate={defaultTaxRate} />
         </div>
       </div>
 

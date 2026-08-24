@@ -8,16 +8,19 @@ import { Plus, Trash2 } from 'lucide-react';
 interface LineItemBuilderProps {
   items: (LineItem & { id: string; description: string })[];
   onItemsChange: (items: (LineItem & { id: string; description: string })[]) => void;
+  /** Workspace's invoice_settings.vat_rate, applied to new line items when VAT is enabled —
+   * still editable per line afterward, this is only the starting value. */
+  defaultTaxRate?: number;
 }
 
-const LineItemBuilder: React.FC<LineItemBuilderProps> = ({ items, onItemsChange }) => {
+const LineItemBuilder: React.FC<LineItemBuilderProps> = ({ items, onItemsChange, defaultTaxRate = 0 }) => {
   const addItem = () => {
     const newItem = {
       id: crypto.randomUUID(),
       description: '',
       quantity: 1,
       rate: 0,
-      taxRate: 0,
+      taxRate: defaultTaxRate,
     };
     onItemsChange([...items, newItem]);
   };

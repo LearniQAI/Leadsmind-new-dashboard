@@ -43,6 +43,13 @@ export async function POST(req: NextRequest) {
   const amount = Number(body.amount ?? body.total_amount)
   if (!amount || Number.isNaN(amount)) return apiError('amount is required')
 
+  // 'paid' can only ever be set by a real, signature-verified PayFast ITN
+  // (src/app/api/webhooks/payfast/route.ts) — creating an invoice pre-marked paid via a
+  // workspace API key is not proof of payment.
+  if (body.status === 'paid') {
+    return apiError("status cannot be set to 'paid' via this API — payment is confirmed only by the PayFast webhook", 422)
+  }
+
   const supabase = createAdminClient()
 
   const contactErr = await verifyOwnedId(supabase, 'contacts', body.contact_id ?? null, auth.workspaceId, 'contact_id')

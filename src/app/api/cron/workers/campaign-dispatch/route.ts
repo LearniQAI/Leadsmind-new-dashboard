@@ -182,11 +182,13 @@ export async function GET(req: Request) {
       }
     }
 
-    // 4. Update Campaign Counts (Naive increment, would be better as RPC)
+    // 4. Update Campaign Counts — atomic single UPDATE via RPC, not select()-then-update(),
+    // which lost increments under concurrent worker runs (two workers processing the same
+    // campaign in the same tick could both read the same stale total_sent).
     for (const [cid, count] of Object.entries(campaignSentIncrements)) {
-       const { data: camp } = await supabaseAdmin.from('email_campaigns').select('total_sent').eq('id', cid).single();
-       if (camp) {
-          await supabaseAdmin.from('email_campaigns').update({ total_sent: (camp.total_sent || 0) + count }).eq('id', cid);
+       const { error: incrErr } = await supabaseAdmin.rpc('increment_campaign_total_sent', { c_id: cid, amount: count });
+       if (incrErr) {
+          logger.error({ err: incrErr, campaignId: cid }, 'cron.campaign_dispatch.total_sent_increment.failed');
        }
     }
 

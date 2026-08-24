@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAICreditBalance } from '@/server/middleware/CreditGuard';
+import { runCreditGuard, consumeAICredit } from '@/lib/ai/creditGuard';
 import { PromptEngine } from '@/server/services/ai/PromptEngine';
 import { db } from '@/server/database/datasource';
 import OpenAI from 'openai';
@@ -27,30 +27,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required parameter: userBrief' }, { status: 400 });
     }
 
-    // 1. Run CreditGuard middleware via wrapper
-    let nextCalled = false;
-    let responseStatus = 200;
-    let responseData: any = null;
-
-    const mockReq: any = { body: { workspaceId: realWorkspaceId } };
-    const mockRes: any = {
-      status(code: number) {
-        responseStatus = code;
-        return this;
-      },
-      json(data: any) {
-        responseData = data;
-        return this;
-      }
-    };
-    const mockNext = () => {
-      nextCalled = true;
-    };
-
-    await verifyAICreditBalance(mockReq, mockRes, mockNext);
-
-    if (!nextCalled) {
-      return NextResponse.json(responseData || { error: 'Unauthorized credit state' }, { status: responseStatus });
+    // 1. Fast preflight only. The atomic charge below is the authoritative limit check.
+    const creditGuard = await runCreditGuard(realWorkspaceId);
+    if (!creditGuard.ok) {
+      return NextResponse.json(creditGuard.body, { status: creditGuard.status });
     }
 
     // 3. Resolve context directives and model selection
@@ -121,9 +101,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 8. Deduct Credit Ledger Balance
-    await db('ai_usage_credits')
-      .where({ workspace_id: realWorkspaceId })
-      .increment('credits_used_this_period', 1);
+    await consumeAICredit(realWorkspaceId, 1);
 
     // 9. Return JSON payload
     return NextResponse.json({ content: generatedText, tokensUsed: tokensConsumed });

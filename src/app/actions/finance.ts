@@ -424,9 +424,16 @@ export async function updateInvoiceStatus(id: string, status: string) {
   const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
 
-  // Verify the invoice actually belongs to this workspace before doing
-  // anything else — including before triggering AttributionEngine, webhooks,
-  // auto-shipment, or affiliate commission side effects below.
+  // 'paid' can only ever be set by a real, signature-verified PayFast ITN
+  // (src/app/api/webhooks/payfast/route.ts) or, for a genuine offline/cash payment,
+  // via markInvoicePaidManually() below — which requires an admin/owner role and a
+  // recorded reason. This function is reachable by any workspace member and previously
+  // let anyone flip an invoice to 'paid' with no proof of payment at all.
+  if (status === 'paid') {
+    return { success: false, error: 'Use "Mark as paid (manual)" to record a payment received outside PayFast — a reason and admin/owner approval are required.' };
+  }
+
+  // Verify the invoice actually belongs to this workspace before doing anything else.
   const { data: owned, error: ownedError } = await supabase
     .from('invoices')
     .select('id')
@@ -437,154 +444,211 @@ export async function updateInvoiceStatus(id: string, status: string) {
     return { success: false, error: 'Invoice not found.' };
   }
 
-  let data: any = null;
-
-  if (status === 'paid') {
-    try {
-      const { AttributionEngine } = await import('@/lib/analytics/AttributionEngine');
-      const res = await AttributionEngine.trackInvoicePayment(id);
-      if (res.success && res.data) {
-        data = res.data;
-      } else {
-        logger.error({ err: res.error, invoiceId: id }, 'finance.invoice_status.attribution_engine.failed');
-      }
-    } catch (err) {
-      logger.error({ err, invoiceId: id }, 'finance.invoice_status.attribution_engine.load_failed');
-    }
+  const { data, error } = await supabase
+   .from('invoices')
+   .update({ status, updated_at: new Date().toISOString() })
+   .eq('id', id)
+   .eq('workspace_id', workspaceId)
+   .select('*, contact:contacts(*)')
+   .maybeSingle();
+  if (error) {
+    logger.error({ err: error, invoiceId: id, workspaceId }, 'finance.invoice_status.update.failed');
+    return { success: false, error: 'Failed to update invoice status.' };
   }
+  if (!data) return { success: false, error: 'Invoice not found.' };
 
-  if (!data) {
-    const { data: updatedData, error } = await supabase
-     .from('invoices')
-     .update({ status, updated_at: new Date().toISOString() })
-     .eq('id', id)
-     .eq('workspace_id', workspaceId)
-     .select('*, contact:contacts(*)')
-     .maybeSingle();
-    if (error) {
-      logger.error({ err: error, invoiceId: id, workspaceId }, 'finance.invoice_status.update.failed');
-      return { success: false, error: 'Failed to update invoice status.' };
-    }
-    if (!updatedData) return { success: false, error: 'Invoice not found.' };
-    data = updatedData;
-  }
+  safeRevalidatePath('/invoices');
+  return { success: true, data };
+}
 
-  if (status === 'paid' && data) {
-    try {
-      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
-      const contactName = (data as any).contact
-        ? `${(data as any).contact.first_name || ''} ${(data as any).contact.last_name || ''}`.trim()
-        : null;
-      dispatchWebhook(data.workspace_id, 'invoice.paid', {
-        invoice: {
-          id: data.id,
-          number: data.invoice_number,
-          amount: data.total_amount,
-          currency: data.currency || 'ZAR',
-          paid_at: new Date().toISOString(),
-          contact: {
-            id: data.contact_id,
-            name: contactName || null,
-          }
+// Fires the same downstream effects a real PayFast-confirmed payment triggers (outbound
+// webhook, automation event, auto-shipment, affiliate commission) — shared by the PayFast
+// webhook-adjacent flows and by markInvoicePaidManually so a manually-recorded payment still
+// drives the workspace's existing automations.
+async function runInvoicePaidSideEffects(id: string, data: any) {
+  try {
+    const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+    const contactName = (data as any).contact
+      ? `${(data as any).contact.first_name || ''} ${(data as any).contact.last_name || ''}`.trim()
+      : null;
+    dispatchWebhook(data.workspace_id, 'invoice.paid', {
+      invoice: {
+        id: data.id,
+        number: data.invoice_number,
+        amount: data.total_amount,
+        currency: data.currency || 'ZAR',
+        paid_at: data.paid_at || new Date().toISOString(),
+        contact: {
+          id: data.contact_id,
+          name: contactName || null,
         }
-      }).catch(() => {});
-    } catch (e) {
-      logger.error({ err: e, invoiceId: id }, 'finance.invoice_paid.webhook_dispatch.failed');
-    }
-
-    if (data.contact_id) {
-      try {
-        const { publishEvent } = await import('@/lib/events/EventBus');
-        publishEvent(data.workspace_id, 'invoice_paid', data.contact_id, { invoiceId: data.id }).catch(() => {});
-      } catch (e) {
-        logger.error({ err: e, invoiceId: id }, 'finance.invoice_paid.automation_trigger.failed');
       }
-    }
+    }).catch(() => {});
+  } catch (e) {
+    logger.error({ err: e, invoiceId: id }, 'finance.invoice_paid.webhook_dispatch.failed');
+  }
 
-    // Auto-create courier shipment if shipping address is present
+  if (data.contact_id) {
     try {
-      const metadata = (data.metadata || {}) as any
-      const customFields = (data.custom_field_values || {}) as any
-      const contactMetadata = (data.contact?.metadata || {}) as any
-      
-      const shippingAddress = 
-        metadata.shipping_address || 
-        metadata.shippingAddress || 
-        customFields.shipping_address || 
-        customFields.shippingAddress || 
-        contactMetadata.shipping_address || 
-        contactMetadata.shippingAddress
-      
-      if (shippingAddress) {
-        const { createAdminClient } = await import('@/lib/supabase/server')
-        const adminSupabase = createAdminClient()
-        
-        const trackingNum = `LM-INV-${data.invoice_number || data.id.substring(0, 8)}`
-        const recipientName = data.contact 
-          ? `${data.contact.first_name || ''} ${data.contact.last_name || ''}`.trim()
-          : null
-        const recipientEmail = data.contact?.email || null
+      const { publishEvent } = await import('@/lib/events/EventBus');
+      publishEvent(data.workspace_id, 'invoice_paid', data.contact_id, { invoiceId: data.id }).catch(() => {});
+    } catch (e) {
+      logger.error({ err: e, invoiceId: id }, 'finance.invoice_paid.automation_trigger.failed');
+    }
+  }
 
-        const { data: existingShipment } = await adminSupabase
+  // Auto-create courier shipment if shipping address is present
+  try {
+    const metadata = (data.metadata || {}) as any
+    const customFields = (data.custom_field_values || {}) as any
+    const contactMetadata = (data.contact?.metadata || {}) as any
+
+    const shippingAddress =
+      metadata.shipping_address ||
+      metadata.shippingAddress ||
+      customFields.shipping_address ||
+      customFields.shippingAddress ||
+      contactMetadata.shipping_address ||
+      contactMetadata.shippingAddress
+
+    if (shippingAddress) {
+      const { createAdminClient } = await import('@/lib/supabase/server')
+      const adminSupabase = createAdminClient()
+
+      const trackingNum = `LM-INV-${data.invoice_number || data.id.substring(0, 8)}`
+      const recipientName = data.contact
+        ? `${data.contact.first_name || ''} ${data.contact.last_name || ''}`.trim()
+        : null
+      const recipientEmail = data.contact?.email || null
+
+      const { data: existingShipment } = await adminSupabase
+        .from('courier_shipments')
+        .select('id')
+        .eq('workspace_id', data.workspace_id)
+        .eq('tracking_number', trackingNum)
+        .maybeSingle()
+
+      if (!existingShipment) {
+        const { createShipment } = await import('@/app/actions/shipments')
+        await createShipment(data.workspace_id, {
+          tracking_number: trackingNum,
+          recipient_name: recipientName || undefined,
+          recipient_email: recipientEmail || undefined
+        })
+
+        // Update source and source_id details
+        await adminSupabase
           .from('courier_shipments')
-          .select('id')
+          .update({
+            source: 'invoice',
+            source_id: data.id
+          })
           .eq('workspace_id', data.workspace_id)
           .eq('tracking_number', trackingNum)
-          .maybeSingle()
-
-        if (!existingShipment) {
-          const { createShipment } = await import('@/app/actions/shipments')
-          await createShipment(data.workspace_id, {
-            tracking_number: trackingNum,
-            recipient_name: recipientName || undefined,
-            recipient_email: recipientEmail || undefined
-          })
-
-          // Update source and source_id details
-          await adminSupabase
-            .from('courier_shipments')
-            .update({
-              source: 'invoice',
-              source_id: data.id
-            })
-            .eq('workspace_id', data.workspace_id)
-            .eq('tracking_number', trackingNum)
-        }
       }
-    } catch (err) {
-      logger.error({ err, invoiceId: id }, 'finance.invoice_paid.auto_shipment.failed');
     }
-
-    // Affiliate Commission Conversion
-    try {
-      const contact = (data as any).contact;
-      if (contact?.referred_by_affiliate_id && contact?.referred_programme_id) {
-        const { createAdminClient } = await import('@/lib/supabase/server');
-        const adminSupabase = createAdminClient();
-        const { data: existingComm } = await adminSupabase
-          .from('affiliate_commissions')
-          .select('id')
-          .eq('source_type', 'invoice')
-          .eq('source_id', data.id)
-          .maybeSingle();
-
-        if (!existingComm) {
-          const { recordConversion } = await import('@/lib/affiliate/commission');
-          await recordConversion({
-            workspaceId: data.workspace_id,
-            affiliateId: contact.referred_by_affiliate_id,
-            programmeId: contact.referred_programme_id,
-            sourceType: 'invoice',
-            sourceId: data.id,
-            contactId: data.contact_id,
-            amount: Number(data.total_amount || 0)
-          });
-        }
-      }
-    } catch (affError) {
-      logger.error({ err: affError, invoiceId: id }, 'finance.invoice_paid.affiliate_conversion.failed');
-    }
+  } catch (err) {
+    logger.error({ err, invoiceId: id }, 'finance.invoice_paid.auto_shipment.failed');
   }
+
+  // Affiliate Commission Conversion
+  try {
+    const contact = (data as any).contact;
+    if (contact?.referred_by_affiliate_id && contact?.referred_programme_id) {
+      const { createAdminClient } = await import('@/lib/supabase/server');
+      const adminSupabase = createAdminClient();
+      const { data: existingComm } = await adminSupabase
+        .from('affiliate_commissions')
+        .select('id')
+        .eq('source_type', 'invoice')
+        .eq('source_id', data.id)
+        .maybeSingle();
+
+      if (!existingComm) {
+        const { recordConversion } = await import('@/lib/affiliate/commission');
+        await recordConversion({
+          workspaceId: data.workspace_id,
+          affiliateId: contact.referred_by_affiliate_id,
+          programmeId: contact.referred_programme_id,
+          sourceType: 'invoice',
+          sourceId: data.id,
+          contactId: data.contact_id,
+          amount: Number(data.total_amount || 0)
+        });
+      }
+    }
+  } catch (affError) {
+    logger.error({ err: affError, invoiceId: id }, 'finance.invoice_paid.affiliate_conversion.failed');
+  }
+}
+
+// Manually mark an invoice as paid outside of a PayFast-confirmed payment (e.g. cash received
+// offline). Restricted to workspace admin/owner and requires a reason, which is logged to
+// invoice_manual_payments and stamped as invoices.payment_method = 'manual' — kept distinctly
+// queryable from a real gateway-verified payment (payment_method = 'payfast') so the two are
+// never confused in reporting.
+export async function markInvoicePaidManually(id: string, reason: string) {
+  const { userId, workspaceId } = await requireWorkspaceAccess();
+  const supabase = await createServerClient();
+
+  if (!reason || !reason.trim()) {
+    return { success: false, error: 'A reason is required to manually mark an invoice as paid.' };
+  }
+
+  const { data: membership } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (!membership || !['admin', 'owner'].includes(membership.role)) {
+    return { success: false, error: 'Only workspace admins or owners can manually mark an invoice as paid.' };
+  }
+
+  const { data: owned, error: ownedError } = await supabase
+    .from('invoices')
+    .select('id, status')
+    .eq('id', id)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+  if (ownedError || !owned) {
+    return { success: false, error: 'Invoice not found.' };
+  }
+  if (owned.status === 'paid') {
+    return { success: false, error: 'Invoice is already marked as paid.' };
+  }
+
+  const { error: logError } = await supabase.from('invoice_manual_payments').insert({
+    invoice_id: id,
+    workspace_id: workspaceId,
+    reason: reason.trim(),
+    logged_by: userId,
+  });
+  if (logError) {
+    logger.error({ err: logError, invoiceId: id, workspaceId }, 'finance.invoice.manual_mark_paid.log_failed');
+    return { success: false, error: 'Failed to record manual payment.' };
+  }
+
+  const { data, error } = await supabase
+    .from('invoices')
+    .update({
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+      payment_method: 'manual',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('workspace_id', workspaceId)
+    .select('*, contact:contacts(*)')
+    .maybeSingle();
+  if (error || !data) {
+    logger.error({ err: error, invoiceId: id, workspaceId }, 'finance.invoice.manual_mark_paid.update_failed');
+    return { success: false, error: 'Failed to update invoice status.' };
+  }
+
+  logger.warn({ workspaceId, invoiceId: id, userId, reason: reason.trim() }, 'finance.invoice.manual_mark_paid');
+
+  await runInvoicePaidSideEffects(id, data);
 
   safeRevalidatePath('/invoices');
   return { success: true, data };
