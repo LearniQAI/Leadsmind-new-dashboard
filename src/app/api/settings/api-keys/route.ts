@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth'
 import { createAdminClient, createServerClient } from '@/lib/supabase/server'
-import { UnauthorizedError, ForbiddenError, toClientError } from '@/shared/errors/AppError'
+import { UnauthorizedError, ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
 import { mintWorkspaceApiKey } from '@/lib/api/apiKeys'
 
@@ -95,13 +95,15 @@ export async function DELETE(req: NextRequest) {
     const workspaceId = await resolveActiveWorkspace(user.id);
 
     const adminClient = createAdminClient();
-    const { error } = await adminClient
+    const { data, error } = await adminClient
       .from('workspace_api_keys')
       .update({ revoked: true })
       .eq('id', id)
       .eq('workspace_id', workspaceId)
+      .select('id')
 
     if (error) throw error;
+    if (!data || data.length === 0) throw new NotFoundError('API key');
     return NextResponse.json({ success: true })
   } catch (err: any) {
     logger.error({ err }, 'settings.api_keys.delete.failed');

@@ -7,10 +7,16 @@ import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
-// Retrieve and hash the encryption key to guarantee it is exactly 32 bytes (256 bits) for AES-256
-const ENCRYPTION_KEY = crypto.createHash('sha256')
-  .update(process.env.KYC_ENCRYPTION_KEY || 'default_secret_compliance_key_32_bytes')
-  .digest();
+// Retrieve and hash the encryption key to guarantee it is exactly 32 bytes (256 bits) for AES-256.
+// No fallback: a hardcoded default key here would mean anyone who reads this source (or any repo
+// fork/clone) could decrypt FICA/KYC documents for any deployment that forgot to set the env var.
+function getKycEncryptionKey(): Buffer {
+  const keyEnv = process.env.KYC_ENCRYPTION_KEY;
+  if (!keyEnv) {
+    throw new Error('[FATAL] KYC_ENCRYPTION_KEY env var is not configured');
+  }
+  return crypto.createHash('sha256').update(keyEnv).digest();
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,12 +45,13 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuffer);
 
-    // Generate random 16-byte initialization vector (IV) for CBC mode
-    const iv = crypto.randomBytes(16);
-
-    // Encrypt using AES-256-CBC
-    const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    // Generate random 12-byte IV (GCM standard) and encrypt using AES-256-GCM
+    // (authenticated -- the auth tag lets download/route.ts detect any tampering
+    // or corruption of the stored ciphertext, which the previous CBC scheme could not).
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', getKycEncryptionKey(), iv);
     const encryptedBuffer = Buffer.concat([cipher.update(fileBuffer), cipher.final()]);
+    const authTag = cipher.getAuthTag();
 
     // Construct path under bucket: contacts/[contactId]/[timestamp]-[cleanName].enc
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -86,7 +93,9 @@ export async function POST(req: NextRequest) {
         file_url: storagePath,
         expiry_date: expiryDate,
         retention_delete_after: retentionDate.toISOString(),
-        encryption_iv: iv.toString('hex')
+        encryption_iv: iv.toString('hex'),
+        encryption_auth_tag: authTag.toString('hex'),
+        encryption_algorithm: 'aes-256-gcm'
       })
       .select()
       .single();

@@ -46,9 +46,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const updates: Record<string, any> = {}
   for (const k of allowed) if (k in body) updates[k] = body[k]
 
-  // Mark-paid convenience: status -> paid stamps paid_at if not provided.
-  if (updates.status === 'paid' && !updates.paid_at && current.status !== 'paid') {
-    updates.paid_at = new Date().toISOString()
+  // 'paid' can only ever be set by a real, signature-verified PayFast ITN
+  // (src/app/api/webhooks/payfast/route.ts) — a workspace API key alone is not proof of
+  // payment. Any other status transition (sent/void/draft/etc.) remains client-settable.
+  if (updates.status === 'paid' && current.status !== 'paid') {
+    return apiError("status cannot be set to 'paid' via this API — payment is confirmed only by the PayFast webhook", 422)
   }
   if (Object.keys(updates).length === 0) return apiError('No updatable fields provided')
 

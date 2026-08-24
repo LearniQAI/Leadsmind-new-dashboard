@@ -30,6 +30,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { cn, formatCurrency } from '@/lib/utils';
+import { calculateInvoiceTotals } from '@/lib/invoicing/calculations';
 import { saveInvoice, updateInvoice, sendInvoiceNow } from '@/app/actions/finance';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -100,8 +101,16 @@ export function InvoiceBuilder({
 
   const watchItems = watch("items");
   const watchCurrency = watch("currency");
-  const subtotal = watchItems.reduce((acc, item) => acc + (item.quantity * item.unit_amount), 0);
-  const total = subtotal; // Simplified, can add tax later
+  // This builder has no per-line tax-rate field (unlike InvoiceFormContainer/LineItemBuilder) —
+  // apply the workspace's single vat_rate uniformly across every line when vat_enabled, via the
+  // same calculateInvoiceTotals() used by the main invoice form, instead of hardcoding 0.
+  const vatRate = settings?.vat_enabled ? (Number(settings?.vat_rate) || 0) : 0;
+  const totals = calculateInvoiceTotals(
+    watchItems.map(item => ({ quantity: item.quantity || 0, rate: item.unit_amount || 0, taxRate: vatRate }))
+  );
+  const subtotal = totals.subtotal;
+  const taxTotal = totals.taxTotal;
+  const total = totals.grandTotal;
 
   const onSubmit = async (data: InvoiceFormValues, sendNow: boolean = false) => {
    setIsSubmitting(true);
@@ -120,7 +129,7 @@ export function InvoiceBuilder({
         items: data.items,
         subtotal,
         total_amount: total,
-        tax_total: 0,
+        tax_total: taxTotal,
         currency: data.currency,
         notes: data.notes,
         terms: data.terms,
@@ -135,6 +144,7 @@ export function InvoiceBuilder({
         ...data,
         workspace_id: workspaceId,
         subtotal,
+        tax_total: taxTotal,
         total_amount: total,
         amount_due: total,
         amount_paid: initialData?.amount_paid || 0
@@ -350,8 +360,8 @@ export function InvoiceBuilder({
             <span className="text-sm font-black">{formatCurrency(subtotal, watchCurrency)}</span>
            </div>
            <div className="flex justify-between items-center text-white/40 pb-6 border-b border-white/5">
-            <span className="text-[10px] font-black uppercase tracking-widest">Tax (0%)</span>
-            <span className="text-sm font-black">{formatCurrency(0, watchCurrency)}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">Tax ({vatRate}%)</span>
+            <span className="text-sm font-black">{formatCurrency(taxTotal, watchCurrency)}</span>
            </div>
            <div className="pt-4 space-y-1">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary block">Total Balance Due</span>

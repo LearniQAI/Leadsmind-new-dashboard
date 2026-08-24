@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
-import { encrypt, decrypt } from '@/lib/encryption';
+import { encrypt, decrypt, isLegacyCiphertext } from '@/lib/encryption';
+import { logger } from '@/shared/logger';
 
 // No per-provider credential-reading helper existed before this (confirmed:
 // every existing consumer of workspace_integrations.credentials reads the
@@ -60,6 +61,48 @@ const ENCRYPTED_FIELDS: Record<GatewayProvider, string[]> = {
   paypal: [],
 };
 
+// Decrypts each of `fields` from `raw`, then — if any of them were still on the legacy
+// AES-256-CBC format — re-encrypts just those fields (encrypt() always writes the current GCM
+// format) and saves the merged credentials blob back to the row. This is lazy/opportunistic
+// rotation: a legacy row upgrades to GCM the next time it's legitimately read for real gateway
+// use, with no separate bulk migration ever needing to hold plaintext credentials for many rows
+// at once. Rotation failure never blocks the caller — the already-decrypted plaintext is still
+// returned; the row just stays legacy and gets another chance next read.
+async function decryptWithLazyRotation(
+  supabase: ReturnType<typeof createAdminClient>,
+  workspaceId: string,
+  provider: GatewayProvider,
+  raw: Record<string, string>,
+  fields: string[]
+): Promise<Record<string, string>> {
+  const plaintext: Record<string, string> = {};
+  const rotated: Record<string, string> = {};
+
+  for (const field of fields) {
+    plaintext[field] = decrypt(raw[field]);
+    if (isLegacyCiphertext(raw[field])) {
+      rotated[field] = encrypt(plaintext[field]);
+    }
+  }
+
+  if (Object.keys(rotated).length > 0) {
+    try {
+      const { error } = await supabase
+        .from('workspace_integrations')
+        .update({ credentials: { ...raw, ...rotated }, updated_at: new Date().toISOString() })
+        .eq('workspace_id', workspaceId)
+        .eq('provider', provider)
+        .eq('category', 'payment_gateway');
+      if (error) throw error;
+      logger.info({ workspaceId, provider, fields: Object.keys(rotated) }, 'payment_gateway.credentials.legacy_encryption_rotated');
+    } catch (err) {
+      logger.error({ err, workspaceId, provider }, 'payment_gateway.credentials.legacy_encryption_rotation_failed');
+    }
+  }
+
+  return plaintext;
+}
+
 export async function getGatewayCredentials<P extends GatewayProvider>(
   workspaceId: string,
   provider: P
@@ -80,21 +123,24 @@ export async function getGatewayCredentials<P extends GatewayProvider>(
   try {
     if (provider === 'paystack') {
       if (!c.secret_key_encrypted) return null;
-      return { secretKey: decrypt(c.secret_key_encrypted) } as CredentialsByProvider[P];
+      const p = await decryptWithLazyRotation(supabase, workspaceId, provider, c, ['secret_key_encrypted']);
+      return { secretKey: p.secret_key_encrypted } as CredentialsByProvider[P];
     }
     if (provider === 'flutterwave') {
       if (!c.secret_key_encrypted || !c.webhook_secret_hash_encrypted) return null;
+      const p = await decryptWithLazyRotation(supabase, workspaceId, provider, c, ['secret_key_encrypted', 'webhook_secret_hash_encrypted']);
       return {
-        secretKey: decrypt(c.secret_key_encrypted),
-        webhookSecretHash: decrypt(c.webhook_secret_hash_encrypted),
+        secretKey: p.secret_key_encrypted,
+        webhookSecretHash: p.webhook_secret_hash_encrypted,
       } as CredentialsByProvider[P];
     }
     if (provider === 'ozow') {
       if (!c.site_code_encrypted || !c.api_key_encrypted || !c.private_key_encrypted) return null;
+      const p = await decryptWithLazyRotation(supabase, workspaceId, provider, c, ['site_code_encrypted', 'api_key_encrypted', 'private_key_encrypted']);
       return {
-        siteCode: decrypt(c.site_code_encrypted),
-        apiKey: decrypt(c.api_key_encrypted),
-        privateKey: decrypt(c.private_key_encrypted),
+        siteCode: p.site_code_encrypted,
+        apiKey: p.api_key_encrypted,
+        privateKey: p.private_key_encrypted,
       } as CredentialsByProvider[P];
     }
     if (provider === 'paypal') {

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import {
   Search, Download, MoreVertical, Calendar, FileText, X, CheckCircle2,
   AlertTriangle, Clock, ArrowRight, ShieldCheck, Printer, Trash2,
-  CheckCircle, XCircle, Send, Pencil, Eraser, Globe, FileMinus
+  CheckCircle, XCircle, Send, Pencil, Eraser, Globe, FileMinus, Undo2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -14,8 +14,11 @@ import Link from 'next/link';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { deleteInvoice, updateInvoiceStatus, writeOffInvoice } from '@/app/actions/finance';
+import { deleteInvoice, updateInvoiceStatus, writeOffInvoice, markInvoicePaidManually } from '@/app/actions/finance';
+import { refundInvoice } from '@/app/actions/refunds';
 import WriteOffDialog from './WriteOffDialog';
+import MarkPaidManuallyDialog from './MarkPaidManuallyDialog';
+import RefundInvoiceDialog from './RefundInvoiceDialog';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -48,6 +51,9 @@ function StatusBadge({ status }: { status: string }) {
   if (statusLower === 'written_off') {
     return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-dash-surface border border-dash-border text-[11px] font-bold !text-dash-textMuted"><Eraser size={10} /> Written Off</span>;
   }
+  if (statusLower === 'refunded') {
+    return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-red/10 border border-red/20 text-[11px] font-bold text-red"><Undo2 size={10} /> Refunded</span>;
+  }
 
   return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-50 border border-amber-200 text-[11px] font-bold text-amber-600"><Clock size={10} /> {status || 'Draft'}</span>;
 }
@@ -65,8 +71,47 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
   const [sortBy, setBy] = useState<string>('newest');
 
   const [writeOffOpen, setWriteOffOpen] = useState(false);
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
 
   const selectedInvoice = invoices.find(i => i.id === selectedId);
+
+  const handleMarkPaidManually = async (reason: string) => {
+    if (!selectedInvoice) return;
+
+    toast.promise(markInvoicePaidManually(selectedInvoice.id, reason), {
+      loading: 'Recording payment...',
+      success: (res) => {
+        if (!res.success) throw new Error(res.error || 'Failed to mark invoice as paid');
+        setInvoices(prev => prev.map(i => i.id === selectedInvoice.id ? { ...i, status: 'paid' } : i));
+        return 'Invoice marked as paid';
+      },
+      error: (err) => err.message
+    });
+  };
+
+  const handleRefund = async ({ reason, amount }: { reason: string; amount: number }) => {
+    if (!selectedInvoice) return { recordOnly: true, gateway: 'payfast' as const };
+
+    const result = await refundInvoice(selectedInvoice.id, reason, amount)
+      .catch((err: Error) => {
+        toast.error(err.message || 'Refund failed');
+        throw err;
+      });
+
+    setInvoices(prev => prev.map(i => i.id === selectedInvoice.id ? { ...i, status: 'refunded' } : i));
+
+    if (result.recordOnly) {
+      toast.warning(
+        `Invoice marked as refunded. No money was moved — process the actual refund manually in your ${result.gateway === 'payfast' ? 'PayFast' : result.gateway} dashboard.`,
+        { duration: 8000 }
+      );
+    } else {
+      toast.success(`Refund of ${formatCurrency(result.amount, selectedInvoice.currency)} processed via ${result.gateway === 'stripe' ? 'Stripe' : result.gateway}.`);
+    }
+
+    return result;
+  };
 
   const handleWriteOff = async (data: { amount: number; reason: string }) => {
     if (!selectedInvoice) return;
@@ -273,11 +318,20 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-lg rounded-xl min-w-[180px]">
                     {INVOICE_STATUSES.filter(s => s !== selectedInvoice.status).map(s => (
-                      <DropdownMenuItem key={s} onClick={() => handleStatusChange(selectedInvoice, s)} className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2 text-xs capitalize">
+                      <DropdownMenuItem
+                        key={s}
+                        onClick={() => s === 'paid' ? setMarkPaidOpen(true) : handleStatusChange(selectedInvoice, s)}
+                        className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2 text-xs capitalize"
+                      >
                         Mark as {s}
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator className="my-1 bg-dash-border" />
+                    {selectedInvoice.status === 'paid' && (
+                      <DropdownMenuItem onClick={() => setRefundOpen(true)} className="flex items-center gap-2 cursor-pointer text-red hover:bg-red/10 rounded-lg mx-1 px-3 py-2 text-xs">
+                        <Undo2 size={14} /> Refund
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2 text-xs">
                       <Link href={`/finance/credit-notes?invoiceId=${selectedInvoice.id}`}>
                         <FileMinus size={14} /> Issue Credit Note
@@ -435,6 +489,20 @@ export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMaster
         onOpenChange={setWriteOffOpen}
         invoice={selectedInvoice}
         onConfirm={handleWriteOff}
+      />
+
+      <MarkPaidManuallyDialog
+        open={markPaidOpen}
+        onOpenChange={setMarkPaidOpen}
+        invoice={selectedInvoice}
+        onConfirm={handleMarkPaidManually}
+      />
+
+      <RefundInvoiceDialog
+        open={refundOpen}
+        onOpenChange={setRefundOpen}
+        invoice={selectedInvoice}
+        onConfirm={handleRefund}
       />
 
       <ConfirmDialog

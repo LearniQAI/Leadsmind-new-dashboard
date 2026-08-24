@@ -79,6 +79,20 @@ export async function POST(req: NextRequest) {
 
     const supabase = await createServerClient();
 
+    // Verify contactId actually belongs to the caller's own workspace before it's ever
+    // written into str_reports — previously any admin/compliance user could reference a
+    // contactId from a different workspace here, creating a cross-tenant compliance record.
+    const { data: contactRow, error: contactErr } = await supabase
+      .from('contacts')
+      .select('id')
+      .eq('id', contactId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
+    if (contactErr || !contactRow) {
+      return NextResponse.json({ error: 'Contact not found in this workspace' }, { status: 404 });
+    }
+
     if (id) {
       // Update existing draft
       const { data, error } = await supabase

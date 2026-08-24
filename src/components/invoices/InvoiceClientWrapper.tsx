@@ -13,6 +13,7 @@ interface InvoiceClientWrapperProps {
   contacts: any[];
   initialData?: any;
   customFieldDefinitions?: any[];
+  defaultTaxRate?: number;
 }
 
 const InvoiceClientWrapper: React.FC<InvoiceClientWrapperProps> = ({
@@ -20,6 +21,7 @@ const InvoiceClientWrapper: React.FC<InvoiceClientWrapperProps> = ({
   contacts,
   initialData,
   customFieldDefinitions = [],
+  defaultTaxRate = 0,
 }) => {
   const router = useRouter();
   const [isScheduling, setIsScheduling] = useState(false);
@@ -81,6 +83,7 @@ const InvoiceClientWrapper: React.FC<InvoiceClientWrapperProps> = ({
         customFieldDefinitions={customFieldDefinitions}
         onSave={handleSave}
         isSaving={isSaving}
+        defaultTaxRate={defaultTaxRate}
       />
 
       <div className="fixed bottom-12 left-12 z-[100] no-print">

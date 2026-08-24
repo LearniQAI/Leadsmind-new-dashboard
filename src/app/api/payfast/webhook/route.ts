@@ -7,6 +7,7 @@ import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { sendBookingConfirmation } from '@/lib/calendar/notifications';
 import { logger } from '@/shared/logger';
 import { sendInvoiceEmail } from '@/lib/invoices/sendInvoiceEmail';
+import { calculateInclusiveTax } from '@/lib/invoicing/calculations';
 
 export async function POST(req: NextRequest) {
   try {
@@ -114,6 +115,17 @@ export async function POST(req: NextRequest) {
           const price = parseFloat(payload.amount_gross || '0');
           const invoiceNumber = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
 
+          // price is already collected in full via PayFast — split it into subtotal/tax_total
+          // based on the workspace's VAT setting instead of always reporting zero VAT.
+          const { data: leaseVatWorkspaceRow } = await supabase
+            .from('workspaces')
+            .select('invoice_settings')
+            .eq('id', lease.workspace_id)
+            .maybeSingle();
+          const leaseVatSettings = (leaseVatWorkspaceRow?.invoice_settings as any) || {};
+          const leaseVatRate = leaseVatSettings.vat_enabled ? (Number(leaseVatSettings.vat_rate) || 0) : 0;
+          const { subtotal: leaseSubtotal, taxTotal: leaseTaxTotal } = calculateInclusiveTax(price, leaseVatRate);
+
           // Create Invoices Row
           const { data: invoice } = await supabase
             .from('invoices')
@@ -122,13 +134,14 @@ export async function POST(req: NextRequest) {
               contact_id: lease.contact_id,
               amount_due: price,
               amount_paid: price,
-              subtotal: price,
-              tax_total: 0.00,
+              subtotal: leaseSubtotal,
+              tax_total: leaseTaxTotal,
               discount_total: 0.00,
               total_amount: price,
               invoice_number: invoiceNumber,
               currency: 'ZAR',
               status: 'paid',
+              payment_method: 'payfast',
               due_date: new Date().toISOString(),
               notes: `Paid consultation checkout for slot ${lease.slot_time}`,
               // Links this invoice back to the lease that generated it — needed so a later

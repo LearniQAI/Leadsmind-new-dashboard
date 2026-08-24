@@ -49,7 +49,7 @@ export default async function NewInvoicePage({
           </div>
 
           <div className="mt-6 px-6 pb-12">
-            <InvoiceClientWrapper 
+            <InvoiceClientWrapper
               workspaceId={workspaceId!}
               contacts={contacts}
               initialData={{
@@ -57,6 +57,7 @@ export default async function NewInvoicePage({
                 terms_and_conditions: settings?.default_terms || '',
                 items: []
               }}
+              defaultTaxRate={settings?.vat_enabled ? (Number(settings?.vat_rate) || 0) : 0}
             />
           </div>
         </div>

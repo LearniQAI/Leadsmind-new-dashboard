@@ -239,10 +239,12 @@ export async function submitComment(payload: {
 export async function getPostComments(postId: string) {
   try {
     const supabase = await createServerClient();
-    const { data, error } = await supabase.from('blog_comments')
+    // Reads the public-safe view (blog_comments_public), not the base table directly — the
+    // base table's own public SELECT policy was removed since it exposed author_email (RLS is
+    // row-level only, it couldn't restrict columns); the view excludes that column entirely.
+    const { data, error } = await supabase.from('blog_comments_public')
       .select('id, author_name, content, created_at')
       .eq('post_id', postId)
-      .eq('status', 'approved')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return { data: data || [] };

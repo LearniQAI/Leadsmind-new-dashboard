@@ -116,14 +116,26 @@ export async function rollbackPostVersion(postId: string, versionId: string) {
 // 2. CLONING MECHANICS
 export async function clonePost(postId: string) {
   try {
+    const wsId = await getCurrentWorkspaceId();
+    if (!wsId) return { error: 'No active workspace context' };
+    const user = await getUser();
+    if (!user) return { error: 'Unauthorized administrative access' };
+
     const supabase = await createServerClient();
+    // Explicit workspace-ownership check — unlike every sibling function in this file, this
+    // used to select the source post by id alone (RLS on blog_posts also permits reading any
+    // OTHER workspace's *published* post, so a foreign postId silently succeeded here and only
+    // failed later at the insert, relying entirely on RLS as an unstated safety net). Now
+    // rejects explicitly, before ever reading the source post.
     const { data: original, error: oErr } = await supabase
       .from('blog_posts')
       .select('*')
       .eq('id', postId)
-      .single();
+      .eq('workspace_id', wsId)
+      .maybeSingle();
 
-    if (oErr || !original) throw new NotFoundError('Post');
+    if (oErr) throw oErr;
+    if (!original) throw new NotFoundError('Post');
 
     const randomSlugSuffix = Math.floor(Math.random() * 10000);
     const { author, category, created_at, updated_at, id, ...cloneData } = original;
@@ -132,6 +144,7 @@ export async function clonePost(postId: string) {
       .from('blog_posts')
       .insert({
         ...cloneData,
+        workspace_id: wsId,
         title: `${original.title} (Copy)`,
         slug: `${original.slug}-${randomSlugSuffix}`,
         status: 'draft',

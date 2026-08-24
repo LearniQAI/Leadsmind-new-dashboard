@@ -1,5 +1,6 @@
 import { verifyAICreditBalance } from '@/server/middleware/CreditGuard';
-import { db } from '@/server/database/datasource';
+import { createAdminClient } from '@/lib/supabase/server';
+import { AppError, CreditLimitExceededError } from '@/shared/errors/AppError';
 
 /**
  * Thin, typed wrapper around verifyAICreditBalance's Express-style
@@ -45,5 +46,17 @@ export async function runCreditGuard(
  * quality: ~$0.05/image vs a fraction of a cent for a short completion).
  */
 export async function consumeAICredit(workspaceId: string, amount: number = 1): Promise<void> {
-  await db('ai_usage_credits').where({ workspace_id: workspaceId }).increment('credits_used_this_period', amount);
+  const supabase = createAdminClient();
+  const { data: deducted, error } = await supabase.rpc('deduct_ai_credit', {
+    p_workspace_id: workspaceId,
+    p_amount: amount,
+  });
+
+  if (error) {
+    throw new AppError('AI_CREDIT_DEDUCTION_FAILED', 'Could not process AI credit deduction.', 500);
+  }
+
+  if (!deducted) {
+    throw new CreditLimitExceededError();
+  }
 }

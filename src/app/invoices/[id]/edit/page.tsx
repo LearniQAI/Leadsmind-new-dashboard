@@ -57,7 +57,7 @@ export default async function EditInvoicePage({ params }: EditInvoicePageProps) 
             </div>
 
             <div className="px-2">
-              <InvoiceClientWrapper 
+              <InvoiceClientWrapper
                 workspaceId={workspaceId!}
                 contacts={contacts}
                 initialData={{
@@ -65,6 +65,7 @@ export default async function EditInvoicePage({ params }: EditInvoicePageProps) 
                   due_date: invoice.due_date ? new Date(invoice.due_date).toISOString().split('T')[0] : '',
                   created_at: invoice.created_at ? new Date(invoice.created_at).toISOString().split('T')[0] : '',
                 }}
+                defaultTaxRate={settings?.vat_enabled ? (Number(settings?.vat_rate) || 0) : 0}
               />
             </div>
           </div>
