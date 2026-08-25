@@ -109,6 +109,33 @@ export async function deleteWorkflow(workflowId: string) {
   return { success: true };
 }
 
+// Dismisses a failed execution from the dead letter queue without pretending it succeeded
+// (status stays distinguishable from 'completed') — the executor only ever writes
+// running/completed/failed, so 'resolved' only ever gets set here, by a human acknowledging
+// a failure they've dealt with outside the workflow itself.
+export async function resolveExecution(executionId: string) {
+  const supabase = await createServerClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) throw new Error('No active workspace');
+
+  const { error } = await supabase
+    .from('workflow_executions')
+    .update({ status: 'resolved' })
+    .eq('id', executionId)
+    .eq('workspace_id', workspaceId)
+    .eq('status', 'failed');
+
+  if (error) throw error;
+
+  revalidatePath('/automation/history');
+  revalidatePath('/automation');
+  return { success: true };
+}
+
 export async function seedSARecipes() {
   const supabase = await createServerClient();
   const workspaceId = await getCurrentWorkspaceId();

@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { Zap, LayoutDashboard, CheckCircle2, XCircle, Play, ArrowRight, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { ResolveExecutionButton } from '@/components/automation/ResolveExecutionButton';
 
 export default async function ExecutionHistoryPage() {
   const supabase = await createServerClient();
@@ -61,9 +62,7 @@ export default async function ExecutionHistoryPage() {
                       Error: {failure.error_message}
                     </p>
                   </div>
-                  <button className="px-4 py-2 bg-red/10 hover:bg-red/20 text-red rounded-xl text-xs font-bold transition-colors motion-reduce:transition-none">
-                    Resolve manually
-                  </button>
+                  <ResolveExecutionButton executionId={failure.id} />
                 </div>
               ))}
             </div>
@@ -83,11 +82,11 @@ export default async function ExecutionHistoryPage() {
                 <div key={log.id} className="p-4 bg-dash-surface border border-dash-border rounded-2xl flex items-center justify-between hover:border-dash-text/20 transition-colors motion-reduce:transition-none">
                   <div className="flex items-center gap-4">
                     <div className={`p-2 rounded-xl ${
-                      log.status === 'success' ? 'bg-green/10 text-green' :
+                      log.status === 'completed' ? 'bg-green/10 text-green' :
                       log.status === 'failed' ? 'bg-red/10 text-red' :
                       'bg-amber-100 text-amber-600'
                     }`}>
-                      {log.status === 'success' ? <CheckCircle2 size={18} /> :
+                      {log.status === 'completed' ? <CheckCircle2 size={18} /> :
                        log.status === 'failed' ? <XCircle size={18} /> :
                        <Play size={18} />}
                     </div>
@@ -106,7 +105,7 @@ export default async function ExecutionHistoryPage() {
                   </div>
                   <div className="text-right">
                     <span className={`text-[10px] font-bold px-2 py-1 rounded ${
-                      log.status === 'success' ? 'bg-green/10 text-green' :
+                      log.status === 'completed' ? 'bg-green/10 text-green' :
                       log.status === 'failed' ? 'bg-red/10 text-red' :
                       'bg-amber-100 text-amber-600'
                     }`}>

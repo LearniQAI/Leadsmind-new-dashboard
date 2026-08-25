@@ -38,11 +38,11 @@ export function WorkflowHistoryPanel({ executions, failures }: { executions: any
             <div key={log.id} className="p-4 bg-n900 border border-white/5 rounded-2xl flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-full ${
-                  log.status === 'success' ? 'bg-emerald-500/20 text-emerald-400' :
+                  log.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
                   log.status === 'failed' ? 'bg-red-500/20 text-red-400' :
                   'bg-amber-500/20 text-amber-400'
                 }`}>
-                  {log.status === 'success' ? <CheckCircle2 size={16} /> :
+                  {log.status === 'completed' ? <CheckCircle2 size={16} /> :
                    log.status === 'failed' ? <XCircle size={16} /> :
                    <Play size={16} />}
                 </div>
@@ -56,7 +56,7 @@ export function WorkflowHistoryPanel({ executions, failures }: { executions: any
                 </div>
               </div>
               <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded ${
-                log.status === 'success' ? 'text-emerald-400' :
+                log.status === 'completed' ? 'text-emerald-400' :
                 log.status === 'failed' ? 'text-red-400' :
                 'text-amber-400'
               }`}>
