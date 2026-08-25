@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
@@ -82,45 +82,46 @@ export async function createCreditNote(data: { invoiceId: string; amount: number
 
     const creditNumber = await generateCreditNumber(supabase, workspaceId);
 
-    const { data: creditNote, error: insertError } = await supabase
-      .from('credit_notes')
-      .insert({
-        invoice_id: data.invoiceId,
-        workspace_id: workspaceId,
-        contact_id: invoice.contact_id,
-        credit_number: creditNumber,
-        amount: data.amount,
-        reason: data.reason,
-        status: 'issued',
-        issue_date: new Date().toISOString(),
-        logged_by: userId,
+    // Insert + invoice-balance update as a single atomic transaction (one row
+    // lock, no window for a partial failure to leave the credit note and the
+    // invoice out of sync) — see create_credit_note_atomic in
+    // supabase/migrations/20260903000000_atomic_credit_notes.sql. Runs via
+    // the admin client since requireWorkspaceAccess() above already did the
+    // real auth/membership check; the RPC itself re-validates the invoice's
+    // workspace_id and outstanding balance regardless.
+    const adminClient = createAdminClient();
+    const { data: rpcResult, error: rpcError } = await adminClient
+      .rpc('create_credit_note_atomic', {
+        p_workspace_id: workspaceId,
+        p_invoice_id: data.invoiceId,
+        p_contact_id: invoice.contact_id,
+        p_credit_number: creditNumber,
+        p_amount: data.amount,
+        p_reason: data.reason,
+        p_logged_by: userId,
       })
-      .select('*, invoice:invoices(invoice_number, total_amount, currency, contact:contacts(first_name, last_name, email))')
       .single();
 
-    if (insertError) {
-      logger.error({ err: insertError, invoiceId: data.invoiceId, workspaceId }, 'finance.credit_note.create.failed');
-      return { success: false, error: 'Failed to create credit note.' };
+    if (rpcError || !rpcResult) {
+      logger.error({ err: rpcError, invoiceId: data.invoiceId, workspaceId }, 'finance.credit_note.create.failed');
+      return { success: false, error: rpcError?.message?.includes('outstanding balance')
+        ? rpcError.message
+        : 'Failed to create credit note.' };
     }
 
-    // Reduce what's actually owed (amount_due) — never amount_paid, which
-    // represents real cash collected and feeds total_collected in invoice
-    // analytics. A credit note is not a payment.
-    const newAmountDue = Math.max(0, amountDue - data.amount);
-    const { error: updateError } = await supabase
-      .from('invoices')
-      .update({ amount_due: newAmountDue })
-      .eq('id', data.invoiceId)
-      .eq('workspace_id', workspaceId);
+    const { data: creditNote, error: fetchError } = await supabase
+      .from('credit_notes')
+      .select('*, invoice:invoices(invoice_number, total_amount, currency, contact:contacts(first_name, last_name, email))')
+      .eq('id', (rpcResult as any).credit_note_id)
+      .single();
 
-    if (updateError) {
-      logger.error({ err: updateError, invoiceId: data.invoiceId, workspaceId }, 'finance.credit_note.invoice_update.failed');
-      return { success: false, error: 'Credit note recorded, but failed to update invoice balance.' };
+    if (fetchError) {
+      logger.error({ err: fetchError, invoiceId: data.invoiceId, workspaceId }, 'finance.credit_note.refetch.failed');
     }
 
     safeRevalidatePath('/finance/credit-notes');
     safeRevalidatePath('/invoices');
-    return { success: true, creditNote };
+    return { success: true, creditNote: creditNote ?? { id: (rpcResult as any).credit_note_id } };
   } catch (err) {
     const clientError = toClientError(err);
     return { success: false, error: clientError.error };
@@ -129,13 +130,19 @@ export async function createCreditNote(data: { invoiceId: string; amount: number
 
 export async function deleteCreditNote(id: string) {
   const { workspaceId } = await requireWorkspaceAccess();
-  const supabase = await createServerClient();
 
-  const { error } = await supabase
-    .from('credit_notes')
-    .delete()
-    .eq('id', id)
-    .eq('workspace_id', workspaceId);
+  // Delete + invoice-balance restore as a single atomic transaction — see
+  // delete_credit_note_atomic in supabase/migrations/20260903000000_atomic_credit_notes.sql.
+  // Deleting a credit note now genuinely restores the amount_due it had
+  // reduced, instead of just deleting the record and leaving the invoice's
+  // balance permanently lowered.
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
+    .rpc('delete_credit_note_atomic', {
+      p_workspace_id: workspaceId,
+      p_credit_note_id: id,
+    })
+    .single();
 
   if (error) {
     logger.error({ err: error, id, workspaceId }, 'finance.credit_note.delete.failed');
@@ -143,5 +150,6 @@ export async function deleteCreditNote(id: string) {
   }
 
   safeRevalidatePath('/finance/credit-notes');
+  safeRevalidatePath('/invoices');
   return { success: true };
 }

@@ -63,6 +63,16 @@ export function createModuleLogger(module: string) {
   return logger.child({ module });
 }
 
+// Logging is observability, not business logic — a broken log transport (e.g. pino-pretty's
+// worker thread dying, see the comment above) must never be able to abort whatever async chain
+// happened to be running a log call, or worse, escape the very catch block that's supposed to be
+// the safety net for a failed operation. Route any logger call on a path whose failure must stay
+// silent through this instead of calling `logger` directly (same pattern already established in
+// src/lib/automation/executor.ts).
+export function safeLog(fn: () => void) {
+  try { fn(); } catch { /* logging failure must not affect execution */ }
+}
+
 // Usage examples:
 // logger.info({ userId, workspaceId }, 'contact.created')
 // logger.error({ err, workspaceId }, 'webhook.dispatch.failed')

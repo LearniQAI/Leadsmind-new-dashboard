@@ -233,3 +233,58 @@ export async function deleteAccount(id: string) {
   safeRevalidatePath('/finance/chart-of-accounts');
   return { success: true };
 }
+
+// Lets Reports (/finance/reports) show a real "by account" breakdown —
+// previously Chart of Accounts had no consumer anywhere in the app besides
+// its own screen. Transactions are tagged one at a time via
+// updateTransactionAccount below; this just lists what's in range for that
+// UI and for the report's grouping.
+export async function getAccountingTransactions(start: string, end: string) {
+  const { workspaceId } = await requireWorkspaceAccess();
+  const supabase = await createServerClient();
+
+  const { data, error } = await supabase
+    .from('accounting_transactions')
+    .select('id, date, description, source_type, total_amount, account_id, account:chart_of_accounts(id, code, name, type)')
+    .eq('workspace_id', workspaceId)
+    .gte('date', start)
+    .lte('date', end)
+    .order('date', { ascending: false });
+
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'finance.accounting_transactions.fetch.failed');
+    return [];
+  }
+  return data || [];
+}
+
+export async function updateTransactionAccount(transactionId: string, accountId: string | null) {
+  const { workspaceId } = await requireWorkspaceAccess();
+  const supabase = await createServerClient();
+
+  if (accountId) {
+    // Confirm the account actually belongs to this workspace before linking it —
+    // same cross-tenant guard as every other workspace-scoped write in this file.
+    const { data: account } = await supabase
+      .from('chart_of_accounts')
+      .select('id')
+      .eq('id', accountId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (!account) return { success: false, error: 'Account not found in this workspace.' };
+  }
+
+  const { error } = await supabase
+    .from('accounting_transactions')
+    .update({ account_id: accountId })
+    .eq('id', transactionId)
+    .eq('workspace_id', workspaceId);
+
+  if (error) {
+    logger.error({ err: error, transactionId, accountId, workspaceId }, 'finance.accounting_transactions.categorize.failed');
+    return { success: false, error: 'Failed to categorize transaction.' };
+  }
+
+  safeRevalidatePath('/finance/reports');
+  return { success: true };
+}

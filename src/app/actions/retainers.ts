@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 
@@ -21,83 +21,46 @@ async function requireWorkspaceMember(supabase: any, workspaceId: string): Promi
   return !!member;
 }
 
-// Confirmed still dead/unwired in this pass (zero callers anywhere in src/)
-// — fixed in place rather than deleted, since it's not a duplicate of
-// anything (matches the getInvoiceAnalytics precedent from Priority 2 item
-// 6: dead-but-plausible, independently-callable Server Actions still get
-// hardened, not left insecure just for being currently unwired from a UI).
+// Now wired to a real "Apply retainer credit" action on the invoice detail
+// view (src/components/invoices/InvoiceDetailClient.tsx) — was previously a
+// hardened-but-orphaned Server Action with zero UI callers.
 export async function applyRetainerToInvoice(invoiceId: string, contactId: string, workspaceId: string) {
   const supabase = await createServerClient();
   if (!(await requireWorkspaceMember(supabase, workspaceId))) {
     return { success: false, error: 'Unauthorized' };
   }
 
-  // 1. Fetch invoice total — scoped to the verified workspace (previously
-  // had no workspace scoping at all, flagged in the triage).
-  const { data: invoice, error: invError } = await supabase
-    .from('invoices')
-    .select('total_amount')
-    .eq('id', invoiceId)
-    .eq('workspace_id', workspaceId)
+  // Ledger insert + retainer balance update + invoice amount_due update as a
+  // single atomic transaction, against the invoice's actual outstanding
+  // amount_due (not total_amount, which ignores prior payments/credits) —
+  // see apply_retainer_to_invoice_atomic in
+  // supabase/migrations/20260903000001_atomic_apply_retainer_to_invoice.sql.
+  const adminClient = createAdminClient();
+  const { data: rpcResult, error: rpcError } = await adminClient
+    .rpc('apply_retainer_to_invoice_atomic', {
+      p_workspace_id: workspaceId,
+      p_invoice_id: invoiceId,
+      p_contact_id: contactId,
+    })
     .single();
 
-  if (invError || !invoice) return { success: false, error: 'Invoice not found' };
-
-  // 2. Fetch retainer balance
-  const { data: retainer, error: retError } = await supabase
-    .from('retainers')
-    .select('*')
-    .eq('contact_id', contactId)
-    .eq('workspace_id', workspaceId)
-    .single();
-
-  if (retError || !retainer || Number(retainer.amount_remaining) <= 0) {
-    return { success: false, error: 'No active retainer balance found' };
-  }
-
-  const invoiceTotal = Number(invoice.total_amount);
-  const retainerBalance = Number(retainer.amount_remaining);
-  
-  // 3. Calculate applied credit
-  const appliedCredit = Math.min(invoiceTotal, retainerBalance);
-
-  // 4. Update Retainer and Ledger
-  const { error: ledgerError } = await supabase
-    .from('retainer_ledger_entries')
-    .insert({
-      workspace_id: workspaceId,
-      contact_id: contactId,
-      amount: appliedCredit,
-      entry_type: 'debit_invoice_apply',
-      invoice_id: invoiceId
-    });
-
-  if (ledgerError) {
-    logger.error({ err: ledgerError, workspaceId, contactId, invoiceId }, 'retainers.ledger_entry.insert.failed');
+  if (rpcError || !rpcResult) {
+    logger.error({ err: rpcError, workspaceId, contactId, invoiceId }, 'retainers.apply_to_invoice.failed');
+    const message = rpcError?.message || '';
+    if (message.includes('No active retainer balance') || message.includes('nothing outstanding') || message.includes('Invoice not found')) {
+      return { success: false, error: message };
+    }
     return { success: false, error: 'Failed to apply retainer credit.' };
   }
 
-  const { error: retUpdateError } = await supabase
-    .from('retainers')
-    .update({ 
-      amount_remaining: retainerBalance - appliedCredit 
-    })
-    .eq('id', retainer.id);
+  const { applied_amount: appliedCredit, invoice_paid: invoicePaid } = rpcResult as any;
 
-  if (retUpdateError) {
-    logger.error({ err: retUpdateError, workspaceId, contactId }, 'retainers.balance.update.failed');
-    return { success: false, error: 'Failed to update retainer balance.' };
-  }
-
-  // 5. Update Invoice (Assuming we have a field for balance_due or similar)
-  // For now, we'll mark as paid if fully covered, or just log the credit
-  if (appliedCredit >= invoiceTotal) {
+  if (invoicePaid) {
     const { data: updatedInvoice } = await supabase
       .from('invoices')
-      .update({ status: 'paid' })
+      .select('*, contact:contacts(*)')
       .eq('id', invoiceId)
       .eq('workspace_id', workspaceId)
-      .select('*, contact:contacts(*)')
       .single();
 
     if (updatedInvoice) {
@@ -126,7 +89,8 @@ export async function applyRetainerToInvoice(invoiceId: string, contactId: strin
   }
 
   revalidatePath('/invoices');
-  return { success: true, appliedAmount: appliedCredit };
+  revalidatePath('/finance/retainers');
+  return { success: true, appliedAmount: Number(appliedCredit) };
 }
 
 export async function getRetainerBalance(contactId: string, workspaceId: string) {

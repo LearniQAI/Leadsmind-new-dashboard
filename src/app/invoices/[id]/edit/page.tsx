@@ -1,5 +1,6 @@
 import { requireAuth, getCurrentWorkspaceId } from "@/lib/auth";
 import { getInvoiceById, getInvoiceSettings, getContactsForInvoicing } from "@/app/actions/finance";
+import { getRetainerBalance } from "@/app/actions/retainers";
 import InvoiceClientWrapper from "@/components/invoices/InvoiceClientWrapper";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -26,6 +27,10 @@ export default async function EditInvoicePage({ params }: EditInvoicePageProps) 
   if (!invoice) {
     redirect('/invoices');
   }
+
+  const retainerBalance = invoice.contact_id
+    ? await getRetainerBalance(invoice.contact_id, workspaceId!)
+    : 0;
 
   // Ensure settings have fallbacks
   const settings = settingsData || {
@@ -66,6 +71,7 @@ export default async function EditInvoicePage({ params }: EditInvoicePageProps) 
                   created_at: invoice.created_at ? new Date(invoice.created_at).toISOString().split('T')[0] : '',
                 }}
                 defaultTaxRate={settings?.vat_enabled ? (Number(settings?.vat_rate) || 0) : 0}
+                retainerBalance={retainerBalance}
               />
             </div>
           </div>

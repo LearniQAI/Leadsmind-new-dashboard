@@ -6,7 +6,7 @@ import { stripe as defaultStripe } from '@/lib/stripe';
 import Stripe from 'stripe';
 import { getOrCreateStudentContact } from './studentEnrollments';
 import { getPortalSession } from '@/lib/portal/session';
-import { decrypt } from '@/lib/encryption';
+import { getGatewayCredentials } from '@/lib/paymentGateways/credentials';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
 
@@ -94,17 +94,13 @@ export async function getWorkspacePaymentIntegration() {
  * account). If not connected, returns the system default Stripe client.
  */
 async function getStripeClientForWorkspace(workspaceId: string): Promise<Stripe> {
-  const adminClient = createAdminClient();
-  const { data: integration } = await adminClient
-    .from('workspace_integrations')
-    .select('connected, credentials')
-    .eq('workspace_id', workspaceId)
-    .eq('provider', 'stripe')
-    .maybeSingle();
-
-  const accessTokenEncrypted = (integration?.credentials as any)?.access_token_encrypted;
-  if (integration?.connected && accessTokenEncrypted) {
-    return new Stripe(decrypt(accessTokenEncrypted), {
+  // Routed through getGatewayCredentials (src/lib/paymentGateways/credentials.ts) instead of
+  // reading+decrypting the row directly — this is what gives Stripe Connect's stored token the
+  // same lazy GCM-rotation-on-read the other 4 gateways already get (previously a direct
+  // decrypt() call here bypassed that entirely).
+  const creds = await getGatewayCredentials(workspaceId, 'stripe');
+  if (creds) {
+    return new Stripe(creds.accessToken, {
       apiVersion: '2026-04-22.dahlia' as any, // Matches system version/compatibility
     });
   }

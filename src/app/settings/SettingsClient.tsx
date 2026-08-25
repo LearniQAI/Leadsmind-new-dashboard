@@ -341,14 +341,21 @@ export default function SettingsClient({
     const workspaceId = branding?.workspace_id || 'default';
     const url = `${window.location.origin}/api/webhooks/incoming?workspace_id=${workspaceId}`;
 
-    const res = await createWebhook(url, ['lead.created', 'order.completed', 'chat.started']);
-    if (res.error) toast.error(res.error);
-    else {
-      // The signing secret is only ever returned here, once — it is never included in the
-      // webhooks list again, so this is the caller's only chance to copy it.
-      if (res.secret) setNewWebhookSecret(res.secret);
-      toast.success('Webhook endpoint created');
-      router.refresh();
+    try {
+      const res = await createWebhook(url, ['lead.created', 'order.completed', 'chat.started']);
+      if (res.error) toast.error(res.error);
+      else {
+        // The signing secret is only ever returned here, once — it is never included in the
+        // webhooks list again, so this is the caller's only chance to copy it.
+        if (res.secret) setNewWebhookSecret(res.secret);
+        toast.success('Webhook endpoint created');
+        router.refresh();
+      }
+    } catch {
+      // A rejected/aborted server action call (e.g. a dropped dev-mode request) used to leave
+      // the button just doing nothing with no feedback at all — always tell the user, even if
+      // the call never made it to a { error } response.
+      toast.error('Failed to create webhook endpoint. Please try again.');
     }
   };
   
