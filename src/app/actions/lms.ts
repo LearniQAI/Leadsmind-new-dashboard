@@ -562,78 +562,14 @@ export async function completeLessonAction(lessonId: string) {
 
   if (error) throw error;
 
-  // 1. Fetch lesson, module and course context details
-  const { data: lessonObj } = await supabase
-    .from('lessons')
-    .select('id, module_id, modules!inner(course_id, courses!inner(workspace_id))')
-    .eq('id', lessonId)
-    .single();
-
-  if (lessonObj) {
-    const moduleId = lessonObj.module_id;
-    const courseId = (lessonObj.modules as any)?.course_id;
-    const workspaceId = (lessonObj.modules as any)?.courses?.workspace_id;
-
-    if (workspaceId && courseId) {
-      const { publishEvent } = await import('@/lib/events/EventBus');
-      
-      // A. Publish lesson_completed
-      await publishEvent(workspaceId, 'lesson_completed', contact.id, { lessonId, moduleId, courseId });
-
-      // B. Evaluate Module Completed
-      // Fetch all lessons in this module
-      const { data: moduleLessons } = await supabase
-        .from('lessons')
-        .select('id')
-        .eq('module_id', moduleId);
-
-      if (moduleLessons && moduleLessons.length > 0) {
-        const lessonIds = moduleLessons.map((l: any) => l.id);
-        const { data: completedInModule } = await supabase
-          .from('lesson_progress')
-          .select('lesson_id')
-          .eq('contact_id', contact.id)
-          .eq('completed', true)
-          .in('lesson_id', lessonIds);
-        
-        if (completedInModule && completedInModule.length === lessonIds.length) {
-          await publishEvent(workspaceId, 'module_completed', contact.id, { moduleId, courseId });
-        }
-      }
-
-      // C. Evaluate Course Completed
-      // Fetch all modules in this course that are required
-      const { data: courseModules } = await supabase
-        .from('modules')
-        .select('id')
-        .eq('course_id', courseId)
-        .eq('is_required_for_completion', true);
-
-      if (courseModules && courseModules.length > 0) {
-        const moduleIds = courseModules.map((m: any) => m.id);
-        const { data: courseLessons } = await supabase
-          .from('lessons')
-          .select('id')
-          .in('module_id', moduleIds);
-
-        if (courseLessons && courseLessons.length > 0) {
-          const courseLessonIds = courseLessons.map((l: any) => l.id);
-          const { data: completedInCourse } = await supabase
-            .from('lesson_progress')
-            .select('lesson_id')
-            .eq('contact_id', contact.id)
-            .eq('completed', true)
-            .in('lesson_id', courseLessonIds);
-
-          if (completedInCourse && completedInCourse.length === courseLessonIds.length) {
-            await publishEvent(workspaceId, 'course_completed', contact.id, { courseId });
-            const { applyAutoTag } = await import('@/modules/tags/autoTagging/applySystemTag');
-            applyAutoTag(workspaceId, 'contact', contact.id, 'Completed Course', true).catch(() => {});
-          }
-        }
-      }
-    }
-  }
+  // No lesson_completed/module_completed/course_completed publishing here: this action
+  // (and the /courses/[id]/learn player it serves) reads/writes against the legacy
+  // modules/lessons tables, which are never populated for real courses — real course
+  // content lives in course_modules/course_lessons and completion events for it are
+  // published from studentProgress.ts's markLessonComplete (the real student-facing
+  // /student/courses/[id] flow). A lookup here against `lessons` would always return
+  // nothing for a real course, so the event-publish block that used to sit here could
+  // never actually fire.
 
   return { success: true };
  } catch (error: any) {

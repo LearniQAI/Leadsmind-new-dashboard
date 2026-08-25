@@ -17,6 +17,7 @@ import { UnifiedActivityEngine } from "@/lib/crm/UnifiedActivityEngine";
 import { resolveWorkspaceTwilioCredentials } from "@/lib/twilio/resolveWorkspaceTwilioCredentials";
 import { syncContactTagsToRelational } from "@/modules/tags/sync/syncContactTags";
 import { sendInvoiceEmail } from "@/lib/invoices/sendInvoiceEmail";
+import { calculateInvoiceTotals } from "@/lib/invoicing/calculations";
 
 export const AutomationActions = {
  send_email: async (workspaceId: string, contactId: string, config: any) => {
@@ -564,17 +565,39 @@ export const AutomationActions = {
     const amount = Number(config.amount ?? 0);
     const dueInDays = Number(config.dueInDays ?? 14);
     const dueDate = new Date(Date.now() + dueInDays * 24 * 60 * 60 * 1000).toISOString();
+    const currency = config.currency || 'ZAR';
+
+    // This is a draft, not-yet-collected amount (unlike the payment-gateway webhook paths,
+    // which split an already-charged gross amount via calculateInclusiveTax), so VAT is added
+    // on top of the configured amount here, same as a manually built single-line invoice.
+    const { data: workspaceRow } = await supabase
+      .from('workspaces')
+      .select('invoice_settings')
+      .eq('id', workspaceId)
+      .maybeSingle();
+    const vatSettings = (workspaceRow?.invoice_settings as any) || {};
+    const vatRate = vatSettings.vat_enabled ? (Number(vatSettings.vat_rate) || 0) : 0;
+
+    const items = [
+      { description: config.description || 'Invoice', quantity: 1, rate: amount, taxRate: vatRate },
+    ];
+    const { subtotal, taxTotal, grandTotal } = calculateInvoiceTotals(items);
+    const invoiceNumber = `WF-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
 
     const { data: invoice, error } = await supabase
       .from('invoices')
       .insert({
         workspace_id: workspaceId,
         contact_id: contactId,
-        amount_due: amount,
-        total_amount: amount,
+        invoice_number: invoiceNumber,
+        items,
+        subtotal,
+        tax_total: taxTotal,
+        amount_due: grandTotal,
+        total_amount: grandTotal,
         status: 'draft',
         due_date: dueDate,
-        currency: config.currency || 'ZAR',
+        currency,
       })
       .select('id')
       .single();
@@ -584,7 +607,7 @@ export const AutomationActions = {
     try {
       const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
       dispatchWebhook(workspaceId, 'invoice.created', {
-        invoice: { id: invoice.id, amount, currency: config.currency || 'ZAR', status: 'draft', contact_id: contactId },
+        invoice: { id: invoice.id, invoice_number: invoiceNumber, amount: grandTotal, currency, status: 'draft', contact_id: contactId },
       }).catch(() => {});
     } catch (e) {
       console.error('[actions_registry] Failed to dispatch invoice.created webhook:', e);

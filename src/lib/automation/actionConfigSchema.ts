@@ -109,6 +109,11 @@ export const STEP_TYPES: ActionDef[] = [
   { value: 'move_to_stage', label: 'Move deal to pipeline stage', fields: [
     { key: 'stageId', label: 'Pipeline stage', type: 'pipelineStage', required: true },
   ]},
+  { value: 'create_task', label: 'Create task', fields: [
+    { key: 'title', label: 'Title', type: 'text', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'dueDate', label: 'Due date (optional)', type: 'text', hint: 'Defaults to 2 days from now if left blank.' },
+  ]},
   { value: 'notify_team', label: 'Notify team', fields: [
     { key: 'message', label: 'Message', type: 'textarea', required: true, hint: 'Use {contact_name} to insert the contact\'s name.' },
     { key: 'type', label: 'Notification type', type: 'select', options: [
