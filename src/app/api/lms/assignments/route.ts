@@ -186,8 +186,25 @@ export async function PATCH(req: NextRequest) {
 
     if (updateErr) throw updateErr;
 
-    // Conditionally mark lesson complete/incomplete based on status
+    // Conditionally mark lesson complete/incomplete based on status. For an assignment
+    // content_block, completion (Phase C) is recorded by this same grading flow — the
+    // block's completion_rule is 'graded_passed', not submission time.
     if (gradeStatus === 'passed') {
+      const { data: assignmentBlocks } = await supabaseAdmin
+        .from('content_blocks')
+        .select('id')
+        .eq('lesson_id', submission.lesson_id)
+        .eq('type', 'assignment');
+
+      for (const block of assignmentBlocks || []) {
+        await supabaseAdmin
+          .from('lesson_block_completions')
+          .upsert(
+            { content_block_id: block.id, contact_id: submission.contact_id, metric: { grade_status: gradeStatus }, completed_at: new Date().toISOString() },
+            { onConflict: 'content_block_id,contact_id' }
+          );
+      }
+
       await markLessonComplete(submission.course_id, submission.lesson_id);
     } else if (gradeStatus === 'failed') {
       await markLessonIncomplete(submission.course_id, submission.lesson_id);

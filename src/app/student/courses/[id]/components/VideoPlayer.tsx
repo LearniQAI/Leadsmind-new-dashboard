@@ -53,6 +53,44 @@ function isDirectVideo(url: string): boolean {
   );
 }
 
+type EmbedProvider = 'youtube' | 'vimeo' | 'other';
+
+function detectEmbedProvider(embedUrl: string): EmbedProvider {
+  if (embedUrl.includes('youtube.com')) return 'youtube';
+  if (embedUrl.includes('vimeo.com')) return 'vimeo';
+  return 'other';
+}
+
+let youtubeApiPromise: Promise<any> | null = null;
+function loadYouTubeIframeApi(): Promise<any> {
+  if ((window as any).YT?.Player) return Promise.resolve((window as any).YT);
+  if (youtubeApiPromise) return youtubeApiPromise;
+  youtubeApiPromise = new Promise((resolve) => {
+    const prevReady = (window as any).onYouTubeIframeAPIReady;
+    (window as any).onYouTubeIframeAPIReady = () => {
+      prevReady?.();
+      resolve((window as any).YT);
+    };
+    const script = document.createElement('script');
+    script.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(script);
+  });
+  return youtubeApiPromise;
+}
+
+let vimeoApiPromise: Promise<any> | null = null;
+function loadVimeoPlayerApi(): Promise<any> {
+  if ((window as any).Vimeo?.Player) return Promise.resolve((window as any).Vimeo);
+  if (vimeoApiPromise) return vimeoApiPromise;
+  vimeoApiPromise = new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = 'https://player.vimeo.com/api/player.js';
+    script.onload = () => resolve((window as any).Vimeo);
+    document.head.appendChild(script);
+  });
+  return vimeoApiPromise;
+}
+
 export default function VideoPlayer({
   videoUrl,
   onComplete,
@@ -61,9 +99,14 @@ export default function VideoPlayer({
   onVideoRegister,
   onProgressUpdate
 }: VideoPlayerProps) {
-  const [embedProgress, setEmbedProgress] = useState(0);
+  const [watchedPercent, setWatchedPercent] = useState(0);
+  const [trackingMode, setTrackingMode] = useState<'real' | 'untracked' | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const iframeIdRef = useRef(`yt-player-${Math.random().toString(36).slice(2)}`);
   const directVideo = isDirectVideo(videoUrl);
+  const embedUrl = getEmbedUrl(videoUrl);
+  const provider = detectEmbedProvider(embedUrl);
 
   // Monitor playing state for native video
   useEffect(() => {
@@ -90,35 +133,79 @@ export default function VideoPlayer({
     };
   }, [videoUrl, directVideo, onVideoRegister]);
 
-  // Simulated playback watcher for linked embeds
+  // Real playback-percentage tracking for embedded providers with a public JS player API
+  // (YouTube, Vimeo) — replaces a prior bug where any embedded video auto-completed after a
+  // fixed 18-second client-side timer regardless of whether it was actually being watched.
+  // Providers with no such public API (Wistia's requires its own script/queue lifecycle not
+  // yet integrated here, Bunny.net/AWS are typically direct files already handled above, or
+  // an unrecognized iframe) fall back to 'opened' semantics — completion fires once on a
+  // real render of the block, not on a timer — rather than either faking a watch percentage
+  // or leaving the lesson permanently uncompletable.
   useEffect(() => {
-    if (directVideo || isAlreadyCompleted) {
-      setEmbedProgress(100);
-      return;
+    if (directVideo || isAlreadyCompleted) return;
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
+
+    if (provider === 'youtube') {
+      setTrackingMode('real');
+      loadYouTubeIframeApi().then((YT) => {
+        if (cancelled || !iframeRef.current) return;
+        const player = new YT.Player(iframeRef.current, {
+          events: {
+            onReady: () => {
+              const poll = setInterval(() => {
+                try {
+                  const duration = player.getDuration?.();
+                  const current = player.getCurrentTime?.();
+                  if (duration && current) {
+                    const pct = Math.min(100, Math.round((current / duration) * 100));
+                    setWatchedPercent(pct);
+                    onProgressUpdate?.(Math.floor(current));
+                    if (pct >= 90) {
+                      clearInterval(poll);
+                      onComplete();
+                    }
+                  }
+                } catch {
+                  // Player not ready yet — ignore until next tick.
+                }
+              }, 1000);
+              cleanup = () => clearInterval(poll);
+            }
+          }
+        });
+      });
+    } else if (provider === 'vimeo') {
+      setTrackingMode('real');
+      loadVimeoPlayerApi().then((Vimeo) => {
+        if (cancelled || !iframeRef.current) return;
+        const player = new Vimeo.Player(iframeRef.current);
+        const handler = (data: { seconds: number; percent: number }) => {
+          const pct = Math.round(data.percent * 100);
+          setWatchedPercent(pct);
+          onProgressUpdate?.(Math.floor(data.seconds));
+          if (pct >= 90) {
+            player.off('timeupdate', handler);
+            onComplete();
+          }
+        };
+        player.on('timeupdate', handler);
+        cleanup = () => player.off('timeupdate', handler);
+      });
+    } else {
+      // No real watch-time API available for this provider — honestly downgraded to
+      // 'opened' semantics (fires once, on real render) rather than faking a percentage.
+      setTrackingMode('untracked');
+      setWatchedPercent(100);
+      onComplete();
     }
 
-    setEmbedProgress(0);
-
-    // Increment simulated progress over time when watching embeds
-    // 5% every second => reaches 90% in 18 seconds
-    const interval = setInterval(() => {
-      setEmbedProgress((prev) => {
-        const next = prev + 5;
-        // Assume baseline 180s duration: 5% corresponds to 9s increments
-        const simulatedSeconds = Math.floor((next / 100) * 180);
-        onProgressUpdate?.(simulatedSeconds);
-
-        if (next >= 90) {
-          clearInterval(interval);
-          onComplete();
-          return 90;
-        }
-        return next;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [videoUrl, directVideo, isAlreadyCompleted, onComplete, onProgressUpdate]);
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoUrl, directVideo, isAlreadyCompleted, provider]);
 
   // Handle native video element progress
   const handleTimeUpdate = () => {
@@ -158,7 +245,11 @@ export default function VideoPlayer({
           />
         ) : (
           <iframe
-            src={getEmbedUrl(videoUrl)}
+            ref={iframeRef}
+            id={iframeIdRef.current}
+            src={provider === 'youtube'
+              ? `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`
+              : embedUrl}
             className="w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
@@ -166,20 +257,28 @@ export default function VideoPlayer({
         )}
       </div>
 
-      {!directVideo && !isAlreadyCompleted && (
+      {!directVideo && !isAlreadyCompleted && trackingMode === 'real' && (
         <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 space-y-2">
           <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-white/40">
-            <span>Simulating Embed Watch Session</span>
-            <span className="text-[#3b82f6]">{embedProgress}%</span>
+            <span>Watch Progress</span>
+            <span className="text-[#3b82f6]">{watchedPercent}%</span>
           </div>
           <div className="w-full bg-white/5 rounded-full h-1 overflow-hidden">
             <div
               className="bg-gradient-to-r from-blue-500 to-indigo-500 h-1 rounded-full transition-all duration-300"
-              style={{ width: `${embedProgress}%` }}
+              style={{ width: `${watchedPercent}%` }}
             />
           </div>
           <span className="text-[9px] text-white/30 block leading-tight">
-            Marking complete automatically at &ge;90% duration watch mark.
+            Marks complete automatically at 90% watched.
+          </span>
+        </div>
+      )}
+
+      {!directVideo && !isAlreadyCompleted && trackingMode === 'untracked' && (
+        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5">
+          <span className="text-[9px] text-white/30 block leading-tight">
+            This provider doesn't support real watch-time tracking yet — marked as viewed.
           </span>
         </div>
       )}

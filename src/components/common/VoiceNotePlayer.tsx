@@ -10,6 +10,8 @@ interface VoiceNotePlayerProps {
   theme?: 'light' | 'dark'; // 'light' uses standard styles; 'dark' integrates with LeadsMind theme
   className?: string;
   waveformBars?: number[]; // real decoded peak bars (e.g. LMS audio blocks); falls back to the decorative default
+  isAlreadyCompleted?: boolean; // LMS audio blocks (Phase C): stop firing onWatchedThreshold once already recorded
+  onWatchedThreshold?: (percentage: number) => void; // fires once real currentTime/duration crosses 90%
 }
 
 // Fixed set of heights for a beautiful, symmetrical mock waveform
@@ -18,7 +20,7 @@ const WAVEFORM_BARS = [
   32, 24, 16, 20, 28, 36, 30, 22, 14, 18, 24, 38, 44, 30, 20, 16, 12
 ];
 
-export function VoiceNotePlayer({ audioUrl, duration: initialDuration, theme = 'dark', className, waveformBars }: VoiceNotePlayerProps) {
+export function VoiceNotePlayer({ audioUrl, duration: initialDuration, theme = 'dark', className, waveformBars, isAlreadyCompleted, onWatchedThreshold }: VoiceNotePlayerProps) {
   const bars = waveformBars && waveformBars.length > 0 ? waveformBars : WAVEFORM_BARS;
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -42,6 +44,10 @@ export function VoiceNotePlayer({ audioUrl, duration: initialDuration, theme = '
       // Capture live duration updates if browser eventually resolves it
       if (audio.duration && isFinite(audio.duration) && duration !== audio.duration) {
         setDuration(audio.duration);
+      }
+      if (!isAlreadyCompleted && onWatchedThreshold && audio.duration && isFinite(audio.duration)) {
+        const pct = (audio.currentTime / audio.duration) * 100;
+        if (pct >= 90) onWatchedThreshold(90);
       }
     };
     
@@ -87,7 +93,7 @@ export function VoiceNotePlayer({ audioUrl, duration: initialDuration, theme = '
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [audioUrl, initialDuration, duration]);
+  }, [audioUrl, initialDuration, duration, isAlreadyCompleted, onWatchedThreshold]);
 
   const togglePlay = () => {
     const audio = audioRef.current;

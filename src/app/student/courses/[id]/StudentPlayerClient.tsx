@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { markLessonComplete, markLessonIncomplete } from '@/app/actions/studentProgress';
+import { recordBlockCompletion, getCompletedBlockIdsForLesson, getLessonBlockCompletionStatus } from '@/app/actions/blockCompletion';
 import { Button } from '@/components/ui/button';
 import Editor from '@monaco-editor/react';
 import SyllabusSidebar from './components/SyllabusSidebar';
@@ -108,6 +109,48 @@ export default function StudentPlayerClient({
   // Reading block modal state — which block (or 'legacy-pdf' for the single-lesson_type
   // path) currently has its 60%-viewport reading modal open, if any.
   const [openReadingId, setOpenReadingId] = useState<string | null>(null);
+
+  // Phase C: per-block completion state for the active lesson's content blocks. Seeded from
+  // real lesson_block_completions rows on lesson change; 'none'-rule blocks (rich_text,
+  // download, embed, live_session) auto-complete once genuinely rendered.
+  const [completedBlockIds, setCompletedBlockIds] = useState<Set<string>>(new Set());
+  const [isCheckingAdvance, setIsCheckingAdvance] = useState(false);
+
+  const markBlockComplete = async (blockId: string, metric: Record<string, any> = {}) => {
+    if (completedBlockIds.has(blockId)) return;
+    const res = await recordBlockCompletion(blockId, metric);
+    if (!res.error) {
+      setCompletedBlockIds((prev) => new Set(prev).add(blockId));
+    }
+  };
+
+  useEffect(() => {
+    if (!activeLesson) return;
+    let cancelled = false;
+
+    (async () => {
+      const res = await getCompletedBlockIdsForLesson(activeLesson.id);
+      if (cancelled) return;
+      const already = new Set<string>(!res.error ? res.data : []);
+      setCompletedBlockIds(already);
+
+      // Auto-complete 'none'-rule blocks on real render — no real completion condition
+      // exists for them, matching rich_text/download/embed/live_session in the PRD.
+      for (const block of activeLesson.contentBlocks || []) {
+        if (block.completion_rule === 'none' && !already.has(block.id)) {
+          const res2 = await recordBlockCompletion(block.id, { auto: true });
+          if (!res2.error && !cancelled) {
+            setCompletedBlockIds((prev) => new Set(prev).add(block.id));
+          }
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLesson?.id]);
 
   const hasAssignmentBlock = (activeLesson?.contentBlocks || []).some((b: any) => b.type === 'assignment');
 
@@ -369,7 +412,7 @@ export default function StudentPlayerClient({
           }
         } else {
           const res = await markLessonComplete(course.id, lessonId);
-          if (res.error) toast.error(res.error);
+          if ('error' in res) toast.error(res.error);
           else {
             setCompletedLessonIds([...completedLessonIds, lessonId]);
             toast.success("Lesson completed!");
@@ -688,21 +731,31 @@ export default function StudentPlayerClient({
                       {block.type === 'video' && block.file_url && (
                         // Reuses the same provider-aware embed resolution (YouTube/Vimeo watch
                         // links -> iframe embeds, direct files -> native <video>) as the
-                        // legacy single-block video renderer below. Per-block completion
-                        // tracking (watched_threshold at 90%) lands in Phase C.
+                        // legacy single-block video renderer below. Real watched-threshold
+                        // completion (90%) via native <video> events or the YouTube/Vimeo
+                        // player APIs — see VideoPlayer.tsx.
                         <VideoPlayer
                           videoUrl={block.file_url}
-                          onComplete={() => {}}
-                          isAlreadyCompleted={false}
+                          onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
+                          isAlreadyCompleted={completedBlockIds.has(block.id)}
                           lowBandwidthMode={lowBandwidthMode}
                         />
                       )}
                       {block.type === 'audio' && block.file_url && (
-                        <VoiceNotePlayer audioUrl={block.file_url} waveformBars={block.content?.waveform_bars} theme="dark" />
+                        <VoiceNotePlayer
+                          audioUrl={block.file_url}
+                          waveformBars={block.content?.waveform_bars}
+                          theme="dark"
+                          isAlreadyCompleted={completedBlockIds.has(block.id)}
+                          onWatchedThreshold={(pct) => markBlockComplete(block.id, { percentage: pct })}
+                        />
                       )}
                       {(block.type === 'reading' || block.type === 'slides') && block.file_url && (
                         <Button
-                          onClick={() => setOpenReadingId(block.id)}
+                          onClick={() => {
+                            setOpenReadingId(block.id);
+                            markBlockComplete(block.id, { opened: true });
+                          }}
                           className="inline-flex bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-lg text-[10px] font-black uppercase tracking-wider h-10 px-4 items-center justify-center gap-1.5 transition-all"
                         >
                           <FileText size={13} /> {block.type === 'slides' ? 'Open Slides' : 'Open Reading'}
@@ -749,7 +802,7 @@ export default function StudentPlayerClient({
                       {block.type === 'assignment' && renderAssignmentPanel(block.content?.instructions)}
                       {block.type === 'flashcards' && renderFlashcardsPanel(
                         block.content?.flashcards || [],
-                        () => handleToggleComplete(activeLesson.id)
+                        () => markBlockComplete(block.id, { finished: true })
                       )}
                     </div>
                   ))}
@@ -1004,13 +1057,33 @@ export default function StudentPlayerClient({
               )}
               {getNextLesson() && (
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
+                    // Server-side gate (Phase C) — the real check comes from a server action
+                    // querying real lesson_block_completions rows, not a client-only flag.
+                    // A disabled button alone would be trivially bypassable (e.g. calling
+                    // setActiveLesson directly via devtools); the actual security boundary
+                    // that matters is markLessonComplete/certificate issuance, which
+                    // independently re-verifies the same thing server-side regardless of
+                    // whether this button was ever clicked.
+                    setIsCheckingAdvance(true);
+                    let canAdvance = completedLessonIds.includes(activeLesson.id);
+                    if (activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0) {
+                      const res = await getLessonBlockCompletionStatus(activeLesson.id);
+                      canAdvance = !res.error && res.data.allComplete;
+                    }
+                    setIsCheckingAdvance(false);
+
+                    if (!canAdvance) {
+                      toast.error('Complete every block in this lesson before moving on.');
+                      return;
+                    }
                     const next = getNextLesson();
                     setActiveLesson(next);
                   }}
+                  disabled={isCheckingAdvance}
                   className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-black uppercase tracking-wider px-6 flex items-center gap-1.5"
                 >
-                  Next Lesson <ChevronRight size={15} />
+                  {isCheckingAdvance ? <Loader2 size={15} className="animate-spin" /> : <>Next Lesson <ChevronRight size={15} /></>}
                 </Button>
               )}
             </div>

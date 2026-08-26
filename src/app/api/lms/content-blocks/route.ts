@@ -11,6 +11,23 @@ const BLOCK_TYPES = [
   'flashcards', 'download', 'slides', 'embed', 'live_session'
 ];
 
+// Real per-type completion default (Phase C) — every block type gets a completion condition
+// that's actually meaningful for it, rather than every new block silently defaulting to
+// 'none' (which would let it satisfy the Next-button gate without any real interaction).
+const DEFAULT_COMPLETION_RULE: Record<string, { rule: string; threshold: number | null }> = {
+  video: { rule: 'watched_threshold', threshold: 90 },
+  audio: { rule: 'watched_threshold', threshold: 90 },
+  reading: { rule: 'opened', threshold: null },
+  slides: { rule: 'opened', threshold: null },
+  quiz: { rule: 'quiz_passed', threshold: null },
+  assignment: { rule: 'graded_passed', threshold: null },
+  flashcards: { rule: 'opened', threshold: null },
+  rich_text: { rule: 'none', threshold: null },
+  download: { rule: 'none', threshold: null },
+  embed: { rule: 'none', threshold: null },
+  live_session: { rule: 'none', threshold: null }
+};
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -58,8 +75,8 @@ export async function POST(req: NextRequest) {
       type,
       video_provider = null,
       file_url = null,
-      completion_rule = 'none',
-      completion_threshold = null,
+      completion_rule,
+      completion_threshold,
       content = {}
     } = body;
 
@@ -69,6 +86,10 @@ export async function POST(req: NextRequest) {
     if (!BLOCK_TYPES.includes(type)) {
       return NextResponse.json({ error: `Invalid block type: ${type}` }, { status: 400 });
     }
+
+    const defaults = DEFAULT_COMPLETION_RULE[type];
+    const resolvedCompletionRule = completion_rule ?? defaults.rule;
+    const resolvedCompletionThreshold = completion_threshold ?? defaults.threshold;
 
     // Verify the target lesson actually belongs to the caller's own workspace
     // before attaching a block to it — lesson_id is never trusted blindly.
@@ -95,8 +116,8 @@ export async function POST(req: NextRequest) {
         type,
         video_provider,
         file_url,
-        completion_rule,
-        completion_threshold,
+        completion_rule: resolvedCompletionRule,
+        completion_threshold: resolvedCompletionThreshold,
         content
       })
       .select()
