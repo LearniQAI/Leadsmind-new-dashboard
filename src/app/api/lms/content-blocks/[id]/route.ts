@@ -1,0 +1,87 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { requireLmsInstructor } from '@/lib/lms/access';
+import { NotFoundError, toClientError } from '@/shared/errors/AppError';
+import { logger } from '@/shared/logger';
+
+export const dynamic = 'force-dynamic';
+
+const BLOCK_TYPES = [
+  'video', 'audio', 'reading', 'rich_text', 'quiz', 'assignment',
+  'flashcards', 'download', 'slides', 'embed', 'live_session'
+];
+
+async function getOwnedBlock(adminClient: ReturnType<typeof createAdminClient>, id: string, workspaceId: string) {
+  const { data: block, error } = await adminClient
+    .from('content_blocks')
+    .select('id, lesson_id, course_lessons!inner(workspace_id)')
+    .eq('id', id)
+    .eq('course_lessons.workspace_id', workspaceId)
+    .maybeSingle();
+  if (error) throw error;
+  return block;
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const { workspaceId } = await requireLmsInstructor();
+    const adminClient = createAdminClient();
+
+    const owned = await getOwnedBlock(adminClient, id, workspaceId);
+    if (!owned) throw new NotFoundError('Content block');
+
+    const body = await req.json();
+    const { type, video_provider, file_url, completion_rule, completion_threshold, content, position } = body;
+
+    if (type !== undefined && !BLOCK_TYPES.includes(type)) {
+      return NextResponse.json({ error: `Invalid block type: ${type}` }, { status: 400 });
+    }
+
+    const updatePayload: any = { updated_at: new Date().toISOString() };
+    if (type !== undefined) updatePayload.type = type;
+    if (video_provider !== undefined) updatePayload.video_provider = video_provider;
+    if (file_url !== undefined) updatePayload.file_url = file_url;
+    if (completion_rule !== undefined) updatePayload.completion_rule = completion_rule;
+    if (completion_threshold !== undefined) updatePayload.completion_threshold = completion_threshold;
+    if (content !== undefined) updatePayload.content = content;
+    if (position !== undefined) updatePayload.position = position;
+
+    const { data: block, error } = await adminClient
+      .from('content_blocks')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ data: block });
+  } catch (err: any) {
+    logger.error({ err }, 'lms.content-blocks.patch.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const { workspaceId } = await requireLmsInstructor();
+    const adminClient = createAdminClient();
+
+    const owned = await getOwnedBlock(adminClient, id, workspaceId);
+    if (!owned) throw new NotFoundError('Content block');
+
+    const { error } = await adminClient
+      .from('content_blocks')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    logger.error({ err }, 'lms.content-blocks.delete.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+  }
+}

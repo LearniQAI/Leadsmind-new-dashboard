@@ -31,6 +31,11 @@ function getEmbedUrl(url: string): string {
       const match = url.match(/vimeo\.com\/(?:video\/)?([0-9]+)/);
       if (match && match[1]) return `https://player.vimeo.com/video/${match[1]}`;
     }
+    if (url.includes('fast.wistia.net/embed/iframe/')) return url;
+    if (url.includes('wistia.com/') || url.includes('wi.st/')) {
+      const match = url.match(/(?:medias|embed)\/(?:iframe\/)?([a-z0-9]+)/i);
+      if (match && match[1]) return `https://fast.wistia.net/embed/iframe/${match[1]}`;
+    }
   } catch (e) {
     console.error('[EmbedURL] Parsing error:', e);
   }
@@ -41,7 +46,10 @@ function isDirectVideo(url: string): boolean {
   if (!url) return false;
   return (
     url.match(/\.(mp4|webm|ogg|mov|mkv)($|\?)/i) !== null ||
-    (url.startsWith('http') && !url.includes('youtube.com') && !url.includes('youtu.be') && !url.includes('vimeo.com'))
+    (url.startsWith('http') &&
+      !url.includes('youtube.com') && !url.includes('youtu.be') &&
+      !url.includes('vimeo.com') &&
+      !url.includes('wistia.com') && !url.includes('wi.st') && !url.includes('wistia.net'))
   );
 }
 

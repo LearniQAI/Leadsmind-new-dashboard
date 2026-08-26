@@ -12,6 +12,42 @@ import {
   AlertTriangle, Settings, Sparkles, AlertCircle
 } from "lucide-react";
 import { getLessonQuiz, upsertQuiz } from "@/app/actions/quizzes";
+import ContentBlockList, { ContentBlock } from "./ContentBlockList";
+import VideoBlockEditor from "./blocks/VideoBlockEditor";
+import AudioBlockEditor from "./blocks/AudioBlockEditor";
+import ReadingBlockEditor from "./blocks/ReadingBlockEditor";
+import QuizBlockEditor from "./blocks/QuizBlockEditor";
+import AssignmentBlockEditor from "./blocks/AssignmentBlockEditor";
+import FlashcardsBlockEditor from "./blocks/FlashcardsBlockEditor";
+import DownloadBlockEditor from "./blocks/DownloadBlockEditor";
+import EmbedBlockEditor from "./blocks/EmbedBlockEditor";
+import LiveSessionBlockEditor from "./blocks/LiveSessionBlockEditor";
+
+function renderBlockTypeEditor(courseId: string, block: ContentBlock, onChange: (patch: Partial<ContentBlock>) => void) {
+  switch (block.type) {
+    case "video":
+      return <VideoBlockEditor block={block} onChange={onChange} />;
+    case "audio":
+      return <AudioBlockEditor block={block} onChange={onChange} />;
+    case "reading":
+    case "slides":
+      return <ReadingBlockEditor block={block} onChange={onChange} />;
+    case "quiz":
+      return <QuizBlockEditor block={block} courseId={courseId} />;
+    case "assignment":
+      return <AssignmentBlockEditor block={block} onChange={onChange} />;
+    case "flashcards":
+      return <FlashcardsBlockEditor block={block} onChange={onChange} />;
+    case "download":
+      return <DownloadBlockEditor block={block} onChange={onChange} />;
+    case "embed":
+      return <EmbedBlockEditor block={block} onChange={onChange} />;
+    case "live_session":
+      return <LiveSessionBlockEditor block={block} onChange={onChange} />;
+    default:
+      return null;
+  }
+}
 
 interface LessonCreatorModalProps {
   isOpen: boolean;
@@ -51,7 +87,8 @@ export default function LessonCreatorModal({
   const [content, setContent] = useState("");
   const [isFree, setIsFree] = useState(false);
   const [accessLevel, setAccessLevel] = useState<'public' | 'enrolled' | 'paid'>('enrolled');
-  
+  const [timeEstimateMinutes, setTimeEstimateMinutes] = useState<string>("");
+
   // Type-specific Metadata states
   const [flashcards, setFlashcards] = useState<{ front: string; back: string }[]>([]);
   const [codeLanguage, setCodeLanguage] = useState("javascript");
@@ -147,6 +184,11 @@ export default function LessonCreatorModal({
       setContent(editingLesson.content || "");
       setIsFree(editingLesson.is_free || false);
       setAccessLevel(editingLesson.access_level || (editingLesson.is_free ? 'public' : 'enrolled'));
+      setTimeEstimateMinutes(
+        editingLesson.time_estimate_minutes !== null && editingLesson.time_estimate_minutes !== undefined
+          ? String(editingLesson.time_estimate_minutes)
+          : ""
+      );
       setType(editingLesson.type || "Text");
       
       const meta = editingLesson.metadata || {};
@@ -167,6 +209,7 @@ export default function LessonCreatorModal({
       setContent("");
       setIsFree(false);
       setAccessLevel('enrolled');
+      setTimeEstimateMinutes("");
       setType("Text");
       setFlashcards([]);
       setCodeLanguage("javascript");
@@ -230,6 +273,7 @@ export default function LessonCreatorModal({
         content,
         is_free: accessLevel === 'public',
         access_level: accessLevel,
+        time_estimate_minutes: timeEstimateMinutes.trim() === "" ? null : parseInt(timeEstimateMinutes, 10),
         type,
         metadata
       });
@@ -528,6 +572,22 @@ export default function LessonCreatorModal({
               </div>
             )}
 
+            {/* Content Block System (PRD Section 4) — ordered blocks inside this
+                lesson, in whatever order the admin sets, drag-reorderable and
+                persisted immediately. Requires the lesson to already exist. */}
+            <div className="bg-dash-surface border border-dash-border rounded-xl p-4">
+              {editingLesson?.id ? (
+                <ContentBlockList
+                  lessonId={editingLesson.id}
+                  renderBlockEditor={(block, onChange) => renderBlockTypeEditor(courseId, block, onChange)}
+                />
+              ) : (
+                <div className="py-6 text-center text-xs !text-dash-textMuted flex items-center justify-center gap-1.5 border border-dashed border-dash-border rounded-xl">
+                  <AlertTriangle size={14} className="text-amber-600" /> Please save the lesson first before adding content blocks.
+                </div>
+              )}
+            </div>
+
             {/* Access Level Selector */}
             <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
               <label className="text-[10px] font-bold !text-dash-textMuted block">Access Control Visibility</label>
@@ -545,6 +605,19 @@ export default function LessonCreatorModal({
                 {accessLevel === 'enrolled' && "Forces student registration. Free access for anyone who registers."}
                 {accessLevel === 'paid' && "Hard-locked. Accessible only after confirming payment verification state."}
               </p>
+            </div>
+
+            {/* Time Estimate — shown in the student sidebar (PRD Section 10) */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold !text-dash-textMuted block">Time Estimate (minutes)</label>
+              <input
+                type="number"
+                min={0}
+                value={timeEstimateMinutes}
+                onChange={(e) => setTimeEstimateMinutes(e.target.value)}
+                placeholder="e.g. 15"
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary transition-all motion-reduce:transition-none"
+              />
             </div>
 
             {/* Content (Text description, Rich Text, etc.) */}

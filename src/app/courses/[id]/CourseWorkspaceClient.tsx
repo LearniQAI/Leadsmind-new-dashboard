@@ -133,7 +133,8 @@ export default function CourseWorkspaceClient({
           lesson_type: mapLessonTypeToDb(lessonData.type),
           content: contentJsonb,
           is_preview: lessonData.is_free,
-          access_level: lessonData.access_level
+          access_level: lessonData.access_level,
+          time_estimate_minutes: lessonData.time_estimate_minutes
         })
       });
       const dataJson = await res.json();

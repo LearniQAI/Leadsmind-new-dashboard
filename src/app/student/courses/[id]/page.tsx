@@ -78,6 +78,24 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
   const lessons = lessonsRes.data || [];
   const completedLessonIds = progressRes.data || [];
 
+  // 4. Attach ordered content_blocks per lesson (PRD Section 4 block system).
+  const lessonIds = lessons.map((l) => l.id);
+  const { data: contentBlocksData } = lessonIds.length
+    ? await adminClient
+        .from('content_blocks')
+        .select('*')
+        .in('lesson_id', lessonIds)
+        .order('position', { ascending: true })
+    : { data: [] as any[] };
+
+  const blocksByLesson = new Map<string, any[]>();
+  for (const block of contentBlocksData || []) {
+    const list = blocksByLesson.get(block.lesson_id) || [];
+    list.push(block);
+    blocksByLesson.set(block.lesson_id, list);
+  }
+  const lessonsWithBlocks = lessons.map((l) => ({ ...l, contentBlocks: blocksByLesson.get(l.id) || [] }));
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
       {/* Back to Dashboard bar */}
@@ -89,10 +107,10 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
         <span className="text-white/60">{course.title}</span>
       </div>
 
-      <StudentPlayerClient 
+      <StudentPlayerClient
         course={course}
         modules={modules}
-        lessons={lessons}
+        lessons={lessonsWithBlocks}
         initialCompletedLessonIds={completedLessonIds}
         enrollment={enrollment}
       />

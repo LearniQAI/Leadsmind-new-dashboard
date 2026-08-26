@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, CheckCircle2, Play, Download } from 'lucide-react';
+import { Lock, CheckCircle2, Play, Download, UserRound, Clock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 
@@ -36,6 +36,11 @@ export default function SyllabusSidebar({
   handleDownloadCertificate,
   lessonsByModule
 }: SyllabusSidebarProps) {
+  // Real, data-backed tutor name — the same instructor record already used on the course's
+  // landing page (course.landing_page_settings.instructor), not a hardcoded placeholder.
+  // Shown only when an admin has actually set one.
+  const tutorName: string | null = course?.landing_page_settings?.instructor?.name?.trim() || null;
+
   return (
     <div className="w-[360px] border-r border-white/5 bg-[#04091a]/40 flex flex-col shrink-0">
       {/* Sidebar Header */}
@@ -45,8 +50,13 @@ export default function SyllabusSidebar({
           <span className="text-base font-bold text-white tracking-tight truncate max-w-[200px] mt-0.5">
             {course.title}
           </span>
+          {tutorName && (
+            <span className="flex items-center gap-1 text-[10px] text-white/40 mt-1">
+              <UserRound size={11} className="shrink-0" /> {tutorName}
+            </span>
+          )}
         </div>
-        <Switch 
+        <Switch
           checked={lowBandwidthMode}
           onCheckedChange={setLowBandwidthMode}
           className="data-[state=checked]:bg-emerald-500"
@@ -131,9 +141,16 @@ export default function SyllabusSidebar({
                         )}
                         <span className="truncate pr-1">{les.title}</span>
                       </div>
-                      <span className="text-[10px] font-mono text-white/30 uppercase shrink-0">
-                        {les.lesson_type}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {les.time_estimate_minutes != null && (
+                          <span className="flex items-center gap-0.5 text-[9px] font-mono text-white/30">
+                            <Clock size={10} /> {les.time_estimate_minutes}m
+                          </span>
+                        )}
+                        <span className="text-[10px] font-mono text-white/30 uppercase">
+                          {les.lesson_type}
+                        </span>
+                      </div>
                     </div>
                   );
                 })}
