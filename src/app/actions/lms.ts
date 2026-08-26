@@ -2,6 +2,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
+import { sanitizeSlug } from '@/lib/slug';
 import { logger } from '@/shared/logger';
 
 export async function getCourses() {
@@ -45,26 +46,59 @@ export async function getCourse(courseId: string) {
  }
 }
 
-export async function createCourse(title: string) {
+// Phase D: course creation now requires name + a workspace-connected domain + a unique URL
+// path up front (PRD Section 1's required sequence), rather than the old flat title-only
+// insert. Reuses the same domain_configurations rows already surfaced by getDomains() in
+// domains.ts — no second, parallel domain concept.
+export async function createCourseWithDomain(title: string, domainId: string, urlPath: string) {
  try {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
+  if (!title || title.trim() === '') return { error: 'Course name is required' };
+  if (!domainId) return { error: 'A domain is required' };
+
+  const cleanSlug = sanitizeSlug(urlPath || '');
+  if (!cleanSlug) return { error: 'A valid URL path is required' };
+
   const supabase = await createServerClient();
+
+  // Verify the chosen domain actually belongs to this workspace — domainId is never
+  // trusted blindly, same discipline as every other cross-entity reference in this app.
+  const { data: domain, error: domainErr } = await supabase
+   .from('domain_configurations')
+   .select('id')
+   .eq('id', domainId)
+   .eq('workspace_id', workspaceId)
+   .maybeSingle();
+
+  if (domainErr) throw domainErr;
+  if (!domain) return { error: 'Domain not found in this workspace' };
+
   const { data, error } = await supabase
    .from('courses')
    .insert({
     workspace_id: workspaceId,
     title,
-    status: 'draft'
+    status: 'draft',
+    domain_id: domainId,
+    url_path: cleanSlug
    })
    .select()
    .single();
 
-  if (error) throw error;
+  if (error) {
+   // Real DB-level protection (the unique index on (domain_id, url_path) from Phase A),
+   // not just a client-side check — a duplicate slug on the same domain is rejected here
+   // even if a client bypassed the UI's own uniqueness check entirely.
+   if (error.code === '23505') {
+    return { error: 'This URL path is already used on this domain. Choose a different one.' };
+   }
+   throw error;
+  }
   return { data };
  } catch (error: any) {
-  logger.error({ err: error }, 'create.course.failed');
+  logger.error({ err: error }, 'create.course.with.domain.failed');
   return { error: 'Operation failed. Please try again.' };
  }
 }
