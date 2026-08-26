@@ -55,13 +55,20 @@ export default function ReportsPage() {
   const [categorizing, setCategorizing] = useState<string | null>(null);
 
   const fetchAccountBreakdown = async () => {
-    const { start, end } = getStartEndDates(plPeriod);
-    const [accountsData, txData] = await Promise.all([
-      getAccounts(),
-      getAccountingTransactions(start, end),
-    ]);
-    setAccounts(accountsData || []);
-    setTransactions(txData || []);
+    try {
+      const { start, end } = getStartEndDates(plPeriod);
+      const [accountsData, txData] = await Promise.all([
+        getAccounts(),
+        getAccountingTransactions(start, end),
+      ]);
+      setAccounts(accountsData || []);
+      setTransactions(txData || []);
+    } catch {
+      // A dropped/rejected server action call used to leave this section stuck showing
+      // "no transactions" with no indication anything failed — same fix as the webhook
+      // endpoint button (a broken dev-mode log transport can kill either call silently).
+      toast.error('Failed to load account breakdown data');
+    }
   };
 
   const handleCategorize = async (transactionId: string, accountId: string) => {

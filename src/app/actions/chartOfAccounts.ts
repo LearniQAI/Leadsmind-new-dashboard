@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { requireWorkspaceAccess } from '@/lib/auth';
-import { logger } from '@/shared/logger';
+import { logger, safeLog } from '@/shared/logger';
 import { ValidationError, toClientError } from '@/shared/errors/AppError';
 
 function safeRevalidatePath(path: string) {
@@ -60,7 +60,7 @@ async function seedDefaultAccounts(supabase: any, workspaceId: string) {
   const rows = SA_STANDARD_ACCOUNTS.map(a => ({ ...a, workspace_id: workspaceId, is_system: true }));
   const { error } = await supabase.from('chart_of_accounts').insert(rows);
   if (error) {
-    logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.seed.failed');
+    safeLog(() => logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.seed.failed'));
   }
 }
 
@@ -90,7 +90,7 @@ export async function getAccounts() {
     .order('code', { ascending: true });
 
   if (error) {
-    logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.fetch.failed');
+    safeLog(() => logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.fetch.failed'));
     return [];
   }
   return data || [];
@@ -133,7 +133,7 @@ export async function createAccount(data: {
       if (error.code === '23505') {
         return { success: false, error: `Account code ${data.code} is already in use.` };
       }
-      logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.create.failed');
+      safeLog(() => logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.create.failed'));
       return { success: false, error: 'Failed to create account.' };
     }
 
@@ -183,7 +183,7 @@ export async function updateAccount(id: string, data: {
       if (error.code === '23505') {
         return { success: false, error: `Account code ${data.code} is already in use.` };
       }
-      logger.error({ err: error, id, workspaceId }, 'finance.chart_of_accounts.update.failed');
+      safeLog(() => logger.error({ err: error, id, workspaceId }, 'finance.chart_of_accounts.update.failed'));
       return { success: false, error: 'Failed to update account.' };
     }
 
@@ -226,7 +226,7 @@ export async function deleteAccount(id: string) {
     .eq('workspace_id', workspaceId);
 
   if (error) {
-    logger.error({ err: error, id, workspaceId }, 'finance.chart_of_accounts.delete.failed');
+    safeLog(() => logger.error({ err: error, id, workspaceId }, 'finance.chart_of_accounts.delete.failed'));
     return { success: false, error: 'Failed to delete account.' };
   }
 
@@ -252,7 +252,7 @@ export async function getAccountingTransactions(start: string, end: string) {
     .order('date', { ascending: false });
 
   if (error) {
-    logger.error({ err: error, workspaceId }, 'finance.accounting_transactions.fetch.failed');
+    safeLog(() => logger.error({ err: error, workspaceId }, 'finance.accounting_transactions.fetch.failed'));
     return [];
   }
   return data || [];
@@ -281,7 +281,7 @@ export async function updateTransactionAccount(transactionId: string, accountId:
     .eq('workspace_id', workspaceId);
 
   if (error) {
-    logger.error({ err: error, transactionId, accountId, workspaceId }, 'finance.accounting_transactions.categorize.failed');
+    safeLog(() => logger.error({ err: error, transactionId, accountId, workspaceId }, 'finance.accounting_transactions.categorize.failed'));
     return { success: false, error: 'Failed to categorize transaction.' };
   }
 
