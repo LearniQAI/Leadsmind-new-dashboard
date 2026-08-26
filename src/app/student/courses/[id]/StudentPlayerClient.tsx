@@ -22,6 +22,7 @@ import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import { VoiceNotePlayer } from '@/components/common/VoiceNotePlayer';
 import ReadingModal from './components/ReadingModal';
 import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
+import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 
 function getEmbeddablePdfUrl(url: string): string {
   if (!url) return '';
@@ -446,6 +447,10 @@ export default function StudentPlayerClient({
     return null;
   };
 
+  // Phase F: scoped per-course, not per-workspace — two courses in the same workspace with
+  // different themes render this player's primary actions differently.
+  const theme = getCourseTheme(course?.landing_page_settings?.template);
+
   const activeModule = activeLesson ? modules.find((m: any) => m.id === activeLesson.module_id) : null;
   const activeModuleIdx = activeLesson ? modules.findIndex((m: any) => m.id === activeLesson.module_id) : -1;
   const activeLockReason = activeLesson && activeModule ? getLessonLockReason({
@@ -471,7 +476,7 @@ export default function StudentPlayerClient({
   const renderAssignmentPanel = (instructions?: string) => (
     <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
+        <div className={`w-14 h-14 ${theme.solidBgClass}/10 rounded-full flex items-center justify-center ${theme.textAccentClass} shrink-0`}>
           <FileEdit size={24} />
         </div>
         <div>
@@ -518,7 +523,7 @@ export default function StudentPlayerClient({
           )}
 
           {submission.feedback_comments && (
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-xs text-white/80 font-body">
+            <div className={`${theme.solidBgClass}/5 border ${theme.borderAccentClass}/20 rounded-xl p-4 text-xs text-white/80 font-body`}>
               <strong className="text-primary block mb-1">Instructor Feedback:</strong>
               {submission.feedback_comments}
             </div>
@@ -575,7 +580,7 @@ export default function StudentPlayerClient({
           <Button
             onClick={handleSubmitAssignment}
             disabled={submitting || (!textSubmission.trim() && !fileUrl)}
-            className="w-full h-12 bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-black uppercase tracking-wider mt-4 shadow-lg shadow-primary/20"
+            className={`w-full h-12 ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl text-[10px] font-black uppercase tracking-wider mt-4 shadow-lg`}
           >
             {submitting ? "Submitting Work..." : "Submit Assignment"}
           </Button>
@@ -635,7 +640,7 @@ export default function StudentPlayerClient({
                   onFinish();
                 }
               }}
-              className="bg-primary hover:bg-primary/95 text-white rounded-xl text-[10px] font-black uppercase tracking-wider px-4"
+              className={`${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl text-[10px] font-black uppercase tracking-wider px-4`}
             >
               {flashcardIndex === cards.length - 1 ? "Finish ✓" : "Next Card"}
             </Button>
@@ -691,7 +696,7 @@ export default function StudentPlayerClient({
                   className={`h-11 rounded-xl text-xs font-black uppercase tracking-wider px-6 flex items-center gap-2 transition-all ${
                     completedLessonIds.includes(activeLesson.id)
                       ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
-                      : "bg-primary hover:bg-primary/95 text-white shadow-lg shadow-primary/15"
+                      : `${theme.solidBgClass} ${theme.solidHoverBgClass} text-white shadow-lg`
                   }`}
                 >
                   <CheckSquare size={14} /> 
@@ -794,7 +799,7 @@ export default function StudentPlayerClient({
                         // legacy lesson_type === 'quiz' path already uses.
                         <a
                           href={`/student/courses/${course.id}/quiz/${activeLesson.id}`}
-                          className="inline-flex bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-10 px-6 items-center justify-center gap-1.5 shadow-lg shadow-primary/20 transition-all active:scale-95"
+                          className={`inline-flex ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-10 px-6 items-center justify-center gap-1.5 shadow-lg transition-all active:scale-95`}
                         >
                           Start Quiz Assessment
                         </a>
@@ -840,7 +845,7 @@ export default function StudentPlayerClient({
                 />
               ) : activeLesson.lesson_type === 'quiz' ? (
                 <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-xl mx-auto text-center space-y-5">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                  <div className={`w-16 h-16 ${theme.solidBgClass}/10 rounded-full flex items-center justify-center mx-auto ${theme.textAccentClass}`}>
                     <BookOpen size={24} />
                   </div>
                   <div className="space-y-1">
@@ -851,14 +856,14 @@ export default function StudentPlayerClient({
                   </div>
                   <a 
                     href={`/student/courses/${course.id}/quiz/${activeLesson.id}`}
-                    className="inline-flex bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 items-center justify-center shadow-lg shadow-primary/20 transition-all active:scale-95"
+                    className={`inline-flex ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 items-center justify-center shadow-lg transition-all active:scale-95`}
                   >
                     Start Quiz Assessment
                   </a>
                 </div>
               ) : activeLesson.lesson_type === 'pdf' ? (
                 <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-xl mx-auto text-center space-y-5">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                  <div className={`w-16 h-16 ${theme.solidBgClass}/10 rounded-full flex items-center justify-center mx-auto ${theme.textAccentClass}`}>
                     <FileText size={24} />
                   </div>
                   <div className="space-y-1">
@@ -869,7 +874,7 @@ export default function StudentPlayerClient({
                   </div>
                   <Button
                     onClick={() => setOpenReadingId('legacy-pdf')}
-                    className="inline-flex bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 items-center justify-center gap-1.5 shadow-lg shadow-primary/20 transition-all active:scale-95"
+                    className={`inline-flex ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 items-center justify-center gap-1.5 shadow-lg transition-all active:scale-95`}
                   >
                     <FileText size={13} /> Open Reading
                   </Button>
@@ -877,7 +882,7 @@ export default function StudentPlayerClient({
               ) : activeLesson.lesson_type === 'audio' ? (
                 <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-2xl mx-auto space-y-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
+                    <div className={`w-14 h-14 ${theme.solidBgClass}/10 rounded-full flex items-center justify-center ${theme.textAccentClass} shrink-0`}>
                       <Headphones size={24} />
                     </div>
                     <div>
@@ -907,7 +912,7 @@ export default function StudentPlayerClient({
                 renderAssignmentPanel(activeLesson.content?.text)
               ) : activeLesson.lesson_type === 'live_session' ? (
                 <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-xl mx-auto text-center space-y-6">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                  <div className={`w-16 h-16 ${theme.solidBgClass}/10 rounded-full flex items-center justify-center mx-auto ${theme.textAccentClass}`}>
                     <Video size={24} />
                   </div>
                   <div className="space-y-1">
@@ -929,7 +934,7 @@ export default function StudentPlayerClient({
                     href={activeLesson.content?.video_url || activeLesson.video_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 items-center justify-center shadow-lg shadow-primary/20 transition-all active:scale-95 gap-1.5"
+                    className={`inline-flex ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 items-center justify-center shadow-lg transition-all active:scale-95 gap-1.5`}
                   >
                     <Video size={14} /> Join Broadcast Meeting
                   </a>
@@ -968,7 +973,7 @@ export default function StudentPlayerClient({
                           }, 1000);
                         }}
                         disabled={codeRunning}
-                        className="bg-primary hover:bg-primary/95 text-white rounded-lg text-[10px] font-black uppercase tracking-wider h-9 px-5 shadow-lg shadow-primary/20 flex items-center gap-1.5"
+                        className={`${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-lg text-[10px] font-black uppercase tracking-wider h-9 px-5 shadow-lg flex items-center gap-1.5`}
                       >
                         {codeRunning ? <Loader2 className="animate-spin" size={12} /> : null} Run execution script
                       </Button>
@@ -1022,7 +1027,7 @@ export default function StudentPlayerClient({
                       <div className="flex gap-3">
                         <a
                           href={activeLesson.video_url}
-                          className="inline-flex bg-primary hover:bg-primary/95 text-white rounded-lg uppercase tracking-wider text-[10px] font-black h-10 px-5 items-center justify-center"
+                          className={`inline-flex ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-lg uppercase tracking-wider text-[10px] font-black h-10 px-5 items-center justify-center`}
                         >
                           Download Package Zip
                         </a>

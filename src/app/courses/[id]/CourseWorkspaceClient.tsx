@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Layers } from "lucide-react";
+import { Plus, Layers, UserPlus, Users, Palette, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
@@ -20,6 +20,9 @@ import CourseLandingForm from "./components/CourseLandingForm";
 import CoursePricingForm from "./components/CoursePricingForm";
 import EmailTemplateForm from "./components/EmailTemplateForm";
 import CourseSubmissionsTab from "./components/CourseSubmissionsTab";
+import LessonPreviewModal from "./components/LessonPreviewModal";
+import AddStudentModal from "./components/AddStudentModal";
+import StudentsRosterModal from "./components/StudentsRosterModal";
 
 interface CourseWorkspaceClientProps {
   course: any;
@@ -53,6 +56,9 @@ export default function CourseWorkspaceClient({
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [previewLesson, setPreviewLesson] = useState<{ id: string; title: string } | null>(null);
+  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const [isRosterOpen, setIsRosterOpen] = useState(false);
 
   const refreshWorkspace = async () => {
     try {
@@ -134,7 +140,9 @@ export default function CourseWorkspaceClient({
           content: contentJsonb,
           is_preview: lessonData.is_free,
           access_level: lessonData.access_level,
-          time_estimate_minutes: lessonData.time_estimate_minutes
+          time_estimate_minutes: lessonData.time_estimate_minutes,
+          unlock_type: lessonData.unlock_type,
+          drip_value: lessonData.drip_value
         })
       });
       const dataJson = await res.json();
@@ -162,6 +170,113 @@ export default function CourseWorkspaceClient({
       toast.error("Failed to delete lesson");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleToggleModuleActive = async (moduleId: string, isActive: boolean) => {
+    try {
+      const res = await fetch(`/api/lms/modules?id=${moduleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: isActive })
+      });
+      const dataJson = await res.json();
+      if (dataJson.error) toast.error(dataJson.error);
+      else {
+        toast.success(isActive ? "Module activated." : "Module deactivated.");
+        refreshWorkspace();
+      }
+    } catch {
+      toast.error("Failed to update module status");
+    }
+  };
+
+  const handleToggleLessonActive = async (lessonId: string, isActive: boolean) => {
+    try {
+      const res = await fetch(`/api/lms/lessons?id=${lessonId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: isActive })
+      });
+      const dataJson = await res.json();
+      if (dataJson.error) toast.error(dataJson.error);
+      else {
+        toast.success(isActive ? "Lesson activated." : "Lesson deactivated.");
+        refreshWorkspace();
+      }
+    } catch {
+      toast.error("Failed to update lesson status");
+    }
+  };
+
+  const handleDuplicateModule = async (moduleId: string) => {
+    try {
+      const res = await fetch(`/api/lms/modules/${moduleId}/duplicate`, { method: "POST" });
+      const dataJson = await res.json();
+      if (dataJson.error) toast.error(dataJson.error);
+      else {
+        toast.success(`Module duplicated (${dataJson.lessonsCopied} lesson(s), ${dataJson.blocksCopied} block(s)).`);
+        refreshWorkspace();
+      }
+    } catch {
+      toast.error("Failed to duplicate module");
+    }
+  };
+
+  const handleDuplicateLesson = async (lessonId: string) => {
+    try {
+      const res = await fetch(`/api/lms/lessons/${lessonId}/duplicate`, { method: "POST" });
+      const dataJson = await res.json();
+      if (dataJson.error) toast.error(dataJson.error);
+      else {
+        toast.success(`Lesson duplicated (${dataJson.blocksCopied} block(s)).`);
+        refreshWorkspace();
+      }
+    } catch {
+      toast.error("Failed to duplicate lesson");
+    }
+  };
+
+  const handleMoveLesson = async (lessonId: string, targetModuleId: string) => {
+    try {
+      const res = await fetch(`/api/lms/lessons?id=${lessonId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ module_id: targetModuleId })
+      });
+      const dataJson = await res.json();
+      if (dataJson.error) toast.error(dataJson.error);
+      else {
+        toast.success("Lesson moved.");
+        refreshWorkspace();
+      }
+    } catch {
+      toast.error("Failed to move lesson");
+    }
+  };
+
+  const handleCreateAssignment = async (lesson: any) => {
+    try {
+      const res = await fetch("/api/lms/content-blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lesson_id: lesson.id,
+          type: "assignment",
+          content: { instructions: "" },
+          completion_rule: "graded_passed"
+        })
+      });
+      const dataJson = await res.json();
+      if (dataJson.error) toast.error(dataJson.error);
+      else {
+        toast.success("Assignment block created — opening lesson editor.");
+        setActiveModuleIdForLesson(lesson.module_id);
+        setEditingLesson(lesson);
+        setIsLessonModalOpen(true);
+      }
+    } catch {
+      toast.error("Failed to create assignment block");
     }
   };
 
@@ -208,6 +323,34 @@ export default function CourseWorkspaceClient({
             </Button>
           </div>
 
+          {/* Quick actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setIsAddStudentOpen(true)}
+              className="h-9 px-3.5 rounded-lg bg-white border border-dash-border hover:bg-dash-surface text-[11px] font-bold !text-dash-text flex items-center gap-1.5 transition-colors"
+            >
+              <UserPlus size={13} /> Add student
+            </button>
+            <button
+              onClick={() => setIsRosterOpen(true)}
+              className="h-9 px-3.5 rounded-lg bg-white border border-dash-border hover:bg-dash-surface text-[11px] font-bold !text-dash-text flex items-center gap-1.5 transition-colors"
+            >
+              <Users size={13} /> Students
+            </button>
+            <button
+              onClick={() => setActiveTab("landing-page")}
+              className="h-9 px-3.5 rounded-lg bg-white border border-dash-border hover:bg-dash-surface text-[11px] font-bold !text-dash-text flex items-center gap-1.5 transition-colors"
+            >
+              <Palette size={13} /> View and customize theme
+            </button>
+            <button
+              onClick={() => setActiveTab("settings")}
+              className="h-9 px-3.5 rounded-lg bg-white border border-dash-border hover:bg-dash-surface text-[11px] font-bold !text-dash-text flex items-center gap-1.5 transition-colors"
+            >
+              <SettingsIcon size={13} /> Settings
+            </button>
+          </div>
+
           {/* Toolbar */}
           <ModulesToolbar
             activeFilter={activeFilter}
@@ -241,6 +384,7 @@ export default function CourseWorkspaceClient({
                     ...module,
                     lessons: (module.lessons || []).map(mapLessonForModal)
                   }}
+                  siblingModules={modules.map((m) => ({ id: m.id, title: m.title || m.name }))}
                   onEditModule={(mod) => { setEditingModule(mod); setIsModuleModalOpen(true); }}
                   onDeleteModule={handleDeleteModule}
                   onAddLesson={(modId) => { setActiveModuleIdForLesson(modId); setIsLessonPickerOpen(true); }}
@@ -254,6 +398,13 @@ export default function CourseWorkspaceClient({
                     }
                   }}
                   onDeleteLesson={(lesId) => setDeletingLessonId(lesId)}
+                  onToggleModuleActive={handleToggleModuleActive}
+                  onToggleLessonActive={handleToggleLessonActive}
+                  onDuplicateModule={handleDuplicateModule}
+                  onDuplicateLesson={handleDuplicateLesson}
+                  onMoveLesson={handleMoveLesson}
+                  onViewLesson={(les) => setPreviewLesson({ id: les.id, title: les.title })}
+                  onCreateAssignment={handleCreateAssignment}
                 />
               ))}
             </div>
@@ -319,6 +470,26 @@ export default function CourseWorkspaceClient({
         isDestructive={true}
         isLoading={isDeleting}
       />
+
+      {previewLesson && (
+        <LessonPreviewModal
+          lessonId={previewLesson.id}
+          lessonTitle={previewLesson.title}
+          onClose={() => setPreviewLesson(null)}
+        />
+      )}
+
+      {isAddStudentOpen && (
+        <AddStudentModal
+          courseId={currentCourse.id}
+          onClose={() => setIsAddStudentOpen(false)}
+          onEnrolled={() => {}}
+        />
+      )}
+
+      {isRosterOpen && (
+        <StudentsRosterModal courseId={currentCourse.id} onClose={() => setIsRosterOpen(false)} />
+      )}
     </div>
   );
 }

@@ -22,6 +22,7 @@ import FlashcardsBlockEditor from "./blocks/FlashcardsBlockEditor";
 import DownloadBlockEditor from "./blocks/DownloadBlockEditor";
 import EmbedBlockEditor from "./blocks/EmbedBlockEditor";
 import LiveSessionBlockEditor from "./blocks/LiveSessionBlockEditor";
+import RichTextBlockEditor from "./blocks/RichTextBlockEditor";
 
 function renderBlockTypeEditor(courseId: string, block: ContentBlock, onChange: (patch: Partial<ContentBlock>) => void) {
   switch (block.type) {
@@ -29,6 +30,8 @@ function renderBlockTypeEditor(courseId: string, block: ContentBlock, onChange: 
       return <VideoBlockEditor block={block} onChange={onChange} />;
     case "audio":
       return <AudioBlockEditor block={block} onChange={onChange} />;
+    case "rich_text":
+      return <RichTextBlockEditor block={block} onChange={onChange} />;
     case "reading":
     case "slides":
       return <ReadingBlockEditor block={block} onChange={onChange} />;
@@ -88,6 +91,8 @@ export default function LessonCreatorModal({
   const [isFree, setIsFree] = useState(false);
   const [accessLevel, setAccessLevel] = useState<'public' | 'enrolled' | 'paid'>('enrolled');
   const [timeEstimateMinutes, setTimeEstimateMinutes] = useState<string>("");
+  const [unlockType, setUnlockType] = useState<'sequential' | 'immediate' | 'drip' | 'quiz_gated'>('sequential');
+  const [dripValue, setDripValue] = useState<string>("");
 
   // Type-specific Metadata states
   const [flashcards, setFlashcards] = useState<{ front: string; back: string }[]>([]);
@@ -189,6 +194,12 @@ export default function LessonCreatorModal({
           ? String(editingLesson.time_estimate_minutes)
           : ""
       );
+      setUnlockType(editingLesson.unlock_type || 'sequential');
+      setDripValue(
+        editingLesson.drip_value !== null && editingLesson.drip_value !== undefined
+          ? String(editingLesson.drip_value)
+          : ""
+      );
       setType(editingLesson.type || "Text");
       
       const meta = editingLesson.metadata || {};
@@ -210,6 +221,8 @@ export default function LessonCreatorModal({
       setIsFree(false);
       setAccessLevel('enrolled');
       setTimeEstimateMinutes("");
+      setUnlockType('sequential');
+      setDripValue("");
       setType("Text");
       setFlashcards([]);
       setCodeLanguage("javascript");
@@ -274,6 +287,8 @@ export default function LessonCreatorModal({
         is_free: accessLevel === 'public',
         access_level: accessLevel,
         time_estimate_minutes: timeEstimateMinutes.trim() === "" ? null : parseInt(timeEstimateMinutes, 10),
+        unlock_type: unlockType,
+        drip_value: dripValue.trim() === "" ? null : parseInt(dripValue, 10),
         type,
         metadata
       });
@@ -618,6 +633,36 @@ export default function LessonCreatorModal({
                 placeholder="e.g. 15"
                 className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary transition-all motion-reduce:transition-none"
               />
+            </div>
+
+            {/* Unlock type + drip value — consolidated per-lesson settings (Section C, Step
+                3/4), reusing the real unlock_type column from Phase A rather than a second,
+                disconnected concept. */}
+            <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
+              <label className="text-[10px] font-bold !text-dash-textMuted block">Unlock condition</label>
+              <select
+                value={unlockType}
+                onChange={(e) => setUnlockType(e.target.value as any)}
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
+              >
+                <option value="sequential">Sequential (after the previous lesson)</option>
+                <option value="immediate">Immediate (no lock)</option>
+                <option value="drip">Drip (days after unlock condition)</option>
+                <option value="quiz_gated">Quiz-gated (previous lesson's quiz passed)</option>
+              </select>
+              {unlockType === 'drip' && (
+                <div className="pt-2">
+                  <label className="text-[10px] font-bold !text-dash-textMuted block mb-1.5">Drip delay (days)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={dripValue}
+                    onChange={(e) => setDripValue(e.target.value)}
+                    placeholder="0 = immediately once unlocked"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Content (Text description, Rich Text, etc.) */}

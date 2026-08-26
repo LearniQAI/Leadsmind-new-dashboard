@@ -69,13 +69,17 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
 
   // 3. Fetch modules and lessons using admin client to bypass RLS
   const [modulesRes, lessonsRes, progressRes] = await Promise.all([
-    adminClient.from('course_modules').select('*').eq('course_id', courseId).order('position', { ascending: true }),
-    adminClient.from('course_lessons').select('*').eq('course_id', courseId).order('position', { ascending: true }),
+    adminClient.from('course_modules').select('*').eq('course_id', courseId).eq('is_active', true).order('position', { ascending: true }),
+    adminClient.from('course_lessons').select('*').eq('course_id', courseId).eq('is_active', true).order('position', { ascending: true }),
     getCompletedLessons(courseId)
   ]);
 
   const modules = modulesRes.data || [];
-  const lessons = lessonsRes.data || [];
+  const activeModuleIds = new Set(modules.map((m) => m.id));
+  // A lesson can be individually active but its parent module deactivated — exclude those too,
+  // otherwise the lesson (and its content_blocks below) would still ship to the client even
+  // though its module never renders, defeating the point of deactivation.
+  const lessons = (lessonsRes.data || []).filter((l) => activeModuleIds.has(l.module_id));
   const completedLessonIds = progressRes.data || [];
 
   // 4. Attach ordered content_blocks per lesson (PRD Section 4 block system).

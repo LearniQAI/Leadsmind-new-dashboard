@@ -75,6 +75,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       thumbnailUrl: data.thumbnail_url,
       title: data.title || null,
+      // Real duration, only when the provider's oEmbed response actually includes one
+      // (Vimeo/Wistia do, in seconds; YouTube's oEmbed does not) — never fabricated.
+      durationSeconds: typeof data.duration === 'number' ? Math.round(data.duration) : null,
       canonicalUrl
     });
   } catch (err: any) {

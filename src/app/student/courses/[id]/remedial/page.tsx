@@ -60,11 +60,11 @@ export default async function RemedialPage({ params, searchParams }: RemedialPag
   // 3. Fetch lesson to verify it exists
   const { data: lesson } = await adminClient
     .from('course_lessons')
-    .select('id, title')
+    .select('id, title, is_active')
     .eq('id', lessonId)
     .single();
 
-  if (!lesson) {
+  if (!lesson || lesson.is_active === false) {
     notFound();
   }
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { Lock, CheckCircle2, Play, Download, UserRound, Clock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 
 interface SyllabusSidebarProps {
   course: any;
@@ -41,6 +42,10 @@ export default function SyllabusSidebar({
   // Shown only when an admin has actually set one.
   const tutorName: string | null = course?.landing_page_settings?.instructor?.name?.trim() || null;
 
+  // Phase F: scoped per-course (not per-workspace) — reads this specific course's own
+  // template, so two courses in the same workspace with different themes render differently.
+  const theme = getCourseTheme(course?.landing_page_settings?.template);
+
   return (
     <div className="w-[360px] border-r border-white/5 bg-[#04091a]/40 flex flex-col shrink-0">
       {/* Sidebar Header */}
@@ -68,11 +73,11 @@ export default function SyllabusSidebar({
       <div className="p-5 border-b border-white/5 bg-white/[0.02] backdrop-blur-md space-y-2.5 shrink-0">
         <div className="flex justify-between items-center text-xs">
           <span className="font-bold text-white/50 uppercase tracking-widest font-mono">Course Completion</span>
-          <span className="font-black text-[#3b82f6] font-mono">{globalProgressPercentage}%</span>
+          <span className={`font-black ${theme.textAccentClass} font-mono`}>{globalProgressPercentage}%</span>
         </div>
         <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
-          <div 
-            className="bg-gradient-to-r from-blue-500 to-indigo-500 h-1.5 rounded-full transition-all duration-500" 
+          <div
+            className={`bg-gradient-to-r ${theme.gradientClass} h-1.5 rounded-full transition-all duration-500`}
             style={{ width: `${globalProgressPercentage}%` }}
           />
         </div>
@@ -100,7 +105,7 @@ export default function SyllabusSidebar({
             <div key={mod.id} className="space-y-1.5">
               {/* Module title/header */}
               <div className="flex items-center justify-between px-2 py-1">
-                <span className="text-xs font-black uppercase text-primary tracking-widest truncate max-w-[240px]">
+                <span className={`text-xs font-black uppercase ${theme.textAccentClass} tracking-widest truncate max-w-[240px]`}>
                   {modIdx + 1}. {mod.title}
                 </span>
                 {mod.required_for_completion && (
@@ -125,9 +130,9 @@ export default function SyllabusSidebar({
                           setActiveLesson(les);
                         }
                       }}
-                      className={`p-3.5 rounded-xl text-sm flex items-center justify-between gap-3 select-none cursor-pointer transition-all border ${
+                      className={`p-3.5 ${theme.radiusClass} text-sm flex items-center justify-between gap-3 select-none cursor-pointer transition-all border ${
                         isSelected
-                          ? "bg-accent/10 border-accent text-white font-bold"
+                          ? `${theme.solidBgClass}/10 ${theme.borderAccentClass} text-white font-bold`
                           : "bg-white/[0.01] border-transparent text-white/60 hover:bg-white/[0.03] hover:text-white"
                       } ${lockReason ? "opacity-40 cursor-not-allowed" : ""}`}
                     >

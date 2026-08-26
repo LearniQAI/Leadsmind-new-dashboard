@@ -5,15 +5,29 @@ import { Button } from "@/components/ui/button";
 import {
   Plus,
   BookOpen,
-  Layers,
-  Users,
   Search,
   Zap,
+  MoreHorizontal,
+  Filter as FilterIcon,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import CreateCourseWizard from "./components/CreateCourseWizard";
+
+// Real course-level status values (confirmed live: only 'draft' and 'published' exist in
+// courses.status — 'coming_soon' is a module-level publish_status value, not a course one,
+// per the Control Room page's own filter). Not inventing a status this table can't back.
+const STATUS_FILTERS = [
+  { value: "all", label: "All statuses" },
+  { value: "draft", label: "Draft" },
+  { value: "published", label: "Published" },
+];
 
 export default function CoursesClient({
   initialCourses,
@@ -22,122 +36,147 @@ export default function CoursesClient({
 }) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   // Create Course Wizard state (Phase D: name+domain+url -> theme -> add module)
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const filteredCourses = initialCourses.filter((course) =>
-    course.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCourses = initialCourses.filter((course) => {
+    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || course.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-dash-border pb-6">
-        <div>
-          <h1 className="text-3xl font-bold !text-dash-text mb-1">
-            Course <span className="text-dash-accent">management</span>
-          </h1>
-          <p className="text-xs !text-dash-textMuted">
-            Create and manage the courses in your learning academy
-          </p>
-        </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold !text-dash-text">
+          {initialCourses.length} Course{initialCourses.length === 1 ? "" : "s"}
+        </h1>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center bg-dash-surface border border-dash-border focus-within:border-dash-accent rounded-xl px-4 py-2 w-full md:w-64 transition-colors motion-reduce:transition-none">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center bg-white border border-dash-border focus-within:border-dash-accent rounded-xl px-4 py-2.5 w-full md:w-64 transition-colors motion-reduce:transition-none">
             <Search className="w-4 h-4 !text-dash-textMuted mr-2 shrink-0" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search courses..."
+              placeholder="Search"
               className="bg-transparent border-none outline-none text-xs !text-dash-text placeholder:text-dash-textMuted w-full"
             />
           </div>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-white border border-dash-border rounded-xl px-3 py-2.5 text-xs !text-dash-text outline-none focus:border-dash-accent"
+          >
+            {STATUS_FILTERS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+
+          <Button
+            variant="ghost"
+            className="h-11 px-4 bg-white border border-dash-border !text-dash-text rounded-xl font-bold text-[10px] flex items-center gap-1.5 hover:bg-dash-surface transition-colors motion-reduce:transition-none"
+          >
+            <FilterIcon size={13} /> Filter
+          </Button>
+
           <Button
             onClick={() => setIsModalOpen(true)}
             className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[10px] h-11 px-6 rounded-xl shadow-lg shadow-dash-accent/10 transition-all motion-reduce:transition-none active:scale-95 flex items-center gap-1.5 shrink-0"
           >
-            <Plus size={14} /> Create course
+            <Plus size={14} /> Add a new course
           </Button>
         </div>
       </div>
 
-      {/* Courses Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Courses Table */}
+      <div className="bg-white border border-dash-border rounded-2xl shadow-sm overflow-hidden">
         {filteredCourses.length === 0 ? (
-          <div className="col-span-full py-20 bg-dash-surface border-2 border-dashed border-dash-border rounded-3xl flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-6 border border-dash-border">
+          <div className="py-20 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 bg-dash-surface rounded-full flex items-center justify-center mb-6 border border-dash-border">
               <BookOpen className="w-8 h-8 !text-dash-textMuted" />
             </div>
             <h3 className="text-lg font-bold !text-dash-text">
-              No courses yet
+              {initialCourses.length === 0 ? "No courses yet" : "No courses match your filters"}
             </h3>
             <p className="!text-dash-textMuted text-xs mt-2">
-              Create your first course to get started
+              {initialCourses.length === 0 ? "Create your first course to get started" : "Try a different search or status filter"}
             </p>
-            <Button
-              onClick={() => setIsModalOpen(true)}
-              className="mt-6 bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[10px] h-10 px-5 rounded-xl transition-colors motion-reduce:transition-none"
-            >
-              + Create course
-            </Button>
+            {initialCourses.length === 0 && (
+              <Button
+                onClick={() => setIsModalOpen(true)}
+                className="mt-6 bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[10px] h-10 px-5 rounded-xl transition-colors motion-reduce:transition-none"
+              >
+                + Add a new course
+              </Button>
+            )}
           </div>
         ) : (
-          filteredCourses.map((course) => (
-            <div
-              key={course.id}
-              className="bg-white border border-dash-border rounded-2xl p-6 group hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 motion-reduce:transition-none motion-reduce:hover:translate-y-0 shadow-sm relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[2px] before:bg-dash-accent before:rounded-t-2xl"
-            >
-              <div className="absolute top-0 right-0 p-4">
-                <Badge
-                  className={`text-[9px] font-bold px-2.5 py-0.5 rounded border-none capitalize ${
-                    course.status === "published"
-                      ? "bg-green/10 text-green"
-                      : "bg-purple/10 text-purple"
-                  }`}
-                >
-                  {course.status === "published" ? "Published" : "Draft"}
-                </Badge>
-              </div>
-
-              <div className="h-12 w-12 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent border border-dash-accent/20 group-hover:bg-dash-accent group-hover:text-white transition-all duration-300 motion-reduce:transition-none mb-6 shrink-0">
-                <BookOpen size={20} />
-              </div>
-
-              <div className="mb-8">
-                <h4 className="text-xl font-bold !text-dash-text mb-2 group-hover:text-dash-accent transition-colors motion-reduce:transition-none truncate">
-                  {course.title}
-                </h4>
-                <div className="flex items-center gap-4 !text-dash-textMuted text-[10px] font-bold">
-                  <span className="flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-dash-accent" />{" "}
-                    {course.modules?.[0]?.count || 0} modules
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-dash-accent" /> 0 students
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push(`/courses/${course.id}`)}
-                  className="h-10 px-4 bg-dash-surface border border-dash-border !text-dash-text hover:!text-dash-accent hover:border-dash-accent rounded-xl font-bold text-[9px] transition-colors motion-reduce:transition-none"
-                >
-                  Manage
-                </Button>
-                <Button
-                  onClick={() => toast.info("Opening automation...")}
-                  className="h-10 px-5 bg-purple text-white rounded-xl font-bold text-[9px] hover:bg-purple/90 transition-colors motion-reduce:transition-none flex items-center gap-1.5 shadow-lg shadow-purple/10"
-                >
-                  Automate <Zap size={13} className="fill-white" />
-                </Button>
-              </div>
-            </div>
-          ))
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-dash-border bg-dash-surface/60">
+                  <th className="px-6 py-3.5 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3.5 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wider">Type</th>
+                  <th className="px-6 py-3.5 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3.5 w-12" />
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCourses.map((course) => (
+                  <tr
+                    key={course.id}
+                    className="border-b border-dash-border last:border-0 hover:bg-dash-surface/40 transition-colors motion-reduce:transition-none"
+                  >
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => router.push(`/courses/${course.id}`)}
+                        className="text-sm font-bold text-dash-accent hover:underline text-left"
+                      >
+                        {course.title}
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 text-xs !text-dash-textMuted">
+                      Classic course
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full capitalize ${
+                          course.status === "published"
+                            ? "bg-green/10 text-green"
+                            : "bg-purple/10 text-purple"
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${course.status === "published" ? "bg-green" : "bg-purple"}`} />
+                        {course.status === "published" ? "Published" : "Draft"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-8 w-8 rounded-lg hover:bg-dash-surface flex items-center justify-center !text-dash-textMuted transition-colors motion-reduce:transition-none">
+                            <MoreHorizontal size={16} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/courses/${course.id}`)}>
+                            Manage
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast.info("Opening automation...")}>
+                            <Zap size={13} className="mr-1.5" /> Automate
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
