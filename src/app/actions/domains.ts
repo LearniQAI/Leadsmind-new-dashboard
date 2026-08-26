@@ -2,6 +2,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import dns from 'dns';
 import { randomBytes } from 'crypto';
@@ -325,6 +326,15 @@ export async function addDomain(
     const clientError = toClientError(err);
     return { success: false, error: clientError.error };
   }
+}
+
+// Same data as getDomains() below, just resolving the caller's own active workspace from
+// the session instead of requiring the client to already know its id — used by the course
+// creation wizard (Phase D), which has no other reason to have fetched a workspaceId yet.
+export async function getDomainsForCurrentWorkspace() {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'No workspace active' };
+  return getDomains(workspaceId);
 }
 
 export async function getDomains(workspaceId: string) {

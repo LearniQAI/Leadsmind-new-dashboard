@@ -9,20 +9,11 @@ import {
   Users,
   Search,
   Zap,
-  Loader2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  DashModal,
-  DashModalContent,
-  DashModalHeader,
-  DashModalTitle,
-  DashModalFooter,
-} from "@/components/dashboard-ui/Modal";
-import { DashFormField, DashInput } from "@/components/dashboard-ui/FormField";
-import { createCourse } from "@/app/actions/lms";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import CreateCourseWizard from "./components/CreateCourseWizard";
 
 export default function CoursesClient({
   initialCourses,
@@ -30,42 +21,10 @@ export default function CoursesClient({
   initialCourses: any[];
 }) {
   const router = useRouter();
-  const [isInitializing, setIsInitializing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Create Course Modal State
+  // Create Course Wizard state (Phase D: name+domain+url -> theme -> add module)
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newCourseTitle, setNewCourseTitle] = useState("");
-
-  const closeModal = () => {
-    setNewCourseTitle("");
-    setIsModalOpen(false);
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCourseTitle || newCourseTitle.trim() === "") {
-      toast.error("Course title is required");
-      return;
-    }
-
-    setIsInitializing(true);
-    try {
-      const res = await createCourse(newCourseTitle);
-      if (res.error) {
-        toast.error(res.error);
-      } else {
-        toast.success("Course created successfully!");
-        setNewCourseTitle("");
-        setIsModalOpen(false);
-        router.refresh();
-      }
-    } catch (error) {
-      toast.error("An unexpected error occurred");
-    } finally {
-      setIsInitializing(false);
-    }
-  };
 
   const filteredCourses = initialCourses.filter((course) =>
     course.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -182,55 +141,11 @@ export default function CoursesClient({
         )}
       </div>
 
-      {/* Create Course Modal */}
-      <DashModal open={isModalOpen} onOpenChange={(open) => (open ? setIsModalOpen(true) : closeModal())}>
-        <DashModalContent className="max-w-md">
-          <DashModalHeader>
-            <DashModalTitle className="flex items-center gap-2">
-              <BookOpen size={18} className="text-dash-accent" /> Create course
-            </DashModalTitle>
-          </DashModalHeader>
-
-          <form onSubmit={handleCreate} className="space-y-4">
-            <DashFormField label="Course title" htmlFor="new-course-title" required>
-              <DashInput
-                id="new-course-title"
-                type="text"
-                value={newCourseTitle}
-                onChange={(e) => setNewCourseTitle(e.target.value)}
-                placeholder="e.g. Masterclass in JavaScript"
-                required
-                autoFocus
-              />
-            </DashFormField>
-
-            <DashModalFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={closeModal}
-                disabled={isInitializing}
-                className="h-10 rounded-xl !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isInitializing}
-                className="h-10 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-[10px] font-bold px-5 shadow-lg shadow-dash-accent/20 flex items-center gap-1.5"
-              >
-                {isInitializing ? (
-                  <>
-                    <Loader2 size={12} className="animate-spin motion-reduce:animate-none mr-1" /> Creating...
-                  </>
-                ) : (
-                  "Create course"
-                )}
-              </Button>
-            </DashModalFooter>
-          </form>
-        </DashModalContent>
-      </DashModal>
+      <CreateCourseWizard
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onCreated={() => router.refresh()}
+      />
     </div>
   );
 }
