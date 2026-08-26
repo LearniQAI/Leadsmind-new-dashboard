@@ -3,6 +3,13 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Play, Lock, Eye, Star, Plus, Minus, Users, MessageSquare } from 'lucide-react';
+import { COURSE_THEMES } from '@/lib/courses/courseThemeTokens';
+
+// Phase F: pulls its accent color from the single canonical theme source instead of the
+// #8b5cf6 / #7c3aed literals this component used to repeat inline — same real value
+// (COURSE_THEMES.community_coaching.primaryHex is #8b5cf6, matching what was here before),
+// now defined once.
+const theme = COURSE_THEMES.community_coaching;
 
 interface TemplateProps {
   course: any;
@@ -61,12 +68,12 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
         {isSectionVisible('hero') && (
           <section className="text-center space-y-6 pb-6">
             <div className="flex justify-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-[#8b5cf6] bg-[#8b5cf6]/10 border border-[#8b5cf6]/20">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${theme.textAccentClass} bg-purple/10 border ${theme.borderAccentClass}/20`}>
                 <Users size={12} /> Peer & Mentor Led
               </span>
             </div>
             <h1 className="text-3xl md:text-5xl font-display font-bold text-t1 tracking-tight max-w-3xl mx-auto leading-tight">
-              Join Our Study Cohort: <span className="text-[#8b5cf6]">{pageTitle}</span>
+              Join Our Study Cohort: <span className={theme.textAccentClass}>{pageTitle}</span>
             </h1>
             <p className="text-xs md:text-sm text-t2 max-w-xl mx-auto leading-relaxed">
               {tagline}
@@ -74,7 +81,7 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
               <button 
                 onClick={handleEnroll}
-                className="w-full sm:w-auto bg-[#8b5cf6] hover:bg-[#7c3aed] text-white font-bold text-xs uppercase tracking-widest px-8 py-3.5 rounded-xl shadow-lg transition-all"
+                className={`w-full sm:w-auto ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white font-bold text-xs uppercase tracking-widest px-8 py-3.5 rounded-xl shadow-lg transition-all`}
               >
                 Join Cohort & Course
               </button>
@@ -94,13 +101,13 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
         {/* OUTCOMES SECTION */}
         {isSectionVisible('outcomes') && outcomes.length > 0 && (
           <section className="space-y-6">
-            <h2 className="text-lg font-display font-semibold text-t1 border-l-2 border-[#8b5cf6] pl-3">
+            <h2 className={`text-lg font-display font-semibold text-t1 border-l-2 ${theme.borderAccentClass} pl-3`}>
               Cohort Outcomes & Focus Areas
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {outcomes.map((outcome: string, idx: number) => (
                 <div key={idx} className="flex items-start gap-3 bg-n800 p-4 rounded-xl border border-white/5">
-                  <div className="w-5 h-5 rounded-full bg-[#8b5cf6]/10 text-[#8b5cf6] flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">
+                  <div className={`w-5 h-5 rounded-full bg-purple/10 ${theme.textAccentClass} flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5`}>
                     {idx + 1}
                   </div>
                   <span className="text-xs text-t2 leading-relaxed">{outcome}</span>
@@ -125,7 +132,7 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
               </div>
             )}
             <div className="space-y-2 text-center md:text-left">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8b5cf6]">Your Mentor & Coach</span>
+              <span className={`text-[10px] font-bold uppercase tracking-widest ${theme.textAccentClass}`}>Your Mentor & Coach</span>
               <h3 className="text-base font-display font-semibold text-t1">{instructorName}</h3>
               <p className="text-xs text-t2 leading-relaxed max-w-xl">{instructorBio}</p>
             </div>
@@ -135,7 +142,7 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
         {/* CURRICULUM SECTION */}
         {isSectionVisible('curriculum') && modules.length > 0 && (
           <section className="space-y-6">
-            <h2 className="text-lg font-display font-semibold text-t1 border-l-2 border-[#8b5cf6] pl-3">
+            <h2 className={`text-lg font-display font-semibold text-t1 border-l-2 ${theme.borderAccentClass} pl-3`}>
               Weekly Learning Path
             </h2>
             <div className="space-y-3">
@@ -149,7 +156,7 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
                       className="w-full p-4 flex items-center justify-between text-left hover:bg-n700/50 transition-colors"
                     >
                       <div className="space-y-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#8b5cf6]">Week {index + 1}</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${theme.textAccentClass}`}>Week {index + 1}</span>
                         <h3 className="text-sm font-semibold text-t1">{mod.title}</h3>
                       </div>
                       <div className="flex items-center gap-2">
@@ -192,7 +199,7 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
         {/* REVIEWS SECTION */}
         {isSectionVisible('reviews') && reviews.length > 0 && (
           <section className="space-y-6">
-            <h2 className="text-lg font-display font-semibold text-t1 border-l-2 border-[#8b5cf6] pl-3">
+            <h2 className={`text-lg font-display font-semibold text-t1 border-l-2 ${theme.borderAccentClass} pl-3`}>
               Cohort Testimonials
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -215,7 +222,7 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
         {/* PRICING & FAQ SECTION */}
         {isSectionVisible('pricing') && (
           <section className="bg-gradient-to-br from-n800 to-n900 border border-white/10 p-8 rounded-2xl text-center space-y-4">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#8b5cf6]">Cohort Enrollment</span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${theme.textAccentClass}`}>Cohort Enrollment</span>
             <h3 className="text-3xl font-display font-bold text-t1">
               {course?.price ? `$${course.price}` : 'Free Access'}
             </h3>
@@ -224,7 +231,7 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
             </p>
             <button 
               onClick={handleEnroll}
-              className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white font-bold text-xs uppercase tracking-widest px-8 py-3.5 rounded-xl shadow-lg transition-all mt-2"
+              className={`${theme.solidBgClass} ${theme.solidHoverBgClass} text-white font-bold text-xs uppercase tracking-widest px-8 py-3.5 rounded-xl shadow-lg transition-all mt-2`}
             >
               Get Cohort Pass
             </button>
@@ -234,7 +241,7 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
         {/* FAQ SECTION */}
         {isSectionVisible('faq') && faqs.length > 0 && (
           <section className="space-y-6">
-            <h2 className="text-lg font-display font-semibold text-t1 border-l-2 border-[#8b5cf6] pl-3">
+            <h2 className={`text-lg font-display font-semibold text-t1 border-l-2 ${theme.borderAccentClass} pl-3`}>
               Frequently Asked Questions
             </h2>
             <div className="space-y-3">

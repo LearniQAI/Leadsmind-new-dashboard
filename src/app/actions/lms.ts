@@ -11,13 +11,35 @@ export async function getCourses() {
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
+  // Real module/lesson/enrollment counts for the courses list cards (Phase E) — no
+  // placeholder numbers. modules/enrollments both have a real FK to courses, so those two
+  // use Supabase's embedded count syntax in the same query. course_lessons.course_id has NO
+  // FK constraint to courses (only lessons -> module_id -> courses is FK-enforced) — found
+  // live via a real PostgREST error while verifying this, not assumed — so lesson counts are
+  // fetched separately and merged in below rather than embedded.
   const { data, error } = await supabase
    .from('courses')
-   .select('*, modules:course_modules(count)')
+   .select('*, modules:course_modules(count), enrollments(count)')
    .eq('workspace_id', workspaceId)
    .order('created_at', { ascending: false });
 
   if (error) throw error;
+
+  if (data && data.length > 0) {
+   const { data: lessonRows } = await supabase
+    .from('course_lessons')
+    .select('course_id')
+    .in('course_id', data.map((c) => c.id));
+
+   const lessonCounts = new Map<string, number>();
+   for (const row of lessonRows || []) {
+    lessonCounts.set(row.course_id, (lessonCounts.get(row.course_id) || 0) + 1);
+   }
+   for (const course of data as any[]) {
+    course.lessons = [{ count: lessonCounts.get(course.id) || 0 }];
+   }
+  }
+
   return { data };
  } catch (error: any) {
   logger.error({ err: error }, 'get.courses.failed');
@@ -46,34 +68,44 @@ export async function getCourse(courseId: string) {
  }
 }
 
-// Phase D: course creation now requires name + a workspace-connected domain + a unique URL
-// path up front (PRD Section 1's required sequence), rather than the old flat title-only
-// insert. Reuses the same domain_configurations rows already surfaced by getDomains() in
-// domains.ts — no second, parallel domain concept.
-export async function createCourseWithDomain(title: string, domainId: string, urlPath: string) {
+// Phase D built this requiring name + domain + URL path up front. Phase E, Step 2a makes
+// domain/URL optional: domain_configurations has zero rows workspace-wide right now, so
+// requiring a domain today would block every real admin from creating a course at all. Name
+// is still the only hard requirement; domain/URL can be set later once a real domain exists.
+// The uniqueness validation below is unchanged for whoever DOES fill them in.
+export async function createCourseWithDomain(title: string, domainId?: string | null, urlPath?: string | null) {
  try {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
 
   if (!title || title.trim() === '') return { error: 'Course name is required' };
-  if (!domainId) return { error: 'A domain is required' };
-
-  const cleanSlug = sanitizeSlug(urlPath || '');
-  if (!cleanSlug) return { error: 'A valid URL path is required' };
 
   const supabase = await createServerClient();
 
-  // Verify the chosen domain actually belongs to this workspace — domainId is never
-  // trusted blindly, same discipline as every other cross-entity reference in this app.
-  const { data: domain, error: domainErr } = await supabase
-   .from('domain_configurations')
-   .select('id')
-   .eq('id', domainId)
-   .eq('workspace_id', workspaceId)
-   .maybeSingle();
+  let resolvedDomainId: string | null = null;
+  let resolvedUrlPath: string | null = null;
 
-  if (domainErr) throw domainErr;
-  if (!domain) return { error: 'Domain not found in this workspace' };
+  if (domainId) {
+   // Verify the chosen domain actually belongs to this workspace — domainId is never
+   // trusted blindly, same discipline as every other cross-entity reference in this app.
+   const { data: domain, error: domainErr } = await supabase
+    .from('domain_configurations')
+    .select('id')
+    .eq('id', domainId)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+
+   if (domainErr) throw domainErr;
+   if (!domain) return { error: 'Domain not found in this workspace' };
+
+   const cleanSlug = sanitizeSlug(urlPath || '');
+   if (!cleanSlug) return { error: 'A URL path is required when a domain is selected' };
+
+   resolvedDomainId = domainId;
+   resolvedUrlPath = cleanSlug;
+  }
+  // No domain selected: url_path is left null even if something was typed into the field —
+  // a URL path with no domain to host it on isn't a real address.
 
   const { data, error } = await supabase
    .from('courses')
@@ -81,8 +113,8 @@ export async function createCourseWithDomain(title: string, domainId: string, ur
     workspace_id: workspaceId,
     title,
     status: 'draft',
-    domain_id: domainId,
-    url_path: cleanSlug
+    domain_id: resolvedDomainId,
+    url_path: resolvedUrlPath
    })
    .select()
    .single();

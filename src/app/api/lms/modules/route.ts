@@ -118,7 +118,7 @@ export async function PATCH(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const body = await req.json();
-    const { title, description, icon, publish_status, nqf_level, required_for_completion, drip_days, position } = body;
+    const { title, description, icon, publish_status, nqf_level, required_for_completion, drip_days, position, is_active } = body;
 
     const updatePayload: any = {};
     if (title !== undefined) updatePayload.title = title;
@@ -129,6 +129,7 @@ export async function PATCH(req: NextRequest) {
     if (required_for_completion !== undefined) updatePayload.required_for_completion = required_for_completion;
     if (drip_days !== undefined) updatePayload.drip_days = drip_days;
     if (position !== undefined) updatePayload.position = position;
+    if (is_active !== undefined) updatePayload.is_active = is_active;
     updatePayload.updated_at = new Date().toISOString();
 
     const { data: moduleRow, error } = await adminClient

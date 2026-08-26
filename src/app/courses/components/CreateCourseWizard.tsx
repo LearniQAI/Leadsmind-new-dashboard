@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { BookOpen, Loader2, Check } from "lucide-react";
+import { BookOpen, Loader2, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DashModal,
@@ -16,16 +16,16 @@ import { DashFormField, DashInput } from "@/components/dashboard-ui/FormField";
 import { createCourseWithDomain } from "@/app/actions/lms";
 import { getDomainsForCurrentWorkspace } from "@/app/actions/domains";
 import { updateCourseLandingSettings } from "@/app/actions/courseLanding";
+import { COURSE_THEME_LIST } from "@/lib/courses/courseThemeTokens";
+import CourseThemeMiniPreview from "./CourseThemeMiniPreview";
 
 // Reuses the exact templates already built for the course landing page (CourseLandingForm.tsx
 // / LandingPageRenderer.tsx) — not a second, parallel gallery system. Confirmed these degrade
 // gracefully with zero modules/lessons (TemplateCleanMinimal etc. guard curriculum sections on
 // `modules.length > 0`), so picking a theme before any module exists is structurally sound.
-const TEMPLATES = [
-  { id: "clean_minimal", label: "Clean / Minimal", blurb: "A calm, text-first layout for straightforward course pages." },
-  { id: "bold_feature_rich", label: "Bold / Gradient", blurb: "High-contrast hero and feature blocks for flagship launches." },
-  { id: "community_coaching", label: "Cohort / Coaching", blurb: "Community-forward layout built for cohort-based programs." }
-];
+// One card per REAL existing template (3 today), sourced from the single canonical theme
+// token file (Phase F) — not a second, independently-invented color list.
+const TEMPLATES = COURSE_THEME_LIST;
 
 interface CreateCourseWizardProps {
   open: boolean;
@@ -83,13 +83,17 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
 
   const handleCreateStep1 = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Phase E, Step 2a: name is the only hard requirement now. Domain/URL are optional —
+    // domain_configurations has zero rows workspace-wide today, so requiring them would
+    // block every real admin from creating a course at all. If a domain IS selected, its
+    // URL path is still required (an address needs both halves) — the action enforces this
+    // same rule server-side regardless of what this client-side check does.
     if (!title.trim()) return toast.error("Course name is required");
-    if (!domainId) return toast.error("Select a domain");
-    if (!urlPath.trim()) return toast.error("URL path is required");
+    if (domainId && !urlPath.trim()) return toast.error("URL path is required when a domain is selected");
 
     setIsSaving(true);
     try {
-      const res = await createCourseWithDomain(title, domainId, urlPath);
+      const res = await createCourseWithDomain(title, domainId || null, urlPath || null);
       if (res.error) {
         toast.error(res.error);
         return;
@@ -147,44 +151,56 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
               />
             </DashFormField>
 
-            <DashFormField label="Domain" htmlFor="cc-domain" required>
+            <DashFormField label="Domain (optional)" htmlFor="cc-domain">
               {isLoadingDomains ? (
                 <div className="text-[11px] !text-dash-textMuted flex items-center gap-2 py-2">
                   <Loader2 size={12} className="animate-spin" /> Loading connected domains...
                 </div>
               ) : domains.length === 0 ? (
-                <div className="text-[11px] !text-dash-textMuted py-2">
-                  No verified domains connected to this workspace yet. Connect one in domain settings first.
+                <div className="text-[11px] !text-dash-textMuted py-2 bg-dash-surface border border-dash-border rounded-xl px-3">
+                  No verified domains connected yet — skip for now, add one later in Settings once you've connected a domain.
                 </div>
               ) : (
-                <select
-                  id="cc-domain"
-                  value={domainId}
-                  onChange={(e) => setDomainId(e.target.value)}
-                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
-                  required
-                >
-                  <option value="">Select a domain...</option>
-                  {domains.map((d) => (
-                    <option key={d.id} value={d.id}>{d.hostname}</option>
-                  ))}
-                </select>
+                <>
+                  <select
+                    id="cc-domain"
+                    value={domainId}
+                    onChange={(e) => setDomainId(e.target.value)}
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
+                  >
+                    <option value="">Skip for now — add a domain later</option>
+                    {domains.map((d) => (
+                      <option key={d.id} value={d.id}>{d.hostname}</option>
+                    ))}
+                  </select>
+                </>
               )}
             </DashFormField>
 
-            <DashFormField label="URL path" htmlFor="cc-slug" required>
-              <DashInput
-                id="cc-slug"
-                value={urlPath}
-                onChange={(e) => setUrlPath(e.target.value)}
-                placeholder="tefl-beginner"
-                required
-              />
-            </DashFormField>
+            {domainId && selectedDomain && (
+              <DashFormField label="URL path" htmlFor="cc-slug" required>
+                <div className="flex items-stretch border border-dash-border rounded-xl overflow-hidden focus-within:border-primary">
+                  <span className="bg-dash-surface !text-dash-textMuted text-[10px] font-mono px-3 flex items-center shrink-0 truncate max-w-[45%]">
+                    https://{selectedDomain.hostname}/
+                  </span>
+                  <input
+                    id="cc-slug"
+                    value={urlPath}
+                    onChange={(e) => setUrlPath(e.target.value)}
+                    placeholder="tefl-beginner"
+                    required
+                    className="flex-1 min-w-0 px-3 py-3 text-xs !text-dash-text outline-none"
+                  />
+                  <span className="flex items-center px-3 !text-dash-textMuted shrink-0">
+                    <LinkIcon size={13} />
+                  </span>
+                </div>
+              </DashFormField>
+            )}
 
             {previewUrl && (
               <div className="text-[10px] !text-dash-textMuted font-mono bg-dash-surface border border-dash-border rounded-lg px-3 py-2 truncate">
-                {previewUrl}
+                Preview: https://{previewUrl}
               </div>
             )}
 
@@ -192,7 +208,7 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
               <Button type="button" variant="ghost" onClick={handleClose} disabled={isSaving} className="h-10 rounded-xl !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSaving || domains.length === 0} className="h-10 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-[10px] font-bold px-5 flex items-center gap-1.5">
+              <Button type="submit" disabled={isSaving || !title.trim()} className="h-10 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-[10px] font-bold px-5 flex items-center gap-1.5">
                 {isSaving ? <Loader2 size={12} className="animate-spin" /> : null} Continue to theme
               </Button>
             </DashModalFooter>
@@ -201,23 +217,30 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
 
         {step === 2 && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3">
-              {TEMPLATES.map((tmpl) => (
-                <button
-                  key={tmpl.id}
-                  type="button"
-                  onClick={() => setSelectedTemplate(tmpl.id)}
-                  className={`text-left p-4 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    selectedTemplate === tmpl.id ? "border-dash-accent bg-dash-accent/10" : "border-dash-border hover:bg-dash-surface"
-                  }`}
-                >
-                  <div>
-                    <div className="text-xs font-bold !text-dash-text">{tmpl.label}</div>
-                    <div className="text-[10px] !text-dash-textMuted mt-0.5">{tmpl.blurb}</div>
-                  </div>
-                  {selectedTemplate === tmpl.id && <Check size={16} className="text-dash-accent shrink-0" />}
-                </button>
-              ))}
+            <p className="text-[10px] !text-dash-textMuted px-1">
+              Choose a theme for this course — each preview below is a real miniature render of
+              the student player using that theme's actual colors, not a static image.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {TEMPLATES.map((tmpl) => {
+                const isSelected = selectedTemplate === tmpl.id;
+                return (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    onClick={() => setSelectedTemplate(tmpl.id)}
+                    className={`text-left rounded-xl border-2 overflow-hidden transition-all ${
+                      isSelected ? "border-dash-accent shadow-md" : "border-transparent hover:border-dash-border"
+                    }`}
+                  >
+                    <CourseThemeMiniPreview theme={tmpl} selected={isSelected} />
+                    <div className="p-2.5 bg-white border-t border-dash-border">
+                      <div className="text-[11px] font-bold !text-dash-text">{tmpl.label}</div>
+                      <div className="text-[9px] !text-dash-textMuted mt-0.5 leading-relaxed">{tmpl.description}</div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             <DashModalFooter>

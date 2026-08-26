@@ -20,24 +20,29 @@ export interface ContentBlock {
   content: Record<string, any>;
 }
 
-const BLOCK_TYPE_META: Record<string, { label: string; icon: any }> = {
-  video: { label: "Video", icon: Video },
-  audio: { label: "Audio", icon: Headphones },
-  reading: { label: "Reading (PDF)", icon: FileText },
-  rich_text: { label: "Rich Text", icon: Type },
-  quiz: { label: "Quiz", icon: CheckSquare },
-  assignment: { label: "Assignment", icon: FileEdit },
-  flashcards: { label: "Flashcard Set", icon: Layers },
-  download: { label: "Downloadable Resource", icon: Download },
-  slides: { label: "Presentation Slides", icon: Presentation },
-  embed: { label: "External Embed", icon: Code2 },
-  live_session: { label: "Live Session Link", icon: Radio }
+const BLOCK_TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
+  video: { label: "Video", icon: Video, color: "bg-blue-500" },
+  audio: { label: "Audio", icon: Headphones, color: "bg-cyan-500" },
+  reading: { label: "Reading (PDF)", icon: FileText, color: "bg-purple-500" },
+  rich_text: { label: "Rich text", icon: Type, color: "bg-slate-500" },
+  quiz: { label: "Quiz", icon: CheckSquare, color: "bg-orange-500" },
+  assignment: { label: "Assignment (file submission)", icon: FileEdit, color: "bg-pink-500" },
+  flashcards: { label: "Flashcard set", icon: Layers, color: "bg-emerald-500" },
+  download: { label: "Downloadable resource", icon: Download, color: "bg-slate-500" },
+  slides: { label: "Presentation slides", icon: Presentation, color: "bg-blue-500" },
+  embed: { label: "External embed", icon: Code2, color: "bg-purple-500" },
+  live_session: { label: "Live session link", icon: Radio, color: "bg-cyan-500" }
 };
 
-const BLOCK_TYPE_ORDER = [
-  "video", "audio", "reading", "rich_text", "quiz", "assignment",
-  "flashcards", "download", "slides", "embed", "live_session"
+// Phase E, Step 4: the "Add block" menu is grouped into these 3 categories (matching the
+// reference exactly) instead of one long flat list of 11 items.
+const BLOCK_TYPE_GROUPS: { label: string; types: string[] }[] = [
+  { label: "Core formats", types: ["video", "audio", "reading", "rich_text"] },
+  { label: "Assessment & practice", types: ["quiz", "assignment", "flashcards"] },
+  { label: "Extras", types: ["download", "slides", "embed", "live_session"] }
 ];
+
+const BLOCK_TYPE_ORDER = BLOCK_TYPE_GROUPS.flatMap((g) => g.types);
 
 interface ContentBlockListProps {
   lessonId: string;
@@ -159,7 +164,7 @@ export default function ContentBlockList({ lessonId, renderBlockEditor }: Conten
                   </div>
                 )}
                 {blocks.map((block, index) => {
-                  const meta = BLOCK_TYPE_META[block.type] || { label: block.type, icon: Type };
+                  const meta = BLOCK_TYPE_META[block.type] || { label: block.type, icon: Type, color: "bg-dash-textMuted" };
                   const Icon = meta.icon;
                   return (
                     <Draggable key={block.id} draggableId={block.id} index={index}>
@@ -173,7 +178,7 @@ export default function ContentBlockList({ lessonId, renderBlockEditor }: Conten
                             <span {...dragProvided.dragHandleProps} className="cursor-grab text-dash-textMuted shrink-0">
                               <GripVertical size={14} />
                             </span>
-                            <span className="w-7 h-7 rounded-lg bg-dash-accent/10 border border-dash-accent/20 flex items-center justify-center text-dash-accent shrink-0">
+                            <span className={`w-7 h-7 rounded-lg ${meta.color} flex items-center justify-center text-white shrink-0`}>
                               <Icon size={13} />
                             </span>
                             <span className="text-xs font-bold !text-dash-text flex-1">
@@ -217,22 +222,31 @@ export default function ContentBlockList({ lessonId, renderBlockEditor }: Conten
           <Plus size={13} /> {isAdding ? "Adding..." : "Add block"}
         </button>
         {showAddMenu && (
-          <div className="absolute z-10 mt-1 w-full bg-white border border-dash-border rounded-xl shadow-xl overflow-hidden max-h-64 overflow-y-auto">
-            {BLOCK_TYPE_ORDER.map((type) => {
-              const meta = BLOCK_TYPE_META[type];
-              const Icon = meta.icon;
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => handleAddBlock(type)}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-xs !text-dash-text hover:bg-dash-surface text-left transition-colors motion-reduce:transition-none"
-                >
-                  <Icon size={13} className="text-dash-accent shrink-0" />
-                  {meta.label}
-                </button>
-              );
-            })}
+          <div className="absolute z-10 mt-1 w-full bg-white border border-dash-border rounded-xl shadow-xl overflow-hidden max-h-80 overflow-y-auto py-1.5">
+            {BLOCK_TYPE_GROUPS.map((group, gi) => (
+              <div key={group.label} className={gi > 0 ? "mt-1.5 pt-1.5 border-t border-dash-border" : ""}>
+                <div className="px-4 pt-1 pb-1.5 text-[9px] font-black uppercase tracking-wider !text-dash-textMuted">
+                  {group.label}
+                </div>
+                {group.types.map((type) => {
+                  const meta = BLOCK_TYPE_META[type];
+                  const Icon = meta.icon;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => handleAddBlock(type)}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-xs !text-dash-text hover:bg-dash-surface text-left transition-colors motion-reduce:transition-none"
+                    >
+                      <span className={`w-5 h-5 rounded-md ${meta.color} flex items-center justify-center text-white shrink-0`}>
+                        <Icon size={11} />
+                      </span>
+                      {meta.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
       </div>

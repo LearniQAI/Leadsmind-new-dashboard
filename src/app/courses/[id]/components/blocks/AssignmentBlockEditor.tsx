@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import type { ContentBlock } from "../ContentBlockList";
 
 interface AssignmentBlockEditorProps {
@@ -31,9 +32,15 @@ export default function AssignmentBlockEditor({ block, onChange }: AssignmentBlo
         rows={4}
         className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary font-mono leading-relaxed"
       />
-      <p className="text-[9px] !text-dash-textMuted">
-        Students submit text and/or a file attachment, gradable from the existing assignment grading flow.
-      </p>
+      {instructions.trim() ? (
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2">
+          <CheckCircle2 size={13} className="shrink-0" /> Instructions set — students submit text and/or a file attachment
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <AlertCircle size={13} className="shrink-0" /> No instructions yet
+        </div>
+      )}
     </div>
   );
 }

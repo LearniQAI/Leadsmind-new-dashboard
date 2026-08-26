@@ -56,7 +56,7 @@ export default async function StudentQuizPage({ params }: StudentQuizPageProps) 
     .eq('id', quizId)
     .single();
 
-  if (!lesson || lesson.lesson_type !== 'quiz') {
+  if (!lesson || lesson.lesson_type !== 'quiz' || lesson.is_active === false) {
     notFound();
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { isSafeEmbedUrl } from "@/lib/security/isSafeEmbedUrl";
 import type { ContentBlock } from "../ContentBlockList";
 
@@ -44,14 +44,19 @@ export default function EmbedBlockEditor({ block, onChange }: EmbedBlockEditorPr
         </div>
       )}
       {isValid && block.content?.embed_url && (
-        <div className="rounded-lg overflow-hidden border border-dash-border aspect-video bg-dash-surface">
-          <iframe
-            src={block.content.embed_url}
-            className="w-full h-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-            title="Embed preview"
-          />
-        </div>
+        <>
+          <div className="rounded-lg overflow-hidden border border-dash-border aspect-video bg-dash-surface">
+            <iframe
+              src={block.content.embed_url}
+              className="w-full h-full border-0"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              title="Embed preview"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2">
+            <CheckCircle2 size={13} className="shrink-0" /> Embed validated — this is what students will see
+          </div>
+        </>
       )}
     </div>
   );

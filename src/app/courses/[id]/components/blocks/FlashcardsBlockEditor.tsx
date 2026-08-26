@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, CheckCircle2 } from "lucide-react";
 import type { ContentBlock } from "../ContentBlockList";
 
 interface FlashcardsBlockEditorProps {
@@ -72,6 +72,11 @@ export default function FlashcardsBlockEditor({ block, onChange }: FlashcardsBlo
               </button>
             </div>
           ))}
+        </div>
+      )}
+      {cards.length > 0 && (
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2">
+          <CheckCircle2 size={13} className="shrink-0" /> {cards.length} card{cards.length === 1 ? "" : "s"} in this deck
         </div>
       )}
     </div>

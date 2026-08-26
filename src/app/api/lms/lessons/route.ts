@@ -145,7 +145,7 @@ export async function PATCH(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const body = await req.json();
-    const { title, lesson_type, content, position, is_preview, access_level, time_estimate_minutes } = body;
+    const { title, lesson_type, content, position, is_preview, access_level, time_estimate_minutes, is_active, unlock_type, drip_value, module_id } = body;
 
     const updatePayload: any = {};
     if (title !== undefined) updatePayload.title = title;
@@ -155,6 +155,37 @@ export async function PATCH(req: NextRequest) {
     if (position !== undefined) updatePayload.position = position;
     if (is_preview !== undefined) updatePayload.is_preview = is_preview;
     if (access_level !== undefined) updatePayload.access_level = access_level;
+    if (is_active !== undefined) updatePayload.is_active = is_active;
+    if (unlock_type !== undefined) updatePayload.unlock_type = unlock_type;
+    if (drip_value !== undefined) updatePayload.drip_value = drip_value;
+    // Cross-module move (Section C, Step 4 "Move") — module_id is trusted the same way every
+    // other cross-entity reference is: verified below to belong to the caller's own workspace
+    // AND the lesson's own course (moving a lesson between courses is not a supported case)
+    // before it's accepted.
+    if (module_id !== undefined) {
+      const { data: existingLesson, error: lessonLookupErr } = await adminClient
+        .from('course_lessons')
+        .select('course_id')
+        .eq('id', id)
+        .eq('workspace_id', workspaceId)
+        .maybeSingle();
+
+      if (lessonLookupErr) throw lessonLookupErr;
+      if (!existingLesson) throw new NotFoundError('Lesson');
+
+      const { data: targetModule, error: moduleLookupErr } = await adminClient
+        .from('course_modules')
+        .select('id')
+        .eq('id', module_id)
+        .eq('course_id', existingLesson.course_id)
+        .eq('workspace_id', workspaceId)
+        .maybeSingle();
+
+      if (moduleLookupErr) throw moduleLookupErr;
+      if (!targetModule) throw new ForbiddenError('Target module not found in this course');
+
+      updatePayload.module_id = module_id;
+    }
     updatePayload.updated_at = new Date().toISOString();
 
     const { data: lesson, error } = await adminClient
