@@ -63,7 +63,8 @@ export async function POST(req: NextRequest) {
       content = {},
       position = 0,
       is_preview = false,
-      access_level = 'enrolled'
+      access_level = 'enrolled',
+      time_estimate_minutes = null
     } = body;
 
     if (!module_id || !course_id || !title || !lesson_type) {
@@ -94,7 +95,8 @@ export async function POST(req: NextRequest) {
         content,
         position,
         is_preview,
-        access_level
+        access_level,
+        time_estimate_minutes
       })
       .select()
       .single();
@@ -143,12 +145,13 @@ export async function PATCH(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const body = await req.json();
-    const { title, lesson_type, content, position, is_preview, access_level } = body;
+    const { title, lesson_type, content, position, is_preview, access_level, time_estimate_minutes } = body;
 
     const updatePayload: any = {};
     if (title !== undefined) updatePayload.title = title;
     if (lesson_type !== undefined) updatePayload.lesson_type = lesson_type;
     if (content !== undefined) updatePayload.content = content;
+    if (time_estimate_minutes !== undefined) updatePayload.time_estimate_minutes = time_estimate_minutes;
     if (position !== undefined) updatePayload.position = position;
     if (is_preview !== undefined) updatePayload.is_preview = is_preview;
     if (access_level !== undefined) updatePayload.access_level = access_level;

@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { requireWorkspaceAccess } from '@/lib/auth';
-import { logger } from '@/shared/logger';
+import { logger, safeLog } from '@/shared/logger';
 import { ValidationError, toClientError } from '@/shared/errors/AppError';
 
 function safeRevalidatePath(path: string) {
@@ -60,7 +60,7 @@ async function seedDefaultAccounts(supabase: any, workspaceId: string) {
   const rows = SA_STANDARD_ACCOUNTS.map(a => ({ ...a, workspace_id: workspaceId, is_system: true }));
   const { error } = await supabase.from('chart_of_accounts').insert(rows);
   if (error) {
-    logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.seed.failed');
+    safeLog(() => logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.seed.failed'));
   }
 }
 
@@ -90,7 +90,7 @@ export async function getAccounts() {
     .order('code', { ascending: true });
 
   if (error) {
-    logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.fetch.failed');
+    safeLog(() => logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.fetch.failed'));
     return [];
   }
   return data || [];
@@ -133,7 +133,7 @@ export async function createAccount(data: {
       if (error.code === '23505') {
         return { success: false, error: `Account code ${data.code} is already in use.` };
       }
-      logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.create.failed');
+      safeLog(() => logger.error({ err: error, workspaceId }, 'finance.chart_of_accounts.create.failed'));
       return { success: false, error: 'Failed to create account.' };
     }
 
@@ -183,7 +183,7 @@ export async function updateAccount(id: string, data: {
       if (error.code === '23505') {
         return { success: false, error: `Account code ${data.code} is already in use.` };
       }
-      logger.error({ err: error, id, workspaceId }, 'finance.chart_of_accounts.update.failed');
+      safeLog(() => logger.error({ err: error, id, workspaceId }, 'finance.chart_of_accounts.update.failed'));
       return { success: false, error: 'Failed to update account.' };
     }
 
@@ -226,10 +226,65 @@ export async function deleteAccount(id: string) {
     .eq('workspace_id', workspaceId);
 
   if (error) {
-    logger.error({ err: error, id, workspaceId }, 'finance.chart_of_accounts.delete.failed');
+    safeLog(() => logger.error({ err: error, id, workspaceId }, 'finance.chart_of_accounts.delete.failed'));
     return { success: false, error: 'Failed to delete account.' };
   }
 
   safeRevalidatePath('/finance/chart-of-accounts');
+  return { success: true };
+}
+
+// Lets Reports (/finance/reports) show a real "by account" breakdown —
+// previously Chart of Accounts had no consumer anywhere in the app besides
+// its own screen. Transactions are tagged one at a time via
+// updateTransactionAccount below; this just lists what's in range for that
+// UI and for the report's grouping.
+export async function getAccountingTransactions(start: string, end: string) {
+  const { workspaceId } = await requireWorkspaceAccess();
+  const supabase = await createServerClient();
+
+  const { data, error } = await supabase
+    .from('accounting_transactions')
+    .select('id, date, description, source_type, total_amount, account_id, account:chart_of_accounts(id, code, name, type)')
+    .eq('workspace_id', workspaceId)
+    .gte('date', start)
+    .lte('date', end)
+    .order('date', { ascending: false });
+
+  if (error) {
+    safeLog(() => logger.error({ err: error, workspaceId }, 'finance.accounting_transactions.fetch.failed'));
+    return [];
+  }
+  return data || [];
+}
+
+export async function updateTransactionAccount(transactionId: string, accountId: string | null) {
+  const { workspaceId } = await requireWorkspaceAccess();
+  const supabase = await createServerClient();
+
+  if (accountId) {
+    // Confirm the account actually belongs to this workspace before linking it —
+    // same cross-tenant guard as every other workspace-scoped write in this file.
+    const { data: account } = await supabase
+      .from('chart_of_accounts')
+      .select('id')
+      .eq('id', accountId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (!account) return { success: false, error: 'Account not found in this workspace.' };
+  }
+
+  const { error } = await supabase
+    .from('accounting_transactions')
+    .update({ account_id: accountId })
+    .eq('id', transactionId)
+    .eq('workspace_id', workspaceId);
+
+  if (error) {
+    safeLog(() => logger.error({ err: error, transactionId, accountId, workspaceId }, 'finance.accounting_transactions.categorize.failed'));
+    return { success: false, error: 'Failed to categorize transaction.' };
+  }
+
+  safeRevalidatePath('/finance/reports');
   return { success: true };
 }

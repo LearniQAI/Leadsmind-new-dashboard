@@ -8,7 +8,7 @@ import { encrypt } from '@/lib/encryption';
 import { sendEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
 import { createHash, randomBytes } from 'crypto';
-import { logger } from '@/shared/logger';
+import { logger, safeLog } from '@/shared/logger';
 
 async function getActiveWorkspaceId() {
   const id = await getWsId();
@@ -491,7 +491,7 @@ export async function getWebhooks() {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  logger.error({ err: error }, 'get.webhooks.failed');
+  safeLog(() => logger.error({ err: error }, 'get.webhooks.failed'));
   return { error: 'Operation failed. Please try again.' };
  }
 }
@@ -516,7 +516,11 @@ export async function createWebhook(url: string, events: string[]) {
   // never returned again by getWebhooks().
   return { data, secret: rawSecret };
  } catch (error: any) {
-  logger.error({ err: error }, 'create.webhook.failed');
+  // logger.error() here used to be able to silently kill this catch block via pino-pretty's
+  // worker-thread transport dying in dev (see src/shared/logger — the same failure mode that
+  // hit executor.ts), so the client would await forever / see an aborted request instead of
+  // the { error } response below. safeLog can't do that.
+  safeLog(() => logger.error({ err: error }, 'create.webhook.failed'));
   return { error: 'Operation failed. Please try again.' };
  }
 }
@@ -536,7 +540,7 @@ export async function deleteWebhook(id: string) {
   revalidatePath('/settings');
   return { success: true };
  } catch (error: any) {
-  logger.error({ err: error }, 'delete.webhook.failed');
+  safeLog(() => logger.error({ err: error }, 'delete.webhook.failed'));
   return { error: 'Operation failed. Please try again.' };
  }
 }
@@ -557,7 +561,7 @@ export async function getWebhookLogs(webhookId: string) {
   if (error) throw error;
   return { data };
  } catch (error: any) {
-  logger.error({ err: error }, 'get.webhook.logs.failed');
+  safeLog(() => logger.error({ err: error }, 'get.webhook.logs.failed'));
   return { error: 'Operation failed. Please try again.' };
  }
 }

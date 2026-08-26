@@ -19,6 +19,7 @@ export const mapLessonForModal = (dbLesson: any) => {
     ...dbLesson,
     type: typeMap[dbLesson.lesson_type] || dbLesson.type || "Text",
     is_free: dbLesson.is_preview || dbLesson.is_free,
+    time_estimate_minutes: dbLesson.time_estimate_minutes ?? null,
     video_url: contentObj.video_url || dbLesson.video_url || "",
     metadata: contentObj.metadata || dbLesson.metadata || {},
     content: contentObj.text !== undefined ? contentObj.text : (typeof dbLesson.content === "string" ? dbLesson.content : "")

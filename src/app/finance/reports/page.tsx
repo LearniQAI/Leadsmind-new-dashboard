@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
+import { getAccounts, getAccountingTransactions, updateTransactionAccount } from '@/app/actions/chartOfAccounts';
 
 type ReportType = 'pl' | 'vat' | 'cashflow' | 'compliance';
 
@@ -47,6 +48,55 @@ export default function ReportsPage() {
     expenses: number;
     net: number;
   }[]>([]);
+
+  // Chart of Accounts breakdown (P&L tab, additive to the existing source_type grouping)
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [categorizing, setCategorizing] = useState<string | null>(null);
+
+  const fetchAccountBreakdown = async () => {
+    try {
+      const { start, end } = getStartEndDates(plPeriod);
+      const [accountsData, txData] = await Promise.all([
+        getAccounts(),
+        getAccountingTransactions(start, end),
+      ]);
+      setAccounts(accountsData || []);
+      setTransactions(txData || []);
+    } catch {
+      // A dropped/rejected server action call used to leave this section stuck showing
+      // "no transactions" with no indication anything failed — same fix as the webhook
+      // endpoint button (a broken dev-mode log transport can kill either call silently).
+      toast.error('Failed to load account breakdown data');
+    }
+  };
+
+  const handleCategorize = async (transactionId: string, accountId: string) => {
+    setCategorizing(transactionId);
+    try {
+      const res = await updateTransactionAccount(transactionId, accountId || null);
+      if (res.success) {
+        setTransactions(prev => prev.map(t => t.id === transactionId
+          ? { ...t, account_id: accountId || null, account: accounts.find(a => a.id === accountId) || null }
+          : t));
+      } else {
+        toast.error(res.error || 'Failed to categorize transaction');
+      }
+    } finally {
+      setCategorizing(null);
+    }
+  };
+
+  const accountBreakdown = React.useMemo(() => {
+    const map: Record<string, { name: string; amount: number }> = {};
+    transactions.forEach(t => {
+      const key = t.account?.name || 'Uncategorized';
+      const amt = Number(t.total_amount || 0);
+      if (!map[key]) map[key] = { name: key, amount: 0 };
+      map[key].amount += amt;
+    });
+    return Object.values(map).sort((a, b) => b.amount - a.amount);
+  }, [transactions]);
 
   // Compliance Audit Data States
   const [contacts, setContacts] = useState<any[]>([]);
@@ -249,6 +299,7 @@ export default function ReportsPage() {
   useEffect(() => {
     if (activeReport === 'pl') {
       generatePLReport();
+      fetchAccountBreakdown();
     } else if (activeReport === 'vat') {
       generateVatReport();
     } else if (activeReport === 'cashflow') {
@@ -558,6 +609,70 @@ export default function ReportsPage() {
                     <span className={`text-[20px] font-bold ${plData.netProfit >= 0 ? 'text-green' : 'text-red'}`}>
                       {formatCurrency(plData.netProfit)}
                     </span>
+                  </div>
+
+                  {/* By Account (Chart of Accounts) breakdown — additive to the source_type
+                      grouping above. Categorize a transaction here to see it reflected below. */}
+                  <div className="mt-8 print:hidden">
+                    <h4 className="text-[12px] font-bold !text-dash-text mb-3">
+                      By Account
+                    </h4>
+                    {accountBreakdown.length === 0 ? (
+                      <p className="text-[11px] !text-dash-textMuted italic mb-4">No transactions to categorize for this period.</p>
+                    ) : (
+                      <table className="w-full text-left text-[12px] mb-6">
+                        <tbody>
+                          {accountBreakdown.map((row, idx) => (
+                            <tr key={idx} className="border-b border-dash-border">
+                              <td className="py-2.5 !text-dash-text">{row.name}</td>
+                              <td className="py-2.5 text-right font-semibold !text-dash-text">{formatCurrency(row.amount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+
+                    {transactions.length > 0 && (
+                      <>
+                        <h4 className="text-[12px] font-bold !text-dash-text mb-3">
+                          Categorize transactions
+                        </h4>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-[12px]">
+                            <thead>
+                              <tr className="border-b border-dash-border font-bold !text-dash-textMuted">
+                                <th className="py-2">Date</th>
+                                <th className="py-2">Description</th>
+                                <th className="py-2 text-right">Amount</th>
+                                <th className="py-2 text-right">Account</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-dash-border">
+                              {transactions.map((t) => (
+                                <tr key={t.id}>
+                                  <td className="py-2 !text-dash-text">{t.date}</td>
+                                  <td className="py-2 !text-dash-text">{t.description}</td>
+                                  <td className="py-2 text-right !text-dash-text">{formatCurrency(Number(t.total_amount || 0))}</td>
+                                  <td className="py-2 text-right">
+                                    <select
+                                      value={t.account_id || ''}
+                                      disabled={categorizing === t.id}
+                                      onChange={(e) => handleCategorize(t.id, e.target.value)}
+                                      className="bg-dash-surface border border-dash-border rounded-lg py-1 px-2 text-[11px] !text-dash-text outline-none"
+                                    >
+                                      <option value="">Uncategorized</option>
+                                      {accounts.map((a: any) => (
+                                        <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

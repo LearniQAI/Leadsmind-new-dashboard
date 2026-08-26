@@ -76,5 +76,37 @@ export function getLessonLockReason({
     }
   }
 
+  // Lesson-to-lesson locking within the same module, driven by the lesson's own unlock_type
+  // (Phase C, Step 3) — previously every lesson in a module was unlocked regardless of order;
+  // only cross-module prerequisites (above) were ever enforced.
+  const unlockType = lesson.unlock_type || 'sequential';
+
+  if (unlockType === 'immediate') {
+    return null;
+  }
+
+  const siblingLessons = lessonsByModule[module.id] || [];
+  const lessonIndexInModule = siblingLessons.findIndex((l) => l.id === lesson.id);
+  const prevLessonInModule = lessonIndexInModule > 0 ? siblingLessons[lessonIndexInModule - 1] : null;
+
+  if (unlockType === 'drip') {
+    if (module.drip_days > 0 && enrollment?.enrolled_at) {
+      // Module-level drip already checked above; a 'drip' lesson with no dedicated per-lesson
+      // schedule reuses the same enrollment-based module offset.
+      return null;
+    }
+  }
+
+  if (unlockType === 'sequential' || unlockType === 'quiz_gated') {
+    if (prevLessonInModule && !completedLessonIds.includes(prevLessonInModule.id)) {
+      return {
+        type: 'prerequisite',
+        message: unlockType === 'quiz_gated'
+          ? `Please pass the quiz in "${prevLessonInModule.title}" first.`
+          : `Please complete "${prevLessonInModule.title}" first.`
+      };
+    }
+  }
+
   return null;
 }

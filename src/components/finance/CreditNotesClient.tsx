@@ -320,7 +320,7 @@ export function CreditNotesClient({ creditNotes: initial, invoices: initialInvoi
         onClose={() => setDeleteOpen(false)}
         onConfirm={handleDelete}
         title="Delete credit note?"
-        description={`This will permanently delete credit note ${deleteTarget?.credit_number}. The invoice's balance will not be restored automatically. This cannot be undone.`}
+        description={`This will permanently delete credit note ${deleteTarget?.credit_number} and restore the amount it credited back onto the invoice's balance. This cannot be undone.`}
         confirmLabel={deleting ? 'Deleting...' : 'Delete'}
         variant="danger"
       />

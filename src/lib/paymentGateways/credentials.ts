@@ -7,7 +7,7 @@ import { logger } from '@/shared/logger';
 // JSONB column raw and casts `as any`). Centralizing read+decrypt here so the
 // 3 new gateways' checkout/webhook code never touches raw encrypted fields.
 
-export type GatewayProvider = 'paystack' | 'flutterwave' | 'ozow' | 'paypal';
+export type GatewayProvider = 'paystack' | 'flutterwave' | 'ozow' | 'paypal' | 'stripe';
 
 export interface PaystackCredentials {
   secretKey: string;
@@ -42,11 +42,24 @@ export interface PaypalCredentials {
   primaryEmailConfirmed: boolean;
 }
 
+// Stripe Connect (per-workspace OAuth, src/app/actions/stripeConnect.ts +
+// src/app/api/integrations/stripe/callback/route.ts) — its access_token_encrypted was
+// previously read via a direct decrypt() call in getStripeClientForWorkspace
+// (src/app/actions/courseCommerce.ts), bypassing this module entirely, which meant a
+// legacy-CBC Stripe token would decrypt fine (decrypt() has always accepted both formats)
+// but would never opportunistically upgrade to GCM the way the 4 gateways below do.
+export interface StripeConnectCredentials {
+  accessToken: string;
+  stripeUserId: string;
+  stripePublishableKey?: string;
+}
+
 type CredentialsByProvider = {
   paystack: PaystackCredentials;
   flutterwave: FlutterwaveCredentials;
   ozow: OzowCredentials;
   paypal: PaypalCredentials;
+  stripe: StripeConnectCredentials;
 };
 
 // Field-name maps between the encrypted-at-rest JSONB shape and the plain
@@ -59,6 +72,7 @@ const ENCRYPTED_FIELDS: Record<GatewayProvider, string[]> = {
   flutterwave: ['secret_key_encrypted', 'webhook_secret_hash_encrypted'],
   ozow: ['site_code_encrypted', 'api_key_encrypted', 'private_key_encrypted'],
   paypal: [],
+  stripe: ['access_token_encrypted'],
 };
 
 // Decrypts each of `fields` from `raw`, then — if any of them were still on the legacy
@@ -149,6 +163,15 @@ export async function getGatewayCredentials<P extends GatewayProvider>(
         merchantId: c.merchant_id,
         paymentsReceivable: !!c.payments_receivable,
         primaryEmailConfirmed: !!c.primary_email_confirmed,
+      } as CredentialsByProvider[P];
+    }
+    if (provider === 'stripe') {
+      if (!c.access_token_encrypted || !c.stripe_user_id) return null;
+      const p = await decryptWithLazyRotation(supabase, workspaceId, provider, c, ['access_token_encrypted']);
+      return {
+        accessToken: p.access_token_encrypted,
+        stripeUserId: c.stripe_user_id,
+        stripePublishableKey: c.stripe_publishable_key,
       } as CredentialsByProvider[P];
     }
   } catch {

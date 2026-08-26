@@ -3,6 +3,7 @@ import { getUser } from '@/lib/auth';
 import { createAdminClient, createServerClient } from '@/lib/supabase/server';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { ForbiddenError, NotFoundError, UnauthorizedError, toClientError } from '@/shared/errors/AppError';
+import { markLessonCompleteForContact } from '@/lib/lms/completeLesson';
 import { logger } from '@/shared/logger';
 
 // Mock WebSocket to prevent Supabase realtime crash in Node 20
@@ -104,19 +105,59 @@ export async function POST(req: NextRequest) {
 
     if (updateErr) throw updateErr;
 
-    // 5. If passed, mark the lesson as completed in course_progress
+    // 5. If passed, record it as real evidence the lesson's quiz requirement was satisfied
+    // (a remedial pass is a substitute for the original quiz, not a bypass of it), then mark
+    // the lesson complete through the same shared, per-block-gated function every other
+    // completion path uses — this used to write course_progress directly, which bypassed
+    // both the per-block completion gate (Phase C) and, for legacy lessons, the quiz_attempts
+    // check, closing that sibling bug found while auditing every "mark complete" path.
     if (passed) {
-      const { error: progressErr } = await adminClient
-        .from('course_progress')
-        .upsert({
-          contact_id: assignment.contact_id,
-          course_id: assignment.course_id,
-          lesson_id: assignment.lesson_id,
-          completed_at: new Date().toISOString()
-        }, { onConflict: 'contact_id,lesson_id' });
+      const { data: quizBlocks } = await adminClient
+        .from('content_blocks')
+        .select('id')
+        .eq('lesson_id', assignment.lesson_id)
+        .eq('type', 'quiz');
 
-      if (progressErr) {
-        logger.error({ err: progressErr, assignmentId }, 'lms.remedial.submit.progress_write.failed');
+      if (quizBlocks && quizBlocks.length > 0) {
+        for (const block of quizBlocks) {
+          await adminClient
+            .from('lesson_block_completions')
+            .upsert(
+              { content_block_id: block.id, contact_id: assignment.contact_id, metric: { remedial: true, score: scorePercentage }, completed_at: new Date().toISOString() },
+              { onConflict: 'content_block_id,contact_id' }
+            );
+        }
+      } else {
+        const { data: quizQuestions } = await adminClient
+          .from('quiz_questions')
+          .select('id')
+          .eq('lesson_id', assignment.lesson_id)
+          .limit(1);
+
+        if (quizQuestions && quizQuestions.length > 0) {
+          await adminClient
+            .from('quiz_attempts')
+            .insert({
+              workspace_id: course.workspace_id,
+              lesson_id: assignment.lesson_id,
+              student_id: assignment.contact_id,
+              score: scorePercentage,
+              max_score: 100,
+              percentage: scorePercentage,
+              passed: true,
+              answers: { remedial: true, answers }
+            });
+        }
+      }
+
+      const completeResult = await markLessonCompleteForContact(
+        course.workspace_id,
+        assignment.contact_id,
+        assignment.course_id,
+        assignment.lesson_id
+      );
+      if ('error' in completeResult) {
+        logger.error({ err: completeResult.error, assignmentId }, 'lms.remedial.submit.progress_write.failed');
       }
     }
 
