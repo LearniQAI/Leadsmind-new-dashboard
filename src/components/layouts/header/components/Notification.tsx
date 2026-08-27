@@ -1,7 +1,19 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Bell, X, Zap, Inbox, Archive, Check, DollarSign, User, Globe, AlertCircle } from "lucide-react";
+import {
+  Bell,
+  X,
+  Zap,
+  Inbox,
+  Archive,
+  Check,
+  DollarSign,
+  User,
+  Globe,
+  AlertCircle,
+  ArrowRight,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,14 +23,14 @@ type TNotificationProps = {
   isOpenNotification: boolean;
 };
 
-type TabType = 'All' | 'CRM' | 'Websites' | 'Automations' | 'System';
+type TabType = "All" | "CRM" | "Websites" | "Automations" | "System";
 
 function formatTimeAgo(dateString: string) {
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return 'Just now';
+  if (diffMins < 1) return "Just now";
   if (diffMins < 60) return `${diffMins}m ago`;
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours < 24) return `${diffHours}h ago`;
@@ -26,22 +38,29 @@ function formatTimeAgo(dateString: string) {
   return `${diffDays}d ago`;
 }
 
-// Helper to group by date
 function getGroupingLabel(dateString: string) {
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0 && date.getDate() === now.getDate()) return 'Today';
-  if (diffDays === 1 || (diffDays === 0 && date.getDate() !== now.getDate())) return 'Yesterday';
-  return 'Earlier This Week';
+
+  if (diffDays === 0 && date.getDate() === now.getDate()) return "Today";
+  if (diffDays === 1 || (diffDays === 0 && date.getDate() !== now.getDate())) return "Yesterday";
+  return "Earlier this week";
 }
+
+const ICON_TONES: Record<string, { on: string; icon: React.ComponentType<any> }> = {
+  deal: { on: "bg-emerald-50 text-emerald-600 ring-emerald-500/15", icon: DollarSign },
+  invoice: { on: "bg-emerald-50 text-emerald-600 ring-emerald-500/15", icon: DollarSign },
+  contact: { on: "bg-sky-50 text-sky-600 ring-sky-500/15", icon: User },
+  website: { on: "bg-violet-50 text-violet-600 ring-violet-500/15", icon: Globe },
+  system: { on: "bg-amber-50 text-amber-600 ring-amber-500/15", icon: AlertCircle },
+};
 
 const Notification = ({ handleShowNotification, isOpenNotification }: TNotificationProps) => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<TabType>('All');
+  const [activeTab, setActiveTab] = useState<TabType>("All");
 
   useEffect(() => {
     const supabase = createClient();
@@ -52,18 +71,20 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
         supabase.removeChannel(userChannel);
         userChannel = null;
       }
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
         .limit(20);
 
       if (error) {
-        console.error('[Notification] Error fetching notifications:', error);
+        console.error("[Notification] Error fetching notifications:", error);
       } else if (data) {
         setNotifications(data);
       }
@@ -72,15 +93,15 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
       userChannel = supabase
         .channel(`user_db_notifications_${user.id}_${Math.random().toString(36).substring(7)}`)
         .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+          "postgres_changes",
+          { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
           (payload) => {
-            if (payload.eventType === 'INSERT') {
+            if (payload.eventType === "INSERT") {
               setNotifications((prev) => [payload.new, ...prev]);
               toast.info(payload.new.title, { description: payload.new.message });
-            } else if (payload.eventType === 'UPDATE') {
+            } else if (payload.eventType === "UPDATE") {
               setNotifications((prev) => prev.map((n) => (n.id === payload.new.id ? payload.new : n)));
-            } else if (payload.eventType === 'DELETE') {
+            } else if (payload.eventType === "DELETE") {
               setNotifications((prev) => prev.filter((n) => n.id !== payload.old.id));
             }
           }
@@ -97,54 +118,60 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
 
   const handleMarkAllRead = async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     const { error } = await supabase
-      .from('notifications')
+      .from("notifications")
       .update({ read: true })
-      .eq('user_id', user.id)
-      .eq('read', false);
+      .eq("user_id", user.id)
+      .eq("read", false);
 
     if (error) {
-      toast.error('Failed to mark notifications as read');
+      toast.error("Failed to mark notifications as read");
     } else {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      toast.success('All notifications marked as read');
+      toast.success("All notifications marked as read");
     }
   };
 
   const handleMarkAsRead = async (id: string) => {
-    setNotifications((prev) => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
     const supabase = createClient();
-    await supabase.from('notifications').update({ read: true }).eq('id', id);
+    await supabase.from("notifications").update({ read: true }).eq("id", id);
   };
 
   const handleArchive = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setNotifications((prev) => prev.filter(n => n.id !== id));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
     const supabase = createClient();
-    await supabase.from('notifications').delete().eq('id', id);
-    toast.success('Notification archived');
+    await supabase.from("notifications").delete().eq("id", id);
+    toast.success("Notification archived");
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const filteredNotifications = useMemo(() => {
-    if (activeTab === 'All') return notifications;
-    return notifications.filter(n => {
-      if (activeTab === 'CRM' && (n.type === 'contact' || n.type === 'deal')) return true;
-      if (activeTab === 'Websites' && n.type === 'website') return true;
-      if (activeTab === 'Automations' && (n.type === 'automation' || n.type === 'message')) return true;
-      if (activeTab === 'System' && n.type === 'system') return true;
+    if (activeTab === "All") return notifications;
+    return notifications.filter((n) => {
+      if (activeTab === "CRM" && (n.type === "contact" || n.type === "deal")) return true;
+      if (activeTab === "Websites" && n.type === "website") return true;
+      if (activeTab === "Automations" && (n.type === "automation" || n.type === "message")) return true;
+      if (activeTab === "System" && n.type === "system") return true;
       return false;
     });
   }, [notifications, activeTab]);
 
   const groupedNotifications = useMemo(() => {
-    const groups: Record<string, typeof notifications> = { 'Today': [], 'Yesterday': [], 'Earlier This Week': [] };
-    filteredNotifications.forEach(n => {
+    const groups: Record<string, typeof notifications> = {
+      Today: [],
+      Yesterday: [],
+      "Earlier this week": [],
+    };
+    filteredNotifications.forEach((n) => {
       const label = getGroupingLabel(n.created_at);
       if (groups[label]) groups[label].push(n);
     });
@@ -152,33 +179,33 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
   }, [filteredNotifications]);
 
   const renderIcon = (type: string, isRead: boolean) => {
-    // Rich notification icons based on type
-    if (type === 'deal' || type === 'invoice') {
-      return <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRead ? 'bg-slate-100' : 'bg-green-100'} !text-green-600`}><DollarSign size={14} /></div>;
-    }
-    if (type === 'contact') {
-      return <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRead ? 'bg-slate-100' : 'bg-blue-100'} !text-blue-600`}><User size={14} /></div>;
-    }
-    if (type === 'website') {
-      return <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRead ? 'bg-slate-100' : 'bg-purple-100'} !text-purple-600`}><Globe size={14} /></div>;
-    }
-    if (type === 'system') {
-      return <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRead ? 'bg-slate-100' : 'bg-orange-100'} !text-orange-600`}><AlertCircle size={14} /></div>;
-    }
-    return <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRead ? 'bg-slate-100' : 'bg-slate-200'} !text-slate-600`}><Zap size={14} /></div>;
+    const tone = ICON_TONES[type];
+    const Icon = tone?.icon ?? Zap;
+    return (
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset [&_svg]:size-[15px] ${
+          isRead || !tone ? "bg-slate-100 text-slate-500 ring-slate-500/10" : tone.on
+        }`}
+      >
+        <Icon />
+      </span>
+    );
   };
 
   return (
     <div className="relative">
       <button
         onClick={handleShowNotification}
-        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 relative group ${
-          isOpenNotification ? 'bg-primary/10 !text-primary' : '!text-slate-500 hover:!text-slate-800 hover:bg-slate-50'
+        aria-label="Notifications"
+        className={`group relative flex h-9 w-9 items-center justify-center rounded-xl transition-all active:scale-95 ${
+          isOpenNotification
+            ? "bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-500/20"
+            : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
         }`}
       >
         <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white group-hover:scale-110 transition-transform"></span>
+          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-rose-500 transition-transform group-hover:scale-110" />
         )}
       </button>
 
@@ -187,28 +214,38 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
           <>
             <div className="fixed inset-0 z-40" onClick={handleShowNotification} />
             <motion.div
-              initial={{ opacity: 0, scale: 0.98, y: -10 }}
+              initial={{ opacity: 0, scale: 0.98, y: -8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: -10 }}
+              exit={{ opacity: 0, scale: 0.98, y: -8 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="absolute top-full right-0 mt-3 w-[400px] bg-white border border-dash-border rounded-[20px] shadow-[0_28px_64px_rgba(15,23,42,0.18)] z-50 overflow-hidden flex flex-col"
+              className="absolute right-0 top-full z-50 mt-3 flex w-[400px] flex-col overflow-hidden rounded-2xl border border-dash-border bg-white shadow-[0_24px_64px_-16px_rgba(15,23,42,0.28)]"
             >
               {/* Header */}
-              <div className="px-5 pt-4 pb-3 border-b border-dash-border bg-white flex flex-col gap-3">
+              <div className="flex flex-col gap-3.5 border-b border-dash-border px-5 pb-3.5 pt-4">
                 <div className="flex items-center justify-between">
-                  <h5 className="text-[15px] font-bold !text-dash-text">Notifications</h5>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <h5 className="font-display text-[15px] font-semibold tracking-[-0.01em] text-dash-text">
+                      Notifications
+                    </h5>
+                    {unreadCount > 0 && (
+                      <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-700">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
                     {unreadCount > 0 && (
                       <button
                         onClick={handleMarkAllRead}
-                        className="text-[12px] font-semibold !text-dash-accent hover:opacity-80 transition-opacity"
+                        className="rounded-md px-2 py-1 text-[12px] font-semibold text-sky-600 transition-colors hover:bg-sky-50"
                       >
-                        Mark all as read
+                        Mark all read
                       </button>
                     )}
                     <button
                       onClick={handleShowNotification}
-                      className="p-1 hover:bg-dash-surface rounded-lg !text-dash-textMuted hover:!text-dash-text transition-colors"
+                      aria-label="Close"
+                      className="rounded-lg p-1.5 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
                     >
                       <X size={16} />
                     </button>
@@ -216,13 +253,15 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
                 </div>
 
                 {/* Tabs */}
-                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar bg-dash-surface border border-dash-border p-1 rounded-xl">
-                  {(['All', 'CRM', 'Websites', 'Automations', 'System'] as TabType[]).map(tab => (
+                <div className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-xl bg-dash-surface p-1">
+                  {(["All", "CRM", "Websites", "Automations", "System"] as TabType[]).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`px-3 py-1.5 rounded-lg text-[12px] font-bold whitespace-nowrap transition-all motion-reduce:transition-none ${
-                        activeTab === tab ? 'bg-white !text-dash-accent shadow-sm' : '!text-dash-textMuted hover:!text-dash-text'
+                      className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all motion-reduce:transition-none ${
+                        activeTab === tab
+                          ? "bg-white text-sky-700 shadow-sm ring-1 ring-inset ring-black/5"
+                          : "text-dash-textMuted hover:text-dash-text"
                       }`}
                     >
                       {tab}
@@ -231,110 +270,117 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
                 </div>
               </div>
 
-              {/* Notification List */}
+              {/* List */}
               <div className="common-scrollbar max-h-[440px] overflow-y-auto bg-white">
                 {loading ? (
-                  <div className="py-16 flex flex-col items-center justify-center text-center">
-                    <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-3"></div>
-                    <p className="!text-slate-400 text-[12px] font-medium">Loading activity...</p>
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="mb-3 h-6 w-6 animate-spin rounded-full border-2 border-sky-500/25 border-t-sky-500" />
+                    <p className="text-[12px] font-medium text-dash-textMuted">Loading activity…</p>
                   </div>
                 ) : filteredNotifications.length === 0 ? (
-                  <div className="py-20 flex flex-col items-center justify-center text-center px-6">
-                    <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-4 !text-slate-300">
-                      <Inbox size={24} />
+                  <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-dash-border bg-dash-surface text-dash-textMuted">
+                      <Inbox size={22} />
                     </div>
-                    <h4 className="!text-slate-800 font-bold text-[14px]">You're all caught up 🎉</h4>
-                    <p className="!text-slate-500 text-[12px] mt-1">No new activity in your workspace.</p>
+                    <h4 className="text-[14px] font-semibold text-dash-text">You’re all caught up</h4>
+                    <p className="mt-1 text-[12px] text-dash-textMuted">
+                      No {activeTab === "All" ? "" : `${activeTab.toLowerCase()} `}activity to show.
+                    </p>
                   </div>
                 ) : (
-                  <div>
-                    {Object.entries(groupedNotifications).map(([groupLabel, groupItems]) => {
-                      if (groupItems.length === 0) return null;
-                      return (
-                        <div key={groupLabel}>
-                          <div className="px-5 pt-4 pb-1.5 sticky top-0 bg-white/95 backdrop-blur z-10">
-                            <span className="text-[10px] font-bold !text-dash-textMuted uppercase tracking-wider">{groupLabel}</span>
-                          </div>
-                          <div className="divide-y divide-dash-border">
-                            {groupItems.map((notification) => {
-                              const isNew = !notification.read;
-                              return (
-                                <div
-                                  key={notification.id}
-                                  className="group relative flex items-start gap-3.5 px-5 py-4 hover:bg-dash-surface transition-colors"
-                                  onMouseEnter={() => { if (isNew) handleMarkAsRead(notification.id) }}
-                                >
-                                  {isNew && (
-                                    <span className="absolute left-2 top-[22px] w-1.5 h-1.5 rounded-full bg-dash-accent" />
-                                  )}
-                                  {renderIcon(notification.type, !isNew)}
-
-                                  <div className="flex-1 min-w-0 pt-0.5">
-                                    <div className="flex items-start justify-between gap-3">
-                                      <p className="text-[13px] font-semibold !text-dash-text">
-                                        {notification.title || notification.type}
-                                      </p>
-                                      {isNew && (
-                                        <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-dash-accent/10 !text-dash-accent text-[10px] font-bold">
-                                          New
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="text-[12px] leading-snug !text-dash-textMuted line-clamp-2 mt-0.5">
-                                      {notification.message}
-                                    </p>
-                                    <span className="text-[11px] !text-dash-textMuted/70 font-medium mt-1 block">
-                                      {formatTimeAgo(notification.created_at)}
-                                    </span>
-
-                                    {/* Action buttons on hover */}
-                                    <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white shadow-sm border border-dash-border rounded-lg p-1">
-                                      {notification.link && (
-                                        <Link
-                                          href={notification.link}
-                                          onClick={handleShowNotification}
-                                          className="px-2 py-1 hover:bg-dash-surface rounded text-[10px] font-bold !text-dash-textMuted uppercase tracking-wider"
-                                        >
-                                          Open
-                                        </Link>
-                                      )}
-                                      {!isNew && (
-                                        <button
-                                          onClick={(e) => handleMarkAsRead(notification.id)}
-                                          className="p-1 hover:bg-dash-surface rounded !text-dash-textMuted hover:!text-emerald-600 transition-colors"
-                                          title="Mark read"
-                                        >
-                                          <Check size={14} />
-                                        </button>
-                                      )}
-                                      <button
-                                        onClick={(e) => handleArchive(notification.id, e)}
-                                        className="p-1 hover:bg-dash-surface rounded !text-dash-textMuted hover:!text-red-500 transition-colors"
-                                        title="Archive"
-                                      >
-                                        <Archive size={14} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                  Object.entries(groupedNotifications).map(([groupLabel, groupItems]) => {
+                    if (groupItems.length === 0) return null;
+                    return (
+                      <div key={groupLabel}>
+                        <div className="sticky top-0 z-10 bg-white/95 px-5 pb-1.5 pt-3.5 backdrop-blur">
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-textMuted">
+                            {groupLabel}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="divide-y divide-dash-border">
+                          {groupItems.map((notification) => {
+                            const isNew = !notification.read;
+                            return (
+                              <div
+                                key={notification.id}
+                                className={`group relative flex items-start gap-3 px-5 py-3.5 transition-colors hover:bg-dash-surface/60 ${
+                                  isNew ? "bg-sky-50/40" : ""
+                                }`}
+                                onMouseEnter={() => {
+                                  if (isNew) handleMarkAsRead(notification.id);
+                                }}
+                              >
+                                {isNew && (
+                                  <span className="absolute left-0 top-0 h-full w-[3px] bg-sky-500" />
+                                )}
+                                {renderIcon(notification.type, !isNew)}
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <p className="text-[13px] font-semibold text-dash-text">
+                                      {notification.title || notification.type}
+                                    </p>
+                                    {isNew && (
+                                      <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-700">
+                                        New
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-dash-textMuted">
+                                    {notification.message}
+                                  </p>
+                                  <span className="mt-1 block text-[11px] font-medium text-dash-textMuted/70">
+                                    {formatTimeAgo(notification.created_at)}
+                                  </span>
+                                </div>
+
+                                {/* Hover actions */}
+                                <div className="absolute right-4 top-3.5 flex items-center gap-0.5 rounded-lg border border-dash-border bg-white p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                                  {notification.link && (
+                                    <Link
+                                      href={notification.link}
+                                      onClick={handleShowNotification}
+                                      className="rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-dash-textMuted hover:bg-dash-surface hover:text-dash-text"
+                                    >
+                                      Open
+                                    </Link>
+                                  )}
+                                  {!isNew && (
+                                    <button
+                                      onClick={() => handleMarkAsRead(notification.id)}
+                                      className="rounded-md p-1 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-emerald-600"
+                                      title="Mark read"
+                                    >
+                                      <Check size={14} />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={(e) => handleArchive(notification.id, e)}
+                                    className="rounded-md p-1 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-rose-500"
+                                    title="Archive"
+                                  >
+                                    <Archive size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
 
               {/* Footer */}
-              <div className="p-3 border-t border-dash-border bg-white">
+              <div className="border-t border-dash-border p-2.5">
                 <Link
                   href="/activities"
                   onClick={handleShowNotification}
-                  className="flex items-center justify-center py-2 w-full rounded-xl text-[12px] font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors"
+                  className="group flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[12px] font-semibold text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
                 >
-                  View All Notifications →
+                  View all notifications
+                  <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </div>
             </motion.div>

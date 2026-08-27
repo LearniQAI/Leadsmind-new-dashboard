@@ -1,7 +1,13 @@
-﻿import React from 'react';
+import React from 'react';
 import Link from 'next/link';
 import {
-  BookOpen, Calendar, Award, CheckCircle2, ChevronRight, Play
+  BookOpen,
+  Award,
+  CheckCircle2,
+  ChevronRight,
+  Play,
+  TrendingUp,
+  GraduationCap,
 } from 'lucide-react';
 import { getCurrentProfile } from '@/lib/auth';
 import { getEnrolledCoursesWithProgress } from '@/app/actions/studentEnrollments';
@@ -16,153 +22,209 @@ export default async function StudentDashboardPage() {
   const enrolledRes = await getEnrolledCoursesWithProgress();
   const courses = enrolledRes.data || [];
 
-  // Aggregated student stats
   const totalCourses = courses.length;
-  const completedLessons = courses.reduce((acc: number, c: any) => acc + c.completedLessons, 0);
-  const avgProgress = totalCourses > 0 
-    ? Math.round(courses.reduce((acc: number, c: any) => acc + c.progressPercentage, 0) / totalCourses) 
-    : 0;
+  const avgProgress =
+    totalCourses > 0
+      ? Math.round(
+          courses.reduce((acc: number, c: any) => acc + c.progressPercentage, 0) / totalCourses
+        )
+      : 0;
 
-  // Task 59: Fetch Real Learning Analytics
   const supabase = await createServerClient();
-  const workspaceId = await getCurrentWorkspaceId();
-  const { data: quizAttempts } = await supabase.from('quiz_attempts').select('score_pct, passed').eq('student_id', profile?.id || '');
-  
+  await getCurrentWorkspaceId();
+  const { data: quizAttempts } = await supabase
+    .from('quiz_attempts')
+    .select('score_pct, passed')
+    .eq('student_id', profile?.id || '');
+
   const totalQuizzes = quizAttempts?.length || 0;
-  const passedQuizzes = quizAttempts?.filter(q => q.passed)?.length || 0;
-  
+  const passedQuizzes = quizAttempts?.filter((q) => q.passed)?.length || 0;
+
   let averageScore = 0;
   if (totalQuizzes > 0) {
     const totalScore = quizAttempts?.reduce((sum, q) => sum + Number(q.score_pct || 0), 0) || 0;
     averageScore = Math.round(totalScore / totalQuizzes);
   }
 
+  // Name can arrive duplicated (first === last); show it once.
+  const first = (profile?.firstName || '').trim();
+  const last = (profile?.lastName || '').trim();
+  const displayName = first && last && first !== last ? `${first} ${last}` : first || last || 'there';
+
+  const stats = [
+    {
+      label: 'Enrolled courses',
+      value: totalCourses,
+      icon: BookOpen,
+      tint: 'bg-sky-50 text-sky-600 ring-sky-500/15',
+    },
+    {
+      label: 'Avg. progress',
+      value: `${avgProgress}%`,
+      icon: TrendingUp,
+      tint: 'bg-violet-50 text-violet-600 ring-violet-500/15',
+    },
+    {
+      label: 'Quizzes passed',
+      value: passedQuizzes,
+      icon: CheckCircle2,
+      tint: 'bg-emerald-50 text-emerald-600 ring-emerald-500/15',
+    },
+    {
+      label: 'Avg. quiz score',
+      value: `${averageScore}%`,
+      icon: Award,
+      tint: 'bg-amber-50 text-amber-600 ring-amber-500/15',
+    },
+  ];
+
   return (
-    <div className="space-y-10 max-w-5xl mx-auto">
-      {/* Header Welcomer banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-dash-border pb-6">
-        <div>
-          <h1 className="text-3xl font-space-grotesk font-black !text-dash-text tracking-tight">
-            Portal <span className="!text-dash-accent">Dashboard</span>
+    <div className="mx-auto max-w-5xl space-y-9">
+      {/* Header */}
+      <header className="flex flex-col gap-5 border-b border-dash-border pb-7 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="h-1 w-1 rounded-full bg-dash-accent" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] !text-dash-accent">
+              Student portal
+            </span>
+          </div>
+          <h1 className="font-display text-[30px] font-semibold leading-[1.08] tracking-[-0.02em] !text-dash-text md:text-[36px]">
+            Welcome back, {displayName}
           </h1>
-          <p className="text-[13px] font-medium !text-dash-textMuted mt-1">
-            Welcome back, {profile?.firstName || 'Student'} {profile?.lastName || ''}
+          <p className="text-[13px] leading-relaxed !text-dash-textMuted">
+            Pick up where you left off, or explore something new.
           </p>
         </div>
         <DashButton asChild variant="primary">
           <Link href="/student/marketplace">
-            Explore Catalog <ChevronRight size={14} />
+            Explore catalog <ChevronRight size={14} />
           </Link>
         </DashButton>
-      </div>
+      </header>
 
       <ContinueLearningBanner />
 
-      {/* Metrics widgets */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <DashCard padding="default" className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-dash-accent/10 !text-dash-accent flex items-center justify-center flex-shrink-0">
-            <BookOpen size={18} />
-          </div>
-          <div>
-            <div className="text-[28px] font-bold !text-dash-text leading-none">{totalCourses}</div>
-            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Enrolled Courses</div>
-          </div>
-        </DashCard>
+      {/* Metrics */}
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {stats.map((s) => {
+          const Icon = s.icon;
+          return (
+            <DashCard key={s.label} padding="none" className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted">
+                  {s.label}
+                </span>
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-inset ${s.tint} [&_svg]:size-4`}
+                >
+                  <Icon />
+                </span>
+              </div>
+              <div className="mt-3 font-display text-[28px] font-semibold leading-none tracking-tight !text-dash-text">
+                {s.value}
+              </div>
+            </DashCard>
+          );
+        })}
+      </section>
 
-        <DashCard padding="default" className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-purple/10 !text-purple flex items-center justify-center flex-shrink-0">
-            <CheckCircle2 size={18} />
-          </div>
-          <div>
-            <div className="text-[28px] font-bold !text-dash-text leading-none">{passedQuizzes}</div>
-            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Quizzes Passed</div>
-          </div>
-        </DashCard>
-
-        <DashCard padding="default" className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-green/10 !text-green flex items-center justify-center flex-shrink-0">
-            <Award size={18} />
-          </div>
-          <div>
-            <div className="text-[28px] font-bold !text-dash-text leading-none">{averageScore}%</div>
-            <div className="text-[13px] font-medium !text-dash-textMuted mt-1">Average Quiz Score</div>
-          </div>
-        </DashCard>
-      </div>
-
-      {/* Enrolled Courses Grid */}
-      <div className="space-y-5">
-        <h3 className="text-sm font-bold !text-dash-text block border-b border-dash-border pb-2">
-          My Enrolled Courses
-        </h3>
+      {/* Enrolled courses */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between border-b border-dash-border pb-2.5">
+          <h2 className="font-display text-[15px] font-semibold tracking-[-0.01em] !text-dash-text">
+            My courses
+          </h2>
+          {courses.length > 0 && (
+            <span className="text-[12px] font-medium !text-dash-textMuted">
+              {courses.length} enrolled
+            </span>
+          )}
+        </div>
 
         {courses.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {courses.map((course: any) => (
-              <DashCard
-                key={course.id}
-                padding="none"
-                className="overflow-hidden flex flex-col"
-              >
-                {/* Image block preview */}
-                <div className="h-40 relative bg-dash-surface border-b border-dash-border shrink-0 flex items-center justify-center overflow-hidden">
-                  {course.thumbnail_url ? (
-                    <img
-                      src={course.thumbnail_url}
-                      alt={course.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-dash-accent/10 flex items-center justify-center">
-                      <BookOpen size={48} className="!text-dash-accent/40" />
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {courses.map((course: any) => {
+              const pct = course.progressPercentage || 0;
+              const done = pct >= 100;
+              return (
+                <DashCard
+                  key={course.id}
+                  padding="none"
+                  className="group flex flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
+                >
+                  {/* Cover */}
+                  <div className="relative h-36 shrink-0 overflow-hidden border-b border-dash-border bg-dash-surface">
+                    {course.thumbnail_url ? (
+                      <img
+                        src={course.thumbnail_url}
+                        alt={course.title}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-dash-accent/10 to-dash-accent/5">
+                        <BookOpen size={40} className="!text-dash-accent/40" />
+                      </div>
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/25 to-transparent" />
+                    <span className="absolute left-3 top-3 rounded-lg border border-white/60 bg-white/90 px-2 py-0.5 text-[11px] font-semibold !text-dash-text backdrop-blur-sm">
+                      {course.totalLessons} {course.totalLessons === 1 ? 'lesson' : 'lessons'}
+                    </span>
+                    {done && (
+                      <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                        <GraduationCap size={11} /> Completed
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Body */}
+                  <div className="flex flex-1 flex-col justify-between gap-4 p-5">
+                    <div>
+                      <h3 className="line-clamp-1 text-[15px] font-semibold tracking-tight !text-dash-text">
+                        {course.title}
+                      </h3>
+                      <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed !text-dash-textMuted">
+                        {course.description || 'No description provided.'}
+                      </p>
                     </div>
-                  )}
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-[11px] font-bold !text-dash-text border border-dash-border">
-                    {course.totalLessons} {course.totalLessons === 1 ? 'Lesson' : 'Lessons'}
-                  </div>
-                </div>
 
-                {/* Info and Progress */}
-                <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                  <div>
-                    <h4 className="text-base font-bold !text-dash-text tracking-tight line-clamp-1">{course.title}</h4>
-                    <p className="text-xs !text-dash-textMuted line-clamp-2 mt-1.5 leading-relaxed">{course.description}</p>
-                  </div>
-
-                  <div className="space-y-2 pt-2">
-                    <div className="flex justify-between items-center text-[12px] font-medium !text-dash-textMuted">
-                      <span>Progress</span>
-                      <span className="font-bold !text-dash-text">{course.progressPercentage}%</span>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[12px] font-medium !text-dash-textMuted">
+                        <span>
+                          {course.completedLessons ?? 0}/{course.totalLessons} lessons
+                        </span>
+                        <span className="font-semibold !text-dash-text">{pct}%</span>
+                      </div>
+                      <Progress value={pct} className="h-1.5 bg-dash-surface" />
                     </div>
-                    <Progress value={course.progressPercentage} className="h-2 bg-dash-surface" />
-                  </div>
 
-                  <div className="pt-2">
-                    <DashButton asChild variant="secondary" className="w-full">
+                    <DashButton
+                      asChild
+                      variant={done ? 'secondary' : 'primary'}
+                      className="w-full"
+                    >
                       <Link href={`/student/courses/${course.id}`}>
-                        <Play size={12} className="fill-current" /> Resume Learning
+                        <Play size={12} className="fill-current" />
+                        {done ? 'Review course' : pct > 0 ? 'Resume learning' : 'Start course'}
                       </Link>
                     </DashButton>
                   </div>
-                </div>
-              </DashCard>
-            ))}
+                </DashCard>
+              );
+            })}
           </div>
         ) : (
           <DashCard padding="default" interactive={false} className="border-dashed">
             <DashEmptyState
               icon={BookOpen}
-              title="No enrolled courses"
-              description="You are not registered in any course yet. Visit the catalog to explore available training tracks."
-              actionLabel="Browse course catalog"
+              title="No enrolled courses yet"
+              description="You're not registered in any course. Browse the catalog to find a track to start."
+              actionLabel="Browse catalog"
               actionHref="/student/marketplace"
             />
           </DashCard>
         )}
-      </div>
+      </section>
     </div>
   );
 }
-
-

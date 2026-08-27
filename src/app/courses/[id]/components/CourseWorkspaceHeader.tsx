@@ -11,53 +11,39 @@ interface CourseWorkspaceHeaderProps {
   setActiveTab: (tab: "modules" | "settings") => void;
 }
 
-// Nav restructure (Systeme-parity Master Prompt, Section 2): 2 top-level tabs instead of 8.
-// Modules stays primary/default (matches how central it is to daily work); everything else
-// (Landing Page/Pricing/Emails/Submissions/Automations/Analytics + the original Settings)
-// now lives inside CourseSettingsContainer's own sub-navigation, reached via the Settings tab.
+// Nav restructure (Systeme-parity Master Prompt, Section 2): the module/settings tab row was
+// removed on request. Settings is reached from the quick-action buttons below; Modules is the
+// default view. This component now just carries the breadcrumb + a back affordance.
 export default function CourseWorkspaceHeader({
   courseTitle,
   courseId,
   activeTab,
-  setActiveTab
+  setActiveTab,
 }: CourseWorkspaceHeaderProps) {
   const router = useRouter();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Breadcrumbs */}
-      <div className="flex items-center gap-1.5 text-[10px] font-bold !text-dash-textMuted font-mono">
-        <span className="hover:text-dash-accent transition-colors motion-reduce:transition-none cursor-pointer" onClick={() => router.push("/courses")}>Courses</span>
-        <span>›</span>
-        <span className="!text-dash-text">{courseTitle}</span>
-      </div>
-
-      {/* Back button */}
-      <div>
+      <nav className="flex items-center gap-2 text-[12px] font-medium tracking-tight !text-dash-textMuted">
         <button
           onClick={() => router.push("/courses")}
-          className="flex items-center gap-1.5 text-xs !text-dash-textMuted hover:!text-dash-text font-bold bg-dash-surface border border-dash-border hover:bg-dash-border/60 px-3 py-1.5 rounded-xl transition-all motion-reduce:transition-none"
+          className="transition-colors hover:!text-dash-text"
         >
-          <ArrowLeft size={13} /> Back to Courses
+          Courses
         </button>
-      </div>
+        <span className="!text-dash-border">/</span>
+        <span className="truncate font-semibold !text-dash-text">{courseTitle}</span>
+      </nav>
 
-      {/* Tabs */}
-      <div className="flex items-center bg-white border border-dash-border rounded-xl p-1 w-fit shrink-0 shadow-sm">
-        {(["modules", "settings"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-6 py-2 rounded-lg text-[11px] font-bold capitalize transition-all motion-reduce:transition-none ${
-              activeTab === tab
-                ? "bg-primary text-white"
-                : "!text-dash-textMuted hover:!text-dash-text"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      {/* Back affordance */}
+      <button
+        onClick={() => router.push("/courses")}
+        className="group inline-flex items-center gap-2 rounded-full border border-dash-border bg-white px-3.5 py-1.5 text-[13px] font-medium tracking-tight !text-dash-textMuted shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-slate-300 hover:!text-dash-text focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-500/20"
+      >
+        <ArrowLeft className="size-3.5 transition-transform duration-200 group-hover:-translate-x-0.5 motion-reduce:transition-none" />
+        Back to courses
+      </button>
     </div>
   );
 }

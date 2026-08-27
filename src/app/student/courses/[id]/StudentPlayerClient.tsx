@@ -2,13 +2,12 @@
 
 import React, { useState, useTransition, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { 
-  BookOpen, ChevronRight, ChevronLeft, CheckSquare, Clock, Headphones, FileEdit, FileText, Video, Layers, Code, Archive, Download, MessageSquare, Loader2, X
+import {
+  BookOpen, ChevronRight, ChevronLeft, CheckSquare, Clock, Headphones, FileEdit, FileText, Video, Archive, Download, MessageSquare, Loader2, X, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { markLessonComplete, markLessonIncomplete } from '@/app/actions/studentProgress';
 import { recordBlockCompletion, getCompletedBlockIdsForLesson, getLessonBlockCompletionStatus } from '@/app/actions/blockCompletion';
-import { Button } from '@/components/ui/button';
 import Editor from '@monaco-editor/react';
 import SyllabusSidebar from './components/SyllabusSidebar';
 import VideoPlayer from './components/VideoPlayer';
@@ -26,16 +25,13 @@ import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 
 function getEmbeddablePdfUrl(url: string): string {
   if (!url) return '';
-  
-  // Google Drive / Docs url conversion
+
   if (url.includes('google.com')) {
-    // Format 1: Matches /d/FILE_ID/ or /d/FILE_ID anywhere in the path
     const fileIdMatch = url.match(/\/d\/([^/]+)/);
     if (fileIdMatch && fileIdMatch[1]) {
       const fileId = fileIdMatch[1].split('/')[0].split('?')[0];
       return `https://drive.google.com/file/d/${fileId}/preview`;
     }
-    // Format 2: https://drive.google.com/open?id=FILE_ID
     try {
       const urlObj = new URL(url);
       const id = urlObj.searchParams.get('id');
@@ -47,13 +43,10 @@ function getEmbeddablePdfUrl(url: string): string {
     }
   }
 
-  // Dropbox url conversion
   if (url.includes('dropbox.com')) {
-    // Change dl=0 or dl=1 to raw=1 to get raw pdf link
     return url.replace('dl=0', 'raw=1').replace('dl=1', 'raw=1');
   }
 
-  // Box.com url conversion
   if (url.includes('box.com/s/')) {
     return url.replace('/s/', '/embed/s/');
   }
@@ -69,12 +62,46 @@ interface StudentPlayerClientProps {
   enrollment: any;
 }
 
-export default function StudentPlayerClient({ 
-  course, 
-  modules, 
-  lessons, 
+/* --- Shared light-theme building blocks for the lesson renderers --- */
+
+function LessonCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`rounded-2xl border border-dash-border bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PanelHead({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-500/15 [&_svg]:size-5">
+        {icon}
+      </span>
+      <div>
+        <h3 className="text-[14px] font-semibold !text-dash-text">{title}</h3>
+        {subtitle && <p className="mt-0.5 text-[12px] !text-dash-textMuted">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+export default function StudentPlayerClient({
+  course,
+  modules,
+  lessons,
   initialCompletedLessonIds,
-  enrollment
+  enrollment,
 }: StudentPlayerClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,35 +112,26 @@ export default function StudentPlayerClient({
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
-  // Assignment states
   const [submission, setSubmission] = useState<any | null>(null);
-  const [textSubmission, setTextSubmission] = useState("");
-  const [fileUrl, setFileUrl] = useState("");
-  const [fileName, setFileName] = useState("");
+  const [textSubmission, setTextSubmission] = useState('');
+  const [fileUrl, setFileUrl] = useState('');
+  const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [loadingSubmission, setLoadingSubmission] = useState(false);
   const [uploadingStudentFile, setUploadingStudentFile] = useState(false);
 
-  // Audio / Transcript states
   const [showTranscript, setShowTranscript] = useState(false);
 
-  // Flashcards states
   const [flashcardIndex, setFlashcardIndex] = useState(0);
   const [flashcardFlipped, setFlashcardFlipped] = useState(false);
 
-  // Code Playground states
-  const [codeValue, setCodeValue] = useState("");
-  const [codeConsole, setCodeConsole] = useState("");
+  const [codeValue, setCodeValue] = useState('');
+  const [codeConsole, setCodeConsole] = useState('');
   const [codeRunning, setCodeRunning] = useState(false);
 
-  // Reading block modal state — which block (or 'legacy-pdf' for the single-lesson_type
-  // path) currently has its 60%-viewport reading modal open, if any.
   const [openReadingId, setOpenReadingId] = useState<string | null>(null);
 
-  // Phase C: per-block completion state for the active lesson's content blocks. Seeded from
-  // real lesson_block_completions rows on lesson change; 'none'-rule blocks (rich_text,
-  // download, embed, live_session) auto-complete once genuinely rendered.
   const [completedBlockIds, setCompletedBlockIds] = useState<Set<string>>(new Set());
   const [isCheckingAdvance, setIsCheckingAdvance] = useState(false);
 
@@ -135,8 +153,6 @@ export default function StudentPlayerClient({
       const already = new Set<string>(!res.error ? res.data : []);
       setCompletedBlockIds(already);
 
-      // Auto-complete 'none'-rule blocks on real render — no real completion condition
-      // exists for them, matching rich_text/download/embed/live_session in the PRD.
       for (const block of activeLesson.contentBlocks || []) {
         if (block.completion_rule === 'none' && !already.has(block.id)) {
           const res2 = await recordBlockCompletion(block.id, { auto: true });
@@ -155,134 +171,83 @@ export default function StudentPlayerClient({
 
   const hasAssignmentBlock = (activeLesson?.contentBlocks || []).some((b: any) => b.type === 'assignment');
 
-  // Load assignment submission history when active lesson is selected — lms_assignment_submissions
-  // is keyed by lesson_id regardless of whether the assignment comes from the legacy
-  // lesson_type field or a content block, so the same load fires for either.
   useEffect(() => {
     if (activeLesson && (activeLesson.lesson_type === 'assignment' || hasAssignmentBlock)) {
       setLoadingSubmission(true);
       fetch(`/api/lms/assignments?lessonId=${activeLesson.id}`)
-        .then(res => res.json())
-        .then(data => {
+        .then((res) => res.json())
+        .then((data) => {
           if (data.submission) {
             setSubmission(data.submission);
-            setTextSubmission(data.submission.text_submission || "");
-            setFileUrl(data.submission.file_url || "");
-            setFileName(data.submission.file_name || "");
+            setTextSubmission(data.submission.text_submission || '');
+            setFileUrl(data.submission.file_url || '');
+            setFileName(data.submission.file_name || '');
             setFileSize(data.submission.file_size || 0);
           } else {
             setSubmission(null);
-            setTextSubmission("");
-            setFileUrl("");
-            setFileName("");
+            setTextSubmission('');
+            setFileUrl('');
+            setFileName('');
             setFileSize(0);
           }
         })
-        .catch(err => console.error("Error loading submission:", err))
+        .catch((err) => console.error('Error loading submission:', err))
         .finally(() => setLoadingSubmission(false));
     }
   }, [activeLesson]);
 
-  // Load code starter code template
   useEffect(() => {
     if (activeLesson && activeLesson.lesson_type === 'code') {
       const meta = activeLesson.metadata || {};
-      setCodeValue(meta.starterCode || "");
-      setCodeConsole("");
+      setCodeValue(meta.starterCode || '');
+      setCodeConsole('');
     }
   }, [activeLesson]);
 
-  // Setup SCORM Runtime environment listeners
   useEffect(() => {
     if (activeLesson && activeLesson.lesson_type === 'scorm') {
-      // Expose SCORM API 1.2
       (window as any).API = {
-        LMSInitialize: (param: string) => {
-          if (process.env.NODE_ENV === 'development') {
-            // eslint-disable-next-line no-console
-            console.log("[SCORM 1.2] LMSInitialize");
-          }
-          return "true";
-        },
-        LMSFinish: (param: string) => {
-          if (process.env.NODE_ENV === 'development') {
-            // eslint-disable-next-line no-console
-            console.log("[SCORM 1.2] LMSFinish");
-          }
-          return "true";
-        },
+        LMSInitialize: () => 'true',
+        LMSFinish: () => 'true',
         LMSGetValue: (element: string) => {
-          if (process.env.NODE_ENV === 'development') {
-            // eslint-disable-next-line no-console
-            console.log("[SCORM 1.2] LMSGetValue:", element);
+          if (element === 'cmi.core.lesson_status') {
+            return completedLessonIds.includes(activeLesson.id) ? 'completed' : 'incomplete';
           }
-          if (element === "cmi.core.lesson_status") {
-            return completedLessonIds.includes(activeLesson.id) ? "completed" : "incomplete";
-          }
-          return "";
+          return '';
         },
         LMSSetValue: (element: string, value: string) => {
-          if (process.env.NODE_ENV === 'development') {
-            // eslint-disable-next-line no-console
-            console.log("[SCORM 1.2] LMSSetValue:", element, "to", value);
-          }
-          if (element === "cmi.core.lesson_status" && (value === "completed" || value === "passed")) {
+          if (element === 'cmi.core.lesson_status' && (value === 'completed' || value === 'passed')) {
             handleToggleComplete(activeLesson.id);
-            toast.success("SCORM package completed!");
+            toast.success('SCORM package completed!');
           }
-          return "true";
+          return 'true';
         },
-        LMSCommit: (param: string) => {
-          return "true";
-        },
-        LMSGetLastError: () => "0",
-        LMSGetErrorString: (errCode: string) => "No error",
-        LMSGetDiagnostic: (errCode: string) => "No error diagnostic"
+        LMSCommit: () => 'true',
+        LMSGetLastError: () => '0',
+        LMSGetErrorString: () => 'No error',
+        LMSGetDiagnostic: () => 'No error diagnostic',
       };
 
-      // Expose SCORM API 2004
       (window as any).API_1484_11 = {
-        Initialize: (param: string) => {
-          if (process.env.NODE_ENV === 'development') {
-            // eslint-disable-next-line no-console
-            console.log("[SCORM 2004] Initialize");
-          }
-          return "true";
-        },
-        Terminate: (param: string) => {
-          if (process.env.NODE_ENV === 'development') {
-            // eslint-disable-next-line no-console
-            console.log("[SCORM 2004] Terminate");
-          }
-          return "true";
-        },
+        Initialize: () => 'true',
+        Terminate: () => 'true',
         GetValue: (element: string) => {
-          if (process.env.NODE_ENV === 'development') {
-            // eslint-disable-next-line no-console
-            console.log("[SCORM 2004] GetValue:", element);
+          if (element === 'cmi.completion_status') {
+            return completedLessonIds.includes(activeLesson.id) ? 'completed' : 'incomplete';
           }
-          if (element === "cmi.completion_status") {
-            return completedLessonIds.includes(activeLesson.id) ? "completed" : "incomplete";
-          }
-          return "";
+          return '';
         },
         SetValue: (element: string, value: string) => {
-          if (process.env.NODE_ENV === 'development') {
-            // eslint-disable-next-line no-console
-            console.log("[SCORM 2004] SetValue:", element, "to", value);
-          }
-          if ((element === "cmi.completion_status" || element === "cmi.success_status") && (value === "completed" || value === "passed")) {
+          if ((element === 'cmi.completion_status' || element === 'cmi.success_status') && (value === 'completed' || value === 'passed')) {
             handleToggleComplete(activeLesson.id);
-            toast.success("SCORM package completed!");
+            toast.success('SCORM package completed!');
           }
-          return "true";
+          return 'true';
         },
-        Commit: (param: string) => {
-          return "true";
-        },
-        GetLastError: () => "0",
-        GetErrorString: (errCode: string) => "No error",
-        GetDiagnostic: (errCode: string) => "No error diagnostic"
+        Commit: () => 'true',
+        GetLastError: () => '0',
+        GetErrorString: () => 'No error',
+        GetDiagnostic: () => 'No error diagnostic',
       };
     }
 
@@ -302,10 +267,7 @@ export default function StudentPlayerClient({
     formData.append('pathPrefix', 'student-assignments');
 
     try {
-      const res = await fetch('/api/lms/upload', {
-        method: 'POST',
-        body: formData
-      });
+      const res = await fetch('/api/lms/upload', { method: 'POST', body: formData });
       const data = await res.json();
       if (data.error) {
         toast.error(`Upload failed: ${data.error}`);
@@ -313,7 +275,7 @@ export default function StudentPlayerClient({
         setFileUrl(data.url);
         setFileName(data.name);
         setFileSize(data.size);
-        toast.success("File attached successfully!");
+        toast.success('File attached successfully!');
       }
     } catch {
       toast.error('Network error uploading file');
@@ -335,18 +297,18 @@ export default function StudentPlayerClient({
           textSubmission,
           fileUrl,
           fileName,
-          fileSize
-        })
+          fileSize,
+        }),
       });
       const data = await res.json();
       if (data.error) {
         toast.error(`Submission failed: ${data.error}`);
       } else {
-        toast.success("Assignment submitted successfully!");
+        toast.success('Assignment submitted successfully!');
         setSubmission(data.submission);
       }
     } catch {
-      toast.error("Failed to submit assignment");
+      toast.error('Failed to submit assignment');
     } finally {
       setSubmitting(false);
     }
@@ -356,27 +318,25 @@ export default function StudentPlayerClient({
     enrolmentId: enrollment.id,
     activeLessonId: activeLesson?.id,
     videoElement,
-    isVideoPlaying
+    isVideoPlaying,
   });
 
-  // Group lessons by module
   const lessonsByModule = React.useMemo(() => {
     const map: Record<string, any[]> = {};
-    lessons.forEach(l => {
+    lessons.forEach((l) => {
       if (!map[l.module_id]) map[l.module_id] = [];
       map[l.module_id].push(l);
     });
     return map;
   }, [lessons]);
 
-  // Handle state restoration from URL search parameters (?restore=true&t=seconds&lessonId=uuid)
   useEffect(() => {
     const restore = searchParams.get('restore');
     const t = searchParams.get('t');
     const lessonIdParam = searchParams.get('lessonId');
 
     if (lessonIdParam) {
-      const matchedLesson = lessons.find(l => l.id === lessonIdParam);
+      const matchedLesson = lessons.find((l) => l.id === lessonIdParam);
       if (matchedLesson && activeLesson?.id !== matchedLesson.id) {
         setActiveLesson(matchedLesson);
       }
@@ -385,15 +345,10 @@ export default function StudentPlayerClient({
     if (restore === 'true' && videoElement && t) {
       const seconds = parseFloat(t);
       if (!isNaN(seconds) && seconds > 0) {
-        if (process.env.NODE_ENV === 'development') {
-          // eslint-disable-next-line no-console
-          console.log(`[State Restoration] Seeking video to ${seconds}s`);
-        }
         videoElement.currentTime = seconds;
-        
         const name = enrollment?.contact?.first_name || 'Student';
         toast.success(`Welcome back, ${name}! You are picking up right where you left off.`, {
-          duration: 5000
+          duration: 5000,
         });
       }
     }
@@ -401,26 +356,26 @@ export default function StudentPlayerClient({
 
   const handleToggleComplete = async (lessonId: string) => {
     const isCompleted = completedLessonIds.includes(lessonId);
-    
+
     startTransition(async () => {
       try {
         if (isCompleted) {
           const res = await markLessonIncomplete(course.id, lessonId);
           if (res.error) toast.error(res.error);
           else {
-            setCompletedLessonIds(completedLessonIds.filter(id => id !== lessonId));
-            toast.success("Progress updated.");
+            setCompletedLessonIds(completedLessonIds.filter((id) => id !== lessonId));
+            toast.success('Progress updated.');
           }
         } else {
           const res = await markLessonComplete(course.id, lessonId);
           if ('error' in res) toast.error(res.error);
           else {
             setCompletedLessonIds([...completedLessonIds, lessonId]);
-            toast.success("Lesson completed!");
+            toast.success('Lesson completed!');
           }
         }
       } catch {
-        toast.error("Failed to update progress status");
+        toast.error('Failed to update progress status');
       }
     });
   };
@@ -431,7 +386,7 @@ export default function StudentPlayerClient({
 
   const getNextLesson = () => {
     if (!activeLesson) return null;
-    const currentIndex = lessons.findIndex(l => l.id === activeLesson.id);
+    const currentIndex = lessons.findIndex((l) => l.id === activeLesson.id);
     if (currentIndex !== -1 && currentIndex < lessons.length - 1) {
       return lessons[currentIndex + 1];
     }
@@ -440,671 +395,744 @@ export default function StudentPlayerClient({
 
   const getPrevLesson = () => {
     if (!activeLesson) return null;
-    const currentIndex = lessons.findIndex(l => l.id === activeLesson.id);
+    const currentIndex = lessons.findIndex((l) => l.id === activeLesson.id);
     if (currentIndex > 0) {
       return lessons[currentIndex - 1];
     }
     return null;
   };
 
-  // Phase F: scoped per-course, not per-workspace — two courses in the same workspace with
-  // different themes render this player's primary actions differently.
   const theme = getCourseTheme(course?.landing_page_settings?.template);
 
   const activeModule = activeLesson ? modules.find((m: any) => m.id === activeLesson.module_id) : null;
   const activeModuleIdx = activeLesson ? modules.findIndex((m: any) => m.id === activeLesson.module_id) : -1;
-  const activeLockReason = activeLesson && activeModule ? getLessonLockReason({
-    lesson: activeLesson,
-    module: activeModule,
-    moduleIndex: activeModuleIdx,
-    course,
-    enrollment,
-    modules,
-    lessonsByModule,
-    completedLessonIds
-  }) : null;
+  const activeLockReason =
+    activeLesson && activeModule
+      ? getLessonLockReason({
+          lesson: activeLesson,
+          module: activeModule,
+          moduleIndex: activeModuleIdx,
+          course,
+          enrollment,
+          modules,
+          lessonsByModule,
+          completedLessonIds,
+        })
+      : null;
 
   const totalLessonsCount = lessons.length;
-  const completedLessonsCount = lessons.filter(l => completedLessonIds.includes(l.id)).length;
-  const globalProgressPercentage = totalLessonsCount > 0
-    ? Math.round((completedLessonsCount / totalLessonsCount) * 100)
-    : 0;
+  const completedLessonsCount = lessons.filter((l) => completedLessonIds.includes(l.id)).length;
+  const globalProgressPercentage =
+    totalLessonsCount > 0 ? Math.round((completedLessonsCount / totalLessonsCount) * 100) : 0;
 
-  // Shared by both the legacy single-lesson_type assignment view and the new assignment
-  // content block — lms_assignment_submissions is keyed by lesson_id either way, so the
-  // same submission state/handlers apply regardless of which UI surfaced it.
+  const studentName =
+    [enrollment?.contact?.first_name, enrollment?.contact?.last_name].filter(Boolean).join(' ') ||
+    enrollment?.contact?.email ||
+    'Student';
+
+  const isActiveDone = activeLesson ? completedLessonIds.includes(activeLesson.id) : false;
+
+  /* ---------- Assignment panel (light) ---------- */
   const renderAssignmentPanel = (instructions?: string) => (
-    <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
-        <div className={`w-14 h-14 ${theme.solidBgClass}/10 rounded-full flex items-center justify-center ${theme.textAccentClass} shrink-0`}>
-          <FileEdit size={24} />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Student Assignment</h3>
-          <p className="text-[10px] text-white/40 uppercase font-mono mt-0.5">Please review instructions and submit your work</p>
-        </div>
-      </div>
+    <LessonCard className="mx-auto max-w-2xl space-y-5">
+      <PanelHead
+        icon={<FileEdit />}
+        title="Assignment"
+        subtitle="Review the brief and submit your work"
+      />
 
       {instructions && (
-        <div className="bg-[#111d47]/20 border border-white/5 rounded-xl p-4 text-xs text-white/70 whitespace-pre-line leading-relaxed font-body">
-          <strong className="text-white block mb-1">Instructions:</strong>
+        <div className="whitespace-pre-line rounded-xl border border-dash-border bg-dash-surface/60 p-4 text-[13px] leading-relaxed !text-dash-text">
+          <strong className="mb-1 block !text-dash-text">Instructions</strong>
           {instructions}
         </div>
       )}
 
       {loadingSubmission ? (
-        <div className="text-center py-6 text-xs text-white/30 flex items-center justify-center gap-2">
-          <Loader2 className="animate-spin" size={14} /> Loading submission history...
+        <div className="flex items-center justify-center gap-2 py-6 text-[12px] !text-dash-textMuted">
+          <Loader2 className="animate-spin" size={14} /> Loading your submission…
         </div>
       ) : submission ? (
-        <div className="space-y-4 pt-4 border-t border-white/5">
+        <div className="space-y-4 border-t border-dash-border pt-4">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase text-white/40 tracking-wider">Your Submission</span>
-            <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-              submission.grade_status === 'passed' ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-              submission.grade_status === 'failed' ? "bg-red-500/10 text-red-400 border border-red-500/20" :
-              "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-            }`}>
-              {submission.grade_status === 'passed' ? "Passed ✓" : submission.grade_status === 'failed' ? "Failed ✗" : "Pending Grading"}
+            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted">
+              Your submission
+            </span>
+            <span
+              className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
+                submission.grade_status === 'passed'
+                  ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                  : submission.grade_status === 'failed'
+                  ? 'bg-rose-50 text-rose-700 ring-rose-600/20'
+                  : 'bg-amber-50 text-amber-700 ring-amber-600/20'
+              }`}
+            >
+              {submission.grade_status === 'passed'
+                ? 'Passed'
+                : submission.grade_status === 'failed'
+                ? 'Failed'
+                : 'Pending grading'}
             </span>
           </div>
 
           {submission.text_submission && (
-            <div className="bg-[#111d47]/10 border border-white/5 rounded-xl p-3.5 text-xs text-white/60 font-body">
+            <div className="rounded-xl border border-dash-border bg-dash-surface/60 p-3.5 text-[13px] leading-relaxed !text-dash-text">
               {submission.text_submission}
             </div>
           )}
 
           {submission.file_url && (
-            <div className="bg-[#111d47]/10 border border-white/5 rounded-xl p-3.5 flex items-center justify-between text-xs text-white/60">
-              <span className="truncate pr-4 font-bold">{submission.file_name || "Attachment"}</span>
-              <a href={submission.file_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline uppercase text-[10px] font-black">Download File</a>
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-dash-border bg-white p-3.5 text-[13px] !text-dash-text">
+              <span className="truncate pr-4 font-medium">{submission.file_name || 'Attachment'}</span>
+              <a
+                href={submission.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 text-[12px] font-semibold text-sky-600 hover:underline"
+              >
+                Download
+              </a>
             </div>
           )}
 
           {submission.feedback_comments && (
-            <div className={`${theme.solidBgClass}/5 border ${theme.borderAccentClass}/20 rounded-xl p-4 text-xs text-white/80 font-body`}>
-              <strong className="text-primary block mb-1">Instructor Feedback:</strong>
+            <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-[13px] leading-relaxed !text-dash-text">
+              <strong className="mb-1 block text-sky-700">Instructor feedback</strong>
               {submission.feedback_comments}
             </div>
           )}
 
           {submission.grade_status !== 'passed' && (
-            <Button
+            <button
               onClick={() => setSubmission(null)}
-              className="w-full h-11 bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-wider mt-2"
+              className="h-10 w-full rounded-lg border border-dash-border bg-white text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface"
             >
-              Resubmit Assignment
-            </Button>
+              Resubmit assignment
+            </button>
           )}
         </div>
       ) : (
-        <div className="space-y-4 pt-4 border-t border-white/5">
-          <span className="text-[10px] font-black uppercase text-white/40 tracking-wider">Prepare Submission</span>
+        <div className="space-y-4 border-t border-dash-border pt-4">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted">
+            Prepare submission
+          </span>
 
           <textarea
             value={textSubmission}
             onChange={(e) => setTextSubmission(e.target.value)}
-            placeholder="Type your text response or submission notes here..."
+            placeholder="Type your response or submission notes…"
             rows={5}
-            className="w-full bg-[#111d47] border border-white/10 rounded-xl p-3.5 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary transition-all font-body leading-relaxed"
+            className="w-full rounded-xl border border-dash-border bg-white p-3.5 text-[13px] leading-relaxed !text-dash-text outline-none transition-colors placeholder:text-dash-textMuted focus:border-sky-500 focus:ring-4 focus:ring-sky-500/12"
           />
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase text-white/40 tracking-wider block">Attachment (Optional)</label>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted">
+              Attachment (optional)
+            </label>
             <div className="flex gap-2">
               <input
                 type="text"
                 readOnly
-                value={fileName || "No file attached"}
-                className="flex-1 bg-[#111d47] border border-white/10 rounded-xl px-4 py-3 text-xs text-white/40 font-mono outline-none"
+                value={fileName || 'No file attached'}
+                className="flex-1 rounded-lg border border-dash-border bg-dash-surface px-3 py-2.5 text-[12px] font-mono !text-dash-textMuted outline-none"
               />
               <div className="relative shrink-0">
                 <input
                   type="file"
                   onChange={handleStudentFileUpload}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                   disabled={uploadingStudentFile}
                 />
-                <Button
+                <button
                   type="button"
                   disabled={uploadingStudentFile}
-                  className="h-full bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-wider px-4 rounded-xl flex items-center gap-1.5"
+                  className="inline-flex h-full items-center gap-1.5 rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface"
                 >
-                  {uploadingStudentFile ? "Uploading..." : "Attach File"}
-                </Button>
+                  {uploadingStudentFile ? 'Uploading…' : 'Attach file'}
+                </button>
               </div>
             </div>
           </div>
 
-          <Button
+          <button
             onClick={handleSubmitAssignment}
             disabled={submitting || (!textSubmission.trim() && !fileUrl)}
-            className={`w-full h-12 ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl text-[10px] font-black uppercase tracking-wider mt-4 shadow-lg`}
+            className={`h-11 w-full rounded-lg text-[13px] font-semibold text-white shadow-sm transition-colors disabled:opacity-60 ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
           >
-            {submitting ? "Submitting Work..." : "Submit Assignment"}
-          </Button>
+            {submitting ? 'Submitting…' : 'Submit assignment'}
+          </button>
         </div>
       )}
-    </div>
+    </LessonCard>
   );
 
-  // Shared by the legacy single-lesson_type flashcards view (cards from
-  // activeLesson.metadata.flashcards) and the new flashcards content block (cards from
-  // block.content.flashcards) — same flip/nav state either way.
+  /* ---------- Flashcards panel (light) ---------- */
   const renderFlashcardsPanel = (cards: { front: string; back: string }[], onFinish: () => void) => (
-    <div className="max-w-md mx-auto space-y-6 text-center">
-      <div>
-        <span className="text-[10px] font-black uppercase text-white/40 tracking-wider">Active Study Deck</span>
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider mt-0.5">{activeLesson.title}</h3>
-      </div>
+    <div className="mx-auto max-w-md space-y-6">
+      <PanelHead icon={<BookOpen />} title="Flashcards" subtitle={activeLesson.title} />
 
       {cards.length > 0 ? (
-        <div className="space-y-6">
-          <div
+        <div className="space-y-5">
+          <button
             onClick={() => setFlashcardFlipped(!flashcardFlipped)}
-            className="relative h-[250px] w-full bg-[#080f28] border border-white/10 rounded-2xl cursor-pointer select-none transition-all flex items-center justify-center p-8 hover:border-primary/40 shadow-xl"
+            className="flex h-[250px] w-full select-none flex-col items-center justify-center gap-3 rounded-2xl border border-dash-border bg-white p-8 text-center shadow-sm transition-colors hover:border-sky-300"
           >
-            <div className="space-y-4">
-              <span className="text-[9px] font-black uppercase tracking-wider text-primary block">
-                {flashcardFlipped ? "Back Explanation" : "Front Question"}
-              </span>
-              <p className="text-base font-bold text-white leading-relaxed">
-                {flashcardFlipped ? cards[flashcardIndex].back : cards[flashcardIndex].front}
-              </p>
-              <span className="text-[9px] text-white/30 uppercase tracking-widest block pt-2">Click to flip card</span>
-            </div>
-          </div>
+            <span
+              className="text-[11px] font-semibold uppercase tracking-[0.12em]"
+              style={{ color: theme.primaryHex }}
+            >
+              {flashcardFlipped ? 'Back' : 'Front'}
+            </span>
+            <p className="text-[16px] font-semibold leading-relaxed !text-dash-text">
+              {flashcardFlipped ? cards[flashcardIndex].back : cards[flashcardIndex].front}
+            </p>
+            <span className="pt-1 text-[11px] uppercase tracking-[0.14em] !text-dash-textMuted/70">
+              Tap to flip
+            </span>
+          </button>
 
           <div className="flex items-center justify-between gap-4">
-            <Button
+            <button
               onClick={() => {
-                setFlashcardIndex(prev => Math.max(0, prev - 1));
+                setFlashcardIndex((prev) => Math.max(0, prev - 1));
                 setFlashcardFlipped(false);
               }}
               disabled={flashcardIndex === 0}
-              className="bg-white/5 hover:bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-wider px-4"
+              className="h-9 rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface disabled:opacity-50"
             >
-              Prev Card
-            </Button>
+              Prev
+            </button>
 
-            <span className="text-xs text-white/50 font-mono">
-              {flashcardIndex + 1} of {cards.length}
+            <span className="text-[12px] font-medium !text-dash-textMuted">
+              {flashcardIndex + 1} / {cards.length}
             </span>
 
-            <Button
+            <button
               onClick={() => {
-                setFlashcardIndex(prev => Math.min(cards.length - 1, prev + 1));
+                setFlashcardIndex((prev) => Math.min(cards.length - 1, prev + 1));
                 setFlashcardFlipped(false);
                 if (flashcardIndex === cards.length - 1) {
                   onFinish();
                 }
               }}
-              className={`${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl text-[10px] font-black uppercase tracking-wider px-4`}
+              className={`h-9 rounded-lg px-4 text-[12px] font-semibold text-white transition-colors ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
             >
-              {flashcardIndex === cards.length - 1 ? "Finish ✓" : "Next Card"}
-            </Button>
+              {flashcardIndex === cards.length - 1 ? 'Finish' : 'Next'}
+            </button>
           </div>
         </div>
       ) : (
-        <div className="py-20 text-center text-white/30">No flashcards found in this study deck.</div>
+        <div className="py-16 text-center text-[13px] !text-dash-textMuted">
+          No flashcards in this deck.
+        </div>
       )}
     </div>
   );
 
+  const progressCircumference = 2 * Math.PI * 13;
+
   return (
-    <div className="flex border border-white/5 rounded-2xl bg-[#080f28]/60 overflow-hidden shadow-2xl h-[calc(100vh-130px)]">
-      <SyllabusSidebar
-        course={course}
-        modules={modules}
-        lessons={lessons}
-        completedLessonIds={completedLessonIds}
-        activeLesson={activeLesson}
-        setActiveLesson={setActiveLesson}
-        lowBandwidthMode={lowBandwidthMode}
-        setLowBandwidthMode={setLowBandwidthMode}
-        getLessonLockReason={(les, mod, idx) => getLessonLockReason({
-          lesson: les,
-          module: mod,
-          moduleIndex: idx,
-          course,
-          enrollment,
-          modules,
-          lessonsByModule,
-          completedLessonIds
-        })}
-        globalProgressPercentage={globalProgressPercentage}
-        completedLessonsCount={completedLessonsCount}
-        totalLessonsCount={totalLessonsCount}
-        handleDownloadCertificate={handleDownloadCertificate}
-        lessonsByModule={lessonsByModule}
-      />
+    <div className="fixed inset-0 z-[70] flex flex-col bg-dash-bg font-body !text-dash-text">
+      {/* Top bar */}
+      <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-dash-border bg-white px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            onClick={() => router.push('/student')}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-medium !text-dash-textMuted transition-colors hover:bg-dash-surface hover:!text-dash-text"
+          >
+            <ChevronLeft size={15} /> Dashboard
+          </button>
+          <span className="h-4 w-px bg-dash-border" />
+          <h1 className="truncate font-display text-[14px] font-semibold tracking-[-0.01em] !text-dash-text">
+            {course.title}
+          </h1>
+        </div>
 
-      <div className="flex-1 flex flex-col bg-[#04091a]/15 overflow-hidden">
-        {activeLesson ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="p-6 border-b border-white/5 bg-[#080f28]/30 shrink-0 flex items-center justify-between gap-4">
-              <div>
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Active Lesson</span>
-                <h2 className="text-xl font-extrabold text-white tracking-tight mt-0.5">{activeLesson.title}</h2>
-              </div>
+        <div className="flex shrink-0 items-center gap-4">
+          <div className="flex items-center gap-2">
+            <svg width="30" height="30" viewBox="0 0 30 30" className="-rotate-90">
+              <circle cx="15" cy="15" r="13" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+              <circle
+                cx="15"
+                cy="15"
+                r="13"
+                fill="none"
+                stroke={theme.primaryHex}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray={progressCircumference}
+                strokeDashoffset={progressCircumference * (1 - globalProgressPercentage / 100)}
+                className="transition-all duration-500"
+              />
+            </svg>
+            <span className="text-[12px] font-semibold !text-dash-text">{globalProgressPercentage}%</span>
+          </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
+          <span className="hidden items-center gap-2 border-l border-dash-border pl-4 sm:flex">
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+              style={{ background: theme.primaryHex }}
+            >
+              {studentName.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="text-[12px] font-medium !text-dash-text">{studentName}</span>
+          </span>
+        </div>
+      </header>
+
+      {/* Body */}
+      <div className="flex flex-1 overflow-hidden">
+        <SyllabusSidebar
+          course={course}
+          modules={modules}
+          lessons={lessons}
+          completedLessonIds={completedLessonIds}
+          activeLesson={activeLesson}
+          setActiveLesson={setActiveLesson}
+          lowBandwidthMode={lowBandwidthMode}
+          setLowBandwidthMode={setLowBandwidthMode}
+          getLessonLockReason={(les, mod, idx) =>
+            getLessonLockReason({
+              lesson: les,
+              module: mod,
+              moduleIndex: idx,
+              course,
+              enrollment,
+              modules,
+              lessonsByModule,
+              completedLessonIds,
+            })
+          }
+          globalProgressPercentage={globalProgressPercentage}
+          completedLessonsCount={completedLessonsCount}
+          totalLessonsCount={totalLessonsCount}
+          handleDownloadCertificate={handleDownloadCertificate}
+          lessonsByModule={lessonsByModule}
+          studentName={studentName}
+        />
+
+        <main className="flex flex-1 flex-col overflow-hidden bg-dash-bg">
+          {activeLesson ? (
+            <>
+              {/* Lesson header */}
+              <div className="flex shrink-0 items-center justify-between gap-4 border-b border-dash-border bg-white px-6 py-4">
+                <div className="min-w-0">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-600">
+                    Active lesson
+                  </span>
+                  <h2 className="mt-0.5 truncate font-display text-[19px] font-semibold tracking-[-0.01em] !text-dash-text">
+                    {activeLesson.title}
+                  </h2>
+                </div>
+
+                <button
                   onClick={() => handleToggleComplete(activeLesson.id)}
                   disabled={isPending}
-                  className={`h-11 rounded-xl text-xs font-black uppercase tracking-wider px-6 flex items-center gap-2 transition-all ${
-                    completedLessonIds.includes(activeLesson.id)
-                      ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
-                      : `${theme.solidBgClass} ${theme.solidHoverBgClass} text-white shadow-lg`
+                  className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-5 text-[12px] font-semibold transition-colors [&_svg]:size-4 ${
+                    isActiveDone
+                      ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      : `text-white shadow-sm ${theme.solidBgClass} ${theme.solidHoverBgClass}`
                   }`}
                 >
-                  <CheckSquare size={14} /> 
-                  {completedLessonIds.includes(activeLesson.id) ? "Completed ✓" : "Mark Completed"}
-                </Button>
+                  {isActiveDone ? <Check /> : <CheckSquare />}
+                  {isActiveDone ? 'Completed' : 'Mark complete'}
+                </button>
               </div>
-            </div>
 
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
-              {lowBandwidthMode && activeLesson.lesson_type === 'video' && !activeLockReason && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3.5 flex items-center gap-3 text-emerald-400 text-xs">
-                  <Clock size={16} />
-                  <span>
-                    <strong>South African Bandwidth Optimiser Active:</strong> Throttling video quality automatically to prevent buffering on low-speed 3G profiles.
-                  </span>
-                </div>
-              )}
+              {/* Lesson body */}
+              <div className="flex-1 space-y-6 overflow-y-auto p-6 md:p-8">
+                {lowBandwidthMode && activeLesson.lesson_type === 'video' && !activeLockReason && (
+                  <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-[12px] text-emerald-800">
+                    <Clock size={16} className="shrink-0" />
+                    <span>
+                      <strong>Data saver on</strong> — video bitrate is throttled to avoid buffering on slow connections.
+                    </span>
+                  </div>
+                )}
 
-              {activeLockReason ? (
-                <LockedLessonPlaceholder
-                  activeLockReason={activeLockReason}
-                  courseId={course.id}
-                  onUpgradeRedirect={() => router.push(`/student/checkout/${course.id}`)}
-                />
-              ) : activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0 ? (
-                // Ordered content-block rendering (PRD Section 4) — whatever order the
-                // admin set in the editor is exactly what renders here, numbered the same
-                // way. No hardcoded type-ordering rule. Per-type rich editors (video
-                // completion tracking, waveform, 60% reading modal, quiz/assignment wiring)
-                // land in later build steps; this proves ordering fidelity end-to-end.
-                <div className="space-y-4">
-                  {activeLesson.contentBlocks.map((block: any, i: number) => (
-                    <div key={block.id} className="bg-[#080f28] border border-white/5 rounded-2xl p-5">
-                      <div className="text-[10px] text-white/40 uppercase font-mono mb-3 tracking-wider">
-                        Block {i + 1} · {block.type.replace('_', ' ')}
-                      </div>
-                      {block.type === 'video' && block.file_url && (
-                        // Reuses the same provider-aware embed resolution (YouTube/Vimeo watch
-                        // links -> iframe embeds, direct files -> native <video>) as the
-                        // legacy single-block video renderer below. Real watched-threshold
-                        // completion (90%) via native <video> events or the YouTube/Vimeo
-                        // player APIs — see VideoPlayer.tsx.
-                        <VideoPlayer
-                          videoUrl={block.file_url}
-                          onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
-                          isAlreadyCompleted={completedBlockIds.has(block.id)}
-                          lowBandwidthMode={lowBandwidthMode}
-                        />
-                      )}
-                      {block.type === 'audio' && block.file_url && (
-                        <VoiceNotePlayer
-                          audioUrl={block.file_url}
-                          waveformBars={block.content?.waveform_bars}
-                          theme="dark"
-                          isAlreadyCompleted={completedBlockIds.has(block.id)}
-                          onWatchedThreshold={(pct) => markBlockComplete(block.id, { percentage: pct })}
-                        />
-                      )}
-                      {(block.type === 'reading' || block.type === 'slides') && block.file_url && (
-                        <Button
-                          onClick={() => {
-                            setOpenReadingId(block.id);
-                            markBlockComplete(block.id, { opened: true });
-                          }}
-                          className="inline-flex bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-lg text-[10px] font-black uppercase tracking-wider h-10 px-4 items-center justify-center gap-1.5 transition-all"
-                        >
-                          <FileText size={13} /> {block.type === 'slides' ? 'Open Slides' : 'Open Reading'}
-                        </Button>
-                      )}
-                      {block.type === 'rich_text' && block.content?.text && (
-                        <div
-                          className="text-sm text-white/80 leading-relaxed prose prose-invert max-w-none"
-                          dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(block.content.text) }}
-                        />
-                      )}
-                      {block.type === 'download' && block.file_url && (
-                        <a href={block.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-primary hover:opacity-80 text-xs font-bold">
-                          <Download size={13} /> Download resource
-                        </a>
-                      )}
-                      {block.type === 'embed' && block.content?.embed_url && isSafeEmbedUrl(block.content.embed_url) && (
-                        <div className="rounded-xl overflow-hidden border border-white/5 aspect-video bg-black">
-                          <iframe
-                            src={block.content.embed_url}
-                            className="w-full h-full border-0"
-                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                            title="Embedded content"
+                {activeLockReason ? (
+                  <LockedLessonPlaceholder
+                    activeLockReason={activeLockReason}
+                    courseId={course.id}
+                    onUpgradeRedirect={() => router.push(`/student/checkout/${course.id}`)}
+                  />
+                ) : activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0 ? (
+                  <div className="space-y-4">
+                    {activeLesson.contentBlocks.map((block: any, i: number) => (
+                      <div key={block.id} className="rounded-2xl border border-dash-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                        <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted">
+                          Block {i + 1} · {block.type.replace('_', ' ')}
+                        </div>
+                        {block.type === 'video' && block.file_url && (
+                          <VideoPlayer
+                            videoUrl={block.file_url}
+                            onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
+                            isAlreadyCompleted={completedBlockIds.has(block.id)}
+                            lowBandwidthMode={lowBandwidthMode}
                           />
-                        </div>
-                      )}
-                      {block.type === 'live_session' && block.file_url && (
-                        <a href={block.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-primary hover:opacity-80 text-xs font-bold">
-                          Join live session
-                        </a>
-                      )}
-                      {block.type === 'quiz' && (
-                        // quiz_questions/quiz_settings/quiz_attempts are keyed by lesson_id, not
-                        // block_id (existing tables, reused per the PRD — not a new parallel
-                        // schema), so the quiz block links to the same per-lesson quiz flow the
-                        // legacy lesson_type === 'quiz' path already uses.
-                        <a
-                          href={`/student/courses/${course.id}/quiz/${activeLesson.id}`}
-                          className={`inline-flex ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-10 px-6 items-center justify-center gap-1.5 shadow-lg transition-all active:scale-95`}
-                        >
-                          Start Quiz Assessment
-                        </a>
-                      )}
-                      {block.type === 'assignment' && renderAssignmentPanel(block.content?.instructions)}
-                      {block.type === 'flashcards' && renderFlashcardsPanel(
-                        block.content?.flashcards || [],
-                        () => markBlockComplete(block.id, { finished: true })
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : activeLesson.lesson_type === 'video' ? (
-                <VideoPlayer
-                  videoUrl={activeLesson.content?.video_url}
-                  onComplete={() => {
-                    if (!completedLessonIds.includes(activeLesson.id)) {
-                      handleToggleComplete(activeLesson.id);
-                    }
-                  }}
-                  isAlreadyCompleted={completedLessonIds.includes(activeLesson.id)}
-                  lowBandwidthMode={lowBandwidthMode}
-                  onVideoRegister={(el, playing) => {
-                    setVideoElement(el);
-                    setIsVideoPlaying(playing);
-                  }}
-                  onProgressUpdate={async (seconds) => {
-                    if (seconds % 30 === 0) {
-                      try {
-                        await fetch(`/api/enrolments/${enrollment.id}/activity`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            lessonId: activeLesson.id,
-                            progressSeconds: seconds
-                          })
-                        });
-                      } catch (err) {
-                        console.error('[Embed Heartbeat Sync error]:', err);
-                      }
-                    }
-                  }}
-                />
-              ) : activeLesson.lesson_type === 'quiz' ? (
-                <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-xl mx-auto text-center space-y-5">
-                  <div className={`w-16 h-16 ${theme.solidBgClass}/10 rounded-full flex items-center justify-center mx-auto ${theme.textAccentClass}`}>
-                    <BookOpen size={24} />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-base font-bold text-white uppercase tracking-wider">Evaluation Assessment Node</h3>
-                    <p className="text-xs text-white/50 leading-relaxed">
-                      This lecture is configured as an evaluation assessment designed to gauge your course retention rate.
-                    </p>
-                  </div>
-                  <a 
-                    href={`/student/courses/${course.id}/quiz/${activeLesson.id}`}
-                    className={`inline-flex ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 items-center justify-center shadow-lg transition-all active:scale-95`}
-                  >
-                    Start Quiz Assessment
-                  </a>
-                </div>
-              ) : activeLesson.lesson_type === 'pdf' ? (
-                <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-xl mx-auto text-center space-y-5">
-                  <div className={`w-16 h-16 ${theme.solidBgClass}/10 rounded-full flex items-center justify-center mx-auto ${theme.textAccentClass}`}>
-                    <FileText size={24} />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-base font-bold text-white uppercase tracking-wider">PDF Document</h3>
-                    <p className="text-xs text-white/50 leading-relaxed">
-                      Opens in-page at 60% of your screen — never a new tab, so you never lose your place in the course.
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() => setOpenReadingId('legacy-pdf')}
-                    className={`inline-flex ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 items-center justify-center gap-1.5 shadow-lg transition-all active:scale-95`}
-                  >
-                    <FileText size={13} /> Open Reading
-                  </Button>
-                </div>
-              ) : activeLesson.lesson_type === 'audio' ? (
-                <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-2xl mx-auto space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-14 h-14 ${theme.solidBgClass}/10 rounded-full flex items-center justify-center ${theme.textAccentClass} shrink-0`}>
-                      <Headphones size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-white uppercase tracking-wider">Audio Lecture Node</h3>
-                      <p className="text-[10px] text-white/40 uppercase font-mono mt-0.5">MP3 Audio playback</p>
-                    </div>
-                  </div>
-                  <audio src={activeLesson.content?.video_url || activeLesson.video_url} controls className="w-full bg-[#111d47] rounded-xl outline-none" />
-                  
-                  {activeLesson.content?.text && (
-                    <div className="border-t border-white/5 pt-5 space-y-3">
-                      <button
-                        onClick={() => setShowTranscript(!showTranscript)}
-                        className="text-[10px] font-black text-primary hover:text-primary-light uppercase tracking-wider flex items-center gap-1.5"
-                      >
-                        <MessageSquare size={13} /> {showTranscript ? "Hide Transcript" : "View Transcript"}
-                      </button>
-                      {showTranscript && (
-                        <div className="bg-[#111d47]/20 border border-white/5 rounded-xl p-4 text-xs text-white/70 whitespace-pre-line leading-relaxed max-h-[300px] overflow-y-auto font-body">
-                          {activeLesson.content.text}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : activeLesson.lesson_type === 'assignment' ? (
-                renderAssignmentPanel(activeLesson.content?.text)
-              ) : activeLesson.lesson_type === 'live_session' ? (
-                <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-xl mx-auto text-center space-y-6">
-                  <div className={`w-16 h-16 ${theme.solidBgClass}/10 rounded-full flex items-center justify-center mx-auto ${theme.textAccentClass}`}>
-                    <Video size={24} />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-base font-bold text-white uppercase tracking-wider">Live Broadcast Session</h3>
-                    {activeLesson.metadata?.startTime ? (
-                      <p className="text-xs text-white/50 leading-relaxed font-mono">
-                        Scheduled: {new Date(activeLesson.metadata.startTime).toLocaleString()}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-white/50 leading-relaxed font-mono">Status: Session Active</p>
-                    )}
-                  </div>
-                  {activeLesson.content?.text && (
-                    <div className="bg-[#111d47]/20 border border-white/5 rounded-xl p-4 text-xs text-white/70 max-w-md mx-auto leading-relaxed">
-                      {activeLesson.content.text}
-                    </div>
-                  )}
-                  <a 
-                    href={activeLesson.content?.video_url || activeLesson.video_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`inline-flex ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 items-center justify-center shadow-lg transition-all active:scale-95 gap-1.5`}
-                  >
-                    <Video size={14} /> Join Broadcast Meeting
-                  </a>
-                </div>
-              ) : activeLesson.lesson_type === 'flashcards' ? (
-                renderFlashcardsPanel(activeLesson.metadata?.flashcards || [], () => handleToggleComplete(activeLesson.id))
-              ) : activeLesson.lesson_type === 'code' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[550px] overflow-hidden">
-                  <div className="lg:col-span-2 flex flex-col border border-white/5 bg-[#080f28] rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#080f28]/60 shrink-0">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">Monaco Code Sandbox ({activeLesson.metadata?.codeLanguage || "javascript"})</span>
-                      <Button 
-                        onClick={async () => {
-                          setCodeRunning(true);
-                          setCodeConsole("Executing script payload...\n");
-                          setTimeout(() => {
-                            try {
-                              let logs: string[] = [];
-                              const mockConsole = {
-                                log: (...args: any[]) => logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')),
-                                error: (...args: any[]) => logs.push('[ERROR]: ' + args.join(' ')),
-                                warn: (...args: any[]) => logs.push('[WARN]: ' + args.join(' '))
-                              };
-                              
-                              const runner = new Function('console', codeValue);
-                              runner(mockConsole);
-                              setCodeConsole(logs.length > 0 ? logs.join('\n') : "Script completed successfully with exit code 0.");
-                              toast.success("Execution completed!");
-                              handleToggleComplete(activeLesson.id);
-                            } catch (e: any) {
-                              setCodeConsole(`[RUNTIME EXCEPTION]: ${e.message}`);
-                              toast.error("Execution exception detected.");
-                            } finally {
-                              setCodeRunning(false);
-                            }
-                          }, 1000);
-                        }}
-                        disabled={codeRunning}
-                        className={`${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-lg text-[10px] font-black uppercase tracking-wider h-9 px-5 shadow-lg flex items-center gap-1.5`}
-                      >
-                        {codeRunning ? <Loader2 className="animate-spin" size={12} /> : null} Run execution script
-                      </Button>
-                    </div>
-                    <div className="flex-1 min-h-0 bg-[#020617]">
-                      <Editor
-                        height="100%"
-                        language={activeLesson.metadata?.codeLanguage || "javascript"}
-                        theme="vs-dark"
-                        value={codeValue}
-                        onChange={(val) => setCodeValue(val || "")}
-                        options={{
-                          minimap: { enabled: false },
-                          fontSize: 12,
-                          lineNumbers: "on",
-                          automaticLayout: true
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="bg-[#080f28]/60 border border-white/5 rounded-2xl p-5 flex flex-col overflow-hidden">
-                    <span className="text-[10px] font-black uppercase text-white/40 tracking-wider shrink-0 mb-3 block">Sandbox Execution Console</span>
-                    <pre className="flex-1 bg-black/40 border border-white/5 rounded-xl p-4 font-mono text-[11px] text-white/80 overflow-y-auto leading-relaxed whitespace-pre-wrap select-text">
-                      {codeConsole || "Sandbox idle. Write code and click run script to execute compilation logs."}
-                    </pre>
-                  </div>
-                </div>
-              ) : activeLesson.lesson_type === 'scorm' ? (
-                <div className="flex flex-col h-[650px] bg-[#080f28] border border-white/5 rounded-2xl overflow-hidden">
-                  <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#080f28]/60 shrink-0">
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">SCORM Compliance Player ({activeLesson.metadata?.scormVersion === 'scorm2004' ? 'SCORM 2004' : 'SCORM 1.2'})</span>
-                    <Button 
-                      onClick={() => {
-                        handleToggleComplete(activeLesson.id);
-                        toast.success("SCORM package completed!");
-                      }}
-                      className="bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-wider h-9 px-4 rounded-lg"
-                    >
-                      Simulate SCORM Completion ✓
-                    </Button>
-                  </div>
-                  {activeLesson.video_url?.endsWith('.zip') ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-[#020617] space-y-4">
-                      <Archive className="text-primary animate-pulse" size={48} />
-                      <div>
-                        <h4 className="text-sm font-bold text-white uppercase tracking-wider">SCORM Zip package loaded</h4>
-                        <p className="text-[10px] text-white/40 max-w-sm mx-auto leading-relaxed mt-1">
-                          SCORM package archive is securely hosted on our cloud locker. Click below to download or trigger simulation.
-                        </p>
+                        )}
+                        {block.type === 'audio' && block.file_url && (
+                          <VoiceNotePlayer
+                            audioUrl={block.file_url}
+                            waveformBars={block.content?.waveform_bars}
+                            theme="light"
+                            isAlreadyCompleted={completedBlockIds.has(block.id)}
+                            onWatchedThreshold={(pct) => markBlockComplete(block.id, { percentage: pct })}
+                          />
+                        )}
+                        {(block.type === 'reading' || block.type === 'slides') && block.file_url && (
+                          <button
+                            onClick={() => {
+                              setOpenReadingId(block.id);
+                              markBlockComplete(block.id, { opened: true });
+                            }}
+                            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface [&_svg]:size-3.5"
+                          >
+                            <FileText /> {block.type === 'slides' ? 'Open slides' : 'Open reading'}
+                          </button>
+                        )}
+                        {block.type === 'rich_text' && block.content?.text && (
+                          <div
+                            className="prose prose-slate max-w-none text-[14px] leading-relaxed !text-dash-text"
+                            dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(block.content.text) }}
+                          />
+                        )}
+                        {block.type === 'download' && block.file_url && (
+                          <a
+                            href={block.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-sky-600 hover:underline"
+                          >
+                            <Download size={14} /> Download resource
+                          </a>
+                        )}
+                        {block.type === 'embed' && block.content?.embed_url && isSafeEmbedUrl(block.content.embed_url) && (
+                          <div className="aspect-video overflow-hidden rounded-xl border border-dash-border bg-black">
+                            <iframe
+                              src={block.content.embed_url}
+                              className="h-full w-full border-0"
+                              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                              title="Embedded content"
+                            />
+                          </div>
+                        )}
+                        {block.type === 'live_session' && block.file_url && (
+                          <a
+                            href={block.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-sky-600 hover:underline"
+                          >
+                            Join live session
+                          </a>
+                        )}
+                        {block.type === 'quiz' && (
+                          <a
+                            href={`/student/courses/${course.id}/quiz/${activeLesson.id}`}
+                            className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-lg px-6 text-[12px] font-semibold text-white shadow-sm transition-colors ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
+                          >
+                            Start quiz
+                          </a>
+                        )}
+                        {block.type === 'assignment' && renderAssignmentPanel(block.content?.instructions)}
+                        {block.type === 'flashcards' &&
+                          renderFlashcardsPanel(block.content?.flashcards || [], () =>
+                            markBlockComplete(block.id, { finished: true })
+                          )}
                       </div>
-                      <div className="flex gap-3">
+                    ))}
+                  </div>
+                ) : activeLesson.lesson_type === 'video' ? (
+                  <VideoPlayer
+                    videoUrl={activeLesson.content?.video_url}
+                    onComplete={() => {
+                      if (!completedLessonIds.includes(activeLesson.id)) {
+                        handleToggleComplete(activeLesson.id);
+                      }
+                    }}
+                    isAlreadyCompleted={completedLessonIds.includes(activeLesson.id)}
+                    lowBandwidthMode={lowBandwidthMode}
+                    onVideoRegister={(el, playing) => {
+                      setVideoElement(el);
+                      setIsVideoPlaying(playing);
+                    }}
+                    onProgressUpdate={async (seconds) => {
+                      if (seconds % 30 === 0) {
+                        try {
+                          await fetch(`/api/enrolments/${enrollment.id}/activity`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ lessonId: activeLesson.id, progressSeconds: seconds }),
+                          });
+                        } catch (err) {
+                          console.error('[Embed Heartbeat Sync error]:', err);
+                        }
+                      }
+                    }}
+                  />
+                ) : activeLesson.lesson_type === 'quiz' ? (
+                  <LessonCard className="mx-auto max-w-xl space-y-5 text-center">
+                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-500/15">
+                      <BookOpen size={24} />
+                    </span>
+                    <div className="space-y-1">
+                      <h3 className="text-[15px] font-semibold !text-dash-text">Assessment</h3>
+                      <p className="mx-auto max-w-sm text-[13px] leading-relaxed !text-dash-textMuted">
+                        This lesson is a quiz to check how much you've retained.
+                      </p>
+                    </div>
+                    <a
+                      href={`/student/courses/${course.id}/quiz/${activeLesson.id}`}
+                      className={`mx-auto inline-flex h-11 items-center justify-center rounded-lg px-8 text-[13px] font-semibold text-white shadow-sm transition-colors ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
+                    >
+                      Start quiz
+                    </a>
+                  </LessonCard>
+                ) : activeLesson.lesson_type === 'pdf' ? (
+                  <LessonCard className="mx-auto max-w-xl space-y-5 text-center">
+                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-500/15">
+                      <FileText size={24} />
+                    </span>
+                    <div className="space-y-1">
+                      <h3 className="text-[15px] font-semibold !text-dash-text">PDF document</h3>
+                      <p className="mx-auto max-w-sm text-[13px] leading-relaxed !text-dash-textMuted">
+                        Opens in-page so you never lose your place in the course.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setOpenReadingId('legacy-pdf')}
+                      className={`mx-auto inline-flex h-11 items-center justify-center gap-1.5 rounded-lg px-8 text-[13px] font-semibold text-white shadow-sm transition-colors [&_svg]:size-3.5 ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
+                    >
+                      <FileText /> Open reading
+                    </button>
+                  </LessonCard>
+                ) : activeLesson.lesson_type === 'audio' ? (
+                  <LessonCard className="mx-auto max-w-2xl space-y-5">
+                    <PanelHead icon={<Headphones />} title="Audio lesson" subtitle="MP3 playback" />
+                    <audio
+                      src={activeLesson.content?.video_url || activeLesson.video_url}
+                      controls
+                      className="w-full"
+                    />
+                    {activeLesson.content?.text && (
+                      <div className="space-y-3 border-t border-dash-border pt-4">
+                        <button
+                          onClick={() => setShowTranscript(!showTranscript)}
+                          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-sky-600 hover:text-sky-700"
+                        >
+                          <MessageSquare size={13} /> {showTranscript ? 'Hide transcript' : 'View transcript'}
+                        </button>
+                        {showTranscript && (
+                          <div className="max-h-[300px] overflow-y-auto whitespace-pre-line rounded-xl border border-dash-border bg-dash-surface/60 p-4 text-[13px] leading-relaxed !text-dash-text">
+                            {activeLesson.content.text}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </LessonCard>
+                ) : activeLesson.lesson_type === 'assignment' ? (
+                  renderAssignmentPanel(activeLesson.content?.text)
+                ) : activeLesson.lesson_type === 'live_session' ? (
+                  <LessonCard className="mx-auto max-w-xl space-y-5 text-center">
+                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-500/15">
+                      <Video size={24} />
+                    </span>
+                    <div className="space-y-1">
+                      <h3 className="text-[15px] font-semibold !text-dash-text">Live session</h3>
+                      <p className="text-[13px] !text-dash-textMuted">
+                        {activeLesson.metadata?.startTime
+                          ? `Scheduled for ${new Date(activeLesson.metadata.startTime).toLocaleString()}`
+                          : 'Session is active'}
+                      </p>
+                    </div>
+                    {activeLesson.content?.text && (
+                      <div className="mx-auto max-w-md rounded-xl border border-dash-border bg-dash-surface/60 p-4 text-[13px] leading-relaxed !text-dash-text">
+                        {activeLesson.content.text}
+                      </div>
+                    )}
+                    <a
+                      href={activeLesson.content?.video_url || activeLesson.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`mx-auto inline-flex h-11 items-center justify-center gap-1.5 rounded-lg px-8 text-[13px] font-semibold text-white shadow-sm transition-colors [&_svg]:size-4 ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
+                    >
+                      <Video /> Join meeting
+                    </a>
+                  </LessonCard>
+                ) : activeLesson.lesson_type === 'flashcards' ? (
+                  renderFlashcardsPanel(activeLesson.metadata?.flashcards || [], () =>
+                    handleToggleComplete(activeLesson.id)
+                  )
+                ) : activeLesson.lesson_type === 'code' ? (
+                  <div className="grid h-[550px] grid-cols-1 gap-4 overflow-hidden lg:grid-cols-3">
+                    <div className="flex flex-col overflow-hidden rounded-2xl border border-dash-border bg-white lg:col-span-2">
+                      <div className="flex shrink-0 items-center justify-between border-b border-dash-border px-4 py-3">
+                        <span className="text-[12px] font-semibold !text-dash-text">
+                          Code sandbox ({activeLesson.metadata?.codeLanguage || 'javascript'})
+                        </span>
+                        <button
+                          onClick={async () => {
+                            setCodeRunning(true);
+                            setCodeConsole('Running…\n');
+                            setTimeout(() => {
+                              try {
+                                let logs: string[] = [];
+                                const mockConsole = {
+                                  log: (...args: any[]) =>
+                                    logs.push(
+                                      args
+                                        .map((a) => (typeof a === 'object' ? JSON.stringify(a) : a))
+                                        .join(' ')
+                                    ),
+                                  error: (...args: any[]) => logs.push('[ERROR]: ' + args.join(' ')),
+                                  warn: (...args: any[]) => logs.push('[WARN]: ' + args.join(' ')),
+                                };
+                                const runner = new Function('console', codeValue);
+                                runner(mockConsole);
+                                setCodeConsole(
+                                  logs.length > 0 ? logs.join('\n') : 'Completed with exit code 0.'
+                                );
+                                toast.success('Execution completed!');
+                                handleToggleComplete(activeLesson.id);
+                              } catch (e: any) {
+                                setCodeConsole(`[RUNTIME EXCEPTION]: ${e.message}`);
+                                toast.error('Execution exception detected.');
+                              } finally {
+                                setCodeRunning(false);
+                              }
+                            }, 1000);
+                          }}
+                          disabled={codeRunning}
+                          className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-5 text-[12px] font-semibold text-white transition-colors ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
+                        >
+                          {codeRunning ? <Loader2 className="animate-spin" size={12} /> : null} Run
+                        </button>
+                      </div>
+                      <div className="min-h-0 flex-1 bg-[#1e1e1e]">
+                        <Editor
+                          height="100%"
+                          language={activeLesson.metadata?.codeLanguage || 'javascript'}
+                          theme="vs-dark"
+                          value={codeValue}
+                          onChange={(val) => setCodeValue(val || '')}
+                          options={{ minimap: { enabled: false }, fontSize: 12, lineNumbers: 'on', automaticLayout: true }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col overflow-hidden rounded-2xl border border-dash-border bg-white p-4">
+                      <span className="mb-3 block shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted">
+                        Console
+                      </span>
+                      <pre className="flex-1 select-text overflow-y-auto whitespace-pre-wrap rounded-xl border border-dash-border bg-slate-950 p-4 font-mono text-[11px] leading-relaxed text-slate-200">
+                        {codeConsole || 'Idle. Write code and click Run.'}
+                      </pre>
+                    </div>
+                  </div>
+                ) : activeLesson.lesson_type === 'scorm' ? (
+                  <div className="flex h-[650px] flex-col overflow-hidden rounded-2xl border border-dash-border bg-white">
+                    <div className="flex shrink-0 items-center justify-between border-b border-dash-border px-4 py-3">
+                      <span className="text-[12px] font-semibold !text-dash-text">
+                        SCORM player ({activeLesson.metadata?.scormVersion === 'scorm2004' ? 'SCORM 2004' : 'SCORM 1.2'})
+                      </span>
+                      <button
+                        onClick={() => {
+                          handleToggleComplete(activeLesson.id);
+                          toast.success('SCORM package completed!');
+                        }}
+                        className="inline-flex h-9 items-center rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface"
+                      >
+                        Mark SCORM complete
+                      </button>
+                    </div>
+                    {activeLesson.video_url?.endsWith('.zip') ? (
+                      <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-dash-surface/40 p-8 text-center">
+                        <Archive className="text-sky-500" size={44} />
+                        <div>
+                          <h4 className="text-[14px] font-semibold !text-dash-text">SCORM package loaded</h4>
+                          <p className="mx-auto mt-1 max-w-sm text-[12px] leading-relaxed !text-dash-textMuted">
+                            The archive is hosted securely. Download it or mark the lesson complete.
+                          </p>
+                        </div>
                         <a
                           href={activeLesson.video_url}
-                          className={`inline-flex ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white rounded-lg uppercase tracking-wider text-[10px] font-black h-10 px-5 items-center justify-center`}
+                          className={`inline-flex h-10 items-center justify-center rounded-lg px-5 text-[12px] font-semibold text-white transition-colors ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
                         >
-                          Download Package Zip
+                          Download package
                         </a>
                       </div>
+                    ) : (
+                      <iframe src={activeLesson.video_url} className="flex-1 w-full border-0" />
+                    )}
+                  </div>
+                ) : (
+                  <LessonCard className="mx-auto max-w-2xl">
+                    <div className="whitespace-pre-line text-[14px] leading-relaxed !text-dash-text">
+                      {activeLesson.content?.text || activeLesson.description || 'No content available for this lesson.'}
                     </div>
-                  ) : (
-                    <iframe src={activeLesson.video_url} className="flex-1 w-full border-0 bg-[#020617]" />
-                  )}
-                </div>
-              ) : (
-                <div className="bg-[#080f28] border border-white/5 p-8 rounded-2xl max-w-2xl mx-auto space-y-4 font-body text-xs text-white/80 leading-relaxed whitespace-pre-line">
-                  {activeLesson.content?.text || activeLesson.description || "No content available for this lesson."}
-                </div>
-              )}
+                  </LessonCard>
+                )}
 
-              <LessonSummaryPanel key={activeLesson.id} lessonId={activeLesson.id} />
-            </div>
+                <LessonSummaryPanel key={activeLesson.id} lessonId={activeLesson.id} />
+              </div>
 
-            <div className="p-5 border-t border-white/5 bg-[#080f28]/30 shrink-0 flex justify-between items-center">
-              {getPrevLesson() ? (
-                <Button
-                  onClick={() => {
-                    const prev = getPrevLesson();
-                    setActiveLesson(prev);
-                  }}
-                  className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-black uppercase tracking-wider px-6 flex items-center gap-1.5"
-                >
-                  <ChevronLeft size={15} /> Prev Lesson
-                </Button>
-              ) : (
-                <div></div>
-              )}
-              {getNextLesson() && (
-                <Button
-                  onClick={async () => {
-                    // Server-side gate (Phase C) — the real check comes from a server action
-                    // querying real lesson_block_completions rows, not a client-only flag.
-                    // A disabled button alone would be trivially bypassable (e.g. calling
-                    // setActiveLesson directly via devtools); the actual security boundary
-                    // that matters is markLessonComplete/certificate issuance, which
-                    // independently re-verifies the same thing server-side regardless of
-                    // whether this button was ever clicked.
-                    setIsCheckingAdvance(true);
-                    let canAdvance = completedLessonIds.includes(activeLesson.id);
-                    if (activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0) {
-                      const res = await getLessonBlockCompletionStatus(activeLesson.id);
-                      canAdvance = !res.error && res.data.allComplete;
-                    }
-                    setIsCheckingAdvance(false);
+              {/* Prev / Next */}
+              <div className="flex shrink-0 items-center justify-between border-t border-dash-border bg-white px-6 py-4">
+                {getPrevLesson() ? (
+                  <button
+                    onClick={() => setActiveLesson(getPrevLesson())}
+                    className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface [&_svg]:size-4"
+                  >
+                    <ChevronLeft /> Previous
+                  </button>
+                ) : (
+                  <span />
+                )}
+                {getNextLesson() && (
+                  <button
+                    onClick={async () => {
+                      setIsCheckingAdvance(true);
+                      let canAdvance = completedLessonIds.includes(activeLesson.id);
+                      if (activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0) {
+                        const res = await getLessonBlockCompletionStatus(activeLesson.id);
+                        canAdvance = !res.error && res.data.allComplete;
+                      }
+                      setIsCheckingAdvance(false);
 
-                    if (!canAdvance) {
-                      toast.error('Complete every block in this lesson before moving on.');
-                      return;
-                    }
-                    const next = getNextLesson();
-                    setActiveLesson(next);
-                  }}
-                  disabled={isCheckingAdvance}
-                  className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-black uppercase tracking-wider px-6 flex items-center gap-1.5"
-                >
-                  {isCheckingAdvance ? <Loader2 size={15} className="animate-spin" /> : <>Next Lesson <ChevronRight size={15} /></>}
-                </Button>
-              )}
+                      if (!canAdvance) {
+                        toast.error('Complete every block in this lesson before moving on.');
+                        return;
+                      }
+                      setActiveLesson(getNextLesson());
+                    }}
+                    disabled={isCheckingAdvance}
+                    className={`inline-flex h-10 items-center gap-1.5 rounded-lg px-5 text-[12px] font-semibold text-white shadow-sm transition-colors [&_svg]:size-4 ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
+                  >
+                    {isCheckingAdvance ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <>
+                        Next lesson <ChevronRight />
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-1 items-center justify-center p-12 text-center">
+              <div>
+                <BookOpen size={36} className="mx-auto !text-dash-textMuted/40" />
+                <h3 className="mt-3 text-[14px] font-semibold !text-dash-text">Select a lesson</h3>
+                <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed !text-dash-textMuted">
+                  Choose a lesson from the syllabus on the left to start learning.
+                </p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-center p-12 space-y-3">
-            <div>
-              <BookOpen size={36} className="text-white/20 mx-auto" />
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider mt-3">Select a Lesson</h3>
-              <p className="text-xs text-white/40 max-w-xs leading-relaxed mt-1">
-                Choose a lecture node from the sidebar syllabus explorer on the left to start learning.
-              </p>
-            </div>
-          </div>
-        )}
+          )}
+        </main>
       </div>
+
       <LiveHelpWidget courseId={course.id} enrollment={enrollment} />
       <CourseQAWidget
         courseId={course.id}
@@ -1114,29 +1142,30 @@ export default function StudentPlayerClient({
         }}
       />
 
-      {openReadingId && (() => {
-        if (openReadingId === 'legacy-pdf') {
-          const url = activeLesson.content?.video_url || activeLesson.video_url;
+      {openReadingId &&
+        (() => {
+          if (openReadingId === 'legacy-pdf') {
+            const url = activeLesson.content?.video_url || activeLesson.video_url;
+            return (
+              <ReadingModal
+                title={activeLesson.title}
+                embedUrl={getEmbeddablePdfUrl(url)}
+                downloadUrl={url}
+                onClose={() => setOpenReadingId(null)}
+              />
+            );
+          }
+          const block = (activeLesson.contentBlocks || []).find((b: any) => b.id === openReadingId);
+          if (!block || !block.file_url) return null;
           return (
             <ReadingModal
               title={activeLesson.title}
-              embedUrl={getEmbeddablePdfUrl(url)}
-              downloadUrl={url}
+              embedUrl={getEmbeddablePdfUrl(block.file_url)}
+              downloadUrl={block.file_url}
               onClose={() => setOpenReadingId(null)}
             />
           );
-        }
-        const block = (activeLesson.contentBlocks || []).find((b: any) => b.id === openReadingId);
-        if (!block || !block.file_url) return null;
-        return (
-          <ReadingModal
-            title={activeLesson.title}
-            embedUrl={getEmbeddablePdfUrl(block.file_url)}
-            downloadUrl={block.file_url}
-            onClose={() => setOpenReadingId(null)}
-          />
-        );
-      })()}
+        })()}
     </div>
   );
 }

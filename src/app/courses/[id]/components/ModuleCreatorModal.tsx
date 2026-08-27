@@ -1,10 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, Sparkles, X } from "lucide-react";
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
+import {
+  SectionLabel,
+  TextInput,
+  TextArea,
+  Select,
+  Toggle,
+  PrimaryButton,
+  GhostButton,
+} from "./settings/primitives";
 
 interface ModuleCreatorModalProps {
   courseId: string;
@@ -17,24 +25,41 @@ interface ModuleCreatorModalProps {
 const EMOJI_OPTIONS = ["📚", "🎯", "⚡", "💼", "🧪", "📋"];
 const NQF_LEVELS = [
   "None",
-  "NQF Level 1",
-  "NQF Level 2",
-  "NQF Level 3",
-  "NQF Level 4",
-  "NQF Level 5",
-  "NQF Level 6",
-  "NQF Level 7",
-  "NQF Level 8",
-  "NQF Level 9",
-  "NQF Level 10"
+  ...Array.from({ length: 10 }, (_, i) => `NQF Level ${i + 1}`),
 ];
+
+/** Stacked label + control, sized to match the settings primitives. */
+function MField({
+  label,
+  hint,
+  htmlFor,
+  required,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  htmlFor?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={htmlFor} className="block text-[12px] font-semibold text-dash-text">
+        {label}
+        {required && <span className="ml-0.5 text-sky-600">*</span>}
+      </label>
+      {children}
+      {hint && <p className="text-[11px] leading-relaxed text-dash-textMuted">{hint}</p>}
+    </div>
+  );
+}
 
 export default function ModuleCreatorModal({
   courseId,
   moduleId,
   onClose,
   onSaved,
-  isOpen = true
+  isOpen = true,
 }: ModuleCreatorModalProps) {
   const { workspace } = useDashboardContext();
   const workspaceId = workspace?.id || null;
@@ -53,7 +78,6 @@ export default function ModuleCreatorModal({
 
   useEffect(() => {
     if (moduleId && isOpen) {
-      // Load existing data
       fetch(`/api/lms/modules?id=${moduleId}`)
         .then((res) => res.json())
         .then((resData) => {
@@ -88,6 +112,15 @@ export default function ModuleCreatorModal({
     }
   }, [moduleId, isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleLenaGenerate = async () => {
@@ -102,8 +135,8 @@ export default function ModuleCreatorModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: `Write a student-facing module description for a module called: ${title}. Keep it 2-3 sentences. Friendly, motivating tone.`
-        })
+          prompt: `Write a student-facing module description for a module called: ${title}. Keep it 2-3 sentences. Friendly, motivating tone.`,
+        }),
       });
 
       const result = await res.json();
@@ -144,7 +177,7 @@ export default function ModuleCreatorModal({
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyPayload)
+        body: JSON.stringify(bodyPayload),
       });
 
       const resData = await res.json();
@@ -163,181 +196,135 @@ export default function ModuleCreatorModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
-      <div className="bg-white border border-dash-border rounded-xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col !text-dash-text">
-
+    <div
+      className="fixed inset-0 z-[500] flex items-start justify-center overflow-y-auto bg-slate-900/45 p-4 backdrop-blur-sm sm:items-center"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="my-auto flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-dash-border bg-white text-dash-text shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-dash-border">
-          <h2 className="text-base font-semibold">
-            {moduleId ? "Edit Module" : "Create Module"}
-          </h2>
-          <button onClick={onClose} className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
+        <div className="flex items-start justify-between gap-4 border-b border-dash-border px-6 py-5">
+          <div className="space-y-1">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+              Module
+            </div>
+            <h2 className="font-display text-[17px] font-semibold leading-tight tracking-[-0.01em] text-dash-text">
+              {moduleId ? "Edit module" : "Create module"}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="-mr-1 -mt-1 rounded-lg p-1.5 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
+          >
             <X size={18} />
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="flex max-h-[70vh] flex-col overflow-y-auto">
+          <div className="space-y-6 px-6 py-6">
+            <MField label="Module name" htmlFor="mm-name" required>
+              <TextInput
+                id="mm-name"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Advanced Invoicing"
+                required
+                autoFocus
+              />
+            </MField>
 
-          {/* Module Name */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-semibold !text-dash-textMuted">Module Name</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Advanced Invoicing"
-              className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-sm outline-none focus:border-dash-accent transition-all motion-reduce:transition-none !text-dash-text"
-              required
-            />
-          </div>
-
-          {/* Icon Selection */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-semibold !text-dash-textMuted block">Module Icon</label>
-            <div className="flex flex-wrap gap-2 items-center">
-              {EMOJI_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => { setIcon(emoji); setCustomIcon(""); }}
-                  className={`w-9 h-9 rounded-lg border text-lg flex items-center justify-center transition-all motion-reduce:transition-none ${
-                    icon === emoji ? "border-dash-accent bg-dash-accent/10" : "border-dash-border bg-dash-surface hover:bg-dash-border/60"
-                  }`}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <MField label="Publish status" htmlFor="mm-status">
+                <Select
+                  id="mm-status"
+                  value={publishStatus}
+                  onChange={(e) => setPublishStatus(e.target.value as any)}
                 >
-                  {emoji}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setIcon("custom")}
-                className={`px-3 h-9 rounded-lg border text-xs transition-all motion-reduce:transition-none ${
-                  icon === "custom" ? "border-dash-accent bg-dash-accent/10" : "border-dash-border bg-dash-surface hover:bg-dash-border/60"
-                }`}
-              >
-                Custom Emoji
-              </button>
-              {icon === "custom" && (
-                <input
-                  type="text"
-                  value={customIcon}
-                  onChange={(e) => setCustomIcon(e.target.value)}
-                  placeholder="Paste emoji"
-                  className="w-16 bg-dash-surface border border-dash-border rounded-lg px-2 py-1.5 text-sm outline-none text-center !text-dash-text"
-                  maxLength={4}
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="coming_soon">Coming soon</option>
+                </Select>
+              </MField>
+
+              <MField label="NQF level" htmlFor="mm-nqf">
+                <Select id="mm-nqf" value={nqfLevel} onChange={(e) => setNqfLevel(e.target.value)}>
+                  {NQF_LEVELS.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </Select>
+              </MField>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <MField label="Drip days" htmlFor="mm-drip" hint="0 = available immediately.">
+                <TextInput
+                  id="mm-drip"
+                  type="number"
+                  min={0}
+                  value={dripDays}
+                  onChange={(e) => setDripDays(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="font-mono"
                 />
-              )}
-            </div>
-          </div>
+              </MField>
 
-          {/* Status & NQF Level */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold !text-dash-textMuted">Publish Status</label>
-              <select
-                value={publishStatus}
-                onChange={(e) => setPublishStatus(e.target.value as any)}
-                className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-xs outline-none focus:border-dash-accent !text-dash-text"
-              >
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="coming_soon">Coming Soon</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold !text-dash-textMuted">NQF Level</label>
-              <select
-                value={nqfLevel}
-                onChange={(e) => setNqfLevel(e.target.value)}
-                className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-xs outline-none focus:border-dash-accent !text-dash-text"
-              >
-                {NQF_LEVELS.map((level) => (
-                  <option key={level} value={level}>{level}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Drip Days & Completion Checkbox */}
-          <div className="grid grid-cols-2 gap-4 items-center bg-dash-surface p-3 rounded-lg border border-dash-border">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold !text-dash-textMuted">Drip Days</label>
-              <input
-                type="number"
-                value={dripDays}
-                onChange={(e) => setDripDays(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full bg-white border border-dash-border rounded-lg px-2.5 py-1 text-xs outline-none !text-dash-text"
-                min={0}
-              />
-              <span className="text-[9px] !text-dash-textMuted block leading-tight">0 = available immediately</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="required_for_completion"
-                checked={requiredForCompletion}
-                onChange={(e) => setRequiredForCompletion(e.target.checked)}
-                className="rounded border-dash-border text-dash-accent accent-dash-accent"
-              />
-              <label htmlFor="required_for_completion" className="text-xs font-semibold !text-dash-text cursor-pointer">
-                Required for Completion
-              </label>
-            </div>
-          </div>
-
-          {/* LENA AI Description Generator Block */}
-          <div className="bg-dash-accent/5 border border-dash-accent/15 rounded-xl p-4 mt-4 space-y-1">
-            <div className="flex justify-between items-start">
-              <div>
-                <h4 className="text-xs font-bold !text-dash-text">✨ Generate description with LENA</h4>
-                <p className="text-[10px] !text-dash-textMuted">Generate a student-facing description based on the module name</p>
+              <div className="flex items-end">
+                <Toggle
+                  checked={requiredForCompletion}
+                  onChange={setRequiredForCompletion}
+                  label="Required for completion"
+                  description="Students must finish this module to complete the course."
+                />
               </div>
-              <button
-                type="button"
-                onClick={handleLenaGenerate}
-                disabled={isGenerating}
-                className="text-[10px] font-bold text-dash-accent hover:opacity-80 transition-colors motion-reduce:transition-none bg-dash-accent/10 border border-dash-accent/20 rounded-md px-2 py-1 flex items-center gap-1 disabled:opacity-50"
-              >
-                {isGenerating ? <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={12} />}
-                Generate with AI
-              </button>
             </div>
+
+            {/* LENA AI */}
+            <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5 text-[13px] font-semibold text-sky-800">
+                    <Sparkles className="size-3.5" /> Generate with LENA
+                  </div>
+                  <p className="text-[12px] leading-relaxed text-sky-700/90">
+                    Draft a student-facing description from the module name.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLenaGenerate}
+                  disabled={isGenerating || !title.trim()}
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-sky-300 bg-white px-3 text-[12px] font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50 [&_svg]:size-3.5"
+                >
+                  {isGenerating ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                  Generate
+                </button>
+              </div>
+            </div>
+
+            <MField label="Description" htmlFor="mm-desc">
+              <TextArea
+                id="mm-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="A short overview of what this module covers…"
+                rows={4}
+              />
+            </MField>
           </div>
 
-          {/* Description Textarea */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-semibold !text-dash-textMuted">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Provide a detailed module curriculum overview..."
-              rows={3}
-              className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-xs outline-none focus:border-dash-accent font-mono leading-relaxed !text-dash-text"
-            />
-          </div>
-
-          {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-dash-border">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onClose}
-              disabled={isSaving}
-              className="rounded-lg !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold"
-            >
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-2 border-t border-dash-border bg-dash-surface/60 px-6 py-4">
+            <GhostButton type="button" onClick={onClose} disabled={isSaving}>
               Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSaving}
-              className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg text-[10px] font-bold px-5 shadow-lg shadow-dash-accent/20 transition-colors motion-reduce:transition-none"
-            >
-              {isSaving ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none mr-2" /> : "Save Module"}
-            </Button>
+            </GhostButton>
+            <PrimaryButton type="submit" loading={isSaving}>
+              {isSaving ? "Saving…" : moduleId ? "Save changes" : "Create module"}
+            </PrimaryButton>
           </div>
-
         </form>
       </div>
     </div>

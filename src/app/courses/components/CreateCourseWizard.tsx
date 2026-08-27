@@ -3,28 +3,23 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { BookOpen, Loader2, Link as LinkIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DashModal,
-  DashModalContent,
-  DashModalHeader,
-  DashModalTitle,
-  DashModalFooter,
-} from "@/components/dashboard-ui/Modal";
-import { DashFormField, DashInput } from "@/components/dashboard-ui/FormField";
+import { Loader2, Link as LinkIcon, Check, ArrowRight } from "lucide-react";
+import { DashModal, DashModalContent } from "@/components/dashboard-ui/Modal";
 import { createCourseWithDomain } from "@/app/actions/lms";
 import { getDomainsForCurrentWorkspace } from "@/app/actions/domains";
 import { updateCourseLandingSettings } from "@/app/actions/courseLanding";
 import { COURSE_THEME_LIST } from "@/lib/courses/courseThemeTokens";
 import CourseThemeMiniPreview from "./CourseThemeMiniPreview";
+import {
+  TextInput,
+  Select,
+  InputAffix,
+  PrimaryButton,
+  GhostButton,
+  SectionLabel,
+} from "@/app/courses/[id]/components/settings/primitives";
+import { cn } from "@/lib/utils";
 
-// Reuses the exact templates already built for the course landing page (CourseLandingForm.tsx
-// / LandingPageRenderer.tsx) — not a second, parallel gallery system. Confirmed these degrade
-// gracefully with zero modules/lessons (TemplateCleanMinimal etc. guard curriculum sections on
-// `modules.length > 0`), so picking a theme before any module exists is structurally sound.
-// One card per REAL existing template (3 today), sourced from the single canonical theme
-// token file (Phase F) — not a second, independently-invented color list.
 const TEMPLATES = COURSE_THEME_LIST;
 
 interface CreateCourseWizardProps {
@@ -32,6 +27,11 @@ interface CreateCourseWizardProps {
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
 }
+
+const STEPS = [
+  { n: 1, label: "Name & URL" },
+  { n: 2, label: "Theme" },
+];
 
 export default function CreateCourseWizard({ open, onOpenChange, onCreated }: CreateCourseWizardProps) {
   const router = useRouter();
@@ -61,8 +61,6 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
     getDomainsForCurrentWorkspace()
       .then((res) => {
         if ("data" in res && res.data) {
-          // Only domains that have actually finished verification — a course shouldn't point
-          // at a domain that isn't live yet.
           setDomains(res.data.filter((d: any) => d.status === "active"));
         } else if ("error" in res && res.error) {
           toast.error(res.error);
@@ -72,24 +70,20 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
   }, [open]);
 
   const selectedDomain = domains.find((d) => d.id === domainId);
-  const previewUrl = selectedDomain ? `${selectedDomain.hostname}/${urlPath || "your-course-slug"}` : null;
+  const previewUrl = selectedDomain
+    ? `${selectedDomain.hostname}/${urlPath || "your-course-slug"}`
+    : null;
 
   const handleClose = () => {
     onOpenChange(false);
-    // If a course was already created (step 2), it exists as a real draft with domain/url
-    // set — closing here just leaves theme at its clean_minimal default, it isn't corrupted.
     reset();
   };
 
   const handleCreateStep1 = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Phase E, Step 2a: name is the only hard requirement now. Domain/URL are optional —
-    // domain_configurations has zero rows workspace-wide today, so requiring them would
-    // block every real admin from creating a course at all. If a domain IS selected, its
-    // URL path is still required (an address needs both halves) — the action enforces this
-    // same rule server-side regardless of what this client-side check does.
     if (!title.trim()) return toast.error("Course name is required");
-    if (domainId && !urlPath.trim()) return toast.error("URL path is required when a domain is selected");
+    if (domainId && !urlPath.trim())
+      return toast.error("URL path is required when a domain is selected");
 
     setIsSaving(true);
     try {
@@ -125,132 +119,195 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
 
   return (
     <DashModal open={open} onOpenChange={(o) => (o ? onOpenChange(true) : handleClose())}>
-      <DashModalContent className="max-w-lg">
-        <DashModalHeader>
-          <DashModalTitle className="flex items-center gap-2">
-            <BookOpen size={18} className="text-dash-accent" />
-            {step === 1 ? "Create course — Name & URL" : "Create course — Theme"}
-          </DashModalTitle>
-        </DashModalHeader>
+      <DashModalContent className="max-w-xl gap-0 overflow-hidden p-0">
+        {/* Header */}
+        <div className="border-b border-dash-border px-6 py-5">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+            New course
+          </div>
+          <h2 className="mt-1 text-[15px] font-semibold text-dash-text">
+            {step === 1 ? "Name and address" : "Pick a theme"}
+          </h2>
+          <p className="mt-0.5 text-[13px] text-dash-textMuted">
+            {step === 1
+              ? "Give the course a name. A custom domain is optional."
+              : "Each preview is a live render of the student player with that theme."}
+          </p>
 
-        <div className="flex items-center gap-2 px-1 pb-2">
-          <span className={`h-1.5 flex-1 rounded-full ${step >= 1 ? "bg-dash-accent" : "bg-dash-border"}`} />
-          <span className={`h-1.5 flex-1 rounded-full ${step >= 2 ? "bg-dash-accent" : "bg-dash-border"}`} />
+          {/* Stepper */}
+          <div className="mt-4 flex items-center gap-2">
+            {STEPS.map((s, i) => {
+              const state = step > s.n ? "done" : step === s.n ? "active" : "todo";
+              return (
+                <React.Fragment key={s.n}>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors",
+                        state === "done" && "bg-sky-500 text-white",
+                        state === "active" && "bg-sky-500/15 text-sky-700 ring-1 ring-inset ring-sky-500/40",
+                        state === "todo" && "bg-slate-100 text-slate-400"
+                      )}
+                    >
+                      {state === "done" ? <Check className="size-3" /> : s.n}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[11px] font-semibold",
+                        state === "todo" ? "text-dash-textMuted" : "text-dash-text"
+                      )}
+                    >
+                      {s.label}
+                    </span>
+                  </div>
+                  {i < STEPS.length - 1 && (
+                    <span
+                      className={cn(
+                        "h-px w-6",
+                        step > s.n ? "bg-sky-400" : "bg-dash-border"
+                      )}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
 
+        {/* Body */}
         {step === 1 && (
-          <form onSubmit={handleCreateStep1} className="space-y-4">
-            <DashFormField label="Course name" htmlFor="cc-title" required>
-              <DashInput
-                id="cc-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Masterclass in JavaScript"
-                required
-                autoFocus
-              />
-            </DashFormField>
+          <form onSubmit={handleCreateStep1}>
+            <div className="space-y-5 px-6 py-6">
+              <div className="space-y-1.5">
+                <label htmlFor="cc-title" className="block text-[12px] font-semibold text-dash-text">
+                  Course name <span className="text-sky-600">*</span>
+                </label>
+                <TextInput
+                  id="cc-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Masterclass in JavaScript"
+                  required
+                  autoFocus
+                />
+              </div>
 
-            <DashFormField label="Domain (optional)" htmlFor="cc-domain">
-              {isLoadingDomains ? (
-                <div className="text-[11px] !text-dash-textMuted flex items-center gap-2 py-2">
-                  <Loader2 size={12} className="animate-spin" /> Loading connected domains...
-                </div>
-              ) : domains.length === 0 ? (
-                <div className="text-[11px] !text-dash-textMuted py-2 bg-dash-surface border border-dash-border rounded-xl px-3">
-                  No verified domains connected yet — skip for now, add one later in Settings once you've connected a domain.
-                </div>
-              ) : (
-                <>
-                  <select
+              <div className="space-y-1.5">
+                <label htmlFor="cc-domain" className="block text-[12px] font-semibold text-dash-text">
+                  Domain <span className="font-normal text-dash-textMuted">(optional)</span>
+                </label>
+                {isLoadingDomains ? (
+                  <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-dash-surface px-3 py-2.5 text-[12px] text-dash-textMuted">
+                    <Loader2 className="size-3.5 animate-spin" /> Loading connected domains…
+                  </div>
+                ) : domains.length === 0 ? (
+                  <p className="rounded-lg border border-dash-border bg-dash-surface px-3 py-2.5 text-[12px] leading-relaxed text-dash-textMuted">
+                    No verified domains yet — skip for now and add one later in Settings.
+                  </p>
+                ) : (
+                  <Select
                     id="cc-domain"
                     value={domainId}
                     onChange={(e) => setDomainId(e.target.value)}
-                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
                   >
                     <option value="">Skip for now — add a domain later</option>
                     {domains.map((d) => (
-                      <option key={d.id} value={d.id}>{d.hostname}</option>
+                      <option key={d.id} value={d.id}>
+                        {d.hostname}
+                      </option>
                     ))}
-                  </select>
-                </>
-              )}
-            </DashFormField>
-
-            {domainId && selectedDomain && (
-              <DashFormField label="URL path" htmlFor="cc-slug" required>
-                <div className="flex items-stretch border border-dash-border rounded-xl overflow-hidden focus-within:border-primary">
-                  <span className="bg-dash-surface !text-dash-textMuted text-[10px] font-mono px-3 flex items-center shrink-0 truncate max-w-[45%]">
-                    https://{selectedDomain.hostname}/
-                  </span>
-                  <input
-                    id="cc-slug"
-                    value={urlPath}
-                    onChange={(e) => setUrlPath(e.target.value)}
-                    placeholder="tefl-beginner"
-                    required
-                    className="flex-1 min-w-0 px-3 py-3 text-xs !text-dash-text outline-none"
-                  />
-                  <span className="flex items-center px-3 !text-dash-textMuted shrink-0">
-                    <LinkIcon size={13} />
-                  </span>
-                </div>
-              </DashFormField>
-            )}
-
-            {previewUrl && (
-              <div className="text-[10px] !text-dash-textMuted font-mono bg-dash-surface border border-dash-border rounded-lg px-3 py-2 truncate">
-                Preview: https://{previewUrl}
+                  </Select>
+                )}
               </div>
-            )}
 
-            <DashModalFooter>
-              <Button type="button" variant="ghost" onClick={handleClose} disabled={isSaving} className="h-10 rounded-xl !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold">
+              {domainId && selectedDomain && (
+                <div className="space-y-1.5">
+                  <label htmlFor="cc-slug" className="block text-[12px] font-semibold text-dash-text">
+                    URL path <span className="text-sky-600">*</span>
+                  </label>
+                  <div className="flex items-stretch overflow-hidden rounded-lg border border-dash-border focus-within:border-sky-500 focus-within:ring-4 focus-within:ring-sky-500/12">
+                    <span className="flex max-w-[45%] shrink-0 items-center truncate bg-dash-surface px-3 font-mono text-[11px] text-dash-textMuted">
+                      https://{selectedDomain.hostname}/
+                    </span>
+                    <input
+                      id="cc-slug"
+                      value={urlPath}
+                      onChange={(e) => setUrlPath(e.target.value)}
+                      placeholder="tefl-beginner"
+                      required
+                      className="min-w-0 flex-1 px-3 py-2.5 text-[13px] text-dash-text outline-none"
+                    />
+                    <span className="flex items-center px-3 text-dash-textMuted">
+                      <LinkIcon className="size-3.5" />
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {previewUrl && (
+                <div className="rounded-lg border border-dash-border bg-dash-surface px-3 py-2 font-mono text-[11px] text-dash-textMuted">
+                  https://{previewUrl}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-dash-border bg-dash-surface/60 px-6 py-4">
+              <GhostButton type="button" onClick={handleClose} disabled={isSaving}>
                 Cancel
-              </Button>
-              <Button type="submit" disabled={isSaving || !title.trim()} className="h-10 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-[10px] font-bold px-5 flex items-center gap-1.5">
-                {isSaving ? <Loader2 size={12} className="animate-spin" /> : null} Continue to theme
-              </Button>
-            </DashModalFooter>
+              </GhostButton>
+              <PrimaryButton type="submit" loading={isSaving} disabled={!title.trim()}>
+                Continue <ArrowRight />
+              </PrimaryButton>
+            </div>
           </form>
         )}
 
         {step === 2 && (
-          <div className="space-y-4">
-            <p className="text-[10px] !text-dash-textMuted px-1">
-              Choose a theme for this course — each preview below is a real miniature render of
-              the student player using that theme's actual colors, not a static image.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {TEMPLATES.map((tmpl) => {
-                const isSelected = selectedTemplate === tmpl.id;
-                return (
-                  <button
-                    key={tmpl.id}
-                    type="button"
-                    onClick={() => setSelectedTemplate(tmpl.id)}
-                    className={`text-left rounded-xl border-2 overflow-hidden transition-all ${
-                      isSelected ? "border-dash-accent shadow-md" : "border-transparent hover:border-dash-border"
-                    }`}
-                  >
-                    <CourseThemeMiniPreview theme={tmpl} selected={isSelected} />
-                    <div className="p-2.5 bg-white border-t border-dash-border">
-                      <div className="text-[11px] font-bold !text-dash-text">{tmpl.label}</div>
-                      <div className="text-[9px] !text-dash-textMuted mt-0.5 leading-relaxed">{tmpl.description}</div>
-                    </div>
-                  </button>
-                );
-              })}
+          <div>
+            <div className="space-y-4 px-6 py-6">
+              <SectionLabel>Theme</SectionLabel>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {TEMPLATES.map((tmpl) => {
+                  const isSelected = selectedTemplate === tmpl.id;
+                  return (
+                    <button
+                      key={tmpl.id}
+                      type="button"
+                      onClick={() => setSelectedTemplate(tmpl.id)}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        "overflow-hidden rounded-xl border text-left transition-all outline-none focus-visible:ring-4 focus-visible:ring-sky-500/20",
+                        isSelected
+                          ? "border-sky-500 ring-1 ring-inset ring-sky-500/30"
+                          : "border-dash-border hover:border-slate-300"
+                      )}
+                    >
+                      <CourseThemeMiniPreview theme={tmpl} selected={isSelected} />
+                      <div className="border-t border-dash-border bg-white p-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12px] font-semibold text-dash-text">
+                            {tmpl.label}
+                          </span>
+                          {isSelected && <Check className="size-3 text-sky-600" />}
+                        </div>
+                        <div className="mt-0.5 text-[10px] leading-relaxed text-dash-textMuted">
+                          {tmpl.description}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <DashModalFooter>
-              <Button type="button" variant="ghost" onClick={() => setStep(1)} disabled={isSaving} className="h-10 rounded-xl !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold">
+            <div className="flex items-center justify-between gap-2 border-t border-dash-border bg-dash-surface/60 px-6 py-4">
+              <GhostButton type="button" onClick={() => setStep(1)} disabled={isSaving}>
                 Back
-              </Button>
-              <Button type="button" onClick={handleFinishStep2} disabled={isSaving} className="h-10 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-[10px] font-bold px-5 flex items-center gap-1.5">
-                {isSaving ? <Loader2 size={12} className="animate-spin" /> : null} Create course & add modules
-              </Button>
-            </DashModalFooter>
+              </GhostButton>
+              <PrimaryButton type="button" onClick={handleFinishStep2} loading={isSaving}>
+                {isSaving ? "Creating…" : "Create course"}
+              </PrimaryButton>
+            </div>
           </div>
         )}
       </DashModalContent>

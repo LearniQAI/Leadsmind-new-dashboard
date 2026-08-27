@@ -1,8 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, BookOpen, PlayCircle, HelpCircle, FileEdit, FileText, Headphones, Video, Layers, Code, Archive } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from "react";
+import {
+  X,
+  BookOpen,
+  PlayCircle,
+  HelpCircle,
+  FileEdit,
+  FileText,
+  Headphones,
+  Video,
+  Layers,
+  Code,
+  Archive,
+  ArrowRight,
+} from "lucide-react";
+import { PrimaryButton, GhostButton } from "./settings/primitives";
+import { cn } from "@/lib/utils";
 
 interface LessonTypePickerProps {
   isOpen: boolean;
@@ -17,18 +31,21 @@ const LESSON_TYPES = [
   { type: "assignment", label: "Assignment", desc: "File or text submit", icon: FileEdit },
   { type: "pdf", label: "PDF", desc: "In-browser viewer", icon: FileText },
   { type: "audio", label: "Audio", desc: "MP3 + transcript", icon: Headphones },
-  { type: "live_session", label: "Live Session", desc: "Meet or Zoom", icon: Video },
+  { type: "live_session", label: "Live session", desc: "Meet or Zoom", icon: Video },
   { type: "flashcards", label: "Flashcards", desc: "Spaced repetition", icon: Layers },
   { type: "code", label: "Code", desc: "In-browser IDE", icon: Code },
-  { type: "scorm", label: "SCORM", desc: "1.2 + 2004 standard", icon: Archive }
+  { type: "scorm", label: "SCORM", desc: "1.2 + 2004 standard", icon: Archive },
 ];
 
-export default function LessonTypePicker({
-  isOpen,
-  onClose,
-  onSelect
-}: LessonTypePickerProps) {
+export default function LessonTypePicker({ isOpen, onClose, onSelect }: LessonTypePickerProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -40,72 +57,102 @@ export default function LessonTypePicker({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
-      <div className="bg-white border border-dash-border rounded-xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col !text-dash-text">
-
+    <div
+      className="fixed inset-0 z-[500] flex items-start justify-center overflow-y-auto bg-slate-900/45 p-4 backdrop-blur-sm sm:items-center"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="my-auto flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-dash-border bg-white shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-dash-border">
-          <h2 className="text-base font-semibold">
-            Select Lesson Type
-          </h2>
-          <button onClick={onClose} className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
+        <div className="flex items-start justify-between gap-4 border-b border-dash-border px-6 py-5">
+          <div className="space-y-1">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+              Lesson
+            </div>
+            <h2 className="font-display text-[17px] font-semibold leading-tight tracking-[-0.01em] text-dash-text">
+              Choose a lesson type
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="-mr-1 -mt-1 rounded-lg p-1.5 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
+          >
             <X size={18} />
           </button>
         </div>
 
-        {/* Content - 2-Column Grid */}
-        <div className="p-5 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Grid */}
+        <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {LESSON_TYPES.map((item) => {
               const Icon = item.icon;
               const isSelected = selectedType === item.type;
               return (
-                <div
+                <button
                   key={item.type}
+                  type="button"
                   onClick={() => setSelectedType(item.type)}
-                  className={`border rounded-xl p-4 cursor-pointer transition-all motion-reduce:transition-none flex items-start gap-4 ${
+                  aria-pressed={isSelected}
+                  className={cn(
+                    "group flex items-start gap-3.5 rounded-xl border p-4 text-left transition-all outline-none focus-visible:ring-4 focus-visible:ring-sky-500/20",
                     isSelected
-                      ? "border-dash-accent bg-dash-accent/10"
-                      : "bg-white border-dash-border hover:border-dash-accent/40 hover:bg-dash-accent/5"
-                  }`}
+                      ? "border-sky-500 bg-sky-50/60 ring-1 ring-inset ring-sky-500/30"
+                      : "border-dash-border bg-white hover:border-slate-300 hover:bg-dash-surface/50"
+                  )}
                 >
-                  <div className={`p-2.5 rounded-lg border transition-colors motion-reduce:transition-none ${
-                    isSelected
-                      ? "bg-dash-accent/20 border-dash-accent !text-dash-text"
-                      : "bg-dash-surface border-dash-border !text-dash-textMuted"
-                  }`}>
-                    <Icon size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold !text-dash-text">{item.label}</h4>
-                    <p className="text-xs !text-dash-textMuted mt-1">{item.desc}</p>
-                  </div>
-                </div>
+                  <span
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors [&_svg]:size-[18px]",
+                      isSelected
+                        ? "border-sky-200 bg-white text-sky-600"
+                        : "border-dash-border bg-dash-surface text-dash-textMuted group-hover:text-dash-text"
+                    )}
+                  >
+                    <Icon />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "text-[13px] font-semibold",
+                          isSelected ? "text-sky-700" : "text-dash-text"
+                        )}
+                      >
+                        {item.label}
+                      </span>
+                      <span
+                        className={cn(
+                          "ml-auto h-3.5 w-3.5 shrink-0 rounded-full border-2 transition-colors",
+                          isSelected ? "border-sky-500 bg-sky-500" : "border-slate-300 bg-white"
+                        )}
+                      />
+                    </span>
+                    <span className="mt-0.5 block text-[12px] leading-relaxed text-dash-textMuted">
+                      {item.desc}
+                    </span>
+                  </span>
+                </button>
               );
             })}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-dash-border">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onClose}
-            className="rounded-lg !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={handleConfirm}
-            disabled={!selectedType}
-            className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg text-[10px] font-bold px-5 transition-colors motion-reduce:transition-none"
-          >
-            Next
-          </Button>
+        <div className="flex items-center justify-between gap-3 border-t border-dash-border bg-dash-surface/60 px-6 py-4">
+          <span className="text-[12px] text-dash-textMuted">
+            {selectedType
+              ? `${LESSON_TYPES.find((t) => t.type === selectedType)?.label} selected`
+              : "Pick a type to continue"}
+          </span>
+          <div className="flex items-center gap-2">
+            <GhostButton type="button" onClick={onClose}>
+              Cancel
+            </GhostButton>
+            <PrimaryButton type="button" onClick={handleConfirm} disabled={!selectedType}>
+              Next <ArrowRight />
+            </PrimaryButton>
+          </div>
         </div>
-
       </div>
     </div>
   );
