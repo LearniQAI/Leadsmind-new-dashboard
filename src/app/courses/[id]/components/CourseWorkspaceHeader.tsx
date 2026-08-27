@@ -7,10 +7,14 @@ import { useRouter } from "next/navigation";
 interface CourseWorkspaceHeaderProps {
   courseTitle: string;
   courseId: string;
-  activeTab: "settings" | "modules" | "automations" | "analytics" | "landing-page" | "pricing" | "emails" | "submissions";
-  setActiveTab: (tab: "settings" | "modules" | "automations" | "analytics" | "landing-page" | "pricing" | "emails" | "submissions") => void;
+  activeTab: "modules" | "settings";
+  setActiveTab: (tab: "modules" | "settings") => void;
 }
 
+// Nav restructure (Systeme-parity Master Prompt, Section 2): 2 top-level tabs instead of 8.
+// Modules stays primary/default (matches how central it is to daily work); everything else
+// (Landing Page/Pricing/Emails/Submissions/Automations/Analytics + the original Settings)
+// now lives inside CourseSettingsContainer's own sub-navigation, reached via the Settings tab.
 export default function CourseWorkspaceHeader({
   courseTitle,
   courseId,
@@ -40,22 +44,17 @@ export default function CourseWorkspaceHeader({
 
       {/* Tabs */}
       <div className="flex items-center bg-white border border-dash-border rounded-xl p-1 w-fit shrink-0 shadow-sm">
-        {(["settings", "modules", "landing-page", "pricing", "emails", "submissions", "automations", "analytics"] as const).map((tab) => (
+        {(["modules", "settings"] as const).map((tab) => (
           <button
             key={tab}
-            onClick={() => {
-              if (tab === "automations") {
-                router.push(`/courses/${courseId}/automations`);
-              } else {
-                setActiveTab(tab);
-              }
-            }}
-            className={`px-4 py-2 rounded-lg text-[10px] font-bold capitalize transition-all motion-reduce:transition-none ${activeTab === tab
+            onClick={() => setActiveTab(tab)}
+            className={`px-6 py-2 rounded-lg text-[11px] font-bold capitalize transition-all motion-reduce:transition-none ${
+              activeTab === tab
                 ? "bg-primary text-white"
                 : "!text-dash-textMuted hover:!text-dash-text"
-              }`}
+            }`}
           >
-            {tab === "landing-page" ? "landing page" : tab}
+            {tab}
           </button>
         ))}
       </div>

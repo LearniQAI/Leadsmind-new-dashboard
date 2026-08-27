@@ -9,16 +9,20 @@ import {
   Zap,
   MoreHorizontal,
   Filter as FilterIcon,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import CreateCourseWizard from "./components/CreateCourseWizard";
+import { getCourseTheme } from "@/lib/courses/courseThemeTokens";
+import ConfirmationModal from "@/components/calendar/modals/ConfirmationModal";
 
 // Real course-level status values (confirmed live: only 'draft' and 'published' exist in
 // courses.status — 'coming_soon' is a module-level publish_status value, not a course one,
@@ -41,7 +45,31 @@ export default function CoursesClient({
   // Create Course Wizard state (Phase D: name+domain+url -> theme -> add module)
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const filteredCourses = initialCourses.filter((course) => {
+  const [courses, setCourses] = useState(initialCourses);
+  const [deletingCourse, setDeletingCourse] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCourse) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/lms/courses?id=${deletingCourse.id}`, { method: "DELETE" });
+      const dataJson = await res.json();
+      if (dataJson.error) {
+        toast.error(dataJson.error);
+      } else {
+        toast.success(`"${deletingCourse.title}" and everything in it has been deleted.`);
+        setCourses((prev) => prev.filter((c) => c.id !== deletingCourse.id));
+        setDeletingCourse(null);
+      }
+    } catch {
+      toast.error("Failed to delete course");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const filteredCourses = courses.filter((course) => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || course.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -52,7 +80,7 @@ export default function CoursesClient({
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold !text-dash-text">
-          {initialCourses.length} Course{initialCourses.length === 1 ? "" : "s"}
+          {courses.length} Course{courses.length === 1 ? "" : "s"}
         </h1>
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -77,17 +105,11 @@ export default function CoursesClient({
             ))}
           </select>
 
-          <Button
-            variant="ghost"
-            className="h-11 px-4 bg-white border border-dash-border !text-dash-text rounded-xl font-bold text-[10px] flex items-center gap-1.5 hover:bg-dash-surface transition-colors motion-reduce:transition-none"
-          >
+          <Button variant="outline">
             <FilterIcon size={13} /> Filter
           </Button>
 
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[10px] h-11 px-6 rounded-xl shadow-lg shadow-dash-accent/10 transition-all motion-reduce:transition-none active:scale-95 flex items-center gap-1.5 shrink-0"
-          >
+          <Button onClick={() => setIsModalOpen(true)}>
             <Plus size={14} /> Add a new course
           </Button>
         </div>
@@ -101,17 +123,14 @@ export default function CoursesClient({
               <BookOpen className="w-8 h-8 !text-dash-textMuted" />
             </div>
             <h3 className="text-lg font-bold !text-dash-text">
-              {initialCourses.length === 0 ? "No courses yet" : "No courses match your filters"}
+              {courses.length === 0 ? "No courses yet" : "No courses match your filters"}
             </h3>
             <p className="!text-dash-textMuted text-xs mt-2">
-              {initialCourses.length === 0 ? "Create your first course to get started" : "Try a different search or status filter"}
+              {courses.length === 0 ? "Create your first course to get started" : "Try a different search or status filter"}
             </p>
-            {initialCourses.length === 0 && (
-              <Button
-                onClick={() => setIsModalOpen(true)}
-                className="mt-6 bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[10px] h-10 px-5 rounded-xl transition-colors motion-reduce:transition-none"
-              >
-                + Add a new course
+            {courses.length === 0 && (
+              <Button onClick={() => setIsModalOpen(true)} className="mt-6">
+                <Plus size={14} /> Add a new course
               </Button>
             )}
           </div>
@@ -127,18 +146,27 @@ export default function CoursesClient({
                 </tr>
               </thead>
               <tbody>
-                {filteredCourses.map((course) => (
+                {filteredCourses.map((course) => {
+                  const theme = getCourseTheme(course.landing_page_settings?.template);
+                  return (
                   <tr
                     key={course.id}
                     className="border-b border-dash-border last:border-0 hover:bg-dash-surface/40 transition-colors motion-reduce:transition-none"
                   >
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => router.push(`/courses/${course.id}`)}
-                        className="text-sm font-bold text-dash-accent hover:underline text-left"
-                      >
-                        {course.title}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <span
+                          title={`${theme.label} theme`}
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ background: theme.primaryHex }}
+                        />
+                        <button
+                          onClick={() => router.push(`/courses/${course.id}`)}
+                          className="text-sm font-bold text-dash-accent hover:underline text-left"
+                        >
+                          {course.title}
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-xs !text-dash-textMuted">
                       Classic course
@@ -169,11 +197,19 @@ export default function CoursesClient({
                           <DropdownMenuItem onClick={() => toast.info("Opening automation...")}>
                             <Zap size={13} className="mr-1.5" /> Automate
                           </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setDeletingCourse(course)}
+                            className="text-red focus:text-red"
+                          >
+                            <Trash2 size={13} className="mr-1.5" /> Delete
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -184,6 +220,21 @@ export default function CoursesClient({
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         onCreated={() => router.refresh()}
+      />
+
+      <ConfirmationModal
+        isOpen={deletingCourse !== null}
+        onClose={() => setDeletingCourse(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Delete "${deletingCourse?.title || ""}"?`}
+        description={
+          deletingCourse
+            ? `This permanently deletes ${deletingCourse.modules?.[0]?.count ?? 0} module(s), ${deletingCourse.lessons?.[0]?.count ?? 0} lesson(s), and unenrolls ${deletingCourse.enrollments?.[0]?.count ?? 0} student(s). This cannot be undone.`
+            : ""
+        }
+        confirmText="Delete course"
+        isDestructive
+        isLoading={isDeleting}
       />
     </div>
   );

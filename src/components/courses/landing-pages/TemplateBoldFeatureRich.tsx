@@ -3,6 +3,15 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Play, Lock, Eye, Star, Plus, Minus, CheckCircle2 } from 'lucide-react';
+import { COURSE_THEMES } from '@/lib/courses/courseThemeTokens';
+import { ThemeCompletionIcon } from '@/components/courses/theme/ThemeSignature';
+
+// SIGNAL — sharp, high-contrast, serious. Near-black page with white "stamped" cards
+// (deliberately NOT dark-on-dark throughout, which is what keeps this off the "near-black +
+// one acid accent" cliché), zero-radius shape language, and the diagonal seal used once, at
+// the one real completion-related moment a sales page has: the "Certificate of completion"
+// outcome bullet.
+const theme = COURSE_THEMES.bold_feature_rich;
 
 interface TemplateProps {
   course: any;
@@ -25,7 +34,7 @@ export default function TemplateBoldFeatureRich({ course, modules, lessons, prev
     'Get direct access to expert instructor insights',
     'Obtain a certificate of completion'
   ];
-  
+
   const isSectionVisible = (secName: string) => {
     if (previewData?.visible_sections) {
       return !!previewData.visible_sections[secName];
@@ -53,56 +62,59 @@ export default function TemplateBoldFeatureRich({ course, modules, lessons, prev
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#04091a] text-t1 font-sans antialiased py-16 px-6 relative overflow-hidden">
-      {/* Background gradients */}
-      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-accent/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple/10 rounded-full blur-[120px] pointer-events-none" />
+  const isCertificateOutcome = (outcome: string) => /certificat/i.test(outcome);
 
-      <div className="max-w-5xl mx-auto space-y-20 relative">
-        
-        {/* HERO SECTION */}
+  return (
+    <div
+      className={`min-h-screen py-16 px-6 ${theme.bodyFontClass}`}
+      style={{ background: theme.pageBgHex, color: theme.pageTextPrimaryHex }}
+    >
+      <div className="max-w-5xl mx-auto space-y-20">
+
+        {/* HERO SECTION — a stamped white card overlapping the black page */}
         {isSectionVisible('hero') && (
-          <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pb-12 border-b border-white/10">
-            <div className="lg:col-span-7 space-y-6 text-left">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-accent2 bg-accent/10 border border-accent/20">
-                ⭐ Premium Course Node
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-0 items-stretch">
+            <div
+              className={`lg:col-span-7 p-10 space-y-6 ${theme.landingRadiusClass}`}
+              style={{ background: theme.pageSurfaceHex, color: theme.pageTextPrimaryHex }}
+            >
+              <span
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white"
+                style={{ background: theme.primaryHex }}
+              >
+                Certified Course
               </span>
-              <h1 className="text-4xl md:text-6xl font-display font-black tracking-tight text-white uppercase leading-none">
-                {pageTitle.split(' ').map((word: string, i: number) => (
-                  <span key={i} className={i === 1 ? "text-accent2" : ""}>
-                    {word}{' '}
-                  </span>
-                ))}
+              <h1 className={`text-4xl md:text-5xl ${theme.headingFontClass} ${theme.headingWeightClass} tracking-tight uppercase leading-[1.02]`}>
+                {pageTitle}
               </h1>
-              <p className="text-sm md:text-base text-t2 font-medium leading-relaxed max-w-xl">
+              <p className="text-sm md:text-base leading-relaxed max-w-xl" style={{ color: theme.pageTextSecondaryHex }}>
                 {tagline}
               </p>
               <div className="pt-2">
-                <button 
+                <button
                   onClick={handleEnroll}
-                  className="w-full sm:w-auto bg-gradient-to-r from-accent to-accent2 hover:opacity-95 text-white font-black text-xs uppercase tracking-widest px-10 py-4 rounded-xl shadow-xl shadow-accent/20 transition-all hover:-translate-y-0.5 active:scale-95"
+                  className={`w-full sm:w-auto text-white font-black text-xs uppercase tracking-widest px-10 py-4 ${theme.landingRadiusClass} transition-transform hover:-translate-y-0.5 active:scale-95`}
+                  style={{ background: theme.primaryHex }}
                 >
-                  🚀 Start Learning Now
+                  Start Learning Now
                 </button>
               </div>
             </div>
-            
+
             <div className="lg:col-span-5">
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-accent to-purple rounded-2xl blur opacity-30 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
-                <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-n800 aspect-video shadow-2xl">
-                  {course?.thumbnail_url ? (
-                    <img 
-                      src={course.thumbnail_url} 
-                      alt={pageTitle}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[#0c1535] flex items-center justify-center">
-                      <BookOpen size={48} className="text-accent2 animate-pulse" />
-                    </div>
-                  )}
+              <div className={`h-full min-h-[280px] overflow-hidden border-2 relative`} style={{ borderColor: theme.primaryHex }}>
+                {course?.thumbnail_url ? (
+                  <img src={course.thumbnail_url} alt={pageTitle} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center" style={{ background: '#161617' }}>
+                    <BookOpen size={48} style={{ color: theme.primaryHex }} />
+                  </div>
+                )}
+                <div
+                  className="absolute bottom-0 left-0 right-0 py-2 text-center text-[10px] font-black uppercase tracking-widest text-white"
+                  style={{ background: theme.primaryHex }}
+                >
+                  Preview
                 </div>
               </div>
             </div>
@@ -112,15 +124,23 @@ export default function TemplateBoldFeatureRich({ course, modules, lessons, prev
         {/* OUTCOMES SECTION */}
         {isSectionVisible('outcomes') && outcomes.length > 0 && (
           <section className="space-y-8">
-            <div className="text-center space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-accent2">Competency Checklist</span>
-              <h2 className="text-2xl md:text-3xl font-display font-black text-white uppercase">What You Will Achieve</h2>
+            <div className="space-y-1.5 border-l-4 pl-4" style={{ borderColor: theme.primaryHex }}>
+              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: theme.primaryHex }}>Competency Checklist</span>
+              <h2 className={`text-2xl md:text-3xl ${theme.headingFontClass} ${theme.headingWeightClass} uppercase`} style={{ color: '#FFFFFF' }}>What You Will Achieve</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {outcomes.map((outcome: string, idx: number) => (
-                <div key={idx} className="flex items-start gap-4 bg-n800 border border-white/5 p-5 rounded-2xl hover:border-white/10 hover:bg-[#0c1535]/80 transition-all hover:-translate-y-0.5 shadow-lg">
-                  <CheckCircle2 className="w-5 h-5 text-green mt-0.5 shrink-0" />
-                  <span className="text-xs md:text-sm text-t2 font-medium leading-relaxed">{outcome}</span>
+                <div
+                  key={idx}
+                  className={`flex items-start gap-4 p-5 ${theme.landingRadiusClass}`}
+                  style={{ background: theme.pageSurfaceHex }}
+                >
+                  {isCertificateOutcome(outcome) ? (
+                    <ThemeCompletionIcon theme={theme} size={16} />
+                  ) : (
+                    <CheckCircle2 className="w-5 h-5 mt-0.5 shrink-0" style={{ color: theme.pageSuccessHex }} />
+                  )}
+                  <span className="text-xs md:text-sm font-medium leading-relaxed" style={{ color: theme.pageTextPrimaryHex }}>{outcome}</span>
                 </div>
               ))}
             </div>
@@ -130,47 +150,47 @@ export default function TemplateBoldFeatureRich({ course, modules, lessons, prev
         {/* CURRICULUM SECTION */}
         {isSectionVisible('curriculum') && modules.length > 0 && (
           <section className="space-y-8">
-            <div className="text-center space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-purple">Interactive Roadmap</span>
-              <h2 className="text-2xl md:text-3xl font-display font-black text-white uppercase">Course Syllabus</h2>
+            <div className="space-y-1.5 border-l-4 pl-4" style={{ borderColor: theme.primaryHex }}>
+              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: theme.primaryHex }}>Interactive Roadmap</span>
+              <h2 className={`text-2xl md:text-3xl ${theme.headingFontClass} ${theme.headingWeightClass} uppercase`} style={{ color: '#FFFFFF' }}>Course Syllabus</h2>
             </div>
-            <div className="space-y-4 max-w-4xl mx-auto">
+            <div className="space-y-3 max-w-4xl mx-auto">
               {modules.map((mod: any) => {
                 const modLessons = lessons.filter(l => l.module_id === mod.id);
                 const isExpanded = !!expandedModules[mod.id];
                 return (
-                  <div key={mod.id} className="bg-n800 border border-white/10 rounded-2xl overflow-hidden shadow-xl transition-all">
-                    <button 
+                  <div key={mod.id} className={`overflow-hidden`} style={{ background: theme.pageSurfaceHex }}>
+                    <button
                       onClick={() => setExpandedModules(prev => ({ ...prev, [mod.id]: !prev[mod.id] }))}
-                      className="w-full p-5 flex items-center justify-between text-left hover:bg-[#0c1535] transition-all"
+                      className="w-full p-5 flex items-center justify-between text-left transition-colors hover:bg-black/[0.03]"
                     >
                       <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-accent2">MODULE {mod.position || ''}</span>
-                        <h3 className="text-base font-bold text-white uppercase tracking-tight">{mod.title}</h3>
+                        <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: theme.primaryHex }}>MODULE {mod.position || ''}</span>
+                        <h3 className="text-base font-bold uppercase tracking-tight" style={{ color: theme.pageTextPrimaryHex }}>{mod.title}</h3>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-t3 font-black uppercase bg-n900/60 px-3 py-1 rounded-full border border-white/5">{modLessons.length} LECTURES</span>
-                        {isExpanded ? <Minus className="w-4 h-4 text-white" /> : <Plus className="w-4 h-4 text-white" />}
+                        <span className="text-[10px] font-black uppercase px-3 py-1" style={{ background: '#0B0B0C', color: '#FFFFFF' }}>{modLessons.length} LECTURES</span>
+                        {isExpanded ? <Minus className="w-4 h-4" style={{ color: theme.pageTextPrimaryHex }} /> : <Plus className="w-4 h-4" style={{ color: theme.pageTextPrimaryHex }} />}
                       </div>
                     </button>
                     {isExpanded && (
-                      <div className="border-t border-white/5 divide-y divide-white/5 bg-[#04091a]/40">
+                      <div className="border-t" style={{ borderColor: theme.pageBorderHex }}>
                         {modLessons.length === 0 ? (
-                          <div className="p-5 text-xs text-t3 italic text-center">No lectures populated in this module.</div>
+                          <div className="p-5 text-xs italic text-center" style={{ color: theme.pageTextSecondaryHex }}>No lectures populated in this module.</div>
                         ) : (
                           modLessons.map((les: any) => (
-                            <div key={les.id} className="p-4 px-6 flex items-center justify-between text-xs hover:bg-white/[0.02] transition-colors">
+                            <div key={les.id} className="p-4 px-6 flex items-center justify-between text-xs border-t" style={{ borderColor: theme.pageBorderHex }}>
                               <div className="flex items-center gap-3">
-                                <BookOpen className="w-4 h-4 text-t3" />
-                                <span className="text-t2 font-medium">{les.title}</span>
+                                <BookOpen className="w-4 h-4" style={{ color: theme.pageTextSecondaryHex }} />
+                                <span className="font-medium" style={{ color: theme.pageTextPrimaryHex }}>{les.title}</span>
                               </div>
                               <div>
                                 {les.is_preview ? (
-                                  <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green bg-green/10 px-3 py-1 rounded border border-green/20">
+                                  <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1" style={{ background: theme.pageSuccessHex, color: '#FFFFFF' }}>
                                     <Eye className="w-3 h-3" /> Preview
                                   </span>
                                 ) : (
-                                  <Lock className="w-4 h-4 text-t4" />
+                                  <Lock className="w-4 h-4" style={{ color: theme.pageTextSecondaryHex }} />
                                 )}
                               </div>
                             </div>
@@ -187,23 +207,18 @@ export default function TemplateBoldFeatureRich({ course, modules, lessons, prev
 
         {/* INSTRUCTOR SECTION */}
         {isSectionVisible('instructor') && (
-          <section className="bg-gradient-to-r from-n800 to-[#0c1535] border border-white/10 p-8 rounded-3xl flex flex-col md:flex-row items-center md:items-start gap-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-full blur-2xl pointer-events-none" />
+          <section className={`p-8 flex flex-col md:flex-row items-center md:items-start gap-8`} style={{ background: theme.pageSurfaceHex }}>
             {instructorAvatar ? (
-              <img 
-                src={instructorAvatar} 
-                alt={instructorName}
-                className="w-20 h-20 rounded-2xl border border-white/10 object-cover shrink-0 bg-n700 shadow-lg"
-              />
+              <img src={instructorAvatar} alt={instructorName} className="w-20 h-20 object-cover shrink-0" style={{ border: `2px solid ${theme.primaryHex}` }} />
             ) : (
-              <div className="w-20 h-20 rounded-2xl border border-white/10 bg-n700 flex items-center justify-center shrink-0 text-white font-black text-2xl uppercase font-display shadow-lg">
+              <div className="w-20 h-20 flex items-center justify-center shrink-0 text-white font-black text-2xl uppercase" style={{ background: theme.primaryHex }}>
                 {instructorName.charAt(0)}
               </div>
             )}
             <div className="space-y-3 text-center md:text-left">
-              <span className="text-[10px] font-black uppercase tracking-widest text-accent2 bg-accent/10 px-3 py-1 rounded-full border border-accent/20">Mastermind Instructor</span>
-              <h3 className="text-lg font-display font-black text-white uppercase mt-1">{instructorName}</h3>
-              <p className="text-xs md:text-sm text-t2 leading-relaxed max-w-2xl">{instructorBio}</p>
+              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 text-white inline-block" style={{ background: '#0B0B0C' }}>Mastermind Instructor</span>
+              <h3 className={`text-lg ${theme.headingFontClass} ${theme.headingWeightClass} uppercase mt-1`} style={{ color: theme.pageTextPrimaryHex }}>{instructorName}</h3>
+              <p className="text-xs md:text-sm leading-relaxed max-w-2xl" style={{ color: theme.pageTextSecondaryHex }}>{instructorBio}</p>
             </div>
           </section>
         )}
@@ -211,25 +226,22 @@ export default function TemplateBoldFeatureRich({ course, modules, lessons, prev
         {/* REVIEWS SECTION */}
         {isSectionVisible('reviews') && reviews.length > 0 && (
           <section className="space-y-8">
-            <div className="text-center space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-accent2">Student Validation</span>
-              <h2 className="text-2xl md:text-3xl font-display font-black text-white uppercase">Verified Class Reviews</h2>
+            <div className="space-y-1.5 border-l-4 pl-4" style={{ borderColor: theme.primaryHex }}>
+              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: theme.primaryHex }}>Student Validation</span>
+              <h2 className={`text-2xl md:text-3xl ${theme.headingFontClass} ${theme.headingWeightClass} uppercase`} style={{ color: '#FFFFFF' }}>Verified Class Reviews</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {reviews.map((rev: any, idx: number) => (
-                <div key={idx} className="bg-n800 border border-white/5 p-6 rounded-2xl space-y-4 hover:border-white/10 hover:bg-[#0c1535]/80 transition-all shadow-lg relative">
-                  <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">{rev.name}</span>
+                <div key={idx} className="p-6 space-y-4" style={{ background: theme.pageSurfaceHex }}>
+                  <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.pageBorderHex }}>
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: theme.pageTextPrimaryHex }}>{rev.name}</span>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: 5 }).map((_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`w-3.5 h-3.5 ${i < Math.floor(rev.rating) ? 'text-amber fill-amber' : 'text-t4'}`} 
-                        />
+                        <Star key={i} className="w-3.5 h-3.5" style={{ color: theme.primaryHex, fill: i < Math.floor(rev.rating) ? theme.primaryHex : 'transparent' }} />
                       ))}
                     </div>
                   </div>
-                  <p className="text-xs md:text-sm text-t2 italic leading-relaxed">"{rev.text}"</p>
+                  <p className="text-xs md:text-sm italic leading-relaxed" style={{ color: theme.pageTextSecondaryHex }}>"{rev.text}"</p>
                 </div>
               ))}
             </div>
@@ -238,21 +250,20 @@ export default function TemplateBoldFeatureRich({ course, modules, lessons, prev
 
         {/* PRICING & FAQ SECTION */}
         {isSectionVisible('pricing') && (
-          <section className="bg-gradient-to-br from-[#0c1535] to-n800 border-2 border-accent/30 p-10 rounded-3xl text-center space-y-6 shadow-2xl relative overflow-hidden max-w-3xl mx-auto">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-accent2 to-transparent" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-amber">Immediate Access Node</span>
-            <h3 className="text-4xl md:text-5xl font-display font-black text-white">
+          <section className="p-10 text-center space-y-6 max-w-3xl mx-auto" style={{ background: theme.primaryHex }}>
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Immediate Access</span>
+            <h3 className="text-4xl md:text-5xl font-black text-white">
               {course?.price ? `$${course.price}` : 'Free Enrollment'}
             </h3>
-            <p className="text-xs md:text-sm text-t2 max-w-md mx-auto leading-relaxed">
-              Unlock the entire curriculum database node instantly. Contains video streams, worksheets, cohort sync channels, and certificate verification.
+            <p className="text-xs md:text-sm text-white/85 max-w-md mx-auto leading-relaxed">
+              Unlock the entire curriculum instantly — video lessons, worksheets, cohort access, and certificate verification.
             </p>
             <div className="pt-2">
-              <button 
+              <button
                 onClick={handleEnroll}
-                className="w-full sm:w-auto bg-gradient-to-r from-accent to-accent2 hover:opacity-95 text-white font-black text-xs uppercase tracking-widest px-10 py-4 rounded-xl shadow-xl shadow-accent/20 transition-all hover:-translate-y-0.5 active:scale-95"
+                className="w-full sm:w-auto bg-white text-[#0B0B0C] font-black text-xs uppercase tracking-widest px-10 py-4 transition-transform hover:-translate-y-0.5 active:scale-95"
               >
-                ⚡ Get Instant Access
+                Get Instant Access
               </button>
             </div>
           </section>
@@ -261,24 +272,25 @@ export default function TemplateBoldFeatureRich({ course, modules, lessons, prev
         {/* FAQ SECTION */}
         {isSectionVisible('faq') && faqs.length > 0 && (
           <section className="space-y-8">
-            <div className="text-center space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-accent2">Support Matrix</span>
-              <h2 className="text-2xl md:text-3xl font-display font-black text-white uppercase">Frequently Asked Questions</h2>
+            <div className="space-y-1.5 border-l-4 pl-4" style={{ borderColor: theme.primaryHex }}>
+              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: theme.primaryHex }}>Support Matrix</span>
+              <h2 className={`text-2xl md:text-3xl ${theme.headingFontClass} ${theme.headingWeightClass} uppercase`} style={{ color: '#FFFFFF' }}>Frequently Asked Questions</h2>
             </div>
-            <div className="space-y-4 max-w-3xl mx-auto">
+            <div className="space-y-3 max-w-3xl mx-auto">
               {faqs.map((faq: any, idx: number) => {
                 const isActive = activeFaq === idx;
                 return (
-                  <div key={idx} className="bg-n800 border border-white/5 rounded-2xl overflow-hidden shadow-md">
-                    <button 
+                  <div key={idx} className="overflow-hidden" style={{ background: theme.pageSurfaceHex }}>
+                    <button
                       onClick={() => setActiveFaq(isActive ? null : idx)}
-                      className="w-full p-5 flex items-center justify-between text-left text-xs md:text-sm font-bold text-white uppercase hover:bg-n700/30 transition-all"
+                      className="w-full p-5 flex items-center justify-between text-left text-xs md:text-sm font-bold uppercase transition-colors hover:bg-black/[0.03]"
+                      style={{ color: theme.pageTextPrimaryHex }}
                     >
                       <span>{faq.question}</span>
-                      {isActive ? <Minus className="w-4 h-4 text-t3" /> : <Plus className="w-4 h-4 text-t3" />}
+                      {isActive ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     </button>
                     {isActive && (
-                      <div className="p-5 pt-0 border-t border-white/5 text-xs md:text-sm text-t2 leading-relaxed bg-[#04091a]/30">
+                      <div className="p-5 pt-0 border-t text-xs md:text-sm leading-relaxed" style={{ borderColor: theme.pageBorderHex, color: theme.pageTextSecondaryHex }}>
                         {faq.answer}
                       </div>
                     )}
