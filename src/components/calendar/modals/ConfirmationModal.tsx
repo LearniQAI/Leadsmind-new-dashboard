@@ -55,23 +55,17 @@ export default function ConfirmationModal({
         </DialogHeader>
 
         <DialogFooter className="mt-6 gap-3">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="!text-dash-textMuted hover:!text-dash-text text-[11px] font-bold"
-          >
+          <Button variant="ghost" size="sm" onClick={onClose}>
             {cancelText}
           </Button>
           <Button
+            variant={isDestructive ? "destructive" : "default"}
+            size="sm"
             onClick={onConfirm}
             disabled={isLoading}
-            className={`min-w-[120px] h-11 text-[11px] font-bold rounded-xl transition-all motion-reduce:transition-none ${
-              isDestructive
-                ? 'bg-red hover:bg-red/90 text-white shadow-lg shadow-red/20'
-                : 'bg-dash-accent hover:bg-dash-accent/90 text-white'
-            }`}
+            className="min-w-[120px]"
           >
-            {isLoading ? <Loader2 className="animate-spin motion-reduce:animate-none mr-2" size={16} /> : confirmText}
+            {isLoading ? <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> : confirmText}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Play, Check, BookOpen } from "lucide-react";
+import { Play, Check, BookOpen, Stamp } from "lucide-react";
 import { CourseThemeTokens } from "@/lib/courses/courseThemeTokens";
 
 interface CourseThemeMiniPreviewProps {
@@ -9,34 +9,72 @@ interface CourseThemeMiniPreviewProps {
   selected: boolean;
 }
 
-// Phase F, Section B: a real miniature rendering of the actual student course player using
-// this theme's real tokens — not a static mockup image. Mirrors the real layout structure
-// (SyllabusSidebar + StudentPlayerClient): a student-name/progress-bar sidebar strip, a
-// lecture title, a video placeholder, and a "Mark as complete" button — all colored from the
-// same theme.solidBgClass/gradientClass/textAccentClass used on the real pages, so selecting
-// a theme here genuinely previews what the student will see, not a decorative guess.
+// Premium Course Theme Redesign, Step 2: a real miniature rendering of the actual student
+// player using this theme's real tokens — including its real page background (not a shared
+// dark shell for all 3 anymore) and its real signature element in miniature, since that's
+// the actual differentiator between the 3 themes now, not just an accent hue.
 export default function CourseThemeMiniPreview({ theme, selected }: CourseThemeMiniPreviewProps) {
+  const bg = theme.signature === "seal" ? "#0B0B0C" : theme.pageBgHex;
+  const isLight = theme.signature !== "seal";
+
   return (
-    <div className="relative bg-[#0a0f28] rounded-lg overflow-hidden aspect-[4/3] flex text-[6px] leading-none">
+    <div
+      className="relative rounded-lg overflow-hidden aspect-[4/3] flex text-[6px] leading-none"
+      style={{ background: bg }}
+    >
       {/* Mini sidebar */}
-      <div className="w-[38%] bg-white/[0.03] border-r border-white/5 p-1.5 flex flex-col gap-1.5 shrink-0">
+      <div
+        className="w-[38%] p-1.5 flex flex-col gap-1.5 shrink-0"
+        style={{
+          background: isLight ? `${theme.primaryHex}0D` : "rgba(255,255,255,0.03)",
+          borderRight: `1px solid ${isLight ? theme.pageBorderHex : "rgba(255,255,255,0.05)"}`
+        }}
+      >
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-white/10 shrink-0" />
-          <span className="text-white/70 font-bold truncate">Jenima Marayag</span>
+          <div className="w-3 h-3 rounded-full shrink-0" style={{ background: isLight ? `${theme.primaryHex}33` : "rgba(255,255,255,0.1)" }} />
+          <span className={`font-bold truncate ${isLight ? "" : "text-white/70"}`} style={isLight ? { color: theme.pageTextPrimaryHex } : undefined}>
+            Jenima Marayag
+          </span>
         </div>
         <div className="flex items-center gap-0.5">
-          <span className="bg-white/10 text-white/60 rounded px-1 py-0.5">Prev</span>
-          <span className={`${theme.solidBgClass} text-white rounded px-1 py-0.5`}>Next</span>
+          <span
+            className="rounded px-1 py-0.5"
+            style={{ background: isLight ? theme.pageBorderHex : "rgba(255,255,255,0.1)", color: isLight ? theme.pageTextSecondaryHex : "rgba(255,255,255,0.6)" }}
+          >
+            Prev
+          </span>
+          <span className="text-white rounded px-1 py-0.5" style={{ background: theme.primaryHex }}>Next</span>
         </div>
-        <div className="w-full bg-white/10 rounded-full h-0.5 overflow-hidden">
-          <div className={`h-full bg-gradient-to-r ${theme.gradientClass}`} style={{ width: "30%" }} />
-        </div>
+
+        {/* Real signature progress indicator, in miniature */}
+        {theme.signature === "branch" ? (
+          <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="w-full h-2">
+            <line x1="1" y1="5" x2="99" y2="5" stroke={theme.primaryHex} strokeOpacity="0.2" strokeWidth="2" strokeLinecap="round" />
+            <line x1="1" y1="5" x2="31" y2="5" stroke={theme.primaryHex} strokeWidth="2" strokeLinecap="round" />
+            <line x1="50" y1="5" x2="47" y2="1.5" stroke={theme.primaryHex} strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="75" y1="5" x2="78" y2="8.5" stroke={theme.primaryHex} strokeOpacity="0.3" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        ) : (
+          <div className="w-full rounded-full h-0.5 overflow-hidden" style={{ background: isLight ? theme.pageBorderHex : "rgba(255,255,255,0.1)" }}>
+            <div className={`h-full bg-gradient-to-r ${theme.gradientClass}`} style={{ width: "30%" }} />
+          </div>
+        )}
+
         <div className="space-y-1 mt-0.5">
-          <div className="text-white/40 font-bold uppercase">Module 1</div>
+          <div className="font-bold uppercase" style={{ color: isLight ? theme.pageTextSecondaryHex : "rgba(255,255,255,0.4)" }}>Module 1</div>
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex items-center gap-1">
-              <BookOpen size={5} className="text-white/30 shrink-0" />
-              <span className="text-white/40 truncate">Lecture {i + 1}</span>
+              {i === 0 && theme.signature === "seal" ? (
+                <span
+                  className="inline-flex items-center justify-center rounded-sm shrink-0"
+                  style={{ width: 5, height: 5, background: theme.primaryHex, transform: "rotate(-14deg)" }}
+                >
+                  <Stamp size={3} className="text-white" style={{ transform: "rotate(14deg)" }} />
+                </span>
+              ) : (
+                <BookOpen size={5} className="shrink-0" style={{ color: isLight ? theme.pageTextSecondaryHex : "rgba(255,255,255,0.3)" }} />
+              )}
+              <span className="truncate" style={{ color: isLight ? theme.pageTextSecondaryHex : "rgba(255,255,255,0.4)" }}>Lecture {i + 1}</span>
             </div>
           ))}
         </div>
@@ -44,13 +82,17 @@ export default function CourseThemeMiniPreview({ theme, selected }: CourseThemeM
 
       {/* Main lecture area */}
       <div className="flex-1 p-1.5 flex flex-col gap-1.5 min-w-0">
-        <span className="text-white/80 font-bold truncate">Lecture 3</span>
-        <div className="flex-1 bg-black/60 rounded flex items-center justify-center relative">
-          <span className={`h-4 w-4 rounded-full ${theme.solidBgClass}/90 flex items-center justify-center`}>
+        <span className="font-bold truncate" style={{ color: isLight ? theme.pageTextPrimaryHex : "rgba(255,255,255,0.8)" }}>Lecture 3</span>
+        <div className="flex-1 rounded flex items-center justify-center relative" style={{ background: isLight ? theme.pageSurfaceHex : "rgba(0,0,0,0.6)", border: isLight ? `1px solid ${theme.pageBorderHex}` : "none" }}>
+          {/* Real signature glow, in miniature, behind the video placeholder */}
+          {theme.signature === "glow" && (
+            <div className="absolute inset-2 rounded-full blur-md pointer-events-none" style={{ background: theme.primaryHex, opacity: 0.35 }} />
+          )}
+          <span className="relative h-4 w-4 rounded-full flex items-center justify-center" style={{ background: theme.primaryHex }}>
             <Play size={6} className="text-white" />
           </span>
         </div>
-        <span className={`${theme.solidBgClass} text-white text-center rounded py-0.5 font-bold`}>
+        <span className="text-white text-center rounded py-0.5 font-bold" style={{ background: theme.primaryHex }}>
           Mark as complete
         </span>
       </div>

@@ -137,10 +137,10 @@ const dashboardNav: NavModule[] = [
   },
   {
     id: "learning",
-    label: "Learning",
+    label: "Courses",
     icon: "icon-training",
     items: [
-      { id: 24, label: "Learning", icon: "icon-training", link: "/courses", permission: "learning" },
+      { id: 24, label: "Courses", icon: "icon-training", link: "/courses", permission: "learning" },
       { id: 241, label: "Student Portal", icon: "fa-light fa-graduation-cap", link: "/student" },
       { id: 25, label: "Certificates", icon: "icon-trophy", link: "/courses/certificates", permission: "learning" },
       { id: 26, label: "Community", icon: "fa-light fa-comments", link: "/community/forums", permission: "business" },

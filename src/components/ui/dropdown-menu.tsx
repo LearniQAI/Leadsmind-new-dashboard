@@ -40,7 +40,8 @@ const DropdownMenuSubContent = React.forwardRef<
  <DropdownMenuPrimitive.SubContent
   ref={ref}
   className={cn(
-   "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+   // Same real bug/fix as DropdownMenuContent below — see its comment.
+   "z-[1100] min-w-[8rem] overflow-hidden rounded-md border border-dash-border bg-white p-1 !text-dash-text shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
    className
   )}
   {...props}
@@ -57,7 +58,17 @@ const DropdownMenuContent = React.forwardRef<
    ref={ref}
    sideOffset={sideOffset}
    className={cn(
-    "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+    // Real bug fix (Systeme-parity Master Prompt, Section 1 Bug 2): `bg-popover`/
+    // `text-popover-foreground` are shadcn defaults for a CSS variable pair
+    // (--popover/--popover-foreground) this app never defines anywhere (confirmed via
+    // grep — it uses its own `dash-*` tokens instead, see tailwind.config.js). Those
+    // classes compile to no CSS at all, so the portal-rendered menu had no background,
+    // border, or shadow — fully transparent, page content visible through it. Same
+    // root cause already fixed once in popover.tsx (its own comment documents this
+    // exact bug); select.tsx and tooltip.tsx shared the identical bug and got the same
+    // fix in this pass. z-index bumped from z-50 to match popover.tsx's z-[1100] so
+    // this can render above modals it might be triggered from within.
+    "z-[1100] min-w-[8rem] overflow-hidden rounded-md border border-dash-border bg-white p-1 !text-dash-text shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
     className
    )}
    {...props}
@@ -75,7 +86,10 @@ const DropdownMenuItem = React.forwardRef<
  <DropdownMenuPrimitive.Item
   ref={ref}
   className={cn(
-   "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+   // Same fix as DropdownMenuContent: focus:bg-accent/focus:text-accent-foreground
+   // either resolved to the wrong-context dark-shell blue or (accent-foreground)
+   // compiled to nothing. Real light-admin hover state instead.
+   "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm !text-dash-text outline-none transition-colors focus:bg-dash-surface data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
    inset && "pl-8",
    className
   )}
@@ -91,7 +105,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
  <DropdownMenuPrimitive.CheckboxItem
   ref={ref}
   className={cn(
-   "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+   "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm !text-dash-text outline-none transition-colors focus:bg-dash-surface data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
    className
   )}
   checked={checked}
@@ -115,7 +129,7 @@ const DropdownMenuRadioItem = React.forwardRef<
  <DropdownMenuPrimitive.RadioItem
   ref={ref}
   className={cn(
-   "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+   "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm !text-dash-text outline-none transition-colors focus:bg-dash-surface data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
    className
   )}
   {...props}
@@ -154,7 +168,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
  <DropdownMenuPrimitive.Separator
   ref={ref}
-  className={cn("-mx-1 my-1 h-px bg-muted", className)}
+  className={cn("-mx-1 my-1 h-px bg-dash-border", className)}
   {...props}
  />
 ))

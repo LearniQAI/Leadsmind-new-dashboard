@@ -12,17 +12,13 @@ import LessonCreatorModal from "./components/LessonCreatorModal";
 import LessonTypePicker from "./components/LessonTypePicker";
 import ConfirmationModal from "@/components/calendar/modals/ConfirmationModal";
 import { mapLessonForModal, mapLessonTypeToDb } from "./utils/lessonMapping";
-import CourseSettingsForm from "./components/CourseSettingsForm";
 import ModulesToolbar from "./components/ModulesToolbar";
 import CourseWorkspaceHeader from "./components/CourseWorkspaceHeader";
-import CourseAnalyticsTab from "./components/CourseAnalyticsTab";
-import CourseLandingForm from "./components/CourseLandingForm";
-import CoursePricingForm from "./components/CoursePricingForm";
-import EmailTemplateForm from "./components/EmailTemplateForm";
-import CourseSubmissionsTab from "./components/CourseSubmissionsTab";
+import CourseSettingsContainer, { SettingsSectionId } from "./components/CourseSettingsContainer";
 import LessonPreviewModal from "./components/LessonPreviewModal";
 import AddStudentModal from "./components/AddStudentModal";
 import StudentsRosterModal from "./components/StudentsRosterModal";
+import { getCourseTheme } from "@/lib/courses/courseThemeTokens";
 
 interface CourseWorkspaceClientProps {
   course: any;
@@ -38,11 +34,18 @@ export default function CourseWorkspaceClient({
   const workspaceId = workspace?.id || null;
 
   const [currentCourse, setCurrentCourse] = useState<any>(course);
+  // Section 3 (Systeme-parity Master Prompt): the 3 daily-use quick actions use the course's
+  // own real theme accent (Signal/Ember/Grove) when set, falling back to the app's own brand
+  // accent for a course with no theme applied yet — never a hardcoded one-off color.
+  const quickActionTheme = getCourseTheme(currentCourse?.landing_page_settings?.template);
 
   const [modules, setModules] = useState<any[]>(initialModules);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | "draft" | "published" | "coming_soon">("All");
-  const [activeTab, setActiveTab] = useState<"settings" | "modules" | "automations" | "analytics" | "landing-page" | "pricing" | "emails" | "submissions">("modules");
+  // Nav restructure (Section 2): 2 top-level tabs only. Modules stays the default — see
+  // CourseWorkspaceHeader.tsx and CourseSettingsContainer.tsx for where the other 6 moved.
+  const [activeTab, setActiveTab] = useState<"modules" | "settings">("modules");
+  const [settingsSection, setSettingsSection] = useState<SettingsSectionId>("general");
 
   // Modals States
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
@@ -317,37 +320,38 @@ export default function CourseWorkspaceClient({
 
             <Button
               onClick={() => { setEditingModule(undefined); setIsModuleModalOpen(true); }}
-              className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-[10px] font-bold h-11 px-6 shadow-lg shadow-dash-accent/20 flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
             >
               <Plus size={14} /> New Module
             </Button>
           </div>
 
-          {/* Quick actions */}
+          {/* Quick actions — Section 3 (Systeme-parity Master Prompt): the 3 primary daily
+              actions get solid-fill visual weight using the course's real theme accent;
+              Settings stays visually secondary (outline) so the hierarchy reads clearly. */}
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setIsAddStudentOpen(true)}
-              className="h-9 px-3.5 rounded-lg bg-white border border-dash-border hover:bg-dash-surface text-[11px] font-bold !text-dash-text flex items-center gap-1.5 transition-colors"
+              className={`h-11 px-5 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:size-4 ${quickActionTheme.solidBgClass} ${quickActionTheme.solidHoverBgClass}`}
             >
-              <UserPlus size={13} /> Add student
+              <UserPlus /> Add student
             </button>
             <button
               onClick={() => setIsRosterOpen(true)}
-              className="h-9 px-3.5 rounded-lg bg-white border border-dash-border hover:bg-dash-surface text-[11px] font-bold !text-dash-text flex items-center gap-1.5 transition-colors"
+              className={`h-11 px-5 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:size-4 ${quickActionTheme.solidBgClass} ${quickActionTheme.solidHoverBgClass}`}
             >
-              <Users size={13} /> Students
+              <Users /> Students
             </button>
             <button
-              onClick={() => setActiveTab("landing-page")}
-              className="h-9 px-3.5 rounded-lg bg-white border border-dash-border hover:bg-dash-surface text-[11px] font-bold !text-dash-text flex items-center gap-1.5 transition-colors"
+              onClick={() => { setActiveTab("settings"); setSettingsSection("landing-page"); }}
+              className={`h-11 px-5 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:size-4 ${quickActionTheme.solidBgClass} ${quickActionTheme.solidHoverBgClass}`}
             >
-              <Palette size={13} /> View and customize theme
+              <Palette /> View and customize theme
             </button>
             <button
               onClick={() => setActiveTab("settings")}
-              className="h-9 px-3.5 rounded-lg bg-white border border-dash-border hover:bg-dash-surface text-[11px] font-bold !text-dash-text flex items-center gap-1.5 transition-colors"
+              className="h-11 px-5 rounded-full bg-white border border-dash-border hover:bg-dash-surface text-[12px] font-semibold !text-dash-textMuted hover:!text-dash-text flex items-center gap-2 transition-colors motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent focus-visible:ring-offset-2 focus-visible:ring-offset-white [&_svg]:size-4"
             >
-              <SettingsIcon size={13} /> Settings
+              <SettingsIcon /> Settings
             </button>
           </div>
 
@@ -370,9 +374,10 @@ export default function CourseWorkspaceClient({
               </h3>
               <Button
                 onClick={() => { setEditingModule(undefined); setIsModuleModalOpen(true); }}
-                className="mt-6 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl text-[10px] font-bold h-10 px-5 transition-colors motion-reduce:transition-none"
+                size="sm"
+                className="mt-6"
               >
-                + Create First Module
+                <Plus size={13} /> Create First Module
               </Button>
             </div>
           ) : (
@@ -413,27 +418,13 @@ export default function CourseWorkspaceClient({
       )}
 
       {activeTab === "settings" && (
-        <CourseSettingsForm course={currentCourse} onSaved={setCurrentCourse} />
-      )}
-
-      {activeTab === "analytics" && (
-        <CourseAnalyticsTab courseId={currentCourse.id} />
-      )}
-
-      {activeTab === "landing-page" && (
-        <CourseLandingForm course={currentCourse} onSaved={setCurrentCourse} />
-      )}
-
-      {activeTab === "pricing" && (
-        <CoursePricingForm course={currentCourse} onSaved={setCurrentCourse} />
-      )}
-
-      {activeTab === "emails" && (
-        <EmailTemplateForm course={currentCourse} onSaved={setCurrentCourse} />
-      )}
-
-      {activeTab === "submissions" && (
-        <CourseSubmissionsTab courseId={currentCourse.id} />
+        <CourseSettingsContainer
+          course={currentCourse}
+          courseId={currentCourse.id}
+          onCourseSaved={setCurrentCourse}
+          activeSection={settingsSection}
+          setActiveSection={setSettingsSection}
+        />
       )}
 
       {/* Modals */}

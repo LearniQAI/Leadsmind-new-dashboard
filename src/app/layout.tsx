@@ -94,7 +94,7 @@ export default async function RootLayout({
       href="https://fonts.googleapis.com/icon?family=Material+Icons"
      />
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Archivo:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@600;700;800&family=Public+Sans:wght@400;500;600&family=Lora:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet" />
     </head>
 
     <body suppressHydrationWarning={true} className="body-area">

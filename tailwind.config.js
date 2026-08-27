@@ -46,6 +46,14 @@ module.exports = {
       heading: ["'Space Grotesk', sans-serif"],
       fontawesome: ["Font Awesome 6 Pro"],
       icomoon: ["icomoon"],
+      // Premium Course Theme Redesign — Signal/Ember/Grove, 3 real distinct pairings
+      // (courseThemeTokens.ts headingFontClass/bodyFontClass reference these).
+      signalHeading: ["'Archivo', sans-serif"],
+      signalBody: ["'IBM Plex Sans', sans-serif"],
+      emberHeading: ["'Sora', sans-serif"],
+      emberBody: ["'Public Sans', sans-serif"],
+      groveHeading: ["'Lora', serif"],
+      groveBody: ["'Source Sans 3', sans-serif"],
     },
     extend: {
       colors: {

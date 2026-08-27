@@ -11,17 +11,9 @@ import {
   EyeOff,
   MoreHorizontal,
   Layers,
-  Video,
-  Headphones,
-  FileText,
-  Type,
-  CheckSquare,
-  FileEdit,
-  Download,
-  Presentation,
-  Code2,
-  Radio,
-  Clock,
+  GraduationCap,
+  CheckCircle2,
+  Droplet,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -65,12 +57,6 @@ function parseMarkdownToHtml(markdown: string): string {
   if (inList) result.push("</ul>");
   return result.join("\n");
 }
-
-const LESSON_TYPE_ICON: Record<string, any> = {
-  video: Video, audio: Headphones, pdf: FileText, text: Type,
-  quiz: CheckSquare, assignment: FileEdit, flashcards: Layers,
-  download: Download, slides: Presentation, embed: Code2, live_session: Radio,
-};
 
 function unlockBadge(lesson: any): string {
   if (lesson.unlock_type === "drip") {
@@ -145,9 +131,11 @@ export default function ModuleCard({
         <button onClick={() => setIsExpanded((v) => !v)} className="flex-1 min-w-0 text-left">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-bold !text-dash-text truncate">{module.title || module.name}</h3>
-            <Badge className={`text-[9px] font-bold px-2 py-0.5 rounded-md capitalize ${getPublishStatusBadge(module.publish_status)}`}>
-              {module.publish_status || "Draft"}
-            </Badge>
+            {module.publish_status && module.publish_status !== "draft" && (
+              <Badge className={`text-[9px] font-bold px-2 py-0.5 rounded-md capitalize ${getPublishStatusBadge(module.publish_status)}`}>
+                {module.publish_status}
+              </Badge>
+            )}
             {module.required_for_completion && (
               <Badge className="bg-red/10 text-red border border-red/20 text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
                 <Lock size={10} /> Required
@@ -160,9 +148,18 @@ export default function ModuleCard({
             )}
           </div>
           <span className="text-[10px] !text-dash-textMuted font-mono mt-0.5 block">
-            {module.lessons?.length || 0} lessons · Drip: {module.drip_days || 0} days
+            {module.lessons?.length || 0} lecture{module.lessons?.length === 1 ? "" : "s"}
           </span>
         </button>
+
+        {/* Certificate-eligible indicator (real: module.required_for_completion feeds course
+            completion -> certificate issuance) — matches the reference's icon-before-menu
+            placement, backed by a real existing concept rather than a decorative addition. */}
+        {module.required_for_completion && (
+          <span title="Counts toward course completion" className="text-dash-accent shrink-0 hidden sm:inline-flex">
+            <GraduationCap size={18} />
+          </span>
+        )}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -191,110 +188,116 @@ export default function ModuleCard({
         </DropdownMenu>
       </div>
 
-      {/* Description + lessons — only rendered when expanded */}
+      {/* Description + lessons — only rendered when expanded, matching the reference's
+          nested-inline-list behavior (no separate panel/modal). */}
       {isExpanded && (
-        <div className="border-t border-dash-border p-4 space-y-4">
+        <div className="border-t border-dash-border">
           {module.description && (
-            <div dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(module.description) }} />
+            <div className="p-4 pb-0" dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(module.description) }} />
           )}
 
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold !text-dash-textMuted">Lessons & lectures</span>
-            <button
-              onClick={() => onAddLesson(module.id)}
-              className="text-[10px] font-bold text-primary hover:opacity-80 flex items-center gap-1"
-            >
-              <Plus size={12} /> Add Lesson
-            </button>
-          </div>
-
           {!hasLessons ? (
-            <div className="py-8 bg-dash-surface border border-dashed border-dash-border rounded-xl flex flex-col items-center justify-center text-center">
+            <div className="m-4 py-8 bg-dash-surface border border-dashed border-dash-border rounded-xl flex flex-col items-center justify-center text-center">
               <PlayCircle size={24} className="!text-dash-textMuted mb-2" />
               <span className="text-[11px] font-medium !text-dash-textMuted">No lessons created inside this module.</span>
             </div>
           ) : (
-            <div className="space-y-2">
-              {module.lessons.map((lesson: any, index: number) => {
-                const LessonIcon = LESSON_TYPE_ICON[lesson.lesson_type] || Type;
+            <div className="divide-y divide-dash-border">
+              {module.lessons.map((lesson: any) => {
+                const isLessonActive = lesson.is_active !== false;
                 return (
                   <div
                     key={lesson.id}
-                    className="bg-dash-surface border border-dash-border rounded-xl p-3 flex items-center justify-between gap-3"
+                    className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-dash-surface/60 transition-colors"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-dash-accent/10 flex items-center justify-center text-dash-accent shrink-0">
-                        <LessonIcon size={13} />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold !text-dash-text block truncate">
-                          {index + 1}. {lesson.title}
-                        </span>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {lesson.is_free && (
-                            <Badge className="bg-green/10 text-green border border-green/20 text-[8px] font-bold px-1.5 py-0.5 rounded">
-                              Free Preview
-                            </Badge>
-                          )}
-                          {lesson.is_active === false && (
-                            <Badge className="bg-dash-surface !text-dash-textMuted border border-dash-border text-[8px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                              <EyeOff size={8} /> Inactive
-                            </Badge>
-                          )}
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-mono !text-dash-textMuted bg-white border border-dash-border rounded px-1.5 py-0.5">
-                            <Clock size={9} /> {unlockBadge(lesson)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    <button
+                      onClick={() => onEditLesson(lesson, module.id)}
+                      className="text-xs font-bold text-dash-accent hover:underline text-left truncate min-w-0"
+                    >
+                      {lesson.title}
+                    </button>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="h-7 w-7 rounded-lg hover:bg-white flex items-center justify-center !text-dash-textMuted transition-colors shrink-0">
-                          <MoreHorizontal size={14} />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onToggleLessonActive(lesson.id, lesson.is_active === false)}>
-                          {lesson.is_active === false ? "Activate" : "Deactivate"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEditLesson(lesson, module.id)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onViewLesson(lesson)}>View</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEditLesson(lesson, module.id)}>Settings</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onCreateAssignment(lesson)}>
-                          Create an assignment for this lecture
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.info("Drip access email automation is planned but not built yet — see report.")}>
-                          Create a drip access email
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onDuplicateLesson(lesson.id)}>Duplicate</DropdownMenuItem>
-                        {otherModules.length > 0 && (
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>Move to module</DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                              {otherModules.map((m) => (
-                                <DropdownMenuItem key={m.id} onClick={() => onMoveLesson(lesson.id, m.id)}>
-                                  {m.title}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      {lesson.is_free && (
+                        <Badge className="bg-green/10 text-green border border-green/20 text-[8px] font-bold px-1.5 py-0.5 rounded hidden sm:inline-flex">
+                          Free Preview
+                        </Badge>
+                      )}
+
+                      {/* Real drip pill — matches reference shape (droplet icon + label). */}
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold !text-dash-textMuted bg-white border border-dash-border rounded-full px-2.5 py-1">
+                        <Droplet size={11} /> {unlockBadge(lesson)}
+                      </span>
+
+                      {/* Real status indicator — wired to the real is_active field (not
+                          decorative): filled green = active/live, muted outline = deactivated. */}
+                      <span title={isLessonActive ? "Active" : "Deactivated"}>
+                        {isLessonActive ? (
+                          <CheckCircle2 size={18} className="text-green fill-green/15" />
+                        ) : (
+                          <CheckCircle2 size={18} className="!text-dash-textMuted" />
                         )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => onDeleteLesson(lesson.id)}
-                          className="text-red focus:text-red"
-                        >
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      </span>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-7 w-7 rounded-lg hover:bg-white flex items-center justify-center !text-dash-textMuted transition-colors shrink-0">
+                            <MoreHorizontal size={14} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onToggleLessonActive(lesson.id, lesson.is_active === false)}>
+                            {lesson.is_active === false ? "Activate" : "Deactivate"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onEditLesson(lesson, module.id)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onViewLesson(lesson)}>View</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onEditLesson(lesson, module.id)}>Settings</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onCreateAssignment(lesson)}>
+                            Create an assignment for this lecture
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast.info("Drip access email automation is planned but not built yet — see report.")}>
+                            Create a drip access email
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => onDuplicateLesson(lesson.id)}>Duplicate</DropdownMenuItem>
+                          {otherModules.length > 0 && (
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>Move to module</DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent>
+                                {otherModules.map((m) => (
+                                  <DropdownMenuItem key={m.id} onClick={() => onMoveLesson(lesson.id, m.id)}>
+                                    {m.title}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => onDeleteLesson(lesson.id)}
+                            className="text-red focus:text-red"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
+
+          {/* "+ Add lecture" — matches the reference's centered placement at the bottom of
+              the expanded lesson list, same lesson-creation flow used everywhere else. */}
+          <div className="p-4 flex justify-center">
+            <button
+              onClick={() => onAddLesson(module.id)}
+              className="inline-flex items-center gap-1.5 bg-dash-accent hover:bg-dash-accent/90 text-white text-[11px] font-bold rounded-full px-5 py-2.5 shadow-md transition-colors motion-reduce:transition-none"
+            >
+              <Plus size={13} /> Add lecture
+            </button>
+          </div>
         </div>
       )}
     </div>

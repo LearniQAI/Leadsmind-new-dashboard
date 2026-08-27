@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Play, Lock, Eye, Star, Plus, Minus, Users, MessageSquare } from 'lucide-react';
+import { BookOpen, Lock, Eye, Star, Plus, Minus, Users } from 'lucide-react';
 import { COURSE_THEMES } from '@/lib/courses/courseThemeTokens';
 
-// Phase F: pulls its accent color from the single canonical theme source instead of the
-// #8b5cf6 / #7c3aed literals this component used to repeat inline — same real value
-// (COURSE_THEMES.community_coaching.primaryHex is #8b5cf6, matching what was here before),
-// now defined once.
+// GROVE — calm, natural, trustworthy. Pale sage-white page, a warm serif display face,
+// organic/irregular-radius shape language, and the ONE signature move — a branching
+// vein-like divider — used once beneath the hero, standing in for a literal leaf/plant
+// motif elsewhere (deliberately not repeated anywhere else on the page).
 const theme = COURSE_THEMES.community_coaching;
 
 interface TemplateProps {
@@ -16,6 +16,29 @@ interface TemplateProps {
   modules: any[];
   lessons: any[];
   previewData?: any;
+}
+
+// The branch signature, static (no live percent here — a sales page has no student progress
+// to show) — a structural divider evoking growth, not a literal plant icon.
+function BranchDivider() {
+  return (
+    <svg viewBox="0 0 200 20" preserveAspectRatio="none" className="w-full max-w-xs mx-auto h-4">
+      <line x1="2" y1="10" x2="198" y2="10" stroke={theme.primaryHex} strokeOpacity="0.35" strokeWidth="1.5" strokeLinecap="round" />
+      {[50, 100, 150].map((x, i) => (
+        <line
+          key={x}
+          x1={x}
+          y1="10"
+          x2={x + (i % 2 === 0 ? -6 : 6)}
+          y2={i % 2 === 0 ? "2" : "18"}
+          stroke={theme.primaryHex}
+          strokeOpacity="0.5"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      ))}
+    </svg>
+  );
 }
 
 export default function TemplateCommunityCoaching({ course, modules, lessons, previewData }: TemplateProps) {
@@ -32,7 +55,7 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
     'Get direct access to expert instructor insights',
     'Obtain a certificate of completion'
   ];
-  
+
   const isSectionVisible = (secName: string) => {
     if (previewData?.visible_sections) {
       return !!previewData.visible_sections[secName];
@@ -61,38 +84,42 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
   };
 
   return (
-    <div className="min-h-screen bg-n900 text-t1 font-sans antialiased py-12 px-6">
-      <div className="max-w-4xl mx-auto space-y-16">
-        
+    <div
+      className={`min-h-screen py-16 px-6 ${theme.bodyFontClass}`}
+      style={{ background: theme.pageBgHex, color: theme.pageTextPrimaryHex }}
+    >
+      <div className="max-w-3xl mx-auto space-y-16">
+
         {/* HERO SECTION */}
         {isSectionVisible('hero') && (
-          <section className="text-center space-y-6 pb-6">
+          <section className="text-center space-y-6">
             <div className="flex justify-center">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${theme.textAccentClass} bg-purple/10 border ${theme.borderAccentClass}/20`}>
+              <span
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
+                style={{ background: `${theme.primaryHex}14`, color: theme.primaryHex, border: `1px solid ${theme.primaryHex}33` }}
+              >
                 <Users size={12} /> Peer & Mentor Led
               </span>
             </div>
-            <h1 className="text-3xl md:text-5xl font-display font-bold text-t1 tracking-tight max-w-3xl mx-auto leading-tight">
-              Join Our Study Cohort: <span className={theme.textAccentClass}>{pageTitle}</span>
+            <h1 className={`text-3xl md:text-5xl ${theme.headingFontClass} ${theme.headingWeightClass} tracking-tight max-w-3xl mx-auto leading-tight`}>
+              Join Our Study Cohort: <span style={{ color: theme.primaryHex }}>{pageTitle}</span>
             </h1>
-            <p className="text-xs md:text-sm text-t2 max-w-xl mx-auto leading-relaxed">
+            <p className="text-xs md:text-sm max-w-xl mx-auto leading-relaxed" style={{ color: theme.pageTextSecondaryHex }}>
               {tagline}
             </p>
+            <BranchDivider />
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-              <button 
+              <button
                 onClick={handleEnroll}
-                className={`w-full sm:w-auto ${theme.solidBgClass} ${theme.solidHoverBgClass} text-white font-bold text-xs uppercase tracking-widest px-8 py-3.5 rounded-xl shadow-lg transition-all`}
+                className={`w-full sm:w-auto text-white font-bold text-xs uppercase tracking-widest px-9 py-4 ${theme.landingRadiusClass} shadow-md transition-transform hover:-translate-y-0.5`}
+                style={{ background: theme.primaryHex }}
               >
                 Join Cohort & Course
               </button>
             </div>
             {course?.thumbnail_url && (
-              <div className="mt-8 rounded-2xl overflow-hidden border border-white/5 bg-n800 aspect-video relative max-w-2xl mx-auto">
-                <img 
-                  src={course.thumbnail_url} 
-                  alt={pageTitle}
-                  className="w-full h-full object-cover"
-                />
+              <div className={`mt-8 overflow-hidden aspect-video relative max-w-2xl mx-auto ${theme.landingRadiusClass}`} style={{ background: theme.pageSurfaceHex, border: `1px solid ${theme.pageBorderHex}` }}>
+                <img src={course.thumbnail_url} alt={pageTitle} className="w-full h-full object-cover" />
               </div>
             )}
           </section>
@@ -101,16 +128,17 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
         {/* OUTCOMES SECTION */}
         {isSectionVisible('outcomes') && outcomes.length > 0 && (
           <section className="space-y-6">
-            <h2 className={`text-lg font-display font-semibold text-t1 border-l-2 ${theme.borderAccentClass} pl-3`}>
-              Cohort Outcomes & Focus Areas
-            </h2>
+            <h2 className={`text-lg ${theme.headingFontClass} font-semibold`}>Cohort Outcomes & Focus Areas</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {outcomes.map((outcome: string, idx: number) => (
-                <div key={idx} className="flex items-start gap-3 bg-n800 p-4 rounded-xl border border-white/5">
-                  <div className={`w-5 h-5 rounded-full bg-purple/10 ${theme.textAccentClass} flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5`}>
+                <div key={idx} className={`flex items-start gap-3 p-4 ${theme.landingRadiusClass}`} style={{ background: theme.pageSurfaceHex, border: `1px solid ${theme.pageBorderHex}` }}>
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5"
+                    style={{ background: `${theme.primaryHex}1A`, color: theme.primaryHex }}
+                  >
                     {idx + 1}
                   </div>
-                  <span className="text-xs text-t2 leading-relaxed">{outcome}</span>
+                  <span className="text-xs leading-relaxed" style={{ color: theme.pageTextSecondaryHex }}>{outcome}</span>
                 </div>
               ))}
             </div>
@@ -119,22 +147,18 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
 
         {/* INSTRUCTOR SECTION */}
         {isSectionVisible('instructor') && (
-          <section className="bg-n800 border border-white/5 p-6 rounded-2xl flex flex-col md:flex-row items-center md:items-start gap-6">
+          <section className={`p-6 flex flex-col md:flex-row items-center md:items-start gap-6 ${theme.landingRadiusClass}`} style={{ background: theme.pageSurfaceHex, border: `1px solid ${theme.pageBorderHex}` }}>
             {instructorAvatar ? (
-              <img 
-                src={instructorAvatar} 
-                alt={instructorName}
-                className="w-16 h-16 rounded-full border border-white/10 object-cover shrink-0 bg-n700"
-              />
+              <img src={instructorAvatar} alt={instructorName} className="w-16 h-16 rounded-full object-cover shrink-0" style={{ border: `2px solid ${theme.primaryHex}55` }} />
             ) : (
-              <div className="w-16 h-16 rounded-full border border-white/10 bg-n700 flex items-center justify-center shrink-0 text-t3 font-black text-xl uppercase font-display">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 font-bold text-xl uppercase text-white" style={{ background: theme.primaryHex }}>
                 {instructorName.charAt(0)}
               </div>
             )}
             <div className="space-y-2 text-center md:text-left">
-              <span className={`text-[10px] font-bold uppercase tracking-widest ${theme.textAccentClass}`}>Your Mentor & Coach</span>
-              <h3 className="text-base font-display font-semibold text-t1">{instructorName}</h3>
-              <p className="text-xs text-t2 leading-relaxed max-w-xl">{instructorBio}</p>
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: theme.primaryHex }}>Your Mentor & Coach</span>
+              <h3 className={`text-base ${theme.headingFontClass} font-semibold`}>{instructorName}</h3>
+              <p className="text-xs leading-relaxed max-w-xl" style={{ color: theme.pageTextSecondaryHex }}>{instructorBio}</p>
             </div>
           </section>
         )}
@@ -142,46 +166,44 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
         {/* CURRICULUM SECTION */}
         {isSectionVisible('curriculum') && modules.length > 0 && (
           <section className="space-y-6">
-            <h2 className={`text-lg font-display font-semibold text-t1 border-l-2 ${theme.borderAccentClass} pl-3`}>
-              Weekly Learning Path
-            </h2>
+            <h2 className={`text-lg ${theme.headingFontClass} font-semibold`}>Weekly Learning Path</h2>
             <div className="space-y-3">
               {modules.map((mod: any, index: number) => {
                 const modLessons = lessons.filter(l => l.module_id === mod.id);
                 const isExpanded = !!expandedModules[mod.id];
                 return (
-                  <div key={mod.id} className="bg-n800 border border-white/5 rounded-xl overflow-hidden transition-all">
-                    <button 
+                  <div key={mod.id} className={`overflow-hidden ${theme.landingRadiusClass}`} style={{ background: theme.pageSurfaceHex, border: `1px solid ${theme.pageBorderHex}` }}>
+                    <button
                       onClick={() => setExpandedModules(prev => ({ ...prev, [mod.id]: !prev[mod.id] }))}
-                      className="w-full p-4 flex items-center justify-between text-left hover:bg-n700/50 transition-colors"
+                      className="w-full p-4 flex items-center justify-between text-left hover:bg-black/[0.02] transition-colors"
                     >
                       <div className="space-y-1">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${theme.textAccentClass}`}>Week {index + 1}</span>
-                        <h3 className="text-sm font-semibold text-t1">{mod.title}</h3>
+                        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: theme.primaryHex }}>Week {index + 1}</span>
+                        <h3 className="text-sm font-semibold">{mod.title}</h3>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-t3 font-bold uppercase">{modLessons.length} lessons</span>
-                        {isExpanded ? <Minus className="w-3.5 h-3.5 text-t3" /> : <Plus className="w-3.5 h-3.5 text-t3" />}
+                        <span className="text-[10px] font-bold uppercase" style={{ color: theme.pageTextSecondaryHex }}>{modLessons.length} lessons</span>
+                        {isExpanded ? <Minus className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                       </div>
                     </button>
                     {isExpanded && (
-                      <div className="border-t border-white/5 divide-y divide-white/5 bg-n900/40">
+                      <div className="border-t" style={{ borderColor: theme.pageBorderHex }}>
                         {modLessons.length === 0 ? (
-                          <div className="p-4 text-xs text-t3 italic">No lessons in this module yet.</div>
+                          <div className="p-4 text-xs italic" style={{ color: theme.pageTextSecondaryHex }}>No lessons in this module yet.</div>
                         ) : (
                           modLessons.map((les: any) => (
-                            <div key={les.id} className="p-3 px-4 flex items-center justify-between text-xs hover:bg-white/[0.02] transition-colors">
+                            <div key={les.id} className="p-3 px-4 flex items-center justify-between text-xs border-t" style={{ borderColor: theme.pageBorderHex }}>
                               <div className="flex items-center gap-2">
-                                <BookOpen className="w-3.5 h-3.5 text-t3" />
-                                <span className="text-t2">{les.title}</span>
+                                <BookOpen className="w-3.5 h-3.5" style={{ color: theme.pageTextSecondaryHex }} />
+                                <span style={{ color: theme.pageTextPrimaryHex }}>{les.title}</span>
                               </div>
                               <div>
                                 {les.is_preview ? (
-                                  <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-green bg-green/10 px-2 py-0.5 rounded border border-green/20">
+                                  <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: `${theme.pageSuccessHex}1A`, color: theme.pageSuccessHex }}>
                                     <Eye className="w-2.5 h-2.5" /> Preview
                                   </span>
                                 ) : (
-                                  <Lock className="w-3.5 h-3.5 text-t4" />
+                                  <Lock className="w-3.5 h-3.5" style={{ color: theme.pageTextSecondaryHex }} />
                                 )}
                               </div>
                             </div>
@@ -199,20 +221,18 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
         {/* REVIEWS SECTION */}
         {isSectionVisible('reviews') && reviews.length > 0 && (
           <section className="space-y-6">
-            <h2 className={`text-lg font-display font-semibold text-t1 border-l-2 ${theme.borderAccentClass} pl-3`}>
-              Cohort Testimonials
-            </h2>
+            <h2 className={`text-lg ${theme.headingFontClass} font-semibold`}>Cohort Testimonials</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {reviews.map((rev: any, idx: number) => (
-                <div key={idx} className="bg-n800 border border-white/5 p-4 rounded-xl space-y-2">
+                <div key={idx} className={`p-4 space-y-2 ${theme.landingRadiusClass}`} style={{ background: theme.pageSurfaceHex, border: `1px solid ${theme.pageBorderHex}` }}>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-t1">{rev.name}</span>
+                    <span className="text-xs font-semibold">{rev.name}</span>
                     <div className="flex items-center gap-0.5">
-                      <Star className="w-3 h-3 text-amber fill-amber" />
-                      <span className="text-[10px] text-amber font-bold">{rev.rating}</span>
+                      <Star className="w-3 h-3" style={{ color: '#E8A33D', fill: '#E8A33D' }} />
+                      <span className="text-[10px] font-bold" style={{ color: '#E8A33D' }}>{rev.rating}</span>
                     </div>
                   </div>
-                  <p className="text-xs text-t2 italic leading-relaxed">"{rev.text}"</p>
+                  <p className="text-xs italic leading-relaxed" style={{ color: theme.pageTextSecondaryHex }}>"{rev.text}"</p>
                 </div>
               ))}
             </div>
@@ -221,17 +241,18 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
 
         {/* PRICING & FAQ SECTION */}
         {isSectionVisible('pricing') && (
-          <section className="bg-gradient-to-br from-n800 to-n900 border border-white/10 p-8 rounded-2xl text-center space-y-4">
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${theme.textAccentClass}`}>Cohort Enrollment</span>
-            <h3 className="text-3xl font-display font-bold text-t1">
+          <section className={`p-8 text-center space-y-4 ${theme.landingRadiusClass}`} style={{ background: `linear-gradient(135deg, ${theme.pageSurfaceHex}, #EFF3EA)`, border: `1px solid ${theme.pageBorderHex}` }}>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: theme.primaryHex }}>Cohort Enrollment</span>
+            <h3 className={`text-3xl ${theme.headingFontClass} font-bold`}>
               {course?.price ? `$${course.price}` : 'Free Access'}
             </h3>
-            <p className="text-xs text-t2 max-w-md mx-auto">
-              Get lifetime access to the curriculum, weekly group Q&A calls, study channels, and peer chat nodes.
+            <p className="text-xs max-w-md mx-auto" style={{ color: theme.pageTextSecondaryHex }}>
+              Get lifetime access to the curriculum, weekly group Q&A calls, study channels, and peer chat.
             </p>
-            <button 
+            <button
               onClick={handleEnroll}
-              className={`${theme.solidBgClass} ${theme.solidHoverBgClass} text-white font-bold text-xs uppercase tracking-widest px-8 py-3.5 rounded-xl shadow-lg transition-all mt-2`}
+              className={`text-white font-bold text-xs uppercase tracking-widest px-9 py-4 ${theme.landingRadiusClass} shadow-md transition-transform hover:-translate-y-0.5 mt-2`}
+              style={{ background: theme.primaryHex }}
             >
               Get Cohort Pass
             </button>
@@ -241,23 +262,21 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
         {/* FAQ SECTION */}
         {isSectionVisible('faq') && faqs.length > 0 && (
           <section className="space-y-6">
-            <h2 className={`text-lg font-display font-semibold text-t1 border-l-2 ${theme.borderAccentClass} pl-3`}>
-              Frequently Asked Questions
-            </h2>
+            <h2 className={`text-lg ${theme.headingFontClass} font-semibold`}>Frequently Asked Questions</h2>
             <div className="space-y-3">
               {faqs.map((faq: any, idx: number) => {
                 const isActive = activeFaq === idx;
                 return (
-                  <div key={idx} className="bg-n800 border border-white/5 rounded-xl overflow-hidden">
-                    <button 
+                  <div key={idx} className={`overflow-hidden ${theme.landingRadiusClass}`} style={{ background: theme.pageSurfaceHex, border: `1px solid ${theme.pageBorderHex}` }}>
+                    <button
                       onClick={() => setActiveFaq(isActive ? null : idx)}
-                      className="w-full p-4 flex items-center justify-between text-left text-xs font-semibold text-t1 hover:bg-n700/30 transition-colors"
+                      className="w-full p-4 flex items-center justify-between text-left text-xs font-semibold hover:bg-black/[0.02] transition-colors"
                     >
                       <span>{faq.question}</span>
-                      {isActive ? <Minus className="w-3.5 h-3.5 text-t3" /> : <Plus className="w-3.5 h-3.5 text-t3" />}
+                      {isActive ? <Minus className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                     </button>
                     {isActive && (
-                      <div className="p-4 pt-0 border-t border-white/5 text-xs text-t2 leading-relaxed">
+                      <div className="p-4 pt-0 border-t text-xs leading-relaxed" style={{ borderColor: theme.pageBorderHex, color: theme.pageTextSecondaryHex }}>
                         {faq.answer}
                       </div>
                     )}

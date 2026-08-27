@@ -1,8 +1,9 @@
 import React from 'react';
-import { Lock, CheckCircle2, Play, Download, UserRound, Clock } from 'lucide-react';
+import { Lock, Play, Download, UserRound, Clock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
+import { ThemeCompletionIcon, ThemeGlowWrap, ThemeProgressIndicator } from '@/components/courses/theme/ThemeSignature';
 
 interface SyllabusSidebarProps {
   course: any;
@@ -75,12 +76,7 @@ export default function SyllabusSidebar({
           <span className="font-bold text-white/50 uppercase tracking-widest font-mono">Course Completion</span>
           <span className={`font-black ${theme.textAccentClass} font-mono`}>{globalProgressPercentage}%</span>
         </div>
-        <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
-          <div
-            className={`bg-gradient-to-r ${theme.gradientClass} h-1.5 rounded-full transition-all duration-500`}
-            style={{ width: `${globalProgressPercentage}%` }}
-          />
-        </div>
+        <ThemeProgressIndicator theme={theme} percent={globalProgressPercentage} moduleCount={modules.length} />
         <div className="text-[9px] text-white/30 uppercase font-bold tracking-wider flex justify-between">
           <span>{completedLessonsCount} Completed</span>
           <span>{totalLessonsCount} Lessons</span>
@@ -123,40 +119,41 @@ export default function SyllabusSidebar({
                   const isDone = completedLessonIds.includes(les.id);
 
                   return (
-                    <div
-                      key={les.id}
-                      onClick={() => {
-                        if (!lockReason) {
-                          setActiveLesson(les);
-                        }
-                      }}
-                      className={`p-3.5 ${theme.radiusClass} text-sm flex items-center justify-between gap-3 select-none cursor-pointer transition-all border ${
-                        isSelected
-                          ? `${theme.solidBgClass}/10 ${theme.borderAccentClass} text-white font-bold`
-                          : "bg-white/[0.01] border-transparent text-white/60 hover:bg-white/[0.03] hover:text-white"
-                      } ${lockReason ? "opacity-40 cursor-not-allowed" : ""}`}
-                    >
-                      <div className="flex items-center gap-2.5 truncate">
-                        {lockReason ? (
-                          <Lock size={14} className="text-white/40 shrink-0" />
-                        ) : isDone ? (
-                          <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
-                        ) : (
-                          <Play size={13} className="text-white/40 shrink-0" />
-                        )}
-                        <span className="truncate pr-1">{les.title}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {les.time_estimate_minutes != null && (
-                          <span className="flex items-center gap-0.5 text-[9px] font-mono text-white/30">
-                            <Clock size={10} /> {les.time_estimate_minutes}m
+                    <ThemeGlowWrap key={les.id} theme={theme} active={isSelected}>
+                      <div
+                        onClick={() => {
+                          if (!lockReason) {
+                            setActiveLesson(les);
+                          }
+                        }}
+                        className={`p-3.5 ${theme.radiusClass} text-sm flex items-center justify-between gap-3 select-none cursor-pointer transition-all border ${
+                          isSelected
+                            ? `${theme.solidBgClass}/10 ${theme.borderAccentClass} text-white font-bold`
+                            : "bg-white/[0.01] border-transparent text-white/60 hover:bg-white/[0.03] hover:text-white"
+                        } ${lockReason ? "opacity-40 cursor-not-allowed" : ""}`}
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          {lockReason ? (
+                            <Lock size={14} className="text-white/40 shrink-0" />
+                          ) : isDone ? (
+                            <ThemeCompletionIcon theme={theme} size={15} />
+                          ) : (
+                            <Play size={13} className="text-white/40 shrink-0" />
+                          )}
+                          <span className="truncate pr-1">{les.title}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {les.time_estimate_minutes != null && (
+                            <span className="flex items-center gap-0.5 text-[9px] font-mono text-white/30">
+                              <Clock size={10} /> {les.time_estimate_minutes}m
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono text-white/30 uppercase">
+                            {les.lesson_type}
                           </span>
-                        )}
-                        <span className="text-[10px] font-mono text-white/30 uppercase">
-                          {les.lesson_type}
-                        </span>
+                        </div>
                       </div>
-                    </div>
+                    </ThemeGlowWrap>
                   );
                 })}
                 {moduleLessons.length === 0 && (
