@@ -1,15 +1,28 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
-  Loader2, X, ArrowLeft, BookOpen, PlayCircle,
-  CheckSquare, FileEdit, FileText, Headphones,
-  Video, Layers, Code, Archive, Plus, Trash2,
-  AlertTriangle, Settings, Sparkles, AlertCircle
+  Loader2,
+  X,
+  ArrowLeft,
+  BookOpen,
+  PlayCircle,
+  CheckSquare,
+  FileEdit,
+  FileText,
+  Headphones,
+  Video,
+  Layers,
+  Code,
+  Archive,
+  Plus,
+  Trash2,
+  AlertTriangle,
+  Settings,
+  Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import { getLessonQuiz, upsertQuiz } from "@/app/actions/quizzes";
 import ContentBlockList, { ContentBlock } from "./ContentBlockList";
@@ -23,8 +36,21 @@ import DownloadBlockEditor from "./blocks/DownloadBlockEditor";
 import EmbedBlockEditor from "./blocks/EmbedBlockEditor";
 import LiveSessionBlockEditor from "./blocks/LiveSessionBlockEditor";
 import RichTextBlockEditor from "./blocks/RichTextBlockEditor";
+import {
+  TextInput,
+  TextArea,
+  Select,
+  SectionLabel,
+  PrimaryButton,
+  GhostButton,
+} from "./settings/primitives";
+import { cn } from "@/lib/utils";
 
-function renderBlockTypeEditor(courseId: string, block: ContentBlock, onChange: (patch: Partial<ContentBlock>) => void) {
+function renderBlockTypeEditor(
+  courseId: string,
+  block: ContentBlock,
+  onChange: (patch: Partial<ContentBlock>) => void
+) {
   switch (block.type) {
     case "video":
       return <VideoBlockEditor block={block} onChange={onChange} />;
@@ -62,17 +88,76 @@ interface LessonCreatorModalProps {
 }
 
 const LESSON_TYPES = [
-  { type: "Text", label: "Rich Text Lecture", desc: "Standard text article layout with markdown support", icon: BookOpen },
-  { type: "Video", label: "Video streaming Node", desc: "Embed and stream MP4 files, YouTube, or Vimeo links", icon: PlayCircle },
-  { type: "Quiz", label: "Interactive Quiz", desc: "Test student mastery with customizable question structures", icon: CheckSquare },
-  { type: "Assignment", label: "Student Assignment", desc: "Require document uploads or text submissions for grading", icon: FileEdit },
-  { type: "PDF", label: "PDF Document Frame", desc: "Embed slides, textbooks, or compliance documents", icon: FileText },
-  { type: "Audio", label: "Audio Lecture Node", desc: "Host podcasts, recordings, or speech elements", icon: Headphones },
-  { type: "Live Session", label: "Live Broadcast", desc: "Integrate Zoom, Teams, or Google Meet links", icon: Video },
-  { type: "Flashcards", label: "Interactive Deck", desc: "Flippable active-recall study flashcard card systems", icon: Layers },
-  { type: "Code", label: "Monaco Code Sandbox", desc: "A code editor terminal for standard coding execution", icon: Code },
-  { type: "SCORM", label: "SCORM Course compliance", desc: "Upload standard industry compliant SCORM zip packages", icon: Archive }
+  { type: "Text", label: "Rich text", desc: "Article layout with markdown", icon: BookOpen },
+  { type: "Video", label: "Video", desc: "MP4, YouTube or Vimeo", icon: PlayCircle },
+  { type: "Quiz", label: "Quiz", desc: "Customisable question types", icon: CheckSquare },
+  { type: "Assignment", label: "Assignment", desc: "File or text submissions", icon: FileEdit },
+  { type: "PDF", label: "PDF", desc: "Slides, books, documents", icon: FileText },
+  { type: "Audio", label: "Audio", desc: "Podcasts and recordings", icon: Headphones },
+  { type: "Live Session", label: "Live session", desc: "Zoom, Teams or Meet", icon: Video },
+  { type: "Flashcards", label: "Flashcards", desc: "Flippable active recall", icon: Layers },
+  { type: "Code", label: "Code sandbox", desc: "In-browser code editor", icon: Code },
+  { type: "SCORM", label: "SCORM", desc: "1.2 and 2004 packages", icon: Archive },
 ];
+
+/* Stacked label + control for the config form. */
+function LField({
+  label,
+  hint,
+  htmlFor,
+  required,
+  children,
+}: {
+  label: string;
+  hint?: React.ReactNode;
+  htmlFor?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={htmlFor} className="block text-[12px] font-semibold text-dash-text">
+        {label}
+        {required && <span className="ml-0.5 text-sky-600">*</span>}
+      </label>
+      {children}
+      {hint && <p className="text-[11px] leading-relaxed text-dash-textMuted">{hint}</p>}
+    </div>
+  );
+}
+
+function Panel({ label, children }: { label?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3 rounded-xl border border-dash-border bg-dash-surface/50 p-4">
+      {label && <SectionLabel>{label}</SectionLabel>}
+      {children}
+    </div>
+  );
+}
+
+function Notice({
+  tone = "amber",
+  children,
+}: {
+  tone?: "amber" | "sky" | "rose";
+  children: React.ReactNode;
+}) {
+  const map = {
+    amber: "border-amber-200 bg-amber-50/70 text-amber-800",
+    sky: "border-sky-200 bg-sky-50/70 text-sky-800",
+    rose: "border-rose-200 bg-rose-50/70 text-rose-800",
+  } as const;
+  return (
+    <div
+      className={cn(
+        "flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-[12px] leading-relaxed [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0",
+        map[tone]
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function LessonCreatorModal({
   isOpen,
@@ -80,7 +165,7 @@ export default function LessonCreatorModal({
   onSave,
   moduleId,
   courseId,
-  editingLesson
+  editingLesson,
 }: LessonCreatorModalProps) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
@@ -89,12 +174,13 @@ export default function LessonCreatorModal({
   const [videoUrl, setVideoUrl] = useState("");
   const [content, setContent] = useState("");
   const [isFree, setIsFree] = useState(false);
-  const [accessLevel, setAccessLevel] = useState<'public' | 'enrolled' | 'paid'>('enrolled');
+  const [accessLevel, setAccessLevel] = useState<"public" | "enrolled" | "paid">("enrolled");
   const [timeEstimateMinutes, setTimeEstimateMinutes] = useState<string>("");
-  const [unlockType, setUnlockType] = useState<'sequential' | 'immediate' | 'drip' | 'quiz_gated'>('sequential');
+  const [unlockType, setUnlockType] = useState<"sequential" | "immediate" | "drip" | "quiz_gated">(
+    "sequential"
+  );
   const [dripValue, setDripValue] = useState<string>("");
 
-  // Type-specific Metadata states
   const [flashcards, setFlashcards] = useState<{ front: string; back: string }[]>([]);
   const [codeLanguage, setCodeLanguage] = useState("javascript");
   const [starterCode, setStarterCode] = useState("");
@@ -114,14 +200,11 @@ export default function LessonCreatorModal({
 
     setUploadingType(fileType);
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('pathPrefix', `lms/${fileType}`);
+    formData.append("file", file);
+    formData.append("pathPrefix", `lms/${fileType}`);
 
     try {
-      const res = await fetch('/api/lms/upload', {
-        method: 'POST',
-        body: formData
-      });
+      const res = await fetch("/api/lms/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (data.error) {
         toast.error(`Upload failed: ${data.error}`);
@@ -130,7 +213,7 @@ export default function LessonCreatorModal({
         toast.success(`${fileType.toUpperCase()} file uploaded successfully!`);
       }
     } catch {
-      toast.error('Network error uploading file');
+      toast.error("Network error uploading file");
     } finally {
       setUploadingType(null);
     }
@@ -141,13 +224,15 @@ export default function LessonCreatorModal({
     setIsRegeneratingSummary(true);
     setSummaryError(null);
     try {
-      const res = await fetch(`/api/lms/lesson-summary?lessonId=${editingLesson.id}`, { method: 'POST' });
+      const res = await fetch(`/api/lms/lesson-summary?lessonId=${editingLesson.id}`, {
+        method: "POST",
+      });
       const body = await res.json();
-      if (!res.ok) throw new Error(body.error || 'Failed to regenerate summary');
-      toast.success('Lesson summary regenerated');
+      if (!res.ok) throw new Error(body.error || "Failed to regenerate summary");
+      toast.success("Lesson summary regenerated");
     } catch (err: any) {
-      setSummaryError(err.message || 'Something went wrong');
-      toast.error(err.message || 'Failed to regenerate summary');
+      setSummaryError(err.message || "Something went wrong");
+      toast.error(err.message || "Failed to regenerate summary");
     } finally {
       setIsRegeneratingSummary(false);
     }
@@ -168,7 +253,7 @@ export default function LessonCreatorModal({
         title: lesTitle || "Lesson Quiz",
         passing_score: 80,
         course_id: courseId,
-        module_id: moduleId
+        module_id: moduleId,
       });
       if (quizRes.error) {
         console.error("Quiz creation failed:", quizRes.error);
@@ -188,40 +273,41 @@ export default function LessonCreatorModal({
       setVideoUrl(editingLesson.video_url || "");
       setContent(editingLesson.content || "");
       setIsFree(editingLesson.is_free || false);
-      setAccessLevel(editingLesson.access_level || (editingLesson.is_free ? 'public' : 'enrolled'));
+      setAccessLevel(editingLesson.access_level || (editingLesson.is_free ? "public" : "enrolled"));
       setTimeEstimateMinutes(
-        editingLesson.time_estimate_minutes !== null && editingLesson.time_estimate_minutes !== undefined
+        editingLesson.time_estimate_minutes !== null &&
+          editingLesson.time_estimate_minutes !== undefined
           ? String(editingLesson.time_estimate_minutes)
           : ""
       );
-      setUnlockType(editingLesson.unlock_type || 'sequential');
+      setUnlockType(editingLesson.unlock_type || "sequential");
       setDripValue(
         editingLesson.drip_value !== null && editingLesson.drip_value !== undefined
           ? String(editingLesson.drip_value)
           : ""
       );
       setType(editingLesson.type || "Text");
-      
+
       const meta = editingLesson.metadata || {};
       setFlashcards(meta.flashcards || []);
       setCodeLanguage(meta.codeLanguage || "javascript");
       setStarterCode(meta.starterCode || "");
       setScormVersion(meta.scormVersion || "scorm12");
       setStartTime(meta.startTime || "");
-      
+
       if (editingLesson.type === "Quiz") {
         fetchOrCreateQuiz(editingLesson.id, editingLesson.title || "");
       }
-      
-      setStep(2); // Directly go to editor form when editing
+
+      setStep(2);
     } else {
       setTitle("");
       setVideoUrl("");
       setContent("");
       setIsFree(false);
-      setAccessLevel('enrolled');
+      setAccessLevel("enrolled");
       setTimeEstimateMinutes("");
-      setUnlockType('sequential');
+      setUnlockType("sequential");
       setDripValue("");
       setType("Text");
       setFlashcards([]);
@@ -230,9 +316,16 @@ export default function LessonCreatorModal({
       setScormVersion("scorm12");
       setStartTime("");
       setQuizId(null);
-      setStep(1); // Selection wizard first
+      setStep(1);
     }
   }, [editingLesson, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -241,14 +334,9 @@ export default function LessonCreatorModal({
     setStep(2);
   };
 
-  const handleAddFlashcard = () => {
-    setFlashcards([...flashcards, { front: "", back: "" }]);
-  };
-
-  const handleRemoveFlashcard = (idx: number) => {
+  const handleAddFlashcard = () => setFlashcards([...flashcards, { front: "", back: "" }]);
+  const handleRemoveFlashcard = (idx: number) =>
     setFlashcards(flashcards.filter((_, i) => i !== idx));
-  };
-
   const handleFlashcardChange = (idx: number, side: "front" | "back", val: string) => {
     const updated = [...flashcards];
     updated[idx][side] = val;
@@ -263,8 +351,7 @@ export default function LessonCreatorModal({
     }
 
     setIsSaving(true);
-    
-    // Package type metadata
+
     const metadata: any = {};
     if (type === "Flashcards") {
       metadata.flashcards = flashcards;
@@ -284,13 +371,14 @@ export default function LessonCreatorModal({
         title,
         video_url: videoUrl,
         content,
-        is_free: accessLevel === 'public',
+        is_free: accessLevel === "public",
         access_level: accessLevel,
-        time_estimate_minutes: timeEstimateMinutes.trim() === "" ? null : parseInt(timeEstimateMinutes, 10),
+        time_estimate_minutes:
+          timeEstimateMinutes.trim() === "" ? null : parseInt(timeEstimateMinutes, 10),
         unlock_type: unlockType,
         drip_value: dripValue.trim() === "" ? null : parseInt(dripValue, 10),
         type,
-        metadata
+        metadata,
       });
       onClose();
     } catch (err: any) {
@@ -304,439 +392,398 @@ export default function LessonCreatorModal({
   const TypeIcon = activeTypeInfo.icon;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
-      <div className="bg-white border border-dash-border rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl relative flex flex-col">
+    <div
+      className="fixed inset-0 z-[500] flex items-start justify-center overflow-y-auto bg-slate-900/45 p-4 backdrop-blur-sm sm:items-center"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="my-auto flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-dash-border bg-white shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-dash-border">
-          <div className="flex items-center gap-2">
-            {step === 2 && <TypeIcon className="text-dash-accent" size={18} />}
-            <h2 className="text-sm font-bold !text-dash-text">
-              {step === 1 ? "Select Lecture Format Layout" : `${editingLesson ? "Edit" : "Create"} ${type} Lesson`}
-            </h2>
+        <div className="flex items-start justify-between gap-4 border-b border-dash-border px-6 py-5">
+          <div className="flex items-start gap-3">
+            {step === 2 && (
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-500/15 [&_svg]:size-4">
+                <TypeIcon />
+              </span>
+            )}
+            <div className="space-y-1">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+                Lesson
+              </div>
+              <h2 className="font-display text-[17px] font-semibold leading-tight tracking-[-0.01em] text-dash-text">
+                {step === 1
+                  ? "Choose a lesson type"
+                  : `${editingLesson ? "Edit" : "New"} ${activeTypeInfo.label.toLowerCase()} lesson`}
+              </h2>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none"
+            aria-label="Close"
+            className="-mr-1 -mt-1 rounded-lg p-1.5 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Step 1: Type Selection Panel */}
+        {/* Step 1 */}
         {step === 1 && (
-          <div className="p-6 space-y-4">
-            <p className="text-[10px] !text-dash-textMuted font-bold">
-              Choose a template mapping structure
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto pr-1">
+          <div className="max-h-[62vh] overflow-y-auto px-6 py-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {LESSON_TYPES.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div
+                  <button
                     key={item.type}
+                    type="button"
                     onClick={() => handleSelectType(item.type)}
-                    className="bg-dash-surface border border-dash-border hover:border-dash-accent/40 rounded-xl p-4 cursor-pointer hover:bg-dash-border/30 transition-all motion-reduce:transition-none flex items-start gap-3 group"
+                    className="group flex items-start gap-3.5 rounded-xl border border-dash-border bg-white p-4 text-left transition-all outline-none hover:border-slate-300 hover:bg-dash-surface/50 focus-visible:ring-4 focus-visible:ring-sky-500/20"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-dash-accent/10 border border-dash-accent/20 flex items-center justify-center text-dash-accent shrink-0 group-hover:bg-dash-accent group-hover:text-white transition-all motion-reduce:transition-none">
-                      <Icon size={18} />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold !text-dash-text block group-hover:text-dash-accent transition-colors motion-reduce:transition-none">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-dash-border bg-dash-surface text-dash-textMuted transition-colors group-hover:border-sky-200 group-hover:bg-sky-50 group-hover:text-sky-600 [&_svg]:size-[18px]">
+                      <Icon />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold text-dash-text group-hover:text-sky-700">
                         {item.label}
                       </span>
-                      <span className="text-[10px] !text-dash-textMuted block mt-0.5 leading-relaxed">
+                      <span className="mt-0.5 block text-[12px] leading-relaxed text-dash-textMuted">
                         {item.desc}
                       </span>
-                    </div>
-                  </div>
+                    </span>
+                  </button>
                 );
               })}
             </div>
           </div>
         )}
 
-        {/* Step 2: Form Configurations */}
+        {/* Step 2 */}
         {step === 2 && (
-          <form onSubmit={handleSubmit} className="p-6 space-y-5 flex-1">
-            {/* Back button to Step 1 (only show when creating new) */}
-            {!editingLesson && (
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="flex items-center gap-1 text-[10px] font-bold text-primary hover:opacity-80 mb-2 transition-opacity motion-reduce:transition-none"
-              >
-                <ArrowLeft size={12} /> Back to formats selection
-              </button>
-            )}
-
-            {/* Lesson Title */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold !text-dash-textMuted block">
-                Lesson Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Setting up the payfast hook endpoint"
-                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-sm !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary transition-all motion-reduce:transition-none"
-                required
-              />
-            </div>
-
-            {/* Video / Audio / Live / PDF / SCORM URL Input */}
-            {["Video", "Audio", "Live Session", "PDF", "SCORM"].includes(type) && (
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">
-                  {type === "Live Session" ? "Broadcast Stream Meeting URL" : `${type} Asset URL`}
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    placeholder={`https://example.com/assets/${type.toLowerCase()}`}
-                    className="flex-1 bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary transition-all motion-reduce:transition-none font-mono"
-                    required
-                  />
-                  {["Video", "Audio", "PDF", "SCORM"].includes(type) && (
-                    <div className="relative shrink-0">
-                      <input
-                        type="file"
-                        accept={
-                          type === "Video" ? "video/*" :
-                          type === "Audio" ? "audio/*" :
-                          type === "PDF" ? "application/pdf" :
-                          ".zip"
-                        }
-                        onChange={(e) => handleFileUpload(e, type.toLowerCase())}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                        disabled={uploadingType !== null}
-                      />
-                      <Button
-                        type="button"
-                        disabled={uploadingType !== null}
-                        className="h-full bg-dash-surface border border-dash-border hover:bg-dash-border/60 !text-dash-text text-[10px] font-bold px-4 rounded-xl flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
-                      >
-                        {uploadingType === type.toLowerCase() ? "Uploading..." : "Upload File"}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* SCORM Config Parameters */}
-            {type === "SCORM" && (
-              <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">
-                  SCORM Standards Version Compliance
-                </label>
-                <select
-                  value={scormVersion}
-                  onChange={(e) => setScormVersion(e.target.value)}
-                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-6">
+              {!editingLesson && (
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-sky-600 transition-colors hover:text-sky-700"
                 >
-                  <option value="scorm12">SCORM 1.2 standard</option>
-                  <option value="scorm2004">SCORM 2004 standard</option>
-                </select>
-              </div>
-            )}
+                  <ArrowLeft size={14} /> Back to lesson types
+                </button>
+              )}
 
-            {/* Live Session Scheduling Parameters */}
-            {type === "Live Session" && (
-              <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">
-                  Broadcast Start Date & Time
-                </label>
-                <input
-                  type="datetime-local"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
+              <LField label="Lesson title" htmlFor="lc-title" required>
+                <TextInput
+                  id="lc-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Setting up the payment webhook"
                   required
                 />
-              </div>
-            )}
+              </LField>
 
-            {/* Code editor inputs */}
-            {type === "Code" && (
-              <div className="grid grid-cols-1 gap-4 bg-dash-surface border border-dash-border rounded-xl p-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold !text-dash-textMuted block">
-                    Programming Language
-                  </label>
-                  <select
-                    value={codeLanguage}
-                    onChange={(e) => setCodeLanguage(e.target.value)}
-                    className="bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary"
-                  >
-                    <option value="javascript">JavaScript</option>
-                    <option value="typescript">TypeScript</option>
-                    <option value="python">Python</option>
-                    <option value="html">HTML / XML</option>
-                    <option value="css">CSS</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold !text-dash-textMuted block">
-                    Starter Template Code
-                  </label>
-                  <textarea
-                    value={starterCode}
-                    onChange={(e) => setStarterCode(e.target.value)}
-                    rows={4}
-                    placeholder="// Write starter code challenge template here..."
-                    className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text outline-none font-mono"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Flashcards System Builder */}
-            {type === "Flashcards" && (
-              <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold !text-dash-textMuted">
-                    Flashcard Deck System
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleAddFlashcard}
-                    className="text-[10px] font-bold text-primary hover:opacity-80 flex items-center gap-1 transition-opacity motion-reduce:transition-none"
-                  >
-                    <Plus size={12} /> Add Card
-                  </button>
-                </div>
-                {flashcards.length === 0 ? (
-                  <div className="py-6 text-center text-[11px] !text-dash-textMuted font-medium">
-                    No flashcards in this deck. Add cards to begin.
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
-                    {flashcards.map((card, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-white border border-dash-border p-3 rounded-lg">
+              {["Video", "Audio", "Live Session", "PDF", "SCORM"].includes(type) && (
+                <LField
+                  label={type === "Live Session" ? "Meeting URL" : `${type} asset URL`}
+                >
+                  <div className="flex gap-2">
+                    <TextInput
+                      type="url"
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      placeholder={`https://example.com/assets/${type.toLowerCase()}`}
+                      className="flex-1 font-mono text-[12px]"
+                      required
+                    />
+                    {["Video", "Audio", "PDF", "SCORM"].includes(type) && (
+                      <div className="relative shrink-0">
                         <input
-                          type="text"
-                          value={card.front}
-                          onChange={(e) => handleFlashcardChange(idx, "front", e.target.value)}
-                          placeholder="Front Question"
-                          className="flex-1 bg-dash-surface border border-dash-border rounded px-2 py-1 text-xs !text-dash-text outline-none"
-                          required
+                          type="file"
+                          accept={
+                            type === "Video"
+                              ? "video/*"
+                              : type === "Audio"
+                              ? "audio/*"
+                              : type === "PDF"
+                              ? "application/pdf"
+                              : ".zip"
+                          }
+                          onChange={(e) => handleFileUpload(e, type.toLowerCase())}
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          disabled={uploadingType !== null}
                         />
-                        <input
-                          type="text"
-                          value={card.back}
-                          onChange={(e) => handleFlashcardChange(idx, "back", e.target.value)}
-                          placeholder="Back Explanation"
-                          className="flex-1 bg-dash-surface border border-dash-border rounded px-2 py-1 text-xs !text-dash-text outline-none"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFlashcard(idx)}
-                          className="text-red hover:text-red/80 transition-colors motion-reduce:transition-none"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <GhostButton type="button" disabled={uploadingType !== null}>
+                          {uploadingType === type.toLowerCase() ? "Uploading…" : "Upload"}
+                        </GhostButton>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Interactive Quiz Builder */}
-            {type === "Quiz" && (
-              <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-4">
-                <span className="text-[10px] font-bold text-dash-accent block">Quiz Questions Workbench</span>
-                {editingLesson ? (
-                  isLoadingQuiz ? (
-                    <div className="py-6 text-center text-xs !text-dash-textMuted flex items-center justify-center gap-2">
-                      <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> Loading Quiz Workbench...
-                    </div>
-                  ) : quizId ? (
-                    <div className="py-6 px-4 text-center bg-white border border-dashed border-dash-border rounded-xl space-y-4">
-                      <div className="space-y-1.5">
-                        <h4 className="text-xs font-bold !text-dash-text">Quiz Ready to Configure</h4>
-                        <p className="text-[10px] !text-dash-textMuted max-w-sm mx-auto leading-relaxed">
-                          Build evaluation questions, configure passing scores, time limits, and write LENA AI explanation rationales in the dedicated Quiz Workbench.
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          router.push(`/courses/${courseId}/quiz/${quizId}`);
-                        }}
-                        className="bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-bold h-10 px-5 shadow-lg shadow-primary/20 flex items-center gap-1.5 mx-auto transition-colors motion-reduce:transition-none"
-                      >
-                        <Settings size={12} /> Open Quiz Workbench
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="py-6 text-center text-xs flex items-center justify-center gap-1.5 bg-white border border-dashed border-dash-border rounded-xl text-red">
-                      Failed to initialize Quiz database record.
-                    </div>
-                  )
-                ) : (
-                  <div className="py-6 text-center text-xs !text-dash-textMuted flex items-center justify-center gap-1.5 bg-white border border-dashed border-dash-border rounded-xl">
-                    <AlertTriangle size={14} className="text-amber-600" /> Please save the lesson first before building quiz questions.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Content Block System (PRD Section 4) — ordered blocks inside this
-                lesson, in whatever order the admin sets, drag-reorderable and
-                persisted immediately. Requires the lesson to already exist. */}
-            <div className="bg-dash-surface border border-dash-border rounded-xl p-4">
-              {editingLesson?.id ? (
-                <ContentBlockList
-                  lessonId={editingLesson.id}
-                  renderBlockEditor={(block, onChange) => renderBlockTypeEditor(courseId, block, onChange)}
-                />
-              ) : (
-                <div className="py-6 text-center text-xs !text-dash-textMuted flex items-center justify-center gap-1.5 border border-dashed border-dash-border rounded-xl">
-                  <AlertTriangle size={14} className="text-amber-600" /> Please save the lesson first before adding content blocks.
-                </div>
-              )}
-            </div>
-
-            {/* Access Level Selector */}
-            <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
-              <label className="text-[10px] font-bold !text-dash-textMuted block">Access Control Visibility</label>
-              <select
-                value={accessLevel}
-                onChange={(e) => setAccessLevel(e.target.value as any)}
-                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary transition-all motion-reduce:transition-none font-bold"
-              >
-                <option value="public">🔓 Public (Accessible without enrollment or login)</option>
-                <option value="enrolled">👥 Free for Enrolled (Requires login & enrollment)</option>
-                <option value="paid">💳 Paid Only (Locked behind paid enrollment verification)</option>
-              </select>
-              <p className="text-[8px] !text-dash-textMuted font-bold mt-1">
-                {accessLevel === 'public' && "Perfect for SEO indexation, search web crawlers, and course previews."}
-                {accessLevel === 'enrolled' && "Forces student registration. Free access for anyone who registers."}
-                {accessLevel === 'paid' && "Hard-locked. Accessible only after confirming payment verification state."}
-              </p>
-            </div>
-
-            {/* Time Estimate — shown in the student sidebar (PRD Section 10) */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold !text-dash-textMuted block">Time Estimate (minutes)</label>
-              <input
-                type="number"
-                min={0}
-                value={timeEstimateMinutes}
-                onChange={(e) => setTimeEstimateMinutes(e.target.value)}
-                placeholder="e.g. 15"
-                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary transition-all motion-reduce:transition-none"
-              />
-            </div>
-
-            {/* Unlock type + drip value — consolidated per-lesson settings (Section C, Step
-                3/4), reusing the real unlock_type column from Phase A rather than a second,
-                disconnected concept. */}
-            <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
-              <label className="text-[10px] font-bold !text-dash-textMuted block">Unlock condition</label>
-              <select
-                value={unlockType}
-                onChange={(e) => setUnlockType(e.target.value as any)}
-                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
-              >
-                <option value="sequential">Sequential (after the previous lesson)</option>
-                <option value="immediate">Immediate (no lock)</option>
-                <option value="drip">Drip (days after unlock condition)</option>
-                <option value="quiz_gated">Quiz-gated (previous lesson's quiz passed)</option>
-              </select>
-              {unlockType === 'drip' && (
-                <div className="pt-2">
-                  <label className="text-[10px] font-bold !text-dash-textMuted block mb-1.5">Drip delay (days)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={dripValue}
-                    onChange={(e) => setDripValue(e.target.value)}
-                    placeholder="0 = immediately once unlocked"
-                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Content (Text description, Rich Text, etc.) */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold !text-dash-textMuted block">
-                {type === "Text" ? "Lesson Rich Text (Markdown supported)" : `${type} Lesson Instructions / Body`}
-              </label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Explain lesson concepts or add learning guidelines..."
-                rows={5}
-                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary transition-all motion-reduce:transition-none font-mono leading-relaxed"
-              />
-            </div>
-
-            {/* AI Lesson Summary — regenerate action (only meaningful for a
-                lesson that already exists; brand-new lessons get their
-                summary generated automatically on first save). */}
-            {editingLesson?.id && (
-              <div className="space-y-2 bg-dash-surface border border-dash-border rounded-xl p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold !text-dash-textMuted block">AI Lesson Summary</label>
-                    <p className="text-[9px] !text-dash-textMuted mt-0.5">
-                      Regenerated automatically on save. Force a fresh one without re-saving:
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={handleRegenerateSummary}
-                    disabled={isRegeneratingSummary}
-                    className="h-9 bg-white border border-dash-border hover:bg-dash-border/40 !text-dash-text text-[10px] font-bold px-4 rounded-xl flex items-center gap-1.5 shrink-0 transition-colors motion-reduce:transition-none"
-                  >
-                    {isRegeneratingSummary ? (
-                      <Loader2 size={12} className="animate-spin motion-reduce:animate-none" />
-                    ) : (
-                      <Sparkles size={12} className="text-dash-accent" />
                     )}
-                    Regenerate summary
-                  </Button>
-                </div>
-                {summaryError && (
-                  <p className="text-[10px] text-red flex items-center gap-1.5">
-                    <AlertCircle size={11} className="shrink-0" /> {summaryError}
-                  </p>
-                )}
-              </div>
-            )}
+                  </div>
+                </LField>
+              )}
 
-            {/* Footer Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-dash-border">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={onClose}
-                disabled={isSaving}
-                className="h-11 rounded-xl !text-dash-textMuted hover:bg-dash-surface text-[10px] font-bold"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSaving}
-                className="h-11 bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-bold px-6 shadow-lg shadow-primary/20 transition-colors motion-reduce:transition-none"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin motion-reduce:animate-none mr-2" /> Saving...
-                  </>
+              {type === "SCORM" && (
+                <Panel label="SCORM version">
+                  <Select value={scormVersion} onChange={(e) => setScormVersion(e.target.value)}>
+                    <option value="scorm12">SCORM 1.2</option>
+                    <option value="scorm2004">SCORM 2004</option>
+                  </Select>
+                </Panel>
+              )}
+
+              {type === "Live Session" && (
+                <Panel label="Schedule">
+                  <LField label="Start date & time" required>
+                    <TextInput
+                      type="datetime-local"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      required
+                    />
+                  </LField>
+                </Panel>
+              )}
+
+              {type === "Code" && (
+                <Panel label="Code sandbox">
+                  <LField label="Language">
+                    <Select
+                      value={codeLanguage}
+                      onChange={(e) => setCodeLanguage(e.target.value)}
+                      className="max-w-[220px]"
+                    >
+                      <option value="javascript">JavaScript</option>
+                      <option value="typescript">TypeScript</option>
+                      <option value="python">Python</option>
+                      <option value="html">HTML / XML</option>
+                      <option value="css">CSS</option>
+                    </Select>
+                  </LField>
+                  <LField label="Starter code">
+                    <TextArea
+                      value={starterCode}
+                      onChange={(e) => setStarterCode(e.target.value)}
+                      rows={4}
+                      placeholder="// Starter template…"
+                      className="font-mono text-[12px]"
+                    />
+                  </LField>
+                </Panel>
+              )}
+
+              {type === "Flashcards" && (
+                <Panel label="Flashcard deck">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[12px] text-dash-textMuted">
+                      {flashcards.length} {flashcards.length === 1 ? "card" : "cards"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAddFlashcard}
+                      className="inline-flex items-center gap-1 text-[12px] font-semibold text-sky-600 transition-colors hover:text-sky-700"
+                    >
+                      <Plus size={13} /> Add card
+                    </button>
+                  </div>
+                  {flashcards.length === 0 ? (
+                    <p className="py-4 text-center text-[12px] text-dash-textMuted">
+                      No cards yet.
+                    </p>
+                  ) : (
+                    <div className="max-h-[220px] space-y-2 overflow-y-auto pr-1">
+                      {flashcards.map((card, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-2 rounded-lg border border-dash-border bg-white p-2.5"
+                        >
+                          <TextInput
+                            value={card.front}
+                            onChange={(e) => handleFlashcardChange(idx, "front", e.target.value)}
+                            placeholder="Front"
+                            className="h-9 flex-1 text-[12px]"
+                            required
+                          />
+                          <TextInput
+                            value={card.back}
+                            onChange={(e) => handleFlashcardChange(idx, "back", e.target.value)}
+                            placeholder="Back"
+                            className="h-9 flex-1 text-[12px]"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFlashcard(idx)}
+                            className="shrink-0 rounded-md p-1.5 text-dash-textMuted transition-colors hover:bg-rose-50 hover:text-rose-600"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Panel>
+              )}
+
+              {type === "Quiz" && (
+                <Panel label="Quiz">
+                  {editingLesson ? (
+                    isLoadingQuiz ? (
+                      <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-dash-textMuted">
+                        <Loader2 className="size-3.5 animate-spin" /> Loading quiz…
+                      </div>
+                    ) : quizId ? (
+                      <div className="space-y-3 rounded-xl border border-dashed border-dash-border bg-white px-4 py-5 text-center">
+                        <div className="space-y-1">
+                          <h4 className="text-[13px] font-semibold text-dash-text">
+                            Quiz ready to configure
+                          </h4>
+                          <p className="mx-auto max-w-sm text-[12px] leading-relaxed text-dash-textMuted">
+                            Build questions, passing scores, time limits and AI explanations in the
+                            Quiz Workbench.
+                          </p>
+                        </div>
+                        <PrimaryButton
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            router.push(`/courses/${courseId}/quiz/${quizId}`);
+                          }}
+                          className="mx-auto"
+                        >
+                          <Settings size={14} /> Open Quiz Workbench
+                        </PrimaryButton>
+                      </div>
+                    ) : (
+                      <Notice tone="rose">
+                        <AlertTriangle />
+                        Failed to initialise the quiz record.
+                      </Notice>
+                    )
+                  ) : (
+                    <Notice>
+                      <AlertTriangle />
+                      Save the lesson first, then build quiz questions.
+                    </Notice>
+                  )}
+                </Panel>
+              )}
+
+              <Panel label="Content blocks">
+                {editingLesson?.id ? (
+                  <ContentBlockList
+                    lessonId={editingLesson.id}
+                    renderBlockEditor={(block, onChange) =>
+                      renderBlockTypeEditor(courseId, block, onChange)
+                    }
+                  />
                 ) : (
-                  "Save Lesson Node"
+                  <Notice>
+                    <AlertTriangle />
+                    Save the lesson first, then add content blocks.
+                  </Notice>
                 )}
-              </Button>
+              </Panel>
+
+              <Panel label="Access">
+                <LField
+                  label="Visibility"
+                  hint={
+                    accessLevel === "public"
+                      ? "Good for SEO, crawlers and course previews."
+                      : accessLevel === "enrolled"
+                      ? "Requires a login. Free for anyone who registers."
+                      : "Locked until paid enrolment is verified."
+                  }
+                >
+                  <Select
+                    value={accessLevel}
+                    onChange={(e) => setAccessLevel(e.target.value as any)}
+                  >
+                    <option value="public">🔓 Public — no login needed</option>
+                    <option value="enrolled">👥 Free for enrolled — login required</option>
+                    <option value="paid">💳 Paid only — behind paid enrolment</option>
+                  </Select>
+                </LField>
+              </Panel>
+
+              <LField label="Time estimate" hint="Shown in the student sidebar.">
+                <TextInput
+                  type="number"
+                  min={0}
+                  value={timeEstimateMinutes}
+                  onChange={(e) => setTimeEstimateMinutes(e.target.value)}
+                  placeholder="Minutes"
+                  className="max-w-[220px] font-mono"
+                />
+              </LField>
+
+              <Panel label="Unlock condition">
+                <Select value={unlockType} onChange={(e) => setUnlockType(e.target.value as any)}>
+                  <option value="sequential">Sequential — after the previous lesson</option>
+                  <option value="immediate">Immediate — no lock</option>
+                  <option value="drip">Drip — days after unlock</option>
+                  <option value="quiz_gated">Quiz-gated — previous quiz passed</option>
+                </Select>
+                {unlockType === "drip" && (
+                  <LField label="Drip delay (days)">
+                    <TextInput
+                      type="number"
+                      min={0}
+                      value={dripValue}
+                      onChange={(e) => setDripValue(e.target.value)}
+                      placeholder="0 = immediately once unlocked"
+                      className="max-w-[260px] font-mono"
+                    />
+                  </LField>
+                )}
+              </Panel>
+
+              <LField
+                label={type === "Text" ? "Lesson body (markdown)" : `${type} instructions`}
+              >
+                <TextArea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Explain the lesson or add guidelines…"
+                  rows={5}
+                  className="font-mono text-[12px] leading-relaxed"
+                />
+              </LField>
+
+              {editingLesson?.id && (
+                <Panel label="AI lesson summary">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-[12px] leading-relaxed text-dash-textMuted">
+                      Regenerated automatically on save. Force a fresh one now:
+                    </p>
+                    <GhostButton
+                      type="button"
+                      onClick={handleRegenerateSummary}
+                      disabled={isRegeneratingSummary}
+                      className="h-9 shrink-0 px-3 text-[12px]"
+                    >
+                      {isRegeneratingSummary ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Sparkles className="text-sky-500" />
+                      )}
+                      Regenerate
+                    </GhostButton>
+                  </div>
+                  {summaryError && (
+                    <p className="flex items-center gap-1.5 text-[11px] text-rose-600">
+                      <AlertCircle size={12} className="shrink-0" /> {summaryError}
+                    </p>
+                  )}
+                </Panel>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 border-t border-dash-border bg-dash-surface/60 px-6 py-4">
+              <GhostButton type="button" onClick={onClose} disabled={isSaving}>
+                Cancel
+              </GhostButton>
+              <PrimaryButton type="submit" loading={isSaving}>
+                {isSaving ? "Saving…" : editingLesson ? "Save lesson" : "Create lesson"}
+              </PrimaryButton>
             </div>
           </form>
         )}

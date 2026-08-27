@@ -12,7 +12,6 @@ import LessonCreatorModal from "./components/LessonCreatorModal";
 import LessonTypePicker from "./components/LessonTypePicker";
 import ConfirmationModal from "@/components/calendar/modals/ConfirmationModal";
 import { mapLessonForModal, mapLessonTypeToDb } from "./utils/lessonMapping";
-import ModulesToolbar from "./components/ModulesToolbar";
 import CourseWorkspaceHeader from "./components/CourseWorkspaceHeader";
 import CourseSettingsContainer, { SettingsSectionId } from "./components/CourseSettingsContainer";
 import LessonPreviewModal from "./components/LessonPreviewModal";
@@ -307,19 +306,26 @@ export default function CourseWorkspaceClient({
       {activeTab === "modules" && (
         <>
           {/* Page Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-dash-border pb-6">
-            <div>
-              <span className="text-[10px] font-bold text-primary">Control Room</span>
-              <h1 className="text-3xl font-bold !text-dash-text mt-1.5">
-                Course <span className="text-dash-accent">{currentCourse.title}</span>
+          <div className="flex flex-col gap-6 border-b border-dash-border pb-7 md:flex-row md:items-end md:justify-between">
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-sky-500" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-600">
+                  Control Room
+                </span>
+              </div>
+              <h1 className="font-display text-[30px] font-semibold leading-[1.08] tracking-[-0.02em] !text-dash-text md:text-[36px]">
+                <span className="font-normal !text-dash-textMuted">Course </span>
+                {currentCourse.title}
               </h1>
-              <p className="text-[10px] !text-dash-textMuted font-bold mt-2">
-                Curriculum builder & modular execution node
+              <p className="text-[13px] leading-relaxed !text-dash-textMuted">
+                Curriculum builder &amp; modular execution node
               </p>
             </div>
 
             <Button
               onClick={() => { setEditingModule(undefined); setIsModuleModalOpen(true); }}
+              className="bg-sky-500 text-white hover:bg-sky-600"
             >
               <Plus size={14} /> New Module
             </Button>
@@ -331,19 +337,19 @@ export default function CourseWorkspaceClient({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setIsAddStudentOpen(true)}
-              className={`h-11 px-5 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:size-4 ${quickActionTheme.solidBgClass} ${quickActionTheme.solidHoverBgClass}`}
+              className={`h-11 px-5 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:size-4 bg-sky-500 hover:bg-sky-600`}
             >
               <UserPlus /> Add student
             </button>
             <button
               onClick={() => setIsRosterOpen(true)}
-              className={`h-11 px-5 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:size-4 ${quickActionTheme.solidBgClass} ${quickActionTheme.solidHoverBgClass}`}
+              className={`h-11 px-5 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:size-4 bg-sky-500 hover:bg-sky-600`}
             >
               <Users /> Students
             </button>
             <button
               onClick={() => { setActiveTab("settings"); setSettingsSection("landing-page"); }}
-              className={`h-11 px-5 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:size-4 ${quickActionTheme.solidBgClass} ${quickActionTheme.solidHoverBgClass}`}
+              className={`h-11 px-5 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:size-4 bg-sky-500 hover:bg-sky-600`}
             >
               <Palette /> View and customize theme
             </button>
@@ -354,14 +360,6 @@ export default function CourseWorkspaceClient({
               <SettingsIcon /> Settings
             </button>
           </div>
-
-          {/* Toolbar */}
-          <ModulesToolbar
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-          />
 
           {/* Modules List */}
           {filteredModules.length === 0 ? (
@@ -375,7 +373,7 @@ export default function CourseWorkspaceClient({
               <Button
                 onClick={() => { setEditingModule(undefined); setIsModuleModalOpen(true); }}
                 size="sm"
-                className="mt-6"
+                className="mt-6 bg-sky-500 text-white hover:bg-sky-600"
               >
                 <Plus size={13} /> Create First Module
               </Button>

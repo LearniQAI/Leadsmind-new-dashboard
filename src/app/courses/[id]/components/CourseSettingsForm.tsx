@@ -1,35 +1,67 @@
 "use client";
 
 import React, { useState } from "react";
-import { DashButton } from "@/components/dashboard-ui/Button";
-import { DashFormField, DashInput, DashTextarea } from "@/components/dashboard-ui/FormField";
-import { Loader2 } from "lucide-react";
+import { Loader2, ImagePlus, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
+import {
+  SettingsPanel,
+  SettingsHeader,
+  SettingsBody,
+  SettingsFooter,
+  FieldGroup,
+  Field,
+  TextInput,
+  TextArea,
+  Select,
+  InputAffix,
+  PrimaryButton,
+  GhostButton,
+} from "./settings/primitives";
 
 interface CourseSettingsFormProps {
   course: any;
   onSaved: (updatedCourse: any) => void;
 }
 
-export default function CourseSettingsForm({
-  course,
-  onSaved
-}: CourseSettingsFormProps) {
+export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFormProps) {
   const router = useRouter();
   const supabase = createClient();
   const { workspace } = useDashboardContext();
   const workspaceId = workspace?.id || null;
 
-  const [editTitle, setEditTitle] = useState(course.title || "");
-  const [editDesc, setEditDesc] = useState(course.description || "");
-  const [editPrice, setEditPrice] = useState(course.price || "0.00");
-  const [editStatus, setEditStatus] = useState(course.status || (course.published ? "published" : "draft"));
-  const [editThumbnail, setEditThumbnail] = useState(course.thumbnail_url || "");
+  const initial = {
+    title: course.title || "",
+    desc: course.description || "",
+    price: course.price || "0.00",
+    status: course.status || (course.published ? "published" : "draft"),
+    thumbnail: course.thumbnail_url || "",
+  };
+
+  const [editTitle, setEditTitle] = useState(initial.title);
+  const [editDesc, setEditDesc] = useState(initial.desc);
+  const [editPrice, setEditPrice] = useState(initial.price);
+  const [editStatus, setEditStatus] = useState(initial.status);
+  const [editThumbnail, setEditThumbnail] = useState(initial.thumbnail);
   const [isSavingCourse, setIsSavingCourse] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  const dirty =
+    editTitle !== initial.title ||
+    editDesc !== initial.desc ||
+    String(editPrice) !== String(initial.price) ||
+    editStatus !== initial.status ||
+    editThumbnail !== initial.thumbnail;
+
+  const resetForm = () => {
+    setEditTitle(initial.title);
+    setEditDesc(initial.desc);
+    setEditPrice(initial.price);
+    setEditStatus(initial.status);
+    setEditThumbnail(initial.thumbnail);
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -40,18 +72,18 @@ export default function CourseSettingsForm({
     }
 
     setIsUploading(true);
-    const filePath = `${workspaceId}/courses/${course.id}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    
-    try {
-      const { error: uploadError } = await supabase.storage
-        .from("media")
-        .upload(filePath, file);
+    const filePath = `${workspaceId}/courses/${course.id}/${Date.now()}_${file.name.replace(
+      /[^a-zA-Z0-9.-]/g,
+      "_"
+    )}`;
 
+    try {
+      const { error: uploadError } = await supabase.storage.from("media").upload(filePath, file);
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("media")
-        .getPublicUrl(filePath);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("media").getPublicUrl(filePath);
 
       setEditThumbnail(publicUrl);
       toast.success("Cover image uploaded successfully!");
@@ -74,8 +106,8 @@ export default function CourseSettingsForm({
           description: editDesc,
           price: editPrice,
           status: editStatus,
-          thumbnail_url: editThumbnail
-        })
+          thumbnail_url: editThumbnail,
+        }),
       });
       const dataJson = await res.json();
       if (dataJson.error) {
@@ -93,129 +125,137 @@ export default function CourseSettingsForm({
   };
 
   return (
-    <form onSubmit={handleUpdateCourse} className="bg-white border border-dash-border rounded-2xl p-6 space-y-6">
-      <div className="border-b border-dash-border pb-4">
-        <h2 className="text-lg font-bold !text-dash-text">Course settings</h2>
-        <p className="text-xs !text-dash-textMuted mt-1">Manage title, pricing, layout and launch state</p>
-      </div>
+    <form onSubmit={handleUpdateCourse}>
+      <SettingsPanel>
+        <SettingsHeader
+          eyebrow="General"
+          title="Course settings"
+          description="Manage the title, description, price and launch state for this course."
+        />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Title */}
-        <DashFormField label="Course title">
-          <DashInput
-            type="text"
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            placeholder="e.g. Masterclass in JavaScript"
-            className="font-bold"
-            required
-          />
-        </DashFormField>
-
-        {/* Price */}
-        <DashFormField label="Course price (USD)">
-          <DashInput
-            type="number"
-            step="0.01"
-            value={editPrice}
-            onChange={(e) => setEditPrice(e.target.value)}
-            placeholder="0.00"
-            className="font-mono"
-            required
-          />
-        </DashFormField>
-
-        {/* Launch Status */}
-        <DashFormField label="Launch status">
-          <select
-            value={editStatus}
-            onChange={(e) => setEditStatus(e.target.value)}
-            className="w-full h-11 rounded-xl border border-dash-border bg-white px-3.5 text-sm !text-dash-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent transition-colors motion-reduce:transition-none"
-          >
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-          </select>
-        </DashFormField>
-
-        {/* Cover Image / Thumbnail Upload */}
-        <div className="space-y-2 md:col-span-2">
-          <label className="text-[13px] font-semibold !text-dash-text block">Course cover image</label>
-          <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4 items-center bg-dash-surface border border-dash-border p-4 rounded-xl">
-            {/* Thumbnail Preview / Upload Zone */}
-            <div className="relative aspect-video md:aspect-square bg-white border border-dashed border-dash-border rounded-lg overflow-hidden flex flex-col items-center justify-center text-center p-3 group hover:border-dash-accent/40 transition-all motion-reduce:transition-none cursor-pointer" onClick={() => document.getElementById("thumbnail-file-input")?.click()}>
-              {editThumbnail ? (
-                <>
-                  <img src={editThumbnail} alt="Thumbnail Preview" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all motion-reduce:transition-none motion-reduce:group-hover:scale-100" />
-                  <div className="absolute inset-0 bg-dash-text/60 opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none flex items-center justify-center text-xs font-bold text-white">
-                    Replace cover
-                  </div>
-                </>
-              ) : isUploading ? (
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="animate-spin motion-reduce:animate-none text-dash-accent" size={20} />
-                  <span className="text-xs !text-dash-textMuted">Uploading...</span>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none">
-                  <span className="text-xl">📸</span>
-                  <span className="text-xs font-bold">Upload cover</span>
-                  <span className="text-[11px] !text-dash-textMuted">JPEG/PNG up to 5MB</span>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-3 w-full">
-              <div>
-                <span className="text-[13px] font-bold !text-dash-text block">Upload from your device</span>
-                <span className="text-xs !text-dash-textMuted block mt-0.5 leading-normal">
-                  Upload a high-resolution banner or square cover image.
-                </span>
-              </div>
-              <input
-                type="file"
-                id="thumbnail-file-input"
-                accept="image/*"
-                className="hidden"
-                disabled={isUploading}
-                onChange={handleImageUpload}
+        <SettingsBody>
+          <FieldGroup>
+            <Field label="Course title" htmlFor="cs-title" required hint="Shown to students and on the landing page.">
+              <TextInput
+                id="cs-title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="e.g. Masterclass in JavaScript"
+                required
               />
-              <div className="space-y-1">
-                <span className="text-xs font-semibold !text-dash-textMuted block">Or paste an image URL</span>
-                <DashInput
-                  type="url"
-                  value={editThumbnail}
-                  onChange={(e) => setEditThumbnail(e.target.value)}
-                  placeholder="https://example.com/banner.jpg"
-                  className="h-10 text-xs font-mono"
+            </Field>
+
+            <Field label="Price" htmlFor="cs-price" hint="Set 0 for a free course. Advanced models live in Pricing.">
+              <InputAffix affix="$">
+                <TextInput
+                  id="cs-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(e.target.value)}
+                  placeholder="0.00"
+                  className="pl-7 font-mono"
+                  required
                 />
+              </InputAffix>
+            </Field>
+
+            <Field label="Launch status" htmlFor="cs-status" hint="Draft courses are hidden from students.">
+              <Select
+                id="cs-status"
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value)}
+                className="max-w-[220px]"
+              >
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+              </Select>
+            </Field>
+
+            <Field
+              label="Cover image"
+              align="start"
+              hint="A wide banner or square image. JPEG or PNG, up to 5MB."
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("thumbnail-file-input")?.click()}
+                  className="group relative flex aspect-video w-40 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-dash-border bg-dash-surface text-center transition-colors hover:border-sky-400"
+                >
+                  {editThumbnail ? (
+                    <>
+                      <img
+                        src={editThumbnail}
+                        alt="Cover preview"
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-slate-900/55 text-[11px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        Replace
+                      </div>
+                    </>
+                  ) : isUploading ? (
+                    <Loader2 className="size-4 animate-spin text-sky-500" />
+                  ) : (
+                    <span className="flex flex-col items-center gap-1 text-dash-textMuted">
+                      <ImagePlus className="size-5" />
+                      <span className="text-[11px] font-semibold">Upload cover</span>
+                    </span>
+                  )}
+                </button>
+
+                <div className="min-w-0 flex-1 space-y-2">
+                  <input
+                    type="file"
+                    id="thumbnail-file-input"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={isUploading}
+                    onChange={handleImageUpload}
+                  />
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-dash-textMuted">
+                    Or paste an image URL
+                  </div>
+                  <InputAffix affix={<Link2 className="size-3.5" />}>
+                    <TextInput
+                      type="url"
+                      value={editThumbnail}
+                      onChange={(e) => setEditThumbnail(e.target.value)}
+                      placeholder="https://example.com/banner.jpg"
+                      className="pl-8 font-mono text-[12px]"
+                    />
+                  </InputAffix>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
+            </Field>
 
-        {/* Description */}
-        <DashFormField label="Course description" className="md:col-span-2">
-          <DashTextarea
-            value={editDesc}
-            onChange={(e) => setEditDesc(e.target.value)}
-            placeholder="Describe what students will learn in this course..."
-            rows={4}
-            className="leading-relaxed"
-          />
-        </DashFormField>
-      </div>
+            <Field
+              label="Description"
+              htmlFor="cs-desc"
+              align="start"
+              hint="A short summary of what students will learn."
+            >
+              <TextArea
+                id="cs-desc"
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                placeholder="Describe what students will learn in this course..."
+                rows={5}
+              />
+            </Field>
+          </FieldGroup>
+        </SettingsBody>
 
-      <div className="flex items-center justify-end border-t border-dash-border pt-4">
-        <DashButton type="submit" disabled={isSavingCourse}>
-          {isSavingCourse ? (
-            <>
-              <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> Saving changes...
-            </>
-          ) : (
-            "Save course settings"
-          )}
-        </DashButton>
-      </div>
+        <SettingsFooter hint={dirty ? "You have unsaved changes" : undefined}>
+          <GhostButton type="button" onClick={resetForm} disabled={!dirty || isSavingCourse}>
+            Discard
+          </GhostButton>
+          <PrimaryButton type="submit" loading={isSavingCourse} disabled={!dirty}>
+            {isSavingCourse ? "Saving…" : "Save changes"}
+          </PrimaryButton>
+        </SettingsFooter>
+      </SettingsPanel>
     </form>
   );
 }

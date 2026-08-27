@@ -10,6 +10,8 @@ import {
   MoreHorizontal,
   Filter as FilterIcon,
   Trash2,
+  ExternalLink,
+  Award,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -109,7 +111,14 @@ export default function CoursesClient({
             <FilterIcon size={13} /> Filter
           </Button>
 
-          <Button onClick={() => setIsModalOpen(true)}>
+          <Button variant="outline" onClick={() => router.push("/courses/certificates")}>
+            <Award size={13} /> Certificates
+          </Button>
+
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-sky-500 text-white hover:bg-sky-600"
+          >
             <Plus size={14} /> Add a new course
           </Button>
         </div>
@@ -129,7 +138,7 @@ export default function CoursesClient({
               {courses.length === 0 ? "Create your first course to get started" : "Try a different search or status filter"}
             </p>
             {courses.length === 0 && (
-              <Button onClick={() => setIsModalOpen(true)} className="mt-6">
+              <Button onClick={() => setIsModalOpen(true)} className="mt-6 bg-sky-500 text-white hover:bg-sky-600">
                 <Plus size={14} /> Add a new course
               </Button>
             )}
@@ -193,6 +202,19 @@ export default function CoursesClient({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => router.push(`/courses/${course.id}`)}>
                             Manage
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              window.open(
+                                `/unauthenticated/courses/${course.slug || course.id}${
+                                  course.status === "published" ? "" : "?preview=true"
+                                }`,
+                                "_blank",
+                                "noopener,noreferrer"
+                              )
+                            }
+                          >
+                            <ExternalLink size={13} className="mr-1.5" /> View
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toast.info("Opening automation...")}>
                             <Zap size={13} className="mr-1.5" /> Automate

@@ -1,9 +1,27 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";
-import { Users, DollarSign, Award, Percent, Loader2, BookOpen, CheckCircle, XCircle } from "lucide-react";
+import {
+  Users,
+  DollarSign,
+  Award,
+  Percent,
+  BookOpen,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import { getCourseAnalytics } from "@/app/actions/lms";
 import { toast } from "sonner";
+import {
+  SettingsPanel,
+  SettingsHeader,
+  SettingsBody,
+  StatCard,
+  StatusPill,
+  EmptyState,
+  LoadingState,
+  PrimaryButton,
+} from "./settings/primitives";
 
 interface CourseAnalyticsTabProps {
   courseId: string;
@@ -18,11 +36,8 @@ export default function CourseAnalyticsTab({ courseId }: CourseAnalyticsTabProps
     startTransition(async () => {
       try {
         const res = await getCourseAnalytics(courseId);
-        if (res.error) {
-          toast.error(res.error);
-        } else {
-          setData(res.data);
-        }
+        if (res.error) toast.error(res.error);
+        else setData(res.data);
       } catch (err: any) {
         toast.error("Failed to load analytics: " + err.message);
       } finally {
@@ -35,144 +50,121 @@ export default function CourseAnalyticsTab({ courseId }: CourseAnalyticsTabProps
     fetchAnalytics();
   }, [courseId]);
 
-  if (loading || isPending) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-4 bg-white border border-dash-border rounded-2xl shadow-sm">
-        <Loader2 className="animate-spin !text-dash-accent motion-reduce:animate-none" size={32} />
-        <p className="text-xs !text-dash-textMuted">
-          Loading analytics...
-        </p>
-      </div>
-    );
-  }
+  if (loading || isPending) return <LoadingState label="Loading analytics…" />;
 
   if (!data) {
     return (
-      <div className="text-center py-20 bg-white border border-dash-border rounded-2xl shadow-sm !text-dash-textMuted">
-        Failed to fetch analytics data. Click below to try again.
-        <button
-          onClick={fetchAnalytics}
-          className="mt-4 block mx-auto px-4 py-2 bg-dash-accent hover:opacity-90 text-white rounded-lg text-xs font-bold transition-opacity motion-reduce:transition-none"
-        >
-          Retry
-        </button>
-      </div>
+      <EmptyState
+        icon={<BookOpen />}
+        title="Couldn’t load analytics"
+        description="Something went wrong fetching this course’s data."
+        action={
+          <PrimaryButton type="button" onClick={fetchAnalytics}>
+            Try again
+          </PrimaryButton>
+        }
+      />
     );
   }
 
   const { summary, students, quizAttempts } = data;
 
   return (
-    <div className="space-y-8">
-      {/* Analytics Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Total Enrollments */}
-        <div className="bg-white border border-dash-border rounded-2xl shadow-sm p-6 flex items-center justify-between relative overflow-hidden group hover:border-dash-accent/30 transition-all motion-reduce:transition-none">
-          <div className="space-y-2">
-            <span className="text-[10px] font-bold !text-dash-textMuted">Total students</span>
-            <h3 className="text-2xl font-bold !text-dash-text">{summary.totalEnrollments}</h3>
-            <p className="text-xs !text-dash-textMuted">Registered in this course</p>
-          </div>
-          <div className="w-12 h-12 bg-blue-50 rounded-xl border border-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform motion-reduce:transition-none">
-            <Users size={20} />
-          </div>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+          Analytics
         </div>
-
-        {/* Estimated Earnings */}
-        <div className="bg-white border border-dash-border rounded-2xl shadow-sm p-6 flex items-center justify-between relative overflow-hidden group hover:border-dash-accent/30 transition-all motion-reduce:transition-none">
-          <div className="space-y-2">
-            <span className="text-[10px] font-bold text-emerald-700">Total earnings</span>
-            <h3 className="text-2xl font-bold !text-dash-text">${summary.totalEarnings.toFixed(2)}</h3>
-            <p className="text-xs !text-dash-textMuted">
-              {summary.totalEnrollments} x ${summary.coursePrice.toFixed(2)} USD
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform motion-reduce:transition-none">
-            <DollarSign size={20} />
-          </div>
-        </div>
-
-        {/* Course Completions */}
-        <div className="bg-white border border-dash-border rounded-2xl shadow-sm p-6 flex items-center justify-between relative overflow-hidden group hover:border-dash-accent/30 transition-all motion-reduce:transition-none">
-          <div className="space-y-2">
-            <span className="text-[10px] font-bold text-purple-700">Completions</span>
-            <h3 className="text-2xl font-bold !text-dash-text">{summary.completedStudentsCount}</h3>
-            <p className="text-xs !text-dash-textMuted">{summary.completionRate}% completion rate</p>
-          </div>
-          <div className="w-12 h-12 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform motion-reduce:transition-none">
-            <Award size={20} />
-          </div>
-        </div>
-
-        {/* Average Course Progress */}
-        <div className="bg-white border border-dash-border rounded-2xl shadow-sm p-6 flex items-center justify-between relative overflow-hidden group hover:border-dash-accent/30 transition-all motion-reduce:transition-none">
-          <div className="space-y-2">
-            <span className="text-[10px] font-bold text-cyan-700">Avg. progress</span>
-            <h3 className="text-2xl font-bold !text-dash-text">{summary.averageProgress}%</h3>
-            <p className="text-xs !text-dash-textMuted">Across all participants</p>
-          </div>
-          <div className="w-12 h-12 bg-cyan-50 rounded-xl border border-cyan-100 flex items-center justify-center text-cyan-600 group-hover:scale-110 transition-transform motion-reduce:transition-none">
-            <Percent size={20} />
-          </div>
-        </div>
+        <h2 className="text-[15px] font-semibold text-dash-text">Course performance</h2>
+        <p className="text-[13px] text-dash-textMuted">
+          Enrolment, revenue and progress across everyone taking this course.
+        </p>
       </div>
 
-      {/* Main Grid: Student list and quiz log */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Student Progress List */}
-        <div className="lg:col-span-2 bg-white border border-dash-border rounded-2xl shadow-sm p-6 space-y-6">
-          <div className="border-b border-dash-border pb-4">
-            <h4 className="text-sm font-bold !text-dash-text">Student enrollment roster</h4>
-            <p className="text-xs !text-dash-textMuted mt-1">
-              Participants registered and active progress tracking
-            </p>
-          </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Students"
+          value={summary.totalEnrollments}
+          sub="Registered in this course"
+          icon={<Users />}
+          tone="sky"
+        />
+        <StatCard
+          label="Earnings"
+          value={`$${summary.totalEarnings.toFixed(2)}`}
+          sub={`${summary.totalEnrollments} × $${summary.coursePrice.toFixed(2)}`}
+          icon={<DollarSign />}
+          tone="emerald"
+        />
+        <StatCard
+          label="Completions"
+          value={summary.completedStudentsCount}
+          sub={`${summary.completionRate}% completion rate`}
+          icon={<Award />}
+          tone="violet"
+        />
+        <StatCard
+          label="Avg. progress"
+          value={`${summary.averageProgress}%`}
+          sub="Across all participants"
+          icon={<Percent />}
+          tone="amber"
+        />
+      </div>
 
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Roster */}
+        <SettingsPanel className="lg:col-span-2">
+          <SettingsHeader
+            title="Enrolment roster"
+            description="Every student and where they are in the course."
+          />
           {students.length === 0 ? (
-            <div className="text-center py-10 !text-dash-textMuted text-xs">
-              No students enrolled in this course yet.
-            </div>
+            <SettingsBody>
+              <EmptyState icon={<Users />} title="No students yet" description="Nobody has enrolled in this course." />
+            </SettingsBody>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-[13px]">
                 <thead>
-                  <tr className="border-b border-dash-border text-[10px] font-bold !text-dash-textMuted">
-                    <th className="py-3 px-2">Student</th>
-                    <th className="py-3 px-2">Enrollment date</th>
-                    <th className="py-3 px-2">Completed lessons</th>
-                    <th className="py-3 px-2 w-32">Progress</th>
+                  <tr className="border-b border-dash-border text-[11px] font-semibold uppercase tracking-[0.06em] text-dash-textMuted">
+                    <th className="px-6 py-3">Student</th>
+                    <th className="px-6 py-3">Enrolled</th>
+                    <th className="px-6 py-3">Lessons</th>
+                    <th className="w-40 px-6 py-3">Progress</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-dash-border">
                   {students.map((student: any) => (
-                    <tr key={student.contactId} className="hover:bg-dash-surface transition-colors motion-reduce:transition-none group">
-                      <td className="py-4 px-2">
-                        <div className="font-bold !text-dash-text group-hover:text-dash-accent transition-colors motion-reduce:transition-none">
+                    <tr key={student.contactId} className="transition-colors hover:bg-dash-surface/60">
+                      <td className="px-6 py-3.5">
+                        <div className="font-medium text-dash-text">
                           {student.firstName} {student.lastName}
                         </div>
-                        <div className="text-[10px] !text-dash-textMuted mt-0.5">{student.email}</div>
+                        <div className="text-[11px] text-dash-textMuted">{student.email}</div>
                       </td>
-                      <td className="py-4 px-2 !text-dash-textMuted text-[10px]">
+                      <td className="px-6 py-3.5 text-[12px] text-dash-textMuted">
                         {new Date(student.enrolledAt).toLocaleDateString(undefined, {
                           year: "numeric",
                           month: "short",
-                          day: "numeric"
+                          day: "numeric",
                         })}
                       </td>
-                      <td className="py-4 px-2 !text-dash-text font-bold">
-                        {student.completedLessons} / {summary.totalLessons}
+                      <td className="px-6 py-3.5 font-medium text-dash-text">
+                        {student.completedLessons}
+                        <span className="text-dash-textMuted"> / {summary.totalLessons}</span>
                       </td>
-                      <td className="py-4 px-2">
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between text-[10px] !text-dash-textMuted font-bold">
-                            <span>{student.progressPercentage}%</span>
-                          </div>
-                          <div className="w-full bg-dash-surface h-2 rounded-full overflow-hidden border border-dash-border">
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                             <div
-                              className="bg-dash-accent h-full rounded-full transition-all duration-500 motion-reduce:transition-none"
+                              className="h-full rounded-full bg-sky-500 transition-all duration-500 motion-reduce:transition-none"
                               style={{ width: `${student.progressPercentage}%` }}
                             />
                           </div>
+                          <span className="w-9 shrink-0 text-right text-[11px] font-semibold text-dash-textMuted">
+                            {student.progressPercentage}%
+                          </span>
                         </div>
                       </td>
                     </tr>
@@ -181,77 +173,61 @@ export default function CourseAnalyticsTab({ courseId }: CourseAnalyticsTabProps
               </table>
             </div>
           )}
-        </div>
+        </SettingsPanel>
 
-        {/* Quiz attempts Log */}
-        <div className="bg-white border border-dash-border rounded-2xl shadow-sm p-6 space-y-6">
-          <div className="border-b border-dash-border pb-4">
-            <h4 className="text-sm font-bold !text-dash-text">Quiz activity</h4>
-            <p className="text-xs !text-dash-textMuted mt-1">
-              Recent quiz submissions and metrics
-            </p>
-          </div>
-
-          {quizAttempts.length === 0 ? (
-            <div className="text-center py-10 !text-dash-textMuted text-xs">
-              No quiz attempts logged yet.
-            </div>
-          ) : (
-            <div className="space-y-4 max-h-[450px] overflow-y-auto pr-1 custom-scrollbar">
-              {quizAttempts.map((attempt: any) => (
-                <div
-                  key={attempt.id}
-                  className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-3 hover:border-dash-accent/30 transition-colors motion-reduce:transition-none"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <h5 className="text-xs font-bold !text-dash-text leading-tight">
-                        {attempt.quizTitle}
-                      </h5>
-                      <span className="text-[10px] font-bold !text-dash-textMuted block">
-                        {attempt.studentName}
-                      </span>
-                    </div>
-
-                    <div className={`px-2 py-0.5 rounded-md text-[9px] font-bold shrink-0 flex items-center gap-1 ${
-                      attempt.passed
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-rose-100 text-rose-700"
-                    }`}>
+        {/* Quiz activity */}
+        <SettingsPanel>
+          <SettingsHeader title="Quiz activity" description="Recent attempts and scores." />
+          <SettingsBody>
+            {quizAttempts.length === 0 ? (
+              <EmptyState icon={<CheckCircle2 />} title="No attempts yet" />
+            ) : (
+              <div className="custom-scrollbar max-h-[460px] space-y-3 overflow-y-auto pr-1">
+                {quizAttempts.map((attempt: any) => (
+                  <div
+                    key={attempt.id}
+                    className="rounded-xl border border-dash-border bg-white p-3.5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h5 className="truncate text-[13px] font-semibold text-dash-text">
+                          {attempt.quizTitle}
+                        </h5>
+                        <span className="text-[11px] text-dash-textMuted">{attempt.studentName}</span>
+                      </div>
                       {attempt.passed ? (
-                        <>
-                          <CheckCircle size={10} /> Passed
-                        </>
+                        <StatusPill tone="green">
+                          <CheckCircle2 /> Passed
+                        </StatusPill>
                       ) : (
-                        <>
-                          <XCircle size={10} /> Failed
-                        </>
+                        <StatusPill tone="red">
+                          <XCircle /> Failed
+                        </StatusPill>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex items-end justify-between">
-                    <div className="space-y-0.5">
-                      <span className="text-[9px] font-bold !text-dash-textMuted block">Score achieved</span>
-                      <span className="text-xs font-bold !text-dash-text">
-                        {attempt.score} / {attempt.maxScore} <span className="text-[10px] !text-dash-textMuted font-normal">({attempt.percentage}%)</span>
+                    <div className="mt-2.5 flex items-end justify-between">
+                      <span className="text-[13px] font-semibold text-dash-text">
+                        {attempt.score}
+                        <span className="text-dash-textMuted">
+                          {" "}
+                          / {attempt.maxScore} ({attempt.percentage}%)
+                        </span>
+                      </span>
+                      <span className="text-[11px] text-dash-textMuted">
+                        {new Date(attempt.submittedAt).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
-
-                    <span className="text-[10px] !text-dash-textMuted font-bold">
-                      {new Date(attempt.submittedAt).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      })}
-                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </SettingsBody>
+        </SettingsPanel>
       </div>
     </div>
   );

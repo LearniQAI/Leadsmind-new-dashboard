@@ -2,11 +2,17 @@
 
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  BookOpen, ChevronRight, CheckCircle2, ShoppingBag, Loader2, Settings 
+import {
+  BookOpen,
+  ChevronRight,
+  CheckCircle2,
+  ShoppingBag,
+  Loader2,
+  Settings,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { enrollStudent } from '@/app/actions/studentEnrollments';
+import { DashCard } from '@/components/dashboard-ui';
 
 interface MarketplaceClientProps {
   courses: any[];
@@ -15,7 +21,12 @@ interface MarketplaceClientProps {
   activeWorkspaceId?: string | null;
 }
 
-export default function MarketplaceClient({ courses, enrolledCourseIds, userRole, activeWorkspaceId }: MarketplaceClientProps) {
+export default function MarketplaceClient({
+  courses,
+  enrolledCourseIds,
+  userRole,
+  activeWorkspaceId,
+}: MarketplaceClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [loadingCourseId, setLoadingCourseId] = useState<string | null>(null);
@@ -28,11 +39,11 @@ export default function MarketplaceClient({ courses, enrolledCourseIds, userRole
         if (res.error) {
           toast.error(res.error);
         } else {
-          toast.success("Successfully enrolled in course!");
+          toast.success('Successfully enrolled in course!');
           router.push(`/student/courses/${courseId}`);
         }
       } catch {
-        toast.error("Failed to enroll in course");
+        toast.error('Failed to enroll in course');
       } finally {
         setLoadingCourseId(null);
       }
@@ -40,88 +51,98 @@ export default function MarketplaceClient({ courses, enrolledCourseIds, userRole
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
       {courses.map((course: any) => {
         const isEnrolled = enrolledCourseIds.includes(course.id);
         const isLoading = loadingCourseId === course.id && isPending;
         const isCourseAdmin = userRole === 'admin' && course.workspace_id === activeWorkspaceId;
+        const isFree = !(course.price > 0);
 
         return (
-          <div 
+          <DashCard
             key={course.id}
-            className="bg-[#080f28] border border-white/5 hover:border-white/10 rounded-2xl overflow-hidden shadow-xl transition-all duration-300 flex flex-col h-full"
+            padding="none"
+            className="group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
           >
-            {/* Thumbnail */}
-            <div className="h-44 relative bg-gradient-to-br from-indigo-950 to-slate-900 border-b border-white/5 shrink-0 flex items-center justify-center overflow-hidden">
+            {/* Cover */}
+            <div className="relative h-36 shrink-0 overflow-hidden border-b border-dash-border bg-dash-surface">
               {course.thumbnail_url ? (
-                <img 
-                  src={course.thumbnail_url} 
+                <img
+                  src={course.thumbnail_url}
                   alt={course.title}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
                 />
               ) : (
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10 flex items-center justify-center">
-                  <BookOpen size={40} className="text-white/25" />
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-dash-accent/10 to-dash-accent/5">
+                  <BookOpen size={40} className="!text-dash-accent/40" />
                 </div>
               )}
-              {/* Price card */}
-              <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-mono font-bold text-emerald-400 border border-emerald-500/10">
-                {course.price > 0 ? `$${course.price}` : 'FREE'}
-              </div>
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/25 to-transparent" />
+              <span
+                className={`absolute bottom-3 right-3 rounded-lg border px-2 py-0.5 text-[11px] font-bold backdrop-blur-sm ${
+                  isFree
+                    ? 'border-emerald-500/20 bg-emerald-50/90 text-emerald-700'
+                    : 'border-white/60 bg-white/90 !text-dash-text'
+                }`}
+              >
+                {isFree ? 'FREE' : `$${course.price}`}
+              </span>
             </div>
 
-            {/* Course Info */}
-            <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-              <div className="space-y-2">
-                <h4 className="text-base font-bold text-white tracking-tight leading-snug line-clamp-1">{course.title}</h4>
-                <p className="text-xs text-white/50 leading-relaxed line-clamp-3">{course.description || "No description provided."}</p>
+            {/* Info */}
+            <div className="flex flex-1 flex-col justify-between gap-4 p-5">
+              <div>
+                <h3 className="line-clamp-1 text-[15px] font-semibold tracking-tight !text-dash-text">
+                  {course.title}
+                </h3>
+                <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed !text-dash-textMuted">
+                  {course.description || 'No description provided.'}
+                </p>
               </div>
 
-              <div className="pt-2">
-                {isCourseAdmin ? (
-                  <button 
-                    onClick={() => router.push(`/courses/${course.id}`)}
-                    className="w-full bg-[#111d47] border border-white/10 hover:bg-[#1a2d6c] text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 flex items-center justify-center gap-1.5 transition-all shadow-md"
-                  >
-                    <Settings size={13} className="text-primary" /> Manage Course (Admin)
-                  </button>
-                ) : isEnrolled ? (
-                  <button 
-                    onClick={() => router.push(`/student/courses/${course.id}`)}
-                    className="w-full bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 flex items-center justify-center gap-1.5 transition-all"
-                  >
-                    <CheckCircle2 size={13} className="text-emerald-400" /> Already Enrolled
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => {
-                      if (course.price > 0) {
-                        router.push(`/student/checkout/${course.id}`);
-                      } else {
-                        handleEnroll(course.id);
-                      }
-                    }}
-                    disabled={isLoading}
-                    className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 shadow-lg shadow-primary/15"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 size={13} className="animate-spin" /> Registering...
-                      </>
-                    ) : course.price > 0 ? (
-                      <>
-                        <ShoppingBag size={13} /> Buy & Register
-                      </>
-                    ) : (
-                      <>
-                        Enroll Now <ChevronRight size={13} />
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+              {isCourseAdmin ? (
+                <button
+                  onClick={() => router.push(`/courses/${course.id}`)}
+                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-dash-border bg-white text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface [&_svg]:size-3.5"
+                >
+                  <Settings className="!text-dash-accent" /> Manage course
+                </button>
+              ) : isEnrolled ? (
+                <button
+                  onClick={() => router.push(`/student/courses/${course.id}`)}
+                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-[12px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 [&_svg]:size-3.5"
+                >
+                  <CheckCircle2 /> Enrolled — open
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (course.price > 0) {
+                      router.push(`/student/checkout/${course.id}`);
+                    } else {
+                      handleEnroll(course.id);
+                    }
+                  }}
+                  disabled={isLoading}
+                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-dash-accent text-[12px] font-semibold text-white transition-colors hover:bg-dash-accent/90 disabled:opacity-60 [&_svg]:size-3.5"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="animate-spin" /> Enrolling…
+                    </>
+                  ) : course.price > 0 ? (
+                    <>
+                      <ShoppingBag /> Buy &amp; enrol
+                    </>
+                  ) : (
+                    <>
+                      Enrol now <ChevronRight />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
-          </div>
+          </DashCard>
         );
       })}
     </div>

@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, Loader2, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { X, Loader2, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
+import { Avatar, StatusPill, EmptyState } from "./settings/primitives";
 
 interface Enrollment {
   id: string;
@@ -37,6 +37,12 @@ export default function StudentsRosterModal({ courseId, onClose }: StudentsRoste
     load();
   }, [courseId]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const handleRemove = async (enrollmentId: string) => {
     if (!window.confirm("Remove this student's enrollment?")) return;
     setRemovingId(enrollmentId);
@@ -56,49 +62,82 @@ export default function StudentsRosterModal({ courseId, onClose }: StudentsRoste
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[600] flex items-center justify-center p-4">
-      <div className="bg-white border border-dash-border rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl flex flex-col">
-        <div className="p-5 border-b border-dash-border flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold !text-dash-text">Students</h3>
-            <span className="text-[10px] !text-dash-textMuted font-mono">{enrollments.length} enrolled</span>
+    <div
+      className="fixed inset-0 z-[600] flex items-start justify-center overflow-y-auto bg-slate-900/45 p-4 backdrop-blur-sm sm:items-center"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="my-auto flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-dash-border bg-white shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35)]">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 border-b border-dash-border px-6 py-5">
+          <div className="space-y-1">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+              Enrolment
+            </div>
+            <h2 className="font-display text-[17px] font-semibold leading-tight tracking-[-0.01em] text-dash-text">
+              Students
+            </h2>
+            <p className="text-[12px] text-dash-textMuted">
+              {enrollments.length} {enrollments.length === 1 ? "student" : "students"} enrolled
+            </p>
           </div>
-          <button onClick={onClose} className="!text-dash-textMuted hover:!text-dash-text transition-colors">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="-mr-1 -mt-1 rounded-lg p-1.5 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
+          >
             <X size={18} />
           </button>
         </div>
 
+        {/* Body */}
         <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
-            <div className="flex items-center justify-center gap-2 !text-dash-textMuted text-xs py-10">
-              <Loader2 size={14} className="animate-spin" /> Loading students...
+            <div className="flex items-center justify-center gap-2 py-14 text-[12px] text-dash-textMuted">
+              <Loader2 size={14} className="animate-spin" /> Loading students…
             </div>
           ) : enrollments.length === 0 ? (
-            <div className="text-center !text-dash-textMuted text-xs py-10">No students enrolled in this course yet.</div>
+            <EmptyState
+              icon={<Users />}
+              title="No students yet"
+              description="Enrol someone from the Add a student panel and they’ll show up here."
+            />
           ) : (
-            <div className="space-y-2">
-              {enrollments.map((e) => (
-                <div key={e.id} className="flex items-center justify-between gap-3 bg-dash-surface border border-dash-border rounded-xl p-3">
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold !text-dash-text truncate">
-                      {e.contact ? [e.contact.first_name, e.contact.last_name].filter(Boolean).join(" ") || "Unnamed contact" : "Unknown contact"}
+            <div className="divide-y divide-dash-border overflow-hidden rounded-xl border border-dash-border">
+              {enrollments.map((e) => {
+                const name = e.contact
+                  ? [e.contact.first_name, e.contact.last_name].filter(Boolean).join(" ") ||
+                    "Unnamed contact"
+                  : "Unknown contact";
+                return (
+                  <div
+                    key={e.id}
+                    className="flex items-center gap-3 bg-white px-4 py-3 transition-colors hover:bg-dash-surface/60"
+                  >
+                    <Avatar name={name} email={e.contact?.email} />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13px] font-semibold text-dash-text">{name}</div>
+                      <div className="truncate text-[11px] text-dash-textMuted">
+                        {e.contact?.email || "—"}
+                      </div>
                     </div>
-                    <div className="text-[10px] !text-dash-textMuted truncate">{e.contact?.email}</div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge className={`text-[9px] font-bold px-2 py-0.5 rounded-md capitalize ${e.active ? "bg-green/10 text-green border border-green/20" : "bg-dash-surface !text-dash-textMuted border border-dash-border"}`}>
+                    <StatusPill tone={e.active ? "green" : "slate"}>
                       {e.status || (e.active ? "active" : "inactive")}
-                    </Badge>
+                    </StatusPill>
                     <button
                       disabled={removingId === e.id}
                       onClick={() => handleRemove(e.id)}
-                      className="h-7 w-7 rounded-lg hover:bg-red/10 flex items-center justify-center text-red transition-colors disabled:opacity-60"
+                      aria-label="Remove enrolment"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-dash-textMuted transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60"
                     >
-                      {removingId === e.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                      {removingId === e.id ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={13} />
+                      )}
                     </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

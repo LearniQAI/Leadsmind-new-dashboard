@@ -5,6 +5,7 @@ import { getMarketplaceCourses, getMyEnrollments } from '@/app/actions/studentEn
 import { getUserRoleForWorkspace, getCurrentWorkspaceId } from '@/lib/auth';
 import MarketplaceClient from './MarketplaceClient';
 import { WorkspaceSync } from '@/components/auth/WorkspaceSync';
+import { DashCard, DashEmptyState } from '@/components/dashboard-ui';
 
 interface MarketplacePageProps {
   searchParams: {
@@ -13,18 +14,14 @@ interface MarketplacePageProps {
 }
 
 export default async function MarketplacePage({ searchParams }: MarketplacePageProps) {
-  const workspaceId = searchParams.workspaceId || await getCurrentWorkspaceId();
+  const workspaceId = searchParams.workspaceId || (await getCurrentWorkspaceId());
 
   // Role must be looked up against the same workspace the courses/activeWorkspaceId
-  // are scoped to — not the session's cookie-based "current workspace" — since
-  // workspaceId here can come from a ?workspaceId= query param that points at a
-  // workspace the user isn't even a member of. Using the cookie-based getUserRole()
-  // here previously let an admin of their own workspace appear as "admin" of any
-  // other workspace's courses simply because that other workspace was in the URL.
+  // are scoped to — not the session's cookie-based "current workspace".
   const [coursesRes, enrolledRes, userRole] = await Promise.all([
     getMarketplaceCourses(workspaceId || undefined),
     getMyEnrollments(),
-    workspaceId ? getUserRoleForWorkspace(workspaceId) : Promise.resolve(null)
+    workspaceId ? getUserRoleForWorkspace(workspaceId) : Promise.resolve(null),
   ]);
 
   const courses = coursesRes.data || [];
@@ -32,46 +29,53 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
   const enrolledCourseIds = enrolledCourses.map((e: any) => e.id);
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      {searchParams.workspaceId && (
-        <WorkspaceSync workspaceId={searchParams.workspaceId} />
-      )}
-      {/* Header bar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-white/5 pb-6">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs text-white/40 font-mono uppercase tracking-widest mb-1.5">
-            <Link href="/student" className="hover:text-white transition-all flex items-center gap-0.5">
-              <ChevronLeft size={12} /> Dashboard
-            </Link>
-            <span>/</span>
-            <span className="text-white/60">Catalog</span>
-          </div>
-          <h1 className="text-3xl font-space-grotesk font-black uppercase text-white tracking-tight flex items-center gap-2">
-            Course <span className="text-primary">Marketplace</span>
-          </h1>
-        </div>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-8">
+      {searchParams.workspaceId && <WorkspaceSync workspaceId={searchParams.workspaceId} />}
 
-      {/* Catalog items grid */}
+      {/* Header */}
+      <header className="space-y-3 border-b border-dash-border pb-7">
+        <nav className="flex items-center gap-2 text-[12px] font-medium tracking-tight !text-dash-textMuted">
+          <Link
+            href="/student"
+            className="inline-flex items-center gap-0.5 transition-colors hover:!text-dash-text"
+          >
+            <ChevronLeft size={13} /> Dashboard
+          </Link>
+          <span className="!text-dash-border">/</span>
+          <span className="font-semibold !text-dash-text">Catalog</span>
+        </nav>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="h-1 w-1 rounded-full bg-dash-accent" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] !text-dash-accent">
+              Student portal
+            </span>
+          </div>
+          <h1 className="font-display text-[30px] font-semibold leading-[1.08] tracking-[-0.02em] !text-dash-text md:text-[36px]">
+            Course catalog
+          </h1>
+          <p className="text-[13px] leading-relaxed !text-dash-textMuted">
+            Browse published courses and enrol in a new learning track.
+          </p>
+        </div>
+      </header>
+
       {courses.length > 0 ? (
-        <MarketplaceClient 
-          courses={courses} 
-          enrolledCourseIds={enrolledCourseIds} 
+        <MarketplaceClient
+          courses={courses}
+          enrolledCourseIds={enrolledCourseIds}
           userRole={userRole}
           activeWorkspaceId={workspaceId}
         />
       ) : (
-        <div className="text-center py-20 bg-[#080f28] rounded-2xl border border-dashed border-white/5 space-y-4">
-          <div className="w-16 h-16 bg-white/[0.02] border border-white/5 rounded-full flex items-center justify-center mx-auto text-white/30">
-            <ShoppingBag size={24} />
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider">No Courses Available</h4>
-            <p className="text-xs text-white/40 max-w-sm mx-auto leading-relaxed">
-              There are no courses published in the catalog at this time. Please check back later.
-            </p>
-          </div>
-        </div>
+        <DashCard padding="default" interactive={false} className="border-dashed">
+          <DashEmptyState
+            icon={ShoppingBag}
+            title="No courses available"
+            description="Nothing is published in the catalog right now. Check back later."
+          />
+        </DashCard>
       )}
     </div>
   );
