@@ -13,6 +13,7 @@ import {
   GraduationCap,
   CheckCircle2,
   Droplet,
+  Eye,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -291,6 +292,14 @@ export default function ModuleCard({
                             }
                           />
                         </span>
+
+                        <button
+                          onClick={() => onViewLesson(lesson)}
+                          title="Preview lesson"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-dash-textMuted transition-colors hover:bg-white hover:text-sky-600"
+                        >
+                          <Eye size={14} />
+                        </button>
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

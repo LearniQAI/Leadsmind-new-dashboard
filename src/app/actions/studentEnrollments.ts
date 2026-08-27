@@ -4,6 +4,7 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId, getUserRole } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';
 import { logger } from '@/shared/logger';
+import { isEnrolmentActive } from '@/lib/lms/enrolment';
 
 /**
  * Resolves the contact_id for the currently logged-in user email.
@@ -190,6 +191,7 @@ export async function getMyEnrollments() {
         id,
         enrolled_at,
         status,
+        active,
         course:courses (
           id,
           title,
@@ -205,7 +207,7 @@ export async function getMyEnrollments() {
     if (error) throw error;
 
     const activeEnrollments = (enrollments || [])
-      .filter((e: any) => e.course)
+      .filter((e: any) => e.course && isEnrolmentActive(e))
       .map((e: any) => ({
         enrollmentId: e.id,
         enrolledAt: e.enrolled_at,
@@ -225,32 +227,47 @@ export async function getMyEnrollments() {
  */
 export async function getMarketplaceCourses(overrideWorkspaceId?: string) {
   try {
-    const workspaceId = overrideWorkspaceId || await getCurrentWorkspaceId();
-
     const adminClient = createAdminClient();
-    let query = adminClient
-      .from('courses')
-      .select('*')
-      .eq('published', true);
+    const user = await getUser();
 
-    if (workspaceId) {
-      query = query.eq('workspace_id', workspaceId);
-    }
+    // The set of workspaces this user may legitimately see a catalog for:
+    //  - an explicit override (already role-checked by the caller), or
+    //  - the active_workspace_id cookie, PLUS every workspace where the user is a member
+    //    or has a contact record (i.e. has been enrolled/invited).
+    // The previous implementation, on finding zero courses for the cookie workspace, fell
+    // back to returning EVERY published course in the system — a cross-tenant leak. This
+    // scopes the fallback to the user's own workspaces instead.
+    const allowedWorkspaceIds = new Set<string>();
 
-    const { data: courses, error } = await query;
-    if (error) throw error;
+    if (overrideWorkspaceId) {
+      allowedWorkspaceIds.add(overrideWorkspaceId);
+    } else {
+      const cookieWorkspaceId = await getCurrentWorkspaceId();
+      if (cookieWorkspaceId) allowedWorkspaceIds.add(cookieWorkspaceId);
 
-    // Fallback: If no courses are found in the filtered workspace, but there are published courses in the system, return all published courses
-    if ((!courses || courses.length === 0) && workspaceId) {
-      const { data: allCourses } = await adminClient
-        .from('courses')
-        .select('*')
-        .eq('published', true);
-      if (allCourses && allCourses.length > 0) {
-        return { data: allCourses };
+      if (user) {
+        const [{ data: memberships }, { data: contacts }] = await Promise.all([
+          adminClient.from('workspace_members').select('workspace_id').eq('user_id', user.id),
+          user.email
+            ? adminClient.from('contacts').select('workspace_id').eq('email', user.email)
+            : Promise.resolve({ data: [] as any[] }),
+        ]);
+        (memberships || []).forEach((m: any) => m.workspace_id && allowedWorkspaceIds.add(m.workspace_id));
+        (contacts || []).forEach((c: any) => c.workspace_id && allowedWorkspaceIds.add(c.workspace_id));
       }
     }
 
+    if (allowedWorkspaceIds.size === 0) {
+      return { data: [] };
+    }
+
+    const { data: courses, error } = await adminClient
+      .from('courses')
+      .select('*')
+      .eq('published', true)
+      .in('workspace_id', Array.from(allowedWorkspaceIds));
+
+    if (error) throw error;
     return { data: courses || [] };
   } catch (err: any) {
     logger.error({ err }, 'student_enrollments.marketplace_courses.fetch.failed');
@@ -279,12 +296,13 @@ export async function getEnrolledCoursesWithProgress() {
     if (contactIds.length === 0) return { data: [] };
 
     // 1. Fetch enrollments using admin client to bypass RLS
-    const { data: enrollments, error: enrollError } = await adminClient
+    const { data: enrollmentsRaw, error: enrollError } = await adminClient
       .from('enrollments')
       .select(`
         id,
         enrolled_at,
         status,
+        active,
         course:courses (
           id,
           title,
@@ -298,6 +316,9 @@ export async function getEnrolledCoursesWithProgress() {
       .in('contact_id', contactIds);
 
     if (enrollError) throw enrollError;
+
+    // Deactivated enrolments must drop off the student's dashboard, not just the roster.
+    const enrollments = (enrollmentsRaw || []).filter((e: any) => isEnrolmentActive(e));
 
     // 2. Fetch all progress logs for these contacts using admin client to bypass RLS
     const { data: progressLogs, error: progressError } = await adminClient

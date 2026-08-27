@@ -180,6 +180,13 @@ export async function enrollStudent(courseId: string, contactId: string) {
    return { error: 'Unauthorized' };
   }
 
+  const { data: existingEnrolment } = await adminClient
+   .from('enrollments')
+   .select('id')
+   .eq('course_id', courseId)
+   .eq('contact_id', contactId)
+   .maybeSingle();
+
   const { error } = await adminClient
    .from('enrollments')
    .upsert({ course_id: courseId, contact_id: contactId, status: 'active' });
@@ -192,10 +199,17 @@ export async function enrollStudent(courseId: string, contactId: string) {
    .select('workspace_id')
    .eq('id', courseId)
    .single();
-  
+
   if (course?.workspace_id) {
    const { publishEvent } = await import('@/lib/events/EventBus');
    await publishEvent(course.workspace_id, 'student_enrolled_course', contactId, { courseId });
+
+   // Send the real invitation email only on a genuinely new enrolment (never re-send on an
+   // idempotent re-upsert). Fail-soft — a delivery problem must not fail the enrolment.
+   if (!existingEnrolment) {
+    const { sendCourseOnboardingEmail } = await import('@/lib/lms/onboardingEmail');
+    await sendCourseOnboardingEmail({ courseId, contactId, workspaceId: course.workspace_id });
+   }
   }
 
   return { success: true };

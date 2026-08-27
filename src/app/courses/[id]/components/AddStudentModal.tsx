@@ -55,7 +55,12 @@ export default function AddStudentModal({ courseId, onClose, onEnrolled }: AddSt
       if (dataJson.error) {
         toast.error(dataJson.error);
       } else {
-        toast.success(`${contact.first_name || contact.email} enrolled.`);
+        const who = contact.first_name || contact.email;
+        toast.success(
+          dataJson.emailSent
+            ? `${who} enrolled — invitation email sent.`
+            : `${who} enrolled. (Invitation email could not be sent — check the workspace email settings.)`
+        );
         setEnrolledIds((prev) => [...prev, contact.id]);
         onEnrolled();
       }

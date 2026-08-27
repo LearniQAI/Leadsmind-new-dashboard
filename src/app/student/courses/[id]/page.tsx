@@ -1,11 +1,12 @@
 import React from 'react';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ShieldAlert } from 'lucide-react';
-import { createServerClient, createAdminClient } from '@/lib/supabase/server';
+import { ShieldAlert } from 'lucide-react';
+import { createAdminClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { getCompletedLessons } from '@/app/actions/studentProgress';
+import { isEnrolmentActive } from '@/lib/lms/enrolment';
 import StudentPlayerClient from './StudentPlayerClient';
 
 interface StudentCoursePlayerPageProps {
@@ -44,24 +45,33 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
     .eq('contact_id', contactId)
     .maybeSingle();
 
-  // Redirect to marketplace if not registered
-  if (!enrollment) {
+  // Access gate — content is served ONLY to a currently-active enrolment. A row that exists
+  // but has been deactivated by an admin (active:false / status:'inactive' etc.) must not
+  // open the player: previously this check was just `if (!enrollment)`, so a deactivated
+  // student kept full read access to every lesson via the URL while showing as "removed" in
+  // the admin roster. isEnrolmentActive() is the same predicate the mark-complete action uses.
+  if (!enrollment || !isEnrolmentActive(enrollment)) {
+    const wasEnrolled = !!enrollment;
     return (
-      <div className="max-w-md mx-auto mt-20 bg-[#080f28] border border-white/5 p-8 rounded-2xl text-center space-y-6 shadow-2xl">
-        <div className="w-16 h-16 bg-red-500/10 text-red-400 rounded-full flex items-center justify-center mx-auto">
-          <ShieldAlert size={30} />
+      <div className="mx-auto mt-24 max-w-md rounded-2xl border border-dash-border bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 ring-1 ring-inset ring-rose-500/15">
+          <ShieldAlert size={26} />
         </div>
-        <div className="space-y-2">
-          <h3 className="text-lg font-space-grotesk font-black uppercase text-white tracking-wider">Access Restricted</h3>
-          <p className="text-xs text-white/50 leading-relaxed">
-            You are not registered in the course: <strong className="text-white">"{course.title}"</strong>. Please enroll in the course via the catalog before starting.
-          </p>
-        </div>
-        <Link 
+        <h3 className="mt-4 font-display text-[16px] font-semibold !text-dash-text">
+          {wasEnrolled ? 'Access paused' : 'Not enrolled'}
+        </h3>
+        <p className="mt-1.5 text-[13px] leading-relaxed !text-dash-textMuted">
+          {wasEnrolled ? (
+            <>Your enrolment in <strong className="!text-dash-text">{course.title}</strong> is no longer active. Contact the course team if you think this is a mistake.</>
+          ) : (
+            <>You're not enrolled in <strong className="!text-dash-text">{course.title}</strong>. Enrol from the catalog to start.</>
+          )}
+        </p>
+        <Link
           href="/student/marketplace"
-          className="bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 inline-flex items-center justify-center shadow-lg shadow-primary/20 transition-all active:scale-95 w-full"
+          className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-dash-accent px-6 text-[13px] font-semibold text-white transition-colors hover:bg-dash-accent/90"
         >
-          View Marketplace Catalog
+          Browse catalog
         </Link>
       </div>
     );
@@ -101,23 +111,12 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
   const lessonsWithBlocks = lessons.map((l) => ({ ...l, contentBlocks: blocksByLesson.get(l.id) || [] }));
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto">
-      {/* Back to Dashboard bar */}
-      <div className="flex items-center gap-1.5 text-xs text-white/40 font-mono uppercase tracking-widest shrink-0">
-        <Link href="/student" className="hover:text-white transition-all flex items-center gap-0.5">
-          <ChevronLeft size={12} /> Dashboard
-        </Link>
-        <span>/</span>
-        <span className="text-white/60">{course.title}</span>
-      </div>
-
-      <StudentPlayerClient
-        course={course}
-        modules={modules}
-        lessons={lessonsWithBlocks}
-        initialCompletedLessonIds={completedLessonIds}
-        enrollment={enrollment}
-      />
-    </div>
+    <StudentPlayerClient
+      course={course}
+      modules={modules}
+      lessons={lessonsWithBlocks}
+      initialCompletedLessonIds={completedLessonIds}
+      enrollment={enrollment}
+    />
   );
 }

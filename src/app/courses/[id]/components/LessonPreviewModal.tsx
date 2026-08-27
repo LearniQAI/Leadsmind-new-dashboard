@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, Loader2, FileText, Download } from "lucide-react";
+import {
+  X,
+  Loader2,
+  FileText,
+  Download,
+  Video as VideoIcon,
+  Headphones,
+  HelpCircle,
+  Layers,
+  ExternalLink,
+} from "lucide-react";
 import VideoPlayer from "@/app/student/courses/[id]/components/VideoPlayer";
 import { VoiceNotePlayer } from "@/components/common/VoiceNotePlayer";
 import { sanitizeRichTextHtml } from "@/lib/security/sanitizeHtml";
@@ -9,17 +19,62 @@ import { sanitizeRichTextHtml } from "@/lib/security/sanitizeHtml";
 interface LessonPreviewModalProps {
   lessonId: string;
   lessonTitle: string;
+  /** Full mapped lesson row — lets the preview also render legacy single-type lessons
+   *  (video / pdf / audio / text) that have no content_blocks. */
+  lesson?: any;
   onClose: () => void;
 }
 
-// "View" action (Section C, Step 4) — a real admin preview of what a student would see,
-// without needing a separate real student account. Reuses the same content-block renderer
-// sub-components the real student player uses (VideoPlayer, VoiceNotePlayer, the same
-// sanitizeRichTextHtml call) in read-only mode, rather than building a second content
-// renderer from scratch. Completion-writing calls are intentionally never made here — this
-// is a preview, not a real student session, so it must never create real
-// lesson_block_completions rows.
-export default function LessonPreviewModal({ lessonId, lessonTitle, onClose }: LessonPreviewModalProps) {
+/** Local copy of the student player's PDF-embed resolver (kept private there). */
+function embedPdfUrl(url: string): string {
+  if (!url) return "";
+  if (url.includes("google.com")) {
+    const m = url.match(/\/d\/([^/]+)/);
+    if (m?.[1]) return `https://drive.google.com/file/d/${m[1].split(/[/?]/)[0]}/preview`;
+    try {
+      const id = new URL(url).searchParams.get("id");
+      if (id) return `https://drive.google.com/file/d/${id}/preview`;
+    } catch {
+      /* noop */
+    }
+  }
+  if (url.includes("dropbox.com")) return url.replace("dl=0", "raw=1").replace("dl=1", "raw=1");
+  if (url.includes("box.com/s/")) return url.replace("/s/", "/embed/s/");
+  return url;
+}
+
+function BlockTag({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted">
+      {children}
+    </div>
+  );
+}
+
+function PdfPreview({ url }: { url: string }) {
+  return (
+    <div className="space-y-2">
+      <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border border-dash-border bg-dash-surface">
+        <iframe src={embedPdfUrl(url)} title="PDF preview" className="h-full w-full border-0" />
+      </div>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-sky-600 hover:underline"
+      >
+        <ExternalLink size={13} /> Open in new tab
+      </a>
+    </div>
+  );
+}
+
+export default function LessonPreviewModal({
+  lessonId,
+  lessonTitle,
+  lesson,
+  onClose,
+}: LessonPreviewModalProps) {
   const [blocks, setBlocks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -30,74 +85,210 @@ export default function LessonPreviewModal({ lessonId, lessonTitle, onClose }: L
       .finally(() => setIsLoading(false));
   }, [lessonId]);
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[600] flex items-center justify-center p-4">
-      <div className="bg-[#0a0f28] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl">
-        <div className="sticky top-0 bg-[#0a0f28] border-b border-white/10 p-5 flex items-center justify-between z-10">
-          <div>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-white/40">Admin Preview — Student View</span>
-            <h3 className="text-sm font-bold text-white mt-0.5">{lessonTitle}</h3>
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const legacyType: string = (lesson?.lesson_type || "").toLowerCase();
+  const legacyVideo = lesson?.content?.video_url || lesson?.video_url || "";
+  const legacyText =
+    typeof lesson?.content === "string" ? lesson.content : lesson?.content?.text || "";
+  const flashcards: { front: string; back: string }[] = lesson?.metadata?.flashcards || [];
+
+  const renderLegacy = () => {
+    switch (legacyType) {
+      case "video":
+        return legacyVideo ? (
+          <VideoPlayer videoUrl={legacyVideo} onComplete={() => {}} isAlreadyCompleted lowBandwidthMode={false} />
+        ) : (
+          <Empty icon={<VideoIcon />} label="No video URL set on this lesson yet." />
+        );
+      case "pdf":
+      case "reading":
+      case "slides":
+        return legacyVideo ? (
+          <PdfPreview url={legacyVideo} />
+        ) : (
+          <Empty icon={<FileText />} label="No document attached to this lesson yet." />
+        );
+      case "audio":
+        return legacyVideo ? (
+          <div className="space-y-3">
+            <VoiceNotePlayer audioUrl={legacyVideo} theme="light" isAlreadyCompleted />
+            {legacyText && (
+              <div className="max-h-[240px] overflow-y-auto whitespace-pre-line rounded-xl border border-dash-border bg-dash-surface/60 p-3.5 text-[13px] leading-relaxed !text-dash-text">
+                {legacyText}
+              </div>
+            )}
           </div>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+        ) : (
+          <Empty icon={<Headphones />} label="No audio file attached yet." />
+        );
+      case "quiz":
+        return (
+          <Empty
+            icon={<HelpCircle />}
+            label="This is a quiz lesson — open the Quiz Workbench to preview its questions."
+          />
+        );
+      case "flashcards":
+        return flashcards.length ? (
+          <div className="space-y-2">
+            {flashcards.map((c, i) => (
+              <div key={i} className="rounded-xl border border-dash-border bg-white p-3 text-[13px]">
+                <div className="font-semibold !text-dash-text">{c.front || "—"}</div>
+                <div className="mt-1 !text-dash-textMuted">{c.back || "—"}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Empty icon={<Layers />} label="No flashcards in this deck yet." />
+        );
+      case "live_session":
+        return legacyVideo ? (
+          <a
+            href={legacyVideo}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-sky-600 hover:underline"
+          >
+            <ExternalLink size={14} /> Join link
+          </a>
+        ) : (
+          <Empty icon={<VideoIcon />} label="No meeting link set yet." />
+        );
+      default:
+        return legacyText ? (
+          <div
+            className="prose prose-slate max-w-none text-[14px] leading-relaxed !text-dash-text"
+            dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(legacyText) }}
+          />
+        ) : (
+          <Empty icon={<FileText />} label="This lesson has no content yet." />
+        );
+    }
+  };
+
+  const hasBlocks = blocks.length > 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-[600] flex items-start justify-center overflow-y-auto bg-slate-900/45 p-4 backdrop-blur-sm sm:items-center"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="my-auto flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-dash-border bg-white shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35)]">
+        <div className="flex items-start justify-between gap-4 border-b border-dash-border px-6 py-5">
+          <div className="space-y-1">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+              Preview · student view
+            </div>
+            <h2 className="font-display text-[17px] font-semibold leading-tight tracking-[-0.01em] !text-dash-text">
+              {lesson?.title || lessonTitle}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="-mr-1 -mt-1 rounded-lg p-1.5 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
+          >
             <X size={18} />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="space-y-4 overflow-y-auto px-6 py-6">
           {isLoading ? (
-            <div className="flex items-center justify-center gap-2 text-white/40 text-xs py-10">
-              <Loader2 size={14} className="animate-spin" /> Loading preview...
+            <div className="flex items-center justify-center gap-2 py-12 text-[12px] !text-dash-textMuted">
+              <Loader2 size={14} className="animate-spin" /> Loading preview…
             </div>
-          ) : blocks.length === 0 ? (
-            <div className="text-center text-white/30 text-xs py-10">No content blocks in this lesson yet.</div>
-          ) : (
+          ) : hasBlocks ? (
             blocks.map((block, i) => (
-              <div key={block.id} className="bg-white/[0.02] border border-white/5 rounded-xl p-4">
-                <div className="text-[9px] text-white/40 uppercase font-mono mb-3 tracking-wider">
+              <div key={block.id} className="rounded-xl border border-dash-border bg-white p-4">
+                <BlockTag>
                   Block {i + 1} · {block.type.replace("_", " ")}
-                </div>
+                </BlockTag>
                 {block.type === "video" && block.file_url && (
                   <VideoPlayer videoUrl={block.file_url} onComplete={() => {}} isAlreadyCompleted lowBandwidthMode={false} />
                 )}
                 {block.type === "audio" && block.file_url && (
-                  <VoiceNotePlayer audioUrl={block.file_url} waveformBars={block.content?.waveform_bars} theme="dark" isAlreadyCompleted />
+                  <VoiceNotePlayer
+                    audioUrl={block.file_url}
+                    waveformBars={block.content?.waveform_bars}
+                    theme="light"
+                    isAlreadyCompleted
+                  />
                 )}
                 {(block.type === "reading" || block.type === "slides") && block.file_url && (
-                  <a href={block.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-primary text-xs font-bold">
-                    <FileText size={13} /> Open PDF
-                  </a>
+                  <PdfPreview url={block.file_url} />
                 )}
                 {block.type === "rich_text" && block.content?.text && (
                   <div
-                    className="text-sm text-white/80 leading-relaxed prose prose-invert max-w-none"
+                    className="prose prose-slate max-w-none text-[14px] leading-relaxed !text-dash-text"
                     dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(block.content.text) }}
                   />
                 )}
                 {block.type === "download" && block.file_url && (
-                  <a href={block.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-primary text-xs font-bold">
+                  <a
+                    href={block.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-sky-600 hover:underline"
+                  >
                     <Download size={13} /> Download resource
                   </a>
                 )}
                 {block.type === "quiz" && (
-                  <div className="text-xs text-white/50">Quiz block — open the Quiz Workbench to preview questions.</div>
+                  <Empty icon={<HelpCircle />} label="Quiz block — open the Quiz Workbench to preview questions." />
                 )}
                 {block.type === "assignment" && block.content?.instructions && (
-                  <div className="text-xs text-white/70 whitespace-pre-line">{block.content.instructions}</div>
+                  <div className="whitespace-pre-line text-[13px] leading-relaxed !text-dash-text">
+                    {block.content.instructions}
+                  </div>
                 )}
                 {block.type === "flashcards" && (
-                  <div className="text-xs text-white/50">{(block.content?.flashcards || []).length} flashcard(s) in this deck.</div>
+                  <div className="text-[13px] !text-dash-textMuted">
+                    {(block.content?.flashcards || []).length} flashcard(s) in this deck.
+                  </div>
                 )}
                 {block.type === "embed" && block.content?.embed_url && (
-                  <div className="text-xs text-white/50 font-mono truncate">{block.content.embed_url}</div>
+                  <div className="truncate font-mono text-[12px] !text-dash-textMuted">
+                    {block.content.embed_url}
+                  </div>
                 )}
                 {block.type === "live_session" && block.file_url && (
-                  <a href={block.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-bold">Meeting link</a>
+                  <a
+                    href={block.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[12px] font-semibold text-sky-600 hover:underline"
+                  >
+                    Meeting link
+                  </a>
                 )}
               </div>
             ))
+          ) : lesson ? (
+            <div className="rounded-xl border border-dash-border bg-white p-4">
+              <BlockTag>{lesson.type || legacyType || "Lesson"}</BlockTag>
+              {renderLegacy()}
+            </div>
+          ) : (
+            <Empty icon={<FileText />} label="No content in this lesson yet." />
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Empty({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-dash-border bg-dash-surface text-dash-textMuted [&_svg]:size-4">
+        {icon}
+      </span>
+      <p className="max-w-xs text-[12px] leading-relaxed !text-dash-textMuted">{label}</p>
     </div>
   );
 }

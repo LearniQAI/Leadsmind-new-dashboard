@@ -1,11 +1,42 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getUser, getCurrentWorkspaceId } from '@/lib/auth';
+import { getUser } from '@/lib/auth';
 import { getOrCreateStudentContact } from './studentEnrollments';
 import { gradeQuizAttempt } from '@/lib/lms/gradeQuiz';
 import { markLessonCompleteForContact } from '@/lib/lms/completeLesson';
 import { logger } from '@/shared/logger';
+
+/**
+ * Resolves { workspaceId, contactId } for the current student **from the course itself**,
+ * not from the active_workspace_id cookie.
+ *
+ * Root-cause fix: the cookie can point at a different workspace than the course's, and
+ * getOrCreateStudentContact() would then look up (or auto-CREATE) a contact in that wrong
+ * workspace — a contact with no enrolment for this course — making every progress read/write
+ * fail with "Not enrolled in this course" even for a genuinely enrolled student. The course
+ * page already resolves the contact against course.workspace_id; these actions now match it.
+ */
+async function resolveCourseContext(
+  courseId: string
+): Promise<{ workspaceId: string; contactId: string } | { error: string }> {
+  const user = await getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  const adminClient = createAdminClient();
+  const { data: course } = await adminClient
+    .from('courses')
+    .select('workspace_id')
+    .eq('id', courseId)
+    .maybeSingle();
+
+  if (!course?.workspace_id) return { error: 'Course not found' };
+
+  const contactId = await getOrCreateStudentContact(course.workspace_id);
+  if (!contactId) return { error: 'Failed to resolve student contact' };
+
+  return { workspaceId: course.workspace_id, contactId };
+}
 
 /**
  * Marks a lesson complete for the current session's student. Resolves the real
@@ -15,16 +46,10 @@ import { logger } from '@/shared/logger';
  * rather than duplicating this logic with its own course_progress write.
  */
 export async function markLessonComplete(courseId: string, lessonId: string) {
-  const user = await getUser();
-  if (!user) return { error: 'Not authenticated' };
+  const ctx = await resolveCourseContext(courseId);
+  if ('error' in ctx) return { error: ctx.error };
 
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No active workspace context' };
-
-  const contactId = await getOrCreateStudentContact(workspaceId);
-  if (!contactId) return { error: 'Failed to resolve student contact' };
-
-  return markLessonCompleteForContact(workspaceId, contactId, courseId, lessonId);
+  return markLessonCompleteForContact(ctx.workspaceId, ctx.contactId, courseId, lessonId);
 }
 
 /**
@@ -32,14 +57,9 @@ export async function markLessonComplete(courseId: string, lessonId: string) {
  */
 export async function markLessonIncomplete(courseId: string, lessonId: string) {
   try {
-    const user = await getUser();
-    if (!user) return { error: 'Not authenticated' };
-
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No active workspace context' };
-
-    const contactId = await getOrCreateStudentContact(workspaceId);
-    if (!contactId) return { error: 'Failed to resolve student contact' };
+    const ctx = await resolveCourseContext(courseId);
+    if ('error' in ctx) return { error: ctx.error };
+    const { contactId } = ctx;
 
     const adminClient = createAdminClient();
 
@@ -79,14 +99,9 @@ export async function markLessonIncomplete(courseId: string, lessonId: string) {
  */
 export async function getCompletedLessons(courseId: string) {
   try {
-    const user = await getUser();
-    if (!user) return { error: 'Not authenticated' };
-
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No active workspace context' };
-
-    const contactId = await getOrCreateStudentContact(workspaceId);
-    if (!contactId) return { data: [] };
+    const ctx = await resolveCourseContext(courseId);
+    if ('error' in ctx) return ctx.error === 'Failed to resolve student contact' ? { data: [] } : { error: ctx.error };
+    const { contactId } = ctx;
 
     const adminClient = createAdminClient();
     const { data: progressList, error } = await adminClient
@@ -117,14 +132,9 @@ export async function submitQuizAttempt(payload: {
   answers: any;
 }) {
   try {
-    const user = await getUser();
-    if (!user) return { error: 'Not authenticated' };
-
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No active workspace context' };
-
-    const contactId = await getOrCreateStudentContact(workspaceId);
-    if (!contactId) return { error: 'Failed to resolve student contact' };
+    const ctx = await resolveCourseContext(payload.courseId);
+    if ('error' in ctx) return { error: ctx.error };
+    const { workspaceId, contactId } = ctx;
 
     const adminClient = createAdminClient();
 

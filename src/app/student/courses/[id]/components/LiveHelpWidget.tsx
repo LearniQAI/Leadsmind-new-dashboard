@@ -201,14 +201,13 @@ export default function LiveHelpWidget({ courseId, enrollment }: LiveHelpWidgetP
           onClick={() => setIsOpen(true)}
           aria-label="Virtual Support Office"
           title="Virtual Support Office"
-          className="live-help-launcher fixed bottom-6 right-6 z-50 w-14 h-14 rounded-2xl flex items-center justify-center hover:scale-[1.07] active:scale-95 transition-all duration-200 border-[3px] bg-white group relative"
-          style={{ '--lh-brand': BRAND, borderColor: BRAND } as React.CSSProperties}
+          className="group fixed bottom-[76px] right-5 z-[80] flex h-11 w-11 items-center justify-center rounded-full border border-dash-border bg-white shadow-lg shadow-slate-900/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl active:scale-95"
         >
-          <Headset className="h-6 w-6 group-hover:rotate-6 transition-transform duration-300" style={{ color: BRAND }} />
+          <Headset className="h-[18px] w-[18px] transition-transform duration-300 group-hover:rotate-6" style={{ color: BRAND }} />
           {activeSession && (
-            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white" />
+            <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
             </span>
           )}
         </button>

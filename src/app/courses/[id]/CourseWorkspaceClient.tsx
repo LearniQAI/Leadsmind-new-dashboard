@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Layers, UserPlus, Users, Palette, Settings as SettingsIcon } from "lucide-react";
+import { Plus, Layers, UserPlus, Users, Palette, Settings as SettingsIcon, Rocket, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
@@ -58,9 +58,40 @@ export default function CourseWorkspaceClient({
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [previewLesson, setPreviewLesson] = useState<{ id: string; title: string } | null>(null);
+  const [previewLesson, setPreviewLesson] = useState<any | null>(null);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [isRosterOpen, setIsRosterOpen] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const isPublished =
+    (currentCourse?.status || (currentCourse?.published ? "published" : "draft")) === "published";
+
+  const handleTogglePublish = async () => {
+    const next = isPublished ? "draft" : "published";
+    if (isPublished && !window.confirm("Unpublish this course? Students will lose access from the catalog.")) {
+      return;
+    }
+    setIsPublishing(true);
+    try {
+      const res = await fetch(`/api/lms/course?id=${currentCourse.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      const dataJson = await res.json();
+      if (dataJson.error) {
+        toast.error(dataJson.error);
+      } else {
+        setCurrentCourse((c: any) => ({ ...c, ...(dataJson.data || {}), status: next, published: next === "published" }));
+        toast.success(next === "published" ? "Course published." : "Course moved back to draft.");
+        router.refresh();
+      }
+    } catch {
+      toast.error("Failed to update publish status");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   const refreshWorkspace = async () => {
     try {
@@ -323,12 +354,33 @@ export default function CourseWorkspaceClient({
               </p>
             </div>
 
-            <Button
-              onClick={() => { setEditingModule(undefined); setIsModuleModalOpen(true); }}
-              className="bg-sky-500 text-white hover:bg-sky-600"
-            >
-              <Plus size={14} /> New Module
-            </Button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleTogglePublish}
+                disabled={isPublishing}
+                className={`inline-flex h-11 items-center gap-2 rounded-full px-5 text-[12px] font-semibold transition-colors disabled:opacity-60 [&_svg]:size-4 ${
+                  isPublished
+                    ? "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                    : "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                }`}
+              >
+                {isPublishing ? (
+                  <Loader2 className="animate-spin" />
+                ) : isPublished ? (
+                  <CheckCircle2 />
+                ) : (
+                  <Rocket />
+                )}
+                {isPublishing ? "Saving…" : isPublished ? "Published" : "Publish course"}
+              </button>
+
+              <Button
+                onClick={() => { setEditingModule(undefined); setIsModuleModalOpen(true); }}
+                className="bg-sky-500 text-white hover:bg-sky-600"
+              >
+                <Plus size={14} /> New Module
+              </Button>
+            </div>
           </div>
 
           {/* Quick actions — Section 3 (Systeme-parity Master Prompt): the 3 primary daily
@@ -406,7 +458,7 @@ export default function CourseWorkspaceClient({
                   onDuplicateModule={handleDuplicateModule}
                   onDuplicateLesson={handleDuplicateLesson}
                   onMoveLesson={handleMoveLesson}
-                  onViewLesson={(les) => setPreviewLesson({ id: les.id, title: les.title })}
+                  onViewLesson={(les) => setPreviewLesson(les)}
                   onCreateAssignment={handleCreateAssignment}
                 />
               ))}
@@ -464,6 +516,7 @@ export default function CourseWorkspaceClient({
         <LessonPreviewModal
           lessonId={previewLesson.id}
           lessonTitle={previewLesson.title}
+          lesson={previewLesson}
           onClose={() => setPreviewLesson(null)}
         />
       )}

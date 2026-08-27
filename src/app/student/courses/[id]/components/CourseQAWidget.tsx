@@ -127,10 +127,9 @@ export default function CourseQAWidget({ courseId, onJumpToLesson }: CourseQAWid
           onClick={() => setIsOpen(true)}
           aria-label="Ask about this course"
           title="Ask about this course"
-          className="course-qa-launcher fixed bottom-6 left-6 z-50 w-14 h-14 rounded-2xl flex items-center justify-center hover:scale-[1.07] active:scale-95 transition-all duration-200 border-[3px] bg-white group"
-          style={{ '--qa-brand': BRAND, borderColor: BRAND } as React.CSSProperties}
+          className="group fixed bottom-[132px] right-5 z-[80] flex h-11 w-11 items-center justify-center rounded-full border border-dash-border bg-white shadow-lg shadow-slate-900/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl active:scale-95"
         >
-          <BookOpen className="h-6 w-6 group-hover:rotate-6 transition-transform duration-300" style={{ color: BRAND }} />
+          <BookOpen className="h-[18px] w-[18px] transition-transform duration-300 group-hover:rotate-6" style={{ color: BRAND }} />
         </button>
       )}
 
@@ -143,7 +142,7 @@ export default function CourseQAWidget({ courseId, onJumpToLesson }: CourseQAWid
       )}
 
       {isOpen && (
-        <div className="fixed bottom-24 left-6 z-[2000] w-[calc(100vw-3rem)] max-w-sm h-[560px] max-h-[75vh] bg-white border border-dash-border rounded-2xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300 font-dm-sans">
+        <div className="fixed bottom-24 right-6 z-[2000] w-[calc(100vw-3rem)] max-w-sm h-[560px] max-h-[75vh] bg-white border border-dash-border rounded-2xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300 font-dm-sans">
           {/* Header */}
           <div className="p-5 border-b border-dash-border flex items-center justify-between bg-dash-surface shrink-0">
             <div className="flex items-center gap-3">
