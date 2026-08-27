@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
+import { isEnrolmentActive } from '@/lib/lms/enrolment';
 
 // Core "mark a lesson complete" logic, taking an already-resolved/validated contactId rather
 // than resolving it from the current session — this is deliberately NOT a 'use server' export
@@ -30,13 +31,15 @@ export async function markLessonCompleteForContact(
 
     const { data: enrollment } = await adminClient
       .from('enrollments')
-      .select('id')
+      .select('id, status, active')
       .eq('contact_id', contactId)
       .eq('course_id', courseId)
-      .eq('status', 'active')
       .maybeSingle();
 
     if (!enrollment) return { error: 'Not enrolled in this course' };
+    if (!isEnrolmentActive(enrollment)) {
+      return { error: 'Your enrolment in this course is no longer active.' };
+    }
 
     const { data: lesson } = await adminClient
       .from('course_lessons')

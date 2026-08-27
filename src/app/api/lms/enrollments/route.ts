@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
+import { sendCourseOnboardingEmail } from '@/lib/lms/onboardingEmail';
 import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 
@@ -105,7 +106,18 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
-    return NextResponse.json({ data: enrollment });
+
+    // Real invitation email — uses the course's onboarding template (Settings → Emails) with
+    // {{variable}} interpolation, delivered via the workspace's own Resend config. Never let
+    // an email failure roll back a successful enrollment: it is awaited but fail-soft.
+    const emailResult = await sendCourseOnboardingEmail({
+      courseId: course_id,
+      contactId: contact_id,
+      workspaceId,
+      accessType: 'full',
+    });
+
+    return NextResponse.json({ data: enrollment, emailSent: emailResult.sent });
   } catch (err: any) {
     logger.error({ err }, 'lms.enrollments.post.failed');
     const clientError = toClientError(err);
