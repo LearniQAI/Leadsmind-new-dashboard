@@ -7,6 +7,7 @@ import { ParagraphSettings } from './ParagraphSettings';
 import { replaceMergeTags } from '@/lib/builder/utils';
 import { useResponsiveValue } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
+import { useLessonBuilder } from '../LessonBuilderContext';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 
 export interface ParagraphProps {
@@ -15,26 +16,31 @@ export interface ParagraphProps {
  textAlign: 'left' | 'center' | 'right' | 'justify';
  color: string;
  lineHeight: 'tight' | 'normal' | 'relaxed' | 'loose';
+ /** Same theme-inheritance mechanism as Heading.tsx — see its comment. */
+ useThemeFont?: boolean;
 }
 
 export const Paragraph = (allProps: ParagraphProps & any) => {
- const { 
-  text, 
-  textAlign: _ta, 
+ const {
+  text,
+  textAlign: _ta,
   textAlign_mobile,
   textAlign_tablet,
-  color: _color, 
-  lineHeight: _lh, 
+  color: _color,
+  lineHeight: _lh,
   lineHeight_mobile,
   lineHeight_tablet,
   fontSize: _fs,
   fontSize_mobile,
   fontSize_tablet,
-  dragRef, 
-  ...props 
+  useThemeFont,
+  dragRef,
+  ...props
  } = allProps;
  const { connectors: { connect, drag }, actions: { setProp } } = useNode();
  const { viewMode } = useBuilder();
+ const { theme: lessonTheme } = useLessonBuilder();
+ const themeFontClass = useThemeFont && lessonTheme ? lessonTheme.bodyFontClass : '';
  const { enabled } = useEditor((state) => ({
   enabled: state.options.enabled
  }));
@@ -74,7 +80,7 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
       }
     }
    }}
-   className={`w-full ${enabled ? 'outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all' : ''} ${alignments[textAlign as keyof typeof alignments]} ${lineHeights[lineHeight as keyof typeof lineHeights]} ${props.className || ''}`}
+   className={`w-full ${enabled ? 'outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all' : ''} ${alignments[textAlign as keyof typeof alignments]} ${lineHeights[lineHeight as keyof typeof lineHeights]} ${themeFontClass} ${props.className || ''}`}
    style={{
     color,
     fontSize: `${fontSize}px`,

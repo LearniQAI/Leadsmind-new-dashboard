@@ -94,6 +94,20 @@ export const LessonBlockNode = (allProps: LessonBlockNodeProps & any) => {
     return () => { cancelled = true; };
   }, [blockId]);
 
+  // Real behavior for ContentBox's quiz/assignment CTA (Part 3): scroll this block into view
+  // when a colored-header callout elsewhere on the canvas points at the same blockId.
+  const nodeRef = React.useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.blockId === blockId && nodeRef.current) {
+        nodeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
+    window.addEventListener('lesson-scroll-to-block', handler);
+    return () => window.removeEventListener('lesson-scroll-to-block', handler);
+  }, [blockId]);
+
   const meta = BLOCK_TYPE_META[blockType] || BLOCK_TYPE_META.rich_text;
   const Icon = meta.icon;
 
@@ -102,6 +116,7 @@ export const LessonBlockNode = (allProps: LessonBlockNodeProps & any) => {
       {...rest}
       ref={(ref) => {
         if (ref) {
+          nodeRef.current = ref;
           connect(drag(ref));
           if (dragRef) {
             if (typeof dragRef === 'function') dragRef(ref);

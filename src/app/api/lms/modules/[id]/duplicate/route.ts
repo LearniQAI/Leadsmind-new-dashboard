@@ -103,7 +103,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           const tree = typeof originalPage.content === 'string' ? JSON.parse(originalPage.content) : originalPage.content;
           for (const nodeId of Object.keys(tree || {})) {
             const node = tree[nodeId];
-            if (node?.type?.resolvedName === 'LessonBlockNode' && node?.props?.blockId) {
+            // ContentBox (Part 3) also carries a real blockId reference — same rewrite needed.
+            if ((node?.type?.resolvedName === 'LessonBlockNode' || node?.type?.resolvedName === 'ContentBox') && node?.props?.blockId) {
               node.props.blockId = blockIdMap.get(node.props.blockId) || null;
             }
           }
