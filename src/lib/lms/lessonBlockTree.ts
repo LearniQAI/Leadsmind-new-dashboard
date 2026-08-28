@@ -32,12 +32,18 @@ export async function getBlockIdsForLesson(
     return (blocks || []).map((b) => b.id);
   }
 
+  // Part 3: ContentBox (the colored-header callout) also holds a real content_blocks
+  // reference via its own `blockId` prop — it must count toward the gate the same as a plain
+  // LessonBlockNode, or a lesson could be completed without the student ever engaging with a
+  // quiz/reading that's only reachable through a callout's CTA.
+  const BLOCK_REFERENCING_TYPES = new Set(['LessonBlockNode', 'ContentBox']);
+
   const blockIds = new Set<string>();
   try {
     const tree = typeof page.content === 'string' ? JSON.parse(page.content) : page.content;
     for (const nodeId of Object.keys(tree || {})) {
       const node = tree[nodeId];
-      if (node?.type?.resolvedName === 'LessonBlockNode' && node?.props?.blockId) {
+      if (BLOCK_REFERENCING_TYPES.has(node?.type?.resolvedName) && node?.props?.blockId) {
         blockIds.add(node.props.blockId);
       }
     }

@@ -8,6 +8,7 @@ import { HeadingSettings } from './HeadingSettings';
 import { replaceMergeTags } from '../../../lib/builder/utils';
 import { useResponsiveValue } from '../../../lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
+import { useLessonBuilder } from '../LessonBuilderContext';
 
 export interface HeadingProps {
  text: string;
@@ -16,6 +17,12 @@ export interface HeadingProps {
  textAlign: 'left' | 'center' | 'right' | 'justify';
  color: string;
  fontSize?: number; // Optional override
+ /** Part 3 typography decision: when true (Lesson Builder templates only — always false/
+  *  unset for Website/Funnel Builder usage), applies the active course's real Signal/Ember/
+  *  Grove heading font instead of the default system stack. Additive to `className`, not a
+  *  replacement — outside the Lesson Builder, useLessonBuilder() resolves to a null theme and
+  *  this is a no-op. */
+ useThemeFont?: boolean;
 }
 
 export const Heading = (allProps: HeadingProps & any) => {
@@ -32,11 +39,14 @@ export const Heading = (allProps: HeadingProps & any) => {
    fontSize: _fs,
    fontSize_mobile,
    fontSize_tablet,
-   dragRef, 
-   ...props 
+   useThemeFont,
+   dragRef,
+   ...props
   } = allProps;
   const { connectors: { connect, drag }, actions: { setProp } } = useNode();
   const { viewMode } = useBuilder();
+  const { theme: lessonTheme } = useLessonBuilder();
+  const themeFontClass = useThemeFont && lessonTheme ? lessonTheme.headingFontClass : '';
   const { enabled } = useEditor((state) => ({
    enabled: state.options.enabled
   }));
@@ -88,7 +98,7 @@ export const Heading = (allProps: HeadingProps & any) => {
        }
      }
     }}
-    className={`w-full ${enabled ? 'outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all' : ''} ${!fontSize ? baseSizes[level as keyof typeof baseSizes] : ''} ${weights[fontWeight as keyof typeof weights]} ${alignments[textAlign as keyof typeof alignments]} ${props.className || ''}`}
+    className={`w-full ${enabled ? 'outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all' : ''} ${!fontSize ? baseSizes[level as keyof typeof baseSizes] : ''} ${weights[fontWeight as keyof typeof weights]} ${alignments[textAlign as keyof typeof alignments]} ${themeFontClass} ${props.className || ''}`}
     style={{
      color,
      fontSize: fontSize ? `${fontSize}px` : undefined,
