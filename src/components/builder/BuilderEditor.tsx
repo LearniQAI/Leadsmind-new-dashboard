@@ -36,6 +36,8 @@ import { publishPageStatic } from '@/app/actions/builderDeploy';
 import { createClient } from '@/lib/supabase/client';
 import { TemplateDirectoryModal } from './TemplateDirectoryModal';
 import { AILandingCopyModal } from './AILandingCopyModal';
+import LessonSettingsModal from './LessonSettingsModal';
+import { LessonBuilderProvider } from './LessonBuilderContext';
 
 import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
@@ -139,9 +141,17 @@ const logDataError = (scope: string, err: any) => {
     }
 };
 
-const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
+const BuilderEditorContent = ({
+    type,
+    pageIdOverride,
+    exitHref,
+}: {
+    type: 'website' | 'funnel' | 'lesson';
+    pageIdOverride?: string;
+    exitHref?: string;
+}) => {
     const rawPageId = useParams().pageId;
-    const pageId = resolvePageId(rawPageId);
+    const pageId = pageIdOverride || resolvePageId(rawPageId);
     const router = useRouter();
 
     const [isPublishing, setIsPublishing] = React.useState(false);
@@ -164,10 +174,16 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
         try {
             // Use client-side supabase directly to bypass Server Action payload limits (1MB)
             const supabase = createClient();
+            // Real sibling bug found during Part 3 (Lesson Builder templates) verification,
+            // pre-existing here in the website/funnel Save path too: `content` is a JSON
+            // *string* (query.serialize() always returns one) — passing it straight to a
+            // jsonb column stores a jsonb string scalar, not a real object. The app's own
+            // readers tolerate it via a defensive typeof-string parse, but direct SQL access
+            // (and Part 3's own duplicate-route tree rewriting) need it stored as real jsonb.
             const { error } = await supabase
                 .from('pages')
                 .update({
-                    content,
+                    content: JSON.parse(content),
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', pageId);
@@ -221,7 +237,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             const supabase = createClient();
             const { error: saveError } = await supabase
                 .from('pages')
-                .update({ content })
+                .update({ content: JSON.parse(content) })
                 .eq('id', pageId);
 
             if (saveError) throw saveError;
@@ -250,6 +266,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
 
     const lastLoadedPageId = React.useRef<string | null>(null);
     const [websiteData, setWebsiteData] = React.useState<any>(null);
+    const [lessonData, setLessonData] = React.useState<any>(null);
     const [pages, setPages] = React.useState<any[]>([]);
     const [isLoadingContent, setIsLoadingContent] = React.useState(true);
     const [initialContent, setInitialContent] = React.useState<string | null>(null);
@@ -261,7 +278,9 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
         if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
         updateTimerRef.current = setTimeout(async () => {
             try {
-                const result = await updateWebsiteSettings(websiteData.id, type, updates);
+                // Only ever reached for website/funnel — this whole handler is a no-op for
+                // lesson mode (guarded above by `!websiteData?.id`, which is always null there).
+                const result = await updateWebsiteSettings(websiteData.id, type as 'website' | 'funnel', updates);
                 if (!result.success) toast.error('Failed to update site settings');
             } catch (err) {
                 console.error('Settings update error:', err);
@@ -357,11 +376,14 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
             const { createClient } = await import('@/lib/supabase/client');
             const supabase = createClient();
 
-            // Fetch Page Content with website/funnel details
+            // Fetch Page Content with website/funnel/lesson details. course_lesson is a plain
+            // FK (no join table of its own the way website_page/funnel_step have one) — the
+            // lesson's own row is fetched in the branch below once we know pageId resolved.
             const { data, error: pageError } = await supabase
                 .from('pages')
                 .select(`
      content,
+     course_lesson_id,
      workspace:workspaces(slug),
      website_page:website_pages(
       id,
@@ -435,6 +457,22 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 }
             }
 
+            // Lesson mode: no website_pages/funnel_steps join table exists for lessons, so
+            // course_lesson_id on `pages` is fetched directly and the lesson row looked up.
+            const lessonId = (data as any)?.course_lesson_id;
+            if (type === 'lesson' && lessonId) {
+                const { data: lesson, error: lessonErr } = await supabase
+                    .from('course_lessons')
+                    .select('id, title, course_id, unlock_type, drip_value, time_estimate_minutes, is_preview, access_level')
+                    .eq('id', lessonId)
+                    .single();
+                if (lessonErr) {
+                    logDataError('Load lesson', lessonErr);
+                } else {
+                    setLessonData(lesson);
+                }
+            }
+
             // Task 4: Empty Canvas Fallback
             const content = data?.content ? sanitizeCraftJson(data.content) : BLANK_CANVAS;
             setInitialContent(content);
@@ -468,9 +506,13 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
 
     return (
         <BuilderProvider pages={pages} websiteId={websiteData?.id} websiteData={websiteData} onUpdateWebsite={handleUpdateWebsite}>
+          <LessonBuilderProvider lessonId={lessonData?.id || null} courseId={lessonData?.course_id || null}>
             <BuilderEditorLayout
                 type={type}
                 websiteData={websiteData}
+                lessonData={lessonData}
+                setLessonData={setLessonData}
+                exitHref={exitHref}
                 handleUpdateWebsite={handleUpdateWebsite}
                 hasNav={hasNav}
                 hasFooter={hasFooter}
@@ -485,6 +527,7 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
                 isPublishing={isPublishing}
                 pages={pages}
             />
+          </LessonBuilderProvider>
         </BuilderProvider>
     );
 };
@@ -492,6 +535,9 @@ const BuilderEditorContent = ({ type }: { type: 'website' | 'funnel' }) => {
 const BuilderEditorLayout = ({
     type,
     websiteData,
+    lessonData,
+    setLessonData,
+    exitHref,
     handleUpdateWebsite,
     hasNav,
     hasFooter,
@@ -521,8 +567,10 @@ const BuilderEditorLayout = ({
         setIsImportModalOpen
     } = useBuilder();
 
+    const isLesson = type === 'lesson';
     const [moreMenuOpen, setMoreMenuOpen] = React.useState(false);
     const [isAiLandingCopyOpen, setIsAiLandingCopyOpen] = React.useState(false);
+    const [isLessonSettingsOpen, setIsLessonSettingsOpen] = React.useState(false);
 
     const { actions: editorActions, query, canUndo, canRedo } = useEditor((state, query) => ({
         canUndo: query.history.canUndo(),
@@ -648,19 +696,37 @@ const BuilderEditorLayout = ({
 
                     <div className="h-6 w-px bg-dash-border mx-1" />
 
-                    {/* Page Switcher */}
-                    <div className="relative flex items-center bg-white rounded-xl border border-dash-border h-11 shrink-0">
-                        <select
-                            value={pageId as string}
-                            onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
-                            className="appearance-none bg-transparent border-none h-full pl-3.5 pr-8 text-[12px] font-semibold !text-dash-text outline-none cursor-pointer min-w-[120px]"
-                        >
-                            {pages.map((p) => (
-                                <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
-                            ))}
-                        </select>
-                        <ChevronDown className="w-3.5 h-3.5 !text-dash-textMuted absolute right-3 pointer-events-none" />
-                    </div>
+                    {isLesson ? (
+                        <>
+                            <span className="text-[13px] font-semibold !text-dash-text truncate max-w-[260px]">
+                                {lessonData?.title || 'Untitled lesson'}
+                            </span>
+                            <button
+                                onClick={() => setIsLessonSettingsOpen(true)}
+                                title="Lesson settings"
+                                className="h-9 px-3 flex items-center gap-1.5 text-[12px] font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-colors motion-reduce:transition-none"
+                            >
+                                <LayoutTemplate className="w-3.5 h-3.5" />
+                                Settings
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            {/* Page Switcher */}
+                            <div className="relative flex items-center bg-white rounded-xl border border-dash-border h-11 shrink-0">
+                                <select
+                                    value={pageId as string}
+                                    onChange={(e) => router.push(`/editor/${type}/${websiteData?.id}/${e.target.value}`)}
+                                    className="appearance-none bg-transparent border-none h-full pl-3.5 pr-8 text-[12px] font-semibold !text-dash-text outline-none cursor-pointer min-w-[120px]"
+                                >
+                                    {pages.map((p) => (
+                                        <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="w-3.5 h-3.5 !text-dash-textMuted absolute right-3 pointer-events-none" />
+                            </div>
+                        </>
+                    )}
 
                     <DashStatusPill dot variant={isSaving ? 'warning' : 'success'}>
                         {isSaving ? 'Saving…' : 'Draft'}
@@ -711,34 +777,48 @@ const BuilderEditorLayout = ({
                         {previewMode ? "Edit" : "Preview"}
                     </button>
 
-                    <button
-                        onClick={() => setIsAiLandingCopyOpen(true)}
-                        className="h-9 px-4 flex items-center gap-1.5 text-[12px] font-bold text-white rounded-xl bg-gradient-to-r from-violet-600 to-dash-accent shadow-[0_4px_16px_rgba(19,89,255,0.3)] hover:shadow-[0_8px_24px_rgba(19,89,255,0.4)] hover:-translate-y-0.5 transition-all motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-                        title="Generate copy with AI"
-                    >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Generate copy with AI
-                    </button>
+                    {!isLesson && (
+                        <button
+                            onClick={() => setIsAiLandingCopyOpen(true)}
+                            className="h-9 px-4 flex items-center gap-1.5 text-[12px] font-bold text-white rounded-xl bg-gradient-to-r from-violet-600 to-dash-accent shadow-[0_4px_16px_rgba(19,89,255,0.3)] hover:shadow-[0_8px_24px_rgba(19,89,255,0.4)] hover:-translate-y-0.5 transition-all motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                            title="Generate copy with AI"
+                        >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Generate copy with AI
+                        </button>
+                    )}
 
                     <DashButton
-                        variant="secondary"
+                        variant={isLesson ? "primary" : "secondary"}
                         onClick={handleSaveDraft}
                         disabled={isSaving}
                         className="rounded-xl"
                     >
                         {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : null}
-                        Save draft
+                        {isLesson ? "Save" : "Save draft"}
                     </DashButton>
 
-                    <DashButton
-                        variant="primary"
-                        onClick={handlePublish}
-                        disabled={isPublishing}
-                        className="rounded-xl px-6"
-                    >
-                        {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : null}
-                        Publish
-                    </DashButton>
+                    {!isLesson && (
+                        <DashButton
+                            variant="primary"
+                            onClick={handlePublish}
+                            disabled={isPublishing}
+                            className="rounded-xl px-6"
+                        >
+                            {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : null}
+                            Publish
+                        </DashButton>
+                    )}
+
+                    {isLesson && exitHref && (
+                        <DashButton
+                            variant="secondary"
+                            onClick={() => { window.location.href = exitHref; }}
+                            className="rounded-xl px-6"
+                        >
+                            Exit
+                        </DashButton>
+                    )}
 
                     <div className="h-6 w-px bg-dash-border mx-1" />
 
@@ -1020,11 +1100,29 @@ const BuilderEditorLayout = ({
                 isOpen={isAiLandingCopyOpen}
                 onOpenChange={setIsAiLandingCopyOpen}
             />
+
+            {/* Lesson Settings Modal (lesson mode only) */}
+            {isLesson && (
+                <LessonSettingsModal
+                    isOpen={isLessonSettingsOpen}
+                    onClose={() => setIsLessonSettingsOpen(false)}
+                    lesson={lessonData}
+                    onSaved={(updated) => setLessonData((prev: any) => ({ ...prev, ...updated }))}
+                />
+            )}
         </div>
     );
 };
 
-export const BuilderEditor = ({ type }: { type: 'website' | 'funnel' }) => {
+export const BuilderEditor = ({
+    type,
+    pageIdOverride,
+    exitHref,
+}: {
+    type: 'website' | 'funnel' | 'lesson';
+    pageIdOverride?: string;
+    exitHref?: string;
+}) => {
     return (
         <Editor
             resolver={RESOLVER}
@@ -1036,8 +1134,8 @@ export const BuilderEditor = ({ type }: { type: 'website' | 'funnel' }) => {
                 thickness: 3,
             }}
         >
-            <BuilderEditorContent type={type} />
-            <BuilderCommandPalette />
+            <BuilderEditorContent type={type} pageIdOverride={pageIdOverride} exitHref={exitHref} />
+            {type !== 'lesson' && <BuilderCommandPalette />}
         </Editor>
     );
 };

@@ -22,6 +22,35 @@ async function getOwnedBlock(adminClient: ReturnType<typeof createAdminClient>, 
   return block;
 }
 
+// Real single-block lookup (Lesson Builder Part 2) — the canvas wrapper node only carries a
+// blockId in its serialized props; the real block data (video_provider, file_url,
+// completion_rule, etc.) stays in content_blocks, fetched here rather than duplicated into
+// the Craft.js tree, per Part 2 Step 1's architecture decision.
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const { workspaceId } = await requireLmsInstructor();
+    const adminClient = createAdminClient();
+
+    const { data: block, error } = await adminClient
+      .from('content_blocks')
+      .select('*, course_lessons!inner(workspace_id)')
+      .eq('id', id)
+      .eq('course_lessons.workspace_id', workspaceId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!block) throw new NotFoundError('Content block');
+
+    const { course_lessons, ...cleanBlock } = block as any;
+    return NextResponse.json({ data: cleanBlock });
+  } catch (err: any) {
+    logger.error({ err }, 'lms.content-blocks.get_by_id.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+  }
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;

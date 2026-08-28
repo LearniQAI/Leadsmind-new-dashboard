@@ -61,7 +61,7 @@ const RailButton = ({ active, onClick, title, icon: Icon }: { active: boolean; o
   </button>
 );
 
-const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: any, component: React.ReactElement }) => {
+export const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: any, component: React.ReactElement }) => {
   const { connectors } = useEditor();
 
   return (

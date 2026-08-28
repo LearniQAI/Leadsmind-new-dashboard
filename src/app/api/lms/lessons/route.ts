@@ -5,6 +5,7 @@ import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/Ap
 import { logger } from '@/shared/logger';
 import { processLessonForRAG } from '@/lib/lms/ragPipeline';
 import { processLessonSummary } from '@/lib/lms/summaryPipeline';
+import { getLessonTemplateById, BLANK_LESSON_CANVAS } from '@/lib/builder/lessonTemplates';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,7 +65,17 @@ export async function POST(req: NextRequest) {
       position = 0,
       is_preview = false,
       access_level = 'enrolled',
-      time_estimate_minutes = null
+      time_estimate_minutes = null,
+      // Lesson Builder Foundation (Part 1, Step 2): name-only "+Add Lesson" creates the
+      // linked builder `pages` row eagerly, right alongside the lesson row, so the new
+      // flow never needs the builder route's lazy-backfill fallback. Existing callers
+      // (LessonTypePicker's other lesson types, still using the old modal editor) don't
+      // pass this and are unaffected.
+      create_builder_page = false,
+      // Part 3: an id into the server-side LESSON_TEMPLATES catalog, never raw client-
+      // supplied tree JSON — the same "don't trust client input blindly" rule as every other
+      // route in this codebase. An unrecognized/omitted id falls back to the blank canvas.
+      template_id = null
     } = body;
 
     if (!module_id || !course_id || !title || !lesson_type) {
@@ -102,6 +113,26 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    if (create_builder_page) {
+      const template = template_id ? getLessonTemplateById(template_id) : null;
+      // Real bug caught during Part 3 verification: passing a JSON *string* here stores it as
+      // a jsonb string scalar, not a real object — the app's own readers tolerate this via a
+      // defensive `typeof === 'string' ? JSON.parse() : ...` fallback, but direct SQL/
+      // analytics access against `content` would see an opaque escaped string. Parsed here so
+      // the column holds real, directly-queryable jsonb.
+      const { error: pageErr } = await adminClient.from('pages').insert({
+        workspace_id: workspaceId,
+        course_lesson_id: lesson.id,
+        name: title,
+        content: JSON.parse(template?.content || BLANK_LESSON_CANVAS)
+      });
+      // Non-fatal: the lesson row itself is the primary result, and the Lesson Builder
+      // route lazily creates a page on first open if this insert failed for any reason.
+      if (pageErr) {
+        logger.error({ err: pageErr, lessonId: lesson.id }, 'lms.lessons.post.builder_page_failed');
+      }
+    }
 
     // Best-effort: re-chunk/re-embed for RAG Q&A (Task 96). Never let an
     // embedding failure fail the lesson save itself — the save is the
