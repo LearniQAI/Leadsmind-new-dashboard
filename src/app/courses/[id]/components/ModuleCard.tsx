@@ -202,6 +202,15 @@ export default function ModuleCard({
           </span>
         )}
 
+        <button
+          onClick={() => onAddLesson(module.id)}
+          title="Add lesson"
+          aria-label="Add lesson"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
+        >
+          <Plus size={16} />
+        </button>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text">
@@ -209,6 +218,8 @@ export default function ModuleCard({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onAddLesson(module.id)}>Add lesson</DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onToggleModuleActive(module.id, module.is_active === false)}>
               {module.is_active === false ? "Activate" : "Deactivate"}
             </DropdownMenuItem>
