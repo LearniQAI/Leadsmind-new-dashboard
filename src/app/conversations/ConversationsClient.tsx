@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { sendMessage } from '@/app/actions/messaging';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -19,12 +19,17 @@ const SUPPORTED_MESSAGING_CHANNELS = new Set(['facebook', 'instagram', 'whatsapp
 export default function ConversationsClient({
   initialConversations,
   connectedPlatforms = [],
+  workspaceId = null,
 }: {
   initialConversations: any[];
   connectedPlatforms?: { platform: string; status: string }[];
+  workspaceId?: string | null;
 }) {
   const router = useRouter();
-  const supabase = createClient();
+  // Create the browser client once per mount. Calling createClient() in the
+  // render body returns a fresh instance every render, which would make the
+  // realtime effects below tear down and resubscribe on every state change.
+  const [supabase] = useState(() => createClient());
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
@@ -159,65 +164,79 @@ export default function ConversationsClient({
     }
   }, [consolidatedConversations, activeConvId]);
 
-  // Realtime Subscription
+  // Realtime Subscription — live message delivery for the Communications Hub.
+  //
+  // Every `postgres_changes` binding is filtered to `workspace_id=eq.<active
+  // workspace>` so a subscriber only ever receives changes for their own
+  // workspace's conversations. This is defence-in-depth on top of the RLS
+  // policies (`check_workspace_access(workspace_id)` on both tables), which
+  // Realtime already enforces per subscriber JWT — a tampered cookie value
+  // simply yields zero events because RLS rejects the non-member.
+  //
+  // The channel name is workspace-scoped so two workspaces open in the same
+  // browser (multi-account) never share a channel. On any insert/update we
+  // debounce a single `router.refresh()` — `sendMessage` writes several status
+  // updates ('sending' -> 'sent' -> 'delivered') in quick succession and we
+  // don't want a refresh storm.
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
-        () => {
-          router.refresh();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'conversations' },
-        () => {
-          router.refresh();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, router]);
-
-  // Notifications Subscription
-  useEffect(() => {
+    if (!workspaceId) return;
     if (typeof window === 'undefined') return;
+
+    const wsFilter = `workspace_id=eq.${workspaceId}`;
+
+    const scheduleRefresh = () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(() => router.refresh(), 300);
+    };
+
+    const notifyInbound = (msg: any) => {
+      if (!msg || msg.direction !== 'inbound') return;
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted') {
+        new Notification('New message', {
+          body: msg.content || 'New inbound message received',
+          icon: '/favicon.ico',
+        });
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then((permission) => {
+          if (permission === 'granted') {
+            new Notification('New message', {
+              body: msg.content || 'New inbound message received',
+              icon: '/favicon.ico',
+            });
+          }
+        });
+      }
+    };
+
     const channel = supabase
-      .channel('new-message-notify')
+      .channel(`conversations-hub:${workspaceId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: wsFilter },
         (payload) => {
-          const msg = payload.new as any;
-          if (msg.direction === 'inbound') {
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('New message', {
-                body: msg.content || 'New inbound message received',
-                icon: '/favicon.ico'
-              });
-            } else if ('Notification' in window && Notification.permission !== 'denied') {
-              Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                  new Notification('New message', {
-                    body: msg.content || 'New inbound message received',
-                    icon: '/favicon.ico'
-                  });
-                }
-              });
-            }
-          }
+          notifyInbound(payload.new);
+          scheduleRefresh();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages', filter: wsFilter },
+        () => scheduleRefresh()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations', filter: wsFilter },
+        () => scheduleRefresh()
+      )
       .subscribe();
+
     return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, [supabase, router, workspaceId]);
 
   const filteredConversations = consolidatedConversations.filter(c => {
     const matchesFilter = filter === 'all' || c.availablePlatforms.some((p: any) => p.platform === filter);

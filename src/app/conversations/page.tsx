@@ -2,11 +2,13 @@ import MetaData from '@/hooks/useMetaData';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import ConversationsClient from './ConversationsClient';
 import { getConversations, getConnectedPlatforms } from '../actions/messaging';
+import { getCurrentWorkspaceId } from '@/lib/auth';
 
 export default async function ConversationsPage() {
-  const [{ data: conversations }, connectedPlatforms] = await Promise.all([
+  const [{ data: conversations }, connectedPlatforms, workspaceId] = await Promise.all([
     getConversations(),
     getConnectedPlatforms(),
+    getCurrentWorkspaceId(),
   ]);
 
   return (
@@ -18,6 +20,7 @@ export default async function ConversationsPage() {
             <ConversationsClient
               initialConversations={conversations || []}
               connectedPlatforms={connectedPlatforms || []}
+              workspaceId={workspaceId}
             />
           </div>
         </div>
