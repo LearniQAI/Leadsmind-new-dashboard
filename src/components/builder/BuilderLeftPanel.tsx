@@ -3,6 +3,7 @@
 import React from 'react';
 import { useEditor } from '@craftjs/core';
 import { Sidebar } from './Sidebar';
+import { LessonBuilderSidebar } from './LessonBuilderSidebar';
 import { ElementProperties } from './ElementProperties';
 
 // Single left-panel host: renders ElementProperties whenever Craft.js has a
@@ -15,7 +16,7 @@ export const BuilderLeftPanel = ({
   website,
   onUpdateWebsite
 }: {
-  type?: 'website' | 'funnel';
+  type?: 'website' | 'funnel' | 'lesson';
   website?: any;
   onUpdateWebsite?: (updates: any) => void;
 }) => {
@@ -25,6 +26,10 @@ export const BuilderLeftPanel = ({
 
   if (selectedId && selectedId !== 'ROOT') {
     return <ElementProperties nodeId={selectedId} />;
+  }
+
+  if (type === 'lesson') {
+    return <LessonBuilderSidebar />;
   }
 
   return (

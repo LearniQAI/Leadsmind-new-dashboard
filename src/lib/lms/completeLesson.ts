@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
+import { getBlockIdsForLesson } from '@/lib/lms/lessonBlockTree';
 
 // Core "mark a lesson complete" logic, taking an already-resolved/validated contactId rather
 // than resolving it from the current session — this is deliberately NOT a 'use server' export
@@ -51,14 +52,14 @@ export async function markLessonCompleteForContact(
     if (!lesson) return { error: 'Lesson not found in this course' };
 
     // Phase C: a lesson built from content_blocks can only be marked complete once every
-    // block has a real lesson_block_completions row for this student.
-    const { data: blocks } = await adminClient
-      .from('content_blocks')
-      .select('id')
-      .eq('lesson_id', lessonId);
+    // block has a real lesson_block_completions row for this student. Part 2: for a lesson
+    // with a Lesson Builder canvas, "every block" means every block still actually placed on
+    // the tree (see getBlockIdsForLesson) — not every content_blocks row that happens to
+    // still exist for this lesson_id, which could include one orphaned by a bulk
+    // Section/Row deletion that removed it from the canvas without deleting its row.
+    const blockIds = await getBlockIdsForLesson(adminClient, lessonId);
 
-    if (blocks && blocks.length > 0) {
-      const blockIds = blocks.map((b) => b.id);
+    if (blockIds.length > 0) {
       const { data: completions } = await adminClient
         .from('lesson_block_completions')
         .select('content_block_id')

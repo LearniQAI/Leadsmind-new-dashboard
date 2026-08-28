@@ -76,14 +76,47 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       if (blocksErr) throw blocksErr;
 
-      if (originalBlocks && originalBlocks.length > 0) {
-        const newBlocks = originalBlocks.map((b) => {
-          const { id: _bid, created_at: _bc, updated_at: _bu, ...rest } = b;
-          return { ...rest, lesson_id: newLesson.id };
-        });
-        const { error: blockInsertErr } = await adminClient.from('content_blocks').insert(newBlocks);
+      // Inserted one at a time (not a single bulk insert) so each new id can be mapped back
+      // to the original it replaces — needed below to rewrite this lesson's canvas tree, the
+      // same real requirement as the standalone lesson duplicate route.
+      const blockIdMap = new Map<string, string>();
+      for (const b of originalBlocks || []) {
+        const { id: oldBlockId, created_at: _bc, updated_at: _bu, ...rest } = b;
+        const { data: newBlock, error: blockInsertErr } = await adminClient
+          .from('content_blocks')
+          .insert({ ...rest, lesson_id: newLesson.id })
+          .select('id')
+          .single();
         if (blockInsertErr) throw blockInsertErr;
-        blocksCopied += newBlocks.length;
+        blockIdMap.set(oldBlockId, newBlock.id);
+        blocksCopied++;
+      }
+
+      const { data: originalPage } = await adminClient
+        .from('pages')
+        .select('workspace_id, content')
+        .eq('course_lesson_id', origLessonId)
+        .maybeSingle();
+
+      if (originalPage) {
+        try {
+          const tree = typeof originalPage.content === 'string' ? JSON.parse(originalPage.content) : originalPage.content;
+          for (const nodeId of Object.keys(tree || {})) {
+            const node = tree[nodeId];
+            if (node?.type?.resolvedName === 'LessonBlockNode' && node?.props?.blockId) {
+              node.props.blockId = blockIdMap.get(node.props.blockId) || null;
+            }
+          }
+          const { error: pageInsertErr } = await adminClient.from('pages').insert({
+            workspace_id: originalPage.workspace_id,
+            course_lesson_id: newLesson.id,
+            name: `${lesson.title} (Copy)`,
+            content: tree
+          });
+          if (pageInsertErr) throw pageInsertErr;
+        } catch (treeErr) {
+          logger.error({ err: treeErr, lessonId: origLessonId }, 'lms.modules.duplicate.tree_copy_failed');
+        }
       }
     }
 

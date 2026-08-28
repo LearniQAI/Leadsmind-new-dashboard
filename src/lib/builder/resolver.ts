@@ -31,6 +31,7 @@ import { Navbar } from '@/components/builder/user/Navbar';
 import { Footer } from '@/components/builder/user/Footer';
 import { BlogFeed } from '@/components/builder/user/BlogFeed';
 import { CodeBlock } from '@/components/builder/user/CodeBlock';
+import { LessonBlockNode } from '@/components/builder/user/LessonBlockNode';
 
 export const wrapForReact19 = (Component: any) => {
  const Wrapped = React.forwardRef((props: any, ref: any) => {
@@ -87,4 +88,5 @@ export const RESOLVER = {
  Footer: wrapForReact19(Footer),
  BlogFeed: wrapForReact19(BlogFeed),
  CodeBlock: wrapForReact19(CodeBlock),
+ LessonBlockNode: wrapForReact19(LessonBlockNode),
 };

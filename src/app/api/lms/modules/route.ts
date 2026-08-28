@@ -31,9 +31,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Missing courseId or id parameter' }, { status: 400 });
     }
 
+    // lessons:course_lessons(*, builder_page:pages(id)) — real embedded lookup (real FK,
+    // pages_course_lesson_id_fkey) so the client can tell whether a lesson has a linked
+    // Lesson Builder canvas (new flow) vs. only legacy content_blocks (old modal flow),
+    // without a second round trip per lesson.
     const { data: modules, error } = await adminClient
       .from('course_modules')
-      .select('*, lessons:course_lessons(*)')
+      .select('*, lessons:course_lessons(*, builder_page:pages(id))')
       .eq('course_id', courseId)
       .eq('workspace_id', workspaceId)
       .order('position', { ascending: true })

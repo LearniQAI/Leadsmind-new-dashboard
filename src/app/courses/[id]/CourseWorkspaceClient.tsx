@@ -17,6 +17,7 @@ import CourseSettingsContainer, { SettingsSectionId } from "./components/CourseS
 import LessonPreviewModal from "./components/LessonPreviewModal";
 import AddStudentModal from "./components/AddStudentModal";
 import StudentsRosterModal from "./components/StudentsRosterModal";
+import AddLessonNameModal from "./components/AddLessonNameModal";
 import { getCourseTheme } from "@/lib/courses/courseThemeTokens";
 
 interface CourseWorkspaceClientProps {
@@ -54,6 +55,11 @@ export default function CourseWorkspaceClient({
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [activeModuleIdForLesson, setActiveModuleIdForLesson] = useState<string>("");
   const [editingLesson, setEditingLesson] = useState<any | undefined>(undefined);
+  // Lesson Builder Foundation (Part 1, Step 2): "+ Add Lesson" is now name-only, replacing
+  // the old LessonTypePicker-first flow for lessons going forward. LessonTypePicker/
+  // LessonCreatorModal are kept (imports above) — they're still the real edit path for
+  // lessons created before this feature (see onEditLesson below).
+  const [isAddLessonNameOpen, setIsAddLessonNameOpen] = useState(false);
 
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -442,10 +448,21 @@ export default function CourseWorkspaceClient({
                   siblingModules={modules.map((m) => ({ id: m.id, title: m.title || m.name }))}
                   onEditModule={(mod) => { setEditingModule(mod); setIsModuleModalOpen(true); }}
                   onDeleteModule={handleDeleteModule}
-                  onAddLesson={(modId) => { setActiveModuleIdForLesson(modId); setIsLessonPickerOpen(true); }}
+                  onAddLesson={(modId) => { setActiveModuleIdForLesson(modId); setIsAddLessonNameOpen(true); }}
                   onEditLesson={(les, modId) => {
                     setActiveModuleIdForLesson(modId);
-                    if (les.type === "Quiz") {
+                    // Real signal (not a guess): does this lesson have a linked Lesson
+                    // Builder `pages` row? New-flow lessons always do (created eagerly
+                    // alongside the lesson row); pre-existing lessons built via the old
+                    // modal editor never got one and explicitly keep opening that old
+                    // editor — no silent auto-conversion into an empty canvas.
+                    // Real shape confirmed live: PostgREST returns this embed as an array
+                    // even with the unique index (Supabase doesn't always infer to-one from
+                    // a partial unique index) — `[]` is truthy in JS, so a plain truthy check
+                    // would have misrouted every pre-existing lesson into the new builder.
+                    if (les.builder_page?.[0]) {
+                      router.push(`/courses/${currentCourse.id}/lessons/${les.id}/builder`);
+                    } else if (les.type === "Quiz") {
                       router.push(`/courses/${currentCourse.id}/quiz/${les.id}`);
                     } else {
                       setEditingLesson(les);
@@ -491,6 +508,17 @@ export default function CourseWorkspaceClient({
         onClose={() => setIsLessonPickerOpen(false)}
         onSelect={handleLessonTypeSelect}
       />
+
+      {isAddLessonNameOpen && workspaceId && (
+        <AddLessonNameModal
+          moduleId={activeModuleIdForLesson}
+          courseId={currentCourse.id}
+          workspaceId={workspaceId}
+          position={(modules.find((m) => m.id === activeModuleIdForLesson)?.lessons?.length || 0) + 1}
+          onClose={() => setIsAddLessonNameOpen(false)}
+          onCreated={() => refreshWorkspace()}
+        />
+      )}
 
       <LessonCreatorModal
         isOpen={isLessonModalOpen}

@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth';
 import { getOrCreateStudentContact } from './studentEnrollments';
+import { getBlockIdsForLesson } from '@/lib/lms/lessonBlockTree';
 import { logger } from '@/shared/logger';
 
 // Per-block completion tracking (Phase C, Step 1) — closes the loophole where the Next
@@ -86,12 +87,7 @@ export async function getCompletedBlockIdsForLesson(lessonId: string) {
 
     const adminClient = createAdminClient();
 
-    const { data: blocks } = await adminClient
-      .from('content_blocks')
-      .select('id')
-      .eq('lesson_id', lessonId);
-
-    const blockIds = (blocks || []).map((b) => b.id);
+    const blockIds = await getBlockIdsForLesson(adminClient, lessonId);
     if (blockIds.length === 0) return { data: [] };
 
     const { data: completions, error } = await adminClient
@@ -125,14 +121,7 @@ export async function getLessonBlockCompletionStatus(lessonId: string) {
 
     const adminClient = createAdminClient();
 
-    const { data: blocks, error: blocksErr } = await adminClient
-      .from('content_blocks')
-      .select('id')
-      .eq('lesson_id', lessonId);
-
-    if (blocksErr) throw blocksErr;
-
-    const blockIds = (blocks || []).map((b) => b.id);
+    const blockIds = await getBlockIdsForLesson(adminClient, lessonId);
     if (blockIds.length === 0) {
       return { data: { allComplete: true, totalBlocks: 0, completedBlocks: 0 } };
     }
