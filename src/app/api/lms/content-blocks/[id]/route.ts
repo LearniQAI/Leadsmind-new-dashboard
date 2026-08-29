@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
+import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ const BLOCK_TYPES = [
 async function getOwnedBlock(adminClient: ReturnType<typeof createAdminClient>, id: string, workspaceId: string) {
   const { data: block, error } = await adminClient
     .from('content_blocks')
-    .select('id, lesson_id, course_lessons!inner(workspace_id)')
+    .select('id, lesson_id, type, course_lessons!inner(workspace_id)')
     .eq('id', id)
     .eq('course_lessons.workspace_id', workspaceId)
     .maybeSingle();
@@ -65,6 +66,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (type !== undefined && !BLOCK_TYPES.includes(type)) {
       return NextResponse.json({ error: `Invalid block type: ${type}` }, { status: 400 });
+    }
+
+    // Real gap found during the "Consistent Premium Settings Panels" pass: isSafeEmbedUrl was
+    // only ever enforced client-side (EmbedBlockEditor's onBlur) — this API happily persisted a
+    // javascript:/data: embed_url. The student player also re-checks before rendering an
+    // iframe, so this wasn't directly exploitable end-to-end, but the write path itself had no
+    // guard, which is exactly the safety check the master prompt named. Enforced here too, for
+    // both an explicit type: 'embed' and an existing embed block being patched without type.
+    const resolvedType = type !== undefined ? type : (owned as any).type;
+    if (content?.embed_url !== undefined && resolvedType === 'embed' && content.embed_url) {
+      if (!isSafeEmbedUrl(content.embed_url)) {
+        return NextResponse.json({ error: 'Only http(s) links are allowed in an embed.' }, { status: 400 });
+      }
     }
 
     const updatePayload: any = { updated_at: new Date().toISOString() };
