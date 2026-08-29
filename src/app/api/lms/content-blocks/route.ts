@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
+import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +86,12 @@ export async function POST(req: NextRequest) {
     }
     if (!BLOCK_TYPES.includes(type)) {
       return NextResponse.json({ error: `Invalid block type: ${type}` }, { status: 400 });
+    }
+
+    // Same server-side embed-url guard as the PATCH route (see that file's comment) — applied
+    // here too since a block can in principle be created with content already attached.
+    if (type === 'embed' && content?.embed_url && !isSafeEmbedUrl(content.embed_url)) {
+      return NextResponse.json({ error: 'Only http(s) links are allowed in an embed.' }, { status: 400 });
     }
 
     const defaults = DEFAULT_COMPLETION_RULE[type];
