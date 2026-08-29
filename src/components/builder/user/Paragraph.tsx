@@ -16,6 +16,11 @@ export interface ParagraphProps {
  textAlign: 'left' | 'center' | 'right' | 'justify';
  color: string;
  lineHeight: 'tight' | 'normal' | 'relaxed' | 'loose';
+ /** Part 2 (Text Element Typography Controls) — real per-element overrides, independent of
+  *  the enum-based lineHeight above (kept untouched — this is what the "Bulleted list"
+  *  checklist items from the Template A/B work already rely on, so it's not disturbed). */
+ fontFamily?: string;
+ letterSpacing?: number;
  /** Same theme-inheritance mechanism as Heading.tsx — see its comment. */
  useThemeFont?: boolean;
 }
@@ -33,6 +38,12 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
   fontSize: _fs,
   fontSize_mobile,
   fontSize_tablet,
+  fontFamily: _ff,
+  fontFamily_mobile,
+  fontFamily_tablet,
+  letterSpacing: _ls,
+  letterSpacing_mobile,
+  letterSpacing_tablet,
   useThemeFont,
   dragRef,
   ...props
@@ -52,7 +63,9 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
  const textAlign = useResponsiveValue(allProps, 'textAlign', _ta);
  const lineHeight = useResponsiveValue(allProps, 'lineHeight', _lh);
  const color = useResponsiveValue(allProps, 'color', _color);
- 
+ const fontFamily = useResponsiveValue(allProps, 'fontFamily', _ff);
+ const letterSpacing = useResponsiveValue(allProps, 'letterSpacing', _ls);
+
  const alignments = {
   left: 'text-left',
   center: 'text-center',
@@ -84,6 +97,8 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
    style={{
     color,
     fontSize: `${fontSize}px`,
+    fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : undefined,
+    letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
    }}
   >
     {enabled ? (

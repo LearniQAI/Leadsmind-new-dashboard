@@ -7,9 +7,10 @@ import {
   Box, Type, Image, Video, RectangleHorizontal as ButtonIconPlaceholder,
   AlignLeft, Columns, Minus, ArrowUpDown, Code, Star,
   Navigation, FormInput, Timer, CreditCard, MessageCircle, LayoutGrid,
-  ChevronDown, ChevronRight, Layers, ArrowLeft
+  ChevronDown, ChevronRight, Layers, ArrowLeft, ArrowUp, ArrowDown, Copy, Save
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useBuilder } from './BuilderContext';
 
 // Map component display names to icons
 const COMPONENT_ICONS: Record<string, any> = {
@@ -74,12 +75,13 @@ const AccordionSection = ({ title, children, defaultOpen = true }: {
 export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
   const [activeTab, setActiveTab] = useState<'layout' | 'style' | 'advanced'>('layout');
 
-  const { selected, actions, parentName } = useEditor((state) => {
+  const { selected, actions, query, parentName, parentId, siblingIndex, siblingCount } = useEditor((state, query) => {
     const node = state.nodes[nodeId];
-    if (!node) return { selected: undefined, parentName: undefined };
+    if (!node) return { selected: undefined, parentName: undefined, parentId: undefined, siblingIndex: -1, siblingCount: 0 };
 
     const parentId = node.data.parent;
     const parentNode = parentId ? state.nodes[parentId] : undefined;
+    const siblings = parentNode?.data.nodes || [];
 
     return {
       selected: {
@@ -89,14 +91,56 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
         isDeletable: (node.data as any).rules?.canDelete
           ? (node.data as any).rules.canDelete()
           : true,
+        // Real bug found during the settings-panel design pass: ContentBox (like
+        // LessonBlockNode) creates and owns its own content_blocks row (create-on-first-render,
+        // same pattern). Deleting the canvas node alone would orphan that row forever — there
+        // is no other delete path for it. blockId is carried through so the handler below can
+        // clean it up before removing the node.
+        blockId: (node.data.props as any)?.blockId ?? null,
       },
       parentName: parentId && parentId !== 'ROOT'
         ? (parentNode?.data.custom?.displayName || parentNode?.data.displayName)
         : undefined,
+      parentId,
+      siblingIndex: siblings.indexOf(nodeId),
+      siblingCount: siblings.length,
     };
   });
 
+  const { setBlueprintNodeId } = useBuilder();
+
   if (!selected) return null;
+
+  // Real reorder — moves this node to the previous/next index among its actual siblings via
+  // Craft.js's own actions.move (the same primitive drag-and-drop reordering uses), not a
+  // decorative up/down pair.
+  const handleMove = (direction: -1 | 1) => {
+    if (!parentId) return;
+    const targetIndex = siblingIndex + direction;
+    if (targetIndex < 0 || targetIndex >= siblingCount) return;
+    actions.move(nodeId, parentId, targetIndex);
+  };
+
+  // Real duplicate — clones this node's actual subtree (toNodeTree/addNodeTree, the same
+  // mechanism the AI Landing Copy insert and the lesson block/module duplicate routes already
+  // use) and inserts the copy directly after the original, not a placeholder.
+  const handleDuplicate = () => {
+    if (!parentId) return;
+    const tree = query.node(nodeId).toNodeTree();
+    actions.addNodeTree(tree, parentId, siblingIndex + 1);
+  };
+
+  // Cleans up an owned content_blocks row (ContentBox) before removing the canvas node, so
+  // deleting the element from this shared header can never orphan its backing row. Fire-and
+  // -forget is intentional — the canvas node removal must not be blocked by network latency,
+  // and a failed cleanup here is a stale row, not data loss (same tolerance the rest of this
+  // codebase's best-effort cleanup calls already accept).
+  const handleDelete = () => {
+    if (selected?.blockId) {
+      fetch(`/api/lms/content-blocks/${selected.blockId}`, { method: 'DELETE' }).catch(() => {});
+    }
+    actions.delete(selected!.id);
+  };
 
   const ComponentIcon = COMPONENT_ICONS[selected.name] || Settings;
 
@@ -132,15 +176,48 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
             <p className="text-[10px] !text-dash-textMuted mt-0.5 font-medium">Element Properties</p>
           </div>
         </div>
-        {selected.isDeletable && (
+        <div className="flex items-center gap-0.5 shrink-0">
           <button
-            onClick={() => actions.delete(selected.id)}
-            className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:text-red hover:bg-red/10 rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100"
-            title="Delete element"
+            onClick={() => handleMove(-1)}
+            disabled={siblingIndex <= 0}
+            className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
+            title="Move up"
           >
-            <Trash2 className="w-4 h-4" />
+            <ArrowUp className="w-4 h-4" />
           </button>
-        )}
+          <button
+            onClick={() => handleMove(1)}
+            disabled={siblingIndex < 0 || siblingIndex >= siblingCount - 1}
+            className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
+            title="Move down"
+          >
+            <ArrowDown className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleDuplicate}
+            disabled={!parentId}
+            className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
+            title="Duplicate"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setBlueprintNodeId(nodeId)}
+            className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100"
+            title="Save as reusable blueprint"
+          >
+            <Save className="w-4 h-4" />
+          </button>
+          {selected.isDeletable && (
+            <button
+              onClick={handleDelete}
+              className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:text-red hover:bg-red/10 rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100"
+              title="Delete element"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Pill Tabs — 40px height, 12px radius */}

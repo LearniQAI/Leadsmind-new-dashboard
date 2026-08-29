@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { sanitizeRichTextHtml } from "@/lib/security/sanitizeHtml";
 import type { ContentBlock } from "../ContentBlockList";
+import { PropertyGroup } from "@/components/builder/inspector/primitives";
 
 interface RichTextBlockEditorProps {
   block: ContentBlock;
@@ -23,9 +24,8 @@ export default function RichTextBlockEditor({ block, onChange }: RichTextBlockEd
   };
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold !text-dash-textMuted block">Content</label>
+    <div className="space-y-5">
+      <PropertyGroup title="Content">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -34,10 +34,9 @@ export default function RichTextBlockEditor({ block, onChange }: RichTextBlockEd
           rows={5}
           className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text placeholder:!text-dash-textMuted outline-none focus:border-primary font-mono leading-relaxed"
         />
-      </div>
+      </PropertyGroup>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold !text-dash-textMuted block">Live preview</label>
+      <PropertyGroup title="Live Preview">
         {text.trim() ? (
           <div
             className="rounded-xl border border-dash-border bg-dash-surface p-3 text-xs !text-dash-text leading-relaxed prose prose-sm max-w-none"
@@ -48,7 +47,7 @@ export default function RichTextBlockEditor({ block, onChange }: RichTextBlockEd
             Nothing to preview yet
           </div>
         )}
-      </div>
+      </PropertyGroup>
     </div>
   );
 }

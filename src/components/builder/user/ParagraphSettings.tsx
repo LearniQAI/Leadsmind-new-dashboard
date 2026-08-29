@@ -8,6 +8,8 @@ import { ColorPicker } from '../ColorPicker';
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 import { PropertyGroup, SliderWithInput } from '../inspector/primitives';
+import { FontFamilyPicker } from '../inspector/FontFamilyPicker';
+import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
 export const ParagraphSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -16,7 +18,7 @@ export const ParagraphSettings = () => {
   const { viewMode } = useBuilder();
   const { setResponsiveValue } = useResponsiveSetProp();
 
-  const { fontSize, textAlign, color, lineHeight } = props;
+  const { fontSize, textAlign, color, lineHeight, fontFamily, letterSpacing } = props;
 
   // Helper to get current display value for a prop
   const getDisplayValue = (propName: string, baseValue: any) => {
@@ -50,6 +52,26 @@ export const ParagraphSettings = () => {
           ))}
         </div>
       </div>
+
+      {/* Part 2 (Text Element Typography Controls) — real per-element overrides added
+          alongside the existing font-size/line-height-enum/color/align controls above. */}
+      <FontFamilyPicker
+        value={getDisplayValue('fontFamily', fontFamily) || 'Inter'}
+        onChange={(family) => {
+          loadGoogleFontFamily(family);
+          setResponsiveValue('fontFamily', family);
+        }}
+      />
+
+      <SliderWithInput
+        label="Letter spacing"
+        value={getDisplayValue('letterSpacing', letterSpacing) || 0}
+        onChange={(val) => setResponsiveValue('letterSpacing', val)}
+        min={-5}
+        max={20}
+        step={0.1}
+        numeric
+      />
 
       <div className="pt-2">
         <ColorPicker

@@ -61,8 +61,39 @@ const RailButton = ({ active, onClick, title, icon: Icon }: { active: boolean; o
   </button>
 );
 
-export const DraggableItem = ({ name, icon: Icon, component }: { name: string, icon: any, component: React.ReactElement }) => {
+// `variant` is additive — default behavior/look is byte-for-byte unchanged for every
+// existing caller (the Website/Funnel Builder's own Sidebar.tsx tiles). "lesson" is used only
+// by LessonBuilderSidebar.tsx (Systeme-parity Master Prompt, Sidebar Visual Polish pass) to
+// match its reference's flat light-gray card look, without touching the live product's own
+// tile style or duplicating the real connectors.create() drag-wiring in a second component.
+export const DraggableItem = ({
+  name,
+  icon: Icon,
+  component,
+  variant = 'default',
+}: {
+  name: string;
+  icon: any;
+  component: React.ReactElement;
+  variant?: 'default' | 'lesson';
+}) => {
   const { connectors } = useEditor();
+
+  if (variant === 'lesson') {
+    return (
+      <div
+        ref={ref => {
+          if (ref) {
+            connectors.create(ref, component);
+          }
+        }}
+        className="flex h-[104px] flex-col items-center justify-center gap-2 rounded-2xl bg-slate-100 hover:bg-slate-200 border border-transparent hover:border-slate-300 transition-all duration-150 motion-reduce:transition-none cursor-grab active:cursor-grabbing active:scale-[0.97] active:shadow-inner group"
+      >
+        <Icon className="h-5 w-5 text-slate-500 group-hover:text-slate-700 transition-colors motion-reduce:transition-none pointer-events-none" strokeWidth={1.75} />
+        <span className="text-[12px] font-medium text-slate-700 text-center leading-tight px-1.5 line-clamp-2 w-full">{name}</span>
+      </div>
+    );
+  }
 
   return (
     <div

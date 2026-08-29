@@ -54,6 +54,10 @@ module.exports = {
       emberBody: ["'Public Sans', sans-serif"],
       groveHeading: ["'Lora', serif"],
       groveBody: ["'Source Sans 3', sans-serif"],
+      // Lesson Template A pixel-accurate clone (Step 0 typography decision) — real, generic
+      // names (not template-scoped) so any future lesson template can reuse this pairing.
+      poppins: ["'Poppins', sans-serif"],
+      inter: ["'Inter', sans-serif"],
     },
     extend: {
       colors: {

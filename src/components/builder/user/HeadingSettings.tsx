@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 import { PropertyGroup, SliderWithInput } from '../inspector/primitives';
+import { FontFamilyPicker } from '../inspector/FontFamilyPicker';
+import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
 export const HeadingSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -16,7 +18,7 @@ export const HeadingSettings = () => {
   const { viewMode } = useBuilder();
   const { setResponsiveValue } = useResponsiveSetProp();
 
-  const { level, fontWeight, textAlign, color, fontSize } = props;
+  const { level, fontWeight, textAlign, color, fontSize, fontFamily, lineHeight, letterSpacing } = props;
 
   // Helper to get current display value for a prop
   const getDisplayValue = (propName: string, baseValue: any) => {
@@ -80,6 +82,38 @@ export const HeadingSettings = () => {
             ))}
           </div>
         </div>
+
+        {/* Part 2 (Text Element Typography Controls) — real per-element overrides added
+            alongside the existing level/fontWeight/color/align controls above, without
+            touching how they work: an explicit fontFamily here beats the course theme's
+            useThemeFont class for real, via ordinary CSS specificity (inline style always
+            outranks a class), not extra override logic. */}
+        <FontFamilyPicker
+          value={fontFamily || 'Inter'}
+          onChange={(family) => {
+            loadGoogleFontFamily(family);
+            setResponsiveValue('fontFamily', family);
+          }}
+        />
+
+        <SliderWithInput
+          label="Line height"
+          value={getDisplayValue('lineHeight', lineHeight) || ''}
+          onChange={(val) => setResponsiveValue('lineHeight', val)}
+          min={0}
+          max={100}
+          numeric
+        />
+
+        <SliderWithInput
+          label="Letter spacing"
+          value={getDisplayValue('letterSpacing', letterSpacing) || 0}
+          onChange={(val) => setResponsiveValue('letterSpacing', val)}
+          min={-5}
+          max={20}
+          step={0.1}
+          numeric
+        />
 
         <ColorPicker
           label="Text color"

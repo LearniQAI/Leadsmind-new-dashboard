@@ -6,10 +6,16 @@ import { ArrowRight, FileText, Download, CheckSquare, FileEdit, Loader2 } from '
 import { toast } from 'sonner';
 import { useLessonBuilder } from '../LessonBuilderContext';
 import { ContentBoxSettings } from './ContentBoxSettings';
+import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 
 export interface ContentBoxProps {
   headerLabel: string;
   headerColorHex: string;
+  /** CTA button fill — real, separate control from headerColorHex (Template B's reference
+   *  pairs an orange-red header with a blue button, confirmed via the reference screenshot).
+   *  Defaults to headerColorHex when unset, so existing ContentBox instances/templates that
+   *  never set it keep their single-color look unchanged. */
+  ctaColorHex?: string;
   headline: string;
   body: string;
   ctaText: string;
@@ -27,7 +33,7 @@ const ICONS: Record<string, any> = { reading: FileText, download: Download, quiz
 // create-on-first-render + GET/PATCH pattern LessonBlockNode uses (Part 2) — genuine reuse,
 // not a second, parallel block-data mechanism.
 export const ContentBox = (allProps: ContentBoxProps & any) => {
-  const { headerLabel, headerColorHex, headline, body, ctaText, blockId, blockType, useThemeFont, dragRef, ...rest } = allProps;
+  const { headerLabel, headerColorHex, ctaColorHex, headline, body, ctaText, blockId, blockType, useThemeFont, dragRef, ...rest } = allProps;
   const {
     connectors: { connect, drag },
     actions: { setProp },
@@ -123,13 +129,22 @@ export const ContentBox = (allProps: ContentBoxProps & any) => {
         {headerLabel}
       </div>
       <div className="bg-white px-6 py-8 text-center space-y-3">
-        <h3 className={`text-xl font-bold text-[#111827] ${headingFontClass}`}>{headline}</h3>
-        <p className={`text-[14px] text-[#4b5563] leading-relaxed max-w-lg mx-auto ${bodyFontClass}`}>{body}</p>
+        {/* headline/body render as real sanitized HTML (same mechanism as Heading/Paragraph's
+            non-edit-mode render) rather than raw text — needed for real inline bold/italic/
+            line-break spans within these fields, confirmed required by Template B's reference. */}
+        <h3
+          className={`text-xl font-bold text-[#111827] ${headingFontClass}`}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(headline) }}
+        />
+        <div
+          className={`text-[14px] text-[#4b5563] leading-relaxed max-w-lg mx-auto ${bodyFontClass}`}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(body) }}
+        />
         <div className="pt-2">
           <button
             onClick={handleCtaClick}
             className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-[13px] font-bold text-white transition-transform active:scale-[0.98]"
-            style={{ backgroundColor: headerColorHex }}
+            style={{ backgroundColor: ctaColorHex || headerColorHex }}
           >
             {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Icon size={14} />}
             {ctaText}
@@ -146,6 +161,7 @@ ContentBox.craft = {
   props: {
     headerLabel: 'READING MATERIAL',
     headerColorHex: '#1359FF',
+    ctaColorHex: '#1359FF',
     headline: 'Dive deeper into this topic',
     body: 'A short line explaining what this resource covers and why it is worth opening.',
     ctaText: 'Open resource',
