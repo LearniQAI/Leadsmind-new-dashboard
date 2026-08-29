@@ -6,6 +6,7 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 import { VoiceNotePlayer } from "@/components/common/VoiceNotePlayer";
 import { decodeWaveformPeaks } from "@/lib/audio/decodeWaveformPeaks";
 import type { ContentBlock } from "../ContentBlockList";
+import { PropertyGroup } from "@/components/builder/inspector/primitives";
 
 interface AudioBlockEditorProps {
   block: ContentBlock;
@@ -66,9 +67,10 @@ export default function AudioBlockEditor({ block, onChange }: AudioBlockEditorPr
   };
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold !text-dash-textMuted block">Audio file</label>
+    <div className="space-y-5">
+      <PropertyGroup title="Audio Source">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold !text-dash-textMuted block">Audio file</label>
         <div className="flex gap-2">
           <input
             type="url"
@@ -95,10 +97,10 @@ export default function AudioBlockEditor({ block, onChange }: AudioBlockEditorPr
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      </PropertyGroup>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold !text-dash-textMuted block">Live preview</label>
+      <PropertyGroup title="Live Preview">
         {isDecoding && (
           <div className="flex items-center gap-2 text-[10px] !text-dash-textMuted py-4 justify-center border border-dash-border rounded-xl bg-dash-surface">
             <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> Generating waveform from audio...
@@ -125,7 +127,7 @@ export default function AudioBlockEditor({ block, onChange }: AudioBlockEditorPr
         {!isDecoding && decodeError && (
           <p className="text-[10px] text-amber-600 mt-1">{decodeError}</p>
         )}
-      </div>
+      </PropertyGroup>
     </div>
   );
 }

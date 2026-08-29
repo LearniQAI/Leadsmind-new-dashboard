@@ -78,8 +78,15 @@ const getResponsiveStyles = (id: string, props: any) => {
     if (fontFamily) rules += `font-family: ${fontFamily}, sans-serif;`;
     if (fontSize) rules += `font-size: ${fontSize};`;
     if (fontWeight) {
+      // Real Google Fonts variant values (Part 2) look like "700" or "700italic" — the
+      // trailing "italic" isn't a valid font-weight value on its own, so it's split into a
+      // real separate font-style rule. Legacy enum values ('normal'/'bold'/etc, still written
+      // by HeadingSettings.tsx's own weight buttons) fall through the weightMap unchanged.
       const weightMap: any = { normal: '400', medium: '500', semibold: '600', bold: '700', black: '900' };
-      rules += `font-weight: ${weightMap[fontWeight] ?? fontWeight};`;
+      const isItalic = /italic$/.test(fontWeight);
+      const weightValue = isItalic ? fontWeight.replace(/italic$/, '') : fontWeight;
+      rules += `font-weight: ${weightMap[weightValue] ?? weightValue};`;
+      if (isItalic) rules += `font-style: italic;`;
     }
     if (textAlign) rules += `text-align: ${textAlign};`;
     if (lineHeight) rules += `line-height: ${lineHeight};`;

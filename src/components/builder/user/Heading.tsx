@@ -17,6 +17,14 @@ export interface HeadingProps {
  textAlign: 'left' | 'center' | 'right' | 'justify';
  color: string;
  fontSize?: number; // Optional override
+ /** Part 2 (Text Element Typography Controls) — real per-element overrides, independent of
+  *  the existing `fontWeight` enum/`level` size system above (kept untouched to avoid
+  *  breaking either). `fontFamily` is a literal Google Fonts family name; `lineHeight`/
+  *  `letterSpacing` are raw px numbers. All three are undefined by default (no visual
+  *  change) until a user actually sets one via TypographyControl. */
+ fontFamily?: string;
+ lineHeight?: number;
+ letterSpacing?: number;
  /** Part 3 typography decision: when true (Lesson Builder templates only — always false/
   *  unset for Website/Funnel Builder usage), applies the active course's real Signal/Ember/
   *  Grove heading font instead of the default system stack. Additive to `className`, not a
@@ -39,6 +47,15 @@ export const Heading = (allProps: HeadingProps & any) => {
    fontSize: _fs,
    fontSize_mobile,
    fontSize_tablet,
+   fontFamily: _ff,
+   fontFamily_mobile,
+   fontFamily_tablet,
+   lineHeight: _lh,
+   lineHeight_mobile,
+   lineHeight_tablet,
+   letterSpacing: _ls,
+   letterSpacing_mobile,
+   letterSpacing_tablet,
    useThemeFont,
    dragRef,
    ...props
@@ -59,7 +76,10 @@ export const Heading = (allProps: HeadingProps & any) => {
   const fontWeight = useResponsiveValue(allProps, 'fontWeight', _fw);
   const textAlign = useResponsiveValue(allProps, 'textAlign', _ta);
   const color = useResponsiveValue(allProps, 'color', _color);
-  
+  const fontFamily = useResponsiveValue(allProps, 'fontFamily', _ff);
+  const lineHeightOverride = useResponsiveValue(allProps, 'lineHeight', _lh);
+  const letterSpacing = useResponsiveValue(allProps, 'letterSpacing', _ls);
+
   // Base scales for sizes based on level if fontSize is not strictly provided
   const baseSizes = {
    h1: 'text-5xl md:text-6xl',
@@ -102,7 +122,9 @@ export const Heading = (allProps: HeadingProps & any) => {
     style={{
      color,
      fontSize: fontSize ? `${fontSize}px` : undefined,
-     lineHeight: '1.2'
+     fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : undefined,
+     lineHeight: lineHeightOverride ? `${lineHeightOverride}px` : '1.2',
+     letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
     }}
    >
     {enabled ? (

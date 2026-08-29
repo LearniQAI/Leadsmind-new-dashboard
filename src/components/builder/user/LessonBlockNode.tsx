@@ -10,6 +10,12 @@ import { BLOCK_TYPE_META, BlockCanvasPreview } from './LessonBlockPreviews';
 export interface LessonBlockNodeProps {
   blockId: string | null;
   blockType: string;
+  /** Template B pixel-accurate clone: some templates ship with a real value already attached
+   *  (e.g. a specific YouTube video) rather than an empty block — used only in the
+   *  create-on-first-render POST body below, never read again afterward (the real value
+   *  lives in content_blocks once created, same as everything else this node touches). */
+  presetVideoProvider?: string;
+  presetFileUrl?: string;
 }
 
 // Lesson Builder Part 2 — Step 1 architecture decision: content_blocks stays the single
@@ -27,7 +33,7 @@ export interface LessonBlockNodeProps {
 // node props via actions.setProp — a real create-on-first-render pattern, not a placeholder
 // that's silently never backed by a real row.
 export const LessonBlockNode = (allProps: LessonBlockNodeProps & any) => {
-  const { blockId, blockType, dragRef, ...rest } = allProps;
+  const { blockId, blockType, presetVideoProvider, presetFileUrl, dragRef, ...rest } = allProps;
   const {
     connectors: { connect, drag },
     actions: { setProp },
@@ -45,10 +51,32 @@ export const LessonBlockNode = (allProps: LessonBlockNodeProps & any) => {
     let cancelled = false;
     (async () => {
       try {
+        // Real thumbnail fetch at creation time (same route VideoBlockEditor's settings
+        // panel already uses) so a preset video shows a real preview immediately, instead of
+        // an empty canvas card until someone happens to open the settings panel.
+        let presetContent: Record<string, any> = {};
+        if (presetFileUrl && presetVideoProvider) {
+          try {
+            const thumbRes = await fetch(`/api/lms/video-thumbnail?provider=${presetVideoProvider}&url=${encodeURIComponent(presetFileUrl)}`);
+            const thumbData = await thumbRes.json();
+            if (!thumbData.unsupported && !thumbData.error) {
+              presetContent = { thumbnail_url: thumbData.thumbnailUrl, title: thumbData.title, duration_seconds: thumbData.durationSeconds ?? null };
+            }
+          } catch {
+            // Non-fatal — the block still creates with the real file_url; the settings panel
+            // will retry the thumbnail fetch when opened.
+          }
+        }
         const res = await fetch('/api/lms/content-blocks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lesson_id: lessonId, type: blockType, content: {} }),
+          body: JSON.stringify({
+            lesson_id: lessonId,
+            type: blockType,
+            content: presetContent,
+            ...(presetVideoProvider ? { video_provider: presetVideoProvider } : {}),
+            ...(presetFileUrl ? { file_url: presetFileUrl } : {}),
+          }),
         });
         const dataJson = await res.json();
         if (cancelled) return;
@@ -163,5 +191,11 @@ LessonBlockNode.craft = {
   },
   rules: {
     canDrag: () => true,
+    // Real bug found during the "Consistent Premium Settings Panels" pass: ElementProperties'
+    // shared header trash button calls the generic Craft.js actions.delete(), which only
+    // removes this canvas node — it never DELETEs the backing content_blocks row, orphaning it.
+    // The settings panel's own delete button (LessonBlockNodeSettings) does both correctly, so
+    // the generic header delete affordance is disabled here to force that single real path.
+    canDelete: () => false,
   },
 };

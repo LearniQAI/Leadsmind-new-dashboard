@@ -5,12 +5,17 @@ import { useNode } from '@craftjs/core';
 import { Label } from '@/components/ui/label';
 import { ColorPicker } from '../ColorPicker';
 import { Button } from '@/components/ui/button';
-import { Ghost } from 'lucide-react';
 
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
-import { SliderWithInput } from '../inspector/primitives';
+import { SliderWithInput, PropertyGroup } from '../inspector/primitives';
 
+// Consistent Premium Settings Panels pass — Section already used SliderWithInput/ColorPicker
+// (both automatically upgraded via the shared primitives change); horizontal padding's two
+// raw <input type="number"> fields (no slider, inconsistent with the rest of this panel) are
+// swapped to the same SliderWithInput used everywhere else, and every section now sits under
+// a real PropertyGroup title for visual consistency with the Text panel. Real prop wiring
+// (paddingTop/Bottom/Left/Right/backgroundColor) is unchanged.
 export const SectionSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
     props: node.data.props,
@@ -29,9 +34,9 @@ export const SectionSettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4 border-b border-dash-border pb-6">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs font-bold !text-dash-textMuted block">Background</Label>
+      <PropertyGroup title="Background">
+        <div className="flex items-center justify-between -mt-1">
+          <span className="text-[10px] !text-dash-textMuted">Section fill color</span>
           <Button
              variant="ghost"
              size="sm"
@@ -46,11 +51,9 @@ export const SectionSettings = () => {
           value={backgroundColor === 'transparent' ? '' : backgroundColor}
           onChange={(val) => setProp((props: any) => props.backgroundColor = val)}
         />
-      </div>
+      </PropertyGroup>
 
-      <div className="space-y-4">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Vertical spacing</Label>
-
+      <PropertyGroup title="Vertical spacing">
         <SliderWithInput
           label="Top padding"
           value={getDisplayValue('paddingTop', paddingTop) || 0}
@@ -69,32 +72,28 @@ export const SectionSettings = () => {
           step={8}
           numeric
         />
-      </div>
+      </PropertyGroup>
 
-      <div className="space-y-4 pt-4 border-t border-dash-border">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Horizontal padding</Label>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-             <Label className="text-[10px] !text-dash-textMuted">Left (px)</Label>
-             <input
-              type="number"
-              value={getDisplayValue('paddingLeft', paddingLeft) || 0}
-              onChange={(e) => setResponsiveValue('paddingLeft', Number(e.target.value))}
-              className="w-full h-8 bg-white border border-dash-border rounded px-2 text-xs !text-dash-text"
-            />
-          </div>
-          <div className="space-y-2">
-             <Label className="text-[10px] !text-dash-textMuted">Right (px)</Label>
-             <input
-              type="number"
-              value={getDisplayValue('paddingRight', paddingRight) || 0}
-              onChange={(e) => setResponsiveValue('paddingRight', Number(e.target.value))}
-              className="w-full h-8 bg-white border border-dash-border rounded px-2 text-xs !text-dash-text"
-            />
-          </div>
-        </div>
-      </div>
+      <PropertyGroup title="Horizontal padding">
+        <SliderWithInput
+          label="Left padding"
+          value={getDisplayValue('paddingLeft', paddingLeft) || 0}
+          onChange={(val) => setResponsiveValue('paddingLeft', val)}
+          min={0}
+          max={256}
+          step={8}
+          numeric
+        />
+        <SliderWithInput
+          label="Right padding"
+          value={getDisplayValue('paddingRight', paddingRight) || 0}
+          onChange={(val) => setResponsiveValue('paddingRight', val)}
+          min={0}
+          max={256}
+          step={8}
+          numeric
+        />
+      </PropertyGroup>
     </div>
   );
 };

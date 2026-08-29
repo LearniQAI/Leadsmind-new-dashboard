@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { isSafeEmbedUrl } from "@/lib/security/isSafeEmbedUrl";
 import type { ContentBlock } from "../ContentBlockList";
+import { PropertyGroup } from "@/components/builder/inspector/primitives";
 
 interface EmbedBlockEditorProps {
   block: ContentBlock;
@@ -28,23 +29,28 @@ export default function EmbedBlockEditor({ block, onChange }: EmbedBlockEditorPr
   };
 
   return (
-    <div className="space-y-2">
-      <label className="text-[10px] font-bold !text-dash-textMuted block">Embed URL</label>
-      <input
-        type="url"
-        value={urlInput}
-        onChange={(e) => setUrlInput(e.target.value)}
-        onBlur={handleBlur}
-        placeholder="https://example.com/widget"
-        className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary font-mono"
-      />
-      {!isValid && (
-        <div className="flex items-center gap-1.5 text-[10px] text-red">
-          <AlertCircle size={12} className="shrink-0" /> Only http(s) links are allowed in an embed.
+    <div className="space-y-5">
+      <PropertyGroup title="Embed Source">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold !text-dash-textMuted block">Embed URL</label>
+          <input
+            type="url"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onBlur={handleBlur}
+            placeholder="https://example.com/widget"
+            className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary font-mono"
+          />
+          {!isValid && (
+            <div className="flex items-center gap-1.5 text-[10px] text-red">
+              <AlertCircle size={12} className="shrink-0" /> Only http(s) links are allowed in an embed.
+            </div>
+          )}
         </div>
-      )}
+      </PropertyGroup>
+
       {isValid && block.content?.embed_url && (
-        <>
+        <PropertyGroup title="Live Preview">
           <div className="rounded-lg overflow-hidden border border-dash-border aspect-video bg-dash-surface">
             <iframe
               src={block.content.embed_url}
@@ -56,7 +62,7 @@ export default function EmbedBlockEditor({ block, onChange }: EmbedBlockEditorPr
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2">
             <CheckCircle2 size={13} className="shrink-0" /> Embed validated — this is what students will see
           </div>
-        </>
+        </PropertyGroup>
       )}
     </div>
   );

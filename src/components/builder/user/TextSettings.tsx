@@ -1,49 +1,13 @@
 "use client";
 
 import React from 'react';
-import { useNode } from '@craftjs/core';
-import { Label } from '@/components/ui/label';
-import { ColorPicker } from '../ColorPicker';
-import { PropertyGroup, SliderWithInput } from '../inspector/primitives';
+import { TypographyControl } from '../inspector/TypographyControl';
 
-export const TextSettings = () => {
-  const { actions: { setProp }, fontSize, textAlign, color } = useNode((node) => ({
-    fontSize: node.data.props.fontSize,
-    textAlign: node.data.props.textAlign,
-    color: node.data.props.color,
-  }));
-
-  return (
-    <PropertyGroup title="Typography">
-      <SliderWithInput
-        label="Font size"
-        value={fontSize || 16}
-        onChange={(val) => setProp((props: any) => props.fontSize = val)}
-        min={10}
-        max={100}
-        numeric
-      />
-
-      <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Text align</Label>
-        <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
-          {['left', 'center', 'right', 'justify'].map((align) => (
-            <button
-              key={align}
-              onClick={() => setProp((props: any) => props.textAlign = align)}
-              className={`flex-1 text-[10px] py-1 rounded capitalize transition-colors motion-reduce:transition-none ${textAlign === align ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
-            >
-              {align}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <ColorPicker
-        label="Text color"
-        value={color || '#000000'}
-        onChange={(val) => setProp((props: any) => props.color = val)}
-      />
-    </PropertyGroup>
-  );
-};
+// Part 2 (Text Element Typography Controls): now uses the real shared TypographyControl
+// (font size, line height, font type/family/style, letter spacing, color, alignment — all
+// with real 2-way slider<->number sync and a real searchable Google Fonts picker) instead of
+// the old font-size-only panel. Text.tsx's own props (fontSize/textAlign/color/fontFamily/
+// fontWeight/lineHeight/letterSpacing) are all raw-value (px numbers / literal family names /
+// real Google Fonts variant strings) with no enum-based props to collide with, unlike
+// Heading/Paragraph — the cleanest of the 3 to swap wholesale rather than extend in place.
+export const TextSettings = () => <TypographyControl />;

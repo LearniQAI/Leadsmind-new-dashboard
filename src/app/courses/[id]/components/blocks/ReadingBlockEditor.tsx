@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import { FileText, CheckCircle2 } from "lucide-react";
 import type { ContentBlock } from "../ContentBlockList";
+import { PropertyGroup } from "@/components/builder/inspector/primitives";
 
 interface ReadingBlockEditorProps {
   block: ContentBlock;
@@ -49,9 +50,10 @@ export default function ReadingBlockEditor({ block, onChange }: ReadingBlockEdit
   };
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold !text-dash-textMuted block">PDF file</label>
+    <div className="space-y-5">
+      <PropertyGroup title="File Source">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold !text-dash-textMuted block">PDF file</label>
         <div className="flex gap-2">
           <input
             type="url"
@@ -78,10 +80,10 @@ export default function ReadingBlockEditor({ block, onChange }: ReadingBlockEdit
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      </PropertyGroup>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold !text-dash-textMuted block">Live preview</label>
+      <PropertyGroup title="Live Preview">
         {block.file_url ? (
           <>
             <div className="rounded-xl overflow-hidden border border-dash-border h-40 bg-dash-surface">
@@ -96,7 +98,7 @@ export default function ReadingBlockEditor({ block, onChange }: ReadingBlockEdit
             <FileText size={12} /> Upload or link a PDF above
           </div>
         )}
-      </div>
+      </PropertyGroup>
     </div>
   );
 }

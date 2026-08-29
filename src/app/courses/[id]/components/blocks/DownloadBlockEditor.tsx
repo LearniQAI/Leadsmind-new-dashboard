@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import { Download, CheckCircle2 } from "lucide-react";
 import type { ContentBlock } from "../ContentBlockList";
+import { PropertyGroup } from "@/components/builder/inspector/primitives";
 
 interface DownloadBlockEditorProps {
   block: ContentBlock;
@@ -48,9 +49,10 @@ export default function DownloadBlockEditor({ block, onChange }: DownloadBlockEd
   };
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold !text-dash-textMuted block">Resource file</label>
+    <div className="space-y-5">
+      <PropertyGroup title="File Source">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold !text-dash-textMuted block">Resource file</label>
         <div className="flex gap-2">
           <input
             type="url"
@@ -76,13 +78,14 @@ export default function DownloadBlockEditor({ block, onChange }: DownloadBlockEd
             </button>
           </div>
         </div>
-      </div>
-      {block.file_url && (
-        <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2">
-          <CheckCircle2 size={13} className="shrink-0" />
-          <span className="truncate">Attached: {block.content?.file_name || block.file_url}</span>
         </div>
-      )}
+        {block.file_url && (
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2">
+            <CheckCircle2 size={13} className="shrink-0" />
+            <span className="truncate">Attached: {block.content?.file_name || block.file_url}</span>
+          </div>
+        )}
+      </PropertyGroup>
     </div>
   );
 }

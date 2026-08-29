@@ -8,9 +8,23 @@ import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 import { AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-react';
 import { PropertyGroup, SliderWithInput, PropertySelect } from './primitives';
+import { FontFamilyPicker } from './FontFamilyPicker';
+import { getGoogleFont } from '@/lib/builder/googleFontsCatalog';
+import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
+// Text Element Typography Controls (Systeme-parity Master Prompt, Part 2).
+//
+// Step 0 audit: this panel already existed (built for Container-level typography) but was
+// never wired into Text/Headline's own settings panels, and its font family field was a
+// hardcoded 10-entry list with no real live application to the rendered element (Text.tsx/
+// Heading.tsx/Paragraph.tsx never read a fontFamily prop at all — confirmed via source, fixed
+// alongside this control). So: mostly a REUSE/WIRING task for the panel shell (PropertyGroup/
+// SliderWithInput/PropertySelect, all pre-existing with real 2-way slider<->number sync), with
+// real NEW work layered in — the searchable Google Fonts catalog + dynamic per-family font
+// loading (no such mechanism existed anywhere in the project), the reset icon, the "Font type"
+// source dropdown, and making the 3 text components actually apply the result.
 export const TypographyControl = () => {
-  const { props } = useNode((node) => ({
+  const { actions: { setProp }, props } = useNode((node) => ({
     props: node.data.props,
   }));
   const { viewMode } = useBuilder();
@@ -24,24 +38,29 @@ export const TypographyControl = () => {
 
   const fontFamily = getDisplayValue('fontFamily', 'Inter');
   const fontSize = getDisplayValue('fontSize', '');
-  const fontWeight = getDisplayValue('fontWeight', 'normal');
   const textAlign = getDisplayValue('textAlign', 'left');
   const lineHeight = getDisplayValue('lineHeight', '');
   const letterSpacing = getDisplayValue('letterSpacing', '');
   const color = getDisplayValue('color', '');
+  // Only one real source exists in this project (the Google Fonts css2 loading pattern
+  // confirmed across every prior font-loading pass this session) — no System-font enumeration
+  // and no custom-font-upload storage/CDN exist anywhere, so "Font type" offers just the one
+  // real option rather than speculative unused ones, per the master prompt's own instruction
+  // not to build unused source types.
+  const fontType = 'google';
 
-  const fonts = [
-    'Inter', 'Poppins', 'Montserrat', 'Roboto', 'Open Sans', 'Lato',
-    'Playfair Display', 'Georgia', 'system-ui', 'monospace'
-  ];
-
-  const weights = [
-    { value: 'normal', label: 'Normal' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'semibold', label: 'Semi' },
-    { value: 'bold', label: 'Bold' },
-    { value: 'black', label: 'Black' }
-  ];
+  // Real variants for whichever family is currently selected — falls back to a sensible
+  // Regular/Bold/Italic set for the rare case a value predates this catalog (e.g. was set
+  // before this pass) and isn't one of the curated ~50.
+  const fontEntry = getGoogleFont(fontFamily);
+  const styleOptions = fontEntry
+    ? fontEntry.variants.map((v) => ({ value: v.value, label: v.label }))
+    : [
+        { value: '400', label: 'Regular' },
+        { value: '700', label: 'Bold' },
+        { value: '400italic', label: 'Italic' },
+      ];
+  const currentFontStyle = getDisplayValue('fontWeight', styleOptions[0]?.value || '400');
 
   const alignments = [
     { value: 'left', icon: AlignLeft },
@@ -50,8 +69,23 @@ export const TypographyControl = () => {
     { value: 'justify', icon: AlignJustify }
   ];
 
+  // Real reset — genuinely clears this element's own explicit typography props (undefined),
+  // not decorative. With no per-element value set, the component falls back to its own
+  // built-in default / the active course theme's font (see Text.tsx/Heading.tsx/
+  // Paragraph.tsx's useThemeFont precedence — an explicit fontFamily here always wins over
+  // the theme while set, so clearing it is what actually lets the theme default show again).
+  const handleReset = () => {
+    setProp((p: any) => {
+      delete p.fontFamily;
+      delete p.fontSize;
+      delete p.lineHeight;
+      delete p.letterSpacing;
+      delete p.fontWeight;
+    });
+  };
+
   return (
-    <PropertyGroup title="Typography" defaultOpen={false}>
+    <PropertyGroup title="Typography" defaultOpen={false} onReset={handleReset} resetTitle="Reset typography to default">
       {/* Font size & line height — sliders, matching the reference design */}
       <div className="grid grid-cols-2 gap-2">
         <SliderWithInput
@@ -72,17 +106,29 @@ export const TypographyControl = () => {
         />
       </div>
 
-      {/* Font family */}
       <PropertySelect
-        label="Font family"
-        value={fontFamily}
-        options={fonts.map((f) => ({ value: f, label: f }))}
-        onChange={(val) => setResponsiveValue('fontFamily', val)}
+        label="Font type"
+        value={fontType}
+        options={[{ value: 'google', label: 'Google Fonts' }]}
+        onChange={() => {}}
       />
+
+      <FontFamilyPicker
+        value={fontFamily}
+        onChange={(family) => {
+          loadGoogleFontFamily(family);
+          setResponsiveValue('fontFamily', family);
+          // The previous family's selected weight/style may not exist on the new family —
+          // reset to its first real variant rather than silently keeping an invalid one.
+          const entry = getGoogleFont(family);
+          setResponsiveValue('fontWeight', entry?.variants[0]?.value || '400');
+        }}
+      />
+
       <PropertySelect
         label="Font style"
-        value={fontWeight}
-        options={weights}
+        value={currentFontStyle}
+        options={styleOptions}
         onChange={(val) => setResponsiveValue('fontWeight', val)}
       />
 

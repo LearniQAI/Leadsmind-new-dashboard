@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Plus, Trash2, CheckCircle2 } from "lucide-react";
 import type { ContentBlock } from "../ContentBlockList";
+import { PropertyGroup } from "@/components/builder/inspector/primitives";
 
 interface FlashcardsBlockEditorProps {
   block: ContentBlock;
@@ -32,53 +33,55 @@ export default function FlashcardsBlockEditor({ block, onChange }: FlashcardsBlo
   const handleFieldBlur = () => onChange({ content: { ...block.content, flashcards: cards } });
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold !text-dash-textMuted">Flashcard Deck</span>
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="text-[10px] font-bold text-primary hover:opacity-80 flex items-center gap-1"
-        >
-          <Plus size={12} /> Add Card
-        </button>
-      </div>
-      {cards.length === 0 ? (
-        <div className="py-6 text-center text-[11px] !text-dash-textMuted border border-dashed border-dash-border rounded-xl">
-          No flashcards yet. Add cards to begin.
+    <div className="space-y-5">
+      <PropertyGroup title="Flashcard Deck">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold !text-dash-textMuted">Cards</span>
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="text-[10px] font-bold text-primary hover:opacity-80 flex items-center gap-1"
+          >
+            <Plus size={12} /> Add Card
+          </button>
         </div>
-      ) : (
-        <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-          {cards.map((card, idx) => (
-            <div key={idx} className="flex items-center gap-2 bg-white border border-dash-border p-2.5 rounded-lg">
-              <input
-                type="text"
-                value={card.front}
-                onChange={(e) => handleFieldChange(idx, "front", e.target.value)}
-                onBlur={handleFieldBlur}
-                placeholder="Front Question"
-                className="flex-1 bg-dash-surface border border-dash-border rounded px-2 py-1 text-xs !text-dash-text outline-none"
-              />
-              <input
-                type="text"
-                value={card.back}
-                onChange={(e) => handleFieldChange(idx, "back", e.target.value)}
-                onBlur={handleFieldBlur}
-                placeholder="Back Explanation"
-                className="flex-1 bg-dash-surface border border-dash-border rounded px-2 py-1 text-xs !text-dash-text outline-none"
-              />
-              <button type="button" onClick={() => handleRemove(idx)} className="text-red hover:text-red/80 shrink-0">
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      {cards.length > 0 && (
-        <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2">
-          <CheckCircle2 size={13} className="shrink-0" /> {cards.length} card{cards.length === 1 ? "" : "s"} in this deck
-        </div>
-      )}
+        {cards.length === 0 ? (
+          <div className="py-6 text-center text-[11px] !text-dash-textMuted border border-dashed border-dash-border rounded-xl">
+            No flashcards yet. Add cards to begin.
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+            {cards.map((card, idx) => (
+              <div key={idx} className="flex items-center gap-2 bg-white border border-dash-border p-2.5 rounded-lg">
+                <input
+                  type="text"
+                  value={card.front}
+                  onChange={(e) => handleFieldChange(idx, "front", e.target.value)}
+                  onBlur={handleFieldBlur}
+                  placeholder="Front Question"
+                  className="flex-1 bg-dash-surface border border-dash-border rounded px-2 py-1 text-xs !text-dash-text outline-none"
+                />
+                <input
+                  type="text"
+                  value={card.back}
+                  onChange={(e) => handleFieldChange(idx, "back", e.target.value)}
+                  onBlur={handleFieldBlur}
+                  placeholder="Back Explanation"
+                  className="flex-1 bg-dash-surface border border-dash-border rounded px-2 py-1 text-xs !text-dash-text outline-none"
+                />
+                <button type="button" onClick={() => handleRemove(idx)} className="text-red hover:text-red/80 shrink-0">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {cards.length > 0 && (
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2">
+            <CheckCircle2 size={13} className="shrink-0" /> {cards.length} card{cards.length === 1 ? "" : "s"} in this deck
+          </div>
+        )}
+      </PropertyGroup>
     </div>
   );
 }

@@ -116,10 +116,10 @@ const framedVideoContainer = (nodes: string[]) => ({
   custom: {},
 });
 
-const lessonBlock = (blockType: string) => ({
+const lessonBlock = (blockType: string, extra: Record<string, any> = {}) => ({
   type: { resolvedName: 'LessonBlockNode' },
   isCanvas: false,
-  props: { blockId: null, blockType },
+  props: { blockId: null, blockType, ...extra },
   nodes: [],
   custom: {},
 });
@@ -137,11 +137,12 @@ const contentBox = (
   headline: string,
   body: string,
   ctaText: string,
-  blockType: 'reading' | 'download' | 'quiz' | 'assignment'
+  blockType: 'reading' | 'download' | 'quiz' | 'assignment',
+  extra: Record<string, any> = {}
 ) => ({
   type: { resolvedName: 'ContentBox' },
   isCanvas: false,
-  props: { headerLabel, headerColorHex: '#1359FF', headline, body, ctaText, blockId: null, blockType, useThemeFont: true },
+  props: { headerLabel, headerColorHex: '#1359FF', headline, body, ctaText, blockId: null, blockType, useThemeFont: true, ...extra },
   nodes: [],
   custom: {},
 });
@@ -201,215 +202,209 @@ const stepCardChildren = (num: string, numberLabel: string, title: string, body:
   [`${num}__body`]: paragraph(body, { fontSize: 14 }),
 });
 
-// ---- Template A: "Standard Lesson" ----
-// A fully drafted lecture on discovery calls — every section is real, finished copy a
-// teacher can immediately read, tweak, or replace, not scaffolding with "add text here"
-// placeholders. 9 sections: hero, learning objectives, why-it-matters context, a 4-part
-// framework grid, the video centerpiece, a reading callout, common mistakes, a 2-column
-// recap, and a closing assignment.
+// ---- Template A: "Standard Lesson" — pixel-accurate clone of a real reference lesson page ----
+// Typography decision (Step 0): compared the reference headline's rounded-but-restrained
+// geometric letterforms against Poppins/Fredoka/Baloo 2/Quicksand. Fredoka and Baloo 2 both
+// have exaggerated, bubbly rounded terminals (near-childlike) that read distinctly rounder
+// than the reference — ruled out. Between Poppins and Quicksand, the reference's bold weight
+// has more geometric regularity (consistent stroke contrast, less organic taper) matching
+// Poppins Bold/SemiBold's letterforms more closely than Quicksand's softer strokes. Chosen:
+// Poppins for headings, paired with Inter for body (the specified safe default) rather than
+// Poppins Regular as body — Poppins Regular's rounded 'a'/'g' read slightly informal at body
+// size next to the reference's fairly neutral paragraph text, and Inter is the more legible,
+// distinct-enough pairing partner. Both loaded via this project's REAL font mechanism
+// (confirmed live: a single Google Fonts css2 URL in layout.tsx + globals.css, NOT next/font
+// — the master prompt's next/font assumption was corrected here the same way Phase F's audit
+// corrected an identical assumption for the course-theme fonts).
+//
+// Colors sampled from the reference: headline #111111, body #374151 (chosen over #1F2937 —
+// closer to the reference's visible paragraph weight), checkmark blue #2563EB (Tailwind's
+// real blue-600, matches the reference's checkmark hue), white background, no other accents.
+//
+// Step 2 confirmation: Paragraph already renders its `text` prop as real sanitized HTML
+// (dangerouslySetInnerHTML) rather than plain text — inline <strong>/<em> spans within an
+// otherwise-regular line already work with zero changes needed to the shared component. No
+// dedicated "Bulleted list" element exists (Part 1's audit finding stands) — same real
+// <ul>/<li>-inside-a-Paragraph mechanism used throughout Part 3, with a blue-600 checkmark
+// glyph specific to this template rather than the shared sky-500 one other templates use.
+//
+// Step 4: intentionally text/image only — no Video/Quiz/ContentBox block was fabricated to
+// "complete" what the copy references, since none appears in the 3 reference screenshots
+// provided. A teacher can add real blocks below after inserting this template.
+const CLONE_HEADING_COLOR = '#111111';
+const CLONE_BODY_COLOR = '#374151';
+const CLONE_CHECK = '<span class="text-blue-600 font-bold">&#10003;</span>';
+const CLONE_HEADING_FONT = 'font-poppins';
+const CLONE_BODY_FONT = 'font-inter';
+
+const cloneHeading = (level: string, text: string) => ({
+  type: { resolvedName: 'Heading' },
+  isCanvas: false,
+  props: { level, text, fontWeight: 'bold', textAlign: 'left', color: CLONE_HEADING_COLOR, className: CLONE_HEADING_FONT },
+  nodes: [],
+  custom: {},
+});
+
+const cloneParagraph = (text: string, extra: Record<string, any> = {}) => ({
+  type: { resolvedName: 'Paragraph' },
+  isCanvas: false,
+  props: { text, fontSize: 16, textAlign: 'left', color: CLONE_BODY_COLOR, lineHeight: 'relaxed', className: CLONE_BODY_FONT, ...extra },
+  nodes: [],
+  custom: {},
+});
+
+const cloneChecklist = (items: string[]) => cloneParagraph(
+  `<ul class="list-none p-0 m-0 space-y-3">${items.map((i) => `<li class="flex items-start gap-2">${CLONE_CHECK} <span>${i}</span></li>`).join('')}</ul>`,
+  { fontSize: 15 }
+);
+
 const standardLessonTree = {
-  ROOT: { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'min-h-screen bg-white' }, nodes: ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9'], custom: {} },
+  ROOT: { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'min-h-screen bg-white' }, nodes: ['s1', 's2', 's3'], custom: {} },
 
-  // 1. Hero
-  s1: section(['c1'], 56, 16),
-  c1: container(['eyebrow1', 'heading1', 'para1']),
-  eyebrow1: eyebrow('LESSON 6 OF 9'),
-  heading1: heading('h1', 'Mastering Customer Discovery Calls'),
-  para1: paragraph(
-    "Congratulations — you've reached one of the <strong>most practical skills</strong> in this course. A great discovery call is the difference between a prospect who ghosts you and one who's already sold themselves by the time you pitch. In this lesson, you'll learn how to <strong>run a structured discovery call</strong> that surfaces what a prospect actually needs, not just what they say they want, and walks away wanting a next step with you."
+  // Section 1 — full width
+  s1: section(['c1'], 48, 40),
+  c1: container(['heading1', 'para1'], '820px'),
+  heading1: cloneHeading('h1', 'Course Introduction: Warm-up Activity'),
+  para1: cloneParagraph(
+    "Before diving deep into any learning or working session, it's crucial to <em>prepare your mind and body</em> — just like an athlete would stretch before a game. That's exactly what warm-up activities are for. They help you focus, be creative, and prepare to make the most of your day or learning experience."
   ),
 
-  // 2. What you'll learn
-  s2: section(['c2']),
-  c2: container(['heading2', 'list1']),
-  heading2: heading('h3', "What You'll Learn"),
-  list1: checklist([
-    '<strong>Structuring the call</strong> so it never feels like an interrogation',
-    '<strong>Spotting real buying signals</strong> versus polite interest',
-    '<strong>Turning objections</strong> into clarifying questions instead of arguments',
-    '<strong>Closing with a clear next step</strong> every single time — no more "let me think about it"',
+  // Section 2 — 2-column (closest real preset to the reference's ~55/45 split is the
+  // standard even 2-column layout; no 55/45 preset exists on the real Columns component,
+  // confirmed via its own source — flagged rather than fabricated).
+  s2: section(['c2'], 8, 40),
+  c2: container(['cols1'], '1000px'),
+  cols1: columns(['colLeft', 'colRight']),
+  colLeft: col(['heading2', 'lead1', 'list1']),
+  heading2: cloneHeading('h2', "What You'll Learn in This Course"),
+  lead1: cloneParagraph("In this quick module, we'll explore:"),
+  list1: cloneChecklist([
+    'What warm-up activities are and <strong>why they matter</strong>',
+    '<strong>Different types of warm-up exercises</strong> — from energizers to mindfulness moments',
+    'How warm-ups can improve <strong>concentration, motivation, and engagement</strong>',
+    "Real-life examples you can start using immediately, whether you're in class, running a business, or working alone",
   ]),
+  // Vertical offset (Container paddingTop) so the image's top roughly aligns with the "In
+  // this quick module..." line rather than the headline, matching the reference.
+  colRight: {
+    type: { resolvedName: 'Container' },
+    isCanvas: true,
+    props: { layoutType: 'fixed', padding: 0, paddingTop: 56, backgroundColor: 'transparent' },
+    nodes: ['image1'],
+    custom: {},
+  },
+  // Placeholder — flagged, not claimed as the real source asset (Step 1 requirement).
+  image1: image('https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=1200&auto=format&fit=crop'),
 
-  // 3. Why this matters (context/motivation, real paragraph copy)
-  s3: section(['c3']),
-  c3: container(['heading9', 'para9']),
-  heading9: heading('h3', 'Why This Matters'),
-  para9: paragraph(
-    "Most reps lose the deal in the first ten minutes without realizing it — by pitching before they've earned the right to. Prospects can tell within seconds whether you're there to <strong>understand their problem</strong> or just <strong>fill a quota</strong>. The framework below fixes that by giving every call the same reliable shape, so you're never improvising your most important five minutes."
-  ),
-
-  // 4. The 4-part framework (grid of step cards)
-  s4: section(['c4']),
-  c4: container(['heading4', 'grid1'], '960px'),
-  heading4: heading('h3', 'The 4-Part Framework'),
-  grid1: columns(['step1', 'step2', 'step3', 'step4'], '4'),
-  step1: stepCard('n1'),
-  step2: stepCard('n2'),
-  step3: stepCard('n3'),
-  step4: stepCard('n4'),
-  ...stepCardChildren('n1', 'STEP 01', 'Open', 'Ask permission and set a real agenda before asking a single question.'),
-  ...stepCardChildren('n2', 'STEP 02', 'Explore', 'Uncover the actual problem — not the feature request they led with.'),
-  ...stepCardChildren('n3', 'STEP 03', 'Confirm', 'Play back what you heard so they feel understood, not interviewed.'),
-  ...stepCardChildren('n4', 'STEP 04', 'Close', 'Name a specific next step and get a yes before you hang up.'),
-
-  // 5. Framed video centerpiece
-  s5: section(['c5']),
-  c5: framedVideoContainer(['video1']),
-  video1: lessonBlock('video'),
-
-  // 6. Reading callout
-  s6: section(['c6']),
-  c6: container(['callout1'], '820px'),
-  callout1: contentBox(
-    'READING MATERIAL',
-    'The Discovery Call Cheat Sheet',
-    'A one-page reference you can keep open during your next call — bookmark it, print it, or drop it in your CRM notes.',
-    'Download the cheat sheet',
-    'download'
-  ),
-
-  // 7. Common mistakes
-  s7: section(['c7']),
-  c7: container(['heading5', 'mistakes1']),
-  heading5: heading('h3', 'Common Mistakes to Avoid'),
-  mistakes1: mistakeList([
-    "<strong>Pitching before exploring</strong> — the fastest way to sound like every other rep who called this week",
-    "<strong>Asking closed questions</strong> ('Are you happy with your current solution?') that kill the conversation in one word",
-    '<strong>Filling every silence</strong> — the best answers usually come three seconds after you stop talking',
+  // Section 3 — full width, no side image
+  s3: section(['c3'], 8, 64),
+  c3: container(['heading3', 'lead2', 'list2', 'para2'], '820px'),
+  heading3: cloneHeading('h2', 'How to Get the Most Out of This Course'),
+  lead2: cloneParagraph('To really benefit from this module, I encourage you to do three things:'),
+  list2: cloneChecklist([
+    "<strong>Watch the course video carefully</strong> — I'll be walking you through the concepts with real-life examples.",
+    "<strong>Read the course material</strong> — it goes deeper into the 'why' and gives you extra insight you might not catch in the video.",
+    "<strong>Don't skip the quiz</strong> — it's not just a test; it's a learning tool. The questions are designed to help you reflect and remember.",
   ]),
-
-  // 8. Recap (2-column)
-  s8: section(['c8']),
-  c8: container(['cols1'], '900px'),
-  cols1: columns(['colA', 'colB']),
-  colA: col(['heading3', 'list2']),
-  heading3: heading('h3', 'Quick Recap'),
-  list2: checklist([
-    '<strong>Open with permission</strong>, not a pitch',
-    '<strong>Ask, then stay quiet</strong> — let them fill the silence',
-    '<strong>Confirm the next step</strong> before you hang up',
-  ]),
-  colB: col(['image1']),
-  image1: image('https://images.unsplash.com/photo-1521737711867-e3b97375f902?q=80&w=1200&auto=format&fit=crop'),
-
-  // 9. Closing assignment
-  s9: section(['c9'], 8, 64),
-  c9: container(['para10', 'callout2'], '820px'),
-  para10: paragraph(
-    "You now have the full framework, the cheat sheet, and the mistakes to watch for. The only thing left is a real rep — here's yours."
-  ),
-  callout2: contentBox(
-    'YOUR TURN',
-    'Ready to put it into practice?',
-    "Submit a short recording of a real (or role-played) discovery call and we'll give you feedback before the next lesson.",
-    'Submit your assignment',
-    'assignment'
+  para2: cloneParagraph(
+    'Reading and watching together will give you the full picture — and help you succeed not only in this course but in whatever you apply this knowledge to.'
   ),
 };
 
-// ---- Template B: "Deep-Dive Lesson" ----
-// A fully drafted lecture on objection handling — genuinely different structure from
-// Template A (2-column from the very first section, a 3-part framework instead of a 4-part
-// one, real worked examples instead of a reading callout), not a re-skin. 8 sections: 2-col
-// hero, a 3-part framework grid, the quiz callout, worked examples, common mistakes, a
-// 2-column recap, and a closing assignment.
+// ---- Template B: "Deep-Dive Lesson" — pixel-accurate clone of a real reference lesson ----
+// Typography/color decision (Step 0): reuses Template A's exact choices (Poppins headings,
+// Inter body, #111111/#374151 text) so the two templates read as one product, not two
+// unrelated designs — the master prompt's own explicit requirement. Content-box header uses
+// #EA580C (vivid orange-red, sampled from the reference — a genuinely distinct color from
+// Template A's/this template's own CTA blue #2563EB, confirmed intentional per Step 6: two
+// different templates are not required to share every color, only the text/checkmark system).
+//
+// Real technical requirement verified (Step 5): the "Up Next" paragraph below has FIVE
+// separate <strong> spans in one sentence (adverbs/how/when/where/verbs) — Paragraph's
+// dangerouslySetInnerHTML rendering has no limit on the number of inline spans in one string,
+// confirmed by construction (it's real HTML, not a single-span-only mechanism) and re-checked
+// against the live database in Step 6's verification below.
+//
+// Real functional Video block, pre-configured (Step 2): provider=youtube,
+// file_url=https://youtu.be/fnh2wA4gtks — LessonBlockNode's create-on-first-render now
+// accepts presetVideoProvider/presetFileUrl (added for this template) and fetches a REAL
+// thumbnail via the existing /api/lms/video-thumbnail route at creation time, not just
+// saving the id as an inert string.
+const cloneEmojiHeading = (level: string, text: string) => cloneHeading(level, text);
+
 const deepDiveLessonTree = {
-  ROOT: { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'min-h-screen bg-white' }, nodes: ['s1', 's2', 's3', 's4', 's5', 's6', 's7'], custom: {} },
+  ROOT: { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'min-h-screen bg-white' }, nodes: ['s1', 's2', 's3', 's4', 's5'], custom: {} },
 
-  // 1. 2-column hero
-  s1: section(['c1'], 56, 16),
-  c1: container(['colsHero'], '1000px'),
-  colsHero: columns(['colHeroText', 'colHeroVideo']),
-  colHeroText: col(['eyebrow1', 'heading1', 'para1']),
-  eyebrow1: eyebrow('LESSON 7 OF 9'),
-  heading1: heading('h1', 'Advanced Objection Handling'),
-  para1: paragraph(
-    "This is where good salespeople become <strong>great</strong> ones. You'll learn to treat <strong>objections as information</strong>, not obstacles — and respond in a way that <strong>builds trust instead of pressure</strong>. By the end of this lesson you'll have a repeatable way to handle the five objections that come up in almost every deal."
+  // Header
+  s1: section(['c1'], 48, 8),
+  c1: container(['heading1', 'para1'], '820px'),
+  heading1: cloneEmojiHeading('h1', '📘 TEFL Lesson: <strong>Adjectives</strong>'),
+  para1: cloneParagraph("Welcome to today's lesson — we're diving into <strong>Adjectives</strong>!"),
+
+  // Step 1 — full width, real Video block
+  s2: section(['c2', 'c2video'], 32, 40),
+  c2: container(['heading2', 'para2'], '820px'),
+  heading2: cloneEmojiHeading('h3', '🎥 Step 1: Watch the Lesson Video'),
+  para2: cloneParagraph(
+    'Start by watching the lesson video. It breaks down what adjectives are, why we use them, and how they help make our sentences more interesting and descriptive. Make sure to take notes—especially on the examples we go over.'
   ),
-  colHeroVideo: col(['video1']),
-  video1: lessonBlock('video'),
+  c2video: framedVideoContainer(['video1']),
+  video1: lessonBlock('video', { presetVideoProvider: 'youtube', presetFileUrl: 'https://youtu.be/fnh2wA4gtks' }),
 
-  // 2. The 3-part framework
-  s2: section(['c2']),
-  c2: container(['heading8', 'grid1'], '900px'),
-  heading8: heading('h3', 'The 3-Part Framework'),
-  grid1: columns(['step1', 'step2', 'step3'], '3'),
-  step1: stepCard('m1'),
-  step2: stepCard('m2'),
-  step3: stepCard('m3'),
-  ...stepCardChildren('m1', 'STEP 01', 'Acknowledge', "Name what you heard without agreeing or arguing — 'sounds like budget is the concern right now.'"),
-  ...stepCardChildren('m2', 'STEP 02', 'Clarify', 'Ask one question that gets at the real concern underneath the stated one.'),
-  ...stepCardChildren('m3', 'STEP 03', 'Respond', 'Answer the real concern directly, then check if that actually resolved it.'),
+  // Step 2 — 2-column
+  s3: section(['c3'], 8, 8),
+  c3: container(['cols1'], '1000px'),
+  cols1: columns(['colLeft', 'colRight']),
+  colLeft: col(['heading3', 'para3', 'heading4', 'para4']),
+  heading3: cloneEmojiHeading('h3', '📖 Step 2: Read the Supporting Material'),
+  para3: cloneParagraph(
+    'After the video, head over to the reading material. It reinforces what you learned in the video and gives extra examples that will help everything sink in. Don\'t skip this part — it\'s where a lot of "aha!" moments happen!'
+  ),
+  heading4: cloneEmojiHeading('h4', '📝 Quick Overview: What Are Adjectives?'),
+  para4: cloneParagraph(
+    'Adjectives are <strong>describing words</strong>. They tell us more about a noun—like its size, colour, shape, or even opinion.'
+  ),
+  // Placeholder — flagged, not the real source asset (a hand filling in a quiz bubble sheet).
+  colRight: col(['image1']),
+  image1: image('https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?q=80&w=1200&auto=format&fit=crop'),
 
-  // 3. Quiz callout
-  s3: section(['c3']),
-  c3: container(['callout1'], '820px'),
+  // Content Box — orange-red header, blue CTA, wired to a real download block
+  s4: section(['c4'], 24, 40),
+  c4: container(['callout1'], '820px'),
   callout1: contentBox(
-    'KNOWLEDGE CHECK',
-    'Test what you just watched',
-    'Five quick questions — score 80% or better to unlock the next lesson.',
-    'Start the quiz',
-    'quiz'
+    'READING MATERIAL',
+    '📚 Why Reading the Material Matters —<br/><em>Understanding Adjectives</em>',
+    "<p>As you work through your lesson on <strong>Adjectives</strong>, don't forget this important step:</p><p class=\"font-bold text-[#111827] mt-2\">Always read the supporting material before moving on to the quiz.</p>",
+    'Download PDF Here',
+    'download',
+    { headerColorHex: '#EA580C', ctaColorHex: '#2563EB', useThemeFont: false, }
   ),
 
-  // 4. Worked examples (real, concrete, bolded phrases)
-  s4: section(['c4']),
-  c4: container(['heading9', 'para9']),
-  heading9: heading('h3', 'Worked Examples'),
-  para9: paragraph(
-    "<strong>\"It's too expensive.\"</strong> — Don't defend the price. Ask: <em>\"Expensive compared to what — doing nothing, or a specific competitor?\"</em> The answer changes everything about how you respond.<br/><br/><strong>\"I need to check with my team.\"</strong> — Don't push for a decision on the spot. Ask: <em>\"What would make this an easy yes for them?\"</em> — you'll usually surface the real blocker.<br/><br/><strong>\"We're happy with our current solution.\"</strong> — Don't argue. Ask: <em>\"What would have to change for you to even consider looking elsewhere?\"</em>"
+  // Up Next — 2-column, 5 separate bold spans in one paragraph
+  s5: section(['c5'], 8, 64),
+  c5: container(['cols2'], '1000px'),
+  cols2: columns(['colLeft2', 'colRight2']),
+  colLeft2: col(['heading5', 'para5']),
+  heading5: cloneHeading('h3', 'Up Next: <strong>Adverbs</strong>'),
+  para5: cloneParagraph(
+    "In the next lesson, we'll explore <strong>adverbs</strong>—words that describe <strong>how</strong>, <strong>when</strong>, or <strong>where</strong> something happens. If adjectives describe nouns, then adverbs describe <strong>verbs</strong>, adjectives, or even other adverbs. Can't wait to show you how they work!"
   ),
-
-  // 5. Common mistakes
-  s5: section(['c5']),
-  c5: container(['heading10', 'mistakes1']),
-  heading10: heading('h3', 'Common Mistakes to Avoid'),
-  mistakes1: mistakeList([
-    "<strong>Responding instantly</strong> — a two-second pause signals you're actually considering what they said",
-    '<strong>Treating every objection as a rejection</strong> instead of a request for more information',
-    "<strong>Over-explaining</strong> — the best responses are one or two sentences, not a five-minute defense",
-  ]),
-
-  // 6. Recap (2-column, mirrored order vs Template A)
-  s6: section(['c6']),
-  c6: container(['cols2'], '900px'),
-  cols2: columns(['colImg', 'colRecap']),
-  colImg: col(['image1']),
-  image1: image('https://images.unsplash.com/photo-1553877522-43269d4ea984?q=80&w=1200&auto=format&fit=crop'),
-  colRecap: col(['heading2', 'list1']),
-  heading2: heading('h3', 'Before You Move On'),
-  list1: checklist([
-    '<strong>Name the objection</strong> out loud before responding',
-    '<strong>Ask one clarifying question</strong> instead of pitching harder',
-    "<strong>Agree on a next step</strong>, even if it's 'not now'",
-  ]),
-
-  // 7. Closing assignment
-  s7: section(['c7'], 8, 64),
-  c7: container(['para10', 'callout2'], '820px'),
-  para10: paragraph(
-    "You've seen the framework and three real examples — now it's time to run it against a real objection from your own pipeline."
-  ),
-  callout2: contentBox(
-    'YOUR TURN',
-    'Practice on a real objection',
-    "Submit a short recording or write-up of how you'd respond to a real objection from your own pipeline.",
-    'Submit your assignment',
-    'assignment'
-  ),
+  // Placeholder — flagged, not the real source asset (a classroom whiteboard "Adverbs" scene).
+  colRight2: col(['image2']),
+  image2: image('https://images.unsplash.com/photo-1580582932707-520aed937b7b?q=80&w=1200&auto=format&fit=crop'),
 };
 
 export const LESSON_TEMPLATES: LessonTemplate[] = [
   {
     id: 'standard-lesson',
     name: 'Standard Lesson',
-    description: 'A fully drafted 9-section lecture: objectives, context, a 4-part framework, video, reading, mistakes, recap and assignment.',
+    description: 'A warm, editorial course intro: framing text, a 2-column "what you\'ll learn" checklist, and a closing how-to-succeed section.',
     content: JSON.stringify(standardLessonTree),
   },
   {
     id: 'deep-dive-lesson',
     name: 'Deep-Dive Lesson',
-    description: 'A fully drafted 7-section lecture: 2-col video hero, a 3-part framework, quiz, worked examples, mistakes, recap and assignment.',
+    description: 'A structured step-by-step lesson: real video, a reading callout with a wired download CTA, and an "up next" preview.',
     content: JSON.stringify(deepDiveLessonTree),
   },
 ];

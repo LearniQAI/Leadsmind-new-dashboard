@@ -7,13 +7,22 @@ import { TextSettings } from './TextSettings';
 import { replaceMergeTags } from '@/lib/builder/utils';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 
-export const Text = ({ text, fontSize, textAlign, color, dragRef, ...props }: any) => {
+export const Text = ({ text, fontSize, textAlign, color, fontFamily, fontWeight, lineHeight, letterSpacing, dragRef, ...props }: any) => {
  const { connectors: { connect, drag }, actions: { setProp } } = useNode();
  const { enabled } = useEditor((state) => ({
   enabled: state.options.enabled
  }));
 
  const displayText = enabled ? text : sanitizeRichTextHtml(replaceMergeTags(text));
+
+ // Part 2 (Text Element Typography Controls): fontFamily/fontWeight/lineHeight/letterSpacing
+ // are genuinely applied here now — previously TypographyControl existed but Text never read
+ // these props at all, so the panel saved values with zero visual effect. fontWeight carries
+ // a real Google Fonts variant string (e.g. "700italic"); the trailing "italic" isn't a valid
+ // font-weight value on its own, so it's split into a real separate font-style rule (same
+ // fix applied to Container.tsx's own typography rendering).
+ const isItalic = typeof fontWeight === 'string' && /italic$/.test(fontWeight);
+ const weightValue = isItalic ? fontWeight.replace(/italic$/, '') : fontWeight;
 
  return (
   <div
@@ -32,6 +41,11 @@ export const Text = ({ text, fontSize, textAlign, color, dragRef, ...props }: an
     fontSize: `${fontSize}px`,
     textAlign,
     color,
+    fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : undefined,
+    fontWeight: weightValue || undefined,
+    fontStyle: isItalic ? 'italic' : undefined,
+    lineHeight: lineHeight ? `${lineHeight}px` : undefined,
+    letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
    }}
   >
     {enabled ? (

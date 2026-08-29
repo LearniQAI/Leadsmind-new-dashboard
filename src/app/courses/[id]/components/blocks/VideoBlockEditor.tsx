@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { PlayCircle, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import type { ContentBlock } from "../ContentBlockList";
+import { PropertyGroup, PropertySelect, SliderWithInput } from "@/components/builder/inspector/primitives";
 
 const PROVIDERS = [
   { value: "youtube", label: "YouTube" },
@@ -107,35 +108,41 @@ export default function VideoBlockEditor({ block, onChange }: VideoBlockEditorPr
   };
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold !text-dash-textMuted block">Provider</label>
-        <select
+    <div className="space-y-5">
+      <PropertyGroup title="Video Source">
+        <PropertySelect
+          label="Provider"
           value={provider}
-          onChange={(e) => handleProviderChange(e.target.value)}
-          className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary"
-        >
-          {PROVIDERS.map((p) => (
-            <option key={p.value} value={p.value}>{p.label}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold !text-dash-textMuted block">Video link or ID</label>
-        <input
-          type="text"
-          value={urlInput}
-          onChange={(e) => setUrlInput(e.target.value)}
-          onBlur={handleUrlBlur}
-          placeholder="Paste video link or ID..."
-          className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary font-mono"
+          options={PROVIDERS}
+          onChange={handleProviderChange}
         />
-      </div>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold !text-dash-textMuted block">Live preview</label>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold !text-dash-textMuted block">Video link or ID</label>
+          <input
+            type="text"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onBlur={handleUrlBlur}
+            placeholder="Paste video link or ID..."
+            className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary font-mono"
+          />
+        </div>
+      </PropertyGroup>
 
+      <PropertyGroup title="Completion Rule">
+        <SliderWithInput
+          label="Watched threshold to mark complete"
+          value={block.completion_threshold ?? 90}
+          onChange={(val) => onChange({ completion_threshold: Number(val) })}
+          min={10}
+          max={100}
+          step={5}
+          unit="%"
+        />
+      </PropertyGroup>
+
+      <PropertyGroup title="Live Preview">
         {isLoading && (
           <div className="flex items-center gap-2 text-[10px] !text-dash-textMuted py-4 justify-center border border-dash-border rounded-xl bg-dash-surface">
             <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> Fetching live preview...
@@ -182,7 +189,7 @@ export default function VideoBlockEditor({ block, onChange }: VideoBlockEditorPr
             Paste a link or ID above to fetch a live preview
           </div>
         )}
-      </div>
+      </PropertyGroup>
     </div>
   );
 }

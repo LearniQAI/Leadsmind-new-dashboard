@@ -2,9 +2,13 @@
 
 import React from 'react';
 import { useNode } from '@craftjs/core';
-import { Label } from '@/components/ui/label';
-import { SliderWithInput } from '../inspector/primitives';
+import { SliderWithInput, PropertyGroup } from '../inspector/primitives';
 
+// Consistent Premium Settings Panels pass — already used SliderWithInput (auto-upgraded via
+// the shared primitives change); wrapped in PropertyGroup for title consistency with every
+// other panel. The layout ratio grid stays a segmented button grid (not a dropdown) since it
+// needs to show 6 spatial options at once — the same legitimate pattern already used for
+// Heading's level/weight selectors, not swapped to StyledDropdown.
 export const ColumnsSettings = () => {
   const { actions: { setProp }, layout, gap, padding } = useNode((node) => ({
     layout: node.data.props.layout,
@@ -14,8 +18,7 @@ export const ColumnsSettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Column layout</Label>
+      <PropertyGroup title="Column layout">
         <div className="grid grid-cols-2 gap-2">
           {[
             { id: '1', label: '1 column' },
@@ -34,9 +37,9 @@ export const ColumnsSettings = () => {
             </button>
           ))}
         </div>
-      </div>
+      </PropertyGroup>
 
-      <div className="space-y-4 pt-2 border-t border-dash-border">
+      <PropertyGroup title="Spacing">
         <SliderWithInput
           label="Gap spacing"
           value={gap || 0}
@@ -55,7 +58,7 @@ export const ColumnsSettings = () => {
           step={4}
           numeric
         />
-      </div>
+      </PropertyGroup>
     </div>
   );
 };
