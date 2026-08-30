@@ -37,7 +37,7 @@ export const ColorPicker = ({ value, onChange, label, swatch }: ColorPickerProps
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="relative h-6 w-6 rounded-full border border-dash-border shadow-sm shrink-0 overflow-hidden transition-transform motion-reduce:transition-none hover:scale-110 active:scale-95"
+              className="relative h-6 w-6 rounded-full border border-dash-border ring-1 ring-inset ring-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.12)] shrink-0 overflow-hidden transition-transform duration-150 motion-reduce:transition-none hover:scale-110 active:scale-95"
               style={{ backgroundColor: unset ? '#ffffff' : color }}
               aria-label={label || 'Pick colour'}
             >

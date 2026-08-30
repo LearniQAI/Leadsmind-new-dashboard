@@ -24,6 +24,7 @@ import {
   MoveVertical, MoveHorizontal, Square, SquareDashed,
 } from 'lucide-react';
 import { PropertySelect } from './primitives';
+import { FIELD_CLS, CELL_CLS, MICRO_LABEL, segmentIconBtn } from './panelTheme';
 import { GOOGLE_FONTS, searchGoogleFonts } from '@/lib/builder/googleFontsCatalog';
 import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
@@ -105,13 +106,13 @@ export const FontInheritSelect = ({
 
   return (
     <div className="space-y-2" ref={rootRef}>
-      <Label className="text-[10px] font-bold !text-dash-textMuted block">{label}</Label>
+      <Label className={`${MICRO_LABEL} block`}>{label}</Label>
       <div className="relative">
         <button
           type="button"
           data-testid="fontinherit-trigger"
           onClick={() => setOpen((v) => !v)}
-          className="w-full h-9 flex items-center justify-between text-xs bg-white border border-dash-border rounded-lg !text-dash-text px-3 focus:border-dash-accent outline-none"
+          className={`${FIELD_CLS} flex items-center justify-between gap-2 text-left ${open ? 'border-dash-accent ring-2 ring-dash-accent/15' : ''}`}
         >
           <span
             className="truncate"
@@ -119,11 +120,11 @@ export const FontInheritSelect = ({
           >
             {inheriting ? inheritLabel : value}
           </span>
-          <ChevronDown className="w-3.5 h-3.5 !text-dash-textMuted shrink-0" />
+          <ChevronDown className={`w-3.5 h-3.5 !text-dash-textMuted shrink-0 transition-transform duration-150 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
         </button>
 
         {open && (
-          <div className="absolute left-0 right-0 mt-1 z-[1200] bg-white border border-dash-border rounded-xl shadow-xl overflow-hidden">
+          <div className="absolute left-0 right-0 mt-1.5 z-[1200] bg-white border border-dash-border rounded-xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] ring-1 ring-black/5 overflow-hidden">
             <button
               type="button"
               data-testid="fontinherit-option-inherit"
@@ -205,10 +206,7 @@ const NumCell = ({
   testid?: string;
   title?: string;
 }) => (
-  <div
-    className="flex items-center h-8 bg-white border border-dash-border rounded-lg px-2 gap-1.5 focus-within:border-dash-accent transition-colors motion-reduce:transition-none"
-    title={title}
-  >
+  <div className={CELL_CLS} title={title}>
     {icon && <span className="!text-dash-textMuted shrink-0">{icon}</span>}
     <input
       type="number"
@@ -245,7 +243,7 @@ export const SpacingControl = ({
 
   return (
     <div className="space-y-2">
-      <Label className="text-[10px] font-bold !text-dash-textMuted block">{label}</Label>
+      <Label className={`${MICRO_LABEL} block`}>{label}</Label>
       {!expanded ? (
         <div className="flex items-center gap-2">
           <NumCell
@@ -267,7 +265,7 @@ export const SpacingControl = ({
             data-testid={`${label.toLowerCase()}-expand`}
             onClick={() => setExpanded(true)}
             title="Edit each side"
-            className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border border-dash-border !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none"
+            className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border border-dash-border !text-dash-textMuted hover:!text-dash-text hover:border-dash-accent/50 hover:bg-dash-accent/5 transition-all duration-150 motion-reduce:transition-none active:scale-[0.97] motion-reduce:active:scale-100"
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
@@ -331,20 +329,26 @@ export const CornerRadiusControl = ({
     br: corners.br ?? '',
     bl: corners.bl ?? '',
   };
+  const modeBtn = (on: boolean) =>
+    `h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border transition-all duration-150 motion-reduce:transition-none active:scale-[0.97] motion-reduce:active:scale-100 ${
+      on
+        ? 'border-dash-accent text-dash-accent bg-dash-accent/10 ring-2 ring-dash-accent/15'
+        : 'border-dash-border !text-dash-textMuted hover:!text-dash-text hover:border-dash-border/80'
+    }`;
+  const numCls =
+    'h-8 text-[11px] font-medium tabular-nums !text-dash-text bg-white border border-dash-border rounded-lg px-2 outline-none ' +
+    'transition-all duration-150 motion-reduce:transition-none focus:border-dash-accent focus:ring-2 focus:ring-dash-accent/15 ' +
+    '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
   return (
     <div className="space-y-2">
-      <Label className="text-[10px] font-bold !text-dash-textMuted block">{label}</Label>
+      <Label className={`${MICRO_LABEL} block`}>{label}</Label>
       <div className="flex items-center gap-2">
         <button
           type="button"
           data-testid="radius-mode-uniform"
           onClick={() => onModeChange('uniform')}
           title="Same radius on all corners"
-          className={`h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border transition-colors motion-reduce:transition-none ${
-            mode === 'uniform'
-              ? 'border-dash-accent text-dash-accent bg-dash-accent/10'
-              : 'border-dash-border !text-dash-textMuted hover:!text-dash-text'
-          }`}
+          className={modeBtn(mode === 'uniform')}
         >
           <Square className="w-4 h-4" />
         </button>
@@ -353,11 +357,7 @@ export const CornerRadiusControl = ({
           data-testid="radius-mode-individual"
           onClick={() => onModeChange('individual')}
           title="Set each corner"
-          className={`h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border transition-colors motion-reduce:transition-none ${
-            mode === 'individual'
-              ? 'border-dash-accent text-dash-accent bg-dash-accent/10'
-              : 'border-dash-border !text-dash-textMuted hover:!text-dash-text'
-          }`}
+          className={modeBtn(mode === 'individual')}
         >
           <SquareDashed className="w-4 h-4" />
         </button>
@@ -369,7 +369,7 @@ export const CornerRadiusControl = ({
             value={uniform}
             onChange={(e) => onUniformChange(e.target.value)}
             placeholder="0"
-            className="flex-1 h-8 text-[11px] !text-dash-text bg-white border border-dash-border rounded-lg px-2 outline-none focus:border-dash-accent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className={`flex-1 ${numCls}`}
           />
         )}
       </div>
@@ -383,14 +383,14 @@ export const CornerRadiusControl = ({
             ['bl', 'BL'],
           ] as const).map(([key, lbl]) => (
             <div key={key} className="space-y-1">
-              <span className="text-[8px] font-bold !text-dash-textMuted block text-center">{lbl}</span>
+              <span className="text-[8px] font-bold tracking-wide !text-dash-textMuted block text-center">{lbl}</span>
               <input
                 type="number"
                 data-testid={`radius-${key}`}
                 value={c[key]}
                 onChange={(e) => onCornerChange(key, e.target.value)}
                 placeholder="0"
-                className="w-full h-8 text-[11px] !text-dash-text bg-white border border-dash-border rounded-lg px-1.5 text-center outline-none focus:border-dash-accent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className={`w-full text-center px-1.5 ${numCls}`}
               />
             </div>
           ))}
@@ -435,14 +435,15 @@ export const SectionHeader = ({
   onReset: () => void;
   resetTitle?: string;
 }) => (
-  <div className="flex items-center justify-between">
-    <h3 className="text-[13px] font-bold !text-dash-text">{title}</h3>
+  <div className="flex items-center gap-3">
+    <h3 className="text-[11px] font-bold uppercase tracking-[0.09em] !text-dash-text shrink-0">{title}</h3>
+    <span className="h-px flex-1 bg-gradient-to-r from-dash-border/80 to-transparent" />
     <button
       type="button"
       data-testid={`section-reset-${title.toLowerCase().replace(/\s+/g, '-')}`}
       onClick={onReset}
       title={resetTitle}
-      className="h-6 w-6 shrink-0 flex items-center justify-center rounded-md !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none"
+      className="h-6 w-6 shrink-0 flex items-center justify-center rounded-md !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none active:scale-95 motion-reduce:active:scale-100"
     >
       <RotateCcw className="w-3.5 h-3.5" />
     </button>

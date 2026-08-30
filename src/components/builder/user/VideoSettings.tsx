@@ -2,13 +2,12 @@
 
 import React, { useRef, useState } from 'react';
 import { useNode } from '@craftjs/core';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Upload, Loader2, FolderOpen } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { getActiveWorkspaceId } from '@/lib/workspace/activeWorkspaceClient';
 import { toast } from 'sonner';
 import { PropertySelect } from '../inspector/primitives';
+import { FIELD_CLS } from '../inspector/panelTheme';
 import { SectionHeader, BooleanSelect, type Corners } from '../inspector/panelControls';
 import { ShadowSection, BorderSection } from '../inspector/frameSections';
 import { MediaVaultModal } from '../MediaVaultModal';
@@ -79,21 +78,21 @@ export const VideoSettings = () => {
           onChange={(v) => set('provider', v)}
         />
 
-        <Button
-          variant="secondary"
-          className="w-full h-9 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-600/30 text-purple-600 text-xs font-bold flex items-center gap-2 transition-colors motion-reduce:transition-none"
+        <button
+          type="button"
+          className="w-full h-9 rounded-lg bg-dash-accent/10 hover:bg-dash-accent/15 border border-dash-accent/25 text-dash-accent text-[11px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all duration-150 motion-reduce:transition-none active:scale-[0.99] motion-reduce:active:scale-100"
           onClick={() => setIsVaultOpen(true)}
         >
           <FolderOpen className="w-4 h-4" />
-          Browse workspace media library
-        </Button>
+          Media library
+        </button>
 
         {provider === 'custom' ? (
           <div className="space-y-2">
             <input type="file" ref={fileInputRef} onChange={handleUpload} accept="video/*" className="hidden" />
-            <Button
-              variant="outline"
-              className="w-full h-20 border-dashed border-2 bg-white hover:bg-dash-surface flex flex-col gap-2"
+            <button
+              type="button"
+              className="w-full h-20 rounded-xl border-2 border-dashed border-dash-border bg-dash-surface/40 hover:border-dash-accent/40 hover:bg-dash-accent/5 flex flex-col items-center justify-center gap-2 transition-all duration-150 motion-reduce:transition-none disabled:opacity-60"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
             >
@@ -102,23 +101,23 @@ export const VideoSettings = () => {
               ) : (
                 <>
                   <Upload className="w-5 h-5 !text-dash-textMuted" />
-                  <span className="text-xs font-medium !text-dash-textMuted">Click to upload MP4</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide !text-dash-textMuted">Upload MP4</span>
                 </>
               )}
-            </Button>
-            <Input
+            </button>
+            <input
               value={url || ''}
               placeholder="Or paste direct video URL (.mp4)"
               onChange={(e) => set('url', e.target.value)}
-              className="h-8 text-xs bg-white border-dash-border mt-2"
+              className={`${FIELD_CLS} font-mono`}
             />
           </div>
         ) : (
-          <Input
+          <input
             value={url || ''}
             placeholder={`Paste ${provider} URL...`}
             onChange={(e) => set('url', e.target.value)}
-            className="h-9 text-xs bg-white border-dash-border"
+            className={`${FIELD_CLS} font-mono`}
           />
         )}
 
