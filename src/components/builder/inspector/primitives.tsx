@@ -3,6 +3,7 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { ChevronDown, ChevronRight, ChevronUp, RotateCcw } from "lucide-react";
+import { RANGE_CLS, FIELD_CLS, MICRO_LABEL } from "./panelTheme";
 
 // Consistent Premium Settings Panels pass (Systeme-parity Master Prompt): these 3 primitives
 // (PropertyGroup, SliderWithInput, PropertySelect) already backed the Text panel's real
@@ -35,33 +36,34 @@ export const PropertyGroup = ({
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between w-full">
+      <div className="flex items-center gap-2 w-full">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-1.5 py-1.5 hover:bg-dash-surface transition-colors motion-reduce:transition-none group text-left flex-1 min-w-0"
+          className="flex items-center gap-1.5 py-1 rounded-md transition-colors motion-reduce:transition-none group text-left min-w-0"
         >
-          <span className="text-xs font-bold !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none">
+          {isOpen ? (
+            <ChevronDown className="w-3.5 h-3.5 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none shrink-0" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none shrink-0" />
+          )}
+          <span className={`${MICRO_LABEL} group-hover:!text-dash-text transition-colors motion-reduce:transition-none truncate`}>
             {title}
           </span>
-          {isOpen ? (
-            <ChevronDown className="w-4 h-4 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none" />
-          ) : (
-            <ChevronRight className="w-4 h-4 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none" />
-          )}
         </button>
+        <span className="h-px flex-1 bg-gradient-to-r from-dash-border/80 to-transparent" />
         {onReset && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onReset(); }}
             title={resetTitle}
-            className="h-6 w-6 shrink-0 flex items-center justify-center rounded-md !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none"
+            className="h-6 w-6 shrink-0 flex items-center justify-center rounded-md !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none active:scale-95 motion-reduce:active:scale-100"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
-      {isOpen && <div className="space-y-4 pt-1">{children}</div>}
+      {isOpen && <div className="space-y-4 pt-0.5">{children}</div>}
     </div>
   );
 };
@@ -115,12 +117,12 @@ export const SliderWithInput = ({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label className="text-[10px] font-bold !text-dash-textMuted block">{label}</Label>
-        <span className="text-[10px] font-bold text-dash-accent bg-dash-accent/10 px-2 py-0.5 rounded-full">
+        <Label className={`${MICRO_LABEL} block`}>{label}</Label>
+        <span className="text-[10px] font-bold tabular-nums text-dash-accent bg-dash-accent/10 px-2 py-0.5 rounded-full">
           {num}{currentUnit}
         </span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         <input
           type="range"
           min={min}
@@ -128,9 +130,9 @@ export const SliderWithInput = ({
           step={step}
           value={num}
           onChange={(e) => emit(Number(e.target.value))}
-          className="flex-1 accent-dash-accent"
+          className={`flex-1 ${RANGE_CLS}`}
         />
-        <div className="flex items-center h-8 w-[70px] bg-white border border-dash-border rounded-lg overflow-hidden focus-within:border-dash-accent transition-colors motion-reduce:transition-none shrink-0">
+        <div className="flex items-center h-8 w-[68px] bg-white border border-dash-border rounded-lg overflow-hidden focus-within:border-dash-accent focus-within:ring-2 focus-within:ring-dash-accent/15 transition-all duration-150 motion-reduce:transition-none shrink-0">
           <input
             type="number"
             min={min}
@@ -138,14 +140,14 @@ export const SliderWithInput = ({
             step={step}
             value={num}
             onChange={(e) => emit(Number(e.target.value))}
-            className="w-full h-full text-[11px] text-center !text-dash-text px-1 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="w-full h-full text-[11px] font-medium tabular-nums text-center !text-dash-text px-1 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <div className="flex flex-col border-l border-dash-border shrink-0 h-full">
             <button
               type="button"
               tabIndex={-1}
               onClick={() => emit(num + step)}
-              className="flex-1 w-4 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none"
+              className="flex-1 w-4 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-accent/10 transition-colors motion-reduce:transition-none"
             >
               <ChevronUp className="w-2.5 h-2.5" />
             </button>
@@ -153,7 +155,7 @@ export const SliderWithInput = ({
               type="button"
               tabIndex={-1}
               onClick={() => emit(num - step)}
-              className="flex-1 w-4 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none border-t border-dash-border"
+              className="flex-1 w-4 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-accent/10 transition-colors motion-reduce:transition-none border-t border-dash-border"
             >
               <ChevronDown className="w-2.5 h-2.5" />
             </button>
@@ -185,12 +187,12 @@ export const PropertySelect = ({
   onChange: (value: string) => void;
 }) => (
   <div className="space-y-2">
-    <Label className="text-[10px] font-bold !text-dash-textMuted block">{label}</Label>
+    <Label className={`${MICRO_LABEL} block`}>{label}</Label>
     <div className="relative">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full h-9 appearance-none text-xs bg-white border border-dash-border rounded-lg !text-dash-text pl-3 pr-8 focus:border-dash-accent outline-none"
+        className={`${FIELD_CLS} appearance-none pr-8 cursor-pointer`}
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value} className="bg-white text-dash-text">

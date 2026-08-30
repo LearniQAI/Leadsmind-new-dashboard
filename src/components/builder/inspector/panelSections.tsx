@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-react';
 import { ColorPicker } from '../ColorPicker';
 import { SectionHeader, SpacingControl, type BoxSides } from './panelControls';
+import { SEGMENT_WRAP, segmentIconBtn, MICRO_LABEL } from './panelTheme';
 import { useLessonBuilder } from '../LessonBuilderContext';
 
 /* Real font an element inherits when it sets no explicit family:
@@ -88,8 +89,8 @@ export const SizePositionSection = ({
     <SpacingControl label="Padding" value={padding} onChange={onPadding} />
     <SpacingControl label="Margin" value={margin} onChange={onMargin} />
     <div className="space-y-2">
-      <Label className="text-[10px] font-bold !text-dash-textMuted block">Alignment</Label>
-      <div className="flex bg-dash-surface p-1 rounded-lg border border-dash-border max-w-fit gap-1">
+      <Label className={`${MICRO_LABEL} block`}>Alignment</Label>
+      <div className={`${SEGMENT_WRAP} max-w-fit`}>
         {ALIGNMENTS.map(({ value, icon: Icon }) => (
           <button
             key={value}
@@ -97,11 +98,7 @@ export const SizePositionSection = ({
             data-testid={`align-${value}`}
             onClick={() => onAlign(value)}
             title={`Align ${value}`}
-            className={`p-1.5 rounded transition-all motion-reduce:transition-none ${
-              align === value
-                ? 'bg-dash-accent text-white shadow'
-                : '!text-dash-textMuted hover:!text-dash-text hover:bg-white'
-            }`}
+            className={segmentIconBtn(align === value)}
           >
             <Icon className="w-4 h-4" />
           </button>

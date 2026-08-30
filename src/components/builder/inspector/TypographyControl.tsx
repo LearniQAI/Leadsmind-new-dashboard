@@ -9,6 +9,7 @@ import { useBuilder } from '../BuilderContext';
 import { ColorPicker } from '../ColorPicker';
 import { SliderWithInput, PropertySelect } from './primitives';
 import { SectionHeader, FontInheritSelect } from './panelControls';
+import { SEGMENT_WRAP, segmentIconBtn, MICRO_LABEL } from './panelTheme';
 import { ColorSection, SizePositionSection, usePageFontName, readSides } from './panelSections';
 import { getGoogleFont } from '@/lib/builder/googleFontsCatalog';
 import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
@@ -88,24 +89,22 @@ export const TypographyControl = ({
       <div className="space-y-3">
         <SectionHeader title="Typography" onReset={handleTypographyReset} />
 
-        <div className="grid grid-cols-2 gap-2">
-          <SliderWithInput
-            label="Font size"
-            value={fontSize}
-            onChange={(val) => setResponsiveValue('fontSize', val)}
-            min={8}
-            max={120}
-            unit="px"
-          />
-          <SliderWithInput
-            label="Line height"
-            value={lineHeight}
-            onChange={(val) => setResponsiveValue('lineHeight', val)}
-            min={0}
-            max={100}
-            unit="px"
-          />
-        </div>
+        <SliderWithInput
+          label="Font size"
+          value={fontSize}
+          onChange={(val) => setResponsiveValue('fontSize', val)}
+          min={8}
+          max={120}
+          unit="px"
+        />
+        <SliderWithInput
+          label="Line height"
+          value={lineHeight}
+          onChange={(val) => setResponsiveValue('lineHeight', val)}
+          min={0}
+          max={100}
+          unit="px"
+        />
 
         <FontInheritSelect
           value={fontFamily}
@@ -153,8 +152,8 @@ export const TypographyControl = ({
               onChange={(v) => setResponsiveValue('color', v)}
             />
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold !text-dash-textMuted block">Alignment</Label>
-              <div className="flex bg-dash-surface p-1 rounded-lg border border-dash-border max-w-fit gap-1">
+              <Label className={`${MICRO_LABEL} block`}>Alignment</Label>
+              <div className={`${SEGMENT_WRAP} max-w-fit`}>
                 {([
                   ['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight], ['justify', AlignJustify],
                 ] as const).map(([val, Icon]) => (
@@ -163,9 +162,7 @@ export const TypographyControl = ({
                     type="button"
                     onClick={() => setResponsiveValue('textAlign', val)}
                     title={`Align ${val}`}
-                    className={`p-1.5 rounded transition-all motion-reduce:transition-none ${
-                      textAlign === val ? 'bg-dash-accent text-white shadow' : '!text-dash-textMuted hover:!text-dash-text hover:bg-white'
-                    }`}
+                    className={segmentIconBtn(textAlign === val)}
                   >
                     <Icon className="w-4 h-4" />
                   </button>

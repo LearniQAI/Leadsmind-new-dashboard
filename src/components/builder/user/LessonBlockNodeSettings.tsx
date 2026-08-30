@@ -110,15 +110,20 @@ export const LessonBlockNodeSettings = () => {
 
   return (
     <div className="p-5 space-y-4">
+      {/* Part 5 — the block-settings shell now uses the same header treatment as the generic
+          Element panels' SectionHeader (13px bold, dash-text). The per-block editors below
+          already compose from the shared PropertyGroup primitive, so no per-editor change is
+          needed for visual consistency. There is deliberately no section "reset" here: a
+          block's content is a DB row, not resettable Craft props. */}
       <div className="flex items-center justify-between">
-        <h3 className="text-[12px] font-bold !text-dash-text">{meta.label} settings</h3>
+        <h3 className="text-[13px] font-bold !text-dash-text">{meta.label} settings</h3>
         <button
           onClick={handleDelete}
           disabled={isDeleting}
-          className="h-7 w-7 rounded-lg hover:bg-red/10 flex items-center justify-center text-red transition-colors disabled:opacity-60"
+          className="h-7 w-7 rounded-lg hover:bg-red/10 flex items-center justify-center text-red transition-colors motion-reduce:transition-none disabled:opacity-60"
           title="Delete block"
         >
-          {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+          {isDeleting ? <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> : <Trash2 size={13} />}
         </button>
       </div>
 

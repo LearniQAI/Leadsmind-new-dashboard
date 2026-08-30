@@ -10,6 +10,7 @@ import { SliderWithInput } from '../inspector/primitives';
 import { SectionHeader, FontInheritSelect, type BoxSides } from '../inspector/panelControls';
 import { ColorSection, SizePositionSection, usePageFontName, readSides } from '../inspector/panelSections';
 import { FontWeightButtons, LineHeightButtons } from '../inspector/typographyControls';
+import { SEGMENT_WRAP, segmentBtn, MICRO_LABEL } from '../inspector/panelTheme';
 import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
 export const HeadingSettings = () => {
@@ -60,15 +61,14 @@ export const HeadingSettings = () => {
     <div className="space-y-6">
       {/* Heading level — element-specific, stays at the top */}
       <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Heading level</Label>
-        <div className="grid grid-cols-3 bg-dash-surface p-1 rounded-md border border-dash-border">
+        <Label className={`${MICRO_LABEL} block`}>Heading level</Label>
+        <div className={`${SEGMENT_WRAP} grid grid-cols-6`}>
           {['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].map((l) => (
             <button
               key={l}
+              type="button"
               onClick={() => setProp((p: any) => (p.level = l))}
-              className={`text-[10px] py-1 rounded uppercase font-bold transition-colors motion-reduce:transition-none ${
-                level === l ? 'bg-primary text-white shadow' : '!text-dash-textMuted hover:!text-dash-text'
-              }`}
+              className={`${segmentBtn(level === l)} uppercase`}
             >
               {l}
             </button>
@@ -94,7 +94,7 @@ export const HeadingSettings = () => {
           <button
             type="button"
             onClick={() => setResponsiveValue('fontSize', undefined)}
-            className="h-8 px-2 text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg border border-dash-border transition-colors motion-reduce:transition-none shrink-0"
+            className="h-8 px-2.5 text-[10px] font-bold uppercase tracking-wide !text-dash-textMuted hover:!text-dash-text hover:border-dash-accent/50 hover:bg-dash-accent/5 rounded-lg border border-dash-border transition-all duration-150 motion-reduce:transition-none active:scale-[0.97] motion-reduce:active:scale-100 shrink-0"
             title="Reset to the heading level's default size"
           >
             Auto

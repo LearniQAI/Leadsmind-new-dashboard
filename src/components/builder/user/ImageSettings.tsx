@@ -2,7 +2,6 @@
 
 import React, { useRef, useState } from 'react';
 import { useNode } from '@craftjs/core';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
@@ -12,6 +11,7 @@ import { toast } from 'sonner';
 import { MediaVaultModal } from '../MediaVaultModal';
 import { SectionHeader, type Corners } from '../inspector/panelControls';
 import { ShadowSection, BorderSection } from '../inspector/frameSections';
+import { SEGMENT_WRAP, segmentBtn, FIELD_CLS, MICRO_LABEL } from '../inspector/panelTheme';
 
 export const ImageSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({ props: node.data.props }));
@@ -60,13 +60,13 @@ export const ImageSettings = () => {
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted block">Image source</Label>
+          <Label className={`${MICRO_LABEL} block`}>Image source</Label>
           <div className="flex gap-2">
-            <Input
+            <input
               value={src || ''}
               placeholder="https://..."
               onChange={(e) => set('src', e.target.value)}
-              className="h-9 text-xs bg-white border-dash-border !text-dash-text flex-1"
+              className={`${FIELD_CLS} flex-1 font-mono`}
             />
             <input type="file" ref={fileInputRef} onChange={handleUpload} accept="image/*" className="hidden" />
             <Button
@@ -92,44 +92,43 @@ export const ImageSettings = () => {
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted">Alt text (SEO)</Label>
-          <Input
+          <Label className={`${MICRO_LABEL} block`}>Alt text (SEO)</Label>
+          <input
             value={alt || ''}
             placeholder="Describe image..."
             onChange={(e) => set('alt', e.target.value)}
-            className="h-8 text-xs bg-white border-dash-border !text-dash-text"
+            className={FIELD_CLS}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-2">
-            <Label className="text-xs font-bold !text-dash-textMuted block text-center">Width</Label>
-            <Input
+            <Label className={`${MICRO_LABEL} block text-center`}>Width</Label>
+            <input
               value={width || '100%'}
               onChange={(e) => set('width', e.target.value)}
-              className="h-8 text-xs text-center bg-white border-dash-border !text-dash-text"
+              className={`${FIELD_CLS} text-center`}
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-bold !text-dash-textMuted block text-center">Height</Label>
-            <Input
+            <Label className={`${MICRO_LABEL} block text-center`}>Height</Label>
+            <input
               value={height || 'auto'}
               onChange={(e) => set('height', e.target.value)}
-              className="h-8 text-xs text-center bg-white border-dash-border !text-dash-text"
+              className={`${FIELD_CLS} text-center`}
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted">Shape</Label>
-          <div className="grid grid-cols-2 bg-dash-surface p-1 rounded-md border border-dash-border">
+          <Label className={`${MICRO_LABEL} block`}>Shape</Label>
+          <div className={`${SEGMENT_WRAP} grid grid-cols-2`}>
             {['square', 'circle'].map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => set('shape', s)}
-                className={`text-[10px] py-1.5 rounded capitalize font-bold transition-colors motion-reduce:transition-none ${
-                  shape === s ? 'bg-primary text-white shadow' : '!text-dash-textMuted hover:!text-dash-text'
-                }`}
+                className={segmentBtn(shape === s)}
               >
                 {s}
               </button>
@@ -138,15 +137,14 @@ export const ImageSettings = () => {
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted">Object fit</Label>
-          <div className="grid grid-cols-4 bg-dash-surface p-1 rounded-md border border-dash-border">
+          <Label className={`${MICRO_LABEL} block`}>Object fit</Label>
+          <div className={`${SEGMENT_WRAP} grid grid-cols-4`}>
             {['cover', 'contain', 'fill', 'none'].map((fit) => (
               <button
                 key={fit}
+                type="button"
                 onClick={() => set('objectFit', fit)}
-                className={`text-[9px] py-1 rounded capitalize transition-colors motion-reduce:transition-none ${
-                  objectFit === fit ? 'bg-purple-600 text-white font-bold shadow' : '!text-dash-textMuted hover:!text-dash-text'
-                }`}
+                className={segmentBtn(objectFit === fit)}
               >
                 {fit}
               </button>

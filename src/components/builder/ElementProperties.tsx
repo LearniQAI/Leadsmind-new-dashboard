@@ -117,40 +117,40 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
   return (
     <div className="w-full h-full bg-white flex flex-col z-40 select-none">
       {/* Breadcrumb + back */}
-      <div className="px-4 h-11 border-b border-dash-border flex items-center gap-2 shrink-0 bg-white text-[11px] font-semibold !text-dash-textMuted">
+      <div className="px-4 h-11 border-b border-dash-border flex items-center gap-1.5 shrink-0 bg-white text-[11px] font-semibold !text-dash-textMuted">
         <button
           onClick={() => actions.selectNode()}
-          className="h-7 px-2 -ml-1.5 flex items-center gap-1 rounded-lg hover:bg-dash-surface hover:!text-dash-text transition-colors motion-reduce:transition-none"
+          className="h-7 px-2 -ml-1.5 flex items-center gap-1 rounded-lg hover:bg-dash-surface hover:!text-dash-text transition-colors motion-reduce:transition-none active:scale-95 motion-reduce:active:scale-100"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back
         </button>
-        <span className="text-dash-border">/</span>
+        <span className="text-dash-border/70">/</span>
         {parentName && (
           <>
             <span className="truncate">{parentName}</span>
-            <span className="text-dash-border">/</span>
+            <span className="text-dash-border/70">/</span>
           </>
         )}
         <span className="!text-dash-text truncate">{selected.name}</span>
       </div>
 
       {/* Panel Header */}
-      <div className="px-5 py-4 border-b border-dash-border flex items-center justify-between shrink-0 bg-white">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-[10px] bg-gradient-to-br from-dash-accent/10 to-dash-accent/5 flex items-center justify-center border border-dash-accent/15 shrink-0">
+      <div className="px-4 pt-3.5 pb-3 border-b border-dash-border shrink-0 bg-gradient-to-b from-white to-dash-surface/30 space-y-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="h-8 w-8 rounded-[9px] bg-gradient-to-br from-dash-accent/15 to-dash-accent/5 flex items-center justify-center ring-1 ring-inset ring-dash-accent/20 shadow-[0_1px_3px_rgba(0,0,0,0.06)] shrink-0">
             <ComponentIcon className="w-4 h-4 text-dash-accent" />
           </div>
-          <div>
-            <p className="text-[13px] font-semibold !text-dash-text leading-none">{selected.name}</p>
-            <p className="text-[10px] !text-dash-textMuted mt-0.5 font-medium">Element Properties</p>
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold !text-dash-text leading-none truncate">{selected.name}</p>
+            <p className="text-[9px] uppercase tracking-[0.1em] !text-dash-textMuted mt-1 font-bold truncate">Element Properties</p>
           </div>
         </div>
-        <div className="flex items-center gap-0.5 shrink-0">
+        <div className="flex items-center gap-0.5">
           <button
             onClick={() => handleMove(-1)}
             disabled={siblingIndex <= 0}
-            className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
+            className="h-7 w-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
             title="Move up"
           >
             <ArrowUp className="w-4 h-4" />
@@ -158,7 +158,7 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
           <button
             onClick={() => handleMove(1)}
             disabled={siblingIndex < 0 || siblingIndex >= siblingCount - 1}
-            className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
+            className="h-7 w-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
             title="Move down"
           >
             <ArrowDown className="w-4 h-4" />
@@ -166,26 +166,29 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
           <button
             onClick={handleDuplicate}
             disabled={!parentId}
-            className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
+            className="h-7 w-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
             title="Duplicate"
           >
             <Copy className="w-4 h-4" />
           </button>
           <button
             onClick={() => setBlueprintNodeId(nodeId)}
-            className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100"
+            className="h-7 w-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100"
             title="Save as reusable blueprint"
           >
             <Save className="w-4 h-4" />
           </button>
           {selected.isDeletable && (
-            <button
-              onClick={handleDelete}
-              className="h-8 w-8 flex items-center justify-center !text-dash-textMuted hover:text-red hover:bg-red/10 rounded-lg transition-all motion-reduce:transition-none duration-150 active:scale-95 motion-reduce:active:scale-100"
-              title="Delete element"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <>
+              <span className="w-px h-4 bg-dash-border mx-0.5" />
+              <button
+                onClick={handleDelete}
+                className="h-7 w-7 flex items-center justify-center !text-dash-textMuted hover:text-red hover:bg-red/10 rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100"
+                title="Delete element"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -199,7 +202,7 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
           Heading, Paragraph, Image, and everything else hosted here — goes straight from this
           header into its own direct sections, matching the Text panel (the reference this
           audit was measured against) exactly, with zero loss of functionality. */}
-      <div className="flex-1 overflow-y-auto pb-20 common-scrollbar px-5 pt-4">
+      <div className="flex-1 overflow-y-auto pb-20 common-scrollbar px-5 pt-5">
         {selected.settings ? (
           React.createElement(selected.settings as any)
         ) : (
