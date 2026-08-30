@@ -63,14 +63,14 @@ function parseMarkdownToHtml(markdown: string): string {
         result.push('<ul class="space-y-1.5 my-2.5 list-disc pl-4 text-dash-textMuted">');
         inList = true;
       }
-      result.push(`<li class="text-[13px] leading-relaxed">${processed.substring(2)}</li>`);
+      result.push(`<li class="text-[15px] leading-relaxed">${processed.substring(2)}</li>`);
     } else {
       if (inList) {
         result.push("</ul>");
         inList = false;
       }
       result.push(
-        `<p class="text-[13px] text-dash-textMuted leading-relaxed mb-2">${processed}</p>`
+        `<p class="text-[15px] text-dash-textMuted leading-relaxed mb-2">${processed}</p>`
       );
     }
   }
@@ -88,6 +88,9 @@ function unlockLabel(lesson: any): string {
 
 interface ModuleCardProps {
   module: any;
+  /** 1-based position among ALL of this course's modules (not just the filtered/visible
+   *  ones) — kept stable under search so a module doesn't get renumbered as filters change. */
+  moduleNumber: number;
   siblingModules: { id: string; title: string }[];
   onEditModule: (module: any) => void;
   onDeleteModule: (moduleId: string) => void;
@@ -105,6 +108,7 @@ interface ModuleCardProps {
 
 export default function ModuleCard({
   module,
+  moduleNumber,
   siblingModules,
   onEditModule,
   onDeleteModule,
@@ -168,8 +172,11 @@ export default function ModuleCard({
           onClick={() => setIsExpanded((v) => !v)}
           className="min-w-0 flex-1 text-left"
         >
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="truncate text-[14px] font-semibold text-dash-text">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.08em] text-sky-600/70">
+              Module {moduleNumber}
+            </span>
+            <h3 className="font-display truncate text-[17px] font-bold tracking-tight text-dash-text">
               {module.title || module.name}
             </h3>
             {module.publish_status && module.publish_status !== "draft" && (
@@ -270,18 +277,23 @@ export default function ModuleCard({
           ) : (
             <>
               <div className="divide-y divide-dash-border">
-                {module.lessons.map((lesson: any) => {
+                {module.lessons.map((lesson: any, lessonIdx: number) => {
                   const isLessonActive = lesson.is_active !== false;
                   return (
                     <div
                       key={lesson.id}
-                      className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-dash-surface/60"
+                      className="flex items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-dash-surface/60"
                     >
                       <button
                         onClick={() => onEditLesson(lesson, module.id)}
-                        className="min-w-0 truncate text-left text-[13px] font-medium text-dash-text transition-colors hover:text-sky-600"
+                        className="group flex min-w-0 items-baseline gap-2 text-left"
                       >
-                        {lesson.title}
+                        <span className="shrink-0 text-[10.5px] font-bold uppercase tracking-[0.06em] text-dash-textMuted/70">
+                          Lecture {lessonIdx + 1}
+                        </span>
+                        <span className="font-display min-w-0 truncate text-[15px] font-bold tracking-tight text-dash-text transition-colors motion-reduce:transition-none group-hover:text-sky-600">
+                          {lesson.title}
+                        </span>
                       </button>
 
                       <div className="flex shrink-0 items-center gap-2">

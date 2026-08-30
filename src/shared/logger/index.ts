@@ -1,4 +1,5 @@
 import pino from 'pino';
+import pinoPretty from 'pino-pretty';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
@@ -27,35 +28,29 @@ const baseOptions: pino.LoggerOptions = {
   },
 };
 
-// pino-pretty's transport spawns a worker thread. Under Next.js dev-mode
-// webpack bundling this worker can fail to resolve its own bootstrap module
-// and die (confirmed live: "Cannot find module '...vendor-chunks/lib/worker.js'",
-// then "the worker has exited"). ThreadStream reports that failure via an
-// async 'error' event, not a synchronous throw — so callers wrapping
-// logger.info()/error() in try/catch cannot catch it; unhandled, it becomes
-// a process-level uncaughtException that can abort whatever async chain
-// happened to be running a log call at the time (confirmed: it silently
-// killed automation step execution before it ever reached the DB). This
-// only exists in development — transport is `undefined` in production, so
-// pino writes synchronously there with no worker thread involved at all.
+// pino-pretty's transport (pino.transport({ target: 'pino-pretty' })) spawns a worker thread.
+// Under Next.js dev-mode webpack bundling this worker can fail to resolve its own bootstrap
+// module and die (confirmed live: "Cannot find module '...vendor-chunks/lib/worker.js'", then
+// "the worker has exited"). ThreadStream reports that failure via an async 'error' event, not
+// a synchronous throw — so callers wrapping logger.info()/error() in try/catch cannot catch
+// it; unhandled, it becomes a process-level uncaughtException that can abort whatever async
+// chain happened to be running ANYWHERE in the process at that tick — not just the log call's
+// own request. Confirmed live across multiple unrelated features this crash has silently 404'd
+// completely unrelated concurrent server-component requests (their own promise chain aborted
+// mid-flight by this same uncaughtException), not just killed the logging call itself.
+//
+// Real fix: pino-pretty also ships a synchronous, in-process transform stream (no worker
+// thread at all) via its default export used as a destination — `pino(opts, pinoPretty(...))`
+// instead of `pino.transport({ target: 'pino-pretty' })`. This is the same formatted, colorized
+// dev output, just without the extra thread Next.js's dev bundler can't reliably resolve for.
+// Production is unaffected either way — pino writes structured JSON directly there, no pretty
+// transport involved.
 export const logger = isDevelopment
-  ? (() => {
-      const transport = pino.transport({
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'HH:MM:ss',
-          ignore: 'pid,hostname',
-        },
-      });
-      // Required by pino's own docs for worker-thread transports: without
-      // this listener, a dead worker's 'error' event has no handler and
-      // Node promotes it to an uncaughtException.
-      transport.on('error', (err) => {
-        console.error('[logger] pino-pretty transport failed, logs may be lost:', err?.message ?? err);
-      });
-      return pino(baseOptions, transport);
-    })()
+  ? pino(baseOptions, pinoPretty({
+      colorize: true,
+      translateTime: 'HH:MM:ss',
+      ignore: 'pid,hostname',
+    }))
   : pino(baseOptions);
 
 // Typed child logger factory for module-specific logging

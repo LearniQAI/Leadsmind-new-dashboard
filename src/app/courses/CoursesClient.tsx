@@ -12,6 +12,8 @@ import {
   Trash2,
   ExternalLink,
   Award,
+  CheckCircle2,
+  PenLine,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,7 +25,6 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import CreateCourseWizard from "./components/CreateCourseWizard";
-import { getCourseTheme } from "@/lib/courses/courseThemeTokens";
 import ConfirmationModal from "@/components/calendar/modals/ConfirmationModal";
 
 // Real course-level status values (confirmed live: only 'draft' and 'published' exist in
@@ -77,13 +78,21 @@ export default function CoursesClient({
     return matchesSearch && matchesStatus;
   });
 
+  // Stable "Course N" numbering — a course keeps its own number even while a search/status
+  // filter is narrowing what's visible, rather than renumbering 1..N of whatever's left.
+  // Position is taken from `courses` (the server's own list order), not the filtered view.
+  const courseNumbers = new Map(courses.map((c, idx) => [c.id, idx + 1]));
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold !text-dash-text">
-          {courses.length} Course{courses.length === 1 ? "" : "s"}
-        </h1>
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight !text-dash-text">
+            {courses.length} Course{courses.length === 1 ? "" : "s"}
+          </h1>
+          <p className="text-[12px] !text-dash-textMuted mt-0.5">Manage everything you teach, in one place.</p>
+        </div>
 
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center bg-white border border-dash-border focus-within:border-dash-accent rounded-xl px-4 py-2.5 w-full md:w-64 transition-colors motion-reduce:transition-none">
@@ -145,51 +154,50 @@ export default function CoursesClient({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left border-separate border-spacing-0">
               <thead>
-                <tr className="border-b border-dash-border bg-dash-surface/60">
-                  <th className="px-6 py-3.5 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold !text-dash-textMuted uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3.5 w-12" />
+                <tr className="bg-dash-surface/60">
+                  <th className="px-6 py-3.5 text-[10.5px] font-bold !text-dash-textMuted uppercase tracking-[0.08em] border-b border-dash-border">Name</th>
+                  <th className="px-6 py-3.5 text-[10.5px] font-bold !text-dash-textMuted uppercase tracking-[0.08em] border-b border-dash-border">Type</th>
+                  <th className="px-6 py-3.5 text-[10.5px] font-bold !text-dash-textMuted uppercase tracking-[0.08em] border-b border-dash-border">Status</th>
+                  <th className="px-6 py-3.5 w-12 border-b border-dash-border" />
                 </tr>
               </thead>
               <tbody>
                 {filteredCourses.map((course) => {
-                  const theme = getCourseTheme(course.landing_page_settings?.template);
+                  const isPublished = course.status === "published";
                   return (
                   <tr
                     key={course.id}
-                    className="border-b border-dash-border last:border-0 hover:bg-dash-surface/40 transition-colors motion-reduce:transition-none"
+                    className="group border-b border-dash-border last:border-0 hover:bg-dash-surface/40 transition-colors motion-reduce:transition-none"
                   >
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span
-                          title={`${theme.label} theme`}
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ background: theme.primaryHex }}
-                        />
-                        <button
-                          onClick={() => router.push(`/courses/${course.id}`)}
-                          className="text-sm font-bold text-dash-accent hover:underline text-left"
-                        >
+                      <button
+                        onClick={() => router.push(`/courses/${course.id}`)}
+                        className="flex items-baseline gap-2 text-left group/name"
+                      >
+                        <span className="text-[12px] font-semibold !text-dash-textMuted/70 tracking-tight whitespace-nowrap">
+                          Course {courseNumbers.get(course.id)}
+                        </span>
+                        <span className="text-dash-border/80 select-none">:</span>
+                        <span className="font-display text-[15px] font-bold !text-dash-text group-hover/name:text-dash-accent transition-colors motion-reduce:transition-none tracking-tight">
                           {course.title}
-                        </button>
-                      </div>
+                        </span>
+                      </button>
                     </td>
-                    <td className="px-6 py-4 text-xs !text-dash-textMuted">
+                    <td className="px-6 py-4 text-xs !text-dash-textMuted font-medium">
                       Classic course
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full capitalize ${
-                          course.status === "published"
-                            ? "bg-green/10 text-green"
-                            : "bg-purple/10 text-purple"
+                        className={`inline-flex items-center gap-1.5 text-[10.5px] font-bold px-3 py-1.5 rounded-full ring-1 ring-inset ${
+                          isPublished
+                            ? "bg-green/10 text-green ring-green/20"
+                            : "bg-amber-500/10 text-amber-600 ring-amber-500/20"
                         }`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${course.status === "published" ? "bg-green" : "bg-purple"}`} />
-                        {course.status === "published" ? "Published" : "Draft"}
+                        {isPublished ? <CheckCircle2 size={12} className="shrink-0" /> : <PenLine size={12} className="shrink-0" />}
+                        {isPublished ? "Published" : "Draft"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">

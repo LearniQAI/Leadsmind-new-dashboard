@@ -6,7 +6,7 @@ import { ArrowLeft, Mail, Link as LinkIcon, Trash2, Clock, CheckCircle, BarChart
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { RecoveryTokenHandler } from '@/lib/persistence/RecoveryTokenHandler';
-import { RecoveryManager } from '@/lib/persistence/RecoveryManager';
+import { generateRecoveryLink } from '@/lib/persistence/recoveryLink';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
 import {
@@ -71,7 +71,7 @@ export default function PartialSubmissionsPage({ params }: { params: { id: strin
       );
     }
 
-    const link = RecoveryManager.generateRecoveryLink(params.id, token);
+    const link = generateRecoveryLink(params.id, token);
     navigator.clipboard.writeText(link);
     toast.success('Recovery link copied to clipboard!');
   };

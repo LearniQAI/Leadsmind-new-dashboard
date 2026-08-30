@@ -651,4 +651,29 @@
     background: #CBD5E1;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Page-builder inline rich-text editor typography reset.
+
+   The bundled marketing template stylesheet (public/assets/scss/components/_theme.scss,
+   pulled in via src/style/index.scss) applies bare type-selector rules:
+     p        { line-height: 22px; font-size: 14px; font-weight: 400; }
+     h1..h6   { line-height: 1;   font-weight: 700; }
+   Inside the builder canvas the visible text of a Heading/Paragraph element is an
+   editable <p> that TipTap renders inside `.tiptap`/`.ProseMirror`. That bare <p>
+   picks up the template rule and ignores the per-element font-size / font-weight /
+   line-height / letter-spacing set on the element's wrapper, so those settings-panel
+   controls appear to do nothing while editing (they still apply to the published page).
+   `.tiptap p` (0,1,1) outranks `p` (0,0,1); kept unlayered so it also beats the
+   unlayered template rule on source order. Scoped to `.tiptap` so only the builder's
+   inline editors are affected. */
+.tiptap p {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  margin: 0;
+}
 

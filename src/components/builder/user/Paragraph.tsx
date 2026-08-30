@@ -9,10 +9,12 @@ import { useResponsiveValue } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 import { useLessonBuilder } from '../LessonBuilderContext';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
+import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
 
 export interface ParagraphProps {
  text: string;
  fontSize: number;
+ fontWeight: 'normal' | 'medium' | 'semibold' | 'bold' | 'black';
  textAlign: 'left' | 'center' | 'right' | 'justify';
  color: string;
  lineHeight: 'tight' | 'normal' | 'relaxed' | 'loose';
@@ -28,6 +30,9 @@ export interface ParagraphProps {
 export const Paragraph = (allProps: ParagraphProps & any) => {
  const {
   text,
+  fontWeight: _fw,
+  fontWeight_mobile,
+  fontWeight_tablet,
   textAlign: _ta,
   textAlign_mobile,
   textAlign_tablet,
@@ -48,6 +53,9 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
   dragRef,
   ...props
  } = allProps;
+ // Part 2 Color / Size-and-position sections — apply, then strip so they don't hit the DOM.
+ const boxStyle = pickBoxStyle(props);
+ stripBoxStyleKeys(props);
  const { connectors: { connect, drag }, actions: { setProp } } = useNode();
  const { viewMode } = useBuilder();
  const { theme: lessonTheme } = useLessonBuilder();
@@ -60,6 +68,7 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
 
  // Responsive values
  const fontSize = useResponsiveValue(allProps, 'fontSize', 16);
+ const fontWeight = useResponsiveValue(allProps, 'fontWeight', _fw);
  const textAlign = useResponsiveValue(allProps, 'textAlign', _ta);
  const lineHeight = useResponsiveValue(allProps, 'lineHeight', _lh);
  const color = useResponsiveValue(allProps, 'color', _color);
@@ -71,6 +80,24 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
   center: 'text-center',
   right: 'text-right',
   justify: 'text-justify',
+ };
+
+ const INHERIT_TYPOGRAPHY: React.CSSProperties = {
+  color: 'inherit',
+  fontSize: 'inherit',
+  fontWeight: 'inherit',
+  fontFamily: 'inherit',
+  lineHeight: 'inherit',
+  letterSpacing: 'inherit',
+  textAlign: 'inherit',
+ };
+
+ const weights = {
+  normal: 'font-normal',
+  medium: 'font-medium',
+  semibold: 'font-semibold',
+  bold: 'font-bold',
+  black: 'font-black',
  };
 
  const lineHeights = {
@@ -93,8 +120,9 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
       }
     }
    }}
-   className={`w-full ${enabled ? 'outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all' : ''} ${alignments[textAlign as keyof typeof alignments]} ${lineHeights[lineHeight as keyof typeof lineHeights]} ${themeFontClass} ${props.className || ''}`}
+   className={`w-full ${enabled ? 'outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all' : ''} ${weights[fontWeight as keyof typeof weights] || ''} ${alignments[textAlign as keyof typeof alignments]} ${lineHeights[lineHeight as keyof typeof lineHeights]} ${themeFontClass} ${props.className || ''}`}
    style={{
+    ...boxStyle,
     color,
     fontSize: `${fontSize}px`,
     fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : undefined,
@@ -102,14 +130,18 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
    }}
   >
     {enabled ? (
-      <p className="outline-none w-full m-0 p-0" style={{ color: 'inherit', fontSize: 'inherit', textAlign: 'inherit' }}>
+      // Every typography property is pinned to `inherit` so the bundled template's
+      // bare `p { ... }` rule can't override the size / weight / line-height /
+      // letter-spacing set on the wrapper above (see .tiptap p in globals.css for
+      // the matching fix on TipTap's own inner <p>).
+      <p className="outline-none w-full m-0 p-0" style={INHERIT_TYPOGRAPHY}>
         <InlineTextEditor
           value={text}
           onChange={(val) => setProp((props: any) => { props.text = val; }, 500)}
         />
       </p>
    ) : (
-    <p style={{ color: 'inherit', margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
+    <p style={{ ...INHERIT_TYPOGRAPHY, margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
    )}
   </div>
  );
@@ -120,6 +152,7 @@ Paragraph.craft = {
  props: {
   text: 'Type your paragraph text here. This block supports rich text styling if applied externally, but is built for clean, scalable body copy. ',
   fontSize: 16,
+  fontWeight: 'normal',
   textAlign: 'left',
   color: '#4b5563',
   lineHeight: 'relaxed',

@@ -10,4 +10,4 @@ import { TypographyControl } from '../inspector/TypographyControl';
 // fontWeight/lineHeight/letterSpacing) are all raw-value (px numbers / literal family names /
 // real Google Fonts variant strings) with no enum-based props to collide with, unlike
 // Heading/Paragraph — the cleanest of the 3 to swap wholesale rather than extend in place.
-export const TextSettings = () => <TypographyControl />;
+export const TextSettings = () => <TypographyControl withLayoutSections />;
