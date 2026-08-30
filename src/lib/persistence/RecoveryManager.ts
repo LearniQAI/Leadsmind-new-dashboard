@@ -1,14 +1,12 @@
 // RecoveryManager — handles generating recovery links and triggering recovery emails
 import { sendEmail } from '@/lib/email';
+import { generateRecoveryLink } from '@/lib/persistence/recoveryLink';
 
 export const RecoveryManager = {
   /**
    * Generates a secure recovery link for a form submission session
    */
-  generateRecoveryLink(formId: string, token: string): string {
-    const origin = typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    return `${origin}/public/forms/${formId}?lm_recovery_token=${token}`;
-  },
+  generateRecoveryLink,
 
   /**
    * Sends the recovery email to the user with their recovery link

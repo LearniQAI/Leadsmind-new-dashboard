@@ -4,6 +4,9 @@ import React from 'react';
 import { useNode } from '@craftjs/core';
 
 import { VideoSettings } from './VideoSettings';
+import {
+  frameClassName, frameBorderStyle, stripFrameKeys, ASPECT_PADDING,
+} from '@/lib/builder/frameStyle';
 
 export interface VideoProps {
  url: string;
@@ -13,21 +16,36 @@ export interface VideoProps {
  loop: boolean;
  muted: boolean;
  borderRadius: number;
+ /** Part 3 — '16:9' | '4:3' | '1:1' | '9:16' | '21:9' (default 16:9). */
+ aspectRatio?: string;
+ boxShadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+ borderStyle?: 'none' | 'solid' | 'dashed' | 'dotted';
+ borderWidth?: number;
+ borderColor?: string;
+ borderRadiusIndividual?: boolean;
 }
 
 export const Video = (allProps: VideoProps & any) => {
-  const { 
-    url, 
-    provider, 
-    autoPlay, 
-    controls, 
-    loop, 
-    muted, 
-    borderRadius, 
+  const {
+    url,
+    provider,
+    autoPlay,
+    controls,
+    loop,
+    muted,
+    borderRadius,
+    aspectRatio,
     dragRef,
-    ...props 
+    ...props
   } = allProps;
  const { connectors: { connect, drag } } = useNode();
+
+ // Part 3 — Shadow / Border / Aspect-ratio frame. Compute from allProps, then strip the
+ // frame keys so they don't land on the DOM node.
+ const frameCls = frameClassName(allProps);
+ const frameStyle = frameBorderStyle(allProps);
+ const padTop = ASPECT_PADDING[aspectRatio as string] || '56.25%';
+ stripFrameKeys(props);
  
  const getEmbedUrl = () => {
   if (provider === 'youtube') {
@@ -53,9 +71,10 @@ export const Video = (allProps: VideoProps & any) => {
       }
     }
    }}
-   className={`w-full relative pt-[56.25%] overflow-hidden outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all ${props.className || ''}`}
+   className={`w-full relative overflow-hidden outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all ${frameCls} ${props.className || ''}`}
    style={{
-    borderRadius: `${borderRadius}px`,
+    paddingTop: padTop,
+    ...frameStyle,
    }}
   >
    {provider === 'custom' ? (
@@ -89,6 +108,7 @@ Video.craft = {
   loop: false,
   muted: false,
   borderRadius: 16,
+  aspectRatio: '16:9',
  },
  related: {
   settings: VideoSettings,

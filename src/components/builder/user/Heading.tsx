@@ -9,6 +9,7 @@ import { replaceMergeTags } from '../../../lib/builder/utils';
 import { useResponsiveValue } from '../../../lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 import { useLessonBuilder } from '../LessonBuilderContext';
+import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
 
 export interface HeadingProps {
  text: string;
@@ -63,6 +64,9 @@ export const Heading = (allProps: HeadingProps & any) => {
    dragRef,
    ...props
   } = allProps;
+  // Part 2 Color / Size-and-position sections — apply, then strip so they don't hit the DOM.
+  const boxStyle = pickBoxStyle(props);
+  stripBoxStyleKeys(props);
   const { connectors: { connect, drag }, actions: { setProp } } = useNode();
   const { viewMode } = useBuilder();
   const { theme: lessonTheme } = useLessonBuilder();
@@ -135,6 +139,7 @@ export const Heading = (allProps: HeadingProps & any) => {
      fontSize: fontSize ? `${fontSize}px` : undefined,
      fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : undefined,
      letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
+     ...boxStyle,
     }}
    >
     {enabled ? (

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -211,6 +212,13 @@ const markets = [
   { flag: '🌍', name: 'All of Africa', detail: '54 countries · 1.4 billion people · one platform', status: 'The mission' },
 ];
 
+const team = [
+  { name: 'Nelly Agboola', role: 'Founder', photo: '/Founders/Nelly.jpeg' },
+  { name: 'Naomi Venter', role: 'Co-Founder', photo: '/Founders/Naomi picture.jpeg' },
+  { name: 'Samuel Jansen Van Vuuren', role: 'Co-Founder', photo: '/Founders/Samuel picture.jpeg' },
+  { name: 'Zain Ul Hassan', role: 'Founding Software Engineer', photo: '/Founders/Zain.png' },
+];
+
 function StatBlock({ value, label, dark = false }: { value: string; label: string; dark?: boolean }) {
   return (
     <div className="text-center">
@@ -370,6 +378,54 @@ export default function AboutContent({ user }: { user?: any }) {
               </div>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* MEET THE TEAM */}
+      <section className="py-20 md:py-24 bg-white">
+        <div className="container mx-auto px-6">
+          <motion.div
+            variants={sectionHeaderContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.4 }}
+            className="max-w-2xl mb-14"
+          >
+            <motion.div variants={sectionHeaderItem} className="text-xs font-bold uppercase tracking-[0.2em] mb-4" style={{ color: ROYAL }}>
+              The team
+            </motion.div>
+            <motion.h2 variants={sectionHeaderItem} className="text-[clamp(26px,3.6vw,38px)] font-extrabold !text-[#0F172A] leading-tight">
+              The people building it.
+            </motion.h2>
+          </motion.div>
+
+          <motion.div
+            variants={cardGridContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.15 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl"
+          >
+            {team.map((member) => (
+              <motion.div
+                key={member.name}
+                variants={cardItem}
+                className="flex flex-col items-center text-center rounded-2xl border border-[#E2E8F0] bg-white p-7 shadow-[0_4px_24px_rgba(15,23,42,0.05)] hover:shadow-[0_16px_44px_rgba(15,23,42,0.1)] hover:-translate-y-1 transition-all duration-300"
+              >
+                <div className="w-28 h-28 rounded-full overflow-hidden mb-5 ring-1 ring-[#E2E8F0]">
+                  <Image
+                    src={member.photo}
+                    alt={member.name}
+                    width={160}
+                    height={160}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <h3 className="text-base font-bold !text-[#0F172A]">{member.name}</h3>
+                <p className="text-sm !text-[#64748B] mt-1">{member.role}</p>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 

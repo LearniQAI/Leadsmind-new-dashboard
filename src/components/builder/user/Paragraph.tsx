@@ -9,6 +9,7 @@ import { useResponsiveValue } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 import { useLessonBuilder } from '../LessonBuilderContext';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
+import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
 
 export interface ParagraphProps {
  text: string;
@@ -52,6 +53,9 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
   dragRef,
   ...props
  } = allProps;
+ // Part 2 Color / Size-and-position sections — apply, then strip so they don't hit the DOM.
+ const boxStyle = pickBoxStyle(props);
+ stripBoxStyleKeys(props);
  const { connectors: { connect, drag }, actions: { setProp } } = useNode();
  const { viewMode } = useBuilder();
  const { theme: lessonTheme } = useLessonBuilder();
@@ -118,6 +122,7 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
    }}
    className={`w-full ${enabled ? 'outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all' : ''} ${weights[fontWeight as keyof typeof weights] || ''} ${alignments[textAlign as keyof typeof alignments]} ${lineHeights[lineHeight as keyof typeof lineHeights]} ${themeFontClass} ${props.className || ''}`}
    style={{
+    ...boxStyle,
     color,
     fontSize: `${fontSize}px`,
     fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : undefined,

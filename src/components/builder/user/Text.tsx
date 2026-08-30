@@ -6,8 +6,12 @@ import { InlineTextEditor } from './InlineTextEditor';
 import { TextSettings } from './TextSettings';
 import { replaceMergeTags } from '@/lib/builder/utils';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
+import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
 
 export const Text = ({ text, fontSize, textAlign, color, fontFamily, fontWeight, lineHeight, letterSpacing, dragRef, ...props }: any) => {
+ // Part 2 Color / Size-and-position sections — apply, then strip so they don't hit the DOM.
+ const boxStyle = pickBoxStyle(props);
+ stripBoxStyleKeys(props);
  const { connectors: { connect, drag }, actions: { setProp } } = useNode();
  const { enabled } = useEditor((state) => ({
   enabled: state.options.enabled
@@ -46,6 +50,7 @@ export const Text = ({ text, fontSize, textAlign, color, fontFamily, fontWeight,
     fontStyle: isItalic ? 'italic' : undefined,
     lineHeight: lineHeight ? `${lineHeight}px` : undefined,
     letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
+    ...boxStyle,
    }}
   >
     {enabled ? (

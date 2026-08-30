@@ -2,42 +2,73 @@
 
 import React from 'react';
 import { useNode } from '@craftjs/core';
-import { ColorPicker } from '../ColorPicker';
 import { Label } from '@/components/ui/label';
 
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
-import { PropertyGroup, SliderWithInput } from '../inspector/primitives';
-import { FontFamilyPicker } from '../inspector/FontFamilyPicker';
+import { SliderWithInput } from '../inspector/primitives';
+import { SectionHeader, FontInheritSelect, type BoxSides } from '../inspector/panelControls';
+import { ColorSection, SizePositionSection, usePageFontName, readSides } from '../inspector/panelSections';
 import { FontWeightButtons, LineHeightButtons } from '../inspector/typographyControls';
 import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
 export const HeadingSettings = () => {
-  const { actions: { setProp }, props } = useNode((node) => ({
-    props: node.data.props,
-  }));
+  const { actions: { setProp }, props } = useNode((node) => ({ props: node.data.props }));
   const { viewMode } = useBuilder();
   const { setResponsiveValue } = useResponsiveSetProp();
+  const pageFontName = usePageFontName();
 
   const { level, fontWeight, textAlign, color, fontSize, fontFamily, lineHeight, letterSpacing } = props;
+  const backgroundColor = props.backgroundColor;
 
-  // Helper to get current display value for a prop
-  const getDisplayValue = (propName: string, baseValue: any) => {
-    if (viewMode === 'mobile') return props[`${propName}_mobile`] ?? baseValue;
-    if (viewMode === 'tablet') return props[`${propName}_tablet`] ?? baseValue;
-    return baseValue;
+  const getDisplayValue = (propName: string, baseValue?: any) => {
+    if (viewMode === 'mobile') return props[`${propName}_mobile`] ?? props[propName] ?? baseValue;
+    if (viewMode === 'tablet') return props[`${propName}_tablet`] ?? props[propName] ?? baseValue;
+    return props[propName] ?? baseValue;
+  };
+
+  const forEachViewport = (p: any, keys: string[]) =>
+    keys.forEach((k) => { delete p[k]; delete p[`${k}_mobile`]; delete p[`${k}_tablet`]; });
+
+  // Reset = back to Heading.craft.props defaults; no-default props are deleted.
+  const resetTypography = () => setProp((p: any) => {
+    forEachViewport(p, ['fontSize', 'fontFamily', 'letterSpacing']);
+    p.fontWeight = 'bold';
+    p.lineHeight = 'tight';
+    delete p.fontWeight_mobile; delete p.fontWeight_tablet;
+    delete p.lineHeight_mobile; delete p.lineHeight_tablet;
+  });
+  const resetColor = () => setProp((p: any) => {
+    forEachViewport(p, ['backgroundColor']);
+    p.color = '#111827';
+    delete p.color_mobile; delete p.color_tablet;
+  });
+  const resetBox = () => setProp((p: any) => {
+    ['Top', 'Right', 'Bottom', 'Left'].forEach((s) => forEachViewport(p, [`padding${s}`, `margin${s}`]));
+    p.textAlign = 'left';
+    delete p.textAlign_mobile; delete p.textAlign_tablet;
+  });
+
+  const writeSides = (prefix: 'padding' | 'margin') => (v: BoxSides) => {
+    setResponsiveValue(`${prefix}Top`, v.top);
+    setResponsiveValue(`${prefix}Right`, v.right);
+    setResponsiveValue(`${prefix}Bottom`, v.bottom);
+    setResponsiveValue(`${prefix}Left`, v.left);
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Heading level — element-specific, stays at the top */}
       <div className="space-y-2">
         <Label className="text-xs font-bold !text-dash-textMuted block">Heading level</Label>
         <div className="grid grid-cols-3 bg-dash-surface p-1 rounded-md border border-dash-border">
           {['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].map((l) => (
             <button
               key={l}
-              onClick={() => setProp((props: any) => props.level = l)}
-              className={`text-[10px] py-1 rounded uppercase font-bold transition-colors motion-reduce:transition-none ${level === l ? 'bg-primary text-white shadow' : '!text-dash-textMuted hover:!text-dash-text'}`}
+              onClick={() => setProp((p: any) => (p.level = l))}
+              className={`text-[10px] py-1 rounded uppercase font-bold transition-colors motion-reduce:transition-none ${
+                level === l ? 'bg-primary text-white shadow' : '!text-dash-textMuted hover:!text-dash-text'
+              }`}
             >
               {l}
             </button>
@@ -45,7 +76,10 @@ export const HeadingSettings = () => {
         </div>
       </div>
 
-      <PropertyGroup title="Typography">
+      {/* Typography */}
+      <div className="space-y-3">
+        <SectionHeader title="Typography" onReset={resetTypography} />
+
         <div className="flex items-end gap-2">
           <div className="flex-1">
             <SliderWithInput
@@ -57,8 +91,6 @@ export const HeadingSettings = () => {
               numeric
             />
           </div>
-          {/* The slider always writes an explicit size; this is the only way back to the
-              heading level's built-in auto size once you've touched the slider. */}
           <button
             type="button"
             onClick={() => setResponsiveValue('fontSize', undefined)}
@@ -74,14 +106,16 @@ export const HeadingSettings = () => {
           onChange={(w) => setResponsiveValue('fontWeight', w)}
         />
 
-        {/* Part 2 (Text Element Typography Controls) — an explicit fontFamily here beats the
-            course theme's useThemeFont class via ordinary CSS specificity (inline style
-            outranks a class), not extra override logic. */}
-        <FontFamilyPicker
-          value={fontFamily || 'Inter'}
+        <FontInheritSelect
+          value={getDisplayValue('fontFamily')}
+          pageFontName={pageFontName}
           onChange={(family) => {
-            loadGoogleFontFamily(family);
-            setResponsiveValue('fontFamily', family);
+            if (family) {
+              loadGoogleFontFamily(family);
+              setResponsiveValue('fontFamily', family);
+            } else {
+              setResponsiveValue('fontFamily', undefined);
+            }
           }}
         />
 
@@ -99,28 +133,25 @@ export const HeadingSettings = () => {
           step={0.1}
           numeric
         />
+      </div>
 
-        <ColorPicker
-          label="Text color"
-          value={color || '#111827'}
-          onChange={(val) => setProp((props: any) => props.color = val)}
-        />
+      <ColorSection
+        color={getDisplayValue('color', color) || '#111827'}
+        backgroundColor={getDisplayValue('backgroundColor', backgroundColor) || ''}
+        onColor={(v) => setResponsiveValue('color', v)}
+        onBackgroundColor={(v) => setResponsiveValue('backgroundColor', v)}
+        onReset={resetColor}
+      />
 
-        <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted block">Text align</Label>
-          <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
-            {['left', 'center', 'right', 'justify'].map((align) => (
-              <button
-                key={align}
-                onClick={() => setResponsiveValue('textAlign', align)}
-                className={`flex-1 text-[10px] py-1 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('textAlign', textAlign) === align ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
-              >
-                {align}
-              </button>
-            ))}
-          </div>
-        </div>
-      </PropertyGroup>
+      <SizePositionSection
+        padding={readSides(getDisplayValue, 'padding')}
+        margin={readSides(getDisplayValue, 'margin')}
+        align={getDisplayValue('textAlign', textAlign) || 'left'}
+        onPadding={writeSides('padding')}
+        onMargin={writeSides('margin')}
+        onAlign={(v) => setResponsiveValue('textAlign', v)}
+        onReset={resetBox}
+      />
     </div>
   );
 };
