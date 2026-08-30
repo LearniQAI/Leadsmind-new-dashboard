@@ -136,17 +136,17 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
       </div>
 
       {/* Panel Header */}
-      <div className="px-5 py-4 border-b border-dash-border flex items-center justify-between gap-3 shrink-0 bg-gradient-to-b from-white to-dash-surface/30">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-dash-accent/15 to-dash-accent/5 flex items-center justify-center ring-1 ring-inset ring-dash-accent/20 shadow-[0_1px_3px_rgba(0,0,0,0.06)] shrink-0">
+      <div className="px-4 pt-3.5 pb-3 border-b border-dash-border shrink-0 bg-gradient-to-b from-white to-dash-surface/30 space-y-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="h-8 w-8 rounded-[9px] bg-gradient-to-br from-dash-accent/15 to-dash-accent/5 flex items-center justify-center ring-1 ring-inset ring-dash-accent/20 shadow-[0_1px_3px_rgba(0,0,0,0.06)] shrink-0">
             <ComponentIcon className="w-4 h-4 text-dash-accent" />
           </div>
           <div className="min-w-0">
             <p className="text-[13px] font-bold !text-dash-text leading-none truncate">{selected.name}</p>
-            <p className="text-[9px] uppercase tracking-[0.1em] !text-dash-textMuted mt-1 font-bold">Element Properties</p>
+            <p className="text-[9px] uppercase tracking-[0.1em] !text-dash-textMuted mt-1 font-bold truncate">Element Properties</p>
           </div>
         </div>
-        <div className="flex items-center gap-0.5 shrink-0 bg-dash-surface/70 rounded-lg p-0.5 ring-1 ring-inset ring-dash-border">
+        <div className="flex items-center gap-0.5">
           <button
             onClick={() => handleMove(-1)}
             disabled={siblingIndex <= 0}

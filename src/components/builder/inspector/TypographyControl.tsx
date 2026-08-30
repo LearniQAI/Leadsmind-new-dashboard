@@ -89,24 +89,22 @@ export const TypographyControl = ({
       <div className="space-y-3">
         <SectionHeader title="Typography" onReset={handleTypographyReset} />
 
-        <div className="grid grid-cols-2 gap-2">
-          <SliderWithInput
-            label="Font size"
-            value={fontSize}
-            onChange={(val) => setResponsiveValue('fontSize', val)}
-            min={8}
-            max={120}
-            unit="px"
-          />
-          <SliderWithInput
-            label="Line height"
-            value={lineHeight}
-            onChange={(val) => setResponsiveValue('lineHeight', val)}
-            min={0}
-            max={100}
-            unit="px"
-          />
-        </div>
+        <SliderWithInput
+          label="Font size"
+          value={fontSize}
+          onChange={(val) => setResponsiveValue('fontSize', val)}
+          min={8}
+          max={120}
+          unit="px"
+        />
+        <SliderWithInput
+          label="Line height"
+          value={lineHeight}
+          onChange={(val) => setResponsiveValue('lineHeight', val)}
+          min={0}
+          max={100}
+          unit="px"
+        />
 
         <FontInheritSelect
           value={fontFamily}
