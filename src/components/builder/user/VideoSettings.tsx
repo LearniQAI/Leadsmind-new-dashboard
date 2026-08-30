@@ -5,11 +5,12 @@ import { useNode } from '@craftjs/core';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Upload, Loader2, Video as VideoIcon } from 'lucide-react';
+import { Upload, Loader2, Video as VideoIcon, FolderOpen } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { getActiveWorkspaceId } from '@/lib/workspace/activeWorkspaceClient';
 import { toast } from 'sonner';
 import { SliderWithInput } from '../inspector/primitives';
+import { MediaVaultModal } from '../MediaVaultModal';
 
 export const VideoSettings = () => {
   const { actions: { setProp }, url, provider, autoPlay, controls, loop, muted, borderRadius } = useNode((node) => ({
@@ -23,6 +24,7 @@ export const VideoSettings = () => {
   }));
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isVaultOpen, setIsVaultOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,6 +78,15 @@ export const VideoSettings = () => {
           ))}
         </div>
 
+        <Button
+          variant="secondary"
+          className="w-full h-9 mb-2 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-600/30 text-purple-600 text-xs font-bold flex items-center gap-2 transition-colors motion-reduce:transition-none"
+          onClick={() => setIsVaultOpen(true)}
+        >
+          <FolderOpen className="w-4 h-4" />
+          Browse workspace media library
+        </Button>
+
         {provider === 'custom' ? (
           <div className="space-y-2">
             <input
@@ -118,6 +129,12 @@ export const VideoSettings = () => {
           </div>
         )}
       </div>
+
+      <MediaVaultModal
+        isOpen={isVaultOpen}
+        onOpenChange={setIsVaultOpen}
+        onSelect={(mediaUrl) => setProp((props: any) => { props.url = mediaUrl; props.provider = 'custom'; })}
+      />
 
       <div className="space-y-3 pt-2 border-t border-dash-border">
         <Label className="text-xs font-bold !text-dash-textMuted block">Playback controls</Label>

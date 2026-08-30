@@ -9,6 +9,7 @@ import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 import { PropertyGroup, SliderWithInput } from '../inspector/primitives';
 import { FontFamilyPicker } from '../inspector/FontFamilyPicker';
+import { FontWeightButtons, LineHeightButtons } from '../inspector/typographyControls';
 import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
 export const HeadingSettings = () => {
@@ -68,25 +69,13 @@ export const HeadingSettings = () => {
           </button>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted block">Font weight</Label>
-          <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
-            {['normal', 'medium', 'semibold', 'bold', 'black'].map((w) => (
-              <button
-                key={w}
-                onClick={() => setResponsiveValue('fontWeight', w)}
-                className={`flex-1 text-[9px] py-1.5 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('fontWeight', fontWeight) === w ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
-              >
-                {w}
-              </button>
-            ))}
-          </div>
-        </div>
+        <FontWeightButtons
+          value={getDisplayValue('fontWeight', fontWeight)}
+          onChange={(w) => setResponsiveValue('fontWeight', w)}
+        />
 
-        {/* Part 2 (Text Element Typography Controls) — real per-element overrides added
-            alongside the existing level/fontWeight/color/align controls above, without
-            touching how they work: an explicit fontFamily here beats the course theme's
-            useThemeFont class for real, via ordinary CSS specificity (inline style always
+        {/* Part 2 (Text Element Typography Controls) — an explicit fontFamily here beats the
+            course theme's useThemeFont class via ordinary CSS specificity (inline style
             outranks a class), not extra override logic. */}
         <FontFamilyPicker
           value={fontFamily || 'Inter'}
@@ -96,13 +85,9 @@ export const HeadingSettings = () => {
           }}
         />
 
-        <SliderWithInput
-          label="Line height"
-          value={getDisplayValue('lineHeight', lineHeight) || ''}
-          onChange={(val) => setResponsiveValue('lineHeight', val)}
-          min={0}
-          max={100}
-          numeric
+        <LineHeightButtons
+          value={getDisplayValue('lineHeight', lineHeight)}
+          onChange={(v) => setResponsiveValue('lineHeight', v)}
         />
 
         <SliderWithInput

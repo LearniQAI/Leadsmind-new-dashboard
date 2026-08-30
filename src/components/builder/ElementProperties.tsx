@@ -1,15 +1,14 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useEditor } from '@craftjs/core';
 import {
-  Settings, Trash2, Layout, Paintbrush, Sliders,
+  Settings, Trash2, Layout, Sliders,
   Box, Type, Image, Video, RectangleHorizontal as ButtonIconPlaceholder,
   AlignLeft, Columns, Minus, ArrowUpDown, Code, Star,
   Navigation, FormInput, Timer, CreditCard, MessageCircle, LayoutGrid,
-  ChevronDown, ChevronRight, Layers, ArrowLeft, ArrowUp, ArrowDown, Copy, Save
+  Layers, ArrowLeft, ArrowUp, ArrowDown, Copy, Save
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useBuilder } from './BuilderContext';
 
 // Map component display names to icons
@@ -41,40 +40,11 @@ const COMPONENT_ICONS: Record<string, any> = {
   'Icon': Star,
 };
 
-// Collapsible accordion section
-const AccordionSection = ({ title, children, defaultOpen = true }: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) => {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border-b border-dash-border last:border-none">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-dash-surface transition-colors motion-reduce:transition-none duration-100 group"
-      >
-        <span className="text-[11px] font-semibold !text-dash-textMuted tracking-wider uppercase">{title}</span>
-        <span className="!text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none">
-          {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-        </span>
-      </button>
-      {open && (
-        <div className="px-5 pb-4">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
-
 // Renders the settings UI for whichever node is currently selected on the canvas.
 // Mounted by BuilderLeftPanel in place of Sidebar whenever Craft.js selection is
 // non-empty; the "< Back" action clears selection so BuilderLeftPanel swaps back
 // to Sidebar on the next render.
 export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
-  const [activeTab, setActiveTab] = useState<'layout' | 'style' | 'advanced'>('layout');
-
   const { selected, actions, query, parentName, parentId, siblingIndex, siblingCount } = useEditor((state, query) => {
     const node = state.nodes[nodeId];
     if (!node) return { selected: undefined, parentName: undefined, parentId: undefined, siblingIndex: -1, siblingCount: 0 };
@@ -220,42 +190,20 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
         </div>
       </div>
 
-      {/* Pill Tabs — 40px height, 12px radius */}
-      <div className="px-4 py-3 border-b border-dash-border bg-white shrink-0">
-        <div className="flex bg-dash-surface p-1 rounded-[12px] h-10 items-center gap-0.5">
-          {([
-            { id: 'layout', label: 'Layout', icon: Layout },
-            { id: 'style', label: 'Style', icon: Paintbrush },
-            { id: 'advanced', label: 'Advanced', icon: Sliders },
-          ] as const).map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-1.5 h-8 text-[11px] font-semibold rounded-[8px] transition-all motion-reduce:transition-none duration-150 active:scale-[0.97]',
-                activeTab === id
-                  ? 'bg-white !text-dash-text shadow-sm border border-dash-border'
-                  : '!text-dash-textMuted hover:!text-dash-text'
-              )}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Settings Content with Accordions */}
-      <div className="flex-1 overflow-y-auto pb-20 common-scrollbar">
+      {/* AUDIT-THEN-FIX (Bug 2): the Layout/Style/Advanced tabs and the outer "Properties"
+          accordion below were both pure decorative chrome — confirmed via a codebase-wide
+          search that no settings component anywhere reads the `activeTab` prop this host was
+          passing them (every panel always rendered its full content regardless of which tab
+          was "selected"), and the accordion was hardcoded `defaultOpen={true}` with no other
+          panel ever relying on it being collapsed. Removed so every element's panel — Text,
+          Heading, Paragraph, Image, and everything else hosted here — goes straight from this
+          header into its own direct sections, matching the Text panel (the reference this
+          audit was measured against) exactly, with zero loss of functionality. */}
+      <div className="flex-1 overflow-y-auto pb-20 common-scrollbar px-5 pt-4">
         {selected.settings ? (
-          <div>
-            {/* The settings component renders all its controls; we wrap them in accordion groups */}
-            <AccordionSection title="Properties" defaultOpen={true}>
-              {React.createElement(selected.settings as any, { activeTab })}
-            </AccordionSection>
-          </div>
+          React.createElement(selected.settings as any)
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+          <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-12 h-12 rounded-xl bg-dash-surface flex items-center justify-center mx-auto mb-4 border border-dash-border">
               <Settings className="w-5 h-5 !text-dash-textMuted" />
             </div>

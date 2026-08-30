@@ -23,7 +23,10 @@ export interface HeadingProps {
   *  `letterSpacing` are raw px numbers. All three are undefined by default (no visual
   *  change) until a user actually sets one via TypographyControl. */
  fontFamily?: string;
- lineHeight?: number;
+ /** tight/normal/relaxed/loose — same value domain as Paragraph. Applied as a
+  *  `leading-*` class on the heading's own text tag (an inherited px value never
+  *  reached the text, because that tag hardcodes its own leading). */
+ lineHeight?: 'tight' | 'normal' | 'relaxed' | 'loose';
  letterSpacing?: number;
  /** Part 3 typography decision: when true (Lesson Builder templates only — always false/
   *  unset for Website/Funnel Builder usage), applies the active course's real Signal/Ember/
@@ -77,7 +80,7 @@ export const Heading = (allProps: HeadingProps & any) => {
   const textAlign = useResponsiveValue(allProps, 'textAlign', _ta);
   const color = useResponsiveValue(allProps, 'color', _color);
   const fontFamily = useResponsiveValue(allProps, 'fontFamily', _ff);
-  const lineHeightOverride = useResponsiveValue(allProps, 'lineHeight', _lh);
+  const lineHeight = useResponsiveValue(allProps, 'lineHeight', _lh);
   const letterSpacing = useResponsiveValue(allProps, 'letterSpacing', _ls);
 
   // Base scales for sizes based on level if fontSize is not strictly provided
@@ -105,6 +108,14 @@ export const Heading = (allProps: HeadingProps & any) => {
    justify: 'text-justify',
   };
 
+  const lineHeights = {
+   tight: 'leading-tight',
+   normal: 'leading-normal',
+   relaxed: 'leading-relaxed',
+   loose: 'leading-loose',
+  };
+  const lineHeightClass = lineHeights[lineHeight as keyof typeof lineHeights] || 'leading-tight';
+
   return (
    <div
     {...props}
@@ -123,19 +134,18 @@ export const Heading = (allProps: HeadingProps & any) => {
      color,
      fontSize: fontSize ? `${fontSize}px` : undefined,
      fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : undefined,
-     lineHeight: lineHeightOverride ? `${lineHeightOverride}px` : '1.2',
      letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
     }}
    >
     {enabled ? (
-      <Tag className="outline-none w-full m-0 p-0 leading-tight tracking-tight" style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }}>
+      <Tag className={`outline-none w-full m-0 p-0 ${lineHeightClass} tracking-tight`} style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }}>
         <InlineTextEditor
           value={text}
           onChange={(val) => setProp((props: any) => { props.text = val; }, 500)}
         />
       </Tag>
     ) : (
-     <Tag className="outline-none w-full m-0 p-0 leading-tight tracking-tight" style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
+     <Tag className={`outline-none w-full m-0 p-0 ${lineHeightClass} tracking-tight`} style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
     )}
    </div>
   );
@@ -149,7 +159,13 @@ Heading.craft = {
   fontWeight: 'bold',
   textAlign: 'left',
   color: '#111827',
-  fontSize: 8,
+  lineHeight: 'tight',
+  // Real bug (AUDIT-THEN-FIX, Bug 1): this used to be a hardcoded 8 — an absurdly small size
+  // that's also truthy, so `!fontSize` in Heading's render was NEVER true for a freshly
+  // inserted heading, meaning the real per-level baseSizes (h1..h6) below were unreachable and
+  // every level rendered identically tiny regardless of which was selected. Left unset here,
+  // exactly like fontFamily/lineHeight/letterSpacing already are, so a fresh heading uses its
+  // level's real default size until a user explicitly overrides it via the settings panel.
  },
  related: {
   settings: HeadingSettings,

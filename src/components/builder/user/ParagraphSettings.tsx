@@ -9,6 +9,7 @@ import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 import { PropertyGroup, SliderWithInput } from '../inspector/primitives';
 import { FontFamilyPicker } from '../inspector/FontFamilyPicker';
+import { FontWeightButtons, LineHeightButtons } from '../inspector/typographyControls';
 import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
 export const ParagraphSettings = () => {
@@ -18,7 +19,7 @@ export const ParagraphSettings = () => {
   const { viewMode } = useBuilder();
   const { setResponsiveValue } = useResponsiveSetProp();
 
-  const { fontSize, textAlign, color, lineHeight, fontFamily, letterSpacing } = props;
+  const { fontSize, fontWeight, textAlign, color, lineHeight, fontFamily, letterSpacing } = props;
 
   // Helper to get current display value for a prop
   const getDisplayValue = (propName: string, baseValue: any) => {
@@ -38,29 +39,23 @@ export const ParagraphSettings = () => {
         numeric
       />
 
-      <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Line height</Label>
-        <div className="flex bg-dash-surface p-1 rounded-md border border-dash-border">
-          {['tight', 'normal', 'relaxed', 'loose'].map((lh) => (
-            <button
-              key={lh}
-              onClick={() => setResponsiveValue('lineHeight', lh)}
-              className={`flex-1 text-[9px] py-1.5 rounded capitalize transition-colors motion-reduce:transition-none ${getDisplayValue('lineHeight', lineHeight) === lh ? 'bg-primary text-white shadow font-bold' : '!text-dash-textMuted hover:!text-dash-text'}`}
-            >
-              {lh}
-            </button>
-          ))}
-        </div>
-      </div>
+      <FontWeightButtons
+        value={getDisplayValue('fontWeight', fontWeight)}
+        onChange={(w) => setResponsiveValue('fontWeight', w)}
+      />
 
-      {/* Part 2 (Text Element Typography Controls) — real per-element overrides added
-          alongside the existing font-size/line-height-enum/color/align controls above. */}
+      {/* Part 2 (Text Element Typography Controls) — real per-element font-family override. */}
       <FontFamilyPicker
         value={getDisplayValue('fontFamily', fontFamily) || 'Inter'}
         onChange={(family) => {
           loadGoogleFontFamily(family);
           setResponsiveValue('fontFamily', family);
         }}
+      />
+
+      <LineHeightButtons
+        value={getDisplayValue('lineHeight', lineHeight)}
+        onChange={(v) => setResponsiveValue('lineHeight', v)}
       />
 
       <SliderWithInput
