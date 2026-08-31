@@ -9,10 +9,3 @@ export interface WorkspaceBranding {
  support_email: string | null;
  updated_at: string | null;
 }
-
-export type DomainVerificationStatus = 'pending' | 'verified' | 'error' | 'unchecked';
-
-export interface DomainVerificationResult {
- status: DomainVerificationStatus;
- message: string;
-}

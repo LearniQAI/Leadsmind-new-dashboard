@@ -68,11 +68,29 @@ export async function getCourse(courseId: string) {
  }
 }
 
-// Phase D built this requiring name + domain + URL path up front. Phase E, Step 2a makes
-// domain/URL optional: domain_configurations has zero rows workspace-wide right now, so
-// requiring a domain today would block every real admin from creating a course at all. Name
-// is still the only hard requirement; domain/URL can be set later once a real domain exists.
-// The uniqueness validation below is unchanged for whoever DOES fill them in.
+// AUDIT (Default LeadsMind Domain + Real URL Path pass) — before this fix, "no domain
+// selected" meant the course had domain_id=null AND url_path=null, and there was no real
+// student-facing URL at all except the internal UUID admin route. Two real findings changed
+// this function's design from what a first read of the schema would suggest:
+//   1. courses.url_path has NEVER had a real consumer anywhere in this codebase (confirmed via
+//      a full grep) — the only route that actually serves a public course landing page today
+//      is /unauthenticated/courses/[slug], keyed by courses.slug, which DOES already have a
+//      real global unique constraint (courses_slug_key) and a real, already-shipped, already-
+//      working updateCourseSlug() action (courseLanding.ts) with real uniqueness enforcement.
+//   2. The (domain_id, url_path) unique index is PARTIAL — `WHERE domain_id IS NOT NULL AND
+//      url_path IS NOT NULL` — so it enforces nothing at all for domain_id=null rows. Postgres
+//      also treats every NULL as distinct from every other NULL, so even a non-partial index
+//      on (domain_id, url_path) would not have caught two default-domain courses reusing the
+//      same url_path. That combination made url_path structurally unusable as the "leadsmind.io
+//      default domain" slug store even before considering that nothing reads it.
+// Decision: "leadsmind.io (default)" is NOT a seeded domain_configurations row — it reuses
+// courses.slug, the field that already has real uniqueness AND a real serving route, rather
+// than building a second, competing storage+serving mechanism for the exact same concept. A
+// connected custom domain still writes domain_id/url_path exactly as before (unchanged, still
+// real DB-level uniqueness via the partial index) — that path is untouched by this decision.
+// domainId is the literal sentinel 'default' for the "leadsmind.io (default)" choice, or a real
+// domain_configurations.id for a connected custom domain, or null/omitted (legacy "skip for
+// now" callers, still supported so nothing that already calls this function breaks).
 export async function createCourseWithDomain(title: string, domainId?: string | null, urlPath?: string | null) {
  try {
   const workspaceId = await getCurrentWorkspaceId();
@@ -84,8 +102,27 @@ export async function createCourseWithDomain(title: string, domainId?: string | 
 
   let resolvedDomainId: string | null = null;
   let resolvedUrlPath: string | null = null;
+  let resolvedSlug: string | null = null;
 
-  if (domainId) {
+  if (domainId === 'default') {
+   // Real global uniqueness backstop, same one updateCourseSlug() and the DB's own
+   // courses_slug_key constraint already enforce — checked here too so a duplicate is caught
+   // at create time with a clear message, not just as a raw 23505 after insert.
+   const cleanSlug = sanitizeSlug(urlPath || title);
+   if (!cleanSlug) return { error: 'A URL path is required' };
+
+   const adminClient = createAdminClient();
+   const { data: duplicate } = await adminClient
+    .from('courses')
+    .select('id')
+    .eq('slug', cleanSlug)
+    .maybeSingle();
+   if (duplicate) {
+    return { error: 'This URL path is already taken. Choose a different one.' };
+   }
+
+   resolvedSlug = cleanSlug;
+  } else if (domainId) {
    // Verify the chosen domain actually belongs to this workspace — domainId is never
    // trusted blindly, same discipline as every other cross-entity reference in this app.
    const { data: domain, error: domainErr } = await supabase
@@ -104,8 +141,8 @@ export async function createCourseWithDomain(title: string, domainId?: string | 
    resolvedDomainId = domainId;
    resolvedUrlPath = cleanSlug;
   }
-  // No domain selected: url_path is left null even if something was typed into the field —
-  // a URL path with no domain to host it on isn't a real address.
+  // domainId omitted/null (legacy "skip for now" path, still reachable by any older caller):
+  // no slug, no domain_id/url_path — same no-real-URL-yet behavior as before this pass.
 
   const { data, error } = await supabase
    .from('courses')
@@ -114,17 +151,21 @@ export async function createCourseWithDomain(title: string, domainId?: string | 
     title,
     status: 'draft',
     domain_id: resolvedDomainId,
-    url_path: resolvedUrlPath
+    url_path: resolvedUrlPath,
+    ...(resolvedSlug ? { slug: resolvedSlug } : {})
    })
    .select()
    .single();
 
   if (error) {
-   // Real DB-level protection (the unique index on (domain_id, url_path) from Phase A),
-   // not just a client-side check — a duplicate slug on the same domain is rejected here
-   // even if a client bypassed the UI's own uniqueness check entirely.
+   // Real DB-level protection — the partial unique index on (domain_id, url_path) for the
+   // custom-domain path, and courses_slug_key for the default-domain path — not just the
+   // pre-check above, which has an unavoidable (tiny) TOCTOU gap between the check and the
+   // insert. Either constraint violation lands here as 23505.
    if (error.code === '23505') {
-    return { error: 'This URL path is already used on this domain. Choose a different one.' };
+    return resolvedSlug
+     ? { error: 'This URL path is already taken. Choose a different one.' }
+     : { error: 'This URL path is already used on this domain. Choose a different one.' };
    }
    throw error;
   }

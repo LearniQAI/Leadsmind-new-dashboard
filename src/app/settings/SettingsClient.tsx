@@ -19,8 +19,7 @@ import {
   updateWorkspaceLogo,
   updateMemberPermissions,
   removeInvitation,
-  deleteMember,
-  verifyCustomDomainCname
+  deleteMember
 } from '@/app/actions/settings';
 
 // Components
@@ -75,9 +74,6 @@ export default function SettingsClient({
   const [buttonColor, setButtonColor] = useState(branding?.button_color || '#2563eb');
   const [textColor, setTextColor] = useState(branding?.text_color || '#eef2ff');
   const [typography, setTypography] = useState(branding?.typography || 'Inter');
-  const [customDomain, setCustomDomain] = useState(branding?.custom_domain || '');
-  const [sslStatus, setSslStatus] = useState(branding?.custom_domain_ssl_status || 'pending');
-  const [isVerifyingCname, setIsVerifyingCname] = useState(false);
   const faviconInputRef = useRef<HTMLInputElement>(null);
 
   // Modals State
@@ -249,12 +245,11 @@ export default function SettingsClient({
 
   const handleSaveBranding = async () => {
     setIsSaving(true);
-    const res = await updateWorkspaceBranding({ 
+    const res = await updateWorkspaceBranding({
       primary_color: primaryColor,
       button_color: buttonColor,
       text_color: textColor,
-      typography: typography,
-      custom_domain: customDomain
+      typography: typography
     });
     if (res.error) toast.error(res.error);
     else {
@@ -296,28 +291,6 @@ export default function SettingsClient({
       toast.error(err.message || 'Failed to upload favicon');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleVerifyCname = async () => {
-    if (!customDomain) {
-      toast.error('Please enter a custom domain first');
-      return;
-    }
-    setIsVerifyingCname(true);
-    const res = await verifyCustomDomainCname(customDomain);
-    setIsVerifyingCname(false);
-
-    if (res.error) {
-      toast.error(res.error);
-    } else {
-      setSslStatus(res.sslStatus || 'failed');
-      if (res.dnsVerified) {
-        toast.success('CNAME validation passed and SSL active!');
-      } else {
-        toast.error('CNAME validation failed. Make sure your CNAME points to cname.leadsmind.io and try again.');
-      }
-      router.refresh();
     }
   };
 
@@ -464,14 +437,9 @@ export default function SettingsClient({
               setTextColor={setTextColor}
               typography={typography}
               setTypography={setTypography}
-              customDomain={customDomain}
-              setCustomDomain={setCustomDomain}
-              sslStatus={sslStatus}
-              isVerifyingCname={isVerifyingCname}
               onLogoUpload={handleLogoUpload}
               onFaviconUpload={handleFaviconUpload}
               onSaveBranding={handleSaveBranding}
-              onVerifyCname={handleVerifyCname}
               fileInputRef={fileInputRef}
               faviconInputRef={faviconInputRef}
             />

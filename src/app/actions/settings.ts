@@ -83,73 +83,15 @@ export async function updateWorkspaceBranding(updates: any) {
  }
 }
 
-export async function verifyCustomDomainCname(customDomain: string) {
-  try {
-    const workspaceId = await getActiveWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
-    const cleanDomain = customDomain.trim().toLowerCase();
-    if (!cleanDomain) {
-      return { error: 'Domain name cannot be empty' };
-    }
-
-    const dnsModule = await import('dns');
-    let dnsVerified = false;
-    let sslStatus: 'active' | 'failed' = 'failed';
-
-    try {
-      const records = await dnsModule.promises.resolveCname(cleanDomain);
-      dnsVerified = records.some(r => 
-        r.toLowerCase().includes('leadsmind.io') || 
-        r.toLowerCase().includes('vercel.app')
-      );
-      sslStatus = dnsVerified ? 'active' : 'failed';
-    } catch (dnsErr: any) {
-      logger.warn({ err: dnsErr, workspaceId, domain: cleanDomain }, 'settings.cname_verification.dns_lookup_failed');
-      sslStatus = 'failed';
-    }
-
-    // Upsert or update branding info
-    const { data: existing } = await supabase
-      .from('workspace_branding')
-      .select('id')
-      .eq('workspace_id', workspaceId)
-      .maybeSingle();
-
-    let queryResult;
-    if (existing) {
-      queryResult = await supabase
-        .from('workspace_branding')
-        .update({
-          custom_domain: cleanDomain,
-          custom_domain_ssl_status: sslStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('workspace_id', workspaceId)
-        .select()
-        .single();
-    } else {
-      queryResult = await supabase
-        .from('workspace_branding')
-        .insert({
-          workspace_id: workspaceId,
-          custom_domain: cleanDomain,
-          custom_domain_ssl_status: sslStatus,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-    }
-
-    if (queryResult.error) throw queryResult.error;
-
-    return { success: true, sslStatus, dnsVerified };
-  } catch (error: any) {
-    logger.error({ err: error, domain: customDomain }, 'settings.custom_domain_cname.verify.failed');
-    return { error: 'Failed to verify custom domain.' };
-  }
-}
+// Remove Orphaned Custom-Domain Code pass — verifyCustomDomainCname() used to live here,
+// writing workspace_branding.custom_domain/custom_domain_ssl_status after a real CNAME DNS
+// check. Removed: it was a live, UI-reachable action (a "Check DNS" button in the Workspace
+// settings tab), but confirmed via the Custom-Domain Course Serving audit that nothing reads
+// either column for actually serving a course anymore — the real system is
+// domain_configurations (src/lib/domains/verify.ts, its own Settings > Domains page). Leaving
+// this button in place let an admin genuinely go through DNS setup and see "Active / SSL
+// provisioned" with zero real effect — worse than removing it outright. The Workspace tab's
+// "Custom DNS domain" card (WorkspaceTab.tsx) was removed alongside this.
 
 // TEAM
 export async function getWorkspaceMembers() {

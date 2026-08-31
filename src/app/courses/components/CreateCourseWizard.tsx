@@ -9,6 +9,7 @@ import { createCourseWithDomain } from "@/app/actions/lms";
 import { getDomainsForCurrentWorkspace } from "@/app/actions/domains";
 import { updateCourseLandingSettings } from "@/app/actions/courseLanding";
 import { COURSE_THEME_LIST } from "@/lib/courses/courseThemeTokens";
+import { sanitizeSlug } from "@/lib/slug";
 import CourseThemeMiniPreview from "./CourseThemeMiniPreview";
 import {
   TextInput,
@@ -39,8 +40,12 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
   const [step, setStep] = useState<1 | 2>(1);
   const [title, setTitle] = useState("");
   const [domains, setDomains] = useState<any[]>([]);
-  const [domainId, setDomainId] = useState("");
+  // "default" (leadsmind.io) is always a real, selectable, pre-selected option — never an
+  // empty-string "no domain chosen" state. Publishing must never be blocked on connecting a
+  // custom domain first.
+  const [domainId, setDomainId] = useState("default");
   const [urlPath, setUrlPath] = useState("");
+  const [urlPathTouched, setUrlPathTouched] = useState(false);
   const [isLoadingDomains, setIsLoadingDomains] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
@@ -49,8 +54,9 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
   const reset = () => {
     setStep(1);
     setTitle("");
-    setDomainId("");
+    setDomainId("default");
     setUrlPath("");
+    setUrlPathTouched(false);
     setCreatedCourseId(null);
     setSelectedTemplate("clean_minimal");
   };
@@ -70,9 +76,19 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
   }, [open]);
 
   const selectedDomain = domains.find((d) => d.id === domainId);
-  const previewUrl = selectedDomain
-    ? `${selectedDomain.hostname}/${urlPath || "your-course-slug"}`
-    : null;
+  // Real base host for the live preview — "leadsmind.io" for the default option (matches the
+  // actual leadsmind.io/courses/{slug} rewrite in middleware.ts), or the real connected
+  // domain's hostname otherwise.
+  const baseHost = domainId === "default" ? "leadsmind.io" : selectedDomain?.hostname;
+  const slugPreview = sanitizeSlug(urlPath || title) || "your-course-slug";
+  const previewUrl = baseHost ? `${baseHost}/courses/${slugPreview}` : null;
+
+  // Auto-suggest from the course name (mirrors the same pattern the Landing Page settings'
+  // own slug field already uses) — only while the admin hasn't typed into URL path themselves,
+  // so it stays a suggestion, never overwrites a deliberate edit.
+  useEffect(() => {
+    if (!urlPathTouched && title) setUrlPath(sanitizeSlug(title));
+  }, [title, urlPathTouched]);
 
   const handleClose = () => {
     onOpenChange(false);
@@ -82,12 +98,11 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
   const handleCreateStep1 = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return toast.error("Course name is required");
-    if (domainId && !urlPath.trim())
-      return toast.error("URL path is required when a domain is selected");
+    if (!urlPath.trim()) return toast.error("URL path is required");
 
     setIsSaving(true);
     try {
-      const res = await createCourseWithDomain(title, domainId || null, urlPath || null);
+      const res = await createCourseWithDomain(title, domainId, urlPath || null);
       if (res.error) {
         toast.error(res.error);
         return;
@@ -194,23 +209,19 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
 
               <div className="space-y-1.5">
                 <label htmlFor="cc-domain" className="block text-[12px] font-semibold text-dash-text">
-                  Domain <span className="font-normal text-dash-textMuted">(optional)</span>
+                  Domain
                 </label>
                 {isLoadingDomains ? (
                   <div className="flex items-center gap-2 rounded-lg border border-dash-border bg-dash-surface px-3 py-2.5 text-[12px] text-dash-textMuted">
                     <Loader2 className="size-3.5 animate-spin" /> Loading connected domains…
                   </div>
-                ) : domains.length === 0 ? (
-                  <p className="rounded-lg border border-dash-border bg-dash-surface px-3 py-2.5 text-[12px] leading-relaxed text-dash-textMuted">
-                    No verified domains yet — skip for now and add one later in Settings.
-                  </p>
                 ) : (
                   <Select
                     id="cc-domain"
                     value={domainId}
                     onChange={(e) => setDomainId(e.target.value)}
                   >
-                    <option value="">Skip for now — add a domain later</option>
+                    <option value="default">leadsmind.io (default)</option>
                     {domains.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.hostname}
@@ -218,31 +229,37 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
                     ))}
                   </Select>
                 )}
+                {domains.length === 0 && !isLoadingDomains && (
+                  <p className="text-[11px] text-dash-textMuted">
+                    No custom domain connected yet — publishing works today on leadsmind.io; connect one anytime in Settings.
+                  </p>
+                )}
               </div>
 
-              {domainId && selectedDomain && (
-                <div className="space-y-1.5">
-                  <label htmlFor="cc-slug" className="block text-[12px] font-semibold text-dash-text">
-                    URL path <span className="text-sky-600">*</span>
-                  </label>
-                  <div className="flex items-stretch overflow-hidden rounded-lg border border-dash-border focus-within:border-sky-500 focus-within:ring-4 focus-within:ring-sky-500/12">
-                    <span className="flex max-w-[45%] shrink-0 items-center truncate bg-dash-surface px-3 font-mono text-[11px] text-dash-textMuted">
-                      https://{selectedDomain.hostname}/
-                    </span>
-                    <input
-                      id="cc-slug"
-                      value={urlPath}
-                      onChange={(e) => setUrlPath(e.target.value)}
-                      placeholder="tefl-beginner"
-                      required
-                      className="min-w-0 flex-1 px-3 py-2.5 text-[13px] text-dash-text outline-none"
-                    />
-                    <span className="flex items-center px-3 text-dash-textMuted">
-                      <LinkIcon className="size-3.5" />
-                    </span>
-                  </div>
+              <div className="space-y-1.5">
+                <label htmlFor="cc-slug" className="block text-[12px] font-semibold text-dash-text">
+                  URL path <span className="text-sky-600">*</span>
+                </label>
+                <div className="flex items-stretch overflow-hidden rounded-lg border border-dash-border focus-within:border-sky-500 focus-within:ring-4 focus-within:ring-sky-500/12">
+                  <span className="flex max-w-[45%] shrink-0 items-center truncate bg-dash-surface px-3 font-mono text-[11px] text-dash-textMuted">
+                    {baseHost || "…"}/courses/
+                  </span>
+                  <input
+                    id="cc-slug"
+                    value={urlPath}
+                    onChange={(e) => {
+                      setUrlPathTouched(true);
+                      setUrlPath(e.target.value);
+                    }}
+                    placeholder="tefl-beginner"
+                    required
+                    className="min-w-0 flex-1 px-3 py-2.5 text-[13px] text-dash-text outline-none"
+                  />
+                  <span className="flex items-center px-3 text-dash-textMuted">
+                    <LinkIcon className="size-3.5" />
+                  </span>
                 </div>
-              )}
+              </div>
 
               {previewUrl && (
                 <div className="rounded-lg border border-dash-border bg-dash-surface px-3 py-2 font-mono text-[11px] text-dash-textMuted">

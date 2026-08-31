@@ -22,41 +22,20 @@ export async function updateSession(request: NextRequest) {
   }
  }
 
- // Intercept course slug pages (/courses/[slug] where [slug] is not a UUID)
- if (pathname.startsWith('/courses/')) {
-  const segment = pathname.split('/')[2]
-  if (segment) {
-   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(segment)
-   if (!isUuid) {
-    if (isCustomDomain) {
-     const tempSupabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-       cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll() {},
-       }
-      }
-     )
-     const { data } = await tempSupabase
-      .from('workspace_branding')
-      .select('workspace_id')
-      .eq('custom_domain', host)
-      .maybeSingle()
-
-     const workspaceId = data?.workspace_id || ''
-     return NextResponse.rewrite(
-      new URL(`/unauthenticated/courses/${segment}?workspaceId=${workspaceId}&domain=${host}`, request.url)
-     )
-    } else {
-     return NextResponse.rewrite(
-      new URL(`/unauthenticated/courses/${segment}`, request.url)
-     )
-    }
-   }
-  }
- }
+ // NOTE (Custom-Domain Course Serving pass): a course-slug intercept used to live here,
+ // keyed by workspace_branding.custom_domain. Removed after a real audit found it was a live
+ // security gap, not just dead code: workspace_branding.custom_domain has zero real rows
+ // today (confirmed live), so it never actually fired — but had it, the destination page
+ // (/unauthenticated/courses/[slug]) never read the workspaceId/domain query params this
+ // rewrite attached, and did a pure GLOBAL slug lookup. Any real row here would have let a
+ // custom domain serve ANY workspace's course sharing that slug — a cross-workspace leak. The
+ // real, current, actively-maintained custom-domain system is domain_configurations (Vercel-
+ // backed DNS/SSL verification, src/lib/domains/verify.ts) — the outer src/middleware.ts now
+ // handles custom-domain course serving through that system instead, scoped by the real FK
+ // (courses.domain_id -> domain_configurations.id), which this old path never enforced.
+ // The plain-platform-host /courses/[slug] rewrite (non-custom-domain case) also moved to the
+ // outer middleware.ts (Default LeadsMind Domain pass) — this function no longer needs to
+ // special-case /courses/ at all.
 
  // Build the response once from the current request state. The cookie
  // handlers below mutate this same `response` in place (via getAll/setAll)
