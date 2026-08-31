@@ -85,6 +85,26 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
         data: { publicUrl },
       } = supabase.storage.from("media").getPublicUrl(filePath);
 
+      // Register in the workspace-wide Media Center (public.media_files) so this
+      // cover image is visible alongside every other workspace asset. A failure
+      // here shouldn't block the upload — the image is already stored.
+      const { error: registerError } = await supabase.from("media_files").insert({
+        workspace_id: workspaceId,
+        name: file.name,
+        path: filePath,
+        type: "file",
+        mime_type: file.type || "application/octet-stream",
+        size: file.size,
+        metadata: {
+          uploaded_via: `Course cover image — ${course.title || editTitle || "Untitled course"}`,
+          source_feature: "course_cover_image",
+          course_id: course.id,
+        },
+      });
+      if (registerError) {
+        console.error("media_files register failed", registerError);
+      }
+
       setEditThumbnail(publicUrl);
       toast.success("Cover image uploaded successfully!");
     } catch (error: any) {
