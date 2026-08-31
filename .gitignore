@@ -48,3 +48,13 @@ next-env.d.ts
 
 .claude
 .env*
+
+# Obsidian vault — machine-specific state only.
+# Shared config (app.json, core-plugins.json, templates.json, appearance.json,
+# graph.json, hotkeys.json) stays tracked so the vault is consistent for anyone
+# who opens it.
+**/.obsidian/workspace.json
+**/.obsidian/workspace-mobile.json
+**/.obsidian/workspace
+**/.obsidian/cache/
+**/.trash/
